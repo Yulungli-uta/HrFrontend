@@ -1,0 +1,45 @@
+/* UTA Universidad Técnica de Ambato - Branding Forzado */
+
+/* Logo UTA */
+.uta-logo-container {
+  background-color: #265792 !important;
+  color: white !important;
+}
+
+.uta-logo-text {
+  color: white !important;
+  font-weight: bold !important;
+}
+
+/* Título del sistema */
+.uta-system-title {
+  color: #265792 !important;
+  font-weight: bold !important;
+}
+
+/* Navegación activa */
+.uta-nav-active {
+  background-color: #265792 !important;
+  color: white !important;
+}
+
+/* Forzar colores en elementos específicos */
+aside h1 {
+  color: #265792 !important;
+}
+
+aside .bg-primary,
+aside [style*="background-color"] {
+  background-color: #265792 !important;
+}
+
+/* Avatar de usuario */
+.uta-user-avatar {
+  background-color: #265792 !important;
+  color: white !important;
+}
+
+/* Gradiente de encabezado */
+.uta-header-gradient {
+  background: linear-gradient(to right, rgba(38, 87, 146, 0.08), rgba(255, 193, 7, 0.08)) !important;
+}

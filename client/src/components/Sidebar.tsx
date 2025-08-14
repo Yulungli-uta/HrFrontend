@@ -27,22 +27,43 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="w-60 bg-surface shadow-lg border-r border-border flex flex-col">
+    <aside 
+      className="w-60 shadow-lg border-r flex flex-col"
+      style={{ 
+        backgroundColor: '#ffffff',
+        borderColor: '#e2e8f0'
+      }}
+    >
       {/* Logo Section */}
-      <div className="p-6 border-b border-border bg-gradient-to-r from-primary/5 to-secondary/5">
+      <div 
+        className="p-6 border-b"
+        style={{ 
+          borderColor: '#e2e8f0',
+          background: 'linear-gradient(to right, rgba(38, 87, 146, 0.05), rgba(255, 193, 7, 0.05))'
+        }}
+      >
         <div className="flex items-center space-x-3 mb-2">
           <div 
-            className="w-8 h-8 rounded-lg flex items-center justify-center shadow-sm"
-            style={{ backgroundColor: 'hsl(210, 88%, 35%)' }}
+            className="w-8 h-8 rounded-lg flex items-center justify-center shadow-sm uta-logo-container"
           >
-            <span className="font-bold text-sm" style={{ color: 'white' }}>UTA</span>
+            <span className="uta-logo-text text-sm">UTA</span>
           </div>
           <div>
-            <h1 className="text-xl font-bold" style={{ color: 'hsl(210, 88%, 35%)' }}>WsUtaSystem</h1>
-            <p className="text-xs text-muted-foreground">Universidad Técnica de Ambato</p>
+            <h1 className="text-xl uta-system-title">WsUtaSystem</h1>
+            <p 
+              className="text-xs" 
+              style={{ color: '#64748b' }}
+            >
+              Universidad Técnica de Ambato
+            </p>
           </div>
         </div>
-        <p className="text-sm text-muted-foreground">Sistema de Gestión de Talento Humano</p>
+        <p 
+          className="text-sm" 
+          style={{ color: '#64748b' }}
+        >
+          Sistema de Gestión de Talento Humano
+        </p>
       </div>
 
       {/* Navigation Menu */}
@@ -55,7 +76,7 @@ export default function Sidebar() {
                   ? "text-white"
                   : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
               }`}
-              style={isActive(path) ? { backgroundColor: 'hsl(210, 88%, 35%)' } : {}}
+              style={isActive(path) ? { backgroundColor: '#265792' } : {}}
               data-testid={`nav-${label.toLowerCase().replace(/\s+/g, '-')}`}
             >
               <Icon className="mr-3 h-4 w-4" />
@@ -70,9 +91,9 @@ export default function Sidebar() {
         <div className="flex items-center">
           <div 
             className="w-8 h-8 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: 'hsl(210, 88%, 35%)' }}
+            style={{ backgroundColor: '#265792' }}
           >
-            <UserCog className="h-4 w-4" style={{ color: 'white' }} />
+            <UserCog className="h-4 w-4" style={{ color: '#ffffff' }} />
           </div>
           <div className="ml-3">
             <p className="text-sm font-medium text-foreground">Admin Usuario</p>

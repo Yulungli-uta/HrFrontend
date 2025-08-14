@@ -141,6 +141,16 @@
   color: hsl(45 100% 50%) !important;
 }
 
+/* Force UTA Branding - Override everything */
+aside h1 {
+  color: #265792 !important;
+}
+
+aside .uta-logo {
+  background-color: #265792 !important;
+  color: white !important;
+}
+
 .text-success {
   color: var(--success);
 }
