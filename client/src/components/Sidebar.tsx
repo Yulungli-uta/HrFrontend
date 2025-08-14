@@ -29,12 +29,17 @@ export default function Sidebar() {
   return (
     <aside className="w-60 bg-surface shadow-lg border-r border-border flex flex-col">
       {/* Logo Section */}
-      <div className="p-6 border-b border-border">
-        <h1 className="text-xl font-bold text-primary flex items-center">
-          <UserCog className="mr-3 h-6 w-6" />
-          WsUtaSystem
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">Gestión de Talento Humano</p>
+      <div className="p-6 border-b border-border bg-gradient-to-r from-primary/5 to-secondary/5">
+        <div className="flex items-center space-x-3 mb-2">
+          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-sm">
+            <span className="text-primary-foreground font-bold text-sm">UTA</span>
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-primary">WsUtaSystem</h1>
+            <p className="text-xs text-muted-foreground">Universidad Técnica de Ambato</p>
+          </div>
+        </div>
+        <p className="text-sm text-muted-foreground">Sistema de Gestión de Talento Humano</p>
       </div>
 
       {/* Navigation Menu */}
