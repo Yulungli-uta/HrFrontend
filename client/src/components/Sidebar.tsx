@@ -8,6 +8,7 @@ import {
   Newspaper,
   UserCog
 } from "lucide-react";
+import LogoUTA from "@assets/LogoUTA.png";
 
 export default function Sidebar() {
   const [location] = useLocation();
@@ -43,10 +44,13 @@ export default function Sidebar() {
         }}
       >
         <div className="flex items-center space-x-3 mb-2">
-          <div 
-            className="w-8 h-8 rounded-lg flex items-center justify-center shadow-sm uta-logo-container"
-          >
-            <span className="uta-logo-text text-sm">UTA</span>
+          <div className="flex-shrink-0">
+            <img 
+              src={LogoUTA} 
+              alt="Logo Universidad Técnica de Ambato" 
+              className="h-10 w-auto object-contain uta-official-logo"
+              style={{ maxWidth: '100px' }}
+            />
           </div>
           <div>
             <h1 className="text-xl uta-system-title">WsUtaSystem</h1>

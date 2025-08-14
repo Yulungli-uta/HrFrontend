@@ -1,14 +1,10 @@
 /* UTA Universidad Técnica de Ambato - Branding Forzado */
 
-/* Logo UTA */
-.uta-logo-container {
-  background-color: #265792 !important;
-  color: white !important;
-}
-
-.uta-logo-text {
-  color: white !important;
-  font-weight: bold !important;
+/* Logo UTA oficial */
+.uta-official-logo {
+  max-width: 100px !important;
+  height: auto !important;
+  object-fit: contain !important;
 }
 
 /* Título del sistema */
