@@ -74,10 +74,8 @@ export const MarcacionesAPI = {
 
 // Permisos API
 export const PermisosAPI = {
-  list: (personaId?: number): Promise<Permiso[]> => {
-    const query = personaId ? `?personaId=${personaId}` : "";
-    return api(`/api/permisos${query}`);
-  },
+  list: (): Promise<Permiso[]> => api("/api/permisos"),
+  listByPersona: (personaId: number): Promise<Permiso[]> => api(`/api/permisos?personaId=${personaId}`),
   create: (data: InsertPermiso): Promise<Permiso> =>
     api("/api/permisos", { method: "POST", body: JSON.stringify(data) }),
   update: (id: number, data: Partial<InsertPermiso>): Promise<Permiso> =>
@@ -86,10 +84,8 @@ export const PermisosAPI = {
 
 // Vacaciones API
 export const VacacionesAPI = {
-  list: (personaId?: number): Promise<Vacacion[]> => {
-    const query = personaId ? `?personaId=${personaId}` : "";
-    return api(`/api/vacaciones${query}`);
-  },
+  list: (): Promise<Vacacion[]> => api("/api/vacaciones"),
+  listByPersona: (personaId: number): Promise<Vacacion[]> => api(`/api/vacaciones?personaId=${personaId}`),
   create: (data: InsertVacacion): Promise<Vacacion> =>
     api("/api/vacaciones", { method: "POST", body: JSON.stringify(data) }),
 };
