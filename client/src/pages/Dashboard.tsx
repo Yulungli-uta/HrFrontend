@@ -29,10 +29,7 @@ export default function Dashboard() {
 
   const { data: marcaciones = [] } = useQuery({
     queryKey: ["/api/marcaciones"],
-    queryFn: () => {
-      const today = new Date().toISOString().split('T')[0];
-      return MarcacionesAPI.list({ desde: today, hasta: today });
-    },
+    queryFn: MarcacionesAPI.list,
   });
 
   const { data: permisos = [] } = useQuery({
@@ -40,8 +37,8 @@ export default function Dashboard() {
     queryFn: () => PermisosAPI.list(),
   });
 
-  const contratosActivos = contratos.filter(c => c.estado);
-  const permisosPendientes = permisos.filter(p => p.estado === "pendiente");
+  const contratosActivos = contratos.filter(c => !c.fechaFin || new Date(c.fechaFin) > new Date());
+  const permisosPendientes = permisos.filter(p => p.estado === "SOLICITADO");
 
   return (
     <>
