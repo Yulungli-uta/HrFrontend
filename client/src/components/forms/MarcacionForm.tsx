@@ -69,7 +69,7 @@ export default function MarcacionForm({ onSuccess }: MarcacionFormProps) {
   const onSubmit = (data: MarcacionFormData) => {
     const marcacionData = {
       ...data,
-      timestamp: new Date().toISOString(),
+      timestamp: new Date(),
       observaciones: data.observaciones || undefined,
     };
 

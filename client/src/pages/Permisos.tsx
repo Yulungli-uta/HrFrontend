@@ -24,12 +24,12 @@ export default function Permisos() {
 
   const { data: permisos = [], isLoading: permisosLoading } = useQuery({
     queryKey: ["/api/permisos"],
-    queryFn: PermisosAPI.list,
+    queryFn: () => PermisosAPI.list(),
   });
 
   const { data: vacaciones = [], isLoading: vacacionesLoading } = useQuery({
     queryKey: ["/api/vacaciones"],
-    queryFn: VacacionesAPI.list,
+    queryFn: () => VacacionesAPI.list(),
   });
 
   const updatePermisoMutation = useMutation({

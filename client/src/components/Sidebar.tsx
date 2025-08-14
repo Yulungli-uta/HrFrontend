@@ -41,8 +41,8 @@ export default function Sidebar() {
       <nav className="flex-1 p-4 space-y-2">
         {navItems.map(({ path, label, icon: Icon }) => (
           <Link key={path} href={path}>
-            <a
-              className={`nav-item flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+            <div
+              className={`nav-item flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors cursor-pointer ${
                 isActive(path)
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
@@ -51,7 +51,7 @@ export default function Sidebar() {
             >
               <Icon className="mr-3 h-4 w-4" />
               {label}
-            </a>
+            </div>
           </Link>
         ))}
       </nav>

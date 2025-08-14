@@ -144,6 +144,9 @@ export class MemStorage implements IStorage {
     const persona: Persona = {
       ...insertPersona,
       id,
+      emailInstitucional: insertPersona.emailInstitucional || null,
+      telefono: insertPersona.telefono || null,
+      fechaNacimiento: insertPersona.fechaNacimiento || null,
       estado: true,
       createdAt: new Date(),
     };
@@ -178,6 +181,7 @@ export class MemStorage implements IStorage {
     const contrato: Contrato = {
       ...insertContrato,
       id,
+      fechaFin: insertContrato.fechaFin || null,
       estado: true,
       createdAt: new Date(),
     };
@@ -221,6 +225,8 @@ export class MemStorage implements IStorage {
     const marcacion: Marcacion = {
       ...insertMarcacion,
       id,
+      ubicacion: insertMarcacion.ubicacion || null,
+      observaciones: insertMarcacion.observaciones || null,
       createdAt: new Date(),
     };
     this.marcaciones.set(id, marcacion);
@@ -245,6 +251,9 @@ export class MemStorage implements IStorage {
     const permiso: Permiso = {
       ...insertPermiso,
       id,
+      horas: insertPermiso.horas || null,
+      motivo: insertPermiso.motivo || null,
+      observaciones: insertPermiso.observaciones || null,
       estado: "pendiente",
       createdAt: new Date(),
     };
@@ -279,6 +288,7 @@ export class MemStorage implements IStorage {
     const vacacion: Vacacion = {
       ...insertVacacion,
       id,
+      observaciones: insertVacacion.observaciones || null,
       estado: "pendiente",
       createdAt: new Date(),
     };
@@ -333,6 +343,7 @@ export class MemStorage implements IStorage {
     const concepto: NominaConcepto = {
       ...insertConcepto,
       id,
+      formula: insertConcepto.formula || null,
       activo: true,
     };
     this.nominaConceptos.set(id, concepto);
@@ -361,6 +372,7 @@ export class MemStorage implements IStorage {
     const movimiento: NominaMovimiento = {
       ...insertMovimiento,
       id,
+      observaciones: insertMovimiento.observaciones || null,
     };
     this.nominaMovimientos.set(id, movimiento);
     return movimiento;
@@ -389,6 +401,7 @@ export class MemStorage implements IStorage {
     const publicacion: Publicacion = {
       ...insertPublicacion,
       id,
+      autorId: insertPublicacion.autorId || null,
       activo: true,
       createdAt: new Date(),
     };

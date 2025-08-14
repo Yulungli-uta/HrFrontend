@@ -37,7 +37,7 @@ export default function Dashboard() {
 
   const { data: permisos = [] } = useQuery({
     queryKey: ["/api/permisos"],
-    queryFn: PermisosAPI.list,
+    queryFn: () => PermisosAPI.list(),
   });
 
   const contratosActivos = contratos.filter(c => c.estado);
