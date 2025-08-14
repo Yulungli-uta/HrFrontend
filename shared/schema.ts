@@ -317,3 +317,98 @@ export type InsertVacation = z.infer<typeof insertVacationSchema>;
 export type InsertAttendancePunch = z.infer<typeof insertAttendancePunchSchema>;
 export type InsertPayroll = z.infer<typeof insertPayrollSchema>;
 export type InsertPayrollLine = z.infer<typeof insertPayrollLineSchema>;
+
+// ===============================
+// SISTEMA DE HOJA DE VIDA
+// ===============================
+
+// Publicaciones
+export const publications = pgTable("publications", {
+  id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
+  personId: integer("person_id").references(() => people.id).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  journal: varchar("journal", { length: 255 }),
+  publicationDate: date("publication_date"),
+  issn: varchar("issn", { length: 50 }),
+  doi: varchar("doi", { length: 100 }),
+  url: varchar("url", { length: 500 }),
+  type: varchar("type", { length: 100 }), // Artículo científico, libro, capítulo, etc.
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Cargas familiares
+export const familyMembers = pgTable("family_members", {
+  id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
+  personId: integer("person_id").references(() => people.id).notNull(),
+  firstName: varchar("first_name", { length: 255 }).notNull(),
+  lastName: varchar("last_name", { length: 255 }).notNull(),
+  idCard: varchar("id_card", { length: 20 }),
+  birthDate: date("birth_date"),
+  relationship: varchar("relationship", { length: 100 }).notNull(), // hijo/a, cónyuge, etc.
+  hasDisability: boolean("has_disability").default(false),
+  disabilityType: varchar("disability_type", { length: 255 }),
+  disabilityPercentage: integer("disability_percentage"),
+  isStudying: boolean("is_studying").default(false),
+  educationInstitution: varchar("education_institution", { length: 255 }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Experiencias laborales
+export const workExperiences = pgTable("work_experiences", {
+  id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
+  personId: integer("person_id").references(() => people.id).notNull(),
+  company: varchar("company", { length: 255 }).notNull(),
+  position: varchar("position", { length: 255 }).notNull(),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date"),
+  isCurrent: boolean("is_current").default(false),
+  duties: text("duties"),
+  salary: decimal("salary", { precision: 10, scale: 2 }),
+  reasonForLeaving: varchar("reason_for_leaving", { length: 255 }),
+  referenceContact: varchar("reference_contact", { length: 255 }),
+  referenceEmail: varchar("reference_email", { length: 255 }),
+  referencePhone: varchar("reference_phone", { length: 20 }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Capacitaciones y cursos
+export const trainings = pgTable("trainings", {
+  id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
+  personId: integer("person_id").references(() => people.id).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  institution: varchar("institution", { length: 255 }).notNull(),
+  type: varchar("type", { length: 100 }).notNull(), // curso, seminario, diplomado, etc.
+  modality: varchar("modality", { length: 50 }), // presencial, virtual, semipresencial
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date"),
+  durationHours: integer("duration_hours"),
+  hasCertificate: boolean("has_certificate").default(false),
+  certificateNumber: varchar("certificate_number", { length: 100 }),
+  grade: varchar("grade", { length: 50 }),
+  description: text("description"),
+  fileUrl: varchar("file_url", { length: 500 }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Esquemas de inserción para hoja de vida
+export const insertPublicationSchema = createInsertSchema(publications).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertFamilyMemberSchema = createInsertSchema(familyMembers).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertWorkExperienceSchema = createInsertSchema(workExperiences).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertTrainingSchema = createInsertSchema(trainings).omit({ id: true, createdAt: true, updatedAt: true });
+
+// Tipos de selección para hoja de vida
+export type Publication = typeof publications.$inferSelect;
+export type FamilyMember = typeof familyMembers.$inferSelect;
+export type WorkExperience = typeof workExperiences.$inferSelect;
+export type Training = typeof trainings.$inferSelect;
+
+// Tipos de inserción para hoja de vida
+export type InsertPublication = z.infer<typeof insertPublicationSchema>;
+export type InsertFamilyMember = z.infer<typeof insertFamilyMemberSchema>;
+export type InsertWorkExperience = z.infer<typeof insertWorkExperienceSchema>;
+export type InsertTraining = z.infer<typeof insertTrainingSchema>;
