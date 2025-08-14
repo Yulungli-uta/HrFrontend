@@ -1,256 +1,319 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, decimal, timestamp, date, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, decimal, timestamp, date, boolean, bigint, real } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Enums según especificación WsUtaSystem
-export const TipoContrato = ["TITULAR", "OCASIONAL", "CONTRATO", "SERV_PROF"] as const;
-export const TipoMarcacion = ["ENTRADA", "SALIDA"] as const;
-export const EstadoSolicitud = ["SOLICITADO", "APROBADO", "RECHAZADO", "REGISTRADO"] as const;
-export const TipoConcepto = ["INGRESO", "DESCUENTO", "APORTE", "PROVISION"] as const;
+// Tipos según nueva especificación
+export const EmpType = ["Teacher_LOSE", "Administrative_LOSEP", "Employee_CT", "Coordinator"] as const;
+export const SexType = ["M", "F", "O"] as const;
+export const PermissionStatus = ["Pending", "Approved", "Rejected"] as const;
+export const VacationStatus = ["Planned", "InProgress", "Completed", "Canceled"] as const;
+export const PunchType = ["In", "Out"] as const;
+export const CalcStatus = ["Pending", "Approved"] as const;
+export const OTStatus = ["Planned", "Verified", "Rejected", "Paid"] as const;
+export const MovementType = ["Transfer", "Promotion", "Demotion", "Lateral"] as const;
+export const PayrollStatus = ["Pending", "Paid", "Reconciled"] as const;
+export const LineType = ["Earning", "Deduction", "Subsidy", "Overtime"] as const;
 
-// Personas
-export const personas = pgTable("personas", {
+// 1. Personas
+export const people = pgTable("people", {
   id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
-  identificacion: varchar("identificacion", { length: 20 }).notNull().unique(),
-  nombres: text("nombres").notNull(),
-  apellidos: text("apellidos").notNull(),
-  emailInstitucional: text("email_institucional"),
-  emailPersonal: text("email_personal"),
+  firstName: varchar("first_name", { length: 100 }).notNull(),
+  lastName: varchar("last_name", { length: 100 }).notNull(),
+  idCard: varchar("id_card", { length: 20 }).notNull().unique(),
+  email: varchar("email", { length: 150 }).notNull().unique(),
+  phone: varchar("phone", { length: 30 }),
+  birthDate: date("birth_date"),
+  sex: varchar("sex", { length: 1 }), // 'M'|'F'|'O'
+  gender: varchar("gender", { length: 50 }),
+  disability: text("disability"),
+  address: text("address"),
+  isActive: boolean("is_active").default(true).notNull(),
 });
 
-// Puestos
-export const puestos = pgTable("puestos", {
+// 2. Empleados
+export const employees = pgTable("employees", {
+  id: integer("id").primaryKey().references(() => people.id), // PersonID
+  type: varchar("type", { length: 30 }).notNull(), // EmpType
+  departmentId: integer("department_id"),
+  immediateBossId: integer("immediate_boss_id"),
+  hireDate: date("hire_date").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+});
+
+// 3. Facultades
+export const faculties = pgTable("faculties", {
   id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
-  nombre: text("nombre").notNull(),
-  unidad: text("unidad").notNull(),
+  name: varchar("name", { length: 120 }).notNull(),
+  deanEmployeeId: integer("dean_employee_id"),
+  isActive: boolean("is_active").default(true).notNull(),
 });
 
-// Contratos
-export const contratos = pgTable("contratos", {
+// 4. Departamentos
+export const departments = pgTable("departments", {
   id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
-  personaId: integer("persona_id").references(() => personas.id).notNull(),
-  puestoId: integer("puesto_id").references(() => puestos.id).notNull(),
-  tipo: varchar("tipo", { length: 20 }).notNull(), // TITULAR, OCASIONAL, CONTRATO, SERV_PROF
-  fechaInicio: date("fecha_inicio").notNull(),
-  fechaFin: date("fecha_fin"),
-  sueldoBase: decimal("sueldo_base", { precision: 10, scale: 2 }).notNull(),
+  facultyId: integer("faculty_id").references(() => faculties.id),
+  name: varchar("name", { length: 120 }).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
 });
 
-// Planes de Turno
-export const planesTurno = pgTable("planes_turno", {
+// 5. Horarios
+export const schedules = pgTable("schedules", {
   id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
-  puestoId: integer("puesto_id").references(() => puestos.id).notNull(),
-  nombre: text("nombre").notNull(),
+  description: text("description").notNull(),
+  entryTime: varchar("entry_time", { length: 8 }).notNull(), // HH:mm:ss
+  exitTime: varchar("exit_time", { length: 8 }).notNull(),
+  workingDays: text("working_days").notNull(), // "1,2,3,4,5"
+  requiredHoursPerDay: decimal("required_hours_per_day", { precision: 5, scale: 2 }).notNull(),
+  hasLunchBreak: boolean("has_lunch_break").default(true).notNull(),
+  lunchStart: varchar("lunch_start", { length: 8 }),
+  lunchEnd: varchar("lunch_end", { length: 8 }),
+  isRotating: boolean("is_rotating").default(false).notNull(),
+  rotationPattern: text("rotation_pattern"),
 });
 
-// Detalles de Turno
-export const detallesTurno = pgTable("detalles_turno", {
+// 6. Asignación de Horarios
+export const employeeSchedules = pgTable("employee_schedules", {
   id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
-  planTurnoId: integer("plan_turno_id").references(() => planesTurno.id).notNull(),
-  diaSemana: integer("dia_semana").notNull(), // 0=Domingo
-  horaEntrada: varchar("hora_entrada", { length: 8 }).notNull(), // HH:mm:ss
-  horaSalida: varchar("hora_salida", { length: 8 }).notNull(),
-  toleranciaMin: integer("tolerancia_min").notNull().default(0),
-  descanso: boolean("descanso").default(false),
+  employeeId: integer("employee_id").references(() => employees.id).notNull(),
+  scheduleId: integer("schedule_id").references(() => schedules.id).notNull(),
+  validFrom: date("valid_from").notNull(),
+  validTo: date("valid_to"),
 });
 
-// Asignaciones de Turno
-export const asignacionesTurno = pgTable("asignaciones_turno", {
+// 7. Contratos
+export const contracts = pgTable("contracts", {
   id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
-  personaId: integer("persona_id").references(() => personas.id).notNull(),
-  planTurnoId: integer("plan_turno_id").references(() => planesTurno.id).notNull(),
-  desde: date("desde").notNull(),
-  hasta: date("hasta"),
+  employeeId: integer("employee_id").references(() => employees.id).notNull(),
+  contractType: varchar("contract_type", { length: 50 }).notNull(),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date"),
+  baseSalary: decimal("base_salary", { precision: 10, scale: 2 }).notNull(),
 });
 
-// Marcaciones
-export const marcaciones = pgTable("marcaciones", {
+// 8. Historial de Salarios
+export const salaryHistory = pgTable("salary_history", {
   id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
-  personaId: integer("persona_id").references(() => personas.id).notNull(),
-  timestamp: timestamp("timestamp").notNull(),
-  tipo: varchar("tipo", { length: 10 }).notNull(), // ENTRADA, SALIDA
-  origen: varchar("origen", { length: 20 }).default("WEB"),
-  valido: boolean("valido").default(true),
+  contractId: integer("contract_id").references(() => contracts.id).notNull(),
+  oldSalary: decimal("old_salary", { precision: 10, scale: 2 }).notNull(),
+  newSalary: decimal("new_salary", { precision: 10, scale: 2 }).notNull(),
+  changedBy: varchar("changed_by", { length: 100 }).notNull(),
+  changedAt: timestamp("changed_at").defaultNow().notNull(),
+  reason: text("reason"),
 });
 
-// Permisos
-export const permisos = pgTable("permisos", {
+// 9. Tipos de Permiso
+export const permissionTypes = pgTable("permission_types", {
   id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
-  personaId: integer("persona_id").references(() => personas.id).notNull(),
-  tipo: text("tipo").notNull(), // PERSONAL, MEDICO, etc.
-  desde: timestamp("desde").notNull(),
-  hasta: timestamp("hasta").notNull(),
-  horas: decimal("horas", { precision: 5, scale: 2 }).notNull(),
-  estado: varchar("estado", { length: 15 }).default("SOLICITADO"),
-  motivo: text("motivo"),
+  name: varchar("name", { length: 100 }).notNull(),
+  deductsFromVacation: boolean("deducts_from_vacation").default(false).notNull(),
+  requiresApproval: boolean("requires_approval").default(true).notNull(),
+  maxDays: integer("max_days"),
 });
 
-// Vacaciones
-export const vacaciones = pgTable("vacaciones", {
+// 10. Permisos
+export const permissions = pgTable("permissions", {
   id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
-  personaId: integer("persona_id").references(() => personas.id).notNull(),
-  periodoInicio: date("periodo_inicio").notNull(),
-  periodoFin: date("periodo_fin").notNull(),
-  diasGenerados: decimal("dias_generados", { precision: 5, scale: 2 }).notNull(),
-  diasTomados: decimal("dias_tomados", { precision: 5, scale: 2 }).default("0"),
+  employeeId: integer("employee_id").references(() => employees.id).notNull(),
+  permissionTypeId: integer("permission_type_id").references(() => permissionTypes.id).notNull(),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date").notNull(),
+  chargedToVacation: boolean("charged_to_vacation").default(false).notNull(),
+  approvedBy: integer("approved_by"),
+  justification: text("justification"),
+  requestDate: timestamp("request_date").defaultNow().notNull(),
+  status: varchar("status", { length: 20 }).default("Pending").notNull(),
+  vacationId: integer("vacation_id"),
 });
 
-// Recuperaciones
-export const recuperaciones = pgTable("recuperaciones", {
+// 11. Vacaciones
+export const vacations = pgTable("vacations", {
   id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
-  permisoId: integer("permiso_id").references(() => permisos.id).notNull(),
-  personaId: integer("persona_id").references(() => personas.id).notNull(),
-  desde: timestamp("desde").notNull(),
-  hasta: timestamp("hasta").notNull(),
-  horas: decimal("horas", { precision: 5, scale: 2 }).notNull(),
-  estado: varchar("estado", { length: 15 }).default("SOLICITADO"),
+  employeeId: integer("employee_id").references(() => employees.id).notNull(),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date").notNull(),
+  daysGranted: integer("days_granted").notNull(),
+  daysTaken: integer("days_taken").default(0).notNull(),
+  status: varchar("status", { length: 20 }).default("Planned").notNull(),
 });
 
-// Subrogaciones
-export const subrogaciones = pgTable("subrogaciones", {
+// 12. Picadas (Asistencia)
+export const attendancePunches = pgTable("attendance_punches", {
   id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
-  personaTitularId: integer("persona_titular_id").references(() => personas.id).notNull(),
-  personaSubroganteId: integer("persona_subrogante_id").references(() => personas.id).notNull(),
-  puestoId: integer("puesto_id").references(() => puestos.id).notNull(),
-  desde: date("desde").notNull(),
-  hasta: date("hasta"),
-  estado: varchar("estado", { length: 20 }).default("PROGRAMADA"),
+  employeeId: integer("employee_id").references(() => employees.id).notNull(),
+  punchTime: timestamp("punch_time").notNull(),
+  punchType: varchar("punch_type", { length: 3 }).notNull(), // 'In'|'Out'
+  deviceId: varchar("device_id", { length: 50 }),
+  longitude: real("longitude"),
+  latitude: real("latitude"),
 });
 
-// Nómina
-export const nomina = pgTable("nomina", {
+// 13. Justificación de Picadas
+export const punchJustifications = pgTable("punch_justifications", {
   id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
-  periodo: date("periodo").notNull(), // YYYY-MM-01
-  estado: varchar("estado", { length: 20 }).default("ABIERTA"),
+  punchId: integer("punch_id").references(() => attendancePunches.id).notNull(),
+  bossEmployeeId: integer("boss_employee_id").references(() => employees.id).notNull(),
+  reason: text("reason").notNull(),
+  approved: boolean("approved").default(false).notNull(),
+  approvedAt: timestamp("approved_at"),
 });
 
-// Conceptos de Nómina
-export const conceptosNomina = pgTable("conceptos_nomina", {
+// 14. Agregados de Asistencia
+export const attendanceCalculations = pgTable("attendance_calculations", {
   id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
-  codigo: varchar("codigo", { length: 20 }).notNull().unique(),
-  nombre: text("nombre").notNull(),
-  tipo: varchar("tipo", { length: 15 }).notNull(), // INGRESO, DESCUENTO, APORTE, PROVISION
-  imponible: boolean("imponible").default(true),
+  employeeId: integer("employee_id").references(() => employees.id).notNull(),
+  workDate: date("work_date").notNull(),
+  firstPunchIn: timestamp("first_punch_in"),
+  lastPunchOut: timestamp("last_punch_out"),
+  totalWorkedMinutes: integer("total_worked_minutes").default(0).notNull(),
+  regularMinutes: integer("regular_minutes").default(0).notNull(),
+  overtimeMinutes: integer("overtime_minutes").default(0).notNull(),
+  nightMinutes: integer("night_minutes").default(0).notNull(),
+  holidayMinutes: integer("holiday_minutes").default(0).notNull(),
+  status: varchar("status", { length: 20 }).default("Pending").notNull(),
 });
 
-// Movimientos de Nómina
-export const movimientosNomina = pgTable("movimientos_nomina", {
+// 15. Configuración Horas Extra
+export const overtimeConfig = pgTable("overtime_config", {
+  overtimeType: varchar("overtime_type", { length: 50 }).primaryKey(),
+  factor: decimal("factor", { precision: 5, scale: 2 }).notNull(),
+  description: text("description"),
+});
+
+// 16. Horas Extra
+export const overtime = pgTable("overtime", {
   id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
-  nominaId: integer("nomina_id").references(() => nomina.id).notNull(),
-  personaId: integer("persona_id").references(() => personas.id).notNull(),
-  contratoId: integer("contrato_id").references(() => contratos.id),
-  conceptoNominaId: integer("concepto_nomina_id").references(() => conceptosNomina.id).notNull(),
-  cantidad: decimal("cantidad", { precision: 10, scale: 2 }).default("0"),
-  valor: decimal("valor", { precision: 10, scale: 2 }).notNull(),
-  fuente: varchar("fuente", { length: 20 }).default("MANUAL"),
+  employeeId: integer("employee_id").references(() => employees.id).notNull(),
+  workDate: date("work_date").notNull(),
+  overtimeType: varchar("overtime_type", { length: 50 }).notNull(),
+  hours: decimal("hours", { precision: 5, scale: 2 }).notNull(),
+  status: varchar("status", { length: 20 }).default("Planned").notNull(),
+  approvedBy: integer("approved_by"),
+  secondApprover: integer("second_approver"),
+  factor: decimal("factor", { precision: 5, scale: 2 }).notNull(),
+  actualHours: decimal("actual_hours", { precision: 5, scale: 2 }).notNull(),
+  paymentAmount: decimal("payment_amount", { precision: 10, scale: 2 }).notNull(),
 });
 
-// Educación
-export const educacion = pgTable("educacion", {
+// 17. Plan de Recuperación
+export const timeRecoveryPlans = pgTable("time_recovery_plans", {
   id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
-  personaId: integer("persona_id").references(() => personas.id).notNull(),
-  nivel: text("nivel").notNull(),
-  titulo: text("titulo").notNull(),
-  institucion: text("institucion").notNull(),
-  inicio: date("inicio"),
-  fin: date("fin"),
+  employeeId: integer("employee_id").references(() => employees.id).notNull(),
+  owedMinutes: integer("owed_minutes").notNull(),
+  planDate: date("plan_date").notNull(),
+  fromTime: varchar("from_time", { length: 8 }).notNull(), // HH:mm:ss
+  toTime: varchar("to_time", { length: 8 }).notNull(),
+  reason: text("reason"),
+  createdBy: integer("created_by"),
 });
 
-// Experiencia
-export const experiencia = pgTable("experiencia", {
+// 18. Log de Recuperación
+export const timeRecoveryLogs = pgTable("time_recovery_logs", {
   id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
-  personaId: integer("persona_id").references(() => personas.id).notNull(),
-  institucion: text("institucion").notNull(),
-  cargo: text("cargo").notNull(),
-  inicio: date("inicio").notNull(),
-  fin: date("fin"),
+  recoveryPlanId: integer("recovery_plan_id").references(() => timeRecoveryPlans.id).notNull(),
+  executedDate: date("executed_date").notNull(),
+  minutesRecovered: integer("minutes_recovered").notNull(),
+  approvedBy: integer("approved_by"),
+  approvedAt: timestamp("approved_at"),
 });
 
-// Certificaciones
-export const certificaciones = pgTable("certificaciones", {
+// 19. Subrogaciones
+export const subrogations = pgTable("subrogations", {
   id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
-  personaId: integer("persona_id").references(() => personas.id).notNull(),
-  nombre: text("nombre").notNull(),
-  entidad: text("entidad").notNull(),
-  emision: date("emision").notNull(),
-  vencimiento: date("vencimiento"),
+  subrogatedEmployeeId: integer("subrogated_employee_id").references(() => employees.id).notNull(),
+  subrogatingEmployeeId: integer("subrogating_employee_id").references(() => employees.id).notNull(),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date").notNull(),
+  permissionId: integer("permission_id").references(() => permissions.id),
+  vacationId: integer("vacation_id").references(() => vacations.id),
+  reason: text("reason"),
 });
 
-// Publicaciones
-export const publicaciones = pgTable("publicaciones", {
+// 20. Movimientos de Personal
+export const personnelMovements = pgTable("personnel_movements", {
   id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
-  personaId: integer("persona_id").references(() => personas.id).notNull(),
-  tipo: text("tipo").notNull(), // ARTICULO, LIBRO, CAPITULO, CONGRESO
-  titulo: text("titulo").notNull(),
-  anio: integer("anio").notNull(),
-  revistaEditorial: text("revista_editorial"),
-  doi: text("doi"),
+  employeeId: integer("employee_id").references(() => employees.id).notNull(),
+  contractId: integer("contract_id").references(() => contracts.id).notNull(),
+  originDepartmentId: integer("origin_department_id").references(() => departments.id),
+  destinationDepartmentId: integer("destination_department_id").references(() => departments.id).notNull(),
+  movementDate: date("movement_date").notNull(),
+  movementType: varchar("movement_type", { length: 20 }).notNull(),
+  documentLocation: text("document_location"),
+  reason: text("reason"),
+  createdBy: integer("created_by"),
 });
 
-// Zod schemas para validación
-export const zPersona = z.object({
-  id: z.number().int().nonnegative().optional(),
-  identificacion: z.string().min(8).max(20),
-  nombres: z.string().min(2).max(100),
-  apellidos: z.string().min(2).max(100),
-  emailInstitucional: z.string().email().optional().nullable(),
-  emailPersonal: z.string().email().optional().nullable(),
+// 21. Nómina
+export const payroll = pgTable("payroll", {
+  id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
+  employeeId: integer("employee_id").references(() => employees.id).notNull(),
+  period: varchar("period", { length: 7 }).notNull(), // "YYYY-MM"
+  baseSalary: decimal("base_salary", { precision: 10, scale: 2 }).notNull(),
+  status: varchar("status", { length: 20 }).default("Pending").notNull(),
+  paymentDate: date("payment_date"),
+  bankAccount: varchar("bank_account", { length: 50 }),
 });
 
-export const zContrato = z.object({
-  id: z.number().int().nonnegative().optional(),
-  personaId: z.number().int().positive(),
-  puestoId: z.number().int().positive(),
-  tipo: z.enum(TipoContrato),
-  fechaInicio: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  fechaFin: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
-  sueldoBase: z.number().min(0),
+// 22. Detalle de Nómina
+export const payrollLines = pgTable("payroll_lines", {
+  id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
+  payrollId: integer("payroll_id").references(() => payroll.id).notNull(),
+  lineType: varchar("line_type", { length: 20 }).notNull(),
+  concept: varchar("concept", { length: 100 }).notNull(),
+  quantity: decimal("quantity", { precision: 10, scale: 2 }).notNull(),
+  unitValue: decimal("unit_value", { precision: 10, scale: 2 }).notNull(),
+  notes: text("notes"),
 });
 
-export const zMarcacion = z.object({
-  id: z.number().int().nonnegative().optional(),
-  personaId: z.number().int().positive(),
-  timestamp: z.string().datetime(),
-  tipo: z.enum(TipoMarcacion),
-  origen: z.string().default("WEB"),
-  valido: z.boolean().default(true),
+// 23. Auditoría
+export const audit = pgTable("audit", {
+  id: bigint("id", { mode: "number" }).primaryKey().generatedByDefaultAsIdentity(),
+  tableName: varchar("table_name", { length: 100 }).notNull(),
+  action: varchar("action", { length: 20 }).notNull(),
+  recordID: varchar("record_id", { length: 100 }).notNull(),
+  userName: varchar("user_name", { length: 100 }).notNull(),
+  dateTime: timestamp("date_time").defaultNow().notNull(),
+  details: text("details"),
 });
 
-export const zPermiso = z.object({
-  id: z.number().int().nonnegative().optional(),
-  personaId: z.number().int().positive(),
-  tipo: z.string().min(1),
-  desde: z.string().datetime(),
-  hasta: z.string().datetime(),
-  horas: z.number().min(0),
-  estado: z.enum(EstadoSolicitud).default("SOLICITADO"),
-  motivo: z.string().optional().nullable(),
-});
+// Esquemas de inserción con Zod
+export const insertPersonSchema = createInsertSchema(people).omit({ id: true });
+export const insertEmployeeSchema = createInsertSchema(employees);
+export const insertFacultySchema = createInsertSchema(faculties).omit({ id: true });
+export const insertDepartmentSchema = createInsertSchema(departments).omit({ id: true });
+export const insertScheduleSchema = createInsertSchema(schedules).omit({ id: true });
+export const insertContractSchema = createInsertSchema(contracts).omit({ id: true });
+export const insertPermissionTypeSchema = createInsertSchema(permissionTypes).omit({ id: true });
+export const insertPermissionSchema = createInsertSchema(permissions).omit({ id: true, requestDate: true });
+export const insertVacationSchema = createInsertSchema(vacations).omit({ id: true });
+export const insertAttendancePunchSchema = createInsertSchema(attendancePunches).omit({ id: true });
+export const insertPayrollSchema = createInsertSchema(payroll).omit({ id: true });
+export const insertPayrollLineSchema = createInsertSchema(payrollLines).omit({ id: true });
 
-// Insert schemas
-export const insertPersonaSchema = createInsertSchema(personas);
-export const insertContratoSchema = createInsertSchema(contratos);
-export const insertMarcacionSchema = createInsertSchema(marcaciones);
-export const insertPermisoSchema = createInsertSchema(permisos);
-export const insertVacacionSchema = createInsertSchema(vacaciones);
-export const insertPublicacionSchema = createInsertSchema(publicaciones);
+// Tipos de selección
+export type Person = typeof people.$inferSelect;
+export type Employee = typeof employees.$inferSelect;
+export type Faculty = typeof faculties.$inferSelect;
+export type Department = typeof departments.$inferSelect;
+export type Schedule = typeof schedules.$inferSelect;
+export type Contract = typeof contracts.$inferSelect;
+export type PermissionType = typeof permissionTypes.$inferSelect;
+export type Permission = typeof permissions.$inferSelect;
+export type Vacation = typeof vacations.$inferSelect;
+export type AttendancePunch = typeof attendancePunches.$inferSelect;
+export type Payroll = typeof payroll.$inferSelect;
+export type PayrollLine = typeof payrollLines.$inferSelect;
 
-// Types
-export type Persona = typeof personas.$inferSelect;
-export type InsertPersona = z.infer<typeof insertPersonaSchema>;
-
-export type Contrato = typeof contratos.$inferSelect;
-export type InsertContrato = z.infer<typeof insertContratoSchema>;
-
-export type Marcacion = typeof marcaciones.$inferSelect;
-export type InsertMarcacion = z.infer<typeof insertMarcacionSchema>;
-
-export type Permiso = typeof permisos.$inferSelect;
-export type InsertPermiso = z.infer<typeof insertPermisoSchema>;
-
-export type Vacacion = typeof vacaciones.$inferSelect;
-export type InsertVacacion = z.infer<typeof insertVacacionSchema>;
-
-export type Publicacion = typeof publicaciones.$inferSelect;
-export type InsertPublicacion = z.infer<typeof insertPublicacionSchema>;
+// Tipos de inserción
+export type InsertPerson = z.infer<typeof insertPersonSchema>;
+export type InsertEmployee = z.infer<typeof insertEmployeeSchema>;
+export type InsertFaculty = z.infer<typeof insertFacultySchema>;
+export type InsertDepartment = z.infer<typeof insertDepartmentSchema>;
+export type InsertSchedule = z.infer<typeof insertScheduleSchema>;
+export type InsertContract = z.infer<typeof insertContractSchema>;
+export type InsertPermissionType = z.infer<typeof insertPermissionTypeSchema>;
+export type InsertPermission = z.infer<typeof insertPermissionSchema>;
+export type InsertVacation = z.infer<typeof insertVacationSchema>;
+export type InsertAttendancePunch = z.infer<typeof insertAttendancePunchSchema>;
+export type InsertPayroll = z.infer<typeof insertPayrollSchema>;
+export type InsertPayrollLine = z.infer<typeof insertPayrollLineSchema>;

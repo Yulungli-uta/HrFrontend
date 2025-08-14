@@ -5,8 +5,13 @@ import {
   Clock, 
   CalendarCheck, 
   DollarSign, 
-  Newspaper,
-  UserCog
+  Building2,
+  FileText,
+  Settings,
+  Calendar,
+  ClipboardList,
+  UserCog,
+  Timer
 } from "lucide-react";
 import LogoUTA from "@assets/LogoUTA.png";
 
@@ -15,11 +20,18 @@ export default function Sidebar() {
 
   const navItems = [
     { path: "/", label: "Dashboard", icon: LayoutDashboard },
-    { path: "/personas", label: "Personas", icon: Users },
-    { path: "/asistencia", label: "Asistencia", icon: Clock },
-    { path: "/permisos", label: "Permisos & Vacaciones", icon: CalendarCheck },
-    { path: "/nomina", label: "Nómina", icon: DollarSign },
-    { path: "/publicaciones", label: "Publicaciones", icon: Newspaper },
+    { path: "/people", label: "Personas", icon: Users },
+    { path: "/employees", label: "Empleados", icon: UserCog },
+    { path: "/faculties", label: "Facultades", icon: Building2 },
+    { path: "/departments", label: "Departamentos", icon: Building2 },
+    { path: "/schedules", label: "Horarios", icon: Clock },
+    { path: "/contracts", label: "Contratos", icon: FileText },
+    { path: "/attendance", label: "Asistencia", icon: Timer },
+    { path: "/permissions", label: "Permisos", icon: CalendarCheck },
+    { path: "/vacations", label: "Vacaciones", icon: Calendar },
+    { path: "/overtime", label: "Horas Extra", icon: ClipboardList },
+    { path: "/payroll", label: "Nómina", icon: DollarSign },
+    { path: "/reports", label: "Reportes", icon: FileText },
   ];
 
   const isActive = (path: string) => {

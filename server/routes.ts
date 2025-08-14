@@ -1,373 +1,244 @@
-import { Request, Response } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { storage } from "./storage";
-import {
-  insertPersonaSchema,
-  insertContratoSchema,
-  insertMarcacionSchema,
-  insertPermisoSchema,
-  insertVacacionSchema,
-  insertPublicacionSchema,
+import { IStorage } from "./storage";
+import { 
+  insertPersonSchema, insertEmployeeSchema, insertFacultySchema, insertDepartmentSchema, 
+  insertScheduleSchema, insertContractSchema, insertPermissionTypeSchema, insertPermissionSchema, 
+  insertVacationSchema, insertAttendancePunchSchema, insertPayrollSchema, insertPayrollLineSchema 
 } from "@shared/schema";
 
-export function setupRoutes(app: any) {
-  // Personas routes
-  app.get("/api/personas", async (req: Request, res: Response) => {
+interface ValidatedRequest extends Request {
+  validatedBody: any;
+}
+
+export function createRoutes(storage: IStorage): Router {
+  const router = Router();
+
+  // Helper function for validation
+  const validateBody = (schema: z.ZodSchema) => (req: ValidatedRequest, res: Response, next: NextFunction) => {
     try {
-      const personas = await storage.getPersonas();
-      res.json(personas);
+      req.validatedBody = schema.parse(req.body);
+      next();
     } catch (error) {
-      res.status(500).json({ message: "Error fetching personas", error });
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Validation failed", details: error.errors });
+      }
+      return res.status(400).json({ error: "Invalid request body" });
+    }
+  };
+
+  // People Routes
+  router.get("/api/people", async (req, res) => {
+    try {
+      const people = await storage.getPeople();
+      res.json(people);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch people" });
     }
   });
 
-  app.get("/api/personas/:id", async (req: Request, res: Response) => {
+  router.get("/api/people/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const persona = await storage.getPersona(id);
-      if (!persona) {
-        return res.status(404).json({ message: "Persona not found" });
-      }
-      res.json(persona);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+      
+      const person = await storage.getPersonById(id);
+      if (!person) return res.status(404).json({ error: "Person not found" });
+      
+      res.json(person);
     } catch (error) {
-      res.status(500).json({ message: "Error fetching persona", error });
+      res.status(500).json({ error: "Failed to fetch person" });
     }
   });
 
-  app.post("/api/personas", async (req: Request, res: Response) => {
+  router.post("/api/people", validateBody(insertPersonSchema), async (req: ValidatedRequest, res: Response) => {
     try {
-      const validatedData = insertPersonaSchema.parse(req.body);
-      const persona = await storage.createPersona(validatedData);
-      res.status(201).json(persona);
+      const person = await storage.createPerson(req.validatedBody);
+      res.status(201).json(person);
     } catch (error) {
-      res.status(400).json({ message: "Invalid persona data", error });
+      res.status(500).json({ error: "Failed to create person" });
     }
   });
 
-  app.put("/api/personas/:id", async (req: Request, res: Response) => {
+  router.put("/api/people/:id", validateBody(insertPersonSchema.partial()), async (req: ValidatedRequest, res: Response) => {
     try {
       const id = parseInt(req.params.id);
-      const validatedData = insertPersonaSchema.partial().parse(req.body);
-      const persona = await storage.updatePersona(id, validatedData);
-      if (!persona) {
-        return res.status(404).json({ message: "Persona not found" });
-      }
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+      
+      const person = await storage.updatePerson(id, req.validatedBody);
+      if (!person) return res.status(404).json({ error: "Person not found" });
+      
+      res.json(person);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update person" });
+    }
+  });
+
+  router.delete("/api/people/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+      
+      const deleted = await storage.deletePerson(id);
+      if (!deleted) return res.status(404).json({ error: "Person not found" });
+      
       res.status(204).send();
     } catch (error) {
-      res.status(400).json({ message: "Invalid persona data", error });
+      res.status(500).json({ error: "Failed to delete person" });
     }
   });
 
-  app.delete("/api/personas/:id", async (req: Request, res: Response) => {
+  // Employees Routes
+  router.get("/api/employees", async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
-      const deleted = await storage.deletePersona(id);
-      if (!deleted) {
-        return res.status(404).json({ message: "Persona not found" });
-      }
-      res.status(204).send();
+      const employees = await storage.getEmployees();
+      res.json(employees);
     } catch (error) {
-      res.status(500).json({ message: "Error deleting persona", error });
+      res.status(500).json({ error: "Failed to fetch employees" });
     }
   });
 
-  // Contratos routes
-  app.get("/api/contratos", async (req: Request, res: Response) => {
+  router.post("/api/employees", validateBody(insertEmployeeSchema), async (req: ValidatedRequest, res: Response) => {
     try {
-      const contratos = await storage.getContratos();
-      res.json(contratos);
+      const employee = await storage.createEmployee(req.validatedBody);
+      res.status(201).json(employee);
     } catch (error) {
-      res.status(500).json({ message: "Error fetching contratos", error });
+      res.status(500).json({ error: "Failed to create employee" });
     }
   });
 
-  app.get("/api/contratos/:id", async (req: Request, res: Response) => {
+  // Faculties Routes
+  router.get("/api/faculties", async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
-      const contrato = await storage.getContrato(id);
-      if (!contrato) {
-        return res.status(404).json({ message: "Contrato not found" });
-      }
-      res.json(contrato);
+      const faculties = await storage.getFaculties();
+      res.json(faculties);
     } catch (error) {
-      res.status(500).json({ message: "Error fetching contrato", error });
+      res.status(500).json({ error: "Failed to fetch faculties" });
     }
   });
 
-  app.post("/api/contratos", async (req: Request, res: Response) => {
+  router.post("/api/faculties", validateBody(insertFacultySchema), async (req: ValidatedRequest, res: Response) => {
     try {
-      const validatedData = insertContratoSchema.parse(req.body);
-      const contrato = await storage.createContrato(validatedData);
-      res.status(201).json(contrato);
+      const faculty = await storage.createFaculty(req.validatedBody);
+      res.status(201).json(faculty);
     } catch (error) {
-      res.status(400).json({ message: "Invalid contrato data", error });
+      res.status(500).json({ error: "Failed to create faculty" });
     }
   });
 
-  app.put("/api/contratos/:id", async (req: Request, res: Response) => {
+  // Departments Routes
+  router.get("/api/departments", async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
-      const validatedData = insertContratoSchema.partial().parse(req.body);
-      const contrato = await storage.updateContrato(id, validatedData);
-      if (!contrato) {
-        return res.status(404).json({ message: "Contrato not found" });
-      }
-      res.status(204).send();
+      const departments = await storage.getDepartments();
+      res.json(departments);
     } catch (error) {
-      res.status(400).json({ message: "Invalid contrato data", error });
+      res.status(500).json({ error: "Failed to fetch departments" });
     }
   });
 
-  app.delete("/api/contratos/:id", async (req: Request, res: Response) => {
+  router.post("/api/departments", validateBody(insertDepartmentSchema), async (req: ValidatedRequest, res: Response) => {
     try {
-      const id = parseInt(req.params.id);
-      const deleted = await storage.deleteContrato(id);
-      if (!deleted) {
-        return res.status(404).json({ message: "Contrato not found" });
-      }
-      res.status(204).send();
+      const department = await storage.createDepartment(req.validatedBody);
+      res.status(201).json(department);
     } catch (error) {
-      res.status(500).json({ message: "Error deleting contrato", error });
+      res.status(500).json({ error: "Failed to create department" });
     }
   });
 
-  // Marcaciones routes
-  app.get("/api/marcaciones", async (req: Request, res: Response) => {
+  // Contracts Routes
+  router.get("/api/contracts", async (req, res) => {
     try {
-      const marcaciones = await storage.getMarcaciones();
-      res.json(marcaciones);
+      const contracts = await storage.getContracts();
+      res.json(contracts);
     } catch (error) {
-      res.status(500).json({ message: "Error fetching marcaciones", error });
+      res.status(500).json({ error: "Failed to fetch contracts" });
     }
   });
 
-  app.get("/api/marcaciones/:id", async (req: Request, res: Response) => {
+  router.post("/api/contracts", validateBody(insertContractSchema), async (req: ValidatedRequest, res: Response) => {
     try {
-      const id = parseInt(req.params.id);
-      const marcacion = await storage.getMarcacion(id);
-      if (!marcacion) {
-        return res.status(404).json({ message: "Marcacion not found" });
-      }
-      res.json(marcacion);
+      const contract = await storage.createContract(req.validatedBody);
+      res.status(201).json(contract);
     } catch (error) {
-      res.status(500).json({ message: "Error fetching marcacion", error });
+      res.status(500).json({ error: "Failed to create contract" });
     }
   });
 
-  app.post("/api/marcaciones", async (req: Request, res: Response) => {
+  // Permissions Routes
+  router.get("/api/permissions", async (req, res) => {
     try {
-      const validatedData = insertMarcacionSchema.parse(req.body);
-      const marcacion = await storage.createMarcacion(validatedData);
-      res.status(201).json(marcacion);
+      const permissions = await storage.getPermissions();
+      res.json(permissions);
     } catch (error) {
-      res.status(400).json({ message: "Invalid marcacion data", error });
+      res.status(500).json({ error: "Failed to fetch permissions" });
     }
   });
 
-  app.put("/api/marcaciones/:id", async (req: Request, res: Response) => {
+  router.post("/api/permissions", validateBody(insertPermissionSchema), async (req: ValidatedRequest, res: Response) => {
     try {
-      const id = parseInt(req.params.id);
-      const validatedData = insertMarcacionSchema.partial().parse(req.body);
-      const marcacion = await storage.updateMarcacion(id, validatedData);
-      if (!marcacion) {
-        return res.status(404).json({ message: "Marcacion not found" });
-      }
-      res.status(204).send();
+      const permission = await storage.createPermission(req.validatedBody);
+      res.status(201).json(permission);
     } catch (error) {
-      res.status(400).json({ message: "Invalid marcacion data", error });
+      res.status(500).json({ error: "Failed to create permission" });
     }
   });
 
-  app.delete("/api/marcaciones/:id", async (req: Request, res: Response) => {
+  // Vacations Routes
+  router.get("/api/vacations", async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
-      const deleted = await storage.deleteMarcacion(id);
-      if (!deleted) {
-        return res.status(404).json({ message: "Marcacion not found" });
-      }
-      res.status(204).send();
+      const vacations = await storage.getVacations();
+      res.json(vacations);
     } catch (error) {
-      res.status(500).json({ message: "Error deleting marcacion", error });
+      res.status(500).json({ error: "Failed to fetch vacations" });
     }
   });
 
-  // Permisos routes
-  app.get("/api/permisos", async (req: Request, res: Response) => {
+  router.post("/api/vacations", validateBody(insertVacationSchema), async (req: ValidatedRequest, res: Response) => {
     try {
-      const permisos = await storage.getPermisos();
-      res.json(permisos);
+      const vacation = await storage.createVacation(req.validatedBody);
+      res.status(201).json(vacation);
     } catch (error) {
-      res.status(500).json({ message: "Error fetching permisos", error });
+      res.status(500).json({ error: "Failed to create vacation" });
     }
   });
 
-  app.get("/api/permisos/:id", async (req: Request, res: Response) => {
+  // Attendance Routes
+  router.get("/api/attendance/punches", async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
-      const permiso = await storage.getPermiso(id);
-      if (!permiso) {
-        return res.status(404).json({ message: "Permiso not found" });
-      }
-      res.json(permiso);
+      const punches = await storage.getAttendancePunches();
+      res.json(punches);
     } catch (error) {
-      res.status(500).json({ message: "Error fetching permiso", error });
+      res.status(500).json({ error: "Failed to fetch attendance punches" });
     }
   });
 
-  app.post("/api/permisos", async (req: Request, res: Response) => {
+  router.post("/api/attendance/punches", validateBody(insertAttendancePunchSchema), async (req: ValidatedRequest, res: Response) => {
     try {
-      const validatedData = insertPermisoSchema.parse(req.body);
-      const permiso = await storage.createPermiso(validatedData);
-      res.status(201).json(permiso);
+      const punch = await storage.createAttendancePunch(req.validatedBody);
+      res.status(201).json(punch);
     } catch (error) {
-      res.status(400).json({ message: "Invalid permiso data", error });
+      res.status(500).json({ error: "Failed to create attendance punch" });
     }
   });
 
-  app.put("/api/permisos/:id", async (req: Request, res: Response) => {
+  // Payroll Routes
+  router.get("/api/payroll", async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
-      const validatedData = insertPermisoSchema.partial().parse(req.body);
-      const permiso = await storage.updatePermiso(id, validatedData);
-      if (!permiso) {
-        return res.status(404).json({ message: "Permiso not found" });
-      }
-      res.status(204).send();
+      const payrolls = await storage.getPayrolls();
+      res.json(payrolls);
     } catch (error) {
-      res.status(400).json({ message: "Invalid permiso data", error });
+      res.status(500).json({ error: "Failed to fetch payrolls" });
     }
   });
 
-  app.delete("/api/permisos/:id", async (req: Request, res: Response) => {
+  router.post("/api/payroll", validateBody(insertPayrollSchema), async (req: ValidatedRequest, res: Response) => {
     try {
-      const id = parseInt(req.params.id);
-      const deleted = await storage.deletePermiso(id);
-      if (!deleted) {
-        return res.status(404).json({ message: "Permiso not found" });
-      }
-      res.status(204).send();
+      const payroll = await storage.createPayroll(req.validatedBody);
+      res.status(201).json(payroll);
     } catch (error) {
-      res.status(500).json({ message: "Error deleting permiso", error });
+      res.status(500).json({ error: "Failed to create payroll" });
     }
   });
 
-  // Vacaciones routes
-  app.get("/api/vacaciones", async (req: Request, res: Response) => {
-    try {
-      const vacaciones = await storage.getVacaciones();
-      res.json(vacaciones);
-    } catch (error) {
-      res.status(500).json({ message: "Error fetching vacaciones", error });
-    }
-  });
-
-  app.get("/api/vacaciones/:id", async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      const vacacion = await storage.getVacacion(id);
-      if (!vacacion) {
-        return res.status(404).json({ message: "Vacacion not found" });
-      }
-      res.json(vacacion);
-    } catch (error) {
-      res.status(500).json({ message: "Error fetching vacacion", error });
-    }
-  });
-
-  app.post("/api/vacaciones", async (req: Request, res: Response) => {
-    try {
-      const validatedData = insertVacacionSchema.parse(req.body);
-      const vacacion = await storage.createVacacion(validatedData);
-      res.status(201).json(vacacion);
-    } catch (error) {
-      res.status(400).json({ message: "Invalid vacacion data", error });
-    }
-  });
-
-  app.put("/api/vacaciones/:id", async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      const validatedData = insertVacacionSchema.partial().parse(req.body);
-      const vacacion = await storage.updateVacacion(id, validatedData);
-      if (!vacacion) {
-        return res.status(404).json({ message: "Vacacion not found" });
-      }
-      res.status(204).send();
-    } catch (error) {
-      res.status(400).json({ message: "Invalid vacacion data", error });
-    }
-  });
-
-  app.delete("/api/vacaciones/:id", async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      const deleted = await storage.deleteVacacion(id);
-      if (!deleted) {
-        return res.status(404).json({ message: "Vacacion not found" });
-      }
-      res.status(204).send();
-    } catch (error) {
-      res.status(500).json({ message: "Error deleting vacacion", error });
-    }
-  });
-
-  // Publicaciones routes
-  app.get("/api/publicaciones", async (req: Request, res: Response) => {
-    try {
-      const publicaciones = await storage.getPublicaciones();
-      res.json(publicaciones);
-    } catch (error) {
-      res.status(500).json({ message: "Error fetching publicaciones", error });
-    }
-  });
-
-  app.get("/api/publicaciones/:id", async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      const publicacion = await storage.getPublicacion(id);
-      if (!publicacion) {
-        return res.status(404).json({ message: "Publicacion not found" });
-      }
-      res.json(publicacion);
-    } catch (error) {
-      res.status(500).json({ message: "Error fetching publicacion", error });
-    }
-  });
-
-  app.post("/api/publicaciones", async (req: Request, res: Response) => {
-    try {
-      const validatedData = insertPublicacionSchema.parse(req.body);
-      const publicacion = await storage.createPublicacion(validatedData);
-      res.status(201).json(publicacion);
-    } catch (error) {
-      res.status(400).json({ message: "Invalid publicacion data", error });
-    }
-  });
-
-  app.put("/api/publicaciones/:id", async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      const validatedData = insertPublicacionSchema.partial().parse(req.body);
-      const publicacion = await storage.updatePublicacion(id, validatedData);
-      if (!publicacion) {
-        return res.status(404).json({ message: "Publicacion not found" });
-      }
-      res.status(204).send();
-    } catch (error) {
-      res.status(400).json({ message: "Invalid publicacion data", error });
-    }
-  });
-
-  app.delete("/api/publicaciones/:id", async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      const deleted = await storage.deletePublicacion(id);
-      if (!deleted) {
-        return res.status(404).json({ message: "Publicacion not found" });
-      }
-      res.status(204).send();
-    } catch (error) {
-      res.status(500).json({ message: "Error deleting publicacion", error });
-    }
-  });
+  return router;
 }

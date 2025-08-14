@@ -1,5 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
-import { setupRoutes } from "./routes";
+import { createRoutes } from "./routes";
+import { MemStorage } from "./storage";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
@@ -37,8 +38,11 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Initialize storage
+  const storage = new MemStorage();
+  
   // Set up routes
-  setupRoutes(app);
+  app.use(createRoutes(storage));
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

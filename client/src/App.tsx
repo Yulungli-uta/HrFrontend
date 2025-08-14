@@ -5,12 +5,16 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Layout from "@/components/Layout";
 import Dashboard from "@/pages/Dashboard";
-import Personas from "@/pages/Personas";
-import PersonaDetail from "@/pages/PersonaDetail";
-import Asistencia from "@/pages/Asistencia";
-import Permisos from "@/pages/Permisos";
-import Nomina from "@/pages/Nomina";
-import Publicaciones from "@/pages/Publicaciones";
+import PeoplePage from "@/pages/People";
+import EmployeesPage from "@/pages/Employees";
+import FacultiesPage from "@/pages/Faculties";
+import DepartmentsPage from "@/pages/Departments";
+import ContractsPage from "@/pages/Contracts";
+import PermissionsPage from "@/pages/Permissions";
+import VacationsPage from "@/pages/Vacations";
+import AttendancePage from "@/pages/Attendance";
+import PayrollPage from "@/pages/Payroll";
+import ReportsPage from "@/pages/Reports";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -18,12 +22,16 @@ function Router() {
     <Layout>
       <Switch>
         <Route path="/" component={Dashboard} />
-        <Route path="/personas" component={Personas} />
-        <Route path="/personas/:id" component={PersonaDetail} />
-        <Route path="/asistencia" component={Asistencia} />
-        <Route path="/permisos" component={Permisos} />
-        <Route path="/nomina" component={Nomina} />
-        <Route path="/publicaciones" component={Publicaciones} />
+        <Route path="/people" component={PeoplePage} />
+        <Route path="/employees" component={EmployeesPage} />
+        <Route path="/faculties" component={FacultiesPage} />
+        <Route path="/departments" component={DepartmentsPage} />
+        <Route path="/contracts" component={ContractsPage} />
+        <Route path="/permissions" component={PermissionsPage} />
+        <Route path="/vacations" component={VacationsPage} />
+        <Route path="/attendance" component={AttendancePage} />
+        <Route path="/payroll" component={PayrollPage} />
+        <Route path="/reports" component={ReportsPage} />
         <Route component={NotFound} />
       </Switch>
     </Layout>
