@@ -190,6 +190,7 @@ export default function PersonForm({ person, onSuccess, onCancel }: PersonFormPr
                         placeholder="0999999999"
                         data-testid="input-phone"
                         {...field}
+                        value={field.value || ""}
                       />
                     </FormControl>
                     <FormMessage />
@@ -208,6 +209,7 @@ export default function PersonForm({ person, onSuccess, onCancel }: PersonFormPr
                         type="date"
                         data-testid="input-birthDate"
                         {...field}
+                        value={field.value || ""}
                       />
                     </FormControl>
                     <FormMessage />
@@ -221,7 +223,7 @@ export default function PersonForm({ person, onSuccess, onCancel }: PersonFormPr
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Sexo</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value || undefined}>
                       <FormControl>
                         <SelectTrigger data-testid="select-sex">
                           <SelectValue placeholder="Seleccione el sexo" />
@@ -243,7 +245,7 @@ export default function PersonForm({ person, onSuccess, onCancel }: PersonFormPr
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Género</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value || undefined}>
                       <FormControl>
                         <SelectTrigger data-testid="select-gender">
                           <SelectValue placeholder="Seleccione el género" />
@@ -273,6 +275,7 @@ export default function PersonForm({ person, onSuccess, onCancel }: PersonFormPr
                       placeholder="Ingrese la dirección completa"
                       data-testid="input-address"
                       {...field}
+                      value={field.value || ""}
                     />
                   </FormControl>
                   <FormMessage />
@@ -291,6 +294,7 @@ export default function PersonForm({ person, onSuccess, onCancel }: PersonFormPr
                       placeholder="Especifique si tiene alguna discapacidad"
                       data-testid="input-disability"
                       {...field}
+                      value={field.value || ""}
                     />
                   </FormControl>
                   <FormMessage />

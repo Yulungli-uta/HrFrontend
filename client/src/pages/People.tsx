@@ -2,14 +2,16 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { UserPlus, Mail, Phone, Calendar } from "lucide-react";
+import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
+import { UserPlus, Mail, Phone, Calendar, Edit, Trash2 } from "lucide-react";
 import type { Person } from "@shared/schema";
 import PersonForm from "@/components/forms/PersonForm";
 import { useState } from "react";
 
 export default function PeoplePage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingPerson, setEditingPerson] = useState<Person | null>(null);
+  const [isEditFormOpen, setIsEditFormOpen] = useState(false);
   const { data: people, isLoading, error } = useQuery<Person[]>({
     queryKey: ['/api/people'],
   });
@@ -69,6 +71,7 @@ export default function PeoplePage() {
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogTitle>Agregar Nueva Persona</DialogTitle>
             <PersonForm 
               onSuccess={() => setIsFormOpen(false)}
               onCancel={() => setIsFormOpen(false)}
@@ -76,6 +79,26 @@ export default function PeoplePage() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Diálogo de Edición */}
+      <Dialog open={isEditFormOpen} onOpenChange={setIsEditFormOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogTitle>Modificar Persona</DialogTitle>
+          {editingPerson && (
+            <PersonForm 
+              person={editingPerson}
+              onSuccess={() => {
+                setIsEditFormOpen(false);
+                setEditingPerson(null);
+              }}
+              onCancel={() => {
+                setIsEditFormOpen(false);
+                setEditingPerson(null);
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {people?.map((person) => (
@@ -120,6 +143,32 @@ export default function PeoplePage() {
                   {person.address}
                 </p>
               )}
+              
+              {/* Botones de Acción */}
+              <div className="flex gap-2 pt-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setEditingPerson(person);
+                    setIsEditFormOpen(true);
+                  }}
+                  data-testid={`button-edit-${person.id}`}
+                  className="flex-1"
+                >
+                  <Edit className="mr-2 h-4 w-4" />
+                  Editar
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-red-600 border-red-200 hover:bg-red-50 flex-1"
+                  data-testid={`button-delete-${person.id}`}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Eliminar
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ))}
