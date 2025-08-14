@@ -31,11 +31,14 @@ export default function Sidebar() {
       {/* Logo Section */}
       <div className="p-6 border-b border-border bg-gradient-to-r from-primary/5 to-secondary/5">
         <div className="flex items-center space-x-3 mb-2">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-sm">
-            <span className="text-primary-foreground font-bold text-sm">UTA</span>
+          <div 
+            className="w-8 h-8 rounded-lg flex items-center justify-center shadow-sm"
+            style={{ backgroundColor: 'hsl(210, 88%, 35%)' }}
+          >
+            <span className="font-bold text-sm" style={{ color: 'white' }}>UTA</span>
           </div>
           <div>
-            <h1 className="text-xl font-bold text-primary">WsUtaSystem</h1>
+            <h1 className="text-xl font-bold" style={{ color: 'hsl(210, 88%, 35%)' }}>WsUtaSystem</h1>
             <p className="text-xs text-muted-foreground">Universidad Técnica de Ambato</p>
           </div>
         </div>
@@ -49,9 +52,10 @@ export default function Sidebar() {
             <div
               className={`nav-item flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors cursor-pointer ${
                 isActive(path)
-                  ? "bg-primary text-primary-foreground"
+                  ? "text-white"
                   : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
               }`}
+              style={isActive(path) ? { backgroundColor: 'hsl(210, 88%, 35%)' } : {}}
               data-testid={`nav-${label.toLowerCase().replace(/\s+/g, '-')}`}
             >
               <Icon className="mr-3 h-4 w-4" />
@@ -64,8 +68,11 @@ export default function Sidebar() {
       {/* User Info */}
       <div className="p-4 border-t border-border">
         <div className="flex items-center">
-          <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-            <UserCog className="h-4 w-4 text-primary-foreground" />
+          <div 
+            className="w-8 h-8 rounded-full flex items-center justify-center"
+            style={{ backgroundColor: 'hsl(210, 88%, 35%)' }}
+          >
+            <UserCog className="h-4 w-4" style={{ color: 'white' }} />
           </div>
           <div className="ml-3">
             <p className="text-sm font-medium text-foreground">Admin Usuario</p>
