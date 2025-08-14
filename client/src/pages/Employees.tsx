@@ -2,8 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { UserCog, Building2, Calendar, Users } from "lucide-react";
 import type { Employee } from "@shared/schema";
+import EmployeeForm from "@/components/forms/EmployeeForm";
+import { useState } from "react";
 
 const employeeTypeLabels: Record<string, string> = {
   "Teacher_LOSE": "Docente LOSE",
@@ -20,6 +23,7 @@ const employeeTypeColors: Record<string, string> = {
 };
 
 export default function EmployeesPage() {
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const { data: employees, isLoading, error } = useQuery<Employee[]>({
     queryKey: ['/api/employees'],
   });
@@ -68,13 +72,23 @@ export default function EmployeesPage() {
           <h1 className="text-3xl font-bold text-gray-900">Gestión de Empleados</h1>
           <p className="text-gray-600 mt-2">Administre la información laboral del personal universitario</p>
         </div>
-        <Button 
-          data-testid="button-add-employee"
-          className="bg-blue-600 hover:bg-blue-700"
-        >
-          <UserCog className="mr-2 h-4 w-4" />
-          Agregar Empleado
-        </Button>
+        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+          <DialogTrigger asChild>
+            <Button 
+              data-testid="button-add-employee"
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <UserCog className="mr-2 h-4 w-4" />
+              Agregar Empleado
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <EmployeeForm 
+              onSuccess={() => setIsFormOpen(false)}
+              onCancel={() => setIsFormOpen(false)}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -135,7 +149,10 @@ export default function EmployeesPage() {
             <UserCog className="mx-auto h-12 w-12 text-gray-400 mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">No hay empleados registrados</h3>
             <p className="text-gray-600 mb-4">Comience agregando el primer empleado al sistema</p>
-            <Button data-testid="button-add-first-employee">
+            <Button 
+              data-testid="button-add-first-employee"
+              onClick={() => setIsFormOpen(true)}
+            >
               <UserCog className="mr-2 h-4 w-4" />
               Agregar Primer Empleado
             </Button>

@@ -2,8 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { CalendarCheck, User, Calendar, Clock, Plus } from "lucide-react";
 import type { Permission } from "@shared/schema";
+import PermissionForm from "@/components/forms/PermissionForm";
+import { useState } from "react";
 
 const statusLabels: Record<string, string> = {
   "Pending": "Pendiente",
@@ -18,6 +21,7 @@ const statusColors: Record<string, string> = {
 };
 
 export default function PermissionsPage() {
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const { data: permissions, isLoading, error } = useQuery<Permission[]>({
     queryKey: ['/api/permissions'],
   });
@@ -66,13 +70,23 @@ export default function PermissionsPage() {
           <h1 className="text-3xl font-bold text-gray-900">Gestión de Permisos</h1>
           <p className="text-gray-600 mt-2">Administre las solicitudes de permisos del personal</p>
         </div>
-        <Button 
-          data-testid="button-add-permission"
-          className="bg-blue-600 hover:bg-blue-700"
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Solicitar Permiso
-        </Button>
+        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+          <DialogTrigger asChild>
+            <Button 
+              data-testid="button-add-permission"
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Solicitar Permiso
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <PermissionForm 
+              onSuccess={() => setIsFormOpen(false)}
+              onCancel={() => setIsFormOpen(false)}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">

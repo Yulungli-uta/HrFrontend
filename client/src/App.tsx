@@ -14,6 +14,7 @@ import PermissionsPage from "@/pages/Permissions";
 import VacationsPage from "@/pages/Vacations";
 import AttendancePage from "@/pages/Attendance";
 import PayrollPage from "@/pages/Payroll";
+import SchedulesPage from "@/pages/Schedules";
 import ReportsPage from "@/pages/Reports";
 import NotFound from "@/pages/not-found";
 
@@ -31,6 +32,7 @@ function Router() {
         <Route path="/vacations" component={VacationsPage} />
         <Route path="/attendance" component={AttendancePage} />
         <Route path="/payroll" component={PayrollPage} />
+        <Route path="/schedules" component={SchedulesPage} />
         <Route path="/reports" component={ReportsPage} />
         <Route component={NotFound} />
       </Switch>

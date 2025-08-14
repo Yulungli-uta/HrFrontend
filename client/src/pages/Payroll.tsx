@@ -2,8 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { DollarSign, User, Calendar, CreditCard, Plus } from "lucide-react";
 import type { Payroll } from "@shared/schema";
+import PayrollForm from "@/components/forms/PayrollForm";
+import { useState } from "react";
 
 const statusLabels: Record<string, string> = {
   "Pending": "Pendiente",
@@ -18,6 +21,7 @@ const statusColors: Record<string, string> = {
 };
 
 export default function PayrollPage() {
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const { data: payrolls, isLoading, error } = useQuery<Payroll[]>({
     queryKey: ['/api/payroll'],
   });
@@ -66,13 +70,23 @@ export default function PayrollPage() {
           <h1 className="text-3xl font-bold text-gray-900">Gestión de Nómina</h1>
           <p className="text-gray-600 mt-2">Administre los pagos y salarios del personal universitario</p>
         </div>
-        <Button 
-          data-testid="button-add-payroll"
-          className="bg-blue-600 hover:bg-blue-700"
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Procesar Nómina
-        </Button>
+        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+          <DialogTrigger asChild>
+            <Button 
+              data-testid="button-add-payroll"
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Procesar Nómina
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+            <PayrollForm 
+              onSuccess={() => setIsFormOpen(false)}
+              onCancel={() => setIsFormOpen(false)}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">

@@ -2,10 +2,14 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Building2, User, Plus } from "lucide-react";
 import type { Faculty } from "@shared/schema";
+import FacultyForm from "@/components/forms/FacultyForm";
+import { useState } from "react";
 
 export default function FacultiesPage() {
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const { data: faculties, isLoading, error } = useQuery<Faculty[]>({
     queryKey: ['/api/faculties'],
   });
@@ -53,13 +57,23 @@ export default function FacultiesPage() {
           <h1 className="text-3xl font-bold text-gray-900">Gestión de Facultades</h1>
           <p className="text-gray-600 mt-2">Administre las facultades de la Universidad Técnica de Ambato</p>
         </div>
-        <Button 
-          data-testid="button-add-faculty"
-          className="bg-blue-600 hover:bg-blue-700"
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Agregar Facultad
-        </Button>
+        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+          <DialogTrigger asChild>
+            <Button 
+              data-testid="button-add-faculty"
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Agregar Facultad
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <FacultyForm 
+              onSuccess={() => setIsFormOpen(false)}
+              onCancel={() => setIsFormOpen(false)}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">

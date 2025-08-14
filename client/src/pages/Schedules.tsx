@@ -3,25 +3,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { Timer, User, Clock, MapPin, Plus } from "lucide-react";
-import type { AttendancePunch } from "@shared/schema";
-import AttendanceForm from "@/components/forms/AttendanceForm";
+import { Clock, Calendar, Users, Plus } from "lucide-react";
+import type { Schedule } from "@shared/schema";
+import ScheduleForm from "@/components/forms/ScheduleForm";
 import { useState } from "react";
 
-const punchTypeLabels: Record<string, string> = {
-  "In": "Entrada",
-  "Out": "Salida"
-};
-
-const punchTypeColors: Record<string, string> = {
-  "In": "bg-green-100 text-green-800",
-  "Out": "bg-red-100 text-red-800"
-};
-
-export default function AttendancePage() {
+export default function SchedulesPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const { data: punches, isLoading, error } = useQuery<AttendancePunch[]>({
-    queryKey: ['/api/attendance/punches'],
+  const { data: schedules, isLoading, error } = useQuery<Schedule[]>({
+    queryKey: ['/api/schedules'],
   });
 
   if (isLoading) {
@@ -54,7 +44,7 @@ export default function AttendancePage() {
       <div className="container mx-auto p-6">
         <Card className="border-red-200 bg-red-50">
           <CardContent className="pt-6">
-            <p className="text-red-600">Error al cargar los registros de asistencia. Intente nuevamente.</p>
+            <p className="text-red-600">Error al cargar los horarios. Intente nuevamente.</p>
           </CardContent>
         </Card>
       </div>
@@ -65,21 +55,21 @@ export default function AttendancePage() {
     <div className="container mx-auto p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Control de Asistencia</h1>
-          <p className="text-gray-600 mt-2">Monitoree las marcaciones de entrada y salida del personal</p>
+          <h1 className="text-3xl font-bold text-gray-900">Gestión de Horarios</h1>
+          <p className="text-gray-600 mt-2">Configure y administre los horarios de trabajo del personal</p>
         </div>
         <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
           <DialogTrigger asChild>
             <Button 
-              data-testid="button-add-punch"
+              data-testid="button-add-schedule"
               className="bg-blue-600 hover:bg-blue-700"
             >
               <Plus className="mr-2 h-4 w-4" />
-              Registrar Marcación
+              Crear Horario
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-            <AttendanceForm 
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <ScheduleForm 
               onSuccess={() => setIsFormOpen(false)}
               onCancel={() => setIsFormOpen(false)}
             />
@@ -88,53 +78,49 @@ export default function AttendancePage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {punches?.map((punch) => (
-          <Card key={punch.id} className="hover:shadow-lg transition-shadow duration-200">
+        {schedules?.map((schedule) => (
+          <Card key={schedule.id} className="hover:shadow-lg transition-shadow duration-200">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <Timer className="h-5 w-5 text-blue-600" />
-                  <span data-testid={`text-punch-${punch.id}`}>
-                    Marcación #{punch.id}
+                  <Clock className="h-5 w-5 text-blue-600" />
+                  <span data-testid={`text-schedule-${schedule.id}`}>
+                    {schedule.description}
                   </span>
                 </div>
-                <Badge 
-                  className={punchTypeColors[punch.punchType] || "bg-gray-100 text-gray-800"}
-                  data-testid={`type-${punch.id}`}
-                >
-                  {punchTypeLabels[punch.punchType] || punch.punchType}
-                </Badge>
+                {schedule.isRotating && (
+                  <Badge variant="outline" className="text-xs">
+                    Rotativo
+                  </Badge>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <User className="h-4 w-4" />
-                <span data-testid={`text-employee-${punch.id}`}>
-                  Empleado: #{punch.employeeId}
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">Horario:</span>
+                <span className="font-medium" data-testid={`text-hours-${schedule.id}`}>
+                  {schedule.entryTime} - {schedule.exitTime}
+                </span>
+              </div>
+              
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">Horas/día:</span>
+                <span className="font-medium" data-testid={`text-required-hours-${schedule.id}`}>
+                  {schedule.requiredHoursPerDay}h
                 </span>
               </div>
               
               <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <Clock className="h-4 w-4" />
-                <span data-testid={`text-punch-time-${punch.id}`}>
-                  {new Date(punch.punchTime).toLocaleString()}
+                <Calendar className="h-4 w-4" />
+                <span data-testid={`text-working-days-${schedule.id}`}>
+                  {schedule.workingDays}
                 </span>
               </div>
               
-              {punch.deviceId && (
-                <div className="flex items-center space-x-2 text-sm text-gray-600">
-                  <span className="font-medium">Dispositivo:</span>
-                  <span data-testid={`text-device-${punch.id}`}>
-                    {punch.deviceId}
-                  </span>
-                </div>
-              )}
-              
-              {(punch.latitude && punch.longitude) && (
-                <div className="flex items-center space-x-2 text-sm text-gray-600">
-                  <MapPin className="h-4 w-4" />
-                  <span data-testid={`text-location-${punch.id}`}>
-                    {punch.latitude?.toFixed(6)}, {punch.longitude?.toFixed(6)}
+              {schedule.hasLunchBreak && schedule.lunchStart && schedule.lunchEnd && (
+                <div className="bg-yellow-50 p-2 rounded text-sm">
+                  <span className="text-yellow-700">
+                    Almuerzo: {schedule.lunchStart} - {schedule.lunchEnd}
                   </span>
                 </div>
               )}
@@ -144,7 +130,7 @@ export default function AttendancePage() {
                   variant="outline" 
                   size="sm" 
                   className="w-full"
-                  data-testid={`button-view-punch-${punch.id}`}
+                  data-testid={`button-view-schedule-${schedule.id}`}
                 >
                   Ver Detalles
                 </Button>
@@ -154,15 +140,18 @@ export default function AttendancePage() {
         ))}
       </div>
 
-      {punches && punches.length === 0 && (
+      {schedules && schedules.length === 0 && (
         <Card className="text-center py-12">
           <CardContent>
-            <Timer className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No hay registros de asistencia</h3>
-            <p className="text-gray-600 mb-4">Comience registrando la primera marcación</p>
-            <Button data-testid="button-add-first-punch">
+            <Clock className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No hay horarios configurados</h3>
+            <p className="text-gray-600 mb-4">Comience creando el primer horario de trabajo</p>
+            <Button 
+              data-testid="button-add-first-schedule"
+              onClick={() => setIsFormOpen(true)}
+            >
               <Plus className="mr-2 h-4 w-4" />
-              Registrar Primera Marcación
+              Crear Primer Horario
             </Button>
           </CardContent>
         </Card>

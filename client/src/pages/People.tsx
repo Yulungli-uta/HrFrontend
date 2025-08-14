@@ -2,10 +2,14 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { UserPlus, Mail, Phone, Calendar } from "lucide-react";
 import type { Person } from "@shared/schema";
+import PersonForm from "@/components/forms/PersonForm";
+import { useState } from "react";
 
 export default function PeoplePage() {
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const { data: people, isLoading, error } = useQuery<Person[]>({
     queryKey: ['/api/people'],
   });
@@ -54,13 +58,23 @@ export default function PeoplePage() {
           <h1 className="text-3xl font-bold text-gray-900">Gestión de Personas</h1>
           <p className="text-gray-600 mt-2">Administre la información personal de todos los miembros de la universidad</p>
         </div>
-        <Button 
-          data-testid="button-add-person"
-          className="bg-blue-600 hover:bg-blue-700"
-        >
-          <UserPlus className="mr-2 h-4 w-4" />
-          Agregar Persona
-        </Button>
+        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+          <DialogTrigger asChild>
+            <Button 
+              data-testid="button-add-person"
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <UserPlus className="mr-2 h-4 w-4" />
+              Agregar Persona
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <PersonForm 
+              onSuccess={() => setIsFormOpen(false)}
+              onCancel={() => setIsFormOpen(false)}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -117,7 +131,10 @@ export default function PeoplePage() {
             <UserPlus className="mx-auto h-12 w-12 text-gray-400 mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">No hay personas registradas</h3>
             <p className="text-gray-600 mb-4">Comience agregando la primera persona al sistema</p>
-            <Button data-testid="button-add-first-person">
+            <Button 
+              data-testid="button-add-first-person"
+              onClick={() => setIsFormOpen(true)}
+            >
               <UserPlus className="mr-2 h-4 w-4" />
               Agregar Primera Persona
             </Button>

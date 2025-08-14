@@ -2,8 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { FileText, User, Calendar, DollarSign } from "lucide-react";
 import type { Contract } from "@shared/schema";
+import ContractForm from "@/components/forms/ContractForm";
+import { useState } from "react";
 
 const contractTypeLabels: Record<string, string> = {
   "Indefinido": "Indefinido",
@@ -20,6 +23,7 @@ const contractTypeColors: Record<string, string> = {
 };
 
 export default function ContractsPage() {
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const { data: contracts, isLoading, error } = useQuery<Contract[]>({
     queryKey: ['/api/contracts'],
   });
@@ -68,13 +72,23 @@ export default function ContractsPage() {
           <h1 className="text-3xl font-bold text-gray-900">Gestión de Contratos</h1>
           <p className="text-gray-600 mt-2">Administre los contratos laborales del personal universitario</p>
         </div>
-        <Button 
-          data-testid="button-add-contract"
-          className="bg-blue-600 hover:bg-blue-700"
-        >
-          <FileText className="mr-2 h-4 w-4" />
-          Nuevo Contrato
-        </Button>
+        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+          <DialogTrigger asChild>
+            <Button 
+              data-testid="button-add-contract"
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <FileText className="mr-2 h-4 w-4" />
+              Nuevo Contrato
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <ContractForm 
+              onSuccess={() => setIsFormOpen(false)}
+              onCancel={() => setIsFormOpen(false)}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
