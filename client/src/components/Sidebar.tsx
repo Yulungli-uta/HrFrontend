@@ -11,11 +11,17 @@ import {
   Calendar,
   ClipboardList,
   UserCog,
-  Timer
+  Timer,
+  LogOut
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import LogoUTA from "@assets/LogoUTA.png";
 
-export default function Sidebar() {
+interface SidebarProps {
+  onLogout?: () => void;
+}
+
+export default function Sidebar({ onLogout }: SidebarProps) {
   const [location] = useLocation();
 
   const navItems = [
@@ -103,7 +109,7 @@ export default function Sidebar() {
       </nav>
 
       {/* User Info */}
-      <div className="p-4 border-t border-border">
+      <div className="p-4 border-t border-border space-y-3">
         <div className="flex items-center">
           <div 
             className="w-8 h-8 rounded-full flex items-center justify-center"
@@ -116,6 +122,18 @@ export default function Sidebar() {
             <p className="text-xs text-muted-foreground">admin@empresa.com</p>
           </div>
         </div>
+        {onLogout && (
+          <Button
+            onClick={onLogout}
+            variant="outline"
+            size="sm"
+            className="w-full flex items-center justify-center gap-2 text-red-600 border-red-200 hover:bg-red-50"
+            data-testid="button-logout"
+          >
+            <LogOut className="h-4 w-4" />
+            Cerrar Sesión
+          </Button>
+        )}
       </div>
     </aside>
   );
