@@ -102,6 +102,9 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           <div className="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
             <p>Usuario de prueba: <strong>admin</strong></p>
             <p>Contraseña: <strong>admin</strong></p>
+            <p className="mt-2 text-xs">
+              ⏱️ Sesión automática: 15 minutos de inactividad
+            </p>
           </div>
         </CardContent>
       </Card>
