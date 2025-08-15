@@ -21,7 +21,7 @@ const punchTypeColors: Record<string, string> = {
 export default function AttendancePage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const { data: punches, isLoading, error } = useQuery<AttendancePunch[]>({
-    queryKey: ['/api/attendance/punches'],
+    queryKey: ['/api/attendance/my-punches'],
   });
 
   if (isLoading) {
@@ -65,8 +65,13 @@ export default function AttendancePage() {
     <div className="container mx-auto p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Control de Asistencia</h1>
-          <p className="text-gray-600 mt-2">Monitoree las marcaciones de entrada y salida del personal</p>
+          <h1 className="text-3xl font-bold text-gray-900">Mi Control de Asistencia</h1>
+          <p className="text-gray-600 mt-2">Marcaciones del día {new Date().toLocaleDateString('es-EC', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+          })}</p>
         </div>
         <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
           <DialogTrigger asChild>
@@ -87,8 +92,21 @@ export default function AttendancePage() {
         </Dialog>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {punches?.map((punch) => (
+      {(!punches || punches.length === 0) ? (
+        <Card className="text-center p-8">
+          <CardContent>
+            <Timer className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              No hay marcaciones registradas hoy
+            </h3>
+            <p className="text-gray-600 mb-4">
+              Registre su primera marcación del día usando el botón "Registrar Marcación"
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {punches.map((punch) => (
           <Card key={punch.id} className="hover:shadow-lg transition-shadow duration-200">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
@@ -152,20 +170,7 @@ export default function AttendancePage() {
             </CardContent>
           </Card>
         ))}
-      </div>
-
-      {punches && punches.length === 0 && (
-        <Card className="text-center py-12">
-          <CardContent>
-            <Timer className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No hay registros de asistencia</h3>
-            <p className="text-gray-600 mb-4">Comience registrando la primera marcación</p>
-            <Button data-testid="button-add-first-punch">
-              <Plus className="mr-2 h-4 w-4" />
-              Registrar Primera Marcación
-            </Button>
-          </CardContent>
-        </Card>
+        </div>
       )}
     </div>
   );

@@ -214,9 +214,24 @@ export function createRoutes(storage: IStorage): Router {
     }
   });
 
+  // Get today's attendance punches for current user (assuming employeeId = 1 for demo)
+  router.get("/api/attendance/my-punches", async (req, res) => {
+    try {
+      // For demo purposes, using employeeId = 1 (admin user)
+      // In a real app, this would come from the authenticated user
+      const employeeId = 1;
+      const punches = await storage.getTodayAttendancePunchesByEmployee(employeeId);
+      res.json(punches);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch user attendance punches" });
+    }
+  });
+
   router.post("/api/attendance/punches", validateBody(insertAttendancePunchSchema), async (req: ValidatedRequest, res: Response) => {
     try {
-      const punch = await storage.createAttendancePunch(req.validatedBody);
+      // Force employeeId to be 1 (current user) for security
+      const punchData = { ...req.validatedBody, employeeId: 1 };
+      const punch = await storage.createAttendancePunch(punchData);
       res.status(201).json(punch);
     } catch (error) {
       res.status(500).json({ error: "Failed to create attendance punch" });

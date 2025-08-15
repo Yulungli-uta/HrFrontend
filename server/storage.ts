@@ -72,6 +72,7 @@ export interface IStorage {
   // Attendance Punches
   getAttendancePunches(): Promise<AttendancePunch[]>;
   getAttendancePunchById(id: number): Promise<AttendancePunch | null>;
+  getTodayAttendancePunchesByEmployee(employeeId: number): Promise<AttendancePunch[]>;
   createAttendancePunch(punch: InsertAttendancePunch): Promise<AttendancePunch>;
   updateAttendancePunch(id: number, punch: Partial<InsertAttendancePunch>): Promise<AttendancePunch | null>;
   deleteAttendancePunch(id: number): Promise<boolean>;
@@ -423,6 +424,20 @@ export class MemStorage implements IStorage {
   // Attendance Punches Methods
   async getAttendancePunches(): Promise<AttendancePunch[]> { return [...this.attendancePunches]; }
   async getAttendancePunchById(id: number): Promise<AttendancePunch | null> { return this.attendancePunches.find(ap => ap.id === id) || null; }
+  
+  async getTodayAttendancePunchesByEmployee(employeeId: number): Promise<AttendancePunch[]> {
+    const today = new Date();
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+    
+    return this.attendancePunches.filter(punch => {
+      const punchDate = new Date(punch.punchTime);
+      return punch.employeeId === employeeId && 
+             punchDate >= todayStart && 
+             punchDate <= todayEnd;
+    });
+  }
+  
   async createAttendancePunch(punch: InsertAttendancePunch): Promise<AttendancePunch> {
     const newPunch: AttendancePunch = { ...punch, id: this.getNextId() };
     this.attendancePunches.push(newPunch);

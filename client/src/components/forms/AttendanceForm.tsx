@@ -1,13 +1,13 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { insertAttendancePunchSchema, type InsertAttendancePunch, type Employee, type Person } from "@shared/schema";
+import { insertAttendancePunchSchema, type InsertAttendancePunch } from "@shared/schema";
 import { Timer, Save, X, MapPin } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -21,18 +21,10 @@ export default function AttendanceForm({ onSuccess, onCancel }: AttendanceFormPr
   const queryClient = useQueryClient();
   const [currentLocation, setCurrentLocation] = useState<{latitude: number, longitude: number} | null>(null);
 
-  const { data: employees } = useQuery<Employee[]>({
-    queryKey: ['/api/employees'],
-  });
-
-  const { data: people } = useQuery<Person[]>({
-    queryKey: ['/api/people'],
-  });
-
   const form = useForm<InsertAttendancePunch>({
     resolver: zodResolver(insertAttendancePunchSchema),
     defaultValues: {
-      employeeId: 0,
+      employeeId: 1, // Usuario actual fijo (admin)
       punchTime: new Date().toISOString(),
       punchType: "In",
       deviceId: "WEB",
@@ -71,7 +63,7 @@ export default function AttendanceForm({ onSuccess, onCancel }: AttendanceFormPr
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/attendance/punches"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/attendance/my-punches"] });
       toast({ title: "Marcación registrada exitosamente" });
       onSuccess?.();
     },
@@ -86,9 +78,9 @@ export default function AttendanceForm({ onSuccess, onCancel }: AttendanceFormPr
 
   const isLoading = createMutation.isPending;
 
-  const handleQuickPunch = (employeeId: number, punchType: "In" | "Out") => {
+  const handleQuickPunch = (punchType: "In" | "Out") => {
     const data: InsertAttendancePunch = {
-      employeeId,
+      employeeId: 1, // Usuario actual
       punchTime: new Date().toISOString(),
       punchType,
       deviceId: "WEB",
@@ -101,51 +93,60 @@ export default function AttendanceForm({ onSuccess, onCancel }: AttendanceFormPr
   return (
     <div className="space-y-6">
       {/* Marcación Rápida */}
-      <Card className="w-full max-w-4xl mx-auto">
+      <Card className="w-full max-w-2xl mx-auto">
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <Timer className="h-5 w-5" />
-            <span>Marcación Rápida</span>
+            <span>Registrar Mi Marcación</span>
           </CardTitle>
           <CardDescription>
-            Registre entrada o salida de empleados con un solo clic
+            Registre su entrada o salida con un solo clic
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {employees?.slice(0, 6).map((employee) => {
-              const person = people?.find(p => p.id === employee.id);
-              return (
-                <Card key={employee.id} className="p-4">
-                  <div className="text-center space-y-3">
-                    <h4 className="font-medium">
-                      {person ? `${person.firstName} ${person.lastName}` : `Empleado #${employee.id}`}
-                    </h4>
-                    <div className="flex gap-2">
-                      <Button 
-                        size="sm" 
-                        className="flex-1 bg-green-600 hover:bg-green-700"
-                        onClick={() => handleQuickPunch(employee.id, "In")}
-                        disabled={isLoading}
-                        data-testid={`button-in-${employee.id}`}
-                      >
-                        Entrada
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        className="flex-1 border-red-600 text-red-600 hover:bg-red-50"
-                        onClick={() => handleQuickPunch(employee.id, "Out")}
-                        disabled={isLoading}
-                        data-testid={`button-out-${employee.id}`}
-                      >
-                        Salida
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              );
-            })}
+          <div className="text-center space-y-4">
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="text-sm text-gray-600 mb-2">Usuario: Admin Usuario</p>
+              <p className="text-xs text-gray-500">
+                {new Date().toLocaleString('es-EC', { 
+                  weekday: 'long', 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </p>
+              {currentLocation && (
+                <p className="text-xs text-gray-500 mt-2">
+                  <MapPin className="h-3 w-3 inline mr-1" />
+                  Ubicación detectada
+                </p>
+              )}
+            </div>
+            
+            <div className="flex gap-4 justify-center">
+              <Button 
+                size="lg"
+                className="flex-1 max-w-32 bg-green-600 hover:bg-green-700 h-16 flex flex-col"
+                onClick={() => handleQuickPunch("In")}
+                disabled={isLoading}
+                data-testid="button-quick-in"
+              >
+                <Timer className="h-6 w-6 mb-1" />
+                ENTRADA
+              </Button>
+              <Button 
+                size="lg"
+                className="flex-1 max-w-32 bg-red-600 hover:bg-red-700 h-16 flex flex-col"
+                onClick={() => handleQuickPunch("Out")}
+                disabled={isLoading}
+                data-testid="button-quick-out"
+              >
+                <Timer className="h-6 w-6 mb-1" />
+                SALIDA
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -155,43 +156,20 @@ export default function AttendanceForm({ onSuccess, onCancel }: AttendanceFormPr
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <Timer className="h-5 w-5" />
-            <span>Registrar Marcación</span>
+            <span>Marcación Manual</span>
           </CardTitle>
           <CardDescription>
-            Complete los detalles para registrar una marcación específica
+            Ajuste la hora o tipo de marcación si es necesario
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="employeeId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Empleado *</FormLabel>
-                      <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-employee">
-                            <SelectValue placeholder="Seleccione un empleado" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {employees?.map((employee) => {
-                            const person = people?.find(p => p.id === employee.id);
-                            return (
-                              <SelectItem key={employee.id} value={employee.id.toString()}>
-                                {person ? `${person.firstName} ${person.lastName}` : `Empleado #${employee.id}`}
-                              </SelectItem>
-                            );
-                          })}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="md:col-span-2 bg-gray-50 p-3 rounded">
+                  <p className="text-sm font-medium text-gray-700">Usuario: Admin Usuario</p>
+                  <p className="text-xs text-gray-500">Solo puede registrar sus propias marcaciones</p>
+                </div>
 
                 <FormField
                   control={form.control}
@@ -199,7 +177,7 @@ export default function AttendanceForm({ onSuccess, onCancel }: AttendanceFormPr
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Tipo de Marcación *</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger data-testid="select-punch-type">
                             <SelectValue placeholder="Seleccione el tipo" />
@@ -223,29 +201,11 @@ export default function AttendanceForm({ onSuccess, onCancel }: AttendanceFormPr
                       <FormLabel>Fecha y Hora *</FormLabel>
                       <FormControl>
                         <Input 
-                          type="datetime-local"
-                          data-testid="input-punchTime"
+                          type="datetime-local" 
                           {...field}
                           value={field.value ? new Date(field.value).toISOString().slice(0, 16) : ""}
                           onChange={(e) => field.onChange(new Date(e.target.value).toISOString())}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="deviceId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Dispositivo</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="WEB"
-                          data-testid="input-deviceId"
-                          {...field}
+                          data-testid="input-punch-time"
                         />
                       </FormControl>
                       <FormMessage />
@@ -266,28 +226,25 @@ export default function AttendanceForm({ onSuccess, onCancel }: AttendanceFormPr
                 </div>
               )}
 
-              <div className="flex flex-col sm:flex-row gap-3 pt-6">
-                <Button 
-                  type="submit" 
+              <div className="flex justify-end space-x-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onCancel}
                   disabled={isLoading}
-                  className="flex-1"
-                  data-testid="button-save-punch"
+                  data-testid="button-cancel"
+                >
+                  <X className="mr-2 h-4 w-4" />
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  data-testid="button-save"
                 >
                   <Save className="mr-2 h-4 w-4" />
-                  {isLoading ? "Registrando..." : "Registrar Marcación"}
+                  {isLoading ? "Guardando..." : "Guardar Marcación"}
                 </Button>
-                {onCancel && (
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={onCancel}
-                    className="flex-1"
-                    data-testid="button-cancel"
-                  >
-                    <X className="mr-2 h-4 w-4" />
-                    Cancelar
-                  </Button>
-                )}
               </div>
             </form>
           </Form>
