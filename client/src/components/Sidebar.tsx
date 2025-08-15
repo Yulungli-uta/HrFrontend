@@ -15,6 +15,11 @@ import {
   LogOut
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import LogoUTA from "@assets/LogoUTA.png";
 
 interface SidebarProps {
@@ -64,12 +69,32 @@ export default function Sidebar({ onLogout, collapsed = false }: SidebarProps) {
       >
         <div className="flex items-center space-x-3 mb-2">
           <div className="flex-shrink-0">
-            <img 
-              src={LogoUTA} 
-              alt="Logo Universidad Técnica de Ambato" 
-              className={`${collapsed ? 'h-8' : 'h-10'} w-auto object-contain uta-official-logo transition-all duration-300`}
-              style={{ maxWidth: collapsed ? '40px' : '100px' }}
-            />
+            {collapsed ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <img 
+                    src={LogoUTA} 
+                    alt="Logo Universidad Técnica de Ambato" 
+                    className="h-8 w-auto object-contain uta-official-logo transition-all duration-300 cursor-help"
+                    style={{ maxWidth: '40px' }}
+                  />
+                </TooltipTrigger>
+                <TooltipContent side="right" className="font-medium">
+                  <div className="text-center">
+                    <div className="font-semibold">WsUtaSystem</div>
+                    <div className="text-xs opacity-90">Sistema de Gestión de RRHH</div>
+                    <div className="text-xs opacity-75">Universidad Técnica de Ambato</div>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <img 
+                src={LogoUTA} 
+                alt="Logo Universidad Técnica de Ambato" 
+                className="h-10 w-auto object-contain uta-official-logo transition-all duration-300"
+                style={{ maxWidth: '100px' }}
+              />
+            )}
           </div>
           {!collapsed && (
             <div>
@@ -95,8 +120,8 @@ export default function Sidebar({ onLogout, collapsed = false }: SidebarProps) {
 
       {/* Navigation Menu */}
       <nav className={`flex-1 ${collapsed ? 'p-2' : 'p-4'} space-y-2 transition-all duration-300`}>
-        {navItems.map(({ path, label, icon: Icon }) => (
-          <Link key={path} href={path}>
+        {navItems.map(({ path, label, icon: Icon }) => {
+          const navItem = (
             <div
               className={`nav-item flex items-center ${collapsed ? 'px-3 py-3 justify-center' : 'px-4 py-3'} text-sm font-medium rounded-lg transition-colors cursor-pointer ${
                 isActive(path)
@@ -109,19 +134,55 @@ export default function Sidebar({ onLogout, collapsed = false }: SidebarProps) {
               <Icon className={`${collapsed ? 'h-5 w-5' : 'mr-3 h-4 w-4'}`} />
               {!collapsed && label}
             </div>
-          </Link>
-        ))}
+          );
+
+          return (
+            <Link key={path} href={path}>
+              {collapsed ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    {navItem}
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="font-medium">
+                    {label}
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                navItem
+              )}
+            </Link>
+          );
+        })}
       </nav>
 
       {/* User Info */}
       <div className={`${collapsed ? 'p-2' : 'p-4'} border-t border-border space-y-3 transition-all duration-300`}>
         <div className={`flex items-center ${collapsed ? 'justify-center' : ''}`}>
-          <div 
-            className="w-8 h-8 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: '#265792' }}
-          >
-            <UserCog className="h-4 w-4" style={{ color: '#ffffff' }} />
-          </div>
+          {collapsed ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div 
+                  className="w-8 h-8 rounded-full flex items-center justify-center cursor-help"
+                  style={{ backgroundColor: '#265792' }}
+                >
+                  <UserCog className="h-4 w-4" style={{ color: '#ffffff' }} />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="font-medium">
+                <div>
+                  <div className="font-semibold">Admin Usuario</div>
+                  <div className="text-xs opacity-75">Administrador</div>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <div 
+              className="w-8 h-8 rounded-full flex items-center justify-center"
+              style={{ backgroundColor: '#265792' }}
+            >
+              <UserCog className="h-4 w-4" style={{ color: '#ffffff' }} />
+            </div>
+          )}
           {!collapsed && (
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-900">Admin Usuario</p>
@@ -142,15 +203,22 @@ export default function Sidebar({ onLogout, collapsed = false }: SidebarProps) {
             Cerrar Sesión
           </Button>
         ) : (
-          <Button
-            onClick={onLogout}
-            variant="outline"
-            size="sm"
-            className="w-full justify-center text-red-600 hover:text-red-700 hover:bg-red-50"
-            data-testid="logout-button-collapsed"
-          >
-            <LogOut className="h-4 w-4" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={onLogout}
+                variant="outline"
+                size="sm"
+                className="w-full justify-center text-red-600 hover:text-red-700 hover:bg-red-50"
+                data-testid="logout-button-collapsed"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-medium">
+              Cerrar Sesión
+            </TooltipContent>
+          </Tooltip>
         ))}
       </div>
     </aside>
