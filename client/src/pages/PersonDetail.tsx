@@ -5,7 +5,7 @@ import type { Person } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
 import { 
   User, 
   FileText, 
@@ -165,185 +165,189 @@ export default function PersonDetail() {
             </Card>
           </div>
 
-          {/* Hoja de Vida - Pestañas */}
-          <div className="lg:col-span-2">
+          {/* Hoja de Vida - Secciones */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Publicaciones Científicas */}
             <Card>
               <CardHeader>
-                <CardTitle>Hoja de Vida</CardTitle>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <FileText className="mr-2 h-5 w-5" />
+                    Publicaciones Científicas
+                  </div>
+                  <Button size="sm" className="bg-uta-blue hover:bg-uta-blue/90">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Agregar
+                  </Button>
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <Tabs defaultValue="publications" className="w-full">
-                  <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8">
-                    <TabsTrigger value="publications" className="flex items-center">
-                      <FileText className="mr-1 h-4 w-4" />
-                      <span className="hidden sm:inline">Publicaciones</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="family" className="flex items-center">
-                      <Users className="mr-1 h-4 w-4" />
-                      <span className="hidden sm:inline">Cargas Familiares</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="experience" className="flex items-center">
-                      <Briefcase className="mr-1 h-4 w-4" />
-                      <span className="hidden sm:inline">Experiencia</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="training" className="flex items-center">
-                      <GraduationCap className="mr-1 h-4 w-4" />
-                      <span className="hidden sm:inline">Capacitaciones</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="books" className="flex items-center">
-                      <BookOpen className="mr-1 h-4 w-4" />
-                      <span className="hidden sm:inline">Libros</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="emergency" className="flex items-center">
-                      <Phone className="mr-1 h-4 w-4" />
-                      <span className="hidden sm:inline">Emergencia</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="medical" className="flex items-center">
-                      <Heart className="mr-1 h-4 w-4" />
-                      <span className="hidden sm:inline">Médico</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="banking" className="flex items-center">
-                      <CreditCard className="mr-1 h-4 w-4" />
-                      <span className="hidden sm:inline">Bancario</span>
-                    </TabsTrigger>
-                  </TabsList>
+                <div className="text-center py-8 text-gray-500">
+                  <FileText className="mx-auto h-12 w-12 mb-4 opacity-50" />
+                  <p>No hay publicaciones registradas</p>
+                  <p className="text-sm">Agrega publicaciones científicas y artículos</p>
+                </div>
+              </CardContent>
+            </Card>
 
-                  <TabsContent value="publications" className="mt-6">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-semibold">Publicaciones Científicas</h3>
-                        <Button size="sm" className="bg-uta-blue hover:bg-uta-blue/90">
-                          <Plus className="mr-2 h-4 w-4" />
-                          Agregar Publicación
-                        </Button>
-                      </div>
-                      <div className="text-center py-12 text-gray-500">
-                        <FileText className="mx-auto h-12 w-12 mb-4" />
-                        <p>No hay publicaciones registradas</p>
-                        <p className="text-sm">Agrega las publicaciones científicas y artículos</p>
-                      </div>
-                    </div>
-                  </TabsContent>
+            {/* Cargas Familiares */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <Users className="mr-2 h-5 w-5" />
+                    Cargas Familiares
+                  </div>
+                  <Button size="sm" className="bg-uta-blue hover:bg-uta-blue/90">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Agregar
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8 text-gray-500">
+                  <Users className="mx-auto h-12 w-12 mb-4 opacity-50" />
+                  <p>No hay cargas familiares registradas</p>
+                  <p className="text-sm">Agrega información sobre dependientes familiares</p>
+                </div>
+              </CardContent>
+            </Card>
 
-                  <TabsContent value="family" className="mt-6">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-semibold">Cargas Familiares</h3>
-                        <Button size="sm" className="bg-uta-blue hover:bg-uta-blue/90">
-                          <Plus className="mr-2 h-4 w-4" />
-                          Agregar Carga Familiar
-                        </Button>
-                      </div>
-                      <div className="text-center py-12 text-gray-500">
-                        <Users className="mx-auto h-12 w-12 mb-4" />
-                        <p>No hay cargas familiares registradas</p>
-                        <p className="text-sm">Agrega información sobre dependientes familiares</p>
-                      </div>
-                    </div>
-                  </TabsContent>
+            {/* Experiencia Laboral */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <Briefcase className="mr-2 h-5 w-5" />
+                    Experiencia Laboral
+                  </div>
+                  <Button size="sm" className="bg-uta-blue hover:bg-uta-blue/90">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Agregar
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8 text-gray-500">
+                  <Briefcase className="mx-auto h-12 w-12 mb-4 opacity-50" />
+                  <p>No hay experiencias laborales registradas</p>
+                  <p className="text-sm">Agrega el historial de experiencia laboral</p>
+                </div>
+              </CardContent>
+            </Card>
 
-                  <TabsContent value="experience" className="mt-6">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-semibold">Experiencia Laboral</h3>
-                        <Button size="sm" className="bg-uta-blue hover:bg-uta-blue/90">
-                          <Plus className="mr-2 h-4 w-4" />
-                          Agregar Experiencia
-                        </Button>
-                      </div>
-                      <div className="text-center py-12 text-gray-500">
-                        <Briefcase className="mx-auto h-12 w-12 mb-4" />
-                        <p>No hay experiencias laborales registradas</p>
-                        <p className="text-sm">Agrega el historial de experiencia laboral</p>
-                      </div>
-                    </div>
-                  </TabsContent>
+            {/* Capacitaciones */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <GraduationCap className="mr-2 h-5 w-5" />
+                    Capacitaciones y Cursos
+                  </div>
+                  <Button size="sm" className="bg-uta-blue hover:bg-uta-blue/90">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Agregar
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8 text-gray-500">
+                  <GraduationCap className="mx-auto h-12 w-12 mb-4 opacity-50" />
+                  <p>No hay capacitaciones registradas</p>
+                  <p className="text-sm">Agrega cursos, seminarios y capacitaciones</p>
+                </div>
+              </CardContent>
+            </Card>
 
-                  <TabsContent value="training" className="mt-6">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-semibold">Capacitaciones y Cursos</h3>
-                        <Button size="sm" className="bg-uta-blue hover:bg-uta-blue/90">
-                          <Plus className="mr-2 h-4 w-4" />
-                          Agregar Capacitación
-                        </Button>
-                      </div>
-                      <div className="text-center py-12 text-gray-500">
-                        <GraduationCap className="mx-auto h-12 w-12 mb-4" />
-                        <p>No hay capacitaciones registradas</p>
-                        <p className="text-sm">Agrega cursos, seminarios y capacitaciones</p>
-                      </div>
-                    </div>
-                  </TabsContent>
+            {/* Libros */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <BookOpen className="mr-2 h-5 w-5" />
+                    Libros Publicados
+                  </div>
+                  <Button size="sm" className="bg-uta-blue hover:bg-uta-blue/90">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Agregar
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8 text-gray-500">
+                  <BookOpen className="mx-auto h-12 w-12 mb-4 opacity-50" />
+                  <p>No hay libros registrados</p>
+                  <p className="text-sm">Agrega libros y capítulos publicados</p>
+                </div>
+              </CardContent>
+            </Card>
 
-                  <TabsContent value="books" className="mt-6">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-semibold">Libros Publicados</h3>
-                        <Button size="sm" className="bg-uta-blue hover:bg-uta-blue/90">
-                          <Plus className="mr-2 h-4 w-4" />
-                          Agregar Libro
-                        </Button>
-                      </div>
-                      <div className="text-center py-12 text-gray-500">
-                        <BookOpen className="mx-auto h-12 w-12 mb-4" />
-                        <p>No hay libros registrados</p>
-                        <p className="text-sm">Agrega libros y capítulos publicados</p>
-                      </div>
-                    </div>
-                  </TabsContent>
+            {/* Contactos de Emergencia */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <Phone className="mr-2 h-5 w-5" />
+                    Contactos de Emergencia
+                  </div>
+                  <Button size="sm" className="bg-uta-blue hover:bg-uta-blue/90">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Agregar
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8 text-gray-500">
+                  <Phone className="mx-auto h-12 w-12 mb-4 opacity-50" />
+                  <p>No hay contactos de emergencia registrados</p>
+                  <p className="text-sm">Agrega contactos para situaciones de emergencia</p>
+                </div>
+              </CardContent>
+            </Card>
 
-                  <TabsContent value="emergency" className="mt-6">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-semibold">Contactos de Emergencia</h3>
-                        <Button size="sm" className="bg-uta-blue hover:bg-uta-blue/90">
-                          <Plus className="mr-2 h-4 w-4" />
-                          Agregar Contacto
-                        </Button>
-                      </div>
-                      <div className="text-center py-12 text-gray-500">
-                        <Phone className="mx-auto h-12 w-12 mb-4" />
-                        <p>No hay contactos de emergencia registrados</p>
-                        <p className="text-sm">Agrega contactos para situaciones de emergencia</p>
-                      </div>
-                    </div>
-                  </TabsContent>
+            {/* Información Médica */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <Heart className="mr-2 h-5 w-5" />
+                    Información Médica
+                  </div>
+                  <Button size="sm" className="bg-uta-blue hover:bg-uta-blue/90">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Agregar
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8 text-gray-500">
+                  <Heart className="mx-auto h-12 w-12 mb-4 opacity-50" />
+                  <p>No hay información médica registrada</p>
+                  <p className="text-sm">Agrega enfermedades catastróficas e información médica</p>
+                </div>
+              </CardContent>
+            </Card>
 
-                  <TabsContent value="medical" className="mt-6">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-semibold">Información Médica</h3>
-                        <Button size="sm" className="bg-uta-blue hover:bg-uta-blue/90">
-                          <Plus className="mr-2 h-4 w-4" />
-                          Agregar Información
-                        </Button>
-                      </div>
-                      <div className="text-center py-12 text-gray-500">
-                        <Heart className="mx-auto h-12 w-12 mb-4" />
-                        <p>No hay información médica registrada</p>
-                        <p className="text-sm">Agrega enfermedades catastróficas e información médica</p>
-                      </div>
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="banking" className="mt-6">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-semibold">Cuentas Bancarias</h3>
-                        <Button size="sm" className="bg-uta-blue hover:bg-uta-blue/90">
-                          <Plus className="mr-2 h-4 w-4" />
-                          Agregar Cuenta
-                        </Button>
-                      </div>
-                      <div className="text-center py-12 text-gray-500">
-                        <CreditCard className="mx-auto h-12 w-12 mb-4" />
-                        <p>No hay cuentas bancarias registradas</p>
-                        <p className="text-sm">Agrega información de cuentas bancarias</p>
-                      </div>
-                    </div>
-                  </TabsContent>
-                </Tabs>
+            {/* Cuentas Bancarias */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <CreditCard className="mr-2 h-5 w-5" />
+                    Cuentas Bancarias
+                  </div>
+                  <Button size="sm" className="bg-uta-blue hover:bg-uta-blue/90">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Agregar
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8 text-gray-500">
+                  <CreditCard className="mx-auto h-12 w-12 mb-4 opacity-50" />
+                  <p>No hay cuentas bancarias registradas</p>
+                  <p className="text-sm">Agrega información de cuentas bancarias</p>
+                </div>
               </CardContent>
             </Card>
           </div>
