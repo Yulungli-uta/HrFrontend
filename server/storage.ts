@@ -1,6 +1,8 @@
 import { 
   Person, Employee, Faculty, Department, Schedule, Contract, PermissionType, Permission, Vacation, AttendancePunch, Payroll, PayrollLine,
-  InsertPerson, InsertEmployee, InsertFaculty, InsertDepartment, InsertSchedule, InsertContract, InsertPermissionType, InsertPermission, InsertVacation, InsertAttendancePunch, InsertPayroll, InsertPayrollLine
+  Publication, FamilyMember, WorkExperience, Training, Book, EmergencyContact, CatastrophicIllness, BankAccount,
+  InsertPerson, InsertEmployee, InsertFaculty, InsertDepartment, InsertSchedule, InsertContract, InsertPermissionType, InsertPermission, InsertVacation, InsertAttendancePunch, InsertPayroll, InsertPayrollLine,
+  InsertPublication, InsertFamilyMember, InsertWorkExperience, InsertTraining, InsertBook, InsertEmergencyContact, InsertCatastrophicIllness, InsertBankAccount
 } from "@shared/schema";
 
 export interface IStorage {
@@ -87,6 +89,54 @@ export interface IStorage {
   createPayrollLine(payrollLine: InsertPayrollLine): Promise<PayrollLine>;
   updatePayrollLine(id: number, payrollLine: Partial<InsertPayrollLine>): Promise<PayrollLine | null>;
   deletePayrollLine(id: number): Promise<boolean>;
+
+  // Publications
+  getPublicationsByPersonId(personId: number): Promise<Publication[]>;
+  createPublication(publication: InsertPublication): Promise<Publication>;
+  updatePublication(id: number, publication: Partial<InsertPublication>): Promise<Publication | null>;
+  deletePublication(id: number): Promise<boolean>;
+
+  // Family Members
+  getFamilyMembersByPersonId(personId: number): Promise<FamilyMember[]>;
+  createFamilyMember(familyMember: InsertFamilyMember): Promise<FamilyMember>;
+  updateFamilyMember(id: number, familyMember: Partial<InsertFamilyMember>): Promise<FamilyMember | null>;
+  deleteFamilyMember(id: number): Promise<boolean>;
+
+  // Work Experiences
+  getWorkExperiencesByPersonId(personId: number): Promise<WorkExperience[]>;
+  createWorkExperience(workExperience: InsertWorkExperience): Promise<WorkExperience>;
+  updateWorkExperience(id: number, workExperience: Partial<InsertWorkExperience>): Promise<WorkExperience | null>;
+  deleteWorkExperience(id: number): Promise<boolean>;
+
+  // Trainings
+  getTrainingsByPersonId(personId: number): Promise<Training[]>;
+  createTraining(training: InsertTraining): Promise<Training>;
+  updateTraining(id: number, training: Partial<InsertTraining>): Promise<Training | null>;
+  deleteTraining(id: number): Promise<boolean>;
+
+  // Books
+  getBooksByPersonId(personId: number): Promise<Book[]>;
+  createBook(book: InsertBook): Promise<Book>;
+  updateBook(id: number, book: Partial<InsertBook>): Promise<Book | null>;
+  deleteBook(id: number): Promise<boolean>;
+
+  // Emergency Contacts
+  getEmergencyContactsByPersonId(personId: number): Promise<EmergencyContact[]>;
+  createEmergencyContact(emergencyContact: InsertEmergencyContact): Promise<EmergencyContact>;
+  updateEmergencyContact(id: number, emergencyContact: Partial<InsertEmergencyContact>): Promise<EmergencyContact | null>;
+  deleteEmergencyContact(id: number): Promise<boolean>;
+
+  // Catastrophic Illnesses
+  getCatastrophicIllnessesByPersonId(personId: number): Promise<CatastrophicIllness[]>;
+  createCatastrophicIllness(catastrophicIllness: InsertCatastrophicIllness): Promise<CatastrophicIllness>;
+  updateCatastrophicIllness(id: number, catastrophicIllness: Partial<InsertCatastrophicIllness>): Promise<CatastrophicIllness | null>;
+  deleteCatastrophicIllness(id: number): Promise<boolean>;
+
+  // Bank Accounts
+  getBankAccountsByPersonId(personId: number): Promise<BankAccount[]>;
+  createBankAccount(bankAccount: InsertBankAccount): Promise<BankAccount>;
+  updateBankAccount(id: number, bankAccount: Partial<InsertBankAccount>): Promise<BankAccount | null>;
+  deleteBankAccount(id: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -102,6 +152,14 @@ export class MemStorage implements IStorage {
   private attendancePunches: AttendancePunch[] = [];
   private payrolls: Payroll[] = [];
   private payrollLines: PayrollLine[] = [];
+  private publications: Publication[] = [];
+  private familyMembers: FamilyMember[] = [];
+  private workExperiences: WorkExperience[] = [];
+  private trainings: Training[] = [];
+  private books: Book[] = [];
+  private emergencyContacts: EmergencyContact[] = [];
+  private catastrophicIllnesses: CatastrophicIllness[] = [];
+  private bankAccounts: BankAccount[] = [];
   
   private nextId = 1;
   private getNextId() { return this.nextId++; }
@@ -424,4 +482,206 @@ export class MemStorage implements IStorage {
     this.payrollLines.splice(index, 1);
     return true;
   }
+
+  // Publications methods
+  async getPublicationsByPersonId(personId: number): Promise<Publication[]> {
+    return this.publications.filter(p => p.personId === personId);
+  }
+
+  async createPublication(publication: InsertPublication): Promise<Publication> {
+    const newPublication: Publication = { ...publication, id: this.getNextId() };
+    this.publications.push(newPublication);
+    return newPublication;
+  }
+
+  async updatePublication(id: number, publication: Partial<InsertPublication>): Promise<Publication | null> {
+    const index = this.publications.findIndex(p => p.id === id);
+    if (index === -1) return null;
+    this.publications[index] = { ...this.publications[index], ...publication };
+    return this.publications[index];
+  }
+
+  async deletePublication(id: number): Promise<boolean> {
+    const index = this.publications.findIndex(p => p.id === id);
+    if (index === -1) return false;
+    this.publications.splice(index, 1);
+    return true;
+  }
+
+  // Family Members methods
+  async getFamilyMembersByPersonId(personId: number): Promise<FamilyMember[]> {
+    return this.familyMembers.filter(fm => fm.personId === personId);
+  }
+
+  async createFamilyMember(familyMember: InsertFamilyMember): Promise<FamilyMember> {
+    const newFamilyMember: FamilyMember = { ...familyMember, id: this.getNextId() };
+    this.familyMembers.push(newFamilyMember);
+    return newFamilyMember;
+  }
+
+  async updateFamilyMember(id: number, familyMember: Partial<InsertFamilyMember>): Promise<FamilyMember | null> {
+    const index = this.familyMembers.findIndex(fm => fm.id === id);
+    if (index === -1) return null;
+    this.familyMembers[index] = { ...this.familyMembers[index], ...familyMember };
+    return this.familyMembers[index];
+  }
+
+  async deleteFamilyMember(id: number): Promise<boolean> {
+    const index = this.familyMembers.findIndex(fm => fm.id === id);
+    if (index === -1) return false;
+    this.familyMembers.splice(index, 1);
+    return true;
+  }
+
+  // Work Experiences methods
+  async getWorkExperiencesByPersonId(personId: number): Promise<WorkExperience[]> {
+    return this.workExperiences.filter(we => we.personId === personId);
+  }
+
+  async createWorkExperience(workExperience: InsertWorkExperience): Promise<WorkExperience> {
+    const newWorkExperience: WorkExperience = { ...workExperience, id: this.getNextId() };
+    this.workExperiences.push(newWorkExperience);
+    return newWorkExperience;
+  }
+
+  async updateWorkExperience(id: number, workExperience: Partial<InsertWorkExperience>): Promise<WorkExperience | null> {
+    const index = this.workExperiences.findIndex(we => we.id === id);
+    if (index === -1) return null;
+    this.workExperiences[index] = { ...this.workExperiences[index], ...workExperience };
+    return this.workExperiences[index];
+  }
+
+  async deleteWorkExperience(id: number): Promise<boolean> {
+    const index = this.workExperiences.findIndex(we => we.id === id);
+    if (index === -1) return false;
+    this.workExperiences.splice(index, 1);
+    return true;
+  }
+
+  // Trainings methods
+  async getTrainingsByPersonId(personId: number): Promise<Training[]> {
+    return this.trainings.filter(t => t.personId === personId);
+  }
+
+  async createTraining(training: InsertTraining): Promise<Training> {
+    const newTraining: Training = { ...training, id: this.getNextId() };
+    this.trainings.push(newTraining);
+    return newTraining;
+  }
+
+  async updateTraining(id: number, training: Partial<InsertTraining>): Promise<Training | null> {
+    const index = this.trainings.findIndex(t => t.id === id);
+    if (index === -1) return null;
+    this.trainings[index] = { ...this.trainings[index], ...training };
+    return this.trainings[index];
+  }
+
+  async deleteTraining(id: number): Promise<boolean> {
+    const index = this.trainings.findIndex(t => t.id === id);
+    if (index === -1) return false;
+    this.trainings.splice(index, 1);
+    return true;
+  }
+
+  // Books methods
+  async getBooksByPersonId(personId: number): Promise<Book[]> {
+    return this.books.filter(b => b.personId === personId);
+  }
+
+  async createBook(book: InsertBook): Promise<Book> {
+    const newBook: Book = { ...book, id: this.getNextId() };
+    this.books.push(newBook);
+    return newBook;
+  }
+
+  async updateBook(id: number, book: Partial<InsertBook>): Promise<Book | null> {
+    const index = this.books.findIndex(b => b.id === id);
+    if (index === -1) return null;
+    this.books[index] = { ...this.books[index], ...book };
+    return this.books[index];
+  }
+
+  async deleteBook(id: number): Promise<boolean> {
+    const index = this.books.findIndex(b => b.id === id);
+    if (index === -1) return false;
+    this.books.splice(index, 1);
+    return true;
+  }
+
+  // Emergency Contacts methods
+  async getEmergencyContactsByPersonId(personId: number): Promise<EmergencyContact[]> {
+    return this.emergencyContacts.filter(ec => ec.personId === personId);
+  }
+
+  async createEmergencyContact(emergencyContact: InsertEmergencyContact): Promise<EmergencyContact> {
+    const newEmergencyContact: EmergencyContact = { ...emergencyContact, id: this.getNextId() };
+    this.emergencyContacts.push(newEmergencyContact);
+    return newEmergencyContact;
+  }
+
+  async updateEmergencyContact(id: number, emergencyContact: Partial<InsertEmergencyContact>): Promise<EmergencyContact | null> {
+    const index = this.emergencyContacts.findIndex(ec => ec.id === id);
+    if (index === -1) return null;
+    this.emergencyContacts[index] = { ...this.emergencyContacts[index], ...emergencyContact };
+    return this.emergencyContacts[index];
+  }
+
+  async deleteEmergencyContact(id: number): Promise<boolean> {
+    const index = this.emergencyContacts.findIndex(ec => ec.id === id);
+    if (index === -1) return false;
+    this.emergencyContacts.splice(index, 1);
+    return true;
+  }
+
+  // Catastrophic Illnesses methods
+  async getCatastrophicIllnessesByPersonId(personId: number): Promise<CatastrophicIllness[]> {
+    return this.catastrophicIllnesses.filter(ci => ci.personId === personId);
+  }
+
+  async createCatastrophicIllness(catastrophicIllness: InsertCatastrophicIllness): Promise<CatastrophicIllness> {
+    const newCatastrophicIllness: CatastrophicIllness = { ...catastrophicIllness, id: this.getNextId() };
+    this.catastrophicIllnesses.push(newCatastrophicIllness);
+    return newCatastrophicIllness;
+  }
+
+  async updateCatastrophicIllness(id: number, catastrophicIllness: Partial<InsertCatastrophicIllness>): Promise<CatastrophicIllness | null> {
+    const index = this.catastrophicIllnesses.findIndex(ci => ci.id === id);
+    if (index === -1) return null;
+    this.catastrophicIllnesses[index] = { ...this.catastrophicIllnesses[index], ...catastrophicIllness };
+    return this.catastrophicIllnesses[index];
+  }
+
+  async deleteCatastrophicIllness(id: number): Promise<boolean> {
+    const index = this.catastrophicIllnesses.findIndex(ci => ci.id === id);
+    if (index === -1) return false;
+    this.catastrophicIllnesses.splice(index, 1);
+    return true;
+  }
+
+  // Bank Accounts methods
+  async getBankAccountsByPersonId(personId: number): Promise<BankAccount[]> {
+    return this.bankAccounts.filter(ba => ba.personId === personId);
+  }
+
+  async createBankAccount(bankAccount: InsertBankAccount): Promise<BankAccount> {
+    const newBankAccount: BankAccount = { ...bankAccount, id: this.getNextId() };
+    this.bankAccounts.push(newBankAccount);
+    return newBankAccount;
+  }
+
+  async updateBankAccount(id: number, bankAccount: Partial<InsertBankAccount>): Promise<BankAccount | null> {
+    const index = this.bankAccounts.findIndex(ba => ba.id === id);
+    if (index === -1) return null;
+    this.bankAccounts[index] = { ...this.bankAccounts[index], ...bankAccount };
+    return this.bankAccounts[index];
+  }
+
+  async deleteBankAccount(id: number): Promise<boolean> {
+    const index = this.bankAccounts.findIndex(ba => ba.id === id);
+    if (index === -1) return false;
+    this.bankAccounts.splice(index, 1);
+    return true;
+  }
 }
+
+export const storage = new MemStorage();

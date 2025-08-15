@@ -4,7 +4,9 @@ import { IStorage } from "./storage";
 import { 
   insertPersonSchema, insertEmployeeSchema, insertFacultySchema, insertDepartmentSchema, 
   insertScheduleSchema, insertContractSchema, insertPermissionTypeSchema, insertPermissionSchema, 
-  insertVacationSchema, insertAttendancePunchSchema, insertPayrollSchema, insertPayrollLineSchema 
+  insertVacationSchema, insertAttendancePunchSchema, insertPayrollSchema, insertPayrollLineSchema,
+  insertPublicationSchema, insertFamilyMemberSchema, insertWorkExperienceSchema, insertTrainingSchema,
+  insertBookSchema, insertEmergencyContactSchema, insertCatastrophicIllnessSchema, insertBankAccountSchema
 } from "@shared/schema";
 
 interface ValidatedRequest extends Request {
@@ -237,6 +239,210 @@ export function createRoutes(storage: IStorage): Router {
       res.status(201).json(payroll);
     } catch (error) {
       res.status(500).json({ error: "Failed to create payroll" });
+    }
+  });
+
+  // Publications Routes
+  router.get("/api/people/:personId/publications", async (req, res) => {
+    try {
+      const personId = parseInt(req.params.personId);
+      if (isNaN(personId)) return res.status(400).json({ error: "Invalid person ID" });
+      
+      const publications = await storage.getPublicationsByPersonId(personId);
+      res.json(publications);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch publications" });
+    }
+  });
+
+  router.post("/api/publications", validateBody(insertPublicationSchema), async (req: ValidatedRequest, res: Response) => {
+    try {
+      const publication = await storage.createPublication(req.validatedBody);
+      res.status(201).json(publication);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create publication" });
+    }
+  });
+
+  router.put("/api/publications/:id", validateBody(insertPublicationSchema.partial()), async (req: ValidatedRequest, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+      
+      const publication = await storage.updatePublication(id, req.validatedBody);
+      if (!publication) return res.status(404).json({ error: "Publication not found" });
+      
+      res.json(publication);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update publication" });
+    }
+  });
+
+  router.delete("/api/publications/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+      
+      const deleted = await storage.deletePublication(id);
+      if (!deleted) return res.status(404).json({ error: "Publication not found" });
+      
+      res.json({ message: "Publication deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete publication" });
+    }
+  });
+
+  // Family Members Routes
+  router.get("/api/people/:personId/family", async (req, res) => {
+    try {
+      const personId = parseInt(req.params.personId);
+      if (isNaN(personId)) return res.status(400).json({ error: "Invalid person ID" });
+      
+      const familyMembers = await storage.getFamilyMembersByPersonId(personId);
+      res.json(familyMembers);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch family members" });
+    }
+  });
+
+  router.post("/api/family", validateBody(insertFamilyMemberSchema), async (req: ValidatedRequest, res: Response) => {
+    try {
+      const familyMember = await storage.createFamilyMember(req.validatedBody);
+      res.status(201).json(familyMember);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create family member" });
+    }
+  });
+
+  // Work Experiences Routes
+  router.get("/api/people/:personId/work-experience", async (req, res) => {
+    try {
+      const personId = parseInt(req.params.personId);
+      if (isNaN(personId)) return res.status(400).json({ error: "Invalid person ID" });
+      
+      const workExperiences = await storage.getWorkExperiencesByPersonId(personId);
+      res.json(workExperiences);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch work experiences" });
+    }
+  });
+
+  router.post("/api/work-experience", validateBody(insertWorkExperienceSchema), async (req: ValidatedRequest, res: Response) => {
+    try {
+      const workExperience = await storage.createWorkExperience(req.validatedBody);
+      res.status(201).json(workExperience);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create work experience" });
+    }
+  });
+
+  // Trainings Routes
+  router.get("/api/people/:personId/trainings", async (req, res) => {
+    try {
+      const personId = parseInt(req.params.personId);
+      if (isNaN(personId)) return res.status(400).json({ error: "Invalid person ID" });
+      
+      const trainings = await storage.getTrainingsByPersonId(personId);
+      res.json(trainings);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch trainings" });
+    }
+  });
+
+  router.post("/api/trainings", validateBody(insertTrainingSchema), async (req: ValidatedRequest, res: Response) => {
+    try {
+      const training = await storage.createTraining(req.validatedBody);
+      res.status(201).json(training);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create training" });
+    }
+  });
+
+  // Books Routes
+  router.get("/api/people/:personId/books", async (req, res) => {
+    try {
+      const personId = parseInt(req.params.personId);
+      if (isNaN(personId)) return res.status(400).json({ error: "Invalid person ID" });
+      
+      const books = await storage.getBooksByPersonId(personId);
+      res.json(books);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch books" });
+    }
+  });
+
+  router.post("/api/books", validateBody(insertBookSchema), async (req: ValidatedRequest, res: Response) => {
+    try {
+      const book = await storage.createBook(req.validatedBody);
+      res.status(201).json(book);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create book" });
+    }
+  });
+
+  // Emergency Contacts Routes
+  router.get("/api/people/:personId/emergency-contacts", async (req, res) => {
+    try {
+      const personId = parseInt(req.params.personId);
+      if (isNaN(personId)) return res.status(400).json({ error: "Invalid person ID" });
+      
+      const emergencyContacts = await storage.getEmergencyContactsByPersonId(personId);
+      res.json(emergencyContacts);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch emergency contacts" });
+    }
+  });
+
+  router.post("/api/emergency-contacts", validateBody(insertEmergencyContactSchema), async (req: ValidatedRequest, res: Response) => {
+    try {
+      const emergencyContact = await storage.createEmergencyContact(req.validatedBody);
+      res.status(201).json(emergencyContact);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create emergency contact" });
+    }
+  });
+
+  // Catastrophic Illnesses Routes
+  router.get("/api/people/:personId/catastrophic-illnesses", async (req, res) => {
+    try {
+      const personId = parseInt(req.params.personId);
+      if (isNaN(personId)) return res.status(400).json({ error: "Invalid person ID" });
+      
+      const catastrophicIllnesses = await storage.getCatastrophicIllnessesByPersonId(personId);
+      res.json(catastrophicIllnesses);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch catastrophic illnesses" });
+    }
+  });
+
+  router.post("/api/catastrophic-illnesses", validateBody(insertCatastrophicIllnessSchema), async (req: ValidatedRequest, res: Response) => {
+    try {
+      const catastrophicIllness = await storage.createCatastrophicIllness(req.validatedBody);
+      res.status(201).json(catastrophicIllness);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create catastrophic illness" });
+    }
+  });
+
+  // Bank Accounts Routes
+  router.get("/api/people/:personId/bank-accounts", async (req, res) => {
+    try {
+      const personId = parseInt(req.params.personId);
+      if (isNaN(personId)) return res.status(400).json({ error: "Invalid person ID" });
+      
+      const bankAccounts = await storage.getBankAccountsByPersonId(personId);
+      res.json(bankAccounts);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch bank accounts" });
+    }
+  });
+
+  router.post("/api/bank-accounts", validateBody(insertBankAccountSchema), async (req: ValidatedRequest, res: Response) => {
+    try {
+      const bankAccount = await storage.createBankAccount(req.validatedBody);
+      res.status(201).json(bankAccount);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create bank account" });
     }
   });
 

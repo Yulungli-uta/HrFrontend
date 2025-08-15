@@ -395,20 +395,93 @@ export const trainings = pgTable("trainings", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Libros publicados
+export const books = pgTable("books", {
+  id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
+  personId: integer("person_id").references(() => people.id).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  isbn: varchar("isbn", { length: 50 }),
+  publisher: varchar("publisher", { length: 255 }),
+  publicationDate: date("publication_date"),
+  coAuthors: varchar("co_authors", { length: 500 }),
+  category: varchar("category", { length: 100 }),
+  description: text("description"),
+  url: varchar("url", { length: 500 }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Contactos de emergencia
+export const emergencyContacts = pgTable("emergency_contacts", {
+  id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
+  personId: integer("person_id").references(() => people.id).notNull(),
+  firstName: varchar("first_name", { length: 255 }).notNull(),
+  lastName: varchar("last_name", { length: 255 }).notNull(),
+  relationship: varchar("relationship", { length: 100 }).notNull(),
+  phone: varchar("phone", { length: 20 }),
+  email: varchar("email", { length: 255 }),
+  address: text("address"),
+  isPrimary: boolean("is_primary").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Enfermedades catastróficas
+export const catastrophicIllnesses = pgTable("catastrophic_illnesses", {
+  id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
+  personId: integer("person_id").references(() => people.id).notNull(),
+  illnessName: varchar("illness_name", { length: 255 }).notNull(),
+  diagnosisDate: date("diagnosis_date"),
+  treatingDoctor: varchar("treating_doctor", { length: 255 }),
+  medicalInstitution: varchar("medical_institution", { length: 255 }),
+  currentStatus: varchar("current_status", { length: 100 }),
+  treatment: text("treatment"),
+  medications: text("medications"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Cuentas bancarias
+export const bankAccounts = pgTable("bank_accounts", {
+  id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
+  personId: integer("person_id").references(() => people.id).notNull(),
+  bankName: varchar("bank_name", { length: 255 }).notNull(),
+  accountType: varchar("account_type", { length: 50 }).notNull(), // ahorros, corriente, etc.
+  accountNumber: varchar("account_number", { length: 50 }).notNull(),
+  isActive: boolean("is_active").default(true),
+  isPrimary: boolean("is_primary").default(false),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Esquemas de inserción para hoja de vida
 export const insertPublicationSchema = createInsertSchema(publications).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertFamilyMemberSchema = createInsertSchema(familyMembers).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertWorkExperienceSchema = createInsertSchema(workExperiences).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertTrainingSchema = createInsertSchema(trainings).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertBookSchema = createInsertSchema(books).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertEmergencyContactSchema = createInsertSchema(emergencyContacts).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertCatastrophicIllnessSchema = createInsertSchema(catastrophicIllnesses).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertBankAccountSchema = createInsertSchema(bankAccounts).omit({ id: true, createdAt: true, updatedAt: true });
 
 // Tipos de selección para hoja de vida
 export type Publication = typeof publications.$inferSelect;
 export type FamilyMember = typeof familyMembers.$inferSelect;
 export type WorkExperience = typeof workExperiences.$inferSelect;
 export type Training = typeof trainings.$inferSelect;
+export type Book = typeof books.$inferSelect;
+export type EmergencyContact = typeof emergencyContacts.$inferSelect;
+export type CatastrophicIllness = typeof catastrophicIllnesses.$inferSelect;
+export type BankAccount = typeof bankAccounts.$inferSelect;
 
 // Tipos de inserción para hoja de vida
 export type InsertPublication = z.infer<typeof insertPublicationSchema>;
 export type InsertFamilyMember = z.infer<typeof insertFamilyMemberSchema>;
 export type InsertWorkExperience = z.infer<typeof insertWorkExperienceSchema>;
 export type InsertTraining = z.infer<typeof insertTrainingSchema>;
+export type InsertBook = z.infer<typeof insertBookSchema>;
+export type InsertEmergencyContact = z.infer<typeof insertEmergencyContactSchema>;
+export type InsertCatastrophicIllness = z.infer<typeof insertCatastrophicIllnessSchema>;
+export type InsertBankAccount = z.infer<typeof insertBankAccountSchema>;
