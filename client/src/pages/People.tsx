@@ -3,7 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
-import { UserPlus, Mail, Phone, Calendar, Edit, Trash2 } from "lucide-react";
+import { UserPlus, Mail, Phone, Calendar, Edit, Trash2, Eye } from "lucide-react";
+import { Link } from "wouter";
 import type { Person } from "@shared/schema";
 import PersonForm from "@/components/forms/PersonForm";
 import { useState } from "react";
@@ -146,6 +147,17 @@ export default function PeoplePage() {
               
               {/* Botones de Acción */}
               <div className="flex gap-2 pt-2">
+                <Link href={`/people/${person.id}`} className="flex-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    data-testid={`button-view-${person.id}`}
+                    className="w-full bg-uta-blue/10 text-uta-blue border-uta-blue/20 hover:bg-uta-blue/20"
+                  >
+                    <Eye className="mr-2 h-4 w-4" />
+                    Ver Detalles
+                  </Button>
+                </Link>
                 <Button
                   size="sm"
                   variant="outline"

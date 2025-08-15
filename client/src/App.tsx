@@ -20,6 +20,7 @@ import SchedulesPage from "@/pages/Schedules";
 import OvertimePage from "@/pages/Overtime";
 import ReportsPage from "@/pages/Reports";
 import NotFound from "@/pages/not-found";
+import PersonDetail from "@/pages/PersonDetail";
 
 function Router() {
   const { isAuthenticated, login, logout } = useAuth();
@@ -33,6 +34,7 @@ function Router() {
       <Switch>
         <Route path="/" component={Dashboard} />
         <Route path="/people" component={PeoplePage} />
+        <Route path="/people/:id" component={PersonDetail} />
         <Route path="/employees" component={EmployeesPage} />
         <Route path="/faculties" component={FacultiesPage} />
         <Route path="/departments" component={DepartmentsPage} />

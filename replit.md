@@ -37,8 +37,15 @@ The application uses PostgreSQL with the following main entities:
 - **Recuperaciones**: Make-up time tracking
 - **Subrogaciones**: Substitution assignments
 - **Nomina**: Payroll system (periods, concepts, movements)
-- **CV Management**: Education, experience, certifications
-- **Publicaciones**: Organizational publications
+- **Hoja de Vida System**: Comprehensive CV management including:
+  - **Publicaciones**: Scientific publications and articles
+  - **Cargas Familiares**: Family dependents information
+  - **Experiencias Laborales**: Work experience history
+  - **Capacitaciones**: Trainings and courses
+  - **Libros**: Book publications
+  - **Contactos Emergencia**: Emergency contacts
+  - **Enfermedades Catastróficas**: Catastrophic illness records
+  - **Cuentas Bancarias**: Bank account information
 
 ### Authentication & Authorization
 Currently implements a basic user system with username-based authentication. The system is designed to support role-based access control expansion.
