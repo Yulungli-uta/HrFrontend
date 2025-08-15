@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { LogOut, User } from "lucide-react";
+import { LogOut, User, Menu } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,13 +9,27 @@ import {
 
 interface HeaderProps {
   onLogout: () => void;
+  onToggleSidebar?: () => void;
+  sidebarCollapsed?: boolean;
 }
 
-export default function Header({ onLogout }: HeaderProps) {
+export default function Header({ onLogout, onToggleSidebar, sidebarCollapsed }: HeaderProps) {
   return (
     <header className="border-b bg-white dark:bg-gray-800 px-6 py-3">
       <div className="flex items-center justify-between">
-        <div className="flex-1"></div>
+        <div className="flex items-center space-x-4">
+          {onToggleSidebar && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onToggleSidebar}
+              className="text-gray-600 hover:text-gray-900"
+              data-testid="sidebar-toggle-button"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+          )}
+        </div>
         
         <div className="flex items-center space-x-4">
           <DropdownMenu>

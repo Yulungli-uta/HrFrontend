@@ -19,9 +19,10 @@ import LogoUTA from "@assets/LogoUTA.png";
 
 interface SidebarProps {
   onLogout?: () => void;
+  collapsed?: boolean;
 }
 
-export default function Sidebar({ onLogout }: SidebarProps) {
+export default function Sidebar({ onLogout, collapsed = false }: SidebarProps) {
   const [location] = useLocation();
 
   const navItems = [
@@ -47,7 +48,7 @@ export default function Sidebar({ onLogout }: SidebarProps) {
 
   return (
     <aside 
-      className="w-60 shadow-lg border-r flex flex-col"
+      className={`${collapsed ? 'w-16' : 'w-60'} shadow-lg border-r flex flex-col transition-all duration-300`}
       style={{ 
         backgroundColor: '#ffffff',
         borderColor: '#e2e8f0'
@@ -55,7 +56,7 @@ export default function Sidebar({ onLogout }: SidebarProps) {
     >
       {/* Logo Section */}
       <div 
-        className="p-6 border-b"
+        className={`${collapsed ? 'p-3' : 'p-6'} border-b transition-all duration-300`}
         style={{ 
           borderColor: '#e2e8f0',
           background: 'linear-gradient(to right, rgba(38, 87, 146, 0.05), rgba(255, 193, 7, 0.05))'
@@ -66,34 +67,38 @@ export default function Sidebar({ onLogout }: SidebarProps) {
             <img 
               src={LogoUTA} 
               alt="Logo Universidad Técnica de Ambato" 
-              className="h-10 w-auto object-contain uta-official-logo"
-              style={{ maxWidth: '100px' }}
+              className={`${collapsed ? 'h-8' : 'h-10'} w-auto object-contain uta-official-logo transition-all duration-300`}
+              style={{ maxWidth: collapsed ? '40px' : '100px' }}
             />
           </div>
-          <div>
-            <h1 className="text-xl uta-system-title">WsUtaSystem</h1>
-            <p 
-              className="text-xs" 
-              style={{ color: '#64748b' }}
-            >
-              Universidad Técnica de Ambato
-            </p>
-          </div>
+          {!collapsed && (
+            <div>
+              <h1 className="text-xl uta-system-title">WsUtaSystem</h1>
+              <p 
+                className="text-sm" 
+                style={{ color: '#64748b' }}
+              >
+                Sistema de Gestión
+              </p>
+            </div>
+          )}
         </div>
-        <p 
-          className="text-sm" 
-          style={{ color: '#64748b' }}
-        >
-          Sistema de Gestión de Talento Humano
-        </p>
+        {!collapsed && (
+          <p 
+            className="text-xs" 
+            style={{ color: '#64748b' }}
+          >
+            Universidad Técnica de Ambato
+          </p>
+        )}
       </div>
 
       {/* Navigation Menu */}
-      <nav className="flex-1 p-4 space-y-2">
+      <nav className={`flex-1 ${collapsed ? 'p-2' : 'p-4'} space-y-2 transition-all duration-300`}>
         {navItems.map(({ path, label, icon: Icon }) => (
           <Link key={path} href={path}>
             <div
-              className={`nav-item flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors cursor-pointer ${
+              className={`nav-item flex items-center ${collapsed ? 'px-3 py-3 justify-center' : 'px-4 py-3'} text-sm font-medium rounded-lg transition-colors cursor-pointer ${
                 isActive(path)
                   ? "text-white"
                   : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
@@ -101,39 +106,52 @@ export default function Sidebar({ onLogout }: SidebarProps) {
               style={isActive(path) ? { backgroundColor: '#265792' } : {}}
               data-testid={`nav-${label.toLowerCase().replace(/\s+/g, '-')}`}
             >
-              <Icon className="mr-3 h-4 w-4" />
-              {label}
+              <Icon className={`${collapsed ? 'h-5 w-5' : 'mr-3 h-4 w-4'}`} />
+              {!collapsed && label}
             </div>
           </Link>
         ))}
       </nav>
 
       {/* User Info */}
-      <div className="p-4 border-t border-border space-y-3">
-        <div className="flex items-center">
+      <div className={`${collapsed ? 'p-2' : 'p-4'} border-t border-border space-y-3 transition-all duration-300`}>
+        <div className={`flex items-center ${collapsed ? 'justify-center' : ''}`}>
           <div 
             className="w-8 h-8 rounded-full flex items-center justify-center"
             style={{ backgroundColor: '#265792' }}
           >
             <UserCog className="h-4 w-4" style={{ color: '#ffffff' }} />
           </div>
-          <div className="ml-3">
-            <p className="text-sm font-medium text-foreground">Admin Usuario</p>
-            <p className="text-xs text-muted-foreground">admin@empresa.com</p>
-          </div>
+          {!collapsed && (
+            <div className="ml-3">
+              <p className="text-sm font-medium text-gray-900">Admin Usuario</p>
+              <p className="text-xs text-gray-500">Administrador</p>
+            </div>
+          )}
         </div>
-        {onLogout && (
+        
+        {onLogout && (!collapsed ? (
           <Button
             onClick={onLogout}
             variant="outline"
             size="sm"
-            className="w-full flex items-center justify-center gap-2 text-red-600 border-red-200 hover:bg-red-50"
-            data-testid="button-logout"
+            className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+            data-testid="logout-button"
           >
-            <LogOut className="h-4 w-4" />
+            <LogOut className="mr-2 h-4 w-4" />
             Cerrar Sesión
           </Button>
-        )}
+        ) : (
+          <Button
+            onClick={onLogout}
+            variant="outline"
+            size="sm"
+            className="w-full justify-center text-red-600 hover:text-red-700 hover:bg-red-50"
+            data-testid="logout-button-collapsed"
+          >
+            <LogOut className="h-4 w-4" />
+          </Button>
+        ))}
       </div>
     </aside>
   );

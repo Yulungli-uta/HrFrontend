@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { useParams } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Person, Publication } from "@shared/schema";
+import type { Person, Publication, FamilyMember, WorkExperience, Training } from "@shared/schema";
 import PublicationForm from "@/components/forms/PublicationForm";
+import FamilyMemberForm from "@/components/forms/FamilyMemberForm";
+import WorkExperienceForm from "@/components/forms/WorkExperienceForm";
+import TrainingForm from "@/components/forms/TrainingForm";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,6 +35,12 @@ export default function PersonDetail() {
   const [isEditFormOpen, setIsEditFormOpen] = useState(false);
   const [isPublicationFormOpen, setIsPublicationFormOpen] = useState(false);
   const [editingPublication, setEditingPublication] = useState<Publication | undefined>();
+  const [isFamilyFormOpen, setIsFamilyFormOpen] = useState(false);
+  const [editingFamilyMember, setEditingFamilyMember] = useState<FamilyMember | undefined>();
+  const [isWorkExpFormOpen, setIsWorkExpFormOpen] = useState(false);
+  const [editingWorkExperience, setEditingWorkExperience] = useState<WorkExperience | undefined>();
+  const [isTrainingFormOpen, setIsTrainingFormOpen] = useState(false);
+  const [editingTraining, setEditingTraining] = useState<Training | undefined>();
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -43,6 +52,21 @@ export default function PersonDetail() {
 
   const { data: publications = [], isLoading: isLoadingPublications } = useQuery<Publication[]>({
     queryKey: [`/api/people/${id}/publications`],
+    enabled: !!id,
+  });
+
+  const { data: familyMembers = [], isLoading: isLoadingFamily } = useQuery<FamilyMember[]>({
+    queryKey: [`/api/people/${id}/family`],
+    enabled: !!id,
+  });
+
+  const { data: workExperiences = [], isLoading: isLoadingWorkExp } = useQuery<WorkExperience[]>({
+    queryKey: [`/api/people/${id}/work-experience`],
+    enabled: !!id,
+  });
+
+  const { data: trainings = [], isLoading: isLoadingTrainings } = useQuery<Training[]>({
+    queryKey: [`/api/people/${id}/trainings`],
     enabled: !!id,
   });
 
@@ -138,6 +162,96 @@ export default function PersonDetail() {
     if (confirm("¿Está seguro de que desea eliminar esta publicación?")) {
       deletePublicationMutation.mutate(pubId);
     }
+  };
+
+  // Family Member Mutations
+  const createFamilyMemberMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return apiRequest(`/api/family`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/people/${id}/family`] });
+      setIsFamilyFormOpen(false);
+      setEditingFamilyMember(undefined);
+      toast({
+        title: "Carga familiar creada",
+        description: "La carga familiar se ha creado correctamente.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "No se pudo crear la carga familiar.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCreateFamilyMember = async (data: any) => {
+    createFamilyMemberMutation.mutate(data);
+  };
+
+  // Work Experience Mutations
+  const createWorkExperienceMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return apiRequest(`/api/work-experience`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/people/${id}/work-experience`] });
+      setIsWorkExpFormOpen(false);
+      setEditingWorkExperience(undefined);
+      toast({
+        title: "Experiencia laboral creada",
+        description: "La experiencia laboral se ha creado correctamente.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "No se pudo crear la experiencia laboral.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCreateWorkExperience = async (data: any) => {
+    createWorkExperienceMutation.mutate(data);
+  };
+
+  // Training Mutations
+  const createTrainingMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return apiRequest(`/api/trainings`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/people/${id}/trainings`] });
+      setIsTrainingFormOpen(false);
+      setEditingTraining(undefined);
+      toast({
+        title: "Capacitación creada",
+        description: "La capacitación se ha creado correctamente.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "No se pudo crear la capacitación.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCreateTraining = async (data: any) => {
+    createTrainingMutation.mutate(data);
   };
 
   if (isLoading) {
@@ -406,18 +520,80 @@ export default function PersonDetail() {
                     <Users className="mr-2 h-5 w-5" />
                     Cargas Familiares
                   </div>
-                  <Button size="sm" className="bg-uta-blue hover:bg-uta-blue/90">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Agregar
-                  </Button>
+                  <Dialog open={isFamilyFormOpen} onOpenChange={setIsFamilyFormOpen}>
+                    <DialogTrigger asChild>
+                      <Button 
+                        size="sm" 
+                        className="bg-uta-blue hover:bg-uta-blue/90"
+                        onClick={() => {
+                          setEditingFamilyMember(undefined);
+                          setIsFamilyFormOpen(true);
+                        }}
+                        data-testid="button-add-family-member"
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Agregar
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>
+                          {editingFamilyMember ? "Editar Carga Familiar" : "Nueva Carga Familiar"}
+                        </DialogTitle>
+                      </DialogHeader>
+                      <FamilyMemberForm
+                        personId={parseInt(id!)}
+                        familyMember={editingFamilyMember}
+                        onSubmit={handleCreateFamilyMember}
+                        onCancel={() => {
+                          setIsFamilyFormOpen(false);
+                          setEditingFamilyMember(undefined);
+                        }}
+                        isLoading={createFamilyMemberMutation.isPending}
+                      />
+                    </DialogContent>
+                  </Dialog>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-8 text-gray-500">
-                  <Users className="mx-auto h-12 w-12 mb-4 opacity-50" />
-                  <p>No hay cargas familiares registradas</p>
-                  <p className="text-sm">Agrega información sobre dependientes familiares</p>
-                </div>
+                {isLoadingFamily ? (
+                  <div className="space-y-3">
+                    {[1, 2].map((i) => (
+                      <div key={i} className="animate-pulse">
+                        <div className="h-4 bg-gray-300 rounded w-3/4 mb-2"></div>
+                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                      </div>
+                    ))}
+                  </div>
+                ) : familyMembers.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <Users className="mx-auto h-12 w-12 mb-4 opacity-50" />
+                    <p>No hay cargas familiares registradas</p>
+                    <p className="text-sm">Agrega información sobre dependientes familiares</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {familyMembers.map((member) => (
+                      <div 
+                        key={member.id} 
+                        className="p-3 border border-gray-200 rounded-lg"
+                        data-testid={`family-member-item-${member.id}`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="font-semibold text-gray-900">
+                              {member.firstName} {member.lastName}
+                            </h4>
+                            <p className="text-sm text-gray-600">
+                              {member.relationship}
+                              {member.idCard && ` • CI: ${member.idCard}`}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -429,18 +605,91 @@ export default function PersonDetail() {
                     <Briefcase className="mr-2 h-5 w-5" />
                     Experiencia Laboral
                   </div>
-                  <Button size="sm" className="bg-uta-blue hover:bg-uta-blue/90">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Agregar
-                  </Button>
+                  <Dialog open={isWorkExpFormOpen} onOpenChange={setIsWorkExpFormOpen}>
+                    <DialogTrigger asChild>
+                      <Button 
+                        size="sm" 
+                        className="bg-uta-blue hover:bg-uta-blue/90"
+                        onClick={() => {
+                          setEditingWorkExperience(undefined);
+                          setIsWorkExpFormOpen(true);
+                        }}
+                        data-testid="button-add-work-experience"
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Agregar
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>
+                          {editingWorkExperience ? "Editar Experiencia Laboral" : "Nueva Experiencia Laboral"}
+                        </DialogTitle>
+                      </DialogHeader>
+                      <WorkExperienceForm
+                        personId={parseInt(id!)}
+                        workExperience={editingWorkExperience}
+                        onSubmit={handleCreateWorkExperience}
+                        onCancel={() => {
+                          setIsWorkExpFormOpen(false);
+                          setEditingWorkExperience(undefined);
+                        }}
+                        isLoading={createWorkExperienceMutation.isPending}
+                      />
+                    </DialogContent>
+                  </Dialog>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-8 text-gray-500">
-                  <Briefcase className="mx-auto h-12 w-12 mb-4 opacity-50" />
-                  <p>No hay experiencias laborales registradas</p>
-                  <p className="text-sm">Agrega el historial de experiencia laboral</p>
-                </div>
+                {isLoadingWorkExp ? (
+                  <div className="space-y-3">
+                    {[1, 2].map((i) => (
+                      <div key={i} className="animate-pulse">
+                        <div className="h-4 bg-gray-300 rounded w-3/4 mb-2"></div>
+                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                      </div>
+                    ))}
+                  </div>
+                ) : workExperiences.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <Briefcase className="mx-auto h-12 w-12 mb-4 opacity-50" />
+                    <p>No hay experiencia laboral registrada</p>
+                    <p className="text-sm">Agrega experiencias laborales y empleos anteriores</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {workExperiences.map((experience) => (
+                      <div 
+                        key={experience.id} 
+                        className="p-3 border border-gray-200 rounded-lg"
+                        data-testid={`work-experience-item-${experience.id}`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h4 className="font-semibold text-gray-900">
+                              {experience.position}
+                            </h4>
+                            <p className="text-sm text-gray-600">
+                              {experience.company}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {new Date(experience.startDate).toLocaleDateString('es-EC')}
+                              {experience.isCurrent ? ' - Actual' : experience.endDate ? ` - ${new Date(experience.endDate).toLocaleDateString('es-EC')}` : ''}
+                            </p>
+                            {experience.duties && (
+                              <p className="text-xs text-gray-600 mt-1">{experience.duties}</p>
+                            )}
+                          </div>
+                          {experience.isCurrent && (
+                            <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                              Actual
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -452,18 +701,92 @@ export default function PersonDetail() {
                     <GraduationCap className="mr-2 h-5 w-5" />
                     Capacitaciones y Cursos
                   </div>
-                  <Button size="sm" className="bg-uta-blue hover:bg-uta-blue/90">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Agregar
-                  </Button>
+                  <Dialog open={isTrainingFormOpen} onOpenChange={setIsTrainingFormOpen}>
+                    <DialogTrigger asChild>
+                      <Button 
+                        size="sm" 
+                        className="bg-uta-blue hover:bg-uta-blue/90"
+                        onClick={() => {
+                          setEditingTraining(undefined);
+                          setIsTrainingFormOpen(true);
+                        }}
+                        data-testid="button-add-training"
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Agregar
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>
+                          {editingTraining ? "Editar Capacitación" : "Nueva Capacitación"}
+                        </DialogTitle>
+                      </DialogHeader>
+                      <TrainingForm
+                        personId={parseInt(id!)}
+                        training={editingTraining}
+                        onSubmit={handleCreateTraining}
+                        onCancel={() => {
+                          setIsTrainingFormOpen(false);
+                          setEditingTraining(undefined);
+                        }}
+                        isLoading={createTrainingMutation.isPending}
+                      />
+                    </DialogContent>
+                  </Dialog>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-8 text-gray-500">
-                  <GraduationCap className="mx-auto h-12 w-12 mb-4 opacity-50" />
-                  <p>No hay capacitaciones registradas</p>
-                  <p className="text-sm">Agrega cursos, seminarios y capacitaciones</p>
-                </div>
+                {isLoadingTrainings ? (
+                  <div className="space-y-3">
+                    {[1, 2].map((i) => (
+                      <div key={i} className="animate-pulse">
+                        <div className="h-4 bg-gray-300 rounded w-3/4 mb-2"></div>
+                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                      </div>
+                    ))}
+                  </div>
+                ) : trainings.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <GraduationCap className="mx-auto h-12 w-12 mb-4 opacity-50" />
+                    <p>No hay capacitaciones registradas</p>
+                    <p className="text-sm">Agrega cursos, seminarios y capacitaciones</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {trainings.map((training) => (
+                      <div 
+                        key={training.id} 
+                        className="p-3 border border-gray-200 rounded-lg"
+                        data-testid={`training-item-${training.id}`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h4 className="font-semibold text-gray-900">
+                              {training.name}
+                            </h4>
+                            <p className="text-sm text-gray-600">
+                              {training.institution} • {training.type}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {new Date(training.startDate).toLocaleDateString('es-EC')}
+                              {training.endDate && ` - ${new Date(training.endDate).toLocaleDateString('es-EC')}`}
+                              {training.durationHours && ` • ${training.durationHours} horas`}
+                            </p>
+                            {training.description && (
+                              <p className="text-xs text-gray-600 mt-1">{training.description}</p>
+                            )}
+                          </div>
+                          {training.hasCertificate && (
+                            <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                              Certificado
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
