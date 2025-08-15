@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useParams } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Person, Publication, FamilyMember, WorkExperience, Training } from "@shared/schema";
+import type { Person, Publication, FamilyMember, WorkExperience, Training, Book, EmergencyContact } from "@shared/schema";
 import PublicationForm from "@/components/forms/PublicationForm";
 import FamilyMemberForm from "@/components/forms/FamilyMemberForm";
 import WorkExperienceForm from "@/components/forms/WorkExperienceForm";
 import TrainingForm from "@/components/forms/TrainingForm";
+import BookForm from "@/components/forms/BookForm";
+import EmergencyContactForm from "@/components/forms/EmergencyContactForm";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,7 +29,7 @@ import {
   Plus,
   Trash2
 } from "lucide-react";
-import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogHeader, DialogTrigger } from "@/components/ui/dialog";
 import PersonForm from "@/components/forms/PersonForm";
 
 export default function PersonDetail() {
@@ -41,6 +43,10 @@ export default function PersonDetail() {
   const [editingWorkExperience, setEditingWorkExperience] = useState<WorkExperience | undefined>();
   const [isTrainingFormOpen, setIsTrainingFormOpen] = useState(false);
   const [editingTraining, setEditingTraining] = useState<Training | undefined>();
+  const [isBookFormOpen, setIsBookFormOpen] = useState(false);
+  const [editingBook, setEditingBook] = useState<Book | undefined>();
+  const [isEmergencyContactFormOpen, setIsEmergencyContactFormOpen] = useState(false);
+  const [editingEmergencyContact, setEditingEmergencyContact] = useState<EmergencyContact | undefined>();
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -67,6 +73,16 @@ export default function PersonDetail() {
 
   const { data: trainings = [], isLoading: isLoadingTrainings } = useQuery<Training[]>({
     queryKey: [`/api/people/${id}/trainings`],
+    enabled: !!id,
+  });
+
+  const { data: books = [], isLoading: isLoadingBooks } = useQuery<Book[]>({
+    queryKey: [`/api/people/${id}/books`],
+    enabled: !!id,
+  });
+
+  const { data: emergencyContacts = [], isLoading: isLoadingEmergencyContacts } = useQuery<EmergencyContact[]>({
+    queryKey: [`/api/people/${id}/emergency-contacts`],
     enabled: !!id,
   });
 
@@ -254,6 +270,66 @@ export default function PersonDetail() {
     createTrainingMutation.mutate(data);
   };
 
+  // Book Mutations
+  const createBookMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return apiRequest(`/api/books`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/people/${id}/books`] });
+      setIsBookFormOpen(false);
+      setEditingBook(undefined);
+      toast({
+        title: "Libro agregado",
+        description: "El libro se ha agregado correctamente.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "No se pudo agregar el libro.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCreateBook = async (data: any) => {
+    createBookMutation.mutate(data);
+  };
+
+  // Emergency Contact Mutations
+  const createEmergencyContactMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return apiRequest(`/api/emergency-contacts`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/people/${id}/emergency-contacts`] });
+      setIsEmergencyContactFormOpen(false);
+      setEditingEmergencyContact(undefined);
+      toast({
+        title: "Contacto de emergencia agregado",
+        description: "El contacto de emergencia se ha agregado correctamente.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "No se pudo agregar el contacto de emergencia.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCreateEmergencyContact = async (data: any) => {
+    createEmergencyContactMutation.mutate(data);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 p-6">
@@ -412,11 +488,14 @@ export default function PersonDetail() {
                         Agregar
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                    <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto" aria-describedby="publication-dialog-description">
                       <DialogHeader>
                         <DialogTitle>
                           {editingPublication ? "Editar Publicación" : "Nueva Publicación"}
                         </DialogTitle>
+                        <DialogDescription id="publication-dialog-description">
+                          {editingPublication ? "Modifica los datos de la publicación científica" : "Agrega una nueva publicación científica al perfil"}
+                        </DialogDescription>
                       </DialogHeader>
                       <PublicationForm
                         personId={parseInt(id!)}
@@ -535,11 +614,14 @@ export default function PersonDetail() {
                         Agregar
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                    <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto" aria-describedby="family-dialog-description">
                       <DialogHeader>
                         <DialogTitle>
                           {editingFamilyMember ? "Editar Carga Familiar" : "Nueva Carga Familiar"}
                         </DialogTitle>
+                        <DialogDescription id="family-dialog-description">
+                          {editingFamilyMember ? "Modifica la información del miembro familiar" : "Registra un nuevo dependiente o familiar"}
+                        </DialogDescription>
                       </DialogHeader>
                       <FamilyMemberForm
                         personId={parseInt(id!)}
@@ -620,11 +702,14 @@ export default function PersonDetail() {
                         Agregar
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                    <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto" aria-describedby="work-dialog-description">
                       <DialogHeader>
                         <DialogTitle>
                           {editingWorkExperience ? "Editar Experiencia Laboral" : "Nueva Experiencia Laboral"}
                         </DialogTitle>
+                        <DialogDescription id="work-dialog-description">
+                          {editingWorkExperience ? "Modifica la información de la experiencia laboral" : "Registra una nueva experiencia de trabajo"}
+                        </DialogDescription>
                       </DialogHeader>
                       <WorkExperienceForm
                         personId={parseInt(id!)}
@@ -716,11 +801,14 @@ export default function PersonDetail() {
                         Agregar
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                    <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto" aria-describedby="training-dialog-description">
                       <DialogHeader>
                         <DialogTitle>
                           {editingTraining ? "Editar Capacitación" : "Nueva Capacitación"}
                         </DialogTitle>
+                        <DialogDescription id="training-dialog-description">
+                          {editingTraining ? "Modifica la información de la capacitación" : "Registra un nuevo curso, seminario o capacitación"}
+                        </DialogDescription>
                       </DialogHeader>
                       <TrainingForm
                         personId={parseInt(id!)}
@@ -798,18 +886,95 @@ export default function PersonDetail() {
                     <BookOpen className="mr-2 h-5 w-5" />
                     Libros Publicados
                   </div>
-                  <Button size="sm" className="bg-uta-blue hover:bg-uta-blue/90">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Agregar
-                  </Button>
+                  <Dialog open={isBookFormOpen} onOpenChange={setIsBookFormOpen}>
+                    <DialogTrigger asChild>
+                      <Button 
+                        size="sm" 
+                        className="bg-uta-blue hover:bg-uta-blue/90"
+                        onClick={() => {
+                          setEditingBook(undefined);
+                          setIsBookFormOpen(true);
+                        }}
+                        data-testid="button-add-book"
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Agregar
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto" aria-describedby="book-dialog-description">
+                      <DialogHeader>
+                        <DialogTitle>
+                          {editingBook ? "Editar Libro" : "Nuevo Libro"}
+                        </DialogTitle>
+                        <DialogDescription id="book-dialog-description">
+                          {editingBook ? "Modifica la información del libro" : "Registra un nuevo libro o capítulo publicado"}
+                        </DialogDescription>
+                      </DialogHeader>
+                      <BookForm
+                        personId={parseInt(id!)}
+                        book={editingBook}
+                        onSubmit={handleCreateBook}
+                        onCancel={() => {
+                          setIsBookFormOpen(false);
+                          setEditingBook(undefined);
+                        }}
+                        isLoading={createBookMutation.isPending}
+                      />
+                    </DialogContent>
+                  </Dialog>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-8 text-gray-500">
-                  <BookOpen className="mx-auto h-12 w-12 mb-4 opacity-50" />
-                  <p>No hay libros registrados</p>
-                  <p className="text-sm">Agrega libros y capítulos publicados</p>
-                </div>
+                {isLoadingBooks ? (
+                  <div className="space-y-3">
+                    {[1, 2].map((i) => (
+                      <div key={i} className="animate-pulse">
+                        <div className="h-4 bg-gray-300 rounded w-3/4 mb-2"></div>
+                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                      </div>
+                    ))}
+                  </div>
+                ) : books.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <BookOpen className="mx-auto h-12 w-12 mb-4 opacity-50" />
+                    <p>No hay libros registrados</p>
+                    <p className="text-sm">Agrega libros y capítulos publicados</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {books.map((book) => (
+                      <div 
+                        key={book.id} 
+                        className="p-3 border border-gray-200 rounded-lg"
+                        data-testid={`book-item-${book.id}`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h4 className="font-semibold text-gray-900">
+                              {book.title}
+                            </h4>
+                            <p className="text-sm text-gray-600">
+                              {book.coAuthors}
+                              {book.publisher && ` • ${book.publisher}`}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {book.category}
+                              {book.publicationDate && ` • ${new Date(book.publicationDate).toLocaleDateString('es-EC')}`}
+                            </p>
+                            {book.description && (
+                              <p className="text-xs text-gray-600 mt-1">{book.description}</p>
+                            )}
+                          </div>
+                          {book.isbn && (
+                            <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">
+                              ISBN
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -821,18 +986,93 @@ export default function PersonDetail() {
                     <Phone className="mr-2 h-5 w-5" />
                     Contactos de Emergencia
                   </div>
-                  <Button size="sm" className="bg-uta-blue hover:bg-uta-blue/90">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Agregar
-                  </Button>
+                  <Dialog open={isEmergencyContactFormOpen} onOpenChange={setIsEmergencyContactFormOpen}>
+                    <DialogTrigger asChild>
+                      <Button 
+                        size="sm" 
+                        className="bg-uta-blue hover:bg-uta-blue/90"
+                        onClick={() => {
+                          setEditingEmergencyContact(undefined);
+                          setIsEmergencyContactFormOpen(true);
+                        }}
+                        data-testid="button-add-emergency-contact"
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Agregar
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto" aria-describedby="emergency-contact-dialog-description">
+                      <DialogHeader>
+                        <DialogTitle>
+                          {editingEmergencyContact ? "Editar Contacto de Emergencia" : "Nuevo Contacto de Emergencia"}
+                        </DialogTitle>
+                        <DialogDescription id="emergency-contact-dialog-description">
+                          {editingEmergencyContact ? "Modifica la información del contacto de emergencia" : "Registra un nuevo contacto para emergencias"}
+                        </DialogDescription>
+                      </DialogHeader>
+                      <EmergencyContactForm
+                        personId={parseInt(id!)}
+                        emergencyContact={editingEmergencyContact}
+                        onSubmit={handleCreateEmergencyContact}
+                        onCancel={() => {
+                          setIsEmergencyContactFormOpen(false);
+                          setEditingEmergencyContact(undefined);
+                        }}
+                        isLoading={createEmergencyContactMutation.isPending}
+                      />
+                    </DialogContent>
+                  </Dialog>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-8 text-gray-500">
-                  <Phone className="mx-auto h-12 w-12 mb-4 opacity-50" />
-                  <p>No hay contactos de emergencia registrados</p>
-                  <p className="text-sm">Agrega contactos para situaciones de emergencia</p>
-                </div>
+                {isLoadingEmergencyContacts ? (
+                  <div className="space-y-3">
+                    {[1, 2].map((i) => (
+                      <div key={i} className="animate-pulse">
+                        <div className="h-4 bg-gray-300 rounded w-3/4 mb-2"></div>
+                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                      </div>
+                    ))}
+                  </div>
+                ) : emergencyContacts.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <Phone className="mx-auto h-12 w-12 mb-4 opacity-50" />
+                    <p>No hay contactos de emergencia registrados</p>
+                    <p className="text-sm">Agrega contactos para situaciones de emergencia</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {emergencyContacts.map((contact) => (
+                      <div 
+                        key={contact.id} 
+                        className="p-3 border border-gray-200 rounded-lg"
+                        data-testid={`emergency-contact-item-${contact.id}`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h4 className="font-semibold text-gray-900">
+                              {contact.firstName} {contact.lastName}
+                            </h4>
+                            <p className="text-sm text-gray-600">
+                              {contact.relationship} • {contact.phone}
+                            </p>
+                            {contact.email && (
+                              <p className="text-xs text-gray-500">{contact.email}</p>
+                            )}
+                            {contact.address && (
+                              <p className="text-xs text-gray-500">{contact.address}</p>
+                            )}
+                          </div>
+                          {contact.isPrimary && (
+                            <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
+                              Principal
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
