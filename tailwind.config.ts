@@ -66,6 +66,17 @@ export default {
         success: "var(--success)",
         warning: "var(--warning)",
         error: "var(--error)",
+        // UTA Brand Colors
+        "uta-blue": {
+          DEFAULT: "#1e40af",
+          light: "#3b82f6",
+          dark: "#1e3a8a",
+        },
+        "uta-orange": {
+          DEFAULT: "#f97316", 
+          light: "#fb923c",
+          dark: "#ea580c",
+        },
       },
       fontFamily: {
         sans: ["var(--font-sans)"],

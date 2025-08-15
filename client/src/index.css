@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Colores oficiales Universidad Técnica de Ambato */
+:root {
+  --uta-blue: #1e40af;
+  --uta-blue-light: #3b82f6;
+  --uta-blue-dark: #1e3a8a;
+  --uta-orange: #f97316;
+  --uta-orange-light: #fb923c;
+  --uta-orange-dark: #ea580c;
+}
+
 :root {
   /* UTA Brand Colors */
   --background: hsl(0 0% 100%);

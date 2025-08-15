@@ -89,10 +89,7 @@ export default function PersonDetail() {
   // Mutations
   const createPublicationMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest(`/api/publications`, {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      return apiRequest("POST", "/api/publications", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/people/${id}/publications`] });
@@ -114,10 +111,7 @@ export default function PersonDetail() {
 
   const updatePublicationMutation = useMutation({
     mutationFn: async ({ id: pubId, data }: { id: number; data: any }) => {
-      return apiRequest(`/api/publications/${pubId}`, {
-        method: "PUT",
-        body: JSON.stringify(data),
-      });
+      return apiRequest("PUT", `/api/publications/${pubId}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/people/${id}/publications`] });
@@ -139,9 +133,7 @@ export default function PersonDetail() {
 
   const deletePublicationMutation = useMutation({
     mutationFn: async (pubId: number) => {
-      return apiRequest(`/api/publications/${pubId}`, {
-        method: "DELETE",
-      });
+      return apiRequest("DELETE", `/api/publications/${pubId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/people/${id}/publications`] });
@@ -183,10 +175,7 @@ export default function PersonDetail() {
   // Family Member Mutations
   const createFamilyMemberMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest(`/api/family`, {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      return apiRequest("POST", "/api/family", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/people/${id}/family`] });
@@ -213,10 +202,7 @@ export default function PersonDetail() {
   // Work Experience Mutations
   const createWorkExperienceMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest(`/api/work-experience`, {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      return apiRequest("POST", "/api/work-experience", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/people/${id}/work-experience`] });
@@ -243,10 +229,7 @@ export default function PersonDetail() {
   // Training Mutations
   const createTrainingMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest(`/api/trainings`, {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      return apiRequest("POST", "/api/trainings", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/people/${id}/trainings`] });
@@ -273,10 +256,7 @@ export default function PersonDetail() {
   // Book Mutations
   const createBookMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest(`/api/books`, {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      return apiRequest("POST", "/api/books", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/people/${id}/books`] });
@@ -303,10 +283,7 @@ export default function PersonDetail() {
   // Emergency Contact Mutations
   const createEmergencyContactMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest(`/api/emergency-contacts`, {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      return apiRequest("POST", "/api/emergency-contacts", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/people/${id}/emergency-contacts`] });
