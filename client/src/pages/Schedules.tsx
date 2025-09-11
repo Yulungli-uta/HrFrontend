@@ -7,12 +7,19 @@ import { Clock, Calendar, Users, Plus } from "lucide-react";
 import type { Schedule } from "@shared/schema";
 import ScheduleForm from "@/components/forms/ScheduleForm";
 import { useState } from "react";
+import { HorariosAPI, type ApiResponse } from "@/lib/api"; // Importamos desde lib/api
 
 export default function SchedulesPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const { data: schedules, isLoading, error } = useQuery<Schedule[]>({
-    queryKey: ['/api/schedules'],
+  
+  // Usamos el servicio específico de horarios
+  const { data: apiResponse, isLoading, error } = useQuery<ApiResponse<Schedule[]>>({
+    queryKey: ['/api/v1/rh/schedules'], // Cambiamos la queryKey
+    queryFn: () => HorariosAPI.list(), // Usamos el servicio de horarios
   });
+
+  // Extraemos los horarios del formato de respuesta de la API
+  const schedules = apiResponse?.status === 'success' ? apiResponse.data : [];
 
   if (isLoading) {
     return (
@@ -51,6 +58,19 @@ export default function SchedulesPage() {
     );
   }
 
+  // Manejar errores de la API (cuando status es 'error')
+  if (apiResponse?.status === 'error') {
+    return (
+      <div className="container mx-auto p-6">
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="pt-6">
+            <p className="text-red-600">Error al cargar los horarios: {apiResponse.error.message}</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto p-6">
       <div className="flex items-center justify-between mb-6">
@@ -78,7 +98,7 @@ export default function SchedulesPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {schedules?.map((schedule) => (
+        {schedules.map((schedule) => (
           <Card key={schedule.id} className="hover:shadow-lg transition-shadow duration-200">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
@@ -140,7 +160,7 @@ export default function SchedulesPage() {
         ))}
       </div>
 
-      {schedules && schedules.length === 0 && (
+      {schedules.length === 0 && (
         <Card className="text-center py-12">
           <CardContent>
             <Clock className="mx-auto h-12 w-12 text-gray-400 mb-4" />

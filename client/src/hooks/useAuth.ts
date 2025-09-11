@@ -1,9 +1,13 @@
+// hooks/useAuth.ts
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from 'wouter';
+import { authService, tokenService, UserSession, TokenPair } from '@/services/auth';
+import { analyzeToken } from '@/services/auth/debugUtils';
 
 export interface AuthState {
   isAuthenticated: boolean;
-  user: string | null;
+  user: UserSession | null;
 }
 
 // 15 minutos de inactividad (configurable mediante variable de entorno)
@@ -18,7 +22,9 @@ export function useAuth() {
   
   const [lastActivity, setLastActivity] = useState(Date.now());
   const [showWarning, setShowWarning] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
   const updateActivity = useCallback(() => {
     const now = Date.now();
@@ -36,9 +42,16 @@ export function useAuth() {
       user: null,
     });
     setShowWarning(false);
-    localStorage.removeItem('wsuta-auth');
+    tokenService.clearTokens();
     localStorage.removeItem('wsuta-last-activity');
-  }, []);
+    
+    toast({
+      title: "Sesión cerrada",
+      description: "Has cerrado sesión correctamente",
+    });
+    
+    setLocation('/login');
+  }, [setLocation, toast]);
 
   const checkTimeout = useCallback(() => {
     const now = Date.now();
@@ -59,31 +72,108 @@ export function useAuth() {
       const remainingMinutes = Math.ceil((INACTIVITY_TIMEOUT - timeSinceActivity) / 60000);
       toast({
         title: "Advertencia de sesión",
-        description: `Su sesión expirará en ${remainingMinutes} minuto(s). Mueva el mouse para extender la sesión.`,
+        description: `Su sesión expirará en ${remainingMinutes} minuto(s). Realice alguna acción para extender la sesión.`,
         variant: "destructive",
       });
     }
   }, [lastActivity, showWarning, logout, toast]);
 
+  // Verificar autenticación al cargar
   useEffect(() => {
-    const savedAuth = localStorage.getItem('wsuta-auth');
-    const savedActivity = localStorage.getItem('wsuta-last-activity');
-    
-    if (savedAuth && savedActivity) {
-      const now = Date.now();
-      const lastActivityTime = parseInt(savedActivity);
-      const timeSinceActivity = now - lastActivityTime;
-      
-      if (timeSinceActivity < INACTIVITY_TIMEOUT) {
-        const parsed = JSON.parse(savedAuth);
-        setAuthState(parsed);
-        setLastActivity(lastActivityTime);
-      } else {
-        localStorage.removeItem('wsuta-auth');
-        localStorage.removeItem('wsuta-last-activity');
+    const checkAuth = async () => {
+      try {
+        console.group('🔐 Checking authentication status');
+        const accessToken = tokenService.getAccessToken();
+        const userSession = tokenService.getUserSession();
+        const savedActivity = localStorage.getItem('wsuta-last-activity');
+
+        console.log('📋 Auth check initial state:', {
+          hasAccessToken: !!accessToken,
+          hasUserSession: !!userSession,
+          hasSavedActivity: !!savedActivity
+        });
+
+        if (!accessToken) {
+          console.log('❌ No access token found');
+          setIsLoading(false);
+          console.groupEnd();
+          return;
+        }
+
+        // Analizar el token actual
+        console.log('🔍 Analyzing current token:');
+        analyzeToken(accessToken);
+
+        // Verificar si el token está expirado
+        if (tokenService.isTokenExpired(accessToken)) {
+          console.log('⚠️ Token is expired, attempting refresh');
+          const refreshToken = tokenService.getRefreshToken();
+          
+          if (refreshToken) {
+            try {
+              console.log('🔄 Refreshing token with refresh token:', refreshToken ? `${refreshToken.substring(0, 15)}...` : 'NULL');
+              const newTokens = await authService.refreshToken(refreshToken);
+              tokenService.setTokens(newTokens);
+              
+              console.log('✅ Token refreshed successfully');
+              analyzeToken(newTokens.accessToken);
+              
+              // Obtener información actualizada del usuario
+              console.log('👤 Getting updated user info');
+              const userInfo = await authService.getCurrentUser(newTokens.accessToken);
+              tokenService.setUserSession(userInfo);
+              
+              setAuthState({
+                isAuthenticated: true,
+                user: userInfo,
+              });
+              
+              if (savedActivity) {
+                setLastActivity(parseInt(savedActivity));
+              }
+            } catch (error) {
+              console.error('❌ Error refreshing token:', error);
+              logout();
+            }
+          } else {
+            console.log('❌ No refresh token available');
+            logout();
+          }
+        } else if (userSession) {
+          console.log('✅ Using existing user session');
+          setAuthState({
+            isAuthenticated: true,
+            user: userSession,
+          });
+          
+          if (savedActivity) {
+            setLastActivity(parseInt(savedActivity));
+          }
+        } else {
+          console.log('👤 Getting user info from server');
+          // Obtener información del usuario si no está en localStorage
+          const userInfo = await authService.getCurrentUser(accessToken);
+          tokenService.setUserSession(userInfo);
+          setAuthState({
+            isAuthenticated: true,
+            user: userInfo,
+          });
+          
+          if (savedActivity) {
+            setLastActivity(parseInt(savedActivity));
+          }
+        }
+      } catch (error) {
+        console.error('❌ Auth check error:', error);
+        logout();
+      } finally {
+        setIsLoading(false);
+        console.groupEnd();
       }
-    }
-  }, []);
+    };
+
+    checkAuth();
+  }, [logout]);
 
   useEffect(() => {
     if (authState.isAuthenticated) {
@@ -104,27 +194,86 @@ export function useAuth() {
     }
   }, [authState.isAuthenticated, updateActivity, checkTimeout]);
 
-  const login = (username: string, password: string): boolean => {
-    if (username === 'admin' && password === 'admin') {
-      const newAuthState = {
-        isAuthenticated: true,
-        user: username,
-      };
-      const now = Date.now();
+  const login = async (email: string, password: string): Promise<boolean> => {
+    try {
+      console.group('🔐 Attempting login');
+      setIsLoading(true);
       
-      setAuthState(newAuthState);
+      console.log('📧 Login attempt with email:', email);
+      const tokens = await authService.loginLocal({ email, password });
+      
+      console.log('✅ Login successful, tokens received');
+      console.log('🔑 Access token:', tokens.accessToken ? `${tokens.accessToken.substring(0, 20)}...` : 'NULL');
+      
+      // Analizar el token solo si existe
+      if (tokens.accessToken) {
+        analyzeToken(tokens.accessToken);
+      } else {
+        console.error('❌ Access token is missing in tokens response');
+        throw new Error('No se recibió token de acceso');
+      }
+      
+      console.log('👤 Getting user info');
+      const userInfo = await authService.getCurrentUser(tokens.accessToken);
+      
+      tokenService.setTokens(tokens);
+      tokenService.setUserSession(userInfo);
+      
+      const now = Date.now();
+      setAuthState({
+        isAuthenticated: true,
+        user: userInfo,
+      });
       setLastActivity(now);
-      localStorage.setItem('wsuta-auth', JSON.stringify(newAuthState));
       localStorage.setItem('wsuta-last-activity', now.toString());
+      
+      toast({
+        title: "Inicio de sesión exitoso",
+        description: `Bienvenido ${userInfo.displayName || userInfo.email}`,
+      });
+      
+      console.log('✅ Login process completed successfully');
       return true;
+    } catch (error: any) {
+      console.error('❌ Login error:', error);
+      toast({
+        title: "Error de autenticación",
+        description: error.message || "Credenciales incorrectas",
+        variant: "destructive",
+      });
+      return false;
+    } finally {
+      setIsLoading(false);
+      console.groupEnd();
     }
-    return false;
+  };
+
+  const loginWithOffice365 = async (): Promise<void> => {
+    try {
+      setIsLoading(true);
+      const { url, state } = await authService.getAzureAuthUrl();
+      
+      // Guardar state para verificación posterior
+      sessionStorage.setItem("oauth_state", state);
+      
+      // Redirigir a Azure AD
+      window.location.href = url;
+    } catch (error: any) {
+      toast({
+        title: "Error de autenticación",
+        description: error.message || "No se pudo iniciar sesión con Office 365",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+    }
   };
 
   return {
     isAuthenticated: authState.isAuthenticated,
     user: authState.user,
+    isLoading,
     login,
+    loginWithOffice365,
     logout,
   };
-}
+} 

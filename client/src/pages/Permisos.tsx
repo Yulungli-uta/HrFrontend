@@ -18,17 +18,17 @@ export default function Permisos() {
   const { toast } = useToast();
 
   const { data: personas = [] } = useQuery({
-    queryKey: ["/api/personas"],
+    queryKey: ["/api/v1/rh/personas"],
     queryFn: PersonasAPI.list,
   });
 
   const { data: permisos = [], isLoading: permisosLoading } = useQuery({
-    queryKey: ["/api/permisos"],
+    queryKey: ["/api/v1/rh/permisos"],
     queryFn: () => PermisosAPI.list(),
   });
 
   const { data: vacaciones = [], isLoading: vacacionesLoading } = useQuery({
-    queryKey: ["/api/vacaciones"],
+    queryKey: ["/api/v1/rh/vacaciones"],
     queryFn: () => VacacionesAPI.list(),
   });
 

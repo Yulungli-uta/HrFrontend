@@ -7,13 +7,21 @@ import { Building2, User, Plus } from "lucide-react";
 import type { Faculty } from "@shared/schema";
 import FacultyForm from "@/components/forms/FacultyForm";
 import { useState } from "react";
+import { FacultadesAPI, type ApiResponse } from "@/lib/api"; // Cambiamos la importación
 
 export default function FacultiesPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const { data: faculties, isLoading, error } = useQuery<Faculty[]>({
-    queryKey: ['/api/faculties'],
+  
+  // Usamos el servicio específico de facultades
+  const { data: apiResponse, isLoading, error } = useQuery<ApiResponse<Faculty[]>>({
+    queryKey: ['/api/v1/rh/faculties'], // Cambiamos la queryKey
+    queryFn: () => FacultadesAPI.list(), // Usamos el servicio de facultades
   });
 
+  // Extraemos las facultades del formato de respuesta de la API
+  const faculties = apiResponse?.status === 'success' ? apiResponse.data : [];
+
+  // El resto del código se mantiene igual...
   if (isLoading) {
     return (
       <div className="container mx-auto p-6">
@@ -50,6 +58,19 @@ export default function FacultiesPage() {
     );
   }
 
+  // Manejar errores de la API (cuando status es 'error')
+  if (apiResponse?.status === 'error') {
+    return (
+      <div className="container mx-auto p-6">
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="pt-6">
+            <p className="text-red-600">Error al cargar las facultades: {apiResponse.error.message}</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto p-6">
       <div className="flex items-center justify-between mb-6">
@@ -77,7 +98,7 @@ export default function FacultiesPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {faculties?.map((faculty) => (
+        {faculties.map((faculty) => (
           <Card key={faculty.id} className="hover:shadow-lg transition-shadow duration-200">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
@@ -127,13 +148,16 @@ export default function FacultiesPage() {
         ))}
       </div>
 
-      {faculties && faculties.length === 0 && (
+      {faculties.length === 0 && (
         <Card className="text-center py-12">
           <CardContent>
             <Building2 className="mx-auto h-12 w-12 text-gray-400 mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">No hay facultades registradas</h3>
             <p className="text-gray-600 mb-4">Comience agregando la primera facultad al sistema</p>
-            <Button data-testid="button-add-first-faculty">
+            <Button 
+              data-testid="button-add-first-faculty"
+              onClick={() => setIsFormOpen(true)}
+            >
               <Plus className="mr-2 h-4 w-4" />
               Agregar Primera Facultad
             </Button>

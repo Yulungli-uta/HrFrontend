@@ -15,30 +15,57 @@ import {
 } from "lucide-react";
 import { PersonasAPI, ContratosAPI, MarcacionesAPI, PermisosAPI } from "@/lib/api";
 import { Link } from "wouter";
+import { useAuth } from '@/contexts/AuthContext';
+
+// Función para extraer datos de la respuesta API
+const extractData = (response: any): any[] => {
+  if (Array.isArray(response)) return response;
+  if (response?.data && Array.isArray(response.data)) return response.data;
+  if (response?.results && Array.isArray(response.results)) return response.results;
+  return [];
+};
 
 export default function Dashboard() {
-  const { data: personas = [] } = useQuery({
-    queryKey: ["/api/personas"],
+ const { employeeDetails, user } = useAuth();
+  console.log("Valores del detalle del empleado: ----------",employeeDetails);
+  // Consulta de personas con manejo de respuesta
+  const { data: personasResponse } = useQuery({
+    queryKey: ["/api/people"],
     queryFn: PersonasAPI.list,
   });
+  const personas = extractData(personasResponse);
 
-  const { data: contratos = [] } = useQuery({
-    queryKey: ["/api/contratos"],
+  // Consulta de contratos con manejo de respuesta
+  const { data: contratosResponse } = useQuery({
+    queryKey: ["/api/contracts"],
     queryFn: ContratosAPI.list,
   });
+  const contratos = extractData(contratosResponse);
+  const contratosActivos = contratos.filter(c => !c.fechaFin || new Date(c.fechaFin) > new Date());
 
-  const { data: marcaciones = [] } = useQuery({
-    queryKey: ["/api/marcaciones"],
+  // Consulta de marcaciones con manejo de respuesta
+  const { data: marcacionesResponse } = useQuery({
+    queryKey: ["/api/attendance/punches"],
     queryFn: MarcacionesAPI.list,
   });
+  const marcaciones = extractData(marcacionesResponse);
 
-  const { data: permisos = [] } = useQuery({
-    queryKey: ["/api/permisos"],
-    queryFn: () => PermisosAPI.list(),
+  // Consulta de permisos con manejo de respuesta
+  const { data: permisosResponse } = useQuery({
+    queryKey: ["/api/permissions"],
+    queryFn: PermisosAPI.list,
   });
-
-  const contratosActivos = contratos.filter(c => !c.fechaFin || new Date(c.fechaFin) > new Date());
+  const permisos = extractData(permisosResponse);
   const permisosPendientes = permisos.filter(p => p.estado === "SOLICITADO");
+
+  // Cálculo de porcentajes seguros
+  const porcentajeContratos = personas.length > 0 
+    ? Math.round((contratosActivos.length / personas.length) * 100)
+    : 0;
+    
+  const porcentajeAsistencia = contratosActivos.length > 0 
+    ? Math.round((marcaciones.length / contratosActivos.length) * 100)
+    : 0;
 
   return (
     <>
@@ -96,7 +123,7 @@ export default function Dashboard() {
                     {contratosActivos.length}
                   </p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {personas.length > 0 ? Math.round((contratosActivos.length / personas.length) * 100) : 0}% del total
+                    {porcentajeContratos}% del total
                   </p>
                 </div>
                 <div className="w-12 h-12 bg-success/10 rounded-lg flex items-center justify-center">
@@ -116,7 +143,7 @@ export default function Dashboard() {
                     {marcaciones.length}
                   </p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {contratosActivos.length > 0 ? Math.round((marcaciones.length / contratosActivos.length) * 100) : 0}% asistencia
+                    {porcentajeAsistencia}% asistencia
                   </p>
                 </div>
                 <div className="w-12 h-12 bg-warning/10 rounded-lg flex items-center justify-center">
@@ -156,8 +183,8 @@ export default function Dashboard() {
               <CardTitle>Actividades Recientes</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {marcaciones.slice(0, 5).map((marcacion) => (
-                <div key={marcacion.id} className="flex items-center space-x-4 p-3 hover:bg-accent rounded-lg transition-colors">
+              {marcaciones.slice(0, 5).map((marcacion, index) => (
+                <div key={`marcacion-${marcacion.id || marcacion.timestamp || index}`}  className="flex items-center space-x-4 p-3 hover:bg-accent rounded-lg transition-colors">
                   <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
                     <ClockIcon className="text-primary h-4 w-4" />
                   </div>

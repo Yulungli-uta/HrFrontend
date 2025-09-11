@@ -14,6 +14,7 @@ import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import MarcacionForm from "@/components/forms/MarcacionForm";
 import type { Marcacion } from "@shared/schema";
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Asistencia() {
   const [personaFilter, setPersonaFilter] = useState<string>("all");
@@ -21,6 +22,11 @@ export default function Asistencia() {
   const [fechaHasta, setFechaHasta] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { toast } = useToast();
+  const { employeeDetails, user } = useAuth();
+
+  console.log("detail - employeeID: ",employeeDetails.employeeID);
+  console.log("detail - fullname: ",employeeDetails.fullName);
+  console.log("detail - email: ",employeeDetails.email);
 
   const { data: personas = [] } = useQuery({
     queryKey: ["/api/personas"],

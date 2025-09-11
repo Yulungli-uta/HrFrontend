@@ -10,6 +10,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { insertFacultySchema, type InsertFaculty, type Faculty, type Employee, type Person } from "@shared/schema";
 import { Building2, Save, X, User } from "lucide-react";
+import { api, type ApiResponse } from "@/lib/api";
 
 interface FacultyFormProps {
   faculty?: Faculty;
@@ -22,13 +23,27 @@ export default function FacultyForm({ faculty, onSuccess, onCancel }: FacultyFor
   const queryClient = useQueryClient();
   const isEditing = !!faculty;
 
-  const { data: employees } = useQuery<Employee[]>({
+  // Usamos el tipo ApiResponse<Employee[]> y una queryFn personalizada
+  const { data: employeesResponse } = useQuery<ApiResponse<Employee[]>>({
     queryKey: ['/api/employees'],
+    queryFn: async () => {
+      const response = await api.get<Employee[]>('/api/employees');
+      return response;
+    }
   });
 
-  const { data: people } = useQuery<Person[]>({
+  // Usamos el tipo ApiResponse<Person[]> y una queryFn personalizada
+  const { data: peopleResponse } = useQuery<ApiResponse<Person[]>>({
     queryKey: ['/api/people'],
+    queryFn: async () => {
+      const response = await api.get<Person[]>('/api/people');
+      return response;
+    }
   });
+
+  // Extraemos los datos del formato de respuesta de la API
+  const employees = employeesResponse?.status === 'success' ? employeesResponse.data : [];
+  const people = peopleResponse?.status === 'success' ? peopleResponse.data : [];
 
   const form = useForm<InsertFaculty>({
     resolver: zodResolver(insertFacultySchema),
@@ -41,29 +56,45 @@ export default function FacultyForm({ faculty, onSuccess, onCancel }: FacultyFor
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertFaculty) => {
-      const response = await fetch("/api/faculties", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-      });
-      if (!response.ok) throw new Error("Error al crear facultad");
-      return response.json();
+      const response = await api.post<Faculty>('/api/faculties', data);
+      if (response.status === 'error') throw new Error(response.error.message);
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/faculties"] });
       toast({ title: "Facultad creada exitosamente" });
       onSuccess?.();
     },
-    onError: () => {
-      toast({ title: "Error al crear facultad", variant: "destructive" });
+    onError: (error: Error) => {
+      toast({ title: "Error al crear facultad", description: error.message, variant: "destructive" });
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: InsertFaculty) => {
+      const response = await api.put<Faculty>(`/api/faculties/${faculty?.id}`, data);
+      if (response.status === 'error') throw new Error(response.error.message);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/faculties"] });
+      toast({ title: "Facultad actualizada exitosamente" });
+      onSuccess?.();
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error al actualizar facultad", description: error.message, variant: "destructive" });
     }
   });
 
   const onSubmit = (data: InsertFaculty) => {
-    createMutation.mutate(data);
+    if (isEditing) {
+      updateMutation.mutate(data);
+    } else {
+      createMutation.mutate(data);
+    }
   };
 
-  const isLoading = createMutation.isPending;
+  const isLoading = createMutation.isPending || updateMutation.isPending;
 
   const utaFaculties = [
     "Facultad de Ingeniería Civil y Mecánica",
@@ -136,8 +167,8 @@ export default function FacultyForm({ faculty, onSuccess, onCancel }: FacultyFor
                 <FormItem>
                   <FormLabel>Decano</FormLabel>
                   <Select 
-                    onValueChange={(value) => field.onChange(value ? parseInt(value) : null)} 
-                    value={field.value?.toString() || ""}
+                    onValueChange={(value) => field.onChange(value === "null" ? null : parseInt(value))} 
+                    value={field.value === null ? "null" : field.value?.toString()}
                   >
                     <FormControl>
                       <SelectTrigger data-testid="select-dean">
@@ -145,7 +176,7 @@ export default function FacultyForm({ faculty, onSuccess, onCancel }: FacultyFor
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">Sin decano asignado</SelectItem>
+                      <SelectItem value="null">Sin decano asignado</SelectItem>
                       {employees?.map((employee) => {
                         const person = people?.find(p => p.id === employee.id);
                         return (

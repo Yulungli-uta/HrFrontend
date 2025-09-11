@@ -1,19 +1,32 @@
 import { Button } from "@/components/ui/button";
-import { LogOut, User, Menu } from "lucide-react";
+import { LogOut, User, Menu, UserCog } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useLocation } from "wouter";
 
 interface HeaderProps {
   onLogout: () => void;
   onToggleSidebar?: () => void;
   sidebarCollapsed?: boolean;
+  currentUserId?: number; // ID del usuario actual
 }
 
-export default function Header({ onLogout, onToggleSidebar, sidebarCollapsed }: HeaderProps) {
+export default function Header({ onLogout, onToggleSidebar, sidebarCollapsed, currentUserId }: HeaderProps) {
+  const [location, navigate] = useLocation();
+
+  const handleUpdateData = () => {
+    if (currentUserId) {
+      navigate(`/people/${currentUserId}`);
+    } else {
+      // Redirigir a una página de error o mostrar mensaje si no hay ID
+      console.error("No user ID available for profile update");
+    }
+  };
+
   return (
     <header className="border-b bg-white dark:bg-gray-800 px-6 py-3">
       <div className="flex items-center justify-between">
@@ -50,9 +63,18 @@ export default function Header({ onLogout, onToggleSidebar, sidebarCollapsed }: 
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
+              {/* Nueva opción para actualizar datos */}
+              <DropdownMenuItem 
+                onClick={handleUpdateData}
+                className="text-gray-700 focus:text-gray-700 cursor-pointer"
+                data-testid="update-data-menu-item"
+              >
+                <UserCog className="mr-2 h-4 w-4" />
+                Actualizar Datos
+              </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={onLogout}
-                className="text-red-600 focus:text-red-600"
+                className="text-red-600 focus:text-red-600 cursor-pointer"
                 data-testid="logout-menu-item"
               >
                 <LogOut className="mr-2 h-4 w-4" />

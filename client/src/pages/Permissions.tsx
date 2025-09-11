@@ -7,6 +7,7 @@ import { CalendarCheck, User, Calendar, Clock, Plus } from "lucide-react";
 import type { Permission } from "@shared/schema";
 import PermissionForm from "@/components/forms/PermissionForm";
 import { useState } from "react";
+import { PermisosAPI, type ApiResponse } from "@/lib/api"; // Cambiamos la importación
 
 const statusLabels: Record<string, string> = {
   "Pending": "Pendiente",
@@ -22,9 +23,15 @@ const statusColors: Record<string, string> = {
 
 export default function PermissionsPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const { data: permissions, isLoading, error } = useQuery<Permission[]>({
-    queryKey: ['/api/permissions'],
+  
+  // Usamos el servicio específico de permisos
+  const { data: apiResponse, isLoading, error } = useQuery<ApiResponse<Permission[]>>({
+    queryKey: ['/api/v1/rh/permissions'],
+    queryFn: () => PermisosAPI.list(), // Usamos el servicio de permisos
   });
+
+  // Extraemos los permisos del formato de respuesta de la API
+  const permissions = apiResponse?.status === 'success' ? apiResponse.data : [];
 
   if (isLoading) {
     return (
@@ -63,6 +70,19 @@ export default function PermissionsPage() {
     );
   }
 
+  // Manejar errores de la API (cuando status es 'error')
+  if (apiResponse?.status === 'error') {
+    return (
+      <div className="container mx-auto p-6">
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="pt-6">
+            <p className="text-red-600">Error al cargar los permisos: {apiResponse.error.message}</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto p-6">
       <div className="flex items-center justify-between mb-6">
@@ -90,7 +110,7 @@ export default function PermissionsPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {permissions?.map((permission) => (
+        {permissions.map((permission) => (
           <Card key={permission.id} className="hover:shadow-lg transition-shadow duration-200">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
@@ -165,13 +185,16 @@ export default function PermissionsPage() {
         ))}
       </div>
 
-      {permissions && permissions.length === 0 && (
+      {permissions.length === 0 && (
         <Card className="text-center py-12">
           <CardContent>
             <CalendarCheck className="mx-auto h-12 w-12 text-gray-400 mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">No hay permisos registrados</h3>
             <p className="text-gray-600 mb-4">Comience agregando la primera solicitud de permiso</p>
-            <Button data-testid="button-add-first-permission">
+            <Button 
+              data-testid="button-add-first-permission"
+              onClick={() => setIsFormOpen(true)}
+            >
               <Plus className="mr-2 h-4 w-4" />
               Solicitar Primer Permiso
             </Button>

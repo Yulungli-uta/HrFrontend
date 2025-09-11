@@ -2,11 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { DollarSign, User, Calendar, CreditCard, Plus } from "lucide-react";
 import type { Payroll } from "@shared/schema";
 import PayrollForm from "@/components/forms/PayrollForm";
 import { useState } from "react";
+import { NominaAPI, type ApiResponse } from "@/lib/api"; // Importamos desde lib/api
 
 const statusLabels: Record<string, string> = {
   "Pending": "Pendiente",
@@ -22,9 +23,15 @@ const statusColors: Record<string, string> = {
 
 export default function PayrollPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const { data: payrolls, isLoading, error } = useQuery<Payroll[]>({
-    queryKey: ['/api/payroll'],
+  
+  // Usamos el servicio específico de nómina
+  const { data: apiResponse, isLoading, error } = useQuery<ApiResponse<Payroll[]>>({
+    queryKey: ['/api/v1/rh/payroll'],
+    queryFn: () => NominaAPI.list(), // Usamos el servicio de nómina
   });
+
+  // Extraemos las nóminas del formato de respuesta de la API
+  const payrolls = apiResponse?.status === 'success' ? apiResponse.data : [];
 
   if (isLoading) {
     return (
@@ -63,6 +70,19 @@ export default function PayrollPage() {
     );
   }
 
+  // Manejar errores de la API (cuando status es 'error')
+  if (apiResponse?.status === 'error') {
+    return (
+      <div className="container mx-auto p-6">
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="pt-6">
+            <p className="text-red-600">Error al cargar la nómina: {apiResponse.error.message}</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto p-6">
       <div className="flex items-center justify-between mb-6">
@@ -81,6 +101,10 @@ export default function PayrollPage() {
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+            <DialogTitle>Procesar Nueva Nómina</DialogTitle>
+            <DialogDescription>
+              Complete la información para procesar una nueva nómina
+            </DialogDescription>
             <PayrollForm 
               onSuccess={() => setIsFormOpen(false)}
               onCancel={() => setIsFormOpen(false)}
@@ -90,7 +114,7 @@ export default function PayrollPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {payrolls?.map((payroll) => (
+        {payrolls.map((payroll) => (
           <Card key={payroll.id} className="hover:shadow-lg transition-shadow duration-200">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
@@ -164,13 +188,16 @@ export default function PayrollPage() {
         ))}
       </div>
 
-      {payrolls && payrolls.length === 0 && (
+      {payrolls.length === 0 && (
         <Card className="text-center py-12">
           <CardContent>
             <DollarSign className="mx-auto h-12 w-12 text-gray-400 mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">No hay registros de nómina</h3>
             <p className="text-gray-600 mb-4">Comience procesando la primera nómina</p>
-            <Button data-testid="button-add-first-payroll">
+            <Button 
+              data-testid="button-add-first-payroll"
+              onClick={() => setIsFormOpen(true)}
+            >
               <Plus className="mr-2 h-4 w-4" />
               Procesar Primera Nómina
             </Button>

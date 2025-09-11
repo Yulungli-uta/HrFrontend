@@ -10,11 +10,17 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { insertEmployeeSchema, type InsertEmployee, type Employee, type Department, type Person } from "@shared/schema";
 import { UserCog, Save, X } from "lucide-react";
+import { PersonasAPI, DepartamentosAPI, EmpleadosAPI, type ApiResponse, TiposReferenciaAPI } from "@/lib/api";
 
 interface EmployeeFormProps {
   employee?: Employee;
   onSuccess?: () => void;
   onCancel?: () => void;
+}
+interface RefType {
+  typeId: number;
+  name: string;
+  category: string;
 }
 
 export default function EmployeeForm({ employee, onSuccess, onCancel }: EmployeeFormProps) {
@@ -22,18 +28,42 @@ export default function EmployeeForm({ employee, onSuccess, onCancel }: Employee
   const queryClient = useQueryClient();
   const isEditing = !!employee;
 
-  const { data: departments } = useQuery<Department[]>({
-    queryKey: ['/api/departments'],
+    // Obtener tipos de referencia
+    const { data: refTypes, isLoading: loadingRefTypes } = useQuery<RefType[]>({
+      queryKey: ['refTypes'],
+      queryFn: async () => {
+        const response = await TiposReferenciaAPI.list();
+        if (response.status === 'error') {
+          throw new Error(response.error.message);
+        }
+        return response.data || [];
+      },
+    });
+
+  // Usamos los servicios de API para obtener datos
+  const { data: departmentsResponse } = useQuery<ApiResponse<Department[]>>({
+    queryKey: ['/api/v1/rh/departments'],
+    queryFn: () => DepartamentosAPI.list(),
   });
 
-  const { data: people } = useQuery<Person[]>({
-    queryKey: ['/api/people'],
+  const { data: peopleResponse } = useQuery<ApiResponse<Person[]>>({
+    queryKey: ['/api/v1/rh/people'],
+    queryFn: () => PersonasAPI.list(),
   });
 
-  const { data: employees } = useQuery<Employee[]>({
-    queryKey: ['/api/employees'],
+  const { data: employeesResponse } = useQuery<ApiResponse<Employee[]>>({
+    queryKey: ['/api/v1/rh/employees'],
+    queryFn: () => EmpleadosAPI.list(),
   });
 
+  // Extraemos los datos de las respuestas con comprobaciones de seguridad
+  const departments = departmentsResponse?.status === 'success' ? departmentsResponse.data : [];
+  const people = peopleResponse?.status === 'success' ? peopleResponse.data : [];
+  const employees = employeesResponse?.status === 'success' ? employeesResponse.data : [];
+
+  console.log('Loaded departments:', departments);
+  console.log('Loaded people:', people);
+  console.log('Loaded employees:', employees);
   const form = useForm<InsertEmployee>({
     resolver: zodResolver(insertEmployeeSchema),
     defaultValues: employee || {
@@ -46,43 +76,41 @@ export default function EmployeeForm({ employee, onSuccess, onCancel }: Employee
     }
   });
 
+    // Filtrar tipos de referencia por categoría y asegurar que no haya valores undefined
+  // console.log('refTypes:', refTypes);
+  const contractOptions = (refTypes || []).filter(type => 
+    type?.category === 'CONTRACT_TYPE' && type.typeId !== undefined
+  );
+
   const createMutation = useMutation({
     mutationFn: async (data: InsertEmployee) => {
-      const response = await fetch("/api/employees", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-      });
-      if (!response.ok) throw new Error("Error al crear empleado");
-      return response.json();
+      const response = await EmpleadosAPI.create(data);
+      if (response.status === 'error') throw new Error(response.error.message);
+      return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/v1/rh/employees"] });
       toast({ title: "Empleado creado exitosamente" });
       onSuccess?.();
     },
-    onError: () => {
-      toast({ title: "Error al crear empleado", variant: "destructive" });
+    onError: (error: Error) => {
+      toast({ title: "Error al crear empleado", description: error.message, variant: "destructive" });
     }
   });
 
   const updateMutation = useMutation({
     mutationFn: async (data: InsertEmployee) => {
-      const response = await fetch(`/api/employees/${employee!.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-      });
-      if (!response.ok) throw new Error("Error al actualizar empleado");
-      return response.json();
+      const response = await EmpleadosAPI.update(employee!.id, data);
+      if (response.status === 'error') throw new Error(response.error.message);
+      return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/v1/rh/employees"] });
       toast({ title: "Empleado actualizado exitosamente" });
       onSuccess?.();
     },
-    onError: () => {
-      toast({ title: "Error al actualizar empleado", variant: "destructive" });
+    onError: (error: Error) => {
+      toast({ title: "Error al actualizar empleado", description: error.message, variant: "destructive" });
     }
   });
 
@@ -117,17 +145,22 @@ export default function EmployeeForm({ employee, onSuccess, onCancel }: Employee
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>ID de Persona *</FormLabel>
-                    <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
+                    <Select 
+                      onValueChange={(value) => field.onChange(parseInt(value))} 
+                      value={field.value?.toString() || ""}
+                    >
                       <FormControl>
                         <SelectTrigger data-testid="select-person">
                           <SelectValue placeholder="Seleccione una persona" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {people?.map((person) => (
-                          <SelectItem key={person.id} value={person.id.toString()}>
-                            {person.firstName} {person.lastName} - {person.idCard}
-                          </SelectItem>
+                        {people && people.map((person) => (
+                          person && person.personId && (
+                            <SelectItem key={person.personId} value={person.personId.toString()}>
+                              {person.firstName} {person.lastName} - {person.idCard}
+                            </SelectItem>
+                          )
                         ))}
                       </SelectContent>
                     </Select>
@@ -138,27 +171,32 @@ export default function EmployeeForm({ employee, onSuccess, onCancel }: Employee
 
               <FormField
                 control={form.control}
-                name="type"
+                name="contractTypeId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Tipo de Empleado *</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormLabel>Tipo de Sangre *</FormLabel>
+                    <Select 
+                      onValueChange={(value) => field.onChange(value === "contractType-empty" ? undefined : parseInt(value))} 
+                      value={field.value ? String(field.value) : "contractType-empty"}
+                    >
                       <FormControl>
-                        <SelectTrigger data-testid="select-employee-type">
-                          <SelectValue placeholder="Seleccione el tipo" />
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccione tipo de contrato" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="Teacher_LOSE">Docente LOSE</SelectItem>
-                        <SelectItem value="Administrative_LOSEP">Administrativo LOSEP</SelectItem>
-                        <SelectItem value="Employee_CT">Empleado Contrato</SelectItem>
-                        <SelectItem value="Coordinator">Coordinador</SelectItem>
+                        <SelectItem value="contractType-empty">Sin especificar</SelectItem>
+                        {contractOptions.map((option) => (
+                          <SelectItem key={`blood-${option.typeId}`} value={String(option.typeId)}>
+                            {option.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
                   </FormItem>
                 )}
-              />
+              />              
 
               <FormField
                 control={form.control}
@@ -167,8 +205,8 @@ export default function EmployeeForm({ employee, onSuccess, onCancel }: Employee
                   <FormItem>
                     <FormLabel>Departamento</FormLabel>
                     <Select 
-                      onValueChange={(value) => field.onChange(value ? parseInt(value) : null)} 
-                      value={field.value?.toString() || ""}
+                      onValueChange={(value) => field.onChange(value === "null" ? null : parseInt(value))} 
+                      value={field.value === null ? "null" : field.value?.toString() || ""}
                     >
                       <FormControl>
                         <SelectTrigger data-testid="select-department">
@@ -176,11 +214,13 @@ export default function EmployeeForm({ employee, onSuccess, onCancel }: Employee
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Sin departamento</SelectItem>
-                        {departments?.map((dept) => (
-                          <SelectItem key={dept.id} value={dept.id.toString()}>
-                            {dept.name}
-                          </SelectItem>
+                        <SelectItem value="null">Sin departamento</SelectItem>
+                        {departments && departments.map((dept) => (
+                          dept && dept.id && (
+                            <SelectItem key={dept.departmentId} value={dept.departmentId.toString()}>
+                              {dept.name}
+                            </SelectItem>
+                          )
                         ))}
                       </SelectContent>
                     </Select>
@@ -196,8 +236,8 @@ export default function EmployeeForm({ employee, onSuccess, onCancel }: Employee
                   <FormItem>
                     <FormLabel>Jefe Inmediato</FormLabel>
                     <Select 
-                      onValueChange={(value) => field.onChange(value ? parseInt(value) : null)} 
-                      value={field.value?.toString() || ""}
+                      onValueChange={(value) => field.onChange(value === "null" ? null : parseInt(value))} 
+                      value={field.value === null ? "null" : field.value?.toString() || ""}
                     >
                       <FormControl>
                         <SelectTrigger data-testid="select-boss">
@@ -205,15 +245,18 @@ export default function EmployeeForm({ employee, onSuccess, onCancel }: Employee
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Sin jefe asignado</SelectItem>
-                        {employees?.filter(emp => emp.id !== employee?.id).map((emp) => {
-                          const person = people?.find(p => p.id === emp.id);
-                          return (
-                            <SelectItem key={emp.id} value={emp.id.toString()}>
-                              {person ? `${person.firstName} ${person.lastName}` : `Empleado #${emp.id}`}
-                            </SelectItem>
-                          );
-                        })}
+                        <SelectItem value="null">Sin jefe asignado</SelectItem>
+                        {employees && employees
+                          .filter(emp => emp && emp.id !== employee?.id)
+                          .map((emp) => {
+                            if (!emp || !emp.id) return null;
+                            const person = people?.find(p => p && p.id === emp.id);
+                            return (
+                              <SelectItem key={emp.id} value={emp.id.toString()}>
+                                {person ? `${person.firstName} ${person.lastName}` : `Empleado #${emp.id}`}
+                              </SelectItem>
+                            );
+                          })}
                       </SelectContent>
                     </Select>
                     <FormMessage />

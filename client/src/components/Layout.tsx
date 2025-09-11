@@ -1,14 +1,15 @@
 import { useState } from "react";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
+import { useAuth } from '@/contexts/AuthContext';
 
 interface LayoutProps {
   children: React.ReactNode;
-  onLogout?: () => void;
 }
 
-export default function Layout({ children, onLogout }: LayoutProps) {
+export default function Layout({ children }: LayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const { logout } = useAuth();
 
   const toggleSidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
@@ -17,12 +18,12 @@ export default function Layout({ children, onLogout }: LayoutProps) {
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar 
-        onLogout={onLogout} 
+        onLogout={logout} 
         collapsed={sidebarCollapsed}
       />
       <div className="flex-1 flex flex-col">
         <Header 
-          onLogout={onLogout || (() => {})} 
+          onLogout={logout} 
           onToggleSidebar={toggleSidebar}
           sidebarCollapsed={sidebarCollapsed}
         />

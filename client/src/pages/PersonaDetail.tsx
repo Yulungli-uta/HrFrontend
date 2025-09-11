@@ -11,31 +11,45 @@ import PersonaForm from "@/components/forms/PersonaForm";
 
 export default function PersonaDetail() {
   const { id } = useParams();
-  const personaId = parseInt(id!);
+  console.log("Persona ID:", id);
+  // Validar que el id sea un número válido
+  const personaId = id && !isNaN(parseInt(id)) ? parseInt(id) : null;
+    
 
-  const { data: persona, isLoading } = useQuery({
-    queryKey: ["/api/personas", personaId],
-    queryFn: () => PersonasAPI.get(personaId),
+  // Consulta de persona solo si tenemos un ID válido
+  const { data: persona, isLoading, isError } = useQuery({
+    queryKey: ["people", personaId],
+    queryFn: () => personaId ? PersonasAPI.get(personaId) : null,
     enabled: !!personaId,
   });
 
-  const { data: contratos = [] } = useQuery({
-    queryKey: ["/api/contratos"],
-    queryFn: ContratosAPI.list,
-    select: (data) => data.filter(c => c.personaId === personaId),
+  // Consulta de contratos solo si tenemos un ID válido
+  const { data: contratos = [], isLoading: isLoadingContratos } = useQuery({
+    queryKey: ["contracts", personaId],
+    queryFn: async () => {
+      if (!personaId) return [];
+      const data = await ContratosAPI.list();
+      return data.filter(c => c.personaId === personaId);
+    },
+    enabled: !!personaId,
   });
 
-  const { data: marcaciones = [] } = useQuery({
-    queryKey: ["/api/marcaciones", personaId],
-    queryFn: () => MarcacionesAPI.list({ personaId }),
+  // Consulta de marcaciones solo si tenemos un ID válido
+  const { data: marcaciones = [], isLoading: isLoadingMarcaciones } = useQuery({
+    queryKey: ["attendance/punches", personaId],
+    queryFn: () => personaId ? MarcacionesAPI.list({ personaId }) : [],
+    enabled: !!personaId,
   });
 
-  const { data: permisos = [] } = useQuery({
-    queryKey: ["/api/permisos", personaId],
-    queryFn: () => PermisosAPI.list(personaId),
+  // Consulta de permisos solo si tenemos un ID válido
+  const { data: permisos = [], isLoading: isLoadingPermisos } = useQuery({
+    queryKey: ["permissions", personaId],
+    queryFn: () => personaId ? PermisosAPI.list(personaId) : [],
+    enabled: !!personaId,
   });
 
-  if (isLoading) {
+  // Manejar estado de carga general
+  if (isLoading || isLoadingContratos || isLoadingMarcaciones || isLoadingPermisos) {
     return (
       <div className="p-6 text-center">
         <p>Cargando información de la persona...</p>
@@ -43,7 +57,8 @@ export default function PersonaDetail() {
     );
   }
 
-  if (!persona) {
+  // Manejar errores o ID inválido
+  if (isError || !personaId || !persona) {
     return (
       <div className="p-6 text-center">
         <p>Persona no encontrada</p>
@@ -66,10 +81,10 @@ export default function PersonaDetail() {
           </Link>
           <div>
             <h2 className="text-2xl font-semibold text-foreground" data-testid="text-persona-name">
-              {persona.nombres} {persona.apellidos}
+              {persona.firstName} {persona.lastName}
             </h2>
             <p className="text-sm text-muted-foreground" data-testid="text-persona-id">
-              ID: {persona.identificacion}
+              ID: {persona.idCard}
             </p>
           </div>
         </div>
@@ -143,19 +158,19 @@ export default function PersonaDetail() {
                     <Card key={contrato.id} className="p-4">
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="font-medium">Contrato #{contrato.id}</h4>
-                        <Badge variant={contrato.estado ? "default" : "secondary"}>
-                          {contrato.estado ? "Activo" : "Inactivo"}
+                        <Badge variant={contrato.isActive ? "default" : "secondary"}>
+                          {contrato.isActive ? "Activo" : "Inactivo"}
                         </Badge>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-muted-foreground">
                         <div>
-                          <span className="font-medium">Tipo:</span> {contrato.tipo}
+                          <span className="font-medium">Tipo:</span> {contrato.type}
                         </div>
                         <div>
-                          <span className="font-medium">Fecha Inicio:</span> {contrato.fechaInicio}
+                          <span className="font-medium">Fecha Inicio:</span> {new Date(contrato.startDate).toLocaleDateString()}
                         </div>
                         <div>
-                          <span className="font-medium">Sueldo Base:</span> ${contrato.sueldoBase}
+                          <span className="font-medium">Sueldo Base:</span> ${contrato.baseSalary}
                         </div>
                       </div>
                     </Card>
@@ -179,8 +194,8 @@ export default function PersonaDetail() {
                             {new Date(marcacion.timestamp).toLocaleTimeString()}
                           </p>
                         </div>
-                        <Badge variant={marcacion.tipo === "entrada" ? "default" : "secondary"}>
-                          {marcacion.tipo}
+                        <Badge variant={marcacion.type === "in" ? "default" : "secondary"}>
+                          {marcacion.type === "in" ? "Entrada" : "Salida"}
                         </Badge>
                       </div>
                     </Card>
@@ -198,20 +213,21 @@ export default function PersonaDetail() {
                   permisos.map((permiso) => (
                     <Card key={permiso.id} className="p-4">
                       <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium">{permiso.tipo}</h4>
+                        <h4 className="font-medium">{permiso.type}</h4>
                         <Badge 
                           variant={
-                            permiso.estado === "aprobado" ? "default" :
-                            permiso.estado === "rechazado" ? "destructive" :
+                            permiso.status === "approved" ? "default" :
+                            permiso.status === "rejected" ? "destructive" :
                             "secondary"
                           }
                         >
-                          {permiso.estado}
+                          {permiso.status === "approved" ? "Aprobado" :
+                           permiso.status === "rejected" ? "Rechazado" : "Pendiente"}
                         </Badge>
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        <p>Desde: {permiso.fechaDesde} - Hasta: {permiso.fechaHasta}</p>
-                        <p>Motivo: {permiso.motivo}</p>
+                        <p>Desde: {new Date(permiso.startDate).toLocaleDateString()} - Hasta: {new Date(permiso.endDate).toLocaleDateString()}</p>
+                        <p>Motivo: {permiso.reason}</p>
                       </div>
                     </Card>
                   ))

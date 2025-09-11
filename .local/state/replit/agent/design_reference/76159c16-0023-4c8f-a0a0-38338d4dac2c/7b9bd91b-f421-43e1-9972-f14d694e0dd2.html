@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WsUtaSystem - Gestión de Talento Humano</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'inter': ['Inter', 'sans-serif']
+                    },
+                    colors: {
+                        primary: '#1976D2',
+                        secondary: '#424242',
+                        success: '#388E3C',
+                        warning: '#F57C00',
+                        error: '#D32F2F',
+                        surface: '#FFFFFF',
+                        background: '#F5F5F5'
+                    }
+                }
+            }
+        };
+    </script>
+</head>
+<body class="font-inter bg-background text-gray-900">
+    <!-- @COMPONENT: Layout [Main application layout with sidebar and content area] -->
+    <div class="flex h-screen overflow-hidden">
+        <!-- @COMPONENT: Sidebar [Navigation sidebar with menu items] -->
+        <aside class="w-60 bg-surface shadow-lg border-r border-gray-200 flex flex-col">
+            <!-- Logo Section -->
+            <div class="p-6 border-b border-gray-200">
+                <h1 class="text-xl font-bold text-primary flex items-center">
+                    <i class="fas fa-users-cog mr-3 text-2xl"></i>
+                    WsUtaSystem
+                </h1>
+                <p class="text-sm text-gray-600 mt-1">Gestión de Talento Humano</p>
+            </div>
+
+            <!-- Navigation Menu -->
+            <nav class="flex-1 p-4 space-y-2">
+                <a href="#dashboard" class="nav-item active flex items-center px-4 py-3 text-sm font-medium rounded-lg bg-primary text-white">
+                    <i class="fas fa-chart-dashboard mr-3"></i>
+                    Dashboard
+                </a>
+                <a href="#personas" class="nav-item flex items-center px-4 py-3 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100 transition-colors">
+                    <i class="fas fa-users mr-3"></i>
+                    Personas
+                </a>
+                <a href="#asistencia" class="nav-item flex items-center px-4 py-3 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100 transition-colors">
+                    <i class="fas fa-clock mr-3"></i>
+                    Asistencia
+                </a>
+                <a href="#permisos" class="nav-item flex items-center px-4 py-3 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100 transition-colors">
+                    <i class="fas fa-calendar-check mr-3"></i>
+                    Permisos & Vacaciones
+                </a>
+                <a href="#nomina" class="nav-item flex items-center px-4 py-3 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100 transition-colors">
+                    <i class="fas fa-money-check-alt mr-3"></i>
+                    Nómina
+                </a>
+                <a href="#publicaciones" class="nav-item flex items-center px-4 py-3 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100 transition-colors">
+                    <i class="fas fa-newspaper mr-3"></i>
+                    Publicaciones
+                </a>
+            </nav>
+
+            <!-- User Info -->
+            <div class="p-4 border-t border-gray-200">
+                <div class="flex items-center">
+                    <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                        <i class="fas fa-user text-white text-sm"></i>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm font-medium text-gray-900" data-mock="true">Admin Usuario</p>
+                        <p class="text-xs text-gray-600" data-mock="true">admin@empresa.com</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+        <!-- @END_COMPONENT: Sidebar -->
+
+        <!-- @COMPONENT: MainContent [Main content area with different views] -->
+        <main class="flex-1 overflow-y-auto">
+            <!-- Header -->
+            <header class="bg-surface shadow-sm border-b border-gray-200 px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 id="page-title" class="text-2xl font-semibold text-gray-900">Dashboard</h2>
+                        <p class="text-sm text-gray-600 mt-1" data-mock="true">Resumen general del sistema</p>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <button class="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors" data-event="click:showNotifications">
+                            <i class="fas fa-bell"></i>
+                        </button>
+                        <button class="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors" data-event="click:showProfile">
+                            <i class="fas fa-user-circle"></i>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dashboard View -->
+            <div id="dashboard-view" class="p-6 space-y-6">
+                <!-- Summary Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <!-- Total Personas Card -->
+                    <div class="bg-surface rounded-lg shadow-sm border border-gray-200 p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">Total Personas</p>
+                                <p class="text-3xl font-bold text-gray-900 mt-2" data-mock="true">248</p>
+                                <p class="text-sm text-success mt-1">
+                                    <i class="fas fa-arrow-up mr-1"></i>
+                                    <span data-mock="true">+12 este mes</span>
+                                </p>
+                            </div>
+                            <div class="w-12 h-12 bg-primary bg-opacity-10 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-users text-primary text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Contratos Activos Card -->
+                    <div class="bg-surface rounded-lg shadow-sm border border-gray-200 p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">Contratos Activos</p>
+                                <p class="text-3xl font-bold text-gray-900 mt-2" data-mock="true">186</p>
+                                <p class="text-sm text-gray-500 mt-1" data-mock="true">75% del total</p>
+                            </div>
+                            <div class="w-12 h-12 bg-success bg-opacity-10 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-file-contract text-success text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Marcaciones Hoy Card -->
+                    <div class="bg-surface rounded-lg shadow-sm border border-gray-200 p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">Marcaciones Hoy</p>
+                                <p class="text-3xl font-bold text-gray-900 mt-2" data-mock="true">152</p>
+                                <p class="text-sm text-gray-500 mt-1" data-mock="true">82% asistencia</p>
+                            </div>
+                            <div class="w-12 h-12 bg-warning bg-opacity-10 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-clock text-warning text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Permisos Pendientes Card -->
+                    <div class="bg-surface rounded-lg shadow-sm border border-gray-200 p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">Permisos Pendientes</p>
+                                <p class="text-3xl font-bold text-gray-900 mt-2" data-mock="true">7</p>
+                                <p class="text-sm text-error mt-1">
+                                    <i class="fas fa-exclamation-triangle mr-1"></i>
+                                    <span data-mock="true">Requieren revisión</span>
+                                </p>
+                            </div>
+                            <div class="w-12 h-12 bg-error bg-opacity-10 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-calendar-times text-error text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activities & Quick Actions -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Recent Activities -->
+                    <div class="lg:col-span-2 bg-surface rounded-lg shadow-sm border border-gray-200">
+                        <div class="p-6 border-b border-gray-200">
+                            <h3 class="text-lg font-semibold text-gray-900">Actividades Recientes</h3>
+                        </div>
+                        <div class="p-6 space-y-4" data-mock="true">
+                            <!-- @MAP: recentActivities.map(activity => ( -->
+                            <div class="flex items-center space-x-4 p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                                <div class="w-10 h-10 bg-primary bg-opacity-10 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-user-plus text-primary"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium text-gray-900">Nueva persona registrada</p>
+                                    <p class="text-xs text-gray-600">María González - Desarrolladora Senior</p>
+                                    <p class="text-xs text-gray-500">Hace 2 horas</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-4 p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                                <div class="w-10 h-10 bg-success bg-opacity-10 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-check text-success"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium text-gray-900">Permiso aprobado</p>
+                                    <p class="text-xs text-gray-600">Juan Pérez - Vacaciones del 15-20 Nov</p>
+                                    <p class="text-xs text-gray-500">Hace 4 horas</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-4 p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                                <div class="w-10 h-10 bg-warning bg-opacity-10 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-clock text-warning"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium text-gray-900">Marcación tardía</p>
+                                    <p class="text-xs text-gray-600">Carlos Ruiz - Entrada 09:15 AM</p>
+                                    <p class="text-xs text-gray-500">Hace 6 horas</p>
+                                </div>
+                            </div>
+                            <!-- @END_MAP )) -->
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="bg-surface rounded-lg shadow-sm border border-gray-200">
+                        <div class="p-6 border-b border-gray-200">
+                            <h3 class="text-lg font-semibold text-gray-900">Acciones Rápidas</h3>
+                        </div>
+                        <div class="p-6 space-y-3">
+                            <button class="w-full text-left p-4 rounded-lg border border-gray-200 hover:border-primary hover:bg-primary hover:bg-opacity-5 transition-all group" data-event="click:navigateToPersonas">
+                                <div class="flex items-center">
+                                    <i class="fas fa-user-plus text-gray-400 group-hover:text-primary mr-3"></i>
+                                    <div>
+                                        <p class="font-medium text-gray-900">Agregar Persona</p>
+                                        <p class="text-sm text-gray-600">Registrar nuevo empleado</p>
+                                    </div>
+                                </div>
+                            </button>
+                            
+                            <button class="w-full text-left p-4 rounded-lg border border-gray-200 hover:border-primary hover:bg-primary hover:bg-opacity-5 transition-all group" data-event="click:navigateToMarcaciones">
+                                <div class="flex items-center">
+                                    <i class="fas fa-clock text-gray-400 group-hover:text-primary mr-3"></i>
+                                    <div>
+                                        <p class="font-medium text-gray-900">Registrar Marcación</p>
+                                        <p class="text-sm text-gray-600">Nueva entrada/salida</p>
+                                    </div>
+                                </div>
+                            </button>
+                            
+                            <button class="w-full text-left p-4 rounded-lg border border-gray-200 hover:border-primary hover:bg-primary hover:bg-opacity-5 transition-all group" data-event="click:navigateToPermisos">
+                                <div class="flex items-center">
+                                    <i class="fas fa-calendar-check text-gray-400 group-hover:text-primary mr-3"></i>
+                                    <div>
+                                        <p class="font-medium text-gray-900">Solicitar Permiso</p>
+                                        <p class="text-sm text-gray-600">Vacaciones o ausencias</p>
+                                    </div>
+                                </div>
+                            </button>
+                            
+                            <button class="w-full text-left p-4 rounded-lg border border-gray-200 hover:border-primary hover:bg-primary hover:bg-opacity-5 transition-all group" data-event="click:navigateToNomina">
+                                <div class="flex items-center">
+                                    <i class="fas fa-file-invoice-dollar text-gray-400 group-hover:text-primary mr-3"></i>
+                                    <div>
+                                        <p class="font-medium text-gray-900">Generar Nómina</p>
+                                        <p class="text-sm text-gray-600">Procesar período actual</p>
+                                    </div>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Personas View (Hidden by default) -->
+            <div id="personas-view" class="p-6 space-y-6 hidden">
+                <!-- Personas Header -->
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-2xl font-semibold text-gray-900">Gestión de Personas</h2>
+                        <p class="text-sm text-gray-600 mt-1">Administra empleados y sus datos personales</p>
+                    </div>
+                    <button class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center" data-event="click:openPersonaModal">
+                        <i class="fas fa-plus mr-2"></i>
+                        Nueva Persona
+                    </button>
+                </div>
+
+                <!-- Search and Filters -->
+                <div class="bg-surface rounded-lg shadow-sm border border-gray-200 p-4">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div class="md:col-span-2">
+                            <input type="text" placeholder="Buscar por nombre, identificación o email..." 
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                        </div>
+                        <select class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                            <option>Todos los estados</option>
+                            <option>Activo</option>
+                            <option>Inactivo</option>
+                        </select>
+                        <button class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors">
+                            <i class="fas fa-filter mr-2"></i>
+                            Filtrar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Personas Table -->
+                <div class="bg-surface rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-50 border-b border-gray-200">
+                                <tr>
+                                    <th class="px-6 py-3 text-left font-medium text-gray-900">Identificación</th>
+                                    <th class="px-6 py-3 text-left font-medium text-gray-900">Nombre Completo</th>
+                                    <th class="px-6 py-3 text-left font-medium text-gray-900">Email</th>
+                                    <th class="px-6 py-3 text-left font-medium text-gray-900">Estado</th>
+                                    <th class="px-6 py-3 text-left font-medium text-gray-900">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200" data-mock="true">
+                                <!-- @MAP: personas.map(persona => ( -->
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4 font-medium text-gray-900">1234567890</td>
+                                    <td class="px-6 py-4">María González Pérez</td>
+                                    <td class="px-6 py-4 text-gray-600">maria.gonzalez@empresa.com</td>
+                                    <td class="px-6 py-4">
+                                        <span class="inline-flex px-2 py-1 text-xs font-medium bg-success bg-opacity-10 text-success rounded-full">
+                                            Activo
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="flex items-center space-x-2">
+                                            <button class="p-1 text-gray-600 hover:text-primary" data-event="click:viewPersona">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button class="p-1 text-gray-600 hover:text-warning" data-event="click:editPersona">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="p-1 text-gray-600 hover:text-error" data-event="click:deletePersona">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4 font-medium text-gray-900">0987654321</td>
+                                    <td class="px-6 py-4">Juan Carlos Ruiz</td>
+                                    <td class="px-6 py-4 text-gray-600">juan.ruiz@empresa.com</td>
+                                    <td class="px-6 py-4">
+                                        <span class="inline-flex px-2 py-1 text-xs font-medium bg-success bg-opacity-10 text-success rounded-full">
+                                            Activo
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="flex items-center space-x-2">
+                                            <button class="p-1 text-gray-600 hover:text-primary" data-event="click:viewPersona">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button class="p-1 text-gray-600 hover:text-warning" data-event="click:editPersona">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="p-1 text-gray-600 hover:text-error" data-event="click:deletePersona">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4 font-medium text-gray-900">1122334455</td>
+                                    <td class="px-6 py-4">Ana Sofía Martínez</td>
+                                    <td class="px-6 py-4 text-gray-600">ana.martinez@empresa.com</td>
+                                    <td class="px-6 py-4">
+                                        <span class="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-full">
+                                            Inactivo
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="flex items-center space-x-2">
+                                            <button class="p-1 text-gray-600 hover:text-primary" data-event="click:viewPersona">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button class="p-1 text-gray-600 hover:text-warning" data-event="click:editPersona">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="p-1 text-gray-600 hover:text-error" data-event="click:deletePersona">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <!-- @END_MAP )) -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Table Pagination -->
+                    <div class="px-6 py-3 border-t border-gray-200 flex items-center justify-between">
+                        <div class="text-sm text-gray-600">
+                            Mostrando <span class="font-medium" data-mock="true">1-10</span> de <span class="font-medium" data-mock="true">248</span> personas
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button class="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50" data-event="click:previousPage">
+                                Anterior
+                            </button>
+                            <button class="px-3 py-1 text-sm bg-primary text-white rounded" data-mock="true">1</button>
+                            <button class="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50" data-mock="true">2</button>
+                            <button class="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50" data-mock="true">3</button>
+                            <button class="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50" data-event="click:nextPage">
+                                Siguiente
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Persona Detail View (Hidden by default) -->
+            <div id="persona-detail-view" class="p-6 space-y-6 hidden">
+                <div class="flex items-center space-x-4 mb-6">
+                    <button class="p-2 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100" data-event="click:backToPersonas">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div>
+                        <h2 class="text-2xl font-semibold text-gray-900" data-mock="true">María González Pérez</h2>
+                        <p class="text-sm text-gray-600" data-mock="true">ID: 1234567890 - Desarrolladora Senior</p>
+                    </div>
+                </div>
+
+                <!-- Person Details with Tabs -->
+                <div class="bg-surface rounded-lg shadow-sm border border-gray-200">
+                    <!-- Tab Navigation -->
+                    <div class="border-b border-gray-200">
+                        <nav class="flex space-x-8 px-6" aria-label="Tabs">
+                            <button class="persona-tab active border-b-2 border-primary text-primary py-4 px-1 text-sm font-medium" data-tab="info">
+                                <i class="fas fa-user mr-2"></i>Información Personal
+                            </button>
+                            <button class="persona-tab border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 py-4 px-1 text-sm font-medium" data-tab="contracts">
+                                <i class="fas fa-file-contract mr-2"></i>Contratos
+                            </button>
+                            <button class="persona-tab border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 py-4 px-1 text-sm font-medium" data-tab="attendance">
+                                <i class="fas fa-clock mr-2"></i>Asistencia
+                            </button>
+                            <button class="persona-tab border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 py-4 px-1 text-sm font-medium" data-tab="permits">
+                                <i class="fas fa-calendar-check mr-2"></i>Permisos
+                            </button>
+                            <button class="persona-tab border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 py-4 px-1 text-sm font-medium" data-tab="payroll">
+                                <i class="fas fa-money-check-alt mr-2"></i>Nómina
+                            </button>
+                        </nav>
+                    </div>
+
+                    <!-- Tab Content -->
+                    <div class="p-6">
+                        <!-- Personal Info Tab -->
+                        <div id="info-tab" class="tab-content">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6" data-mock="true">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Identificación</label>
+                                    <input type="text" value="1234567890" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" readonly>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Nombres</label>
+                                    <input type="text" value="María" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Apellidos</label>
+                                    <input type="text" value="González Pérez" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Email Institucional</label>
+                                    <input type="email" value="maria.gonzalez@empresa.com" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Teléfono</label>
+                                    <input type="tel" value="+593 99 123 4567" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Fecha de Nacimiento</label>
+                                    <input type="date" value="1990-05-15" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                </div>
+                            </div>
+                            <div class="flex justify-end space-x-3 mt-6">
+                                <button class="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50" data-event="click:cancelEdit">
+                                    Cancelar
+                                </button>
+                                <button class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700" data-event="click:savePersona">
+                                    Guardar Cambios
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Contracts Tab (Hidden) -->
+                        <div id="contracts-tab" class="tab-content hidden">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-lg font-semibold text-gray-900">Historial de Contratos</h3>
+                                <button class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors" data-event="click:addContract">
+                                    <i class="fas fa-plus mr-2"></i>Nuevo Contrato
+                                </button>
+                            </div>
+                            <div class="space-y-4" data-mock="true">
+                                <div class="border border-gray-200 rounded-lg p-4">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <h4 class="font-medium text-gray-900">Desarrolladora Senior</h4>
+                                        <span class="px-2 py-1 text-xs font-medium bg-success bg-opacity-10 text-success rounded-full">Activo</span>
+                                    </div>
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
+                                        <div>
+                                            <span class="font-medium">Tipo:</span> Indefinido
+                                        </div>
+                                        <div>
+                                            <span class="font-medium">Fecha Inicio:</span> 01/03/2022
+                                        </div>
+                                        <div>
+                                            <span class="font-medium">Sueldo Base:</span> $2,800.00
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Asistencia View (Hidden by default) -->
+            <div id="asistencia-view" class="p-6 space-y-6 hidden">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-2xl font-semibold text-gray-900">Control de Asistencia</h2>
+                        <p class="text-sm text-gray-600 mt-1">Registro y consulta de marcaciones</p>
+                    </div>
+                    <button class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center" data-event="click:openMarcacionModal">
+                        <i class="fas fa-clock mr-2"></i>
+                        Nueva Marcación
+                    </button>
+                </div>
+
+                <!-- Date Filters -->
+                <div class="bg-surface rounded-lg shadow-sm border border-gray-200 p-4">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Persona</label>
+                            <select class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <option>Todas las personas</option>
+                                <option data-mock="true">María González</option>
+                                <option data-mock="true">Juan Ruiz</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Fecha Desde</label>
+                            <input type="date" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" data-mock="true">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Fecha Hasta</label>
+                            <input type="date" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" data-mock="true">
+                        </div>
+                        <div class="flex items-end">
+                            <button class="w-full bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors">
+                                <i class="fas fa-search mr-2"></i>Buscar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Attendance Table -->
+                <div class="bg-surface rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-50 border-b border-gray-200">
+                                <tr>
+                                    <th class="px-6 py-3 text-left font-medium text-gray-900">Fecha</th>
+                                    <th class="px-6 py-3 text-left font-medium text-gray-900">Persona</th>
+                                    <th class="px-6 py-3 text-left font-medium text-gray-900">Hora</th>
+                                    <th class="px-6 py-3 text-left font-medium text-gray-900">Tipo</th>
+                                    <th class="px-6 py-3 text-left font-medium text-gray-900">Estado</th>
+                                    <th class="px-6 py-3 text-left font-medium text-gray-900">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200" data-mock="true">
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4 font-medium text-gray-900">2024-11-15</td>
+                                    <td class="px-6 py-4">María González</td>
+                                    <td class="px-6 py-4">08:30:00</td>
+                                    <td class="px-6 py-4">
+                                        <span class="inline-flex px-2 py-1 text-xs font-medium bg-success bg-opacity-10 text-success rounded-full">
+                                            Entrada
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <span class="inline-flex px-2 py-1 text-xs font-medium bg-success bg-opacity-10 text-success rounded-full">
+                                            Normal
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <button class="p-1 text-gray-600 hover:text-error" data-event="click:deleteMarcacion">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4 font-medium text-gray-900">2024-11-15</td>
+                                    <td class="px-6 py-4">Juan Ruiz</td>
+                                    <td class="px-6 py-4">09:15:00</td>
+                                    <td class="px-6 py-4">
+                                        <span class="inline-flex px-2 py-1 text-xs font-medium bg-success bg-opacity-10 text-success rounded-full">
+                                            Entrada
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <span class="inline-flex px-2 py-1 text-xs font-medium bg-warning bg-opacity-10 text-warning rounded-full">
+                                            Tardía
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <button class="p-1 text-gray-600 hover:text-error" data-event="click:deleteMarcacion">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal for New Persona (Hidden by default) -->
+            <div id="persona-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center hidden">
+                <div class="bg-surface rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-screen overflow-y-auto">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-900">Nueva Persona</h3>
+                        <button class="absolute top-4 right-4 text-gray-600 hover:text-gray-900" data-event="click:closeModal">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <form class="p-6 space-y-6" data-event="submit:createPersona">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Identificación <span class="text-error">*</span>
+                                </label>
+                                <input type="text" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" 
+                                       placeholder="1234567890">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Nombres <span class="text-error">*</span>
+                                </label>
+                                <input type="text" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" 
+                                       placeholder="Juan Carlos">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Apellidos <span class="text-error">*</span>
+                                </label>
+                                <input type="text" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" 
+                                       placeholder="Pérez González">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Email Institucional</label>
+                                <input type="email" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" 
+                                       placeholder="usuario@empresa.com">
+                            </div>
+                        </div>
+                        
+                        <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                            <button type="button" class="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50" data-event="click:closeModal">
+                                Cancelar
+                            </button>
+                            <button type="submit" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700">
+                                Crear Persona
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+        </main>
+        <!-- @END_COMPONENT: MainContent -->
+    </div>
+    <!-- @END_COMPONENT: Layout -->
+
+    <!-- Toast Notification (Hidden by default) -->
+    <div id="toast" class="fixed top-4 right-4 z-50 hidden">
+        <div class="bg-surface border border-gray-200 rounded-lg shadow-lg p-4 flex items-center space-x-3 min-w-80">
+            <div class="w-8 h-8 bg-success bg-opacity-10 rounded-full flex items-center justify-center">
+                <i class="fas fa-check text-success"></i>
+            </div>
+            <div class="flex-1">
+                <p class="text-sm font-medium text-gray-900" id="toast-message" data-mock="true">Operación completada exitosamente</p>
+            </div>
+            <button class="text-gray-400 hover:text-gray-600" data-event="click:closeToast">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // TODO: Implement actual React Router navigation, API integration with fetch/axios
+        // TODO: Add form validation with react-hook-form + zod
+        // TODO: Implement data tables with @tanstack/react-table
+        // TODO: Add state management for user authentication and app state
+
+        (() => {
+            // Navigation functionality
+            const navItems = document.querySelectorAll('.nav-item');
+            const views = {
+                'dashboard': document.getElementById('dashboard-view'),
+                'personas': document.getElementById('personas-view'),
+                'persona-detail': document.getElementById('persona-detail-view'),
+                'asistencia': document.getElementById('asistencia-view')
+            };
+            
+            function showView(viewName) {
+                // Hide all views
+                Object.values(views).forEach(view => {
+                    if (view) view.classList.add('hidden');
+                });
+                
+                // Show selected view
+                if (views[viewName]) {
+                    views[viewName].classList.remove('hidden');
+                }
+                
+                // Update page title based on view
+                const titles = {
+                    'dashboard': 'Dashboard',
+                    'personas': 'Gestión de Personas',
+                    'persona-detail': 'Detalle de Persona',
+                    'asistencia': 'Control de Asistencia'
+                };
+                
+                document.getElementById('page-title').textContent = titles[viewName] || 'Dashboard';
+                
+                // Update active nav item
+                navItems.forEach(item => item.classList.remove('active', 'bg-primary', 'text-white'));
+                navItems.forEach(item => item.classList.add('text-gray-700'));
+                
+                const activeNav = document.querySelector(`[href="#${viewName}"]`);
+                if (activeNav) {
+                    activeNav.classList.add('active', 'bg-primary', 'text-white');
+                    activeNav.classList.remove('text-gray-700');
+                }
+            }
+            
+            // Navigation event listeners
+            navItems.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const href = e.currentTarget.getAttribute('href');
+                    const viewName = href.substring(1);
+                    showView(viewName);
+                });
+            });
+            
+            // Tab functionality for persona detail
+            const personaTabs = document.querySelectorAll('.persona-tab');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            personaTabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const tabName = tab.getAttribute('data-tab');
+                    
+                    // Remove active class from all tabs
+                    personaTabs.forEach(t => {
+                        t.classList.remove('active', 'border-primary', 'text-primary');
+                        t.classList.add('border-transparent', 'text-gray-500');
+                    });
+                    
+                    // Add active class to clicked tab
+                    tab.classList.add('active', 'border-primary', 'text-primary');
+                    tab.classList.remove('border-transparent', 'text-gray-500');
+                    
+                    // Hide all tab contents
+                    tabContents.forEach(content => content.classList.add('hidden'));
+                    
+                    // Show selected tab content
+                    const targetContent = document.getElementById(`${tabName}-tab`);
+                    if (targetContent) {
+                        targetContent.classList.remove('hidden');
+                    }
+                });
+            });
+            
+            // Modal functionality
+            const modal = document.getElementById('persona-modal');
+            const openModalBtns = document.querySelectorAll('[data-event*="openPersonaModal"]');
+            const closeModalBtns = document.querySelectorAll('[data-event*="closeModal"]');
+            
+            openModalBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    modal.classList.remove('hidden');
+                });
+            });
+            
+            closeModalBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    modal.classList.add('hidden');
+                });
+            });
+            
+            // Close modal when clicking outside
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.add('hidden');
+                }
+            });
+            
+            // Quick action navigation
+            document.addEventListener('click', (e) => {
+                if (e.target.closest('[data-event*="navigateToPersonas"]')) {
+                    showView('personas');
+                }
+                if (e.target.closest('[data-event*="viewPersona"]')) {
+                    showView('persona-detail');
+                }
+                if (e.target.closest('[data-event*="backToPersonas"]')) {
+                    showView('personas');
+                }
+            });
+            
+            // Toast notification
+            function showToast(message, type = 'success') {
+                const toast = document.getElementById('toast');
+                const messageEl = document.getElementById('toast-message');
+                messageEl.textContent = message;
+                
+                toast.classList.remove('hidden');
+                
+                setTimeout(() => {
+                    toast.classList.add('hidden');
+                }, 4000);
+            }
+            
+            // Example form submission
+            document.addEventListener('submit', (e) => {
+                if (e.target.matches('[data-event*="createPersona"]')) {
+                    e.preventDefault();
+                    // TODO: Implement actual API call
+                    showToast('Persona creada exitosamente');
+                    modal.classList.add('hidden');
+                }
+            });
+            
+            // Initialize dashboard view
+            showView('dashboard');
+        })();
+    </script>
+</body>
+</html>

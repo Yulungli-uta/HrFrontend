@@ -1,14 +1,13 @@
 import { useState } from "react";
 import { useParams } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Person, Publication, FamilyMember, WorkExperience, Training, Book, EmergencyContact } from "@shared/schema";
+import type { Person } from "@shared/schema";
 import PublicationForm from "@/components/forms/PublicationForm";
 import FamilyMemberForm from "@/components/forms/FamilyMemberForm";
 import WorkExperienceForm from "@/components/forms/WorkExperienceForm";
 import TrainingForm from "@/components/forms/TrainingForm";
 import BookForm from "@/components/forms/BookForm";
 import EmergencyContactForm from "@/components/forms/EmergencyContactForm";
-import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,68 +30,164 @@ import {
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogHeader, DialogTrigger } from "@/components/ui/dialog";
 import PersonForm from "@/components/forms/PersonForm";
+import { 
+  PersonasAPI, 
+  PublicacionesAPI, 
+  CargasFamiliaresAPI, 
+  ExperienciasLaboralesAPI, 
+  CapacitacionesAPI, 
+  LibrosAPI, 
+  ContactosEmergenciaAPI,
+  type ApiResponse
+} from "@/lib/api";
 
 export default function PersonDetail() {
   const { id } = useParams();
   const [isEditFormOpen, setIsEditFormOpen] = useState(false);
   const [isPublicationFormOpen, setIsPublicationFormOpen] = useState(false);
-  const [editingPublication, setEditingPublication] = useState<Publication | undefined>();
+  const [editingPublication, setEditingPublication] = useState<any | undefined>();
   const [isFamilyFormOpen, setIsFamilyFormOpen] = useState(false);
-  const [editingFamilyMember, setEditingFamilyMember] = useState<FamilyMember | undefined>();
+  const [editingFamilyMember, setEditingFamilyMember] = useState<any | undefined>();
   const [isWorkExpFormOpen, setIsWorkExpFormOpen] = useState(false);
-  const [editingWorkExperience, setEditingWorkExperience] = useState<WorkExperience | undefined>();
+  const [editingWorkExperience, setEditingWorkExperience] = useState<any | undefined>();
   const [isTrainingFormOpen, setIsTrainingFormOpen] = useState(false);
-  const [editingTraining, setEditingTraining] = useState<Training | undefined>();
+  const [editingTraining, setEditingTraining] = useState<any | undefined>();
   const [isBookFormOpen, setIsBookFormOpen] = useState(false);
-  const [editingBook, setEditingBook] = useState<Book | undefined>();
+  const [editingBook, setEditingBook] = useState<any | undefined>();
   const [isEmergencyContactFormOpen, setIsEmergencyContactFormOpen] = useState(false);
-  const [editingEmergencyContact, setEditingEmergencyContact] = useState<EmergencyContact | undefined>();
+  const [editingEmergencyContact, setEditingEmergencyContact] = useState<any | undefined>();
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const personId = Number(id);
 
-  const { data: person, isLoading } = useQuery<Person>({
-    queryKey: [`/api/people/${id}`],
-    enabled: !!id,
+  // Consulta para obtener la persona
+  const { data: personResponse, isLoading } = useQuery<ApiResponse<Person>>({
+    queryKey: [`/api/people/${personId}`],
+    queryFn: () => PersonasAPI.get(personId),
+    enabled: !!personId,
   });
 
-  const { data: publications = [], isLoading: isLoadingPublications } = useQuery<Publication[]>({
-    queryKey: [`/api/people/${id}/publications`],
-    enabled: !!id,
+  const person = personResponse?.status === 'success' ? personResponse.data : undefined;
+
+  // Consultas para obtener datos relacionados con la persona
+  const { data: publicationsResponse, isLoading: isLoadingPublications } = useQuery<ApiResponse<any[]>>({
+    queryKey: [`/api/cv/publications`],
+    queryFn: () => PublicacionesAPI.list(),
+    select: (response) => {
+      if (response.status === 'success') {
+        return {
+          status: 'success',
+          data: response.data.filter((pub: any) => pub.personId === personId)
+        };
+      }
+      return response;
+    },
+    enabled: !!personId,
   });
 
-  const { data: familyMembers = [], isLoading: isLoadingFamily } = useQuery<FamilyMember[]>({
-    queryKey: [`/api/people/${id}/family`],
-    enabled: !!id,
+  const publications = publicationsResponse?.status === 'success' ? publicationsResponse.data : [];
+
+  const { data: familyMembersResponse, isLoading: isLoadingFamily } = useQuery<ApiResponse<any[]>>({
+    queryKey: [`/api/cv/family-burden`],
+    queryFn: () => CargasFamiliaresAPI.list(),
+    select: (response) => {
+      if (response.status === 'success') {
+        return {
+          status: 'success',
+          data: response.data.filter((fam: any) => fam.personId === personId)
+        };
+      }
+      return response;
+    },
+    enabled: !!personId,
   });
 
-  const { data: workExperiences = [], isLoading: isLoadingWorkExp } = useQuery<WorkExperience[]>({
-    queryKey: [`/api/people/${id}/work-experience`],
-    enabled: !!id,
+  const familyMembers = familyMembersResponse?.status === 'success' ? familyMembersResponse.data : [];
+
+  const { data: workExperiencesResponse, isLoading: isLoadingWorkExp } = useQuery<ApiResponse<any[]>>({
+    queryKey: [`/api/cv/work-experiences`],
+    queryFn: () => ExperienciasLaboralesAPI.list(),
+    select: (response) => {
+      if (response.status === 'success') {
+        return {
+          status: 'success',
+          data: response.data.filter((work: any) => work.personId === personId)
+        };
+      }
+      return response;
+    },
+    enabled: !!personId,
   });
 
-  const { data: trainings = [], isLoading: isLoadingTrainings } = useQuery<Training[]>({
-    queryKey: [`/api/people/${id}/trainings`],
-    enabled: !!id,
+  const workExperiences = workExperiencesResponse?.status === 'success' ? workExperiencesResponse.data : [];
+
+  const { data: trainingsResponse, isLoading: isLoadingTrainings } = useQuery<ApiResponse<any[]>>({
+    queryKey: [`/api/cv/trainings`],
+    queryFn: () => CapacitacionesAPI.list(),
+    select: (response) => {
+      if (response.status === 'success') {
+        return {
+          status: 'success',
+          data: response.data.filter((train: any) => train.personId === personId)
+        };
+      }
+      return response;
+    },
+    enabled: !!personId,
   });
 
-  const { data: books = [], isLoading: isLoadingBooks } = useQuery<Book[]>({
-    queryKey: [`/api/people/${id}/books`],
-    enabled: !!id,
+  const trainings = trainingsResponse?.status === 'success' ? trainingsResponse.data : [];
+
+  const { data: booksResponse, isLoading: isLoadingBooks } = useQuery<ApiResponse<any[]>>({
+    queryKey: [`/api/cv/books`],
+    queryFn: () => LibrosAPI.list(),
+    select: (response) => {
+      if (response.status === 'success') {
+        return {
+          status: 'success',
+          data: response.data.filter((book: any) => book.personId === personId)
+        };
+      }
+      return response;
+    },
+    enabled: !!personId,
   });
 
-  const { data: emergencyContacts = [], isLoading: isLoadingEmergencyContacts } = useQuery<EmergencyContact[]>({
-    queryKey: [`/api/people/${id}/emergency-contacts`],
-    enabled: !!id,
+  const books = booksResponse?.status === 'success' ? booksResponse.data : [];
+
+  const { data: emergencyContactsResponse, isLoading: isLoadingEmergencyContacts } = useQuery<ApiResponse<any[]>>({
+    queryKey: [`/api/cv/emergency-contacts`],
+    queryFn: () => ContactosEmergenciaAPI.list(),
+    select: (response) => {
+      if (response.status === 'success') {
+        return {
+          status: 'success',
+          data: response.data.filter((contact: any) => contact.personId === personId)
+        };
+      }
+      return response;
+    },
+    enabled: !!personId,
   });
+
+  const emergencyContacts = emergencyContactsResponse?.status === 'success' ? emergencyContactsResponse.data : [];
 
   // Mutations
   const createPublicationMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest("POST", "/api/publications", data);
+      const response = await PublicacionesAPI.create({
+        ...data,
+        personId: personId
+      });
+      
+      if (response.status === 'error') {
+        throw new Error(response.error.message);
+      }
+      return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/people/${id}/publications`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/cv/publications`] });
       setIsPublicationFormOpen(false);
       setEditingPublication(undefined);
       toast({
@@ -100,10 +195,10 @@ export default function PersonDetail() {
         description: "La publicación se ha creado correctamente.",
       });
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "No se pudo crear la publicación.",
+        description: `No se pudo crear la publicación: ${error.message}`,
         variant: "destructive",
       });
     },
@@ -111,10 +206,15 @@ export default function PersonDetail() {
 
   const updatePublicationMutation = useMutation({
     mutationFn: async ({ id: pubId, data }: { id: number; data: any }) => {
-      return apiRequest("PUT", `/api/publications/${pubId}`, data);
+      const response = await PublicacionesAPI.update(pubId, data);
+      
+      if (response.status === 'error') {
+        throw new Error(response.error.message);
+      }
+      return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/people/${id}/publications`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/cv/publications`] });
       setIsPublicationFormOpen(false);
       setEditingPublication(undefined);
       toast({
@@ -122,10 +222,10 @@ export default function PersonDetail() {
         description: "La publicación se ha actualizado correctamente.",
       });
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "No se pudo actualizar la publicación.",
+        description: `No se pudo actualizar la publicación: ${error.message}`,
         variant: "destructive",
       });
     },
@@ -133,19 +233,24 @@ export default function PersonDetail() {
 
   const deletePublicationMutation = useMutation({
     mutationFn: async (pubId: number) => {
-      return apiRequest("DELETE", `/api/publications/${pubId}`);
+      const response = await PublicacionesAPI.remove(pubId);
+      
+      if (response.status === 'error') {
+        throw new Error(response.error.message);
+      }
+      return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/people/${id}/publications`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/cv/publications`] });
       toast({
         title: "Publicación eliminada",
         description: "La publicación se ha eliminado correctamente.",
       });
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "No se pudo eliminar la publicación.",
+        description: `No se pudo eliminar la publicación: ${error.message}`,
         variant: "destructive",
       });
     },
@@ -157,11 +262,11 @@ export default function PersonDetail() {
 
   const handleUpdatePublication = async (data: any) => {
     if (editingPublication) {
-      updatePublicationMutation.mutate({ id: editingPublication.id, data });
+      updatePublicationMutation.mutate({ id: editingPublication.publicationId, data });
     }
   };
 
-  const handleEditPublication = (publication: Publication) => {
+  const handleEditPublication = (publication: any) => {
     setEditingPublication(publication);
     setIsPublicationFormOpen(true);
   };
@@ -175,10 +280,18 @@ export default function PersonDetail() {
   // Family Member Mutations
   const createFamilyMemberMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest("POST", "/api/family", data);
+      const response = await CargasFamiliaresAPI.create({
+        ...data,
+        personId: personId
+      });
+      
+      if (response.status === 'error') {
+        throw new Error(response.error.message);
+      }
+      return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/people/${id}/family`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/cv/family-burden`] });
       setIsFamilyFormOpen(false);
       setEditingFamilyMember(undefined);
       toast({
@@ -186,10 +299,10 @@ export default function PersonDetail() {
         description: "La carga familiar se ha creado correctamente.",
       });
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "No se pudo crear la carga familiar.",
+        description: `No se pudo crear la carga familiar: ${error.message}`,
         variant: "destructive",
       });
     },
@@ -202,10 +315,18 @@ export default function PersonDetail() {
   // Work Experience Mutations
   const createWorkExperienceMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest("POST", "/api/work-experience", data);
+      const response = await ExperienciasLaboralesAPI.create({
+        ...data,
+        personId: personId
+      });
+      
+      if (response.status === 'error') {
+        throw new Error(response.error.message);
+      }
+      return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/people/${id}/work-experience`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/cv/work-experiences`] });
       setIsWorkExpFormOpen(false);
       setEditingWorkExperience(undefined);
       toast({
@@ -213,10 +334,10 @@ export default function PersonDetail() {
         description: "La experiencia laboral se ha creado correctamente.",
       });
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "No se pudo crear la experiencia laboral.",
+        description: `No se pudo crear la experiencia laboral: ${error.message}`,
         variant: "destructive",
       });
     },
@@ -229,10 +350,18 @@ export default function PersonDetail() {
   // Training Mutations
   const createTrainingMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest("POST", "/api/trainings", data);
+      const response = await CapacitacionesAPI.create({
+        ...data,
+        personId: personId
+      });
+      
+      if (response.status === 'error') {
+        throw new Error(response.error.message);
+      }
+      return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/people/${id}/trainings`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/cv/trainings`] });
       setIsTrainingFormOpen(false);
       setEditingTraining(undefined);
       toast({
@@ -240,10 +369,10 @@ export default function PersonDetail() {
         description: "La capacitación se ha creado correctamente.",
       });
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "No se pudo crear la capacitación.",
+        description: `No se pudo crear la capacitación: ${error.message}`,
         variant: "destructive",
       });
     },
@@ -256,10 +385,18 @@ export default function PersonDetail() {
   // Book Mutations
   const createBookMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest("POST", "/api/books", data);
+      const response = await LibrosAPI.create({
+        ...data,
+        personId: personId
+      });
+      
+      if (response.status === 'error') {
+        throw new Error(response.error.message);
+      }
+      return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/people/${id}/books`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/cv/books`] });
       setIsBookFormOpen(false);
       setEditingBook(undefined);
       toast({
@@ -267,10 +404,10 @@ export default function PersonDetail() {
         description: "El libro se ha agregado correctamente.",
       });
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "No se pudo agregar el libro.",
+        description: `No se pudo agregar el libro: ${error.message}`,
         variant: "destructive",
       });
     },
@@ -283,10 +420,18 @@ export default function PersonDetail() {
   // Emergency Contact Mutations
   const createEmergencyContactMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest("POST", "/api/emergency-contacts", data);
+      const response = await ContactosEmergenciaAPI.create({
+        ...data,
+        personId: personId
+      });
+      
+      if (response.status === 'error') {
+        throw new Error(response.error.message);
+      }
+      return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/people/${id}/emergency-contacts`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/cv/emergency-contacts`] });
       setIsEmergencyContactFormOpen(false);
       setEditingEmergencyContact(undefined);
       toast({
@@ -294,10 +439,10 @@ export default function PersonDetail() {
         description: "El contacto de emergencia se ha agregado correctamente.",
       });
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "No se pudo agregar el contacto de emergencia.",
+        description: `No se pudo agregar el contacto de emergencia: ${error.message}`,
         variant: "destructive",
       });
     },
@@ -475,7 +620,7 @@ export default function PersonDetail() {
                         </DialogDescription>
                       </DialogHeader>
                       <PublicationForm
-                        personId={parseInt(id!)}
+                        personId={personId}
                         publication={editingPublication}
                         onSubmit={editingPublication ? handleUpdatePublication : handleCreatePublication}
                         onCancel={() => {
@@ -508,23 +653,23 @@ export default function PersonDetail() {
                   <div className="space-y-4">
                     {publications.map((publication) => (
                       <div 
-                        key={publication.id} 
+                        key={publication.publicationId} 
                         className="p-4 border border-gray-200 rounded-lg hover:shadow-sm transition-shadow"
-                        data-testid={`publication-item-${publication.id}`}
+                        data-testid={`publication-item-${publication.publicationId}`}
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <h4 className="font-semibold text-gray-900 mb-2" data-testid={`publication-title-${publication.id}`}>
+                            <h4 className="font-semibold text-gray-900 mb-2" data-testid={`publication-title-${publication.publicationId}`}>
                               {publication.title}
                             </h4>
-                            {publication.journal && (
+                            {publication.journalName && (
                               <p className="text-sm text-gray-600 mb-1">
-                                <span className="font-medium">Revista:</span> {publication.journal}
+                                <span className="font-medium">Revista:</span> {publication.journalName}
                               </p>
                             )}
-                            {publication.type && (
+                            {publication.publicationTypeId && (
                               <p className="text-sm text-gray-600 mb-1">
-                                <span className="font-medium">Tipo:</span> {publication.type}
+                                <span className="font-medium">Tipo:</span> {publication.publicationTypeId}
                               </p>
                             )}
                             {publication.publicationDate && (
@@ -532,13 +677,13 @@ export default function PersonDetail() {
                                 <span className="font-medium">Fecha:</span> {new Date(publication.publicationDate).toLocaleDateString('es-EC')}
                               </p>
                             )}
-                            {publication.doi && (
+                            {publication.issn_Isbn && (
                               <p className="text-sm text-gray-600 mb-1">
-                                <span className="font-medium">DOI:</span> {publication.doi}
+                                <span className="font-medium">ISSN/ISBN:</span> {publication.issn_Isbn}
                               </p>
                             )}
-                            {publication.description && (
-                              <p className="text-sm text-gray-700 mt-2">{publication.description}</p>
+                            {publication.location && (
+                              <p className="text-sm text-gray-700 mt-2">{publication.location}</p>
                             )}
                           </div>
                           <div className="flex gap-2 ml-4">
@@ -546,16 +691,16 @@ export default function PersonDetail() {
                               size="sm"
                               variant="outline"
                               onClick={() => handleEditPublication(publication)}
-                              data-testid={`button-edit-publication-${publication.id}`}
+                              data-testid={`button-edit-publication-${publication.publicationId}`}
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handleDeletePublication(publication.id)}
+                              onClick={() => handleDeletePublication(publication.publicationId)}
                               disabled={deletePublicationMutation.isPending}
-                              data-testid={`button-delete-publication-${publication.id}`}
+                              data-testid={`button-delete-publication-${publication.publicationId}`}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -601,7 +746,7 @@ export default function PersonDetail() {
                         </DialogDescription>
                       </DialogHeader>
                       <FamilyMemberForm
-                        personId={parseInt(id!)}
+                        personId={personId}
                         familyMember={editingFamilyMember}
                         onSubmit={handleCreateFamilyMember}
                         onCancel={() => {
@@ -634,9 +779,9 @@ export default function PersonDetail() {
                   <div className="space-y-3">
                     {familyMembers.map((member) => (
                       <div 
-                        key={member.id} 
+                        key={member.burdenId} 
                         className="p-3 border border-gray-200 rounded-lg"
-                        data-testid={`family-member-item-${member.id}`}
+                        data-testid={`family-member-item-${member.burdenId}`}
                       >
                         <div className="flex items-center justify-between">
                           <div>
@@ -644,8 +789,10 @@ export default function PersonDetail() {
                               {member.firstName} {member.lastName}
                             </h4>
                             <p className="text-sm text-gray-600">
-                              {member.relationship}
-                              {member.idCard && ` • CI: ${member.idCard}`}
+                              {member.identificationTypeId} • CI: {member.dependentId}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              Fecha de nacimiento: {new Date(member.birthDate).toLocaleDateString('es-EC')}
                             </p>
                           </div>
                         </div>
@@ -689,7 +836,7 @@ export default function PersonDetail() {
                         </DialogDescription>
                       </DialogHeader>
                       <WorkExperienceForm
-                        personId={parseInt(id!)}
+                        personId={personId}
                         workExperience={editingWorkExperience}
                         onSubmit={handleCreateWorkExperience}
                         onCancel={() => {
@@ -722,9 +869,9 @@ export default function PersonDetail() {
                   <div className="space-y-3">
                     {workExperiences.map((experience) => (
                       <div 
-                        key={experience.id} 
+                        key={experience.workExpId} 
                         className="p-3 border border-gray-200 rounded-lg"
-                        data-testid={`work-experience-item-${experience.id}`}
+                        data-testid={`work-experience-item-${experience.workExpId}`}
                       >
                         <div className="flex items-start justify-between">
                           <div>
@@ -738,8 +885,8 @@ export default function PersonDetail() {
                               {new Date(experience.startDate).toLocaleDateString('es-EC')}
                               {experience.isCurrent ? ' - Actual' : experience.endDate ? ` - ${new Date(experience.endDate).toLocaleDateString('es-EC')}` : ''}
                             </p>
-                            {experience.duties && (
-                              <p className="text-xs text-gray-600 mt-1">{experience.duties}</p>
+                            {experience.institutionAddress && (
+                              <p className="text-xs text-gray-600 mt-1">{experience.institutionAddress}</p>
                             )}
                           </div>
                           {experience.isCurrent && (
@@ -788,7 +935,7 @@ export default function PersonDetail() {
                         </DialogDescription>
                       </DialogHeader>
                       <TrainingForm
-                        personId={parseInt(id!)}
+                        personId={personId}
                         training={editingTraining}
                         onSubmit={handleCreateTraining}
                         onCancel={() => {
@@ -821,28 +968,28 @@ export default function PersonDetail() {
                   <div className="space-y-3">
                     {trainings.map((training) => (
                       <div 
-                        key={training.id} 
+                        key={training.trainingId} 
                         className="p-3 border border-gray-200 rounded-lg"
-                        data-testid={`training-item-${training.id}`}
+                        data-testid={`training-item-${training.trainingId}`}
                       >
                         <div className="flex items-start justify-between">
                           <div>
                             <h4 className="font-semibold text-gray-900">
-                              {training.name}
+                              {training.title}
                             </h4>
                             <p className="text-sm text-gray-600">
-                              {training.institution} • {training.type}
+                              {training.institution} • {training.eventTypeId}
                             </p>
                             <p className="text-xs text-gray-500">
                               {new Date(training.startDate).toLocaleDateString('es-EC')}
                               {training.endDate && ` - ${new Date(training.endDate).toLocaleDateString('es-EC')}`}
-                              {training.durationHours && ` • ${training.durationHours} horas`}
+                              {training.hours && ` • ${training.hours} horas`}
                             </p>
-                            {training.description && (
-                              <p className="text-xs text-gray-600 mt-1">{training.description}</p>
+                            {training.location && (
+                              <p className="text-xs text-gray-600 mt-1">{training.location}</p>
                             )}
                           </div>
-                          {training.hasCertificate && (
+                          {training.certifiedBy && (
                             <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
                               Certificado
                             </span>
@@ -888,7 +1035,7 @@ export default function PersonDetail() {
                         </DialogDescription>
                       </DialogHeader>
                       <BookForm
-                        personId={parseInt(id!)}
+                        personId={personId}
                         book={editingBook}
                         onSubmit={handleCreateBook}
                         onCancel={() => {
@@ -921,9 +1068,9 @@ export default function PersonDetail() {
                   <div className="space-y-3">
                     {books.map((book) => (
                       <div 
-                        key={book.id} 
+                        key={book.bookId} 
                         className="p-3 border border-gray-200 rounded-lg"
-                        data-testid={`book-item-${book.id}`}
+                        data-testid={`book-item-${book.bookId}`}
                       >
                         <div className="flex items-start justify-between">
                           <div>
@@ -931,22 +1078,18 @@ export default function PersonDetail() {
                               {book.title}
                             </h4>
                             <p className="text-sm text-gray-600">
-                              {book.coAuthors}
-                              {book.publisher && ` • ${book.publisher}`}
+                              {book.publisher}
+                              {book.isbn && ` • ISBN: ${book.isbn}`}
                             </p>
                             <p className="text-xs text-gray-500">
-                              {book.category}
-                              {book.publicationDate && ` • ${new Date(book.publicationDate).toLocaleDateString('es-EC')}`}
+                              {book.publicationDate && new Date(book.publicationDate).toLocaleDateString('es-EC')}
                             </p>
-                            {book.description && (
-                              <p className="text-xs text-gray-600 mt-1">{book.description}</p>
+                            {book.peerReviewed && (
+                              <span className="inline-block px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full mt-1">
+                                Revisado por pares
+                              </span>
                             )}
                           </div>
-                          {book.isbn && (
-                            <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">
-                              ISBN
-                            </span>
-                          )}
                         </div>
                       </div>
                     ))}
@@ -988,7 +1131,7 @@ export default function PersonDetail() {
                         </DialogDescription>
                       </DialogHeader>
                       <EmergencyContactForm
-                        personId={parseInt(id!)}
+                        personId={personId}
                         emergencyContact={editingEmergencyContact}
                         onSubmit={handleCreateEmergencyContact}
                         onCancel={() => {
@@ -1021,9 +1164,9 @@ export default function PersonDetail() {
                   <div className="space-y-3">
                     {emergencyContacts.map((contact) => (
                       <div 
-                        key={contact.id} 
+                        key={contact.contactId} 
                         className="p-3 border border-gray-200 rounded-lg"
-                        data-testid={`emergency-contact-item-${contact.id}`}
+                        data-testid={`emergency-contact-item-${contact.contactId}`}
                       >
                         <div className="flex items-start justify-between">
                           <div>
@@ -1031,20 +1174,15 @@ export default function PersonDetail() {
                               {contact.firstName} {contact.lastName}
                             </h4>
                             <p className="text-sm text-gray-600">
-                              {contact.relationship} • {contact.phone}
+                              {contact.relationshipTypeId} • {contact.phone}
                             </p>
-                            {contact.email && (
-                              <p className="text-xs text-gray-500">{contact.email}</p>
+                            {contact.mobile && (
+                              <p className="text-xs text-gray-500">Móvil: {contact.mobile}</p>
                             )}
                             {contact.address && (
                               <p className="text-xs text-gray-500">{contact.address}</p>
                             )}
                           </div>
-                          {contact.isPrimary && (
-                            <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
-                              Principal
-                            </span>
-                          )}
                         </div>
                       </div>
                     ))}

@@ -3,7 +3,6 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { useAuth } from "@/hooks/useAuth";
 import Layout from "@/components/Layout";
 import LoginPage from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
@@ -21,16 +20,18 @@ import OvertimePage from "@/pages/Overtime";
 import ReportsPage from "@/pages/Reports";
 import NotFound from "@/pages/not-found";
 import PersonDetail from "@/pages/PersonDetail";
+import JustificationPage from "@/pages/Justifications";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 
 function Router() {
-  const { isAuthenticated, login, logout } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   if (!isAuthenticated) {
-    return <LoginPage onLogin={login} />;
+    return <LoginPage />;
   }
 
   return (
-    <Layout onLogout={logout}>
+    <Layout>
       <Switch>
         <Route path="/" component={Dashboard} />
         <Route path="/people" component={PeoplePage} />
@@ -46,6 +47,7 @@ function Router() {
         <Route path="/schedules" component={SchedulesPage} />
         <Route path="/overtime" component={OvertimePage} />
         <Route path="/reports" component={ReportsPage} />
+        <Route path="/justification" component={JustificationPage} />
         <Route component={NotFound} />
       </Switch>
     </Layout>
@@ -55,10 +57,12 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

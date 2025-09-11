@@ -9,6 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { insertContractSchema, type InsertContract, type Contract, type Employee, type Person } from "@shared/schema";
 import { FileText, Save, X, Calendar, DollarSign } from "lucide-react";
+import { ContratosAPI, EmpleadosAPI, PersonasAPI, type ApiResponse } from "@/lib/api"; // Importamos los servicios de API
 
 interface ContractFormProps {
   contract?: Contract;
@@ -21,14 +22,21 @@ export default function ContractForm({ contract, onSuccess, onCancel }: Contract
   const queryClient = useQueryClient();
   const isEditing = !!contract;
 
-  const { data: employees } = useQuery<Employee[]>({
-    queryKey: ['/api/employees'],
+  // Usamos los servicios de API para obtener datos
+  const { data: employeesResponse } = useQuery<ApiResponse<Employee[]>>({
+    queryKey: ['/api/v1/rh/employees'],
+    queryFn: () => EmpleadosAPI.list(),
   });
 
-  const { data: people } = useQuery<Person[]>({
-    queryKey: ['/api/people'],
+  const { data: peopleResponse } = useQuery<ApiResponse<Person[]>>({
+    queryKey: ['/api/v1/rh/people'],
+    queryFn: () => PersonasAPI.list(),
   });
 
+  // Extraemos los datos de las respuestas
+  const employees = employeesResponse?.status === 'success' ? employeesResponse.data : [];
+  const people = peopleResponse?.status === 'success' ? peopleResponse.data : [];
+  
   const form = useForm<InsertContract>({
     resolver: zodResolver(insertContractSchema),
     defaultValues: contract || {
@@ -42,41 +50,33 @@ export default function ContractForm({ contract, onSuccess, onCancel }: Contract
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertContract) => {
-      const response = await fetch("/api/contracts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-      });
-      if (!response.ok) throw new Error("Error al crear contrato");
-      return response.json();
+      const response = await ContratosAPI.create(data);
+      if (response.status === 'error') throw new Error(response.error.message);
+      return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/contracts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/v1/rh/contracts"] });
       toast({ title: "Contrato creado exitosamente" });
       onSuccess?.();
     },
-    onError: () => {
-      toast({ title: "Error al crear contrato", variant: "destructive" });
+    onError: (error: Error) => {
+      toast({ title: "Error al crear contrato", description: error.message, variant: "destructive" });
     }
   });
 
   const updateMutation = useMutation({
     mutationFn: async (data: InsertContract) => {
-      const response = await fetch(`/api/contracts/${contract!.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-      });
-      if (!response.ok) throw new Error("Error al actualizar contrato");
-      return response.json();
+      const response = await ContratosAPI.update(contract!.id, data);
+      if (response.status === 'error') throw new Error(response.error.message);
+      return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/contracts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/v1/rh/contracts"] });
       toast({ title: "Contrato actualizado exitosamente" });
       onSuccess?.();
     },
-    onError: () => {
-      toast({ title: "Error al actualizar contrato", variant: "destructive" });
+    onError: (error: Error) => {
+      toast({ title: "Error al actualizar contrato", description: error.message, variant: "destructive" });
     }
   });
 
@@ -153,20 +153,25 @@ export default function ContractForm({ contract, onSuccess, onCancel }: Contract
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Empleado *</FormLabel>
-                    <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
+                    <Select 
+                      onValueChange={(value) => field.onChange(parseInt(value))} 
+                      value={field.value?.toString() || ""}
+                    >
                       <FormControl>
                         <SelectTrigger data-testid="select-employee">
                           <SelectValue placeholder="Seleccione un empleado" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {employees?.map((employee) => {
+                        {employees && employees.map((employee) => {
                           const person = people?.find(p => p.id === employee.id);
                           return (
-                            <SelectItem key={employee.id} value={employee.id.toString()}>
-                              {person ? `${person.firstName} ${person.lastName}` : `Empleado #${employee.id}`}
-                              <span className="text-xs text-gray-500 ml-2">({employee.type})</span>
-                            </SelectItem>
+                            employee && employee.id && (
+                              <SelectItem key={employee.id} value={employee.id.toString()}>
+                                {person ? `${person.firstName} ${person.lastName}` : `Empleado #${employee.id}`}
+                                <span className="text-xs text-gray-500 ml-2">({employee.type})</span>
+                              </SelectItem>
+                            )
                           );
                         })}
                       </SelectContent>

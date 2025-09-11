@@ -2,8 +2,7 @@ import { useState, useMemo } from "react";
 import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Person, InsertPerson, Employee } from "@shared/schema";
-import PersonForm from "@/components/forms/PersonForm";
-import { apiRequest } from "@/lib/queryClient";
+import  PersonForm  from "@/components/forms/PersonForm";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,6 +35,9 @@ import {
   Eye
 } from "lucide-react";
 
+import { PersonasAPI, EmpleadosAPI } from "@/lib/api";
+import { ApiResponse } from "@/lib/api";
+
 export default function People() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -44,13 +46,42 @@ export default function People() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: people = [], isLoading: isLoadingPeople } = useQuery<Person[]>({
-    queryKey: ["/api/people"],
+  // Obtener personas con manejo de errores mejorado
+  const { 
+    data: peopleResponse, 
+    isLoading: isLoadingPeople,
+    isError: isErrorPeople,
+    error: errorPeople
+  } = useQuery<ApiResponse<Person[]>>({
+    queryKey: ["people"],
+    queryFn: () => PersonasAPI.list(),
   });
 
-  const { data: employees = [], isLoading: isLoadingEmployees } = useQuery<Employee[]>({
-    queryKey: ["/api/employees"],
+  const people = useMemo(() => {
+    if (peopleResponse?.status === 'success') {
+      console.log("Datos de personas:", peopleResponse.data);
+      return peopleResponse.data || [];
+    }
+    return [];
+  }, [peopleResponse]);
+
+  // Obtener empleados con manejo de errores mejorado
+  const { 
+    data: employeesResponse, 
+    isLoading: isLoadingEmployees,
+    isError: isErrorEmployees,
+    error: errorEmployees
+  } = useQuery<ApiResponse<Employee[]>>({
+    queryKey: ["employees"],
+    queryFn: () => EmpleadosAPI.list(),
   });
+
+  const employees = useMemo(() => {
+    if (employeesResponse?.status === 'success') {
+      return employeesResponse.data || [];
+    }
+    return [];
+  }, [employeesResponse]);
 
   // Filtrar personas por término de búsqueda
   const filteredPeople = useMemo(() => {
@@ -81,37 +112,51 @@ export default function People() {
     };
   }, [people, employees]);
 
+  // Mutación para crear persona con el nuevo servicio API
   const createPersonMutation = useMutation({
     mutationFn: async (data: InsertPerson) => {
-      return apiRequest("/api/people", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      const response = await PersonasAPI.create(data);
+      if (response.status === 'error') {
+        throw new Error(response.error.message || "Error al crear persona");
+      }
+      return response.data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/people"] });
+    onSuccess: (createdPerson) => {
+      // Actualización optimista de la caché
+      queryClient.setQueryData(['people'], (old: Person[] | undefined) => 
+        old ? [...old, createdPerson] : [createdPerson]
+      );
+      
       setIsFormOpen(false);
       toast({
         title: "Persona creada",
-        description: "La nueva persona se ha registrado correctamente.",
+        description: `${createdPerson.firstName} ${createdPerson.lastName} se ha registrado correctamente.`,
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
         description: error.message || "No se pudo crear la persona.",
         variant: "destructive",
       });
     },
+    onSettled: () => {
+      // Invalidar query para asegurar datos frescos
+      queryClient.invalidateQueries({ queryKey: ["people"] });
+    }
   });
 
   const handleCreatePerson = async (data: InsertPerson) => {
     createPersonMutation.mutate(data);
   };
 
-  if (isLoadingPeople || isLoadingEmployees) {
+  // Manejar estados de error
+  if (isErrorPeople || isErrorEmployees) {
+    const errorMessage = errorPeople?.message || errorEmployees?.message || 
+                         "Error al cargar los datos";
+    
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 p-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Gestión de Personas</h1>
@@ -119,22 +164,95 @@ export default function People() {
           </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Card key={i} className="animate-pulse">
-              <CardHeader className="space-y-2">
-                <div className="h-4 bg-gray-300 rounded w-3/4"></div>
-                <div className="h-8 bg-gray-300 rounded w-1/2"></div>
-              </CardHeader>
-            </Card>
-          ))}
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <div className="text-red-600 font-medium text-lg mb-2">
+            Error al cargar los datos
+          </div>
+          <p className="text-red-500 mb-4">{errorMessage}</p>
+          <Button 
+            variant="outline"
+            onClick={() => {
+              queryClient.refetchQueries({ queryKey: ["people"] });
+              queryClient.refetchQueries({ queryKey: ["employees"] });
+            }}
+          >
+            Reintentar
+          </Button>
         </div>
       </div>
     );
   }
 
+  // Mostrar estado de carga
+  if (isLoadingPeople || isLoadingEmployees) {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Gestión de Personas</h1>
+            <p className="text-gray-600 mt-2">Dashboard de personal y directorio</p>
+          </div>
+          <Button className="bg-uta-blue hover:bg-uta-blue/90 opacity-50" disabled>
+            <Plus className="mr-2 h-4 w-4" />
+            Agregar Persona
+          </Button>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i} className="animate-pulse">
+              <CardHeader className="space-y-2">
+                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                <div className="h-6 bg-gray-200 rounded w-1/2"></div>
+              </CardHeader>
+            </Card>
+          ))}
+        </div>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span>Directorio de Personal</span>
+              <div className="relative w-72">
+                <div className="absolute left-2 top-2.5 h-4 w-4 bg-gray-200 rounded"></div>
+                <div className="h-10 bg-gray-200 rounded w-full"></div>
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    {[...Array(6)].map((_, i) => (
+                      <TableHead key={i}>
+                        <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {[...Array(5)].map((_, i) => (
+                    <TableRow key={i}>
+                      {[...Array(6)].map((_, j) => (
+                        <TableCell key={j}>
+                        {/* <TableCell key={`skeleton-cell-${rowIndex}-${cellIndex}`}> */}
+                          <div className="h-4 bg-gray-200 rounded"></div>
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Gestión de Personas</h1>
@@ -263,8 +381,10 @@ export default function People() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredPeople.map((person) => (
-                    <TableRow key={person.id} data-testid={`person-row-${person.id}`}>
+                  filteredPeople.map((person) => {
+                    // console.log("Person ID:", person.personId);
+                    return (
+                    <TableRow key={person.id} data-testid={`person-row-${person.personId}`}>
                       <TableCell className="font-medium">
                         {person.firstName} {person.lastName}
                       </TableCell>
@@ -277,11 +397,11 @@ export default function People() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Link href={`/people/${person.id}`}>
+                        <Link href={`/people/${person.personId}`}>
                           <Button
                             variant="outline"
                             size="sm"
-                            data-testid={`button-view-person-${person.id}`}
+                            data-testid={`button-view-person-${person.personId}`}
                           >
                             <Eye className="h-4 w-4 mr-2" />
                             Ver Detalle
@@ -289,8 +409,10 @@ export default function People() {
                         </Link>
                       </TableCell>
                     </TableRow>
+                    );
+                  }
                   ))
-                )}
+                }
               </TableBody>
             </Table>
           </div>

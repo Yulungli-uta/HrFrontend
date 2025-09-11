@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, User, CalendarDays, Plus } from "lucide-react";
 import type { Vacation } from "@shared/schema";
+import { VacacionesAPI, type ApiResponse } from "@/lib/api"; // Cambiamos la importación
 
 const statusLabels: Record<string, string> = {
   "Planned": "Planificadas",
@@ -20,9 +21,14 @@ const statusColors: Record<string, string> = {
 };
 
 export default function VacationsPage() {
-  const { data: vacations, isLoading, error } = useQuery<Vacation[]>({
-    queryKey: ['/api/vacations'],
+  // Usamos el servicio específico de vacaciones
+  const { data: apiResponse, isLoading, error } = useQuery<ApiResponse<Vacation[]>>({
+    queryKey: ['/api/v1/rh/vacations'], // Cambiamos la queryKey
+    queryFn: () => VacacionesAPI.list(), // Usamos el servicio de vacaciones
   });
+
+  // Extraemos las vacaciones del formato de respuesta de la API
+  const vacations = apiResponse?.status === 'success' ? apiResponse.data : [];
 
   if (isLoading) {
     return (
@@ -61,6 +67,19 @@ export default function VacationsPage() {
     );
   }
 
+  // Manejar errores de la API (cuando status es 'error')
+  if (apiResponse?.status === 'error') {
+    return (
+      <div className="container mx-auto p-6">
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="pt-6">
+            <p className="text-red-600">Error al cargar las vacaciones: {apiResponse.error.message}</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto p-6">
       <div className="flex items-center justify-between mb-6">
@@ -78,7 +97,7 @@ export default function VacationsPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {vacations?.map((vacation) => (
+        {vacations.map((vacation) => (
           <Card key={vacation.id} className="hover:shadow-lg transition-shadow duration-200">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
@@ -148,7 +167,7 @@ export default function VacationsPage() {
         ))}
       </div>
 
-      {vacations && vacations.length === 0 && (
+      {vacations.length === 0 && (
         <Card className="text-center py-12">
           <CardContent>
             <Calendar className="mx-auto h-12 w-12 text-gray-400 mb-4" />

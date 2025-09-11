@@ -7,12 +7,19 @@ import { Building, Building2, Plus } from "lucide-react";
 import type { Department } from "@shared/schema";
 import DepartmentForm from "@/components/forms/DepartmentForm";
 import { useState } from "react";
+import { DepartamentosAPI, type ApiResponse } from "@/lib/api"; // Importamos desde lib/api
 
 export default function DepartmentsPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const { data: departments, isLoading, error } = useQuery<Department[]>({
-    queryKey: ['/api/departments'],
+  
+  // Usamos el servicio específico de departamentos
+  const { data: apiResponse, isLoading, error } = useQuery<ApiResponse<Department[]>>({
+    queryKey: ['/api/v1/rh/departments'], // Cambiamos la queryKey
+    queryFn: () => DepartamentosAPI.list(), // Usamos el servicio de departamentos
   });
+
+  // Extraemos los departamentos del formato de respuesta de la API
+  const departments = apiResponse?.status === 'success' ? apiResponse.data : [];
 
   if (isLoading) {
     return (
@@ -50,6 +57,19 @@ export default function DepartmentsPage() {
     );
   }
 
+  // Manejar errores de la API (cuando status es 'error')
+  if (apiResponse?.status === 'error') {
+    return (
+      <div className="container mx-auto p-6">
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="pt-6">
+            <p className="text-red-600">Error al cargar los departamentos: {apiResponse.error.message}</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto p-6">
       <div className="flex items-center justify-between mb-6">
@@ -77,7 +97,7 @@ export default function DepartmentsPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {departments?.map((department) => (
+        {departments.map((department) => (
           <Card key={department.id} className="hover:shadow-lg transition-shadow duration-200">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
@@ -127,13 +147,16 @@ export default function DepartmentsPage() {
         ))}
       </div>
 
-      {departments && departments.length === 0 && (
+      {departments.length === 0 && (
         <Card className="text-center py-12">
           <CardContent>
             <Building className="mx-auto h-12 w-12 text-gray-400 mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">No hay departamentos registrados</h3>
             <p className="text-gray-600 mb-4">Comience agregando el primer departamento al sistema</p>
-            <Button data-testid="button-add-first-department">
+            <Button 
+              data-testid="button-add-first-department"
+              onClick={() => setIsFormOpen(true)}
+            >
               <Plus className="mr-2 h-4 w-4" />
               Agregar Primer Departamento
             </Button>

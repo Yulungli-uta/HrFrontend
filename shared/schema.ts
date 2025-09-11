@@ -24,8 +24,8 @@ export const people = pgTable("people", {
   email: varchar("email", { length: 150 }).notNull().unique(),
   phone: varchar("phone", { length: 30 }),
   birthDate: date("birth_date"),
-  sex: varchar("sex", { length: 1 }), // 'M'|'F'|'O'
-  gender: varchar("gender", { length: 50 }),
+  sex: integer("sex"),//("sex", { length:  }), // 'M'|'F'|'O'
+  gender: integer("gender"),//varchar("gender", { length: 50 }),
   disability: text("disability"),
   address: text("address"),
   isActive: boolean("is_active").default(true).notNull(),
