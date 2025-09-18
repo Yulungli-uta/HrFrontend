@@ -4,7 +4,7 @@ import { TokenPair, UserSession, LoginRequest } from './types';
 
 // Configuración específica para autenticación
 const AUTH_API_BASE_URL = import.meta.env.VITE_AUTH_API_BASE_URL || 'http://localhost:5010';
-
+const APP_CLIENT_ID = import.meta.env.VITE_APP_CLIENT_ID;
 // Cliente específico para autenticación con mejor manejo de errores
 async function authFetch<T = any>(
   path: string,
@@ -161,8 +161,13 @@ export const authService = {
 
   async getAzureAuthUrl(): Promise<{ url: string; state: string }> {
     console.log('🌐 Getting Azure Auth URL');
-    
-    const response = await authFetch<{ data: { url: string; state: string }; success: boolean }>('/api/auth/azure/url');
+    const clientId = APP_CLIENT_ID; 
+    const urlAux = `/api/auth/azure/url?clientId=${encodeURIComponent(APP_CLIENT_ID)}`;
+    // const response = await authFetch<{ data: { url: string; state: string }; success: boolean }>('/api/auth/azure/url');
+    const response = await authFetch<{ 
+      data: { url: string; state: string }; 
+      // success: boolean }>('/api/auth/azure/url');
+      success: boolean }>(urlAux);
     
     if (response.status === 'error') {
       console.error('❌ Failed to get Azure Auth URL:', response.error);

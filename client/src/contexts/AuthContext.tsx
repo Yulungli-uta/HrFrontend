@@ -4,6 +4,7 @@ import { authService, tokenService, UserSession } from '@/services/auth';
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from 'wouter';
 import { VistaDetallesEmpleadosAPI } from '@/lib/api';
+import { useNotificationWebSocket } from '@/hooks/useNotificationWebSocket';
 
 // Interfaz para los detalles del empleado
 export interface EmployeeDetails {
@@ -26,12 +27,14 @@ interface AuthContextType {
   user: UserSession | null; 
   employeeDetails: EmployeeDetails | null;
   isLoading: boolean;
+  isWebSocketConnected: boolean; 
   login: (email: string, password: string) => Promise<boolean>;
   loginWithOffice365: () => Promise<void>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const APP_CLIENT_ID = import.meta.env.VITE_APP_CLIENT_ID;
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -44,6 +47,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+
+  // Notification WebSocket
+  const clientId = APP_CLIENT_ID; 
+  const { isConnected } = useNotificationWebSocket(clientId);
 
   // 15 minutos de inactividad
   const INACTIVITY_TIMEOUT = 15 * 60 * 1000;
@@ -193,6 +200,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       setIsLoading(true);
+      console.log("Entro al login local")
       const tokens = await authService.loginLocal({ email, password });
       
       const userInfo = await authService.getCurrentUser(tokens.accessToken);
@@ -249,6 +257,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       user,
       employeeDetails,
       isLoading,
+      isWebSocketConnected: isConnected, // Nuevo valor
       login,
       loginWithOffice365,
       logout,
@@ -265,3 +274,5 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
+
+useAuth.displayName = 'useAuth';

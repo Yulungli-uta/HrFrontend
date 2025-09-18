@@ -2,7 +2,8 @@ import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
+// import { TooltipProvider } from "@/components/ui/tooltip";
+import { TooltipProvider } from "@radix-ui/react-tooltip"; 
 import Layout from "@/components/Layout";
 import LoginPage from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
@@ -22,6 +23,7 @@ import NotFound from "@/pages/not-found";
 import PersonDetail from "@/pages/PersonDetail";
 import JustificationPage from "@/pages/Justifications";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+// import Office365Callback from '@/components/Office365Callback';
 
 function Router() {
   const { isAuthenticated } = useAuth();
@@ -48,6 +50,7 @@ function Router() {
         <Route path="/overtime" component={OvertimePage} />
         <Route path="/reports" component={ReportsPage} />
         <Route path="/justification" component={JustificationPage} />
+        {/* <Route path="/auth/office365/callback" component={Office365Callback} /> */}
         <Route component={NotFound} />
       </Switch>
     </Layout>

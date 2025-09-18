@@ -43,6 +43,64 @@ export interface ApiError {
 }
 
 // =============================================================================
+// Interfaces para las nuevas APIs de autenticación
+// =============================================================================
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface RefreshRequest {
+  refreshToken: string;
+}
+
+export interface ValidateTokenRequest {
+  token: string;
+  clientId?: string;
+}
+
+export interface AppAuthRequest {
+  clientId?: string;
+  clientSecret?: string;
+}
+
+export interface LegacyAuthRequest {
+  clientId?: string;
+  clientSecret?: string;
+  userEmail?: string;
+  password?: string;
+  includePermissions?: boolean;
+}
+
+export interface LoginResponse {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+  tokenType: string;
+}
+
+export interface UserInfo {
+  id: string;
+  email: string;
+  displayName: string;
+  userType: string;
+  roles: string[];
+  permissions: string[];
+}
+
+export interface AzureAuthUrlResponse {
+  url: string;
+}
+
+export interface StatsResponse {
+  totalUsers: number;
+  activeSessions: number;
+  failedAttempts: number;
+  // ... otras estadísticas según la respuesta real
+}
+
+// =============================================================================
 // Función principal para llamadas API
 // =============================================================================
 
@@ -70,7 +128,7 @@ export async function apiFetch<T = any>(
   try {
     const response = await fetch(`${API_CONFIG.BASE_URL}${path}`, {
       credentials: API_CONFIG.CREDENTIALS,
-      headers: { ...API_CONFIG.DEFAULT_HEADERS, ...init.headers },
+      headers,
       ...init,
       signal: controller.signal
     });
@@ -202,6 +260,117 @@ export function createApiService<Resource, CreateDTO, UpdateDTO = Partial<Resour
 }
 
 // =============================================================================
+// Servicios de Autenticación (Nuevos)
+// =============================================================================
+
+export const AuthAPI = {
+  /**
+   * Login tradicional con email y password
+   * @param credentials Credenciales de login
+   * @returns Respuesta con tokens de autenticación
+   */
+  login: (credentials: LoginRequest): Promise<ApiResponse<LoginResponse>> =>
+    apiFetch<LoginResponse>('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(credentials)
+    }),
+
+  /**
+   * Refresh token
+   * @param refreshRequest Solicitud de refresh token
+   * @returns Nueva respuesta con tokens
+   */
+  refresh: (refreshRequest: RefreshRequest): Promise<ApiResponse<LoginResponse>> =>
+    apiFetch<LoginResponse>('/api/auth/refresh', {
+      method: 'POST',
+      body: JSON.stringify(refreshRequest)
+    }),
+
+  /**
+   * Obtiene información del usuario actual
+   * @returns Información del usuario autenticado
+   */
+  getCurrentUser: (): Promise<ApiResponse<UserInfo>> =>
+    apiFetch<UserInfo>('/api/auth/me'),
+
+  /**
+   * Valida un token
+   * @param validateRequest Solicitud de validación de token
+   * @returns Resultado de la validación
+   */
+  validateToken: (validateRequest: ValidateTokenRequest): Promise<ApiResponse<any>> =>
+    apiFetch<any>('/api/auth/validate-token', {
+      method: 'POST',
+      body: JSON.stringify(validateRequest)
+    }),
+
+  /**
+   * Obtiene URL de autenticación con Azure
+   * @param clientId ID del cliente (opcional)
+   * @returns URL de autenticación
+   */
+  getAzureAuthUrl: (clientId?: string): Promise<ApiResponse<AzureAuthUrlResponse>> => {
+    console.log("valor del cliendId: " + clientId);
+    const queryParams = clientId ? `?clientId=${encodeURIComponent(clientId)}` : '';
+    return apiFetch<AzureAuthUrlResponse>(`/api/auth/azure/url${queryParams}`);
+  },
+
+  /**
+   * Callback de autenticación con Azure
+   * @param code Código de autorización
+   * @param state Estado de la solicitud
+   * @returns Resultado de la autenticación
+   */
+  azureCallback: (code: string, state: string): Promise<ApiResponse<LoginResponse>> => {
+    const queryParams = `?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
+    return apiFetch<LoginResponse>(`/api/auth/azure/callback${queryParams}`);
+  }
+};
+
+export const AppAuthAPI = {
+  /**
+   * Obtiene token de aplicación
+   * @param authRequest Solicitud de autenticación de aplicación
+   * @returns Token de aplicación
+   */
+  getToken: (authRequest: AppAuthRequest): Promise<ApiResponse<any>> =>
+    apiFetch<any>('/api/app-auth/token', {
+      method: 'POST',
+      body: JSON.stringify(authRequest)
+    }),
+
+  /**
+   * Login legacy para aplicaciones
+   * @param authRequest Solicitud de autenticación legacy
+   * @returns Resultado de la autenticación
+   */
+  legacyLogin: (authRequest: LegacyAuthRequest): Promise<ApiResponse<any>> =>
+    apiFetch<any>('/api/app-auth/legacy-login', {
+      method: 'POST',
+      body: JSON.stringify(authRequest)
+    }),
+
+  /**
+   * Valida token de aplicación
+   * @param validateRequest Solicitud de validación de token
+   * @returns Resultado de la validación
+   */
+  validateToken: (validateRequest: ValidateTokenRequest): Promise<ApiResponse<any>> =>
+    apiFetch<any>('/api/app-auth/validate-token', {
+      method: 'POST',
+      body: JSON.stringify(validateRequest)
+    }),
+
+  /**
+   * Obtiene estadísticas de autenticación
+   * @param clientId ID del cliente
+   * @returns Estadísticas de autenticación
+   */
+  getStats: (clientId: string): Promise<ApiResponse<StatsResponse>> =>
+    apiFetch<StatsResponse>(`/api/app-auth/stats/${clientId}`)
+};
+
+// =============================================================================
 // Servicios específicos con tipos definidos
 // =============================================================================
 
@@ -249,7 +418,6 @@ export const TiposReferenciaAPI = {
   byCategory: (category: string): Promise<ApiResponse<any[]>> => 
     apiFetch<any[]>(`/api/v1/rh/ref/types/category/${category}`)
 };
-
 
 // Servicios especializados para AttendancePunches
 export const MarcacionesEspecializadasAPI = {
@@ -337,6 +505,7 @@ export const VistaEmpleadosAPI = {
   byDepartment: (department: string): Promise<ApiResponse<any[]>> => 
     apiFetch<any[]>(`/api/v1/rh/vw/EmployeeComplete/department/${department}`)
 };
+
 // =============================================================================
 // Servicios para Time API (Nuevos - Faltantes)
 // =============================================================================
