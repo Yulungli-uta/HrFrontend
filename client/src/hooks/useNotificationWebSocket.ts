@@ -1,80 +1,136 @@
+// hooks/useNotificationWebSocket.ts
 import { useEffect, useState, useCallback, useRef } from 'react';
 import * as signalR from '@microsoft/signalr';
 
-export const useNotificationWebSocket = (clientId: string | null) => {
-    const [connection, setConnection] = useState<signalR.HubConnection | null>(null);
-    const [isConnected, setIsConnected] = useState(false);
-    const connectionRef = useRef<signalR.HubConnection | null>(null);
+export interface WebSocketMessage {
+  eventType: string;
+  timestamp: string;
+  context: {
+    initiatingApplication: string;
+    loginSource: string;
+    sessionScope: string;
+    notificationType: string;
+  };
+  data: {
+    userId: string;
+    email: string;
+    displayName: string;
+    loginType: string;
+    ipAddress: string;
+    roles: string[];
+    permissions: any[];
+  };
+  pair?: {
+    accessToken: string;
+    refreshToken: string;
+  };
+}
 
-    const connectWebSocket = useCallback(async () => {
-        if (!clientId) return;
+interface UseNotificationWebSocketReturn {
+  isConnected: boolean;
+  connection: signalR.HubConnection | null;
+  lastMessage: WebSocketMessage | null;
+  sendMessage: (message: any) => Promise<void>;
+  reconnect: () => Promise<void>;
+  disconnect: () => Promise<void>;
+}
 
-        try {
-            const newConnection = new signalR.HubConnectionBuilder()
-                .withUrl('http://localhost:5010/notificationHub', {
-                    skipNegotiation: true,
-                    transport: signalR.HttpTransportType.WebSockets
-                })
-                .withAutomaticReconnect()
-                .build();
+export const useNotificationWebSocket = (clientId: string | null): UseNotificationWebSocketReturn => {
+  const [connection, setConnection] = useState<signalR.HubConnection | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
+  const connectionRef = useRef<signalR.HubConnection | null>(null);
 
-            newConnection.on('LoginNotification', (data) => {
-                console.log('Login notification received:', data);
-                if (data.eventType === 'Login') {
-                    // Manejar la notificación de login
-                    localStorage.setItem('user', JSON.stringify(data.data));
-                    window.location.href = '/dashboard';
-                }
-            });
+  const connectWebSocket = useCallback(async () => {
+    if (!clientId) return;
 
-            newConnection.onreconnected(() => {
-                console.log('WebSocket reconnected');
-                setIsConnected(true);
-                newConnection.invoke('JoinApplicationGroup', clientId);
-            });
+    try {
+      const newConnection = new signalR.HubConnectionBuilder()
+        .withUrl('http://localhost:5010/notificationHub', {
+          skipNegotiation: true,
+          transport: signalR.HttpTransportType.WebSockets
+        })
+        .withAutomaticReconnect()
+        .build();
 
-            newConnection.onclose(() => {
-                console.log('WebSocket disconnected');
-                setIsConnected(false);
-            });
+      newConnection.on('ReceiveNotification', (data: WebSocketMessage) => {
+        console.log('Notification received:', data);
+        setLastMessage(data);
+      });
 
-            await newConnection.start();
-            console.log('WebSocket connected');
-            
-            await newConnection.invoke('JoinApplicationGroup', clientId);
-            
-            setConnection(newConnection);
-            connectionRef.current = newConnection;
-            setIsConnected(true);
+      newConnection.on('LoginNotification', (data: WebSocketMessage) => {
+        console.log('Login notification received:', data);
+        setLastMessage(data);
+      });
 
-        } catch (error) {
-            console.error('Error connecting to WebSocket:', error);
-        }
-    }, [clientId]);
-
-    const disconnectWebSocket = useCallback(async () => {
-        if (connectionRef.current) {
-            await connectionRef.current.stop();
-            connectionRef.current = null;
-            setConnection(null);
-            setIsConnected(false);
-        }
-    }, []);
-
-    useEffect(() => {
+      newConnection.onreconnected(() => {
+        console.log('WebSocket reconnected');
+        setIsConnected(true);
         if (clientId) {
-            connectWebSocket();
+          newConnection.invoke('JoinApplicationGroup', clientId, null);
         }
+      });
 
-        return () => {
-            disconnectWebSocket();
-        };
-    }, [clientId, connectWebSocket, disconnectWebSocket]);
+      newConnection.onclose(() => {
+        console.log('WebSocket disconnected');
+        setIsConnected(false);
+      });
 
-    return {
-        isConnected,
-        connection,
-        reconnect: connectWebSocket,
-        disconnect: disconnectWebSocket
+      await newConnection.start();
+      console.log('WebSocket connected');
+      
+      if (clientId) {
+        await newConnection.invoke('JoinApplicationGroup', clientId, null);
+      }
+      
+      setConnection(newConnection);
+      connectionRef.current = newConnection;
+      setIsConnected(true);
+
+    } catch (error) {
+      console.error('Error connecting to WebSocket:', error);
+    }
+  }, [clientId]);
+
+  const disconnectWebSocket = useCallback(async () => {
+    if (connectionRef.current) {
+      await connectionRef.current.stop();
+      connectionRef.current = null;
+      setConnection(null);
+      setIsConnected(false);
+    }
+  }, []);
+
+  useEffect(() => {
+  console.log('WebSocket connection status changed:', isConnected);
+}, [isConnected]);
+
+  useEffect(() => {
+    if (clientId) {
+      connectWebSocket();
+    }
+
+    return () => {
+      disconnectWebSocket();
     };
+  }, [clientId, connectWebSocket, disconnectWebSocket]);
+
+  const sendMessage = useCallback(async (message: any) => {
+    if (connectionRef.current && isConnected) {
+      try {
+        await connectionRef.current.invoke('SendMessage', message);
+      } catch (error) {
+        console.error('Error sending message:', error);
+      }
+    }
+  }, [isConnected]);
+
+  return {
+    isConnected,
+    connection,
+    lastMessage,
+    sendMessage,
+    reconnect: connectWebSocket,
+    disconnect: disconnectWebSocket
+  };
 };

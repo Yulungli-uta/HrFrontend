@@ -1,3 +1,4 @@
+// pages/LoginPage.tsx
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,8 +9,6 @@ import { useLocation } from "wouter";
 import logoPath from "@assets/LogoUTA.png";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from '@/contexts/AuthContext';
-import { authService, tokenService } from '@/services/auth';
-import { useNotificationWebSocket } from '@/hooks/useNotificationWebSocket';
 
 const APP_CLIENT_ID = import.meta.env.VITE_APP_CLIENT_ID;
 
@@ -20,10 +19,7 @@ export default function LoginPage() {
   const [activeTab, setActiveTab] = useState("local");
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  const { login, loginWithOffice365, isLoading: authLoading, isAuthenticated, refreshAuth } = useAuth();
-
-  const clientId = APP_CLIENT_ID; 
-  const { isConnected } = useNotificationWebSocket(clientId);
+  const { login, loginWithOffice365, isLoading: authLoading, isAuthenticated, isWebSocketConnected } = useAuth();
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -67,109 +63,9 @@ export default function LoginPage() {
         description: "Error al iniciar sesión con Office 365",
         variant: "destructive",
       });
-    } finally {
       setIsLoading(false);
     }
   };
-
-  useEffect(() => {
-    const handleOAuthCallback = async () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const code = urlParams.get('code');
-      const state = urlParams.get('state');
-      const savedState = sessionStorage.getItem("oauth_state");
-
-      console.log("OAuth Callback - Code:", code ? "presente" : "ausente");
-      console.log("OAuth Callback - State:", state);
-      console.log("OAuth Callback - Saved State:", savedState);
-
-      if (code && state && savedState === state) {
-        setIsLoading(true);
-        try {
-          console.log("Procesando callback de Azure...");
-          
-          // Llamar al endpoint de callback del backend
-          const response = await fetch(`http://localhost:5010/api/auth/azure/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          });
-
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-
-          const result = await response.json();
-          console.log("Respuesta del callback:", result);
-
-          if (result.success && result.data) {
-            const tokens = result.data;
-            
-            // Guardar tokens
-            tokenService.setTokens(tokens);
-            
-            // Obtener información del usuario usando el token
-            try {
-              const userInfo = await authService.getCurrentUser(tokens.accessToken);
-              tokenService.setUserSession(userInfo);
-              console.log("Usuario autenticado:", userInfo);
-            } catch (userError) {
-              console.warn("No se pudo obtener info del usuario, pero el login fue exitoso:", userError);
-              // Continuar con el login aunque no se pueda obtener la info del usuario
-            }
-            
-            toast({
-              title: "Inicio de sesión exitoso",
-              description: "Bienvenido al Sistema UTA con Office 365",
-            });
-            
-            // Limpiar la URL
-            window.history.replaceState({}, document.title, window.location.pathname);
-            
-            // Actualizar el contexto de autenticación si existe la función
-            if (refreshAuth) {
-              await refreshAuth();
-            }
-            
-            // Navegar a la página principal
-            setLocation('/');
-            
-          } else {
-            throw new Error(result.message || "Error en la respuesta del servidor");
-          }
-          
-        } catch (error) {
-          console.error("Error en OAuth callback:", error);
-          toast({
-            title: "Error de autenticación",
-            description: error instanceof Error ? error.message : "Ocurrió un error durante la autenticación con Office 365",
-            variant: "destructive",
-          });
-        } finally {
-          setIsLoading(false);
-          sessionStorage.removeItem("oauth_state");
-        }
-      } else if (code && !state) {
-        console.error("Callback recibido sin state parameter");
-        toast({
-          title: "Error de autenticación",
-          description: "Parámetros de autenticación inválidos",
-          variant: "destructive",
-        });
-      } else if (code && state && savedState !== state) {
-        console.error("State mismatch:", { received: state, saved: savedState });
-        toast({
-          title: "Error de seguridad",
-          description: "Estado de autenticación inválido",
-          variant: "destructive",
-        });
-        sessionStorage.removeItem("oauth_state");
-      }
-    };
-
-    handleOAuthCallback();
-  }, [toast, setLocation, refreshAuth]);
 
   const loading = isLoading || authLoading;
 
@@ -195,8 +91,8 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent>
           {/* Indicador de estado de WebSocket */}
-          <div className={`mb-4 text-sm ${isConnected ? 'text-green-600' : 'text-red-600'}`}>
-            WebSocket: {isConnected ? 'Conectado' : 'Desconectado'}
+          <div className={`mb-4 text-sm ${isWebSocketConnected ? 'text-green-600' : 'text-red-600'}`}>
+            WebSocket: {isWebSocketConnected ? 'Conectado' : 'Desconectado'}
           </div>                   
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
@@ -264,17 +160,6 @@ export default function LoginPage() {
               </div>
             </TabsContent>
           </Tabs>
-                    
-          {/* Elimina o comenta el bloque de información de debug para producción */}
-          {/* 
-          <div className="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
-            <p>Usuario de prueba: <strong>admin</strong></p>
-            <p>Contraseña: <strong>admin</strong></p>
-            <p className="mt-2 text-xs">
-              ⏱️ Sesión automática: 15 minutos de inactividad
-            </p>
-          </div>
-          */}
         </CardContent>
       </Card>
     </div>

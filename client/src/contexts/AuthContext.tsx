@@ -4,9 +4,8 @@ import { authService, tokenService, UserSession } from '@/services/auth';
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from 'wouter';
 import { VistaDetallesEmpleadosAPI } from '@/lib/api';
-import { useNotificationWebSocket } from '@/hooks/useNotificationWebSocket';
+import { useNotificationWebSocket, WebSocketMessage } from '@/hooks/useNotificationWebSocket';
 
-// Interfaz para los detalles del empleado
 export interface EmployeeDetails {
   employeeID: number;
   firstName: string;
@@ -31,6 +30,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<boolean>;
   loginWithOffice365: () => Promise<void>;
   logout: () => void;
+  refreshAuth: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -50,7 +50,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Notification WebSocket
   const clientId = APP_CLIENT_ID; 
-  const { isConnected } = useNotificationWebSocket(clientId);
+  const { isConnected, lastMessage } = useNotificationWebSocket(clientId);
 
   // 15 minutos de inactividad
   const INACTIVITY_TIMEOUT = 15 * 60 * 1000;
@@ -62,7 +62,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await VistaDetallesEmpleadosAPI.byEmail(email);
       if (response.status === 'success' && response.data) {
         setEmployeeDetails(response.data);
-        // También guardar en localStorage para persistencia
         localStorage.setItem('wsuta-employee-details', JSON.stringify(response.data));
       } else {
         console.error('Error al obtener detalles del empleado:', response.error);
@@ -71,6 +70,56 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error('Error en fetchEmployeeDetails:', error);
     }
   };
+
+  const refreshAuth = useCallback(async () => {
+    try {
+      const accessToken = tokenService.getAccessToken();
+      if (!accessToken) {
+        setIsAuthenticated(false);
+        setUser(null);
+        return;
+      }
+
+      if (tokenService.isTokenExpired(accessToken)) {
+        const refreshToken = tokenService.getRefreshToken();
+        if (refreshToken) {
+          const newTokens = await authService.refreshToken(refreshToken);
+          tokenService.setTokens(newTokens);
+          
+          const userInfo = await authService.getCurrentUser(newTokens.accessToken);
+          tokenService.setUserSession(userInfo);
+          
+          setIsAuthenticated(true);
+          setUser(userInfo);
+          await fetchEmployeeDetails(userInfo.email);
+        } else {
+          logout();
+        }
+      } else {
+        const userSession = tokenService.getUserSession();
+        if (userSession) {
+          setIsAuthenticated(true);
+          setUser(userSession);
+          
+          const savedDetails = localStorage.getItem('wsuta-employee-details');
+          if (savedDetails) {
+            setEmployeeDetails(JSON.parse(savedDetails));
+          } else {
+            await fetchEmployeeDetails(userSession.email);
+          }
+        } else {
+          const userInfo = await authService.getCurrentUser(accessToken);
+          tokenService.setUserSession(userInfo);
+          setIsAuthenticated(true);
+          setUser(userInfo);
+          await fetchEmployeeDetails(userInfo.email);
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing auth:', error);
+      logout();
+    }
+  }, []);
 
   const logout = useCallback(() => {
     setIsAuthenticated(false);
@@ -87,6 +136,40 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     setLocation('/login');
   }, [setLocation, toast]);
+
+  // Efecto para manejar notificaciones WebSocket de login
+  useEffect(() => {
+    if (lastMessage && lastMessage.eventType === "Login") {
+      console.log('Processing login notification from WebSocket', lastMessage);
+      
+      const { data, pair } = lastMessage;
+      
+      if (pair) {
+        // Guardar tokens
+        tokenService.setTokens(pair);
+        
+        // Actualizar estado de autenticación
+        setIsAuthenticated(true);
+        setUser({
+          id: data.userId,
+          email: data.email,
+          displayName: data.displayName,
+          userType: 'AzureAD'
+        });
+        
+        // Obtener detalles del empleado
+        fetchEmployeeDetails(data.email);
+        
+        toast({
+          title: "Inicio de sesión exitoso",
+          description: `Bienvenido ${data.displayName}`,
+        });
+        
+        // Redirigir a la página principal
+        setLocation('/');
+      }
+    }
+  }, [lastMessage, toast, setLocation]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -112,7 +195,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               setIsAuthenticated(true);
               setUser(userInfo);
               
-              // Obtener detalles del empleado al recargar
               await fetchEmployeeDetails(userInfo.email);
             } catch (error) {
               logout();
@@ -127,12 +209,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setIsAuthenticated(true);
             setUser(userSession);
             
-            // Intentar recuperar detalles del empleado desde localStorage
             const savedDetails = localStorage.getItem('wsuta-employee-details');
             if (savedDetails) {
               setEmployeeDetails(JSON.parse(savedDetails));
             } else {
-              // Si no hay detalles guardados, obtenerlos de la API
               await fetchEmployeeDetails(userSession.email);
             }
           } else {
@@ -141,7 +221,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setIsAuthenticated(true);
             setUser(userInfo);
             
-            // Obtener detalles del empleado
             await fetchEmployeeDetails(userInfo.email);
           }
         }
@@ -213,7 +292,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setLastActivity(Date.now());
       localStorage.setItem('wsuta-last-activity', Date.now().toString());
       
-      // Obtener detalles del empleado después del login exitoso
       await fetchEmployeeDetails(email);
       
       toast({
@@ -240,7 +318,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const { url, state } = await authService.getAzureAuthUrl();
       
       sessionStorage.setItem("oauth_state", state);
-      window.location.href = url;
+      // window.location.href = url;
+      // Cambiar a popup en lugar de redirect full page
+      window.open(url, 'office365login', 'width=600,height=700,left=200,top=100');
     } catch (error: any) {
       toast({
         title: "Error de autenticación",
@@ -257,10 +337,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       user,
       employeeDetails,
       isLoading,
-      isWebSocketConnected: isConnected, // Nuevo valor
+      isWebSocketConnected: isConnected,
       login,
       loginWithOffice365,
       logout,
+      refreshAuth,
     }}>
       {children}
     </AuthContext.Provider>
