@@ -5,6 +5,8 @@
 .env.test.local
 .env.production.local
 .env*.local
+.env.example
+/client/.env
 
 # Archivos de configuración
 /*.config.js
@@ -12,6 +14,8 @@
 /config/*.local.js
 /config/*.local.ts
 !/config/*.example.*
+/client/vite.config.ts
+/client/vite.config.ts
 
 # Dependencias
 node_modules/
