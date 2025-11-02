@@ -22,6 +22,12 @@ import ReportsPage from "@/pages/Reports";
 import NotFound from "@/pages/not-found";
 import PersonDetail from "@/pages/PersonDetail";
 import JustificationPage from "@/pages/Justifications";
+import UsersPage from "@/pages/admin/Users";
+import RolesPage from "@/pages/admin/Roles";
+import UserRolesPage from "@/pages/admin/UserRoles";
+import MenuItemsPage from "@/pages/admin/MenuItems";
+import RoleMenuItemsPage from "@/pages/admin/RoleMenuItems";
+import ChangePasswordPage from "@/pages/profile/ChangePassword";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 // import Office365Callback from '@/components/Office365Callback';
 
@@ -50,6 +56,12 @@ function Router() {
         <Route path="/overtime" component={OvertimePage} />
         <Route path="/reports" component={ReportsPage} />
         <Route path="/justification" component={JustificationPage} />
+        <Route path="/admin/users" component={UsersPage} />
+        <Route path="/admin/roles" component={RolesPage} />
+        <Route path="/admin/user-roles" component={UserRolesPage} />
+        <Route path="/admin/menu-items" component={MenuItemsPage} />
+        <Route path="/admin/role-menu-items" component={RoleMenuItemsPage} />
+        <Route path="/profile/change-password" component={ChangePasswordPage} />
         {/* <Route path="/auth/office365/callback" component={Office365Callback} /> */}
         <Route component={NotFound} />
       </Switch>

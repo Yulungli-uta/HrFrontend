@@ -767,3 +767,272 @@ export function setAuthToken(token: string): void {
     "Authorization": `Bearer ${token}`
   };
 }
+
+// =============================================================================
+// Servicios para Gestión de Autenticación, Usuarios, Roles y Menús
+// =============================================================================
+
+import type {
+  User, Role, UserRole, MenuItem, RoleMenuItem,
+  CreateUserDto, UpdateUserDto,
+  CreateRoleDto, UpdateRoleDto,
+  CreateUserRoleDto, UpdateUserRoleDto,
+  CreateMenuItemDto, UpdateMenuItemDto,
+  CreateRoleMenuItemDto, UpdateRoleMenuItemDto,
+  ChangePasswordDto, ChangePasswordResponse
+} from '@/types/auth';
+
+/**
+ * Servicio para gestión de usuarios del sistema de autenticación
+ * Base URL: http://localhost:5010/api/users
+ */
+export const AuthUsersAPI = {
+  /**
+   * Lista todos los usuarios con paginación
+   * @param page Número de página (default: 1)
+   * @param size Tamaño de página (default: 100)
+   */
+  list: (page = 1, size = 100): Promise<ApiResponse<User[]>> =>
+    apiFetch<User[]>(`/api/users?page=${page}&size=${size}`),
+
+  /**
+   * Obtiene un usuario por ID
+   * @param id ID del usuario (GUID)
+   */
+  get: (id: string): Promise<ApiResponse<User>> =>
+    apiFetch<User>(`/api/users/${id}`),
+
+  /**
+   * Crea un nuevo usuario
+   * @param data Datos del usuario a crear
+   */
+  create: (data: CreateUserDto): Promise<ApiResponse<User>> =>
+    apiFetch<User>('/api/users', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
+
+  /**
+   * Actualiza un usuario existente
+   * @param id ID del usuario
+   * @param data Datos a actualizar
+   */
+  update: (id: string, data: UpdateUserDto): Promise<ApiResponse<User>> =>
+    apiFetch<User>(`/api/users/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    }),
+
+  /**
+   * Elimina un usuario
+   * @param id ID del usuario
+   */
+  remove: (id: string): Promise<ApiResponse<void>> =>
+    apiFetch<void>(`/api/users/${id}`, {
+      method: 'DELETE'
+    })
+};
+
+/**
+ * Servicio para gestión de roles
+ * Base URL: http://localhost:5010/api/roles
+ */
+export const RolesAPI = {
+  /**
+   * Lista todos los roles con paginación
+   * @param page Número de página (default: 1)
+   * @param size Tamaño de página (default: 100)
+   */
+  list: (page = 1, size = 100): Promise<ApiResponse<Role[]>> =>
+    apiFetch<Role[]>(`/api/roles?page=${page}&size=${size}`),
+
+  /**
+   * Obtiene un rol por ID
+   * @param id ID del rol
+   */
+  get: (id: number): Promise<ApiResponse<Role>> =>
+    apiFetch<Role>(`/api/roles/${id}`),
+
+  /**
+   * Crea un nuevo rol
+   * @param data Datos del rol a crear
+   */
+  create: (data: CreateRoleDto): Promise<ApiResponse<Role>> =>
+    apiFetch<Role>('/api/roles', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
+
+  /**
+   * Actualiza un rol existente
+   * @param id ID del rol
+   * @param data Datos a actualizar
+   */
+  update: (id: number, data: UpdateRoleDto): Promise<ApiResponse<Role>> =>
+    apiFetch<Role>(`/api/roles/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    }),
+
+  /**
+   * Elimina un rol
+   * @param id ID del rol
+   */
+  remove: (id: number): Promise<ApiResponse<void>> =>
+    apiFetch<void>(`/api/roles/${id}`, {
+      method: 'DELETE'
+    })
+};
+
+/**
+ * Servicio para asignación de roles a usuarios
+ * Base URL: http://localhost:5010/api/user-roles
+ */
+export const UserRolesAPI = {
+  /**
+   * Lista todas las asignaciones de roles a usuarios
+   * @param page Número de página (default: 1)
+   * @param size Tamaño de página (default: 100)
+   */
+  list: (page = 1, size = 100): Promise<ApiResponse<UserRole[]>> =>
+    apiFetch<UserRole[]>(`/api/user-roles?page=${page}&size=${size}`),
+
+  /**
+   * Obtiene una asignación específica
+   * @param userId ID del usuario
+   * @param roleId ID del rol
+   * @param assignedAt Fecha de asignación
+   */
+  get: (userId: string, roleId: number, assignedAt: string): Promise<ApiResponse<UserRole>> =>
+    apiFetch<UserRole>(`/api/user-roles/${userId}/${roleId}/${assignedAt}`),
+
+  /**
+   * Asigna un rol a un usuario
+   * @param data Datos de la asignación
+   */
+  create: (data: CreateUserRoleDto): Promise<ApiResponse<UserRole>> =>
+    apiFetch<UserRole>('/api/user-roles', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
+
+  /**
+   * Remueve un rol de un usuario
+   * @param userId ID del usuario
+   * @param roleId ID del rol
+   * @param assignedAt Fecha de asignación
+   */
+  remove: (userId: string, roleId: number, assignedAt: string): Promise<ApiResponse<void>> =>
+    apiFetch<void>(`/api/user-roles/${userId}/${roleId}/${assignedAt}`, {
+      method: 'DELETE'
+    })
+};
+
+/**
+ * Servicio para gestión de items de menú
+ * Base URL: http://localhost:5010/api/menu-items
+ */
+export const MenuItemsAPI = {
+  /**
+   * Lista todos los items de menú con paginación
+   * @param page Número de página (default: 1)
+   * @param size Tamaño de página (default: 100)
+   */
+  list: (page = 1, size = 100): Promise<ApiResponse<MenuItem[]>> =>
+    apiFetch<MenuItem[]>(`/api/menu-items?page=${page}&size=${size}`),
+
+  /**
+   * Obtiene un item de menú por ID
+   * @param id ID del item de menú
+   */
+  get: (id: number): Promise<ApiResponse<MenuItem>> =>
+    apiFetch<MenuItem>(`/api/menu-items/${id}`),
+
+  /**
+   * Crea un nuevo item de menú
+   * @param data Datos del item a crear
+   */
+  create: (data: CreateMenuItemDto): Promise<ApiResponse<MenuItem>> =>
+    apiFetch<MenuItem>('/api/menu-items', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
+
+  /**
+   * Actualiza un item de menú existente
+   * @param id ID del item de menú
+   * @param data Datos a actualizar
+   */
+  update: (id: number, data: UpdateMenuItemDto): Promise<ApiResponse<MenuItem>> =>
+    apiFetch<MenuItem>(`/api/menu-items/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    }),
+
+  /**
+   * Elimina un item de menú
+   * @param id ID del item de menú
+   */
+  remove: (id: number): Promise<ApiResponse<void>> =>
+    apiFetch<void>(`/api/menu-items/${id}`, {
+      method: 'DELETE'
+    })
+};
+
+/**
+ * Servicio para asignación de menús a roles
+ * Base URL: http://localhost:5010/api/role-menu-items
+ */
+export const RoleMenuItemsAPI = {
+  /**
+   * Lista todas las asignaciones de menús a roles
+   * @param page Número de página (default: 1)
+   * @param size Tamaño de página (default: 100)
+   */
+  list: (page = 1, size = 100): Promise<ApiResponse<RoleMenuItem[]>> =>
+    apiFetch<RoleMenuItem[]>(`/api/role-menu-items?page=${page}&size=${size}`),
+
+  /**
+   * Obtiene una asignación específica
+   * @param roleId ID del rol
+   * @param menuItemId ID del item de menú
+   */
+  get: (roleId: number, menuItemId: number): Promise<ApiResponse<RoleMenuItem>> =>
+    apiFetch<RoleMenuItem>(`/api/role-menu-items/${roleId}/${menuItemId}`),
+
+  /**
+   * Asigna un menú a un rol
+   * @param data Datos de la asignación
+   */
+  create: (data: CreateRoleMenuItemDto): Promise<ApiResponse<RoleMenuItem>> =>
+    apiFetch<RoleMenuItem>('/api/role-menu-items', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
+
+  /**
+   * Remueve un menú de un rol
+   * @param roleId ID del rol
+   * @param menuItemId ID del item de menú
+   */
+  remove: (roleId: number, menuItemId: number): Promise<ApiResponse<void>> =>
+    apiFetch<void>(`/api/role-menu-items/${roleId}/${menuItemId}`, {
+      method: 'DELETE'
+    })
+};
+
+/**
+ * Servicio para cambio de contraseña
+ * Base URL: http://localhost:5010/api/auth/change-password
+ */
+export const PasswordAPI = {
+  /**
+   * Cambia la contraseña del usuario autenticado
+   * @param data Contraseña actual y nueva contraseña
+   */
+  change: (data: ChangePasswordDto): Promise<ApiResponse<ChangePasswordResponse>> =>
+    apiFetch<ChangePasswordResponse>('/api/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+};
