@@ -1,47 +1,36 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useToast } from "@/hooks/use-toast";
 import { insertFacultySchema, type InsertFaculty, type Faculty, type Employee, type Person } from "@shared/schema";
 import { Building2, Save, X, User } from "lucide-react";
-import { api, type ApiResponse } from "@/lib/api";
+import { useCrudMutation } from "@/hooks/useCrudMutation";
+import { FacultadesAPI, EmpleadosAPI, PersonasAPI } from "@/lib/api";
+import type { BaseCrudFormProps } from "@/types/components";
 
-interface FacultyFormProps {
-  faculty?: Faculty;
-  onSuccess?: () => void;
-  onCancel?: () => void;
-}
+interface FacultyFormProps extends BaseCrudFormProps<Faculty, InsertFaculty> {}
 
-export default function FacultyForm({ faculty, onSuccess, onCancel }: FacultyFormProps) {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
+export default function FacultyForm({ entity: faculty, onSuccess, onCancel }: FacultyFormProps) {
   const isEditing = !!faculty;
 
-  // Usamos el tipo ApiResponse<Employee[]> y una queryFn personalizada
-  const { data: employeesResponse } = useQuery<ApiResponse<Employee[]>>({
+  // Cargar empleados
+  const { data: employeesResponse } = useQuery({
     queryKey: ['/api/employees'],
-    queryFn: async () => {
-      const response = await api.get<Employee[]>('/api/employees');
-      return response;
-    }
+    queryFn: () => EmpleadosAPI.list()
   });
 
-  // Usamos el tipo ApiResponse<Person[]> y una queryFn personalizada
-  const { data: peopleResponse } = useQuery<ApiResponse<Person[]>>({
+  // Cargar personas
+  const { data: peopleResponse } = useQuery({
     queryKey: ['/api/people'],
-    queryFn: async () => {
-      const response = await api.get<Person[]>('/api/people');
-      return response;
-    }
+    queryFn: () => PersonasAPI.list()
   });
 
-  // Extraemos los datos del formato de respuesta de la API
+  // Extraer datos de las respuestas
   const employees = employeesResponse?.status === 'success' ? employeesResponse.data : [];
   const people = peopleResponse?.status === 'success' ? peopleResponse.data : [];
 
@@ -54,58 +43,34 @@ export default function FacultyForm({ faculty, onSuccess, onCancel }: FacultyFor
     }
   });
 
-  const createMutation = useMutation({
-    mutationFn: async (data: InsertFaculty) => {
-      const response = await api.post<Faculty>('/api/faculties', data);
-      if (response.status === 'error') throw new Error(response.error.message);
-      return response.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/faculties"] });
-      toast({ title: "Facultad creada exitosamente" });
-      onSuccess?.();
-    },
-    onError: (error: Error) => {
-      toast({ title: "Error al crear facultad", description: error.message, variant: "destructive" });
-    }
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: async (data: InsertFaculty) => {
-      const response = await api.put<Faculty>(`/api/faculties/${faculty?.id}`, data);
-      if (response.status === 'error') throw new Error(response.error.message);
-      return response.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/faculties"] });
-      toast({ title: "Facultad actualizada exitosamente" });
-      onSuccess?.();
-    },
-    onError: (error: Error) => {
-      toast({ title: "Error al actualizar facultad", description: error.message, variant: "destructive" });
-    }
+  // Usar el hook useCrudMutation
+  const { create, update, isLoading } = useCrudMutation({
+    queryKey: ['/api/faculties'],
+    createFn: FacultadesAPI.create,
+    updateFn: FacultadesAPI.update,
+    onSuccess,
+    createSuccessMessage: 'Facultad creada exitosamente',
+    updateSuccessMessage: 'Facultad actualizada exitosamente',
+    createErrorMessage: 'Error al crear facultad',
+    updateErrorMessage: 'Error al actualizar facultad'
   });
 
   const onSubmit = (data: InsertFaculty) => {
     if (isEditing) {
-      updateMutation.mutate(data);
+      update.mutate({ id: faculty.id, data });
     } else {
-      createMutation.mutate(data);
+      create.mutate(data);
     }
   };
 
-  const isLoading = createMutation.isPending || updateMutation.isPending;
-
   const utaFaculties = [
     "Facultad de Ingeniería Civil y Mecánica",
-    "Facultad de Ciencias Humanas y de la Educación", 
-    "Facultad de Contabilidad y Auditoría",
     "Facultad de Ciencias de la Salud",
+    "Facultad de Ciencias Humanas y de la Educación",
     "Facultad de Ciencias Administrativas",
-    "Facultad de Jurisprudencia y Ciencias Sociales",
-    "Facultad de Ingeniería en Sistemas, Electrónica e Industrial",
-    "Facultad de Ciencias Agropecuarias",
-    "Facultad de Diseño y Arquitectura"
+    "Facultad de Contabilidad y Auditoría",
+    "Facultad de Diseño y Arquitectura",
+    "Facultad de Jurisprudencia y Ciencias Sociales"
   ];
 
   return (
@@ -137,17 +102,17 @@ export default function FacultyForm({ faculty, onSuccess, onCancel }: FacultyFor
                   </FormControl>
                   <FormMessage />
                   
-                  {/* Sugerencias de facultades UTA */}
+                  {/* Sugerencias de nombres comunes */}
                   <div className="mt-2">
-                    <p className="text-xs text-gray-500 mb-2">Facultades UTA:</p>
-                    <div className="grid grid-cols-1 gap-1 max-h-32 overflow-y-auto">
-                      {utaFaculties.map((name) => (
+                    <p className="text-xs text-gray-500 mb-2">Sugerencias de la UTA:</p>
+                    <div className="grid grid-cols-1 gap-1">
+                      {utaFaculties.slice(0, 4).map((name) => (
                         <Button
                           key={name}
                           type="button"
                           variant="ghost"
                           size="sm"
-                          className="text-xs h-auto p-2 justify-start"
+                          className="text-xs h-auto p-1 justify-start"
                           onClick={() => form.setValue("name", name)}
                           data-testid={`suggestion-${name.replace(/\s+/g, '-').toLowerCase()}`}
                         >
@@ -165,10 +130,10 @@ export default function FacultyForm({ faculty, onSuccess, onCancel }: FacultyFor
               name="deanEmployeeId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Decano</FormLabel>
+                  <FormLabel>Decano (Opcional)</FormLabel>
                   <Select 
-                    onValueChange={(value) => field.onChange(value === "null" ? null : parseInt(value))} 
-                    value={field.value === null ? "null" : field.value?.toString()}
+                    onValueChange={(value) => field.onChange(value ? parseInt(value) : null)} 
+                    value={field.value?.toString() || ""}
                   >
                     <FormControl>
                       <SelectTrigger data-testid="select-dean">
@@ -176,16 +141,14 @@ export default function FacultyForm({ faculty, onSuccess, onCancel }: FacultyFor
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="null">Sin decano asignado</SelectItem>
-                      {employees?.map((employee) => {
-                        const person = people?.find(p => p.id === employee.id);
+                      {employees.map((employee) => {
+                        const person = people.find(p => p.id === employee.id);
                         return (
                           <SelectItem key={employee.id} value={employee.id.toString()}>
                             <div className="flex items-center space-x-2">
                               <User className="h-4 w-4" />
                               <span>
-                                {person ? `${person.firstName} ${person.lastName}` : `Empleado #${employee.id}`}
-                                <span className="text-xs text-gray-500 ml-2">({employee.type})</span>
+                                {person ? `${person.firstName} ${person.lastName}` : `Empleado ${employee.id}`}
                               </span>
                             </div>
                           </SelectItem>
@@ -194,9 +157,11 @@ export default function FacultyForm({ faculty, onSuccess, onCancel }: FacultyFor
                     </SelectContent>
                   </Select>
                   <FormMessage />
-                  <p className="text-xs text-gray-500">
-                    El decano puede asignarse posteriormente si no hay empleados disponibles
-                  </p>
+                  {employees.length === 0 && (
+                    <p className="text-xs text-amber-600">
+                      No hay empleados disponibles. Cree un empleado primero.
+                    </p>
+                  )}
                 </FormItem>
               )}
             />
@@ -224,32 +189,20 @@ export default function FacultyForm({ faculty, onSuccess, onCancel }: FacultyFor
             />
 
             {form.watch("deanEmployeeId") && (
-              <div className="bg-green-50 p-4 rounded-lg">
-                <div className="flex items-center space-x-2 text-green-700">
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <div className="flex items-center space-x-2 text-blue-700">
                   <User className="h-4 w-4" />
                   <span className="font-medium">Decano seleccionado</span>
                 </div>
-                <p className="text-sm text-green-600 mt-1">
+                <p className="text-sm text-blue-600 mt-1">
                   {(() => {
-                    const employee = employees?.find(e => e.id === form.watch("deanEmployeeId"));
-                    const person = people?.find(p => p.id === employee?.id);
-                    return person ? `${person.firstName} ${person.lastName}` : `Empleado #${form.watch("deanEmployeeId")}`;
+                    const employee = employees.find(e => e.id === form.watch("deanEmployeeId"));
+                    const person = people.find(p => p.id === employee?.id);
+                    return person ? `${person.firstName} ${person.lastName}` : 'Empleado seleccionado';
                   })()}
                 </p>
               </div>
             )}
-
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <div className="flex items-center space-x-2 text-blue-700">
-                <Building2 className="h-4 w-4" />
-                <span className="font-medium">Información importante</span>
-              </div>
-              <div className="text-sm text-blue-600 mt-1 space-y-1">
-                <p>• Una facultad puede tener múltiples departamentos</p>
-                <p>• El decano es responsable de la gestión académica</p>
-                <p>• Las facultades inactivas no aparecerán en los reportes</p>
-              </div>
-            </div>
 
             <div className="flex flex-col sm:flex-row gap-3 pt-6">
               <Button 

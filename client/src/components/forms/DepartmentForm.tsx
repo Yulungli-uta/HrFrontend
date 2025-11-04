@@ -1,25 +1,21 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useToast } from "@/hooks/use-toast";
 import { insertDepartmentSchema, type InsertDepartment, type Department, type Faculty } from "@shared/schema";
 import { Building, Save, X, Building2 } from "lucide-react";
+import { useCrudMutation } from "@/hooks/useCrudMutation";
+import { DepartamentosAPI } from "@/lib/api";
+import type { BaseCrudFormProps } from "@/types/components";
 
-interface DepartmentFormProps {
-  department?: Department;
-  onSuccess?: () => void;
-  onCancel?: () => void;
-}
+interface DepartmentFormProps extends BaseCrudFormProps<Department, InsertDepartment> {}
 
-export default function DepartmentForm({ department, onSuccess, onCancel }: DepartmentFormProps) {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
+export default function DepartmentForm({ entity: department, onSuccess, onCancel }: DepartmentFormProps) {
   const isEditing = !!department;
 
   const { data: faculties } = useQuery<Faculty[]>({
@@ -35,55 +31,25 @@ export default function DepartmentForm({ department, onSuccess, onCancel }: Depa
     }
   });
 
-  const createMutation = useMutation({
-    mutationFn: async (data: InsertDepartment) => {
-      const response = await fetch("/api/departments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-      });
-      if (!response.ok) throw new Error("Error al crear departamento");
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/departments"] });
-      toast({ title: "Departamento creado exitosamente" });
-      onSuccess?.();
-    },
-    onError: () => {
-      toast({ title: "Error al crear departamento", variant: "destructive" });
-    }
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: async (data: InsertDepartment) => {
-      const response = await fetch(`/api/departments/${department!.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-      });
-      if (!response.ok) throw new Error("Error al actualizar departamento");
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/departments"] });
-      toast({ title: "Departamento actualizado exitosamente" });
-      onSuccess?.();
-    },
-    onError: () => {
-      toast({ title: "Error al actualizar departamento", variant: "destructive" });
-    }
+  // Usar el hook useCrudMutation para eliminar código duplicado
+  const { create, update, isLoading } = useCrudMutation({
+    queryKey: ['/api/departments'],
+    createFn: DepartamentosAPI.create,
+    updateFn: DepartamentosAPI.update,
+    onSuccess,
+    createSuccessMessage: 'Departamento creado exitosamente',
+    updateSuccessMessage: 'Departamento actualizado exitosamente',
+    createErrorMessage: 'Error al crear departamento',
+    updateErrorMessage: 'Error al actualizar departamento'
   });
 
   const onSubmit = (data: InsertDepartment) => {
     if (isEditing) {
-      updateMutation.mutate(data);
+      update.mutate({ id: department.id, data });
     } else {
-      createMutation.mutate(data);
+      create.mutate(data);
     }
   };
-
-  const isLoading = createMutation.isPending || updateMutation.isPending;
 
   const commonDepartments = [
     "Departamento de Ingeniería Civil",

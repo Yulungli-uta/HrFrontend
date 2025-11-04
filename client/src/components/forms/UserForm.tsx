@@ -1,5 +1,4 @@
 import { useForm } from "react-hook-form";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,14 +9,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
+import { useCrudMutation } from "@/hooks/useCrudMutation";
 import { AuthUsersAPI } from "@/lib/api";
 import type { User, CreateUserDto, UpdateUserDto } from "@/types/auth";
+import type { BaseCrudFormProps } from "@/types/components";
 
-interface UserFormProps {
+interface UserFormProps extends Omit<BaseCrudFormProps<User, CreateUserDto>, 'entity'> {
   user?: User | null;
-  onSuccess: () => void;
-  onCancel: () => void;
 }
 
 interface FormData {
@@ -28,8 +26,6 @@ interface FormData {
 }
 
 export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
   const isEditing = !!user;
 
   const {
@@ -49,45 +45,16 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
 
   const userType = watch("userType");
 
-  // Mutación para crear usuario
-  const createMutation = useMutation({
-    mutationFn: (data: CreateUserDto) => AuthUsersAPI.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['auth-users'] });
-      toast({
-        title: "Usuario creado",
-        description: "El usuario ha sido creado exitosamente",
-      });
-      onSuccess();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error al crear usuario",
-        description: error.message || "No se pudo crear el usuario",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Mutación para actualizar usuario
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateUserDto }) =>
-      AuthUsersAPI.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['auth-users'] });
-      toast({
-        title: "Usuario actualizado",
-        description: "El usuario ha sido actualizado exitosamente",
-      });
-      onSuccess();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error al actualizar usuario",
-        description: error.message || "No se pudo actualizar el usuario",
-        variant: "destructive",
-      });
-    },
+  // Usar el hook useCrudMutation
+  const { create, update, isLoading } = useCrudMutation<User, CreateUserDto, UpdateUserDto>({
+    queryKey: ['auth-users'],
+    createFn: AuthUsersAPI.create,
+    updateFn: AuthUsersAPI.update,
+    onSuccess,
+    createSuccessMessage: 'Usuario creado exitosamente',
+    updateSuccessMessage: 'Usuario actualizado exitosamente',
+    createErrorMessage: 'Error al crear usuario',
+    updateErrorMessage: 'Error al actualizar usuario'
   });
 
   const onSubmit = (data: FormData) => {
@@ -97,18 +64,16 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
         isActive: data.isActive,
         userType: data.userType,
       };
-      updateMutation.mutate({ id: user.id, data: updateData });
+      update.mutate({ id: user.id, data: updateData });
     } else {
       const createData: CreateUserDto = {
         email: data.email,
         displayName: data.displayName || undefined,
         userType: data.userType,
       };
-      createMutation.mutate(createData);
+      create.mutate(createData);
     }
   };
-
-  const isLoading = createMutation.isPending || updateMutation.isPending;
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -138,6 +103,11 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
           {errors.email && (
             <p className="text-sm text-red-600">{errors.email.message}</p>
           )}
+          {isEditing && (
+            <p className="text-sm text-gray-500">
+              El email no puede ser modificado
+            </p>
+          )}
         </div>
 
         {/* Nombre para mostrar */}
@@ -160,16 +130,18 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
             onValueChange={(value) => setValue("userType", value)}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Seleccione tipo" />
+              <SelectValue placeholder="Seleccione tipo de usuario" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="Local">Local</SelectItem>
-              <SelectItem value="AzureAD">Azure AD / Office 365</SelectItem>
+              <SelectItem value="AzureAD">Azure AD</SelectItem>
             </SelectContent>
           </Select>
-          {errors.userType && (
-            <p className="text-sm text-red-600">{errors.userType.message}</p>
-          )}
+          <p className="text-sm text-gray-500">
+            {userType === "Local"
+              ? "Usuario con credenciales locales (email y contraseña)"
+              : "Usuario autenticado mediante Azure Active Directory"}
+          </p>
         </div>
 
         {/* Estado activo (solo en edición) */}
@@ -190,9 +162,8 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
         {/* Información adicional */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <p className="text-sm text-blue-800">
-            <strong>Nota:</strong> Los usuarios de tipo "Local" podrán iniciar sesión
-            con email y contraseña. Los usuarios de tipo "Azure AD" solo podrán
-            autenticarse mediante Office 365.
+            <strong>Nota:</strong> Después de crear el usuario, podrá asignarle
+            roles desde la página de gestión de usuarios.
           </p>
         </div>
       </div>

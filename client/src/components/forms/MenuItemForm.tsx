@@ -1,5 +1,5 @@
 import { useForm } from "react-hook-form";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,14 +10,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
+import { useCrudMutation } from "@/hooks/useCrudMutation";
 import { MenuItemsAPI, type ApiResponse } from "@/lib/api";
 import type { MenuItem, CreateMenuItemDto, UpdateMenuItemDto } from "@/types/auth";
+import type { BaseCrudFormProps } from "@/types/components";
 
-interface MenuItemFormProps {
+interface MenuItemFormProps extends Omit<BaseCrudFormProps<MenuItem, CreateMenuItemDto>, 'entity'> {
   menuItem?: MenuItem | null;
-  onSuccess: () => void;
-  onCancel: () => void;
 }
 
 interface FormData {
@@ -35,8 +34,6 @@ export default function MenuItemForm({
   onSuccess,
   onCancel,
 }: MenuItemFormProps) {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
   const isEditing = !!menuItem;
 
   const {
@@ -73,45 +70,16 @@ export default function MenuItemForm({
     (item) => !isEditing || item.id !== menuItem.id
   );
 
-  // Mutación para crear item de menú
-  const createMutation = useMutation({
-    mutationFn: (data: CreateMenuItemDto) => MenuItemsAPI.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["menu-items"] });
-      toast({
-        title: "Item de menú creado",
-        description: "El item de menú ha sido creado exitosamente",
-      });
-      onSuccess();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error al crear item de menú",
-        description: error.message || "No se pudo crear el item de menú",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Mutación para actualizar item de menú
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: UpdateMenuItemDto }) =>
-      MenuItemsAPI.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["menu-items"] });
-      toast({
-        title: "Item de menú actualizado",
-        description: "El item de menú ha sido actualizado exitosamente",
-      });
-      onSuccess();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error al actualizar item de menú",
-        description: error.message || "No se pudo actualizar el item de menú",
-        variant: "destructive",
-      });
-    },
+  // Usar el hook useCrudMutation
+  const { create, update, isLoading } = useCrudMutation<MenuItem, CreateMenuItemDto, UpdateMenuItemDto>({
+    queryKey: ["menu-items"],
+    createFn: MenuItemsAPI.create,
+    updateFn: MenuItemsAPI.update,
+    onSuccess,
+    createSuccessMessage: 'Item de menú creado exitosamente',
+    updateSuccessMessage: 'Item de menú actualizado exitosamente',
+    createErrorMessage: 'Error al crear item de menú',
+    updateErrorMessage: 'Error al actualizar item de menú'
   });
 
   const onSubmit = (data: FormData) => {
@@ -127,7 +95,7 @@ export default function MenuItemForm({
         moduleName: data.moduleName || undefined,
         isVisible: data.isVisible,
       };
-      updateMutation.mutate({ id: menuItem.id, data: updateData });
+      update.mutate({ id: menuItem.id, data: updateData });
     } else {
       const createData: CreateMenuItemDto = {
         name: data.name,
@@ -136,13 +104,10 @@ export default function MenuItemForm({
         parentId: parentIdValue,
         order: data.order,
         moduleName: data.moduleName || undefined,
-        isVisible: data.isVisible,
       };
-      createMutation.mutate(createData);
+      create.mutate(createData);
     }
   };
-
-  const isLoading = createMutation.isPending || updateMutation.isPending;
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -165,7 +130,7 @@ export default function MenuItemForm({
                 message: "El nombre debe tener al menos 2 caracteres",
               },
             })}
-            placeholder="Dashboard, Usuarios, Reportes, etc."
+            placeholder="Inicio, Usuarios, Reportes, etc."
           />
           {errors.name && (
             <p className="text-sm text-red-600">{errors.name.message}</p>
@@ -178,10 +143,10 @@ export default function MenuItemForm({
           <Input
             id="url"
             {...register("url")}
-            placeholder="/dashboard, /admin/users, etc."
+            placeholder="/dashboard, /users, etc."
           />
           <p className="text-sm text-gray-500">
-            Ruta de navegación del item de menú
+            Ruta de la página. Dejar vacío si es un menú padre sin enlace.
           </p>
         </div>
 
@@ -191,25 +156,25 @@ export default function MenuItemForm({
           <Input
             id="icon"
             {...register("icon")}
-            placeholder="Home, Users, Settings, etc."
+            placeholder="home, users, settings, etc."
           />
           <p className="text-sm text-gray-500">
             Nombre del icono de Lucide React
           </p>
         </div>
 
-        {/* Item padre */}
+        {/* Menú Padre */}
         <div className="space-y-2">
-          <Label htmlFor="parentId">Item Padre (Opcional)</Label>
+          <Label htmlFor="parentId">Menú Padre (Opcional)</Label>
           <Select
             value={parentId}
             onValueChange={(value) => setValue("parentId", value)}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Sin padre (item raíz)" />
+              <SelectValue placeholder="Sin padre (menú raíz)" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Sin padre (item raíz)</SelectItem>
+              <SelectItem value="">Sin padre (menú raíz)</SelectItem>
               {availableParents.map((item) => (
                 <SelectItem key={item.id} value={item.id.toString()}>
                   {item.name}
@@ -218,7 +183,7 @@ export default function MenuItemForm({
             </SelectContent>
           </Select>
           <p className="text-sm text-gray-500">
-            Seleccione un item padre para crear un submenú
+            Seleccione un menú padre para crear un submenú
           </p>
         </div>
 
@@ -240,42 +205,43 @@ export default function MenuItemForm({
             <p className="text-sm text-red-600">{errors.order.message}</p>
           )}
           <p className="text-sm text-gray-500">
-            Orden de aparición en el menú (menor número = mayor prioridad)
+            Orden de aparición en el menú (menor número aparece primero)
           </p>
         </div>
 
-        {/* Módulo */}
+        {/* Nombre del Módulo */}
         <div className="space-y-2">
-          <Label htmlFor="moduleName">Módulo</Label>
+          <Label htmlFor="moduleName">Nombre del Módulo</Label>
           <Input
             id="moduleName"
             {...register("moduleName")}
-            placeholder="Admin, HR, Reports, etc."
+            placeholder="Administración, Recursos Humanos, etc."
           />
           <p className="text-sm text-gray-500">
             Nombre del módulo al que pertenece este item
           </p>
         </div>
 
-        {/* Visible */}
-        <div className="flex items-center space-x-2">
-          <input
-            type="checkbox"
-            id="isVisible"
-            {...register("isVisible")}
-            className="h-4 w-4 rounded border-gray-300"
-          />
-          <Label htmlFor="isVisible" className="cursor-pointer">
-            Visible en el menú
-          </Label>
-        </div>
+        {/* Estado visible (solo en edición) */}
+        {isEditing && (
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="isVisible"
+              {...register("isVisible")}
+              className="h-4 w-4 rounded border-gray-300"
+            />
+            <Label htmlFor="isVisible" className="cursor-pointer">
+              Visible en el menú
+            </Label>
+          </div>
+        )}
 
         {/* Información adicional */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <p className="text-sm text-blue-800">
-            <strong>Nota:</strong> Los items de menú se organizan jerárquicamente.
-            Puede crear submenús seleccionando un item padre. El orden determina
-            la posición en el menú.
+            <strong>Nota:</strong> Los items de menú se pueden anidar creando
+            submenús mediante la selección de un menú padre.
           </p>
         </div>
       </div>

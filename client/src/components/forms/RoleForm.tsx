@@ -1,17 +1,15 @@
 import { useForm } from "react-hook-form";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
+import { useCrudMutation } from "@/hooks/useCrudMutation";
 import { RolesAPI } from "@/lib/api";
 import type { Role, CreateRoleDto, UpdateRoleDto } from "@/types/auth";
+import type { BaseCrudFormProps } from "@/types/components";
 
-interface RoleFormProps {
+interface RoleFormProps extends Omit<BaseCrudFormProps<Role, CreateRoleDto>, 'entity'> {
   role?: Role | null;
-  onSuccess: () => void;
-  onCancel: () => void;
 }
 
 interface FormData {
@@ -22,8 +20,6 @@ interface FormData {
 }
 
 export default function RoleForm({ role, onSuccess, onCancel }: RoleFormProps) {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
   const isEditing = !!role;
 
   const {
@@ -39,45 +35,16 @@ export default function RoleForm({ role, onSuccess, onCancel }: RoleFormProps) {
     },
   });
 
-  // Mutación para crear rol
-  const createMutation = useMutation({
-    mutationFn: (data: CreateRoleDto) => RolesAPI.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["roles"] });
-      toast({
-        title: "Rol creado",
-        description: "El rol ha sido creado exitosamente",
-      });
-      onSuccess();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error al crear rol",
-        description: error.message || "No se pudo crear el rol",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Mutación para actualizar rol
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: UpdateRoleDto }) =>
-      RolesAPI.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["roles"] });
-      toast({
-        title: "Rol actualizado",
-        description: "El rol ha sido actualizado exitosamente",
-      });
-      onSuccess();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error al actualizar rol",
-        description: error.message || "No se pudo actualizar el rol",
-        variant: "destructive",
-      });
-    },
+  // Usar el hook useCrudMutation
+  const { create, update, isLoading } = useCrudMutation<Role, CreateRoleDto, UpdateRoleDto>({
+    queryKey: ["roles"],
+    createFn: RolesAPI.create,
+    updateFn: RolesAPI.update,
+    onSuccess,
+    createSuccessMessage: 'Rol creado exitosamente',
+    updateSuccessMessage: 'Rol actualizado exitosamente',
+    createErrorMessage: 'Error al crear rol',
+    updateErrorMessage: 'Error al actualizar rol'
   });
 
   const onSubmit = (data: FormData) => {
@@ -87,18 +54,16 @@ export default function RoleForm({ role, onSuccess, onCancel }: RoleFormProps) {
         priority: data.priority,
         isActive: data.isActive,
       };
-      updateMutation.mutate({ id: role.id, data: updateData });
+      update.mutate({ id: role.id, data: updateData });
     } else {
       const createData: CreateRoleDto = {
         name: data.name,
         description: data.description || undefined,
         priority: data.priority,
       };
-      createMutation.mutate(createData);
+      create.mutate(createData);
     }
   };
-
-  const isLoading = createMutation.isPending || updateMutation.isPending;
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">

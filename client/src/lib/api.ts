@@ -1,31 +1,18 @@
 // src/lib/api.ts
-// ============================================================================
-// API Client unificado con soporte multi-base (RH, AUTH, FILES)
-// - Manejo de tokens (Bearer) y credenciales
-// - apiFetch con timeout, manejo de errores y soporte para FormData
-// - Servicios tipados y utilidades CRUD genéricas
-// - Separación de bases por servicio (puertos distintos)
-// - Mantiene TODOS los nombres existentes + agrega faltantes del segundo bloque
-// ============================================================================
-
-/* ---------------------------------------------------------------------------
- * Importación de tipos del dominio RH (personas, contratos, etc.)
- * -------------------------------------------------------------------------*/
 import type {
-  Persona, InsertPersona, Contrato, InsertContrato,
-  Marcacion, InsertMarcacion, Permiso, InsertPermiso,
-  Vacacion, InsertVacacion, Publicacion, InsertPublicacion
-} from "@shared/schema";
-
-/* ---------------------------------------------------------------------------
- * Servicio de autenticación (frontend) para obtener el Access Token
- * Debe exponer: tokenService.getAccessToken(): string | null
- * -------------------------------------------------------------------------*/
+  Person, InsertPerson,
+  Contract, InsertContract,
+  AttendancePunch, InsertAttendancePunch,
+  Permission, InsertPermission,
+  Vacation, InsertVacation,
+  Publication, InsertPublication
+} from '@shared/schema';
 import { tokenService } from '@/services/auth';
 
-/* ---------------------------------------------------------------------------
- * Configuración base por defecto (fallback)
- * -------------------------------------------------------------------------*/
+// =============================================================================
+// Configuración centralizada
+// =============================================================================
+
 const API_CONFIG = {
   BASE_URL: import.meta.env.VITE_API_BASE || "http://localhost:5000",
   DEFAULT_HEADERS: {
@@ -34,38 +21,57 @@ const API_CONFIG = {
   },
   TIMEOUT: 15000, // 15 segundos
   CREDENTIALS: "include" as RequestCredentials
-} as const;
+};
 
-/* ---------------------------------------------------------------------------
- * Bases por servicio (puertos/hosts diferentes)
- * -------------------------------------------------------------------------*/
-const BASES = {
-  RH:    import.meta.env.VITE_RH_API_BASE    || API_CONFIG.BASE_URL,
-  AUTH:  import.meta.env.VITE_AUTH_API_BASE  || API_CONFIG.BASE_URL,
-  FILES: import.meta.env.VITE_FILES_API_BASE || API_CONFIG.BASE_URL,
-} as const;
+// =============================================================================
+// Tipos y estructuras de datos
+// =============================================================================
 
-/* ---------------------------------------------------------------------------
- * Tipos y estructuras de datos transversales
- * -------------------------------------------------------------------------*/
-export type ApiResponse<T> =
-  | { status: 'success'; data: T }
-  | { status: 'error';   error: ApiError };
+/**
+ * Representa una respuesta estándar de la API
+ * @template T Tipo de datos esperado en la respuesta
+ */
+export type ApiResponse<T> = 
+  | { status: 'success'; data: T; }
+  | { status: 'error'; error: ApiError; };
 
+/**
+ * Representa un error de la API
+ */
 export interface ApiError {
   code: number;
   message: string;
   details?: any;
 }
 
-/* ---------------------- Auth / AppAuth tipos -------------------------------*/
-export interface LoginRequest { email: string; password: string; }
-export interface RefreshRequest { refreshToken: string; }
-export interface ValidateTokenRequest { token: string; clientId?: string; }
-export interface AppAuthRequest { clientId?: string; clientSecret?: string; }
+// =============================================================================
+// Interfaces para las nuevas APIs de autenticación
+// =============================================================================
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface RefreshRequest {
+  refreshToken: string;
+}
+
+export interface ValidateTokenRequest {
+  token: string;
+  clientId?: string;
+}
+
+export interface AppAuthRequest {
+  clientId?: string;
+  clientSecret?: string;
+}
+
 export interface LegacyAuthRequest {
-  clientId?: string; clientSecret?: string;
-  userEmail?: string; password?: string;
+  clientId?: string;
+  clientSecret?: string;
+  userEmail?: string;
+  password?: string;
   includePermissions?: boolean;
 }
 
@@ -85,15 +91,520 @@ export interface UserInfo {
   permissions: string[];
 }
 
-export interface AzureAuthUrlResponse { url: string; }
+export interface AzureAuthUrlResponse {
+  url: string;
+}
 
 export interface StatsResponse {
   totalUsers: number;
   activeSessions: number;
   failedAttempts: number;
+  // ... otras estadísticas según la respuesta real
 }
 
-/* ---------------------- Time API tipo --------------------------------------*/
+// =============================================================================
+// Función principal para llamadas API
+// =============================================================================
+
+/**
+ * Realiza una llamada a la API con manejo avanzado de errores y timeout
+ * @param path Ruta del endpoint
+ * @param init Opciones adicionales de la solicitud
+ * @returns Promise con la respuesta tipada
+ */
+export async function apiFetch<T = any>(
+  path: string,
+  init: RequestInit = {}
+): Promise<ApiResponse<T>> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
+  
+  // Obtener token de autenticación
+  const accessToken = tokenService.getAccessToken();
+  const headers = { 
+    ...API_CONFIG.DEFAULT_HEADERS, 
+    ...init.headers,
+    ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {})
+  };
+
+  try {
+    const response = await fetch(`${API_CONFIG.BASE_URL}${path}`, {
+      credentials: API_CONFIG.CREDENTIALS,
+      headers,
+      ...init,
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    
+    // Manejo de respuestas exitosas
+    if (response.ok) {
+      // Respuestas sin contenido (204)
+      if (response.status === 204) {
+        return { status: 'success', data: undefined as unknown as T };
+      }
+      
+      // Intenta parsear la respuesta como JSON
+      try {
+        const data = await response.json();
+        return { status: 'success', data };
+      } catch (jsonError) {
+        // Si falla el parseo JSON, devuelve el texto
+        const text = await response.text();
+        return { 
+          status: 'success', 
+          data: text as unknown as T 
+        };
+      }
+    }
+    
+    // Manejo de errores HTTP (4xx, 5xx)
+    let errorDetails: any;
+    try {
+      errorDetails = await response.json();
+    } catch {
+      try {
+        errorDetails = await response.text();
+      } catch {
+        errorDetails = response.statusText;
+      }
+    }
+    
+    return {
+      status: 'error',
+      error: {
+        code: response.status,
+        message: `HTTP Error ${response.status}: ${response.statusText}`,
+        details: errorDetails
+      }
+    };
+    
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    
+    // Manejo de errores de net o timeout
+    return {
+      status: 'error',
+      error: {
+        code: 0,
+        message: error.name === 'AbortError' 
+          ? 'Request timed out' 
+          : `Network error: ${error.message || 'Unknown error'}`
+      }
+    };
+  }
+}
+
+// =============================================================================
+// Fábrica de servicios CRUD
+// =============================================================================
+
+/**
+ * Crea un servicio CRUD completo para un recurso específico
+ * @template Resource Tipo del recurso principal
+ * @template CreateDTO Tipo para operaciones de creación
+ * @template UpdateDTO Tipo para operaciones de actualización (por defecto Partial<Resource>)
+ * @param endpoint Ruta base del recurso
+ * @returns Objeto con métodos CRUD tipados
+ */
+export function createApiService<Resource, CreateDTO, UpdateDTO = Partial<Resource>>(
+  endpoint: string
+) {
+  return {
+    /**
+     * Obtiene todos los recursos
+     * @returns Lista de recursos
+     */
+    list: (): Promise<ApiResponse<Resource[]>> => 
+      apiFetch<Resource[]>(endpoint),
+    
+    /**
+     * Obtiene un recurso por su ID
+     * @param id Identificador del recurso
+     * @returns Recurso solicitado
+     */
+    get: (id: number | string): Promise<ApiResponse<Resource>> => 
+      apiFetch<Resource>(`${endpoint}/${id}`),
+    
+    /**
+     * Crea un nuevo recurso
+     * @param data Datos para la creación
+     * @returns Recurso creado
+     */
+    create: (data: CreateDTO): Promise<ApiResponse<Resource>> => 
+      apiFetch<Resource>(endpoint, {
+        method: "POST",
+        body: JSON.stringify(data)
+      }),
+    
+    /**
+     * Actualiza un recurso existente
+     * @param id Identificador del recurso
+     * @param data Datos para la actualización
+     * @returns Recurso actualizado
+     */
+    update: (id: number | string, data: UpdateDTO): Promise<ApiResponse<Resource>> => 
+      apiFetch<Resource>(`${endpoint}/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(data)
+      }),
+    
+    /**
+     * Elimina un recurso
+     * @param id Identificador del recurso
+     * @returns Respuesta vacía
+     */
+    remove: (id: number | string): Promise<ApiResponse<void>> => 
+      apiFetch<void>(`${endpoint}/${id}`, { 
+        method: "DELETE" 
+      })
+  };
+}
+
+// =============================================================================
+// Servicios de Autenticación (Nuevos)
+// =============================================================================
+
+export const AuthAPI = {
+  /**
+   * Login tradicional con email y password
+   * @param credentials Credenciales de login
+   * @returns Respuesta con tokens de autenticación
+   */
+  login: (credentials: LoginRequest): Promise<ApiResponse<LoginResponse>> =>
+    apiFetch<LoginResponse>('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(credentials)
+    }),
+
+  /**
+   * Refresh token
+   * @param refreshRequest Solicitud de refresh token
+   * @returns Nueva respuesta con tokens
+   */
+  refresh: (refreshRequest: RefreshRequest): Promise<ApiResponse<LoginResponse>> =>
+    apiFetch<LoginResponse>('/api/auth/refresh', {
+      method: 'POST',
+      body: JSON.stringify(refreshRequest)
+    }),
+
+  /**
+   * Obtiene información del usuario actual
+   * @returns Información del usuario autenticado
+   */
+  getCurrentUser: (): Promise<ApiResponse<UserInfo>> =>
+    apiFetch<UserInfo>('/api/auth/me'),
+
+  /**
+   * Valida un token
+   * @param validateRequest Solicitud de validación de token
+   * @returns Resultado de la validación
+   */
+  validateToken: (validateRequest: ValidateTokenRequest): Promise<ApiResponse<any>> =>
+    apiFetch<any>('/api/auth/validate-token', {
+      method: 'POST',
+      body: JSON.stringify(validateRequest)
+    }),
+
+  /**
+   * Obtiene URL de autenticación con Azure
+   * @param clientId ID del cliente (opcional)
+   * @returns URL de autenticación
+   */
+  getAzureAuthUrl: (clientId?: string): Promise<ApiResponse<AzureAuthUrlResponse>> => {
+    console.log("valor del cliendId: " + clientId);
+    const queryParams = clientId ? `?clientId=${encodeURIComponent(clientId)}` : '';
+    return apiFetch<AzureAuthUrlResponse>(`/api/auth/azure/url${queryParams}`);
+  },
+
+  /**
+   * Callback de autenticación con Azure
+   * @param code Código de autorización
+   * @param state Estado de la solicitud
+   * @returns Resultado de la autenticación
+   */
+  azureCallback: (code: string, state: string): Promise<ApiResponse<LoginResponse>> => {
+    const queryParams = `?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
+    return apiFetch<LoginResponse>(`/api/auth/azure/callback${queryParams}`);
+  }
+};
+
+export const AppAuthAPI = {
+  /**
+   * Obtiene token de aplicación
+   * @param authRequest Solicitud de autenticación de aplicación
+   * @returns Token de aplicación
+   */
+  getToken: (authRequest: AppAuthRequest): Promise<ApiResponse<any>> =>
+    apiFetch<any>('/api/app-auth/token', {
+      method: 'POST',
+      body: JSON.stringify(authRequest)
+    }),
+
+  /**
+   * Login legacy para aplicaciones
+   * @param authRequest Solicitud de autenticación legacy
+   * @returns Resultado de la autenticación
+   */
+  legacyLogin: (authRequest: LegacyAuthRequest): Promise<ApiResponse<any>> =>
+    apiFetch<any>('/api/app-auth/legacy-login', {
+      method: 'POST',
+      body: JSON.stringify(authRequest)
+    }),
+
+  /**
+   * Valida token de aplicación
+   * @param validateRequest Solicitud de validación de token
+   * @returns Resultado de la validación
+   */
+  validateToken: (validateRequest: ValidateTokenRequest): Promise<ApiResponse<any>> =>
+    apiFetch<any>('/api/app-auth/validate-token', {
+      method: 'POST',
+      body: JSON.stringify(validateRequest)
+    }),
+
+  /**
+   * Obtiene estadísticas de autenticación
+   * @param clientId ID del cliente
+   * @returns Estadísticas de autenticación
+   */
+  getStats: (clientId: string): Promise<ApiResponse<StatsResponse>> =>
+    apiFetch<StatsResponse>(`/api/app-auth/stats/${clientId}`)
+};
+
+// =============================================================================
+// Servicios específicos con tipos definidos
+// =============================================================================
+
+// Personas API
+export const PersonasAPI = createApiService<Persona, InsertPersona>("/api/v1/rh/people");
+
+// Contratos API
+export const ContratosAPI = createApiService<Contrato, InsertContrato>("/api/v1/rh/contracts");
+
+// Marcaciones API
+export const MarcacionesAPI = createApiService<Marcacion, InsertMarcacion>("/api/v1/rh/attendance/punches");
+
+// Permisos API
+export const PermisosAPI = createApiService<Permiso, InsertPermiso>("/api/v1/rh/permissions");
+
+// Vacaciones API
+export const VacacionesAPI = createApiService<Vacacion, InsertVacacion>("/api/v1/rh/vacations");
+
+// Publicaciones API
+export const PublicacionesAPI = createApiService<Publicacion, InsertPublicacion>("/api/v1/rh/cv/publications");
+
+// =============================================================================
+// Servicios especializados
+// =============================================================================
+
+// Health Check API
+export const HealthAPI = {
+  /**
+   * Verifica el estado del servicio
+   * @returns Estado del servicio
+   */
+  check: (): Promise<ApiResponse<{ status: string }>> => 
+    apiFetch<{ status: string }>("/health")
+};
+
+// Tipos de Referencia API
+export const TiposReferenciaAPI = {
+  ...createApiService<any, any>("/api/v1/rh/ref/types"),
+  
+  /**
+   * Obtiene tipos por categoría
+   * @param category Categoría de tipos
+   * @returns Lista de tipos en la categoría
+   */
+  byCategory: (category: string): Promise<ApiResponse<any[]>> => 
+    apiFetch<any[]>(`/api/v1/rh/ref/types/category/${category}`)
+};
+
+// Servicios especializados para AttendancePunches
+export const MarcacionesEspecializadasAPI = {
+  /**
+   * Obtiene la última marcación de un empleado
+   * @param employeeId ID del empleado
+   * @returns Última marcación
+   */
+  getLastPunch: (employeeId: number): Promise<ApiResponse<any>> =>
+    apiFetch<any>(`/api/v1/rh/attendance/punches/last-punch/${employeeId}`),
+
+  /**
+   * Obtiene las marcaciones del día actual para un empleado
+   * @param employeeId ID del empleado
+   * @returns Marcaciones del día actual
+   */
+  getTodayPunches: (employeeId: number): Promise<ApiResponse<any>> =>
+    apiFetch<any>(`/api/v1/rh/attendance/punches/today/${employeeId}`),
+
+  /**
+   * Obtiene las marcaciones de un empleado en un rango de fechas
+   * @param employeeId ID del empleado
+   * @param startDate Fecha de inicio
+   * @param endDate Fecha de fin
+   * @returns Marcaciones en el rango de fechas
+   */
+  getPunchesByEmployeeAndDateRange: (
+    employeeId: number, 
+    startDate: string, 
+    endDate: string
+  ): Promise<ApiResponse<any>> =>
+    apiFetch<any>(
+      `/api/v1/rh/attendance/punches/employee/${employeeId}/range?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`
+    ),
+
+  /**
+   * Obtiene las marcaciones en un rango de fechas
+   * @param startDate Fecha de inicio
+   * @param endDate Fecha de fin
+   * @returns Marcaciones en el rango de fechas
+   */
+  getPunchesByDateRange: (
+    startDate: string, 
+    endDate: string
+  ): Promise<ApiResponse<any>> =>
+    apiFetch<any>(
+      `/api/v1/rh/attendance/punches/range?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`
+    )
+};
+
+// Servicios especializados para Jobs
+export const CargosEspecializadosAPI = {
+  /**
+   * Obtiene todos los trabajos activos
+   * @returns Lista de trabajos activos
+   */
+  getActiveJobs: (): Promise<ApiResponse<any>> =>
+    apiFetch<any>("/api/v1/rh/jobs/active"),
+
+  /**
+   * Busca trabajos por título
+   * @param title Título a buscar
+   * @returns Trabajos que coinciden con la búsqueda
+   */
+  searchJobs: (title: string): Promise<ApiResponse<any>> =>
+    apiFetch<any>(`/api/v1/rh/jobs/search?title=${encodeURIComponent(title)}`)
+};
+
+// Configuración Horas Extras API
+export const ConfigHorasExtrasAPI = {
+  ...createApiService<any, any>("/api/v1/rh/overtime/config"),
+  
+  // Métodos adicionales específicos para este servicio
+};
+
+// Vistas de Empleados (VwEmployees)
+export const VistaEmpleadosAPI = {
+  ...createApiService<any, any>("/api/v1/rh/vw/EmployeeComplete"),
+  
+  /**
+   * Obtiene empleados por departamento
+   * @param department Departamento a filtrar
+   * @returns Lista de empleados del departamento
+   */
+  byDepartment: (department: string): Promise<ApiResponse<any[]>> => 
+    apiFetch<any[]>(`/api/v1/rh/vw/EmployeeComplete/department/${department}`)
+};
+
+// =============================================================================
+// Servicios para Time API (Nuevos - Faltantes)
+// =============================================================================
+
+export const TimeAPI = {
+  /**
+   * Obtiene la hora actual del servidor en la zona horaria local
+   * @returns Respuesta con la hora del servidor
+   */
+  getServerTime: (): Promise<ApiResponse<TimeResponse>> =>
+    apiFetch<TimeResponse>("/api/v1/rh/time"),
+
+  /**
+   * Obtiene la hora actual del servidor en UTC
+   * @returns Respuesta con la hora del servidor en UTC
+   */
+  getServerTimeUtc: (): Promise<ApiResponse<TimeResponse>> =>
+    apiFetch<TimeResponse>("/api/v1/rh/time/utc"),
+
+  /**
+   * Obtiene la hora actual del servidor para una zona horaria específica
+   * @param timeZoneId Zona horaria (ej. "America/New_York")
+   * @returns Respuesta con la hora del servidor en la zona horaria especificada
+   */
+  getTimeByTimeZone: (timeZoneId: string): Promise<ApiResponse<TimeResponse>> =>
+    apiFetch<TimeResponse>(`/api/v1/rh/time/timezone/${timeZoneId}`),
+
+  /**
+   * Health check del servicio de tiempo
+   * @returns Respuesta de health check
+   */
+  health: (): Promise<ApiResponse<any>> =>
+    apiFetch<any>("/api/v1/rh/time/health")
+};
+
+// =============================================================================
+// Servicios para VwEmployeeDetails (Vista de Detalles de Empleados)
+// =============================================================================
+
+export const VistaDetallesEmpleadosAPI = {
+  ...createApiService<any, any>("/api/v1/rh/vw/EmployeeDetails"),
+  
+  /**
+   * Obtiene un empleado por email
+   * @param email Email del empleado
+   * @returns Detalles del empleado
+   */
+  byEmail: (email: string): Promise<ApiResponse<any>> => 
+    apiFetch<any>(`/api/v1/rh/vw/EmployeeDetails/email/${email}`),
+  
+  /**
+   * Obtiene empleados por departamento
+   * @param departmentName Nombre del departamento
+   * @returns Lista de empleados del departamento
+   */
+  byDepartment: (departmentName: string): Promise<ApiResponse<any[]>> => 
+    apiFetch<any[]>(`/api/v1/rh/vw/EmployeeDetails/department/${departmentName}`),
+  
+  /**
+   * Obtiene empleados por facultad
+   * @param facultyName Nombre de la facultad
+   * @returns Lista de empleados de la facultad
+   */
+  byFaculty: (facultyName: string): Promise<ApiResponse<any[]>> => 
+    apiFetch<any[]>(`/api/v1/rh/vw/EmployeeDetails/faculty/${facultyName}`),
+  
+  /**
+   * Obtiene empleados por tipo
+   * @param employeeType Tipo de empleado (número)
+   * @returns Lista de empleados del tipo especificado
+   */
+  byType: (employeeType: number): Promise<ApiResponse<any[]>> => 
+    apiFetch<any[]>(`/api/v1/rh/vw/EmployeeDetails/type/${employeeType}`),
+  
+  /**
+   * Obtiene los tipos de empleados disponibles
+   * @returns Lista de tipos de empleados
+   */
+  getAvailableTypes: (): Promise<ApiResponse<any[]>> => 
+    apiFetch<any[]>("/api/v1/rh/vw/EmployeeDetails/available/types"),
+  
+  /**
+   * Obtiene los departamentos disponibles
+   * @returns Lista de departamentos
+   */
+  getAvailableDepartments: (): Promise<ApiResponse<any[]>> => 
+    apiFetch<any[]>("/api/v1/rh/vw/EmployeeDetails/available/departments"),
+  
+  /**
+   * Obtiene las facultades disponibles
+   * @returns Lista de facultades
+   */
+  getAvailableFaculties: (): Promise<ApiResponse<any[]>> => 
+    apiFetch<any[]>("/api/v1/rh/vw/EmployeeDetails/available/faculties")
+};
+
+// Interface para la respuesta de tiempo
 export interface TimeResponse {
   dateTime: string;
   timestamp: number;
@@ -103,292 +614,166 @@ export interface TimeResponse {
   serverName?: string;
 }
 
-/* ---------------------------------------------------------------------------
- * Interfaces RH específicas (feriados, planificaciones, justificaciones)
- * -------------------------------------------------------------------------*/
-// Holidays
-export interface HolidayCreateDTO {
-  name: string;
-  holidayDate: string;
-  isActive: boolean;
-  description?: string;
-}
-export interface HolidayResponseDTO {
-  holidayID: number;
-  name: string;
-  holidayDate: string;
-  isActive: boolean;
-  description?: string;
-  createdAt: string;
-}
+// Endpoint raíz del sistema
+export const SistemaAPI = {
+  /**
+   * Obtiene información del sistema
+   * @returns Información del sistema
+   */
+  info: (): Promise<ApiResponse<any>> => 
+    apiFetch<any>("/api/v1/rh/"),
+  
+  /**
+   * Verifica el estado de salud del sistema
+   * @returns Estado de salud
+   */
+  health: (): Promise<ApiResponse<any>> => 
+    apiFetch<any>("/api/v1/rh/health")
+};
 
-// Time Planning
-export interface TimePlanningCreateDTO {
-  planType: string;
-  title: string;
-  description?: string;
-  startDate: string;
-  endDate: string;
-  startTime: string;
-  endTime: string;
-  overtimeType?: string;
-  factor?: number;
-  owedMinutes?: number;
-  createdBy: number;
-  requiresApproval: boolean;
-  employees?: TimePlanningEmployeeCreateDTO[];
-}
-export interface TimePlanningEmployeeCreateDTO {
-  planID?: number;
-  employeeID: number;
-  assignedHours?: number;
-  assignedMinutes?: number;
-}
-export interface TimePlanningEmployeeUpdateDTO {
-  planEmployeeID: number;
-  actualHours?: number;
-  actualMinutes?: number;
-  employeeStatusTypeID?: number;
-  paymentAmount?: number;
-  isEligible?: boolean;
-  eligibilityReason?: string;
-}
-export interface TimePlanningExecutionCreateDTO {
-  planEmployeeID: number;
-  workDate: string;
-  startTime: string;
-  endTime: string;
-  comments?: string;
-  verifiedBy?: number;
-}
-export interface TimePlanningExecutionUpdateDTO {
-  executionID: number;
-  startTime?: string;
-  endTime?: string;
-  comments?: string;
-  verifiedBy?: number;
-  verifiedAt?: string;
-}
+// =============================================================================
+// Servicios CRUD con tipos genéricos
+// =============================================================================
 
-// Punch Justifications
-export interface PunchJustificationsCreateDto {
-  punchJustID?: number;
-  employeeID: number;
-  bossEmployeeID: number;
-  justificationTypeID: number;
-  startDateTime?: string;
-  endDateTime?: string;
-  justificationDate?: string;
-  reason?: string;
-  hoursRequested?: number;
-  approved: boolean;
-  approvedAt?: string;
-  createdAt?: string;
-  createdBy: number;
-  comments?: string;
-  status?: string;
-}
-export interface PunchJustificationsUpdateDto {
-  punchJustID: number;
-  approved: boolean;
-  approvedAt?: string;
-  comments?: string;
-  status: string;
-}
+export const DireccionesAPI = createApiService<any, any>("/api/v1/rh/cv/addresses");
+export const CalculosAsistenciaAPI = createApiService<any, any>("/api/v1/rh/attendance/calculations");
+export const AuditoriaAPI = createApiService<any, any>("/api/v1/rh/audit");
+export const CuentasBancariasAPI = createApiService<any, any>("/api/v1/rh/cv/bank-accounts");
+export const LibrosAPI = createApiService<any, any>("/api/v1/rh/cv/books");
+export const CantonesAPI = createApiService<any, any>("/api/v1/rh/geo/cantons");
+export const EnfermedadesCatastroficasAPI = createApiService<any, any>("/api/v1/rh/cv/catastrophic-illnesses");
+export const PaisesAPI = createApiService<any, any>("/api/v1/rh/geo/countries");
+export const DepartamentosAPI = createApiService<any, any>("/api/v1/rh/departments");
+export const NivelesEducativosAPI = createApiService<any, any>("/api/v1/rh/cv/education-levels");
+export const ContactosEmergenciaAPI = createApiService<any, any>("/api/v1/rh/cv/emergency-contacts");
+export const HorariosEmpleadosAPI = createApiService<any, any>("/api/v1/rh/employee-schedules");
+export const EmpleadosAPI = createApiService<any, any>("/api/v1/rh/employees");
+export const FacultadesAPI = createApiService<any, any>("/api/v1/rh/faculties");
+export const CargasFamiliaresAPI = createApiService<any, any>("/api/v1/rh/cv/family-burden");
+export const InstitucionesAPI = createApiService<any, any>("/api/v1/rh/cv/institutions");
+export const HorasExtrasAPI = createApiService<any, any>("/api/v1/rh/overtime");
+export const NominaAPI = createApiService<any, any>("/api/v1/rh/payroll");
+export const LineasNominaAPI = createApiService<any, any>("/api/v1/rh/payroll-lines");
+export const TiposPermisosAPI = createApiService<any, any>("/api/v1/rh/permission-types");
+export const MovimientosPersonalAPI = createApiService<any, any>("/api/v1/rh/personnel-movements");
+export const ProvinciasAPI = createApiService<any, any>("/api/v1/rh/geo/provinces");
+export const JustificacionesMarcacionesAPI = createApiService<any, any>("/api/v1/rh/attendance/punch-justifications");
+export const HistorialSalarialAPI = createApiService<any, any>("/api/v1/rh/salary-history");
+export const HorariosAPI = createApiService<any, any>("/api/v1/rh/schedules");
+export const SubrogacionesAPI = createApiService<any, any>("/api/v1/rh/subrogations");
+export const RegistrosRecuperacionTiempoAPI = createApiService<any, any>("/api/v1/rh/time-recovery/logs");
+export const PlanesRecuperacionTiempoAPI = createApiService<any, any>("/api/v1/rh/time-recovery/plans");
+export const CapacitacionesAPI = createApiService<any, any>("/api/v1/rh/cv/trainings");
+export const ExperienciasLaboralesAPI = createApiService<any, any>("/api/v1/rh/cv/work-experiences");
+export const CargosAPI = createApiService<any, any>("/api/v1/rh/jobs");
 
-/* ===========================================================================
- * apiFetch: función principal de llamadas HTTP
- *  - Detecta URL absoluta (no la prefija)
- *  - Añade Authorization si hay token
- *  - Timeout con AbortController
- *  - Quita Content-Type si body es FormData (para boundary correcto)
- *  - Devuelve ApiResponse<T> tipado
- * ==========================================================================*/
-export async function apiFetch<T = any>(
-  path: string,
-  init: RequestInit = {}
-): Promise<ApiResponse<T>> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
+// =============================================================================
+// API utilitaria para llamadas directas
+// =============================================================================
 
-  // Merge de headers, añadiendo Authorization si existe token
-  const accessToken = tokenService.getAccessToken();
-  const mergedHeaders = new Headers({
-    ...API_CONFIG.DEFAULT_HEADERS,
-    ...(init.headers as Record<string, string> | undefined),
-    ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {})
-  });
+/**
+ * Utilidad para realizar llamadas API directamente sin usar los servicios CRUD
+ */
+export const api = {
+  /**
+   * Realiza una solicitud GET
+   * @param path Ruta del endpoint
+   * @returns Respuesta API
+   */
+  get: <T>(path: string): Promise<ApiResponse<T>> => 
+    apiFetch<T>(path),
+  
+  /**
+   * Realiza una solicitud POST
+   * @param path Ruta del endpoint
+   * @param data Datos a enviar
+   * @returns Respuesta API
+   */
+  post: <T>(path: string, data: any): Promise<ApiResponse<T>> => 
+    apiFetch<T>(path, { 
+      method: "POST", 
+      body: JSON.stringify(data) 
+    }),
+  
+  /**
+   * Realiza una solicitud PUT
+   * @param path Ruta del endpoint
+   * @param data Datos a enviar
+   * @returns Respuesta API
+   */
+  put: <T>(path: string, data: any): Promise<ApiResponse<T>> => 
+    apiFetch<T>(path, { 
+      method: "PUT", 
+      body: JSON.stringify(data) 
+    }),
+  
+  /**
+   * Realiza una solicitud PATCH
+   * @param path Ruta del endpoint
+   * @param data Datos a enviar
+   * @returns Respuesta API
+   */
+  patch: <T>(path: string, data: any): Promise<ApiResponse<T>> => 
+    apiFetch<T>(path, { 
+      method: "PATCH", 
+      body: JSON.stringify(data) 
+    }),
+  
+  /**
+   * Realiza una solicitud DELETE
+   * @param path Ruta del endpoint
+   * @returns Respuesta API
+   */
+  delete: <T = void>(path: string): Promise<ApiResponse<T>> => 
+    apiFetch<T>(path, { 
+      method: "DELETE" 
+    })
+};
 
-  // Si el body es FormData, quitar Content-Type (el navegador pondrá boundary)
-  const isFormData = typeof FormData !== "undefined" && init.body instanceof FormData;
-  if (isFormData) mergedHeaders.delete("Content-Type");
+// =============================================================================
+// Utilidades adicionales
+// =============================================================================
 
-  // Soporte de URL absoluta vs relativa (prefija BASE_URL sólo si es relativa)
-  const isAbsolute = /^https?:\/\//i.test(path);
-  const finalUrl = isAbsolute ? path : `${API_CONFIG.BASE_URL}${path}`;
-
-  try {
-    const response = await fetch(finalUrl, {
-      credentials: API_CONFIG.CREDENTIALS,
-      headers: mergedHeaders,
-      ...init,
-      signal: controller.signal
-    });
-
-    clearTimeout(timeoutId);
-
-    // 2xx
-    if (response.ok) {
-      if (response.status === 204) {
-        return { status: 'success', data: undefined as unknown as T };
-      }
-      // Intentar JSON -> Texto -> undefined
-      try {
-        const data = await response.json();
-        return { status: 'success', data };
-      } catch {
-        try {
-          const text = await response.text();
-        return { status: 'success', data: text as unknown as T };
-        } catch {
-          return { status: 'success', data: undefined as unknown as T };
-        }
-      }
-    }
-
-    // Errores HTTP (4xx/5xx)
-    let errorDetails: any;
-    try { errorDetails = await response.json(); }
-    catch {
-      try { errorDetails = await response.text(); }
-      catch { errorDetails = response.statusText; }
-    }
-
-    return {
-      status: 'error',
-      error: {
-        code: response.status,
-        message: `HTTP Error ${response.status}: ${response.statusText}`,
-        details: errorDetails
-      }
-    };
-
-  } catch (error: any) {
-    clearTimeout(timeoutId);
-    return {
-      status: 'error',
-      error: {
-        code: 0,
-        message: error?.name === 'AbortError'
-          ? 'Request timed out'
-          : `Network error: ${error?.message || 'Unknown error'}`
-      }
-    };
+/**
+ * Maneja errores de API de manera consistente
+ * @param error Respuesta de error de la API
+ * @param defaultMessage Mensaje por defecto si no hay detalles
+ * @returns Mensaje de error para mostrar al usuario
+ */
+export function handleApiError(
+  error: ApiError, 
+  defaultMessage = "Ocurrió un error inesperado"
+): string {
+  if (error.details?.message) {
+    return error.details.message;
   }
+  
+  if (error.details?.error) {
+    return error.details.error;
+  }
+  
+  if (typeof error.details === 'string') {
+    return error.details;
+  }
+  
+  return defaultMessage;
 }
 
-/* ===========================================================================
- * Fábrica CRUD genérica
- * - Usa endpoints (absolutos o relativos) según lo que pases
- * ==========================================================================*/
-export function createApiService<Resource, CreateDTO, UpdateDTO = Partial<Resource>>(
-  endpoint: string
-) {
-  return {
-    list:   (): Promise<ApiResponse<Resource[]>> =>
-      apiFetch<Resource[]>(endpoint),
-
-    get:    (id: number | string): Promise<ApiResponse<Resource>> =>
-      apiFetch<Resource>(`${endpoint}/${id}`),
-
-    create: (data: CreateDTO): Promise<ApiResponse<Resource>> =>
-      apiFetch<Resource>(endpoint, {
-        method: "POST",
-        body: JSON.stringify(data)
-      }),
-
-    update: (id: number | string, data: UpdateDTO): Promise<ApiResponse<Resource>> =>
-      apiFetch<Resource>(`${endpoint}/${id}`, {
-        method: "PUT",
-        body: JSON.stringify(data)
-      }),
-
-    remove: (id: number | string): Promise<ApiResponse<void>> =>
-      apiFetch<void>(`${endpoint}/${id}`, { method: "DELETE" })
+/**
+ * Interceptor para añadir token de autenticación a las solicitudes
+ * @param token Token de autenticación
+ */
+export function setAuthToken(token: string): void {
+  API_CONFIG.DEFAULT_HEADERS = {
+    ...API_CONFIG.DEFAULT_HEADERS,
+    "Authorization": `Bearer ${token}`
   };
 }
 
-/* ===========================================================================
- * Servicios de Autenticación (AUTH BASE) - Core
- * ==========================================================================*/
-export const AuthAPI = {
-  /** Login tradicional (AUTH_BASE) */
-  login: (credentials: LoginRequest): Promise<ApiResponse<LoginResponse>> =>
-    apiFetch<LoginResponse>(`${BASES.AUTH}/api/auth/login`, {
-      method: 'POST',
-      body: JSON.stringify(credentials)
-    }),
+// =============================================================================
+// Servicios para Gestión de Autenticación, Usuarios, Roles y Menús
+// =============================================================================
 
-  /** Refresh token (AUTH_BASE) */
-  refresh: (refreshRequest: RefreshRequest): Promise<ApiResponse<LoginResponse>> =>
-    apiFetch<LoginResponse>(`${BASES.AUTH}/api/auth/refresh`, {
-      method: 'POST',
-      body: JSON.stringify(refreshRequest)
-    }),
-
-  /** Usuario actual (AUTH_BASE) */
-  getCurrentUser: (): Promise<ApiResponse<UserInfo>> =>
-    apiFetch<UserInfo>(`${BASES.AUTH}/api/auth/me`),
-
-  /** Validar token (AUTH_BASE) */
-  validateToken: (validateRequest: ValidateTokenRequest): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`${BASES.AUTH}/api/auth/validate-token`, {
-      method: 'POST',
-      body: JSON.stringify(validateRequest)
-    }),
-
-  /** URL de Azure (AUTH_BASE) */
-  getAzureAuthUrl: (clientId?: string): Promise<ApiResponse<AzureAuthUrlResponse>> => {
-    const queryParams = clientId ? `?clientId=${encodeURIComponent(clientId)}` : '';
-    return apiFetch<AzureAuthUrlResponse>(`${BASES.AUTH}/api/auth/azure/url${queryParams}`);
-  },
-
-  /** Callback Azure (AUTH_BASE) */
-  azureCallback: (code: string, state: string): Promise<ApiResponse<LoginResponse>> => {
-    const q = `?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
-    return apiFetch<LoginResponse>(`${BASES.AUTH}/api/auth/azure/callback${q}`);
-  }
-};
-
-/* ===========================================================================
- * Autenticación de Aplicaciones (AUTH BASE)
- * ==========================================================================*/
-export const AppAuthAPI = {
-  getToken: (authRequest: AppAuthRequest): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`${BASES.AUTH}/api/app-auth/token`, {
-      method: 'POST',
-      body: JSON.stringify(authRequest)
-    }),
-
-  legacyLogin: (authRequest: LegacyAuthRequest): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`${BASES.AUTH}/api/app-auth/legacy-login`, {
-      method: 'POST',
-      body: JSON.stringify(authRequest)
-    }),
-
-  validateToken: (validateRequest: ValidateTokenRequest): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`${BASES.AUTH}/api/app-auth/validate-token`, {
-      method: 'POST',
-      body: JSON.stringify(validateRequest)
-    }),
-
-  getStats: (clientId: string): Promise<ApiResponse<StatsResponse>> =>
-    apiFetch<StatsResponse>(`${BASES.AUTH}/api/app-auth/stats/${clientId}`)
-};
-
-/* ===========================================================================
- * Servicios de Administración AUTH (AUTH BASE)
- * ==========================================================================*/
 import type {
   User, Role, UserRole, MenuItem, RoleMenuItem,
   CreateUserDto, UpdateUserDto,
@@ -399,824 +784,257 @@ import type {
   ChangePasswordDto, ChangePasswordResponse
 } from '@/types/auth';
 
+/**
+ * Servicio para gestión de usuarios del sistema de autenticación
+ * Base URL: http://localhost:5010/api/users
+ */
 export const AuthUsersAPI = {
+  /**
+   * Lista todos los usuarios con paginación
+   * @param page Número de página (default: 1)
+   * @param size Tamaño de página (default: 100)
+   */
   list: (page = 1, size = 100): Promise<ApiResponse<User[]>> =>
-    apiFetch<User[]>(`${BASES.AUTH}/api/users?page=${page}&size=${size}`),
+    apiFetch<User[]>(`/api/users?page=${page}&size=${size}`),
 
+  /**
+   * Obtiene un usuario por ID
+   * @param id ID del usuario (GUID)
+   */
   get: (id: string): Promise<ApiResponse<User>> =>
-    apiFetch<User>(`${BASES.AUTH}/api/users/${id}`),
+    apiFetch<User>(`/api/users/${id}`),
 
+  /**
+   * Crea un nuevo usuario
+   * @param data Datos del usuario a crear
+   */
   create: (data: CreateUserDto): Promise<ApiResponse<User>> =>
-    apiFetch<User>(`${BASES.AUTH}/api/users`, { method: 'POST', body: JSON.stringify(data) }),
+    apiFetch<User>('/api/users', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
 
+  /**
+   * Actualiza un usuario existente
+   * @param id ID del usuario
+   * @param data Datos a actualizar
+   */
   update: (id: string, data: UpdateUserDto): Promise<ApiResponse<User>> =>
-    apiFetch<User>(`${BASES.AUTH}/api/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    apiFetch<User>(`/api/users/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    }),
 
+  /**
+   * Elimina un usuario
+   * @param id ID del usuario
+   */
   remove: (id: string): Promise<ApiResponse<void>> =>
-    apiFetch<void>(`${BASES.AUTH}/api/users/${id}`, { method: 'DELETE' })
+    apiFetch<void>(`/api/users/${id}`, {
+      method: 'DELETE'
+    })
 };
 
+/**
+ * Servicio para gestión de roles
+ * Base URL: http://localhost:5010/api/roles
+ */
 export const RolesAPI = {
+  /**
+   * Lista todos los roles con paginación
+   * @param page Número de página (default: 1)
+   * @param size Tamaño de página (default: 100)
+   */
   list: (page = 1, size = 100): Promise<ApiResponse<Role[]>> =>
-    apiFetch<Role[]>(`${BASES.AUTH}/api/roles?page=${page}&size=${size}`),
+    apiFetch<Role[]>(`/api/roles?page=${page}&size=${size}`),
 
+  /**
+   * Obtiene un rol por ID
+   * @param id ID del rol
+   */
   get: (id: number): Promise<ApiResponse<Role>> =>
-    apiFetch<Role>(`${BASES.AUTH}/api/roles/${id}`),
+    apiFetch<Role>(`/api/roles/${id}`),
 
+  /**
+   * Crea un nuevo rol
+   * @param data Datos del rol a crear
+   */
   create: (data: CreateRoleDto): Promise<ApiResponse<Role>> =>
-    apiFetch<Role>(`${BASES.AUTH}/api/roles`, { method: 'POST', body: JSON.stringify(data) }),
+    apiFetch<Role>('/api/roles', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
 
+  /**
+   * Actualiza un rol existente
+   * @param id ID del rol
+   * @param data Datos a actualizar
+   */
   update: (id: number, data: UpdateRoleDto): Promise<ApiResponse<Role>> =>
-    apiFetch<Role>(`${BASES.AUTH}/api/roles/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    apiFetch<Role>(`/api/roles/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    }),
 
+  /**
+   * Elimina un rol
+   * @param id ID del rol
+   */
   remove: (id: number): Promise<ApiResponse<void>> =>
-    apiFetch<void>(`${BASES.AUTH}/api/roles/${id}`, { method: 'DELETE' })
+    apiFetch<void>(`/api/roles/${id}`, {
+      method: 'DELETE'
+    })
 };
 
+/**
+ * Servicio para asignación de roles a usuarios
+ * Base URL: http://localhost:5010/api/user-roles
+ */
 export const UserRolesAPI = {
+  /**
+   * Lista todas las asignaciones de roles a usuarios
+   * @param page Número de página (default: 1)
+   * @param size Tamaño de página (default: 100)
+   */
   list: (page = 1, size = 100): Promise<ApiResponse<UserRole[]>> =>
-    apiFetch<UserRole[]>(`${BASES.AUTH}/api/user-roles?page=${page}&size=${size}`),
+    apiFetch<UserRole[]>(`/api/user-roles?page=${page}&size=${size}`),
 
+  /**
+   * Obtiene una asignación específica
+   * @param userId ID del usuario
+   * @param roleId ID del rol
+   * @param assignedAt Fecha de asignación
+   */
   get: (userId: string, roleId: number, assignedAt: string): Promise<ApiResponse<UserRole>> =>
-    apiFetch<UserRole>(`${BASES.AUTH}/api/user-roles/${userId}/${roleId}/${assignedAt}`),
+    apiFetch<UserRole>(`/api/user-roles/${userId}/${roleId}/${assignedAt}`),
 
+  /**
+   * Asigna un rol a un usuario
+   * @param data Datos de la asignación
+   */
   create: (data: CreateUserRoleDto): Promise<ApiResponse<UserRole>> =>
-    apiFetch<UserRole>(`${BASES.AUTH}/api/user-roles`, { method: 'POST', body: JSON.stringify(data) }),
+    apiFetch<UserRole>('/api/user-roles', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
 
+  /**
+   * Remueve un rol de un usuario
+   * @param userId ID del usuario
+   * @param roleId ID del rol
+   * @param assignedAt Fecha de asignación
+   */
   remove: (userId: string, roleId: number, assignedAt: string): Promise<ApiResponse<void>> =>
-    apiFetch<void>(`${BASES.AUTH}/api/user-roles/${userId}/${roleId}/${assignedAt}`, { method: 'DELETE' })
+    apiFetch<void>(`/api/user-roles/${userId}/${roleId}/${assignedAt}`, {
+      method: 'DELETE'
+    })
 };
 
+/**
+ * Servicio para gestión de items de menú
+ * Base URL: http://localhost:5010/api/menu-items
+ */
 export const MenuItemsAPI = {
+  /**
+   * Lista todos los items de menú con paginación
+   * @param page Número de página (default: 1)
+   * @param size Tamaño de página (default: 100)
+   */
   list: (page = 1, size = 100): Promise<ApiResponse<MenuItem[]>> =>
-    apiFetch<MenuItem[]>(`${BASES.AUTH}/api/menu-items?page=${page}&size=${size}`),
+    apiFetch<MenuItem[]>(`/api/menu-items?page=${page}&size=${size}`),
 
+  /**
+   * Obtiene un item de menú por ID
+   * @param id ID del item de menú
+   */
   get: (id: number): Promise<ApiResponse<MenuItem>> =>
-    apiFetch<MenuItem>(`${BASES.AUTH}/api/menu-items/${id}`),
+    apiFetch<MenuItem>(`/api/menu-items/${id}`),
 
+  /**
+   * Crea un nuevo item de menú
+   * @param data Datos del item a crear
+   */
   create: (data: CreateMenuItemDto): Promise<ApiResponse<MenuItem>> =>
-    apiFetch<MenuItem>(`${BASES.AUTH}/api/menu-items`, { method: 'POST', body: JSON.stringify(data) }),
+    apiFetch<MenuItem>('/api/menu-items', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
 
+  /**
+   * Actualiza un item de menú existente
+   * @param id ID del item de menú
+   * @param data Datos a actualizar
+   */
   update: (id: number, data: UpdateMenuItemDto): Promise<ApiResponse<MenuItem>> =>
-    apiFetch<MenuItem>(`${BASES.AUTH}/api/menu-items/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    apiFetch<MenuItem>(`/api/menu-items/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    }),
 
+  /**
+   * Elimina un item de menú
+   * @param id ID del item de menú
+   */
   remove: (id: number): Promise<ApiResponse<void>> =>
-    apiFetch<void>(`${BASES.AUTH}/api/menu-items/${id}`, { method: 'DELETE' })
+    apiFetch<void>(`/api/menu-items/${id}`, {
+      method: 'DELETE'
+    })
 };
 
+/**
+ * Servicio para asignación de menús a roles
+ * Base URL: http://localhost:5010/api/role-menu-items
+ */
 export const RoleMenuItemsAPI = {
+  /**
+   * Lista todas las asignaciones de menús a roles
+   * @param page Número de página (default: 1)
+   * @param size Tamaño de página (default: 100)
+   */
   list: (page = 1, size = 100): Promise<ApiResponse<RoleMenuItem[]>> =>
-    apiFetch<RoleMenuItem[]>(`${BASES.AUTH}/api/role-menu-items?page=${page}&size=${size}`),
+    apiFetch<RoleMenuItem[]>(`/api/role-menu-items?page=${page}&size=${size}`),
 
+  /**
+   * Obtiene una asignación específica
+   * @param roleId ID del rol
+   * @param menuItemId ID del item de menú
+   */
   get: (roleId: number, menuItemId: number): Promise<ApiResponse<RoleMenuItem>> =>
-    apiFetch<RoleMenuItem>(`${BASES.AUTH}/api/role-menu-items/${roleId}/${menuItemId}`),
+    apiFetch<RoleMenuItem>(`/api/role-menu-items/${roleId}/${menuItemId}`),
 
+  /**
+   * Asigna un menú a un rol
+   * @param data Datos de la asignación
+   */
   create: (data: CreateRoleMenuItemDto): Promise<ApiResponse<RoleMenuItem>> =>
-    apiFetch<RoleMenuItem>(`${BASES.AUTH}/api/role-menu-items`, { method: 'POST', body: JSON.stringify(data) }),
+    apiFetch<RoleMenuItem>('/api/role-menu-items', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
 
+  /**
+   * Remueve un menú de un rol
+   * @param roleId ID del rol
+   * @param menuItemId ID del item de menú
+   */
   remove: (roleId: number, menuItemId: number): Promise<ApiResponse<void>> =>
-    apiFetch<void>(`${BASES.AUTH}/api/role-menu-items/${roleId}/${menuItemId}`, { method: 'DELETE' })
+    apiFetch<void>(`/api/role-menu-items/${roleId}/${menuItemId}`, {
+      method: 'DELETE'
+    })
 };
 
+/**
+ * Servicio para cambio de contraseña
+ * Base URL: http://localhost:5010/api/auth/change-password
+ */
 export const PasswordAPI = {
+  /**
+   * Cambia la contraseña del usuario autenticado
+   * @param data Contraseña actual y nueva contraseña
+   */
   change: (data: ChangePasswordDto): Promise<ApiResponse<ChangePasswordResponse>> =>
-    apiFetch<ChangePasswordResponse>(`${BASES.AUTH}/api/auth/change-password`, {
+    apiFetch<ChangePasswordResponse>('/api/auth/change-password', {
       method: 'POST',
       body: JSON.stringify(data)
     })
-};
-
-/* ===========================================================================
- * Servicios RH (RH BASE) — todos con BASES.RH explícito
- * ==========================================================================*/
-
-// Personas
-export const PersonasAPI = createApiService<Persona, InsertPersona>(`${BASES.RH}/api/v1/rh/people`);
-
-// Contratos (extendido)
-export const ContratosAPI = {
-  ...createApiService<Contrato, InsertContrato>(`${BASES.RH}/api/v1/rh/contracts`),
-  getByEmployee: (employeeId: number): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/contracts/employee/${employeeId}`),
-  getActive: (): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/contracts/active`),
-  getByType: (contractType: number): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/contracts/type/${contractType}`)
-};
-
-// Marcaciones (CRUD)
-export const MarcacionesAPI = createApiService<Marcacion, InsertMarcacion>(`${BASES.RH}/api/v1/rh/attendance/punches`);
-
-// Permisos (extendido)
-export const PermisosAPI = {
-  ...createApiService<Permiso, InsertPermiso>(`${BASES.RH}/api/v1/rh/permissions`),
-  getByEmployee: (employeeId: number): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`${BASES.RH}/api/v1/rh/permissions/employee/${employeeId}`)
-};
-
-// Vacaciones (extendido)
-export const VacacionesAPI = {
-  ...createApiService<Vacacion, InsertVacacion>(`${BASES.RH}/api/v1/rh/vacations`),
-  getByEmployee: (employeeId: number): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`${BASES.RH}/api/v1/rh/vacations/employee/${employeeId}`)
-};
-
-// Publicaciones
-export const PublicacionesAPI = createApiService<Publicacion, InsertPublicacion>(`${BASES.RH}/api/v1/rh/cv/publications`);
-
-// Health Check RH
-export const HealthAPI = {
-  check: (): Promise<ApiResponse<{ status: string }>> =>
-    apiFetch<{ status: string }>(`${BASES.RH}/health`)
-};
-
-// Tipos de Referencia
-export const TiposReferenciaAPI = {
-  ...createApiService<any, any>(`${BASES.RH}/api/v1/rh/ref/types`),
-  byCategory: (category: string): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/ref/types/category/${category}`)
-};
-
-// Marcaciones especializadas
-export const MarcacionesEspecializadasAPI = {
-  getLastPunch: (employeeId: number): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`${BASES.RH}/api/v1/rh/attendance/punches/last-punch/${employeeId}`),
-  getTodayPunches: (employeeId: number): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`${BASES.RH}/api/v1/rh/attendance/punches/today/${employeeId}`),
-  getPunchesByEmployeeAndDateRange:
-    (employeeId: number, startDate: string, endDate: string): Promise<ApiResponse<any>> =>
-      apiFetch<any>(`${BASES.RH}/api/v1/rh/attendance/punches/employee/${employeeId}/range?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`),
-  getPunchesByDateRange:
-    (startDate: string, endDate: string): Promise<ApiResponse<any>> =>
-      apiFetch<any>(`${BASES.RH}/api/v1/rh/attendance/punches/range?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`)
-};
-
-// Cargos (búsquedas)
-export const CargosEspecializadosAPI = {
-  getActiveJobs: (): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`${BASES.RH}/api/v1/rh/jobs/active`),
-  searchJobs: (title: string): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`${BASES.RH}/api/v1/rh/jobs/search?title=${encodeURIComponent(title)}`)
-};
-
-// Config. Horas Extras
-export const ConfigHorasExtrasAPI = createApiService<any, any>(`${BASES.RH}/api/v1/rh/overtime/config`);
-
-// Vista empleados (completa)
-export const VistaEmpleadosAPI = {
-  ...createApiService<any, any>(`${BASES.RH}/api/v1/rh/vw/EmployeeComplete`),
-  byDepartment: (department: string): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/vw/EmployeeComplete/department/${department}`)
-};
-
-// Time API
-export const TimeAPI = {
-  getServerTime: (): Promise<ApiResponse<TimeResponse>> =>
-    apiFetch<TimeResponse>(`${BASES.RH}/api/v1/rh/time`),
-  getServerTimeUtc: (): Promise<ApiResponse<TimeResponse>> =>
-    apiFetch<TimeResponse>(`${BASES.RH}/api/v1/rh/time/utc`),
-  getTimeByTimeZone: (tz: string): Promise<ApiResponse<TimeResponse>> =>
-    apiFetch<TimeResponse>(`${BASES.RH}/api/v1/rh/time/timezone/${tz}`),
-  health: (): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`${BASES.RH}/api/v1/rh/time/health`)
-};
-
-// Vista Detalles Empleados
-export const VistaDetallesEmpleadosAPI = {
-  ...createApiService<any, any>(`${BASES.RH}/api/v1/rh/vw/EmployeeDetails`),
-  byEmail: (email: string): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`${BASES.RH}/api/v1/rh/vw/EmployeeDetails/email/${email}`),
-  byDepartment: (departmentName: string): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/vw/EmployeeDetails/department/${departmentName}`),
-  byFaculty: (facultyName: string): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/vw/EmployeeDetails/faculty/${facultyName}`),
-  byType: (employeeType: number): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/vw/EmployeeDetails/type/${employeeType}`),
-  getAvailableTypes: (): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/vw/EmployeeDetails/available/types`),
-  getAvailableDepartments: (): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/vw/EmployeeDetails/available/departments`),
-  getAvailableFaculties: (): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/vw/EmployeeDetails/available/faculties`)
-};
-
-// Time Planning (planes)
-export const TimePlanningAPI = {
-  ...createApiService<any, any>(`${BASES.RH}/api/v1/rh/planning/timePlannings`),
-  getByEmployee: (employeeId: number): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/planning/timePlannings/employee/${employeeId}`),
-  getByStatus: (statusTypeId: number): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/planning/timePlannings/status/${statusTypeId}`)
-};
-
-// Time Planning (empleados)
-export const TimePlanningEmployeesAPI = {
-  getByPlan: (planId: number): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/planning/employees/by-plan/${planId}`),
-
-  // Alternativo (misma ruta, se mantiene por compatibilidad)
-  getByPlanPath: (planId: number): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/planning/employees/by-plan/${planId}`),
-
-  addEmployee: (_planId: number, employeeData: any): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`${BASES.RH}/api/v1/rh/planning/employees`, {
-      method: 'POST',
-      body: JSON.stringify(employeeData) // employeeData incluye planID
-    }),
-
-  getById: (id: number, planId: number): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`${BASES.RH}/api/v1/rh/planning/employees/${id}?planId=${planId}`),
-
-  update: (id: number, planId: number, employeeData: any): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`${BASES.RH}/api/v1/rh/planning/employees/${id}?planId=${planId}`, {
-      method: 'PUT',
-      body: JSON.stringify(employeeData)
-    }),
-
-  delete: (id: number, planId: number): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`${BASES.RH}/api/v1/rh/planning/employees/${id}?planId=${planId}`, {
-      method: 'DELETE'
-    })
-};
-
-// Time Planning (ejecuciones)
-export const TimePlanningExecutionsAPI = {
-  getByPlanEmployee: (planEmployeeId: number): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/planning/${planEmployeeId}/executions`),
-
-  registerWorkTime: (planEmployeeId: number, executionData: TimePlanningExecutionCreateDTO): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`${BASES.RH}/api/v1/rh/planning/${planEmployeeId}/executions`, {
-      method: 'POST',
-      body: JSON.stringify(executionData)
-    }),
-
-  getById: (planEmployeeId: number, id: number): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`${BASES.RH}/api/v1/rh/planning/${planEmployeeId}/executions/${id}`),
-
-  update: (planEmployeeId: number, id: number, executionData: TimePlanningExecutionUpdateDTO): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`${BASES.RH}/api/v1/rh/planning/${planEmployeeId}/executions/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(executionData)
-    }),
-
-  delete: (planEmployeeId: number, id: number): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`${BASES.RH}/api/v1/rh/planning/${planEmployeeId}/executions/${id}`, {
-      method: 'DELETE'
-    })
-};
-
-// Holidays
-export const HolidaysAPI = {
-  ...createApiService<HolidayResponseDTO, HolidayCreateDTO>(`${BASES.RH}/api/v1/rh/holiday`),
-  getByYear: (year: number): Promise<ApiResponse<HolidayResponseDTO[]>> =>
-    apiFetch<HolidayResponseDTO[]>(`${BASES.RH}/api/v1/rh/holiday/year/${year}`),
-  getActive: (): Promise<ApiResponse<HolidayResponseDTO[]>> =>
-    apiFetch<HolidayResponseDTO[]>(`${BASES.RH}/api/v1/rh/holiday/active`),
-  isHoliday: (date: string): Promise<ApiResponse<boolean>> =>
-    apiFetch<boolean>(`${BASES.RH}/api/v1/rh/holiday/check/${date}`)
-};
-
-// Justificaciones de marcaciones
-export const JustificacionesMarcacionesAPI = {
-  ...createApiService<any, PunchJustificationsCreateDto, PunchJustificationsUpdateDto>(`${BASES.RH}/api/v1/rh/attendance/punch-justifications`),
-  getByEmployee: (employeeId: number): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/attendance/punch-justifications/employee/${employeeId}`),
-  getByBoss: (bossEmployeeId: number): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/attendance/punch-justifications/boss/${bossEmployeeId}`),
-  getByStatus: (status: string): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/attendance/punch-justifications/status/${status}`)
-};
-
-// Sistema RH
-export const SistemaAPI = {
-  info: (): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`${BASES.RH}/api/v1/rh/`),
-  health: (): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`${BASES.RH}/api/v1/rh/health`)
-};
-
-/* ---------------------------------------------------------------------------
- * CRUD genéricos RH (ajusta/añade según tus endpoints reales)
- * -------------------------------------------------------------------------*/
-export const DireccionesAPI                 = createApiService<any, any>(`${BASES.RH}/api/v1/rh/cv/addresses`);
-export const CalculosAsistenciaAPI          = createApiService<any, any>(`${BASES.RH}/api/v1/rh/attendance/calculations`);
-export const AuditoriaAPI                   = createApiService<any, any>(`${BASES.RH}/api/v1/rh/audit`);
-export const CuentasBancariasAPI            = createApiService<any, any>(`${BASES.RH}/api/v1/rh/cv/bank-accounts`);
-export const LibrosAPI                      = createApiService<any, any>(`${BASES.RH}/api/v1/rh/cv/books`);
-export const CantonesAPI                    = createApiService<any, any>(`${BASES.RH}/api/v1/rh/geo/cantons`);
-export const EnfermedadesCatastroficasAPI   = createApiService<any, any>(`${BASES.RH}/api/v1/rh/cv/catastrophic-illnesses`);
-export const PaisesAPI                      = createApiService<any, any>(`${BASES.RH}/api/v1/rh/geo/countries`);
-
-export const DepartamentosAPI = {
-  ...createApiService<any, any>(`${BASES.RH}/api/v1/rh/departments`),
-  getActive: (): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/departments/active`),
-  getByFaculty: (facultyId: number): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/departments/faculty/${facultyId}`)
-};
-
-export const NivelesEducativosAPI           = createApiService<any, any>(`${BASES.RH}/api/v1/rh/cv/education-levels`);
-export const ContactosEmergenciaAPI         = createApiService<any, any>(`${BASES.RH}/api/v1/rh/cv/emergency-contacts`);
-
-export const HorariosEmpleadosAPI = {
-  ...createApiService<any, any>(`${BASES.RH}/api/v1/rh/employee-schedules`),
-  getByEmployee: (employeeId: number): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/employee-schedules/employee/${employeeId}`),
-  getActiveByEmployee: (employeeId: number): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`${BASES.RH}/api/v1/rh/employee-schedules/employee/${employeeId}/active`)
-};
-
-export const EmpleadosAPI = {
-  ...createApiService<any, any>(`${BASES.RH}/api/v1/rh/employees`),
-  getActive: (): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/employees/active`),
-  getByDepartment: (departmentId: number): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/employees/department/${departmentId}`),
-  getByType: (employeeType: number): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/employees/type/${employeeType}`)
-};
-
-export const FacultadesAPI                  = {
-  ...createApiService<any, any>(`${BASES.RH}/api/v1/rh/faculties`),
-  getActive: (): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/faculties/active`)
-};
-export const CargasFamiliaresAPI            = createApiService<any, any>(`${BASES.RH}/api/v1/rh/cv/family-burden`);
-export const InstitucionesAPI               = createApiService<any, any>(`${BASES.RH}/api/v1/rh/cv/institutions`);
-
-export const HorasExtrasAPI = {
-  ...createApiService<any, any>(`${BASES.RH}/api/v1/rh/overtime`),
-  getByEmployee: (employeeId: number): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/overtime/employee/${employeeId}`),
-  getByStatus: (status: string): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/overtime/status/${status}`),
-  getPendingApproval: (approverId: number): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/overtime/pending/${approverId}`)
-};
-
-export const NominaAPI                      = {
-  ...createApiService<any, any>(`${BASES.RH}/api/v1/rh/payroll`),
-  getByEmployee: (employeeId: number): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/payroll/employee/${employeeId}`),
-  getByPeriod: (period: string): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/payroll/period/${period}`)
-};
-export const LineasNominaAPI                = {
-  ...createApiService<any, any>(`${BASES.RH}/api/v1/rh/payroll-lines`),
-  getByPayroll: (payrollId: number): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/payroll-lines/payroll/${payrollId}`)
-};
-
-export const TiposPermisosAPI               = createApiService<any, any>(`${BASES.RH}/api/v1/rh/permission-types`);
-
-export const MovimientosPersonalAPI         = {
-  ...createApiService<any, any>(`${BASES.RH}/api/v1/rh/personnel-movements`),
-  getByEmployee: (employeeId: number): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/personnel-movements/employee/${employeeId}`),
-  getByType: (movementType: string): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/personnel-movements/type/${movementType}`),
-  getActive: (): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/personnel-movements/active`)
-};
-
-export const ProvinciasAPI                  = createApiService<any, any>(`${BASES.RH}/api/v1/rh/geo/provinces`);
-
-export const HistorialSalarialAPI           = {
-  ...createApiService<any, any>(`${BASES.RH}/api/v1/rh/salary-history`),
-  getByContract: (contractId: number): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/salary-history/contract/${contractId}`),
-  getByEmployee: (employeeId: number): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/salary-history/employee/${employeeId}`)
-};
-
-export const HorariosAPI                    = createApiService<any, any>(`${BASES.RH}/api/v1/rh/schedules`);
-
-export const SubrogacionesAPI               = {
-  ...createApiService<any, any>(`${BASES.RH}/api/v1/rh/subrogations`),
-  getBySubrogatingEmployee: (subrogatingEmployeeId: number): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/subrogations/subrogating/${subrogatingEmployeeId}`),
-  getBySubrogatedEmployee: (subrogatedEmployeeId: number): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/subrogations/subrogated/${subrogatedEmployeeId}`),
-  getActive: (): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/subrogations/active`)
-};
-
-export const RegistrosRecuperacionTiempoAPI = {
-  ...createApiService<any, any>(`${BASES.RH}/api/v1/rh/time-recovery/logs`),
-  getByPlan: (recoveryPlanId: number): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/time-recovery/logs/plan/${recoveryPlanId}`),
-  getByEmployee: (employeeId: number): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/time-recovery/logs/employee/${employeeId}`)
-};
-
-export const PlanesRecuperacionTiempoAPI    = {
-  ...createApiService<any, any>(`${BASES.RH}/api/v1/rh/time-recovery/plans`),
-  getByEmployee: (employeeId: number): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/time-recovery/plans/employee/${employeeId}`),
-  getActive: (): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/time-recovery/plans/active`)
-};
-
-export const CapacitacionesAPI              = createApiService<any, any>(`${BASES.RH}/api/v1/rh/cv/trainings`);
-export const ExperienciasLaboralesAPI       = createApiService<any, any>(`${BASES.RH}/api/v1/rh/cv/work-experiences`);
-export const CargosAPI                      = createApiService<any, any>(`${BASES.RH}/api/v1/rh/jobs`);
-
-/* ---------------------------------------------------------------------------
- * Rutas corregidas RH (clasificadores)
- * -------------------------------------------------------------------------*/
-export const ActivityAPI           = createApiService<any, any>(`${BASES.RH}/api/v1/rh/activity`);
-export const AdditionalActivityAPI = createApiService<any, any>(`${BASES.RH}/api/v1/rh/additional-activity`);
-export const ContractTypeAPI       = createApiService<any, any>(`${BASES.RH}/api/v1/rh/contract-type`);
-export const DegreeAPI             = createApiService<any, any>(`${BASES.RH}/api/v1/rh/degree`);
-export const JobActivityAPI        = createApiService<any, any>(`${BASES.RH}/api/v1/rh/job-activity`);
-export const OccupationalGroupAPI  = createApiService<any, any>(`${BASES.RH}/api/v1/rh/occupational-group`);
-
-// src/lib/api.ts - SECCIÓN AÑADIDA
-
-/* ---------------------------------------------------------------------------
- * Interfaces adicionales para los servicios faltantes
- * -------------------------------------------------------------------------*/
-export interface AttendanceCalculationRequestDto {
-  fromDate: string;
-  toDate: string;
-  employeeId?: number;
-}
-
-export interface PayrollPeriodRequestDto {
-  period: string; // Formato YYYY-MM
-}
-
-export interface FileDeleteResponseDto {
-  success: boolean;
-  message?: string;
-  filePath?: string;
-}
-
-/* ---------------------------------------------------------------------------
- * Servicios FALTANTES - Attendance Calculation
- * -------------------------------------------------------------------------*/
-export const AttendanceCalculationAPI = {
-  calculateRange: (data: AttendanceCalculationRequestDto): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`${BASES.RH}/api/v1/rh/cv/attendance/calculate-range`, {
-      method: "POST",
-      body: JSON.stringify(data)
-    }),
-
-  calculateNightMinutes: (data: AttendanceCalculationRequestDto): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`${BASES.RH}/api/v1/rh/cv/attendance/calc-night-minutes`, {
-      method: "POST",
-      body: JSON.stringify(data)
-    })
-};
-
-/* ---------------------------------------------------------------------------
- * Servicios FALTANTES - Justifications
- * -------------------------------------------------------------------------*/
-export const JustificationsAPI = {
-  applyJustifications: (data: AttendanceCalculationRequestDto): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`${BASES.RH}/api/v1/rh/cv/justifications/apply`, {
-      method: "POST",
-      body: JSON.stringify(data)
-    })
-};
-
-/* ---------------------------------------------------------------------------
- * Servicios FALTANTES - Overtime Price
- * -------------------------------------------------------------------------*/
-export const OvertimePriceAPI = {
-  calculateOvertimePrice: (data: PayrollPeriodRequestDto): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`${BASES.RH}/api/v1/rh/cv/overtime/price`, {
-      method: "POST",
-      body: JSON.stringify(data)
-    })
-};
-
-/* ---------------------------------------------------------------------------
- * Servicios FALTANTES - Payroll Discounts
- * -------------------------------------------------------------------------*/
-export const PayrollDiscountsAPI = {
-  calculateDiscounts: (data: PayrollPeriodRequestDto): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`${BASES.RH}/api/v1/rh/cv/payroll/discounts`, {
-      method: "POST",
-      body: JSON.stringify(data)
-    })
-};
-
-/* ---------------------------------------------------------------------------
- * Servicios FALTANTES - Payroll Subsidies
- * -------------------------------------------------------------------------*/
-export const PayrollSubsidiesAPI = {
-  calculateSubsidies: (data: PayrollPeriodRequestDto): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`${BASES.RH}/api/v1/rh/cv/payroll/subsidies`, {
-      method: "POST",
-      body: JSON.stringify(data)
-    })
-};
-
-/* ---------------------------------------------------------------------------
- * Servicios FALTANTES - Recovery
- * -------------------------------------------------------------------------*/
-export const RecoveryAPI = {
-  applyRecovery: (data: AttendanceCalculationRequestDto): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`${BASES.RH}/api/v1/rh/cv/recovery/apply`, {
-      method: "POST",
-      body: JSON.stringify(data)
-    })
-};
-
-/* ---------------------------------------------------------------------------
- * Vistas FALTANTES - VwAttendanceDay
- * -------------------------------------------------------------------------*/
-export const VwAttendanceDayAPI = {
-  getAll: (): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/cv/vw-attendance-day`),
-
-  getByEmployeeId: (employeeId: number): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`${BASES.RH}/api/v1/rh/cv/vw-attendance-day/by-employee/${employeeId}`),
-
-  getByDateRange: (fromDate?: string, toDate?: string): Promise<ApiResponse<any[]>> => {
-    const params = new URLSearchParams();
-    if (fromDate) params.append('fromDate', fromDate);
-    if (toDate) params.append('toDate', toDate);
-    return apiFetch<any[]>(`${BASES.RH}/api/v1/rh/cv/vw-attendance-day/by-date-range?${params}`);
-  }
-};
-
-/* ---------------------------------------------------------------------------
- * Vistas FALTANTES - VwEmployeeScheduleAtDate
- * -------------------------------------------------------------------------*/
-export const VwEmployeeScheduleAtDateAPI = {
-  getAll: (): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/cv/vw-employee-schedule-at-date`),
-
-  getByEmployeeId: (employeeId: number): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`${BASES.RH}/api/v1/rh/cv/vw-employee-schedule-at-date/by-employee/${employeeId}`),
-
-  getByDate: (date?: string): Promise<ApiResponse<any[]>> => {
-    const params = new URLSearchParams();
-    if (date) params.append('date', date);
-    return apiFetch<any[]>(`${BASES.RH}/api/v1/rh/cv/vw-employee-schedule-at-date/by-date?${params}`);
-  }
-};
-
-/* ---------------------------------------------------------------------------
- * Vistas FALTANTES - VwLeaveWindows
- * -------------------------------------------------------------------------*/
-export const VwLeaveWindowsAPI = {
-  getAll: (): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/cv/vw-leave-windows`),
-
-  getByEmployeeId: (employeeId: number): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`${BASES.RH}/api/v1/rh/cv/vw-leave-windows/by-employee/${employeeId}`),
-
-  getByLeaveType: (leaveType: string): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`${BASES.RH}/api/v1/rh/cv/vw-leave-windows/by-type/${leaveType}`)
-};
-
-/* ---------------------------------------------------------------------------
- * Vistas FALTANTES - VwPunchDay
- * -------------------------------------------------------------------------*/
-export const VwPunchDayAPI = {
-  getAll: (): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/cv/vw-punch-day`),
-
-  getByEmployeeId: (employeeId: number): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`${BASES.RH}/api/v1/rh/cv/vw-punch-day/by-employee/${employeeId}`),
-
-  getByDateRange: (fromDate?: string, toDate?: string): Promise<ApiResponse<any[]>> => {
-    const params = new URLSearchParams();
-    if (fromDate) params.append('fromDate', fromDate);
-    if (toDate) params.append('toDate', toDate);
-    return apiFetch<any[]>(`${BASES.RH}/api/v1/rh/cv/vw-punch-day/by-date-range?${params}`);
-  }
-};
-
-
-/* ---------------------------------------------------------------------------
- * Nuevas APIs del Swagger RH (directorio/archivos/parámetros)
- * -------------------------------------------------------------------------*/
-export const DirectoryParametersAPI = {
-  ...createApiService<any, any>(`${BASES.RH}/api/v1/rh/cv/directory-parameters`),
-  getByCode: (code: string): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`${BASES.RH}/api/v1/rh/cv/directory-parameters/by-code/${code}`)
-};
-
-export const ParametersAPI = createApiService<any, any>(`${BASES.RH}/api/v1/rh/cv/parameters`);
-
-/** Gestión de Archivos (FILES BASE) */
-// export const FileManagementAPI = {
-//   /** Subir archivo (multipart/form-data) */
-//   uploadFile: (formData: FormData): Promise<ApiResponse<any>> =>
-//     apiFetch<any>(`${BASES.FILES}/api/v1/rh/files/upload`, {
-//       method: "POST",
-//       body: formData,
-//       headers: {
-//         // Importante: NO fijar Content-Type (apiFetch lo elimina si detecta FormData)
-//       }
-//     }),
-
-//   /** Descargar archivo (retorna Blob) */
-//   downloadFile: async (directoryCode: string, filePath: string): Promise<ApiResponse<Blob>> => {
-//     const url = `${BASES.FILES}/api/v1/rh/files/download/${encodeURIComponent(directoryCode)}?filePath=${encodeURIComponent(filePath)}`;
-//     try {
-//       const resp = await fetch(url, {
-//         method: "GET",
-//         headers: {
-//           "Accept": "*/*",
-//           ...(tokenService.getAccessToken()
-//             ? { "Authorization": `Bearer ${tokenService.getAccessToken()}` }
-//             : {})
-//         },
-//         credentials: API_CONFIG.CREDENTIALS
-//       });
-
-//       if (!resp.ok) {
-//         const text = await resp.text().catch(() => "");
-//         return { status: "error", error: { code: resp.status, message: text || `HTTP Error ${resp.status}`, details: text } };
-//       }
-
-//       const blob = await resp.blob();
-//       return { status: "success", data: blob };
-//     } catch (e: any) {
-//       return { status: "error", error: { code: 0, message: e?.message || "Network error" } };
-//     }
-//   },
-
-//   /** Verificar existencia de archivo */
-//   fileExists: (directoryCode: string, filePath: string): Promise<ApiResponse<boolean>> =>
-//     apiFetch<boolean>(`${BASES.FILES}/api/v1/rh/files/exists/${encodeURIComponent(directoryCode)}?filePath=${encodeURIComponent(filePath)}`)
-// };
-
-
-// ACTUALIZAR el FileManagementAPI existente para incluir los métodos faltantes
-export const FileManagementAPI = {
-  /** Subir archivo (multipart/form-data) */
-  uploadFile: (formData: FormData): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`${BASES.FILES}/api/v1/rh/files/upload`, {
-      method: "POST",
-      body: formData,
-      headers: {
-        // Importante: NO fijar Content-Type (apiFetch lo elimina si detecta FormData)
-      }
-    }),
-
-  /** Subir múltiples archivos (multipart/form-data) */
-  uploadMultipleFiles: (formData: FormData): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`${BASES.FILES}/api/v1/rh/files/upload-multiple`, {
-      method: "POST",
-      body: formData,
-      headers: {
-        // Importante: NO fijar Content-Type (apiFetch lo elimina si detecta FormData)
-      }
-    }),
-
-  /** Descargar archivo (retorna Blob) */
-  downloadFile: async (directoryCode: string, filePath: string): Promise<ApiResponse<Blob>> => {
-    const url = `${BASES.FILES}/api/v1/rh/files/download/${encodeURIComponent(directoryCode)}?filePath=${encodeURIComponent(filePath)}`;
-    try {
-      const resp = await fetch(url, {
-        method: "GET",
-        headers: {
-          "Accept": "*/*",
-          ...(tokenService.getAccessToken()
-            ? { "Authorization": `Bearer ${tokenService.getAccessToken()}` }
-            : {})
-        },
-        credentials: API_CONFIG.CREDENTIALS
-      });
-
-      if (!resp.ok) {
-        const text = await resp.text().catch(() => "");
-        return { status: "error", error: { code: resp.status, message: text || `HTTP Error ${resp.status}`, details: text } };
-      }
-
-      const blob = await resp.blob();
-      return { status: "success", data: blob };
-    } catch (e: any) {
-      return { status: "error", error: { code: 0, message: e?.message || "Network error" } };
-    }
-  },
-
-  /** Verificar existencia de archivo */
-  fileExists: (directoryCode: string, filePath: string): Promise<ApiResponse<boolean>> =>
-    apiFetch<boolean>(`${BASES.FILES}/api/v1/rh/files/exists/${encodeURIComponent(directoryCode)}?filePath=${encodeURIComponent(filePath)}`),
-
-  /** Eliminar archivo */
-  deleteFile: (directoryCode: string, filePath: string): Promise<ApiResponse<FileDeleteResponseDto>> =>
-    apiFetch<FileDeleteResponseDto>(`${BASES.FILES}/api/v1/rh/files/delete/${encodeURIComponent(directoryCode)}?filePath=${encodeURIComponent(filePath)}`, {
-      method: "DELETE"
-    })
-};
-
-// Alias por conveniencia (mismo objeto que VistaDetallesEmpleadosAPI)
-export const EmployeeDetailsAPI = { ...VistaDetallesEmpleadosAPI };
-
-/* ---------------------------------------------------------------------------
- * Servicios agregados del segundo bloque (manteniendo nombres)
- * -------------------------------------------------------------------------*/
-export const ContractRequestAPI = createApiService<any, any>(`${BASES.RH}/api/v1/rh/cv/contract-request`);
-export const FinancialCertificationAPI = createApiService<any, any>(`${BASES.RH}/api/v1/rh/cv/financial-certification`);
-
-/* ===========================================================================
- * API utilitaria simple (GET/POST/PUT/PATCH/DELETE)
- * ==========================================================================*/
-export const api = {
-  get:   <T>(path: string): Promise<ApiResponse<T>> => apiFetch<T>(path),
-  post:  <T>(path: string, data: any): Promise<ApiResponse<T>> =>
-    apiFetch<T>(path, { method: "POST",  body: JSON.stringify(data) }),
-  put:   <T>(path: string, data: any): Promise<ApiResponse<T>> =>
-    apiFetch<T>(path, { method: "PUT",   body: JSON.stringify(data) }),
-  patch: <T>(path: string, data: any): Promise<ApiResponse<T>> =>
-    apiFetch<T>(path, { method: "PATCH", body: JSON.stringify(data) }),
-  delete:<T = void>(path: string): Promise<ApiResponse<T>> =>
-    apiFetch<T>(path, { method: "DELETE" })
-};
-
-/* ===========================================================================
- * Utilidades adicionales
- * ==========================================================================*/
-/** Formatea un error de API para UI */
-export function handleApiError(error: ApiError, defaultMessage = "Ocurrió un error inesperado"): string {
-  if (error.details?.message) return error.details.message;
-  if (error.details?.error)   return error.details.error;
-  if (typeof error.details === 'string') return error.details;
-  return defaultMessage;
-}
-
-/** Interceptor global para fijar Authorization en DEFAULT_HEADERS (opcional) */
-export function setAuthToken(token: string): void {
-  (API_CONFIG as any).DEFAULT_HEADERS = {
-    ...API_CONFIG.DEFAULT_HEADERS,
-    "Authorization": `Bearer ${token}`
-  };
-}
-
-/* ===========================================================================
- * Exportación por defecto para compatibilidad (índice agregador)
- * ==========================================================================*/
-export default {
-  // base
-  apiFetch, createApiService,
-
-  // auth core
-  AuthAPI, AppAuthAPI,
-
-  // auth admin
-  AuthUsersAPI, RolesAPI, UserRolesAPI, MenuItemsAPI, RoleMenuItemsAPI, PasswordAPI,
-
-  // RH core
-  PersonasAPI, ContratosAPI, MarcacionesAPI, PermisosAPI, VacacionesAPI, PublicacionesAPI,
-
-  // RH especiales
-  HealthAPI, TiposReferenciaAPI, MarcacionesEspecializadasAPI, CargosEspecializadosAPI,
-  ConfigHorasExtrasAPI, VistaEmpleadosAPI,
-
-  // tiempo y vistas
-  TimeAPI, VistaDetallesEmpleadosAPI,
-
-  // planning
-  TimePlanningAPI, TimePlanningEmployeesAPI, TimePlanningExecutionsAPI,
-
-  // holidays / justificaciones
-  HolidaysAPI, JustificacionesMarcacionesAPI,
-
-  // sistema
-  SistemaAPI,
-
-  // genéricos RH
-  DireccionesAPI, CalculosAsistenciaAPI, AuditoriaAPI, CuentasBancariasAPI, LibrosAPI,
-  CantonesAPI, EnfermedadesCatastroficasAPI, PaisesAPI, DepartamentosAPI, NivelesEducativosAPI,
-  ContactosEmergenciaAPI, HorariosEmpleadosAPI, EmpleadosAPI, FacultadesAPI, CargasFamiliaresAPI,
-  InstitucionesAPI, HorasExtrasAPI, NominaAPI, LineasNominaAPI, TiposPermisosAPI,
-  MovimientosPersonalAPI, ProvinciasAPI, HistorialSalarialAPI, HorariosAPI, SubrogacionesAPI,
-  RegistrosRecuperacionTiempoAPI, PlanesRecuperacionTiempoAPI, CapacitacionesAPI,
-  ExperienciasLaboralesAPI, CargosAPI,
-
-  // rutas corregidas
-  ActivityAPI, AdditionalActivityAPI, ContractTypeAPI, DegreeAPI, JobActivityAPI, OccupationalGroupAPI,
-
-  // swagger nuevos
-  DirectoryParametersAPI, ParametersAPI, FileManagementAPI, EmployeeDetailsAPI,
-
-  // agregados del segundo bloque
-  ContractRequestAPI, FinancialCertificationAPI,
-
-  // NUEVOS SERVICIOS IMPLEMENTADOS
-  AttendanceCalculationAPI,
-  JustificationsAPI,
-  OvertimePriceAPI,
-  PayrollDiscountsAPI,
-  PayrollSubsidiesAPI,
-  RecoveryAPI,
-  VwAttendanceDayAPI,
-  VwEmployeeScheduleAtDateAPI,
-  VwLeaveWindowsAPI,
-  VwPunchDayAPI,
-
-  // aliases por compatibilidad con código existente
-  TimePlanningEmployeeAPI: TimePlanningEmployeesAPI,
-  TimePlanningExecutionAPI: TimePlanningExecutionsAPI,
-
-  // utils
-  api, handleApiError, setAuthToken
 };
