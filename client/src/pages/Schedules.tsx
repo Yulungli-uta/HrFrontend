@@ -1,25 +1,40 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { Clock, Calendar, Users, Plus } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { Clock, Plus } from "lucide-react";
 import type { Schedule } from "@shared/schema";
 import ScheduleForm from "@/components/forms/ScheduleForm";
-import { useState } from "react";
-import { HorariosAPI, type ApiResponse } from "@/lib/api"; // Importamos desde lib/api
+import { HorariosAPI, type ApiResponse } from "@/lib/api";
 
 export default function SchedulesPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
-  
-  // Usamos el servicio específico de horarios
+  const [selected, setSelected] = useState<Schedule | undefined>(undefined); // <- para editar
+
   const { data: apiResponse, isLoading, error } = useQuery<ApiResponse<Schedule[]>>({
-    queryKey: ['/api/v1/rh/schedules'], // Cambiamos la queryKey
-    queryFn: () => HorariosAPI.list(), // Usamos el servicio de horarios
+    queryKey: ["/api/v1/rh/schedules"],
+    queryFn: () => HorariosAPI.list(),
   });
 
-  // Extraemos los horarios del formato de respuesta de la API
-  const schedules = apiResponse?.status === 'success' ? apiResponse.data : [];
+  const schedules = apiResponse?.status === "success" ? apiResponse.data : [];
+
+  const openCreate = () => {
+    setSelected(undefined);
+    setIsFormOpen(true);
+  };
+
+  const openEdit = (s: Schedule) => {
+    setSelected(s);
+    setIsFormOpen(true);
+  };
+
+  const closeForm = () => {
+    setIsFormOpen(false);
+    setSelected(undefined);
+  };
 
   if (isLoading) {
     return (
@@ -30,7 +45,7 @@ export default function SchedulesPage() {
         </div>
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Card key={i} className="animate-pulse">
+            <Card key={`skeleton-${i}`} className="animate-pulse">
               <CardHeader className="space-y-2">
                 <div className="h-6 w-3/4 bg-gray-200 rounded" />
                 <div className="h-4 w-1/2 bg-gray-200 rounded" />
@@ -58,8 +73,7 @@ export default function SchedulesPage() {
     );
   }
 
-  // Manejar errores de la API (cuando status es 'error')
-  if (apiResponse?.status === 'error') {
+  if (apiResponse?.status === "error") {
     return (
       <div className="container mx-auto p-6">
         <Card className="border-red-200 bg-red-50">
@@ -73,103 +87,121 @@ export default function SchedulesPage() {
 
   return (
     <div className="container mx-auto p-6">
+      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Gestión de Horarios</h1>
           <p className="text-gray-600 mt-2">Configure y administre los horarios de trabajo del personal</p>
         </div>
-        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+
+        {/* Dialog Crear/Editar */}
+        <Dialog open={isFormOpen} onOpenChange={(o) => (o ? setIsFormOpen(true) : closeForm())}>
           <DialogTrigger asChild>
-            <Button 
+            <Button
               data-testid="button-add-schedule"
               className="bg-blue-600 hover:bg-blue-700"
+              onClick={openCreate}
             >
               <Plus className="mr-2 h-4 w-4" />
               Crear Horario
             </Button>
           </DialogTrigger>
+
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <ScheduleForm 
-              onSuccess={() => setIsFormOpen(false)}
-              onCancel={() => setIsFormOpen(false)}
+            <DialogHeader>
+              <DialogTitle>{selected ? "Editar horario" : "Crear horario"}</DialogTitle>
+              <DialogDescription>
+                {selected
+                  ? "Modifique los campos necesarios y guarde los cambios."
+                  : "Complete los campos para registrar un nuevo horario."}
+              </DialogDescription>
+            </DialogHeader>
+
+            <ScheduleForm
+              schedule={selected}
+              onSuccess={closeForm}
+              onCancel={closeForm}
             />
           </DialogContent>
         </Dialog>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {schedules.map((schedule) => (
-          <Card key={schedule.id} className="hover:shadow-lg transition-shadow duration-200">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Clock className="h-5 w-5 text-blue-600" />
-                  <span data-testid={`text-schedule-${schedule.id}`}>
-                    {schedule.description}
-                  </span>
-                </div>
-                {schedule.isRotating && (
-                  <Badge variant="outline" className="text-xs">
-                    Rotativo
-                  </Badge>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">Horario:</span>
-                <span className="font-medium" data-testid={`text-hours-${schedule.id}`}>
-                  {schedule.entryTime} - {schedule.exitTime}
-                </span>
-              </div>
-              
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">Horas/día:</span>
-                <span className="font-medium" data-testid={`text-required-hours-${schedule.id}`}>
-                  {schedule.requiredHoursPerDay}h
-                </span>
-              </div>
-              
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <Calendar className="h-4 w-4" />
-                <span data-testid={`text-working-days-${schedule.id}`}>
-                  {schedule.workingDays}
-                </span>
-              </div>
-              
-              {schedule.hasLunchBreak && schedule.lunchStart && schedule.lunchEnd && (
-                <div className="bg-yellow-50 p-2 rounded text-sm">
-                  <span className="text-yellow-700">
-                    Almuerzo: {schedule.lunchStart} - {schedule.lunchEnd}
-                  </span>
-                </div>
-              )}
-
-              <div className="pt-3 border-t">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="w-full"
-                  data-testid={`button-view-schedule-${schedule.id}`}
-                >
-                  Ver Detalles
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {schedules.length === 0 && (
+      {/* Tabla */}
+      {schedules.length > 0 ? (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Listado de horarios</CardTitle>
+            <CardDescription>Vista tabular con detalles claves</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table className="min-w-[900px] text-sm">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[28rem]">Descripción</TableHead>
+                    <TableHead>Horario</TableHead>
+                    <TableHead>Horas/día</TableHead>
+                    <TableHead>Días laborables</TableHead>
+                    <TableHead>Almuerzo</TableHead>
+                    <TableHead>Rotativo</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {schedules.map((s, idx) => {
+                    const lunch =
+                      s.hasLunchBreak && s.lunchStart && s.lunchEnd
+                        ? `${s.lunchStart} - ${s.lunchEnd}`
+                        : "-";
+                    const uniqueKey = s.id || `schedule-${idx}`;
+                    return (
+                      <TableRow key={uniqueKey} data-testid={`row-schedule-${uniqueKey}`}>
+                        <TableCell data-testid={`text-schedule-${uniqueKey}`} className="font-medium">
+                          {s.description}
+                        </TableCell>
+                        <TableCell data-testid={`text-hours-${uniqueKey}`}>
+                          {s.entryTime} - {s.exitTime}
+                        </TableCell>
+                        <TableCell data-testid={`text-required-hours-${uniqueKey}`}>
+                          {s.requiredHoursPerDay}h
+                        </TableCell>
+                        <TableCell className="whitespace-pre-wrap" data-testid={`text-working-days-${uniqueKey}`}>
+                          {s.workingDays}
+                        </TableCell>
+                        <TableCell>{lunch}</TableCell>
+                        <TableCell>
+                          {s.isRotating ? (
+                            <Badge variant="outline" className="text-xs">Rotativo</Badge>
+                          ) : (
+                            <span className="text-gray-500">Fijo</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="ml-auto"
+                            data-testid={`button-view-schedule-${uniqueKey}`}
+                            onClick={() => openEdit(s)} // <- abre en modo edición
+                          >
+                            Ver detalles
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
         <Card className="text-center py-12">
           <CardContent>
             <Clock className="mx-auto h-12 w-12 text-gray-400 mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">No hay horarios configurados</h3>
             <p className="text-gray-600 mb-4">Comience creando el primer horario de trabajo</p>
-            <Button 
-              data-testid="button-add-first-schedule"
-              onClick={() => setIsFormOpen(true)}
-            >
+            <Button data-testid="button-add-first-schedule" onClick={openCreate}>
               <Plus className="mr-2 h-4 w-4" />
               Crear Primer Horario
             </Button>

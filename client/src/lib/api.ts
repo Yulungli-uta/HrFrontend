@@ -5,6 +5,7 @@
 // - apiFetch con timeout, manejo de errores y soporte para FormData
 // - Servicios tipados y utilidades CRUD genéricas
 // - Separación de bases por servicio (puertos distintos)
+// - Mantiene TODOS los nombres existentes + agrega faltantes del segundo bloque
 // ============================================================================
 
 /* ---------------------------------------------------------------------------
@@ -24,10 +25,6 @@ import { tokenService } from '@/services/auth';
 
 /* ---------------------------------------------------------------------------
  * Configuración base por defecto (fallback)
- * - BASE_URL: si no se especifican bases por servicio, se usa esta
- * - DEFAULT_HEADERS: encabezados comunes (no añadir Content-Type para FormData)
- * - TIMEOUT: milisegundos antes de abortar la solicitud
- * - CREDENTIALS: modo de cookies
  * -------------------------------------------------------------------------*/
 const API_CONFIG = {
   BASE_URL: import.meta.env.VITE_API_BASE || "http://localhost:5000",
@@ -41,11 +38,6 @@ const API_CONFIG = {
 
 /* ---------------------------------------------------------------------------
  * Bases por servicio (puertos/hosts diferentes)
- * Define en tu .env (ajusta a tu infraestructura):
- *   VITE_RH_API_BASE=http://localhost:5000
- *   VITE_AUTH_API_BASE=http://localhost:5010
- *   VITE_FILES_API_BASE=http://localhost:5000
- * Si no defines alguna, se usa API_CONFIG.BASE_URL como fallback.
  * -------------------------------------------------------------------------*/
 const BASES = {
   RH:    import.meta.env.VITE_RH_API_BASE    || API_CONFIG.BASE_URL,
@@ -56,22 +48,17 @@ const BASES = {
 /* ---------------------------------------------------------------------------
  * Tipos y estructuras de datos transversales
  * -------------------------------------------------------------------------*/
-
-/** Respuesta estándar de la API */
 export type ApiResponse<T> =
   | { status: 'success'; data: T }
   | { status: 'error';   error: ApiError };
 
-/** Error estándar */
 export interface ApiError {
   code: number;
   message: string;
   details?: any;
 }
 
-/* ---------------------------------------------------------------------------
- * Interfaces comunes para autenticación / estadísticas / tiempo
- * -------------------------------------------------------------------------*/
+/* ---------------------- Auth / AppAuth tipos -------------------------------*/
 export interface LoginRequest { email: string; password: string; }
 export interface RefreshRequest { refreshToken: string; }
 export interface ValidateTokenRequest { token: string; clientId?: string; }
@@ -106,7 +93,7 @@ export interface StatsResponse {
   failedAttempts: number;
 }
 
-/** Respuesta servicio de tiempo */
+/* ---------------------- Time API tipo --------------------------------------*/
 export interface TimeResponse {
   dateTime: string;
   timestamp: number;
@@ -211,11 +198,11 @@ export interface PunchJustificationsUpdateDto {
 
 /* ===========================================================================
  * apiFetch: función principal de llamadas HTTP
- * - Detecta URL absoluta (no la prefija)
- * - Añade Authorization si hay token
- * - Timeout con AbortController
- * - Quita Content-Type si body es FormData (para boundary correcto)
- * - Devuelve ApiResponse<T> tipado
+ *  - Detecta URL absoluta (no la prefija)
+ *  - Añade Authorization si hay token
+ *  - Timeout con AbortController
+ *  - Quita Content-Type si body es FormData (para boundary correcto)
+ *  - Devuelve ApiResponse<T> tipado
  * ==========================================================================*/
 export async function apiFetch<T = any>(
   path: string,
@@ -262,7 +249,7 @@ export async function apiFetch<T = any>(
       } catch {
         try {
           const text = await response.text();
-          return { status: 'success', data: text as unknown as T };
+        return { status: 'success', data: text as unknown as T };
         } catch {
           return { status: 'success', data: undefined as unknown as T };
         }
@@ -302,8 +289,7 @@ export async function apiFetch<T = any>(
 
 /* ===========================================================================
  * Fábrica CRUD genérica
- * - Usa endpoints absolutos (por eso pasamos ${BASES.X}/ruta)
- * - Devuelve list/get/create/update/remove
+ * - Usa endpoints (absolutos o relativos) según lo que pases
  * ==========================================================================*/
 export function createApiService<Resource, CreateDTO, UpdateDTO = Partial<Resource>>(
   endpoint: string
@@ -402,7 +388,6 @@ export const AppAuthAPI = {
 
 /* ===========================================================================
  * Servicios de Administración AUTH (AUTH BASE)
- * - Usuarios, Roles, UserRoles, MenuItems, RoleMenuItems, Password
  * ==========================================================================*/
 import type {
   User, Role, UserRole, MenuItem, RoleMenuItem,
@@ -846,6 +831,167 @@ export const DegreeAPI             = createApiService<any, any>(`${BASES.RH}/api
 export const JobActivityAPI        = createApiService<any, any>(`${BASES.RH}/api/v1/rh/job-activity`);
 export const OccupationalGroupAPI  = createApiService<any, any>(`${BASES.RH}/api/v1/rh/occupational-group`);
 
+// src/lib/api.ts - SECCIÓN AÑADIDA
+
+/* ---------------------------------------------------------------------------
+ * Interfaces adicionales para los servicios faltantes
+ * -------------------------------------------------------------------------*/
+export interface AttendanceCalculationRequestDto {
+  fromDate: string;
+  toDate: string;
+  employeeId?: number;
+}
+
+export interface PayrollPeriodRequestDto {
+  period: string; // Formato YYYY-MM
+}
+
+export interface FileDeleteResponseDto {
+  success: boolean;
+  message?: string;
+  filePath?: string;
+}
+
+/* ---------------------------------------------------------------------------
+ * Servicios FALTANTES - Attendance Calculation
+ * -------------------------------------------------------------------------*/
+export const AttendanceCalculationAPI = {
+  calculateRange: (data: AttendanceCalculationRequestDto): Promise<ApiResponse<any>> =>
+    apiFetch<any>(`${BASES.RH}/api/v1/rh/cv/attendance/calculate-range`, {
+      method: "POST",
+      body: JSON.stringify(data)
+    }),
+
+  calculateNightMinutes: (data: AttendanceCalculationRequestDto): Promise<ApiResponse<any>> =>
+    apiFetch<any>(`${BASES.RH}/api/v1/rh/cv/attendance/calc-night-minutes`, {
+      method: "POST",
+      body: JSON.stringify(data)
+    })
+};
+
+/* ---------------------------------------------------------------------------
+ * Servicios FALTANTES - Justifications
+ * -------------------------------------------------------------------------*/
+export const JustificationsAPI = {
+  applyJustifications: (data: AttendanceCalculationRequestDto): Promise<ApiResponse<any>> =>
+    apiFetch<any>(`${BASES.RH}/api/v1/rh/cv/justifications/apply`, {
+      method: "POST",
+      body: JSON.stringify(data)
+    })
+};
+
+/* ---------------------------------------------------------------------------
+ * Servicios FALTANTES - Overtime Price
+ * -------------------------------------------------------------------------*/
+export const OvertimePriceAPI = {
+  calculateOvertimePrice: (data: PayrollPeriodRequestDto): Promise<ApiResponse<any>> =>
+    apiFetch<any>(`${BASES.RH}/api/v1/rh/cv/overtime/price`, {
+      method: "POST",
+      body: JSON.stringify(data)
+    })
+};
+
+/* ---------------------------------------------------------------------------
+ * Servicios FALTANTES - Payroll Discounts
+ * -------------------------------------------------------------------------*/
+export const PayrollDiscountsAPI = {
+  calculateDiscounts: (data: PayrollPeriodRequestDto): Promise<ApiResponse<any>> =>
+    apiFetch<any>(`${BASES.RH}/api/v1/rh/cv/payroll/discounts`, {
+      method: "POST",
+      body: JSON.stringify(data)
+    })
+};
+
+/* ---------------------------------------------------------------------------
+ * Servicios FALTANTES - Payroll Subsidies
+ * -------------------------------------------------------------------------*/
+export const PayrollSubsidiesAPI = {
+  calculateSubsidies: (data: PayrollPeriodRequestDto): Promise<ApiResponse<any>> =>
+    apiFetch<any>(`${BASES.RH}/api/v1/rh/cv/payroll/subsidies`, {
+      method: "POST",
+      body: JSON.stringify(data)
+    })
+};
+
+/* ---------------------------------------------------------------------------
+ * Servicios FALTANTES - Recovery
+ * -------------------------------------------------------------------------*/
+export const RecoveryAPI = {
+  applyRecovery: (data: AttendanceCalculationRequestDto): Promise<ApiResponse<any>> =>
+    apiFetch<any>(`${BASES.RH}/api/v1/rh/cv/recovery/apply`, {
+      method: "POST",
+      body: JSON.stringify(data)
+    })
+};
+
+/* ---------------------------------------------------------------------------
+ * Vistas FALTANTES - VwAttendanceDay
+ * -------------------------------------------------------------------------*/
+export const VwAttendanceDayAPI = {
+  getAll: (): Promise<ApiResponse<any[]>> =>
+    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/cv/vw-attendance-day`),
+
+  getByEmployeeId: (employeeId: number): Promise<ApiResponse<any>> =>
+    apiFetch<any>(`${BASES.RH}/api/v1/rh/cv/vw-attendance-day/by-employee/${employeeId}`),
+
+  getByDateRange: (fromDate?: string, toDate?: string): Promise<ApiResponse<any[]>> => {
+    const params = new URLSearchParams();
+    if (fromDate) params.append('fromDate', fromDate);
+    if (toDate) params.append('toDate', toDate);
+    return apiFetch<any[]>(`${BASES.RH}/api/v1/rh/cv/vw-attendance-day/by-date-range?${params}`);
+  }
+};
+
+/* ---------------------------------------------------------------------------
+ * Vistas FALTANTES - VwEmployeeScheduleAtDate
+ * -------------------------------------------------------------------------*/
+export const VwEmployeeScheduleAtDateAPI = {
+  getAll: (): Promise<ApiResponse<any[]>> =>
+    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/cv/vw-employee-schedule-at-date`),
+
+  getByEmployeeId: (employeeId: number): Promise<ApiResponse<any>> =>
+    apiFetch<any>(`${BASES.RH}/api/v1/rh/cv/vw-employee-schedule-at-date/by-employee/${employeeId}`),
+
+  getByDate: (date?: string): Promise<ApiResponse<any[]>> => {
+    const params = new URLSearchParams();
+    if (date) params.append('date', date);
+    return apiFetch<any[]>(`${BASES.RH}/api/v1/rh/cv/vw-employee-schedule-at-date/by-date?${params}`);
+  }
+};
+
+/* ---------------------------------------------------------------------------
+ * Vistas FALTANTES - VwLeaveWindows
+ * -------------------------------------------------------------------------*/
+export const VwLeaveWindowsAPI = {
+  getAll: (): Promise<ApiResponse<any[]>> =>
+    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/cv/vw-leave-windows`),
+
+  getByEmployeeId: (employeeId: number): Promise<ApiResponse<any>> =>
+    apiFetch<any>(`${BASES.RH}/api/v1/rh/cv/vw-leave-windows/by-employee/${employeeId}`),
+
+  getByLeaveType: (leaveType: string): Promise<ApiResponse<any>> =>
+    apiFetch<any>(`${BASES.RH}/api/v1/rh/cv/vw-leave-windows/by-type/${leaveType}`)
+};
+
+/* ---------------------------------------------------------------------------
+ * Vistas FALTANTES - VwPunchDay
+ * -------------------------------------------------------------------------*/
+export const VwPunchDayAPI = {
+  getAll: (): Promise<ApiResponse<any[]>> =>
+    apiFetch<any[]>(`${BASES.RH}/api/v1/rh/cv/vw-punch-day`),
+
+  getByEmployeeId: (employeeId: number): Promise<ApiResponse<any>> =>
+    apiFetch<any>(`${BASES.RH}/api/v1/rh/cv/vw-punch-day/by-employee/${employeeId}`),
+
+  getByDateRange: (fromDate?: string, toDate?: string): Promise<ApiResponse<any[]>> => {
+    const params = new URLSearchParams();
+    if (fromDate) params.append('fromDate', fromDate);
+    if (toDate) params.append('toDate', toDate);
+    return apiFetch<any[]>(`${BASES.RH}/api/v1/rh/cv/vw-punch-day/by-date-range?${params}`);
+  }
+};
+
+
 /* ---------------------------------------------------------------------------
  * Nuevas APIs del Swagger RH (directorio/archivos/parámetros)
  * -------------------------------------------------------------------------*/
@@ -858,10 +1004,65 @@ export const DirectoryParametersAPI = {
 export const ParametersAPI = createApiService<any, any>(`${BASES.RH}/api/v1/rh/cv/parameters`);
 
 /** Gestión de Archivos (FILES BASE) */
+// export const FileManagementAPI = {
+//   /** Subir archivo (multipart/form-data) */
+//   uploadFile: (formData: FormData): Promise<ApiResponse<any>> =>
+//     apiFetch<any>(`${BASES.FILES}/api/v1/rh/files/upload`, {
+//       method: "POST",
+//       body: formData,
+//       headers: {
+//         // Importante: NO fijar Content-Type (apiFetch lo elimina si detecta FormData)
+//       }
+//     }),
+
+//   /** Descargar archivo (retorna Blob) */
+//   downloadFile: async (directoryCode: string, filePath: string): Promise<ApiResponse<Blob>> => {
+//     const url = `${BASES.FILES}/api/v1/rh/files/download/${encodeURIComponent(directoryCode)}?filePath=${encodeURIComponent(filePath)}`;
+//     try {
+//       const resp = await fetch(url, {
+//         method: "GET",
+//         headers: {
+//           "Accept": "*/*",
+//           ...(tokenService.getAccessToken()
+//             ? { "Authorization": `Bearer ${tokenService.getAccessToken()}` }
+//             : {})
+//         },
+//         credentials: API_CONFIG.CREDENTIALS
+//       });
+
+//       if (!resp.ok) {
+//         const text = await resp.text().catch(() => "");
+//         return { status: "error", error: { code: resp.status, message: text || `HTTP Error ${resp.status}`, details: text } };
+//       }
+
+//       const blob = await resp.blob();
+//       return { status: "success", data: blob };
+//     } catch (e: any) {
+//       return { status: "error", error: { code: 0, message: e?.message || "Network error" } };
+//     }
+//   },
+
+//   /** Verificar existencia de archivo */
+//   fileExists: (directoryCode: string, filePath: string): Promise<ApiResponse<boolean>> =>
+//     apiFetch<boolean>(`${BASES.FILES}/api/v1/rh/files/exists/${encodeURIComponent(directoryCode)}?filePath=${encodeURIComponent(filePath)}`)
+// };
+
+
+// ACTUALIZAR el FileManagementAPI existente para incluir los métodos faltantes
 export const FileManagementAPI = {
   /** Subir archivo (multipart/form-data) */
   uploadFile: (formData: FormData): Promise<ApiResponse<any>> =>
     apiFetch<any>(`${BASES.FILES}/api/v1/rh/files/upload`, {
+      method: "POST",
+      body: formData,
+      headers: {
+        // Importante: NO fijar Content-Type (apiFetch lo elimina si detecta FormData)
+      }
+    }),
+
+  /** Subir múltiples archivos (multipart/form-data) */
+  uploadMultipleFiles: (formData: FormData): Promise<ApiResponse<any[]>> =>
+    apiFetch<any[]>(`${BASES.FILES}/api/v1/rh/files/upload-multiple`, {
       method: "POST",
       body: formData,
       headers: {
@@ -887,7 +1088,7 @@ export const FileManagementAPI = {
       if (!resp.ok) {
         const text = await resp.text().catch(() => "");
         return { status: "error", error: { code: resp.status, message: text || `HTTP Error ${resp.status}`, details: text } };
-    }
+      }
 
       const blob = await resp.blob();
       return { status: "success", data: blob };
@@ -898,14 +1099,26 @@ export const FileManagementAPI = {
 
   /** Verificar existencia de archivo */
   fileExists: (directoryCode: string, filePath: string): Promise<ApiResponse<boolean>> =>
-    apiFetch<boolean>(`${BASES.FILES}/api/v1/rh/files/exists/${encodeURIComponent(directoryCode)}?filePath=${encodeURIComponent(filePath)}`)
+    apiFetch<boolean>(`${BASES.FILES}/api/v1/rh/files/exists/${encodeURIComponent(directoryCode)}?filePath=${encodeURIComponent(filePath)}`),
+
+  /** Eliminar archivo */
+  deleteFile: (directoryCode: string, filePath: string): Promise<ApiResponse<FileDeleteResponseDto>> =>
+    apiFetch<FileDeleteResponseDto>(`${BASES.FILES}/api/v1/rh/files/delete/${encodeURIComponent(directoryCode)}?filePath=${encodeURIComponent(filePath)}`, {
+      method: "DELETE"
+    })
 };
 
 // Alias por conveniencia (mismo objeto que VistaDetallesEmpleadosAPI)
 export const EmployeeDetailsAPI = { ...VistaDetallesEmpleadosAPI };
 
+/* ---------------------------------------------------------------------------
+ * Servicios agregados del segundo bloque (manteniendo nombres)
+ * -------------------------------------------------------------------------*/
+export const ContractRequestAPI = createApiService<any, any>(`${BASES.RH}/api/v1/rh/cv/contract-request`);
+export const FinancialCertificationAPI = createApiService<any, any>(`${BASES.RH}/api/v1/rh/cv/financial-certification`);
+
 /* ===========================================================================
- * API utilitaria simple (GET/POST/PUT/PATCH/DELETE) — multi-base vía URL absoluta
+ * API utilitaria simple (GET/POST/PUT/PATCH/DELETE)
  * ==========================================================================*/
 export const api = {
   get:   <T>(path: string): Promise<ApiResponse<T>> => apiFetch<T>(path),
@@ -984,6 +1197,25 @@ export default {
 
   // swagger nuevos
   DirectoryParametersAPI, ParametersAPI, FileManagementAPI, EmployeeDetailsAPI,
+
+  // agregados del segundo bloque
+  ContractRequestAPI, FinancialCertificationAPI,
+
+  // NUEVOS SERVICIOS IMPLEMENTADOS
+  AttendanceCalculationAPI,
+  JustificationsAPI,
+  OvertimePriceAPI,
+  PayrollDiscountsAPI,
+  PayrollSubsidiesAPI,
+  RecoveryAPI,
+  VwAttendanceDayAPI,
+  VwEmployeeScheduleAtDateAPI,
+  VwLeaveWindowsAPI,
+  VwPunchDayAPI,
+
+  // aliases por compatibilidad con código existente
+  TimePlanningEmployeeAPI: TimePlanningEmployeesAPI,
+  TimePlanningExecutionAPI: TimePlanningExecutionsAPI,
 
   // utils
   api, handleApiError, setAuthToken

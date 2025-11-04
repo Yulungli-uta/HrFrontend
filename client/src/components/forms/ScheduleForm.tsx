@@ -1,3 +1,4 @@
+// src/components/forms/ScheduleForm.tsx
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -11,9 +12,10 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { insertScheduleSchema, type InsertSchedule, type Schedule } from "@shared/schema";
 import { Clock, Save, X, Calendar } from "lucide-react";
+import { HorariosAPI } from "@/lib/api";
 
 interface ScheduleFormProps {
-  schedule?: Schedule;
+  schedule?: Schedule;   // si viene, es edición
   onSuccess?: () => void;
   onCancel?: () => void;
 }
@@ -39,31 +41,73 @@ export default function ScheduleForm({ schedule, onSuccess, onCancel }: Schedule
     }
   });
 
+  // --- helpers de coherencia ---
+  // Si apagan almuerzo, forzar a null ambos campos.
+  const ensureLunchCoherence = (hasLunch: boolean) => {
+    if (!hasLunch) {
+      form.setValue("lunchStart", null);
+      form.setValue("lunchEnd", null);
+    } else {
+      // si lo encienden y estaban vacíos, poner valores por defecto
+      if (!form.getValues("lunchStart")) form.setValue("lunchStart", "12:00");
+      if (!form.getValues("lunchEnd")) form.setValue("lunchEnd", "13:00");
+    }
+  };
+
+  const invalidateSchedulesList = () =>
+    queryClient.invalidateQueries({ queryKey: ["/api/v1/rh/schedules"] });
+
+  // --- mutations ---
   const createMutation = useMutation({
     mutationFn: async (data: InsertSchedule) => {
-      const response = await fetch("/api/schedules", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-      });
-      if (!response.ok) throw new Error("Error al crear horario");
-      return response.json();
+      // limpiar coherencia antes de enviar
+      const payload: InsertSchedule = {
+        ...data,
+        lunchStart: data.hasLunchBreak ? data.lunchStart : null,
+        lunchEnd: data.hasLunchBreak ? data.lunchEnd : null
+      };
+      const res = await HorariosAPI.create(payload);
+      if (res.status === "error") throw new Error(res.error.message || "Error al crear horario");
+      return res.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/schedules"] });
+      invalidateSchedulesList();
       toast({ title: "Horario creado exitosamente" });
       onSuccess?.();
     },
-    onError: () => {
-      toast({ title: "Error al crear horario", variant: "destructive" });
+    onError: (e: any) => {
+      toast({ title: e?.message || "Error al crear horario", variant: "destructive" });
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: InsertSchedule) => {
+      if (!schedule?.id) throw new Error("ID de horario no proporcionado");
+      const payload: InsertSchedule = {
+        ...data,
+        lunchStart: data.hasLunchBreak ? data.lunchStart : null,
+        lunchEnd: data.hasLunchBreak ? data.lunchEnd : null
+      };
+      const res = await HorariosAPI.update(schedule.id, payload);
+      if (res.status === "error") throw new Error(res.error.message || "Error al actualizar horario");
+      return res.data;
+    },
+    onSuccess: () => {
+      invalidateSchedulesList();
+      toast({ title: "Horario actualizado exitosamente" });
+      onSuccess?.();
+    },
+    onError: (e: any) => {
+      toast({ title: e?.message || "Error al actualizar horario", variant: "destructive" });
     }
   });
 
   const onSubmit = (data: InsertSchedule) => {
-    createMutation.mutate(data);
+    if (isEditing) updateMutation.mutate(data);
+    else createMutation.mutate(data);
   };
 
-  const isLoading = createMutation.isPending;
+  const isLoading = createMutation.isPending || updateMutation.isPending;
 
   const workingDaysOptions = [
     "Lunes a Viernes",
@@ -74,45 +118,18 @@ export default function ScheduleForm({ schedule, onSuccess, onCancel }: Schedule
   ];
 
   const scheduleTemplates = [
-    {
-      name: "Horario Administrativo",
-      entry: "08:00",
-      exit: "17:00",
-      hours: "8.0",
-      lunch: true
-    },
-    {
-      name: "Horario Docente Matutino",
-      entry: "07:00",
-      exit: "13:00", 
-      hours: "6.0",
-      lunch: false
-    },
-    {
-      name: "Horario Docente Vespertino",
-      entry: "14:00",
-      exit: "20:00",
-      hours: "6.0", 
-      lunch: false
-    },
-    {
-      name: "Horario Nocturno",
-      entry: "18:00",
-      exit: "22:00",
-      hours: "4.0",
-      lunch: false
-    }
-  ];
+    { name: "Horario Administrativo", entry: "08:00", exit: "17:00", hours: "8.0", lunch: true },
+    { name: "Horario Docente Matutino", entry: "07:00", exit: "13:00", hours: "6.0", lunch: false },
+    { name: "Horario Docente Vespertino", entry: "14:00", exit: "20:00", hours: "6.0", lunch: false },
+    { name: "Horario Nocturno", entry: "18:00", exit: "22:00", hours: "4.0", lunch: false }
+  ] as const;
 
-  const applyTemplate = (template: typeof scheduleTemplates[0]) => {
-    form.setValue("entryTime", template.entry);
-    form.setValue("exitTime", template.exit);
-    form.setValue("requiredHoursPerDay", template.hours);
-    form.setValue("hasLunchBreak", template.lunch);
-    if (!template.lunch) {
-      form.setValue("lunchStart", null);
-      form.setValue("lunchEnd", null);
-    }
+  const applyTemplate = (t: typeof scheduleTemplates[number]) => {
+    form.setValue("entryTime", t.entry);
+    form.setValue("exitTime", t.exit);
+    form.setValue("requiredHoursPerDay", t.hours);
+    form.setValue("hasLunchBreak", t.lunch);
+    ensureLunchCoherence(t.lunch);
   };
 
   return (
@@ -131,19 +148,19 @@ export default function ScheduleForm({ schedule, onSuccess, onCancel }: Schedule
         <div className="mb-6">
           <h4 className="text-sm font-medium mb-3">Plantillas de Horario</h4>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            {scheduleTemplates.map((template) => (
+            {scheduleTemplates.map((t) => (
               <Button
-                key={template.name}
+                key={t.name}
                 type="button"
                 variant="outline"
                 size="sm"
                 className="h-auto p-2 text-xs"
-                onClick={() => applyTemplate(template)}
-                data-testid={`template-${template.name.replace(/\s+/g, '-').toLowerCase()}`}
+                onClick={() => applyTemplate(t)}
+                data-testid={`template-${t.name.replace(/\s+/g, '-').toLowerCase()}`}
               >
                 <div className="text-center">
-                  <div className="font-medium">{template.name}</div>
-                  <div className="text-gray-500">{template.entry} - {template.exit}</div>
+                  <div className="font-medium">{t.name}</div>
+                  <div className="text-gray-500">{t.entry} - {t.exit}</div>
                 </div>
               </Button>
             ))}
@@ -159,7 +176,7 @@ export default function ScheduleForm({ schedule, onSuccess, onCancel }: Schedule
                 <FormItem>
                   <FormLabel>Descripción del Horario *</FormLabel>
                   <FormControl>
-                    <Input 
+                    <Input
                       placeholder="Ej: Horario Administrativo Regular"
                       data-testid="input-description"
                       {...field}
@@ -178,11 +195,7 @@ export default function ScheduleForm({ schedule, onSuccess, onCancel }: Schedule
                   <FormItem>
                     <FormLabel>Hora de Entrada *</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="time"
-                        data-testid="input-entryTime"
-                        {...field}
-                      />
+                      <Input type="time" data-testid="input-entryTime" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -196,11 +209,7 @@ export default function ScheduleForm({ schedule, onSuccess, onCancel }: Schedule
                   <FormItem>
                     <FormLabel>Hora de Salida *</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="time"
-                        data-testid="input-exitTime"
-                        {...field}
-                      />
+                      <Input type="time" data-testid="input-exitTime" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -214,7 +223,7 @@ export default function ScheduleForm({ schedule, onSuccess, onCancel }: Schedule
                   <FormItem>
                     <FormLabel>Horas Requeridas/Día *</FormLabel>
                     <FormControl>
-                      <Input 
+                      <Input
                         type="number"
                         step="0.5"
                         min="1"
@@ -271,7 +280,7 @@ export default function ScheduleForm({ schedule, onSuccess, onCancel }: Schedule
                   <FormControl>
                     <Switch
                       checked={field.value}
-                      onCheckedChange={field.onChange}
+                      onCheckedChange={(v) => { field.onChange(v); ensureLunchCoherence(v); }}
                       data-testid="switch-hasLunchBreak"
                     />
                   </FormControl>
@@ -288,7 +297,7 @@ export default function ScheduleForm({ schedule, onSuccess, onCancel }: Schedule
                     <FormItem>
                       <FormLabel>Inicio de Almuerzo</FormLabel>
                       <FormControl>
-                        <Input 
+                        <Input
                           type="time"
                           data-testid="input-lunchStart"
                           {...field}
@@ -307,7 +316,7 @@ export default function ScheduleForm({ schedule, onSuccess, onCancel }: Schedule
                     <FormItem>
                       <FormLabel>Fin de Almuerzo</FormLabel>
                       <FormControl>
-                        <Input 
+                        <Input
                           type="time"
                           data-testid="input-lunchEnd"
                           {...field}
@@ -351,7 +360,7 @@ export default function ScheduleForm({ schedule, onSuccess, onCancel }: Schedule
                   <FormItem>
                     <FormLabel>Patrón de Rotación</FormLabel>
                     <FormControl>
-                      <Textarea 
+                      <Textarea
                         placeholder="Describa el patrón de rotación (ej: Semana 1: Mañana, Semana 2: Tarde, etc.)"
                         data-testid="input-rotationPattern"
                         {...field}
@@ -381,8 +390,8 @@ export default function ScheduleForm({ schedule, onSuccess, onCancel }: Schedule
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 pt-6">
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 disabled={isLoading}
                 className="flex-1"
                 data-testid="button-save-schedule"
@@ -391,9 +400,9 @@ export default function ScheduleForm({ schedule, onSuccess, onCancel }: Schedule
                 {isLoading ? "Guardando..." : (isEditing ? "Actualizar" : "Crear Horario")}
               </Button>
               {onCancel && (
-                <Button 
-                  type="button" 
-                  variant="outline" 
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={onCancel}
                   className="flex-1"
                   data-testid="button-cancel"

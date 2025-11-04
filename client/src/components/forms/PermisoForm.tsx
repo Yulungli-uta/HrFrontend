@@ -1,257 +1,299 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { PermisosAPI, PersonasAPI } from "@/lib/api";
-import { queryClient } from "@/lib/queryClient";
+import { Switch } from "@/components/ui/switch";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
+import { insertPermissionSchema, type InsertPermission, type Employee, type Person, type PermissionType } from "@shared/schema";
+import { CalendarCheck, Save, X, Clock } from "lucide-react";
 
-const permisoSchema = z.object({
-  personaId: z.number({
-    required_error: "La persona es requerida",
-  }),
-  tipo: z.enum(["medico", "personal", "compensatorio"], {
-    required_error: "El tipo de permiso es requerido",
-  }),
-  fechaDesde: z.string().min(1, "La fecha de inicio es requerida"),
-  fechaHasta: z.string().min(1, "La fecha de fin es requerida"),
-  horas: z.number().min(1, "Las horas son requeridas").optional(),
-  motivo: z.string().min(1, "El motivo es requerido"),
-  observaciones: z.string().optional(),
-}).refine((data) => {
-  const desde = new Date(data.fechaDesde);
-  const hasta = new Date(data.fechaHasta);
-  return hasta >= desde;
-}, {
-  message: "La fecha de fin debe ser posterior o igual a la fecha de inicio",
-  path: ["fechaHasta"],
-});
-
-type PermisoFormData = z.infer<typeof permisoSchema>;
-
-interface PermisoFormProps {
+interface PermissionFormProps {
   onSuccess?: () => void;
+  onCancel?: () => void;
 }
 
-export default function PermisoForm({ onSuccess }: PermisoFormProps) {
+export default function PermissionForm({ onSuccess, onCancel }: PermissionFormProps) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const { data: personas = [] } = useQuery({
-    queryKey: ["/api/personas"],
-    queryFn: PersonasAPI.list,
-    select: (data) => data.filter(p => p.estado), // Only active personas
+  const { data: employees } = useQuery<Employee[]>({
+    queryKey: ['/api/employees'],
+  });
+
+  const { data: people } = useQuery<Person[]>({
+    queryKey: ['/api/people'],
+  });
+
+  const { data: permissionTypes } = useQuery<PermissionType[]>({
+    queryKey: ['/api/permission-types'],
+  });
+
+  const form = useForm<InsertPermission>({
+    resolver: zodResolver(insertPermissionSchema),
+    defaultValues: {
+      employeeId: 0,
+      permissionTypeId: 0,
+      startDate: "",
+      endDate: "",
+      chargedToVacation: false,
+      approvedBy: null,
+      justification: "",
+      status: "Pending",
+      vacationId: null
+    }
   });
 
   const createMutation = useMutation({
-    mutationFn: PermisosAPI.create,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/permisos"] });
-      toast({
-        title: "Permiso creado",
-        description: "La solicitud de permiso ha sido creada exitosamente.",
+    mutationFn: async (data: InsertPermission) => {
+      const response = await fetch("/api/permissions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
       });
-      reset();
+      if (!response.ok) throw new Error("Error al crear solicitud de permiso");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/permissions"] });
+      toast({ title: "Solicitud de permiso creada exitosamente" });
       onSuccess?.();
     },
     onError: () => {
-      toast({
-        title: "Error",
-        description: "No se pudo crear la solicitud de permiso.",
-        variant: "destructive",
-      });
-    },
+      toast({ title: "Error al crear solicitud de permiso", variant: "destructive" });
+    }
   });
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    setValue,
-    watch,
-    formState: { errors, isSubmitting },
-  } = useForm<PermisoFormData>({
-    resolver: zodResolver(permisoSchema),
-  });
+  const onSubmit = (data: InsertPermission) => {
+    createMutation.mutate(data);
+  };
 
-  const fechaDesde = watch("fechaDesde");
-  const fechaHasta = watch("fechaHasta");
+  const isLoading = createMutation.isPending;
 
-  // Calculate hours if both dates are selected
-  const calculateHours = () => {
-    if (fechaDesde && fechaHasta) {
-      const desde = new Date(fechaDesde);
-      const hasta = new Date(fechaHasta);
-      const diffTime = Math.abs(hasta.getTime() - desde.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      return diffDays * 8; // Assuming 8 hours per day
+  const calculateDays = () => {
+    const startDate = form.watch("startDate");
+    const endDate = form.watch("endDate");
+    
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const diffTime = Math.abs(end.getTime() - start.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+      return diffDays;
     }
     return 0;
   };
 
-  const onSubmit = (data: PermisoFormData) => {
-    const permisoData = {
-      ...data,
-      horas: data.horas || calculateHours(),
-      observaciones: data.observaciones || undefined,
-    };
-
-    createMutation.mutate(permisoData);
-  };
-
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="md:col-span-2">
-          <Label htmlFor="personaId">
-            Persona <span className="text-destructive">*</span>
-          </Label>
-          <Select
-            onValueChange={(value) => setValue("personaId", parseInt(value))}
-            data-testid="select-persona-permiso"
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Seleccionar persona" />
-            </SelectTrigger>
-            <SelectContent>
-              {personas.map((persona) => (
-                <SelectItem key={persona.id} value={persona.id.toString()}>
-                  {persona.nombres} {persona.apellidos} - {persona.identificacion}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {errors.personaId && (
-            <p className="text-sm text-destructive mt-1">{errors.personaId.message}</p>
-          )}
-        </div>
+    <Card className="w-full max-w-2xl mx-auto">
+      <CardHeader>
+        <CardTitle className="flex items-center space-x-2">
+          <CalendarCheck className="h-5 w-5" />
+          <span>Solicitar Permiso</span>
+        </CardTitle>
+        <CardDescription>
+          Complete el formulario para solicitar un permiso
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="employeeId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Empleado *</FormLabel>
+                    <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-employee">
+                          <SelectValue placeholder="Seleccione un empleado" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {employees?.map((employee) => {
+                          const person = people?.find(p => p.id === employee.id);
+                          return (
+                            <SelectItem key={employee.id} value={employee.id.toString()}>
+                              {person ? `${person.firstName} ${person.lastName}` : `Empleado #${employee.id}`}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-        <div>
-          <Label htmlFor="tipo">
-            Tipo de Permiso <span className="text-destructive">*</span>
-          </Label>
-          <Select
-            onValueChange={(value) => setValue("tipo", value as "medico" | "personal" | "compensatorio")}
-            data-testid="select-tipo-permiso"
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Seleccionar tipo" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="medico">Médico</SelectItem>
-              <SelectItem value="personal">Personal</SelectItem>
-              <SelectItem value="compensatorio">Compensatorio</SelectItem>
-            </SelectContent>
-          </Select>
-          {errors.tipo && (
-            <p className="text-sm text-destructive mt-1">{errors.tipo.message}</p>
-          )}
-        </div>
+              <FormField
+                control={form.control}
+                name="permissionTypeId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo de Permiso *</FormLabel>
+                    <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-permission-type">
+                          <SelectValue placeholder="Seleccione el tipo" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {permissionTypes?.map((type) => (
+                          <SelectItem key={type.id} value={type.id.toString()}>
+                            {type.name} {type.maxDays && `(máx. ${type.maxDays} días)`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-        <div>
-          <Label htmlFor="horas">Horas</Label>
-          <Input
-            id="horas"
-            type="number"
-            {...register("horas", { valueAsNumber: true })}
-            placeholder={calculateHours().toString()}
-            data-testid="input-horas"
-          />
-          {errors.horas && (
-            <p className="text-sm text-destructive mt-1">{errors.horas.message}</p>
-          )}
-        </div>
+              <FormField
+                control={form.control}
+                name="startDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Fecha de Inicio *</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="date"
+                        data-testid="input-startDate"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-        <div>
-          <Label htmlFor="fechaDesde">
-            Fecha Desde <span className="text-destructive">*</span>
-          </Label>
-          <Input
-            id="fechaDesde"
-            type="date"
-            {...register("fechaDesde")}
-            data-testid="input-fecha-desde-permiso"
-          />
-          {errors.fechaDesde && (
-            <p className="text-sm text-destructive mt-1">{errors.fechaDesde.message}</p>
-          )}
-        </div>
+              <FormField
+                control={form.control}
+                name="endDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Fecha de Fin *</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="date"
+                        data-testid="input-endDate"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
-        <div>
-          <Label htmlFor="fechaHasta">
-            Fecha Hasta <span className="text-destructive">*</span>
-          </Label>
-          <Input
-            id="fechaHasta"
-            type="date"
-            {...register("fechaHasta")}
-            data-testid="input-fecha-hasta-permiso"
-          />
-          {errors.fechaHasta && (
-            <p className="text-sm text-destructive mt-1">{errors.fechaHasta.message}</p>
-          )}
-        </div>
+            {calculateDays() > 0 && (
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <div className="flex items-center space-x-2 text-blue-700">
+                  <Clock className="h-4 w-4" />
+                  <span className="font-medium">Duración del permiso</span>
+                </div>
+                <p className="text-sm text-blue-600 mt-1">
+                  {calculateDays()} día(s) solicitado(s)
+                </p>
+              </div>
+            )}
 
-        <div className="md:col-span-2">
-          <Label htmlFor="motivo">
-            Motivo <span className="text-destructive">*</span>
-          </Label>
-          <Textarea
-            id="motivo"
-            {...register("motivo")}
-            placeholder="Describe el motivo del permiso"
-            rows={3}
-            data-testid="textarea-motivo"
-          />
-          {errors.motivo && (
-            <p className="text-sm text-destructive mt-1">{errors.motivo.message}</p>
-          )}
-        </div>
+            <FormField
+              control={form.control}
+              name="justification"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Justificación *</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Explique el motivo del permiso..."
+                      data-testid="input-justification"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-        <div className="md:col-span-2">
-          <Label htmlFor="observaciones">Observaciones</Label>
-          <Textarea
-            id="observaciones"
-            {...register("observaciones")}
-            placeholder="Observaciones adicionales (opcional)"
-            rows={2}
-            data-testid="textarea-observaciones-permiso"
-          />
-          {errors.observaciones && (
-            <p className="text-sm text-destructive mt-1">{errors.observaciones.message}</p>
-          )}
-        </div>
-      </div>
+            <FormField
+              control={form.control}
+              name="chargedToVacation"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <FormLabel className="text-base">Cargar a Vacaciones</FormLabel>
+                    <div className="text-sm text-muted-foreground">
+                      Marque si este permiso debe descontarse de las vacaciones
+                    </div>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      data-testid="switch-chargedToVacation"
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
 
-      {fechaDesde && fechaHasta && (
-        <div className="bg-muted p-4 rounded-lg">
-          <p className="text-sm text-muted-foreground">
-            <strong>Duración calculada:</strong> {calculateHours()} horas
-          </p>
-        </div>
-      )}
-      
-      <div className="flex justify-end space-x-3 pt-4 border-t border-border">
-        <Button 
-          type="button" 
-          variant="outline" 
-          onClick={() => onSuccess?.()}
-          data-testid="button-cancel-permiso"
-        >
-          Cancelar
-        </Button>
-        <Button 
-          type="submit" 
-          disabled={isSubmitting}
-          data-testid="button-submit-permiso"
-        >
-          Crear Solicitud
-        </Button>
-      </div>
-    </form>
+            <FormField
+              control={form.control}
+              name="status"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Estado</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-status">
+                        <SelectValue placeholder="Seleccione el estado" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="Pending">Pendiente</SelectItem>
+                      <SelectItem value="Approved">Aprobado</SelectItem>
+                      <SelectItem value="Rejected">Rechazado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="flex flex-col sm:flex-row gap-3 pt-6">
+              <Button 
+                type="submit" 
+                disabled={isLoading}
+                className="flex-1"
+                data-testid="button-save-permission"
+              >
+                <Save className="mr-2 h-4 w-4" />
+                {isLoading ? "Enviando..." : "Enviar Solicitud"}
+              </Button>
+              {onCancel && (
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={onCancel}
+                  className="flex-1"
+                  data-testid="button-cancel"
+                >
+                  <X className="mr-2 h-4 w-4" />
+                  Cancelar
+                </Button>
+              )}
+            </div>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
   );
 }
