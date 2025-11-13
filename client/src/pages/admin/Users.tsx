@@ -1,23 +1,69 @@
+// src/pages/admin/Users.tsx
+import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { 
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { 
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, 
-  AlertDialogTitle 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+
 import { Users as UsersIcon, Plus, Edit, Trash2, Search } from "lucide-react";
-import { useState } from "react";
-import { AuthUsersAPI, type ApiResponse } from "@/lib/api";
-import type { User, CreateUserDto, UpdateUserDto } from "@/types/auth";
+import { AuthUsersAPI } from "@/lib/api/auth";
+import type { ApiResponse } from "@/lib/api/client";
+import type { User } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
 import UserForm from "@/components/forms/UserForm";
+
+/** Normaliza cualquier payload común a arreglo de User */
+function coerceToUserArray(payload: unknown): User[] {
+  if (Array.isArray(payload)) return payload as User[];
+  if (payload && typeof payload === "object") {
+    // @ts-ignore
+    if (Array.isArray(payload.items)) return payload.items as User[];
+    // @ts-ignore
+    if (Array.isArray(payload.results)) return payload.results as User[];
+    // @ts-ignore
+    if (Array.isArray(payload.data)) return payload.data as User[];
+    // Diccionario { [id]: User }
+    // @ts-ignore
+    const values = Object.values(payload);
+    if (
+      values.length > 0 &&
+      values.every(
+        (v) => v && typeof v === "object" && ("email" in v || "displayName" in v)
+      )
+    ) {
+      return values as User[];
+    }
+  }
+  return [];
+}
 
 export default function UsersPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -27,39 +73,66 @@ export default function UsersPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Obtener lista de usuarios
-  const { data: apiResponse, isLoading, error } = useQuery<ApiResponse<User[]>>({
-    queryKey: ['auth-users'],
-    queryFn: () => AuthUsersAPI.list(),
+  // Obtener y normalizar lista de usuarios
+  const {
+    data: users = [],
+    isLoading,
+    error,
+  } = useQuery<ApiResponse<unknown>, Error, User[]>({
+    queryKey: ["auth-users"],
+    queryFn: async () => {
+      const res = await AuthUsersAPI.list();
+      console.debug("[UsersPage] AuthUsersAPI.list() raw:", res);
+      return res;
+    },
+    select: (res) => {
+      if (!res) return [];
+      // @ts-ignore
+      if ("status" in res && res.status !== "success") {
+        // @ts-ignore
+        const message = res?.error?.message || "No se pudo obtener la lista de usuarios";
+        toast({ title: "Error", description: message, variant: "destructive" });
+        return [];
+      }
+      // @ts-ignore
+      return coerceToUserArray(res.data);
+    },
   });
 
   // Mutación para eliminar usuario
   const deleteMutation = useMutation({
     mutationFn: (id: string) => AuthUsersAPI.remove(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['auth-users'] });
+      queryClient.invalidateQueries({ queryKey: ["auth-users"] });
       toast({
         title: "Usuario eliminado",
         description: "El usuario ha sido eliminado exitosamente",
       });
       setDeleteUserId(null);
     },
-    onError: (error: any) => {
+    onError: (err: any) => {
+      const message =
+        err?.message ||
+        err?.response?.data?.message ||
+        "No se pudo eliminar el usuario";
       toast({
         title: "Error al eliminar",
-        description: error.message || "No se pudo eliminar el usuario",
+        description: message,
         variant: "destructive",
       });
     },
   });
 
-  const users = apiResponse?.status === 'success' ? apiResponse.data : [];
-
-  // Filtrar usuarios por búsqueda
-  const filteredUsers = users.filter(user =>
-    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.displayName?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filtrado seguro
+  const filteredUsers = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) return users;
+    return users.filter((u) => {
+      const email = (u.email ?? "").toLowerCase();
+      const name = (u.displayName ?? "").toLowerCase();
+      return email.includes(term) || name.includes(term);
+    });
+  }, [users, searchTerm]);
 
   const handleEdit = (user: User) => {
     setEditingUser(user);
@@ -71,10 +144,11 @@ export default function UsersPage() {
     setEditingUser(null);
   };
 
-  const handleDelete = (id: string) => {
-    setDeleteUserId(id);
+  const handleDelete = (id: string | number) => {
+    setDeleteUserId(String(id));
   };
 
+  // Loading skeleton
   if (isLoading) {
     return (
       <div className="container mx-auto p-6">
@@ -95,24 +169,15 @@ export default function UsersPage() {
     );
   }
 
+  // Error de red/fetch
   if (error) {
     return (
       <div className="container mx-auto p-6">
         <Card className="border-red-200 bg-red-50">
           <CardContent className="pt-6">
-            <p className="text-red-600">Error al cargar los usuarios. Intente nuevamente.</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (apiResponse?.status === 'error') {
-    return (
-      <div className="container mx-auto p-6">
-        <Card className="border-red-200 bg-red-50">
-          <CardContent className="pt-6">
-            <p className="text-red-600">Error: {apiResponse.error.message}</p>
+            <p className="text-red-600">
+              Error al cargar los usuarios. Intente nuevamente.
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -131,9 +196,11 @@ export default function UsersPage() {
             Administre los usuarios del sistema de autenticación
           </p>
         </div>
+
+        {/* Modal Crear/Editar Usuario — Accesible (Title + Description) */}
         <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
           <DialogTrigger asChild>
-            <Button 
+            <Button
               className="bg-blue-600 hover:bg-blue-700"
               onClick={() => setEditingUser(null)}
             >
@@ -141,8 +208,18 @@ export default function UsersPage() {
               Agregar Usuario
             </Button>
           </DialogTrigger>
+
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <UserForm 
+            <DialogHeader>
+              <DialogTitle>
+                {editingUser ? "Editar usuario" : "Nuevo usuario"}
+              </DialogTitle>
+              <DialogDescription>
+                Complete los campos y guarde para {editingUser ? "actualizar" : "crear"} el usuario.
+              </DialogDescription>
+            </DialogHeader>
+
+            <UserForm
               user={editingUser}
               onSuccess={handleCloseForm}
               onCancel={handleCloseForm}
@@ -155,7 +232,7 @@ export default function UsersPage() {
       <Card className="mb-6">
         <CardContent className="pt-6">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
               placeholder="Buscar por email o nombre..."
               value={searchTerm}
@@ -189,7 +266,7 @@ export default function UsersPage() {
                 </TableRow>
               ) : (
                 filteredUsers.map((user) => (
-                  <TableRow key={user.id}>
+                  <TableRow key={String(user.id)}>
                     <TableCell className="font-medium">{user.email}</TableCell>
                     <TableCell>{user.displayName || "-"}</TableCell>
                     <TableCell>
@@ -203,24 +280,19 @@ export default function UsersPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {user.lastLogin 
-                        ? new Date(user.lastLogin).toLocaleDateString()
-                        : "Nunca"
-                      }
+                      {user.lastLogin
+                        ? new Date(user.lastLogin as any).toLocaleDateString()
+                        : "Nunca"}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(user)}
-                        >
+                        <Button variant="outline" size="sm" onClick={() => handleEdit(user)}>
                           <Edit className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleDelete(user.id)}
+                          onClick={() => handleDelete(user.id as any)}
                           className="text-red-600 hover:text-red-700"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -235,7 +307,7 @@ export default function UsersPage() {
         </CardContent>
       </Card>
 
-      {/* Dialog de confirmación de eliminación */}
+      {/* Confirmación de eliminación */}
       <AlertDialog open={!!deleteUserId} onOpenChange={() => setDeleteUserId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

@@ -12,7 +12,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { RolesAPI, UserRolesAPI, type ApiResponse } from "@/lib/api";
+import { RolesAPI, UserRolesAPI } from "@/lib/api/auth";
+import type { ApiResponse } from "@/lib/api/client";
 import type { Role, CreateUserRoleDto } from "@/types/auth";
 
 interface AssignRoleFormProps {
@@ -53,7 +54,7 @@ export default function AssignRoleForm({
 
   const roleId = watch("roleId");
 
-  // Obtener lista de roles
+  // Roles
   const { data: rolesResponse, isLoading: rolesLoading } = useQuery<
     ApiResponse<Role[]>
   >({
@@ -64,34 +65,31 @@ export default function AssignRoleForm({
   const roles = rolesResponse?.status === "success" ? rolesResponse.data : [];
   const activeRoles = roles.filter((r) => r.isActive && !r.isDeleted);
 
-  // Mutación para asignar rol
+  // Mutación (usa assign, no create)
   const assignMutation = useMutation({
-    mutationFn: (data: CreateUserRoleDto) => UserRolesAPI.create(data),
+    mutationFn: (data: CreateUserRoleDto) => UserRolesAPI.assign(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-roles"] });
-      toast({
-        title: "Rol asignado",
-        description: "El rol ha sido asignado al usuario exitosamente",
-      });
+      toast({ title: "Rol asignado", description: "El rol se asignó correctamente." });
       onSuccess();
     },
     onError: (error: any) => {
       toast({
         title: "Error al asignar rol",
-        description: error.message || "No se pudo asignar el rol",
+        description: error?.message || "No se pudo asignar el rol",
         variant: "destructive",
       });
     },
   });
 
   const onSubmit = (data: FormData) => {
-    const assignData: CreateUserRoleDto = {
+    const payload: CreateUserRoleDto = {
       userId,
-      roleId: parseInt(data.roleId),
+      roleId: parseInt(data.roleId, 10),
       expiresAt: data.expiresAt || undefined,
       reason: data.reason || undefined,
     };
-    assignMutation.mutate(assignData);
+    assignMutation.mutate(payload);
   };
 
   const isLoading = assignMutation.isPending || rolesLoading;
@@ -115,7 +113,7 @@ export default function AssignRoleForm({
           </Label>
           <Select
             value={roleId}
-            onValueChange={(value) => setValue("roleId", value)}
+            onValueChange={(value) => setValue("roleId", value, { shouldValidate: true })}
             disabled={rolesLoading}
           >
             <SelectTrigger>
@@ -123,9 +121,7 @@ export default function AssignRoleForm({
             </SelectTrigger>
             <SelectContent>
               {activeRoles.length === 0 ? (
-                <div className="p-2 text-sm text-gray-500">
-                  No hay roles disponibles
-                </div>
+                <div className="p-2 text-sm text-gray-500">No hay roles disponibles</div>
               ) : (
                 activeRoles.map((role) => (
                   <SelectItem key={role.id} value={role.id.toString()}>
@@ -149,9 +145,7 @@ export default function AssignRoleForm({
             {...register("expiresAt")}
             min={new Date().toISOString().split("T")[0]}
           />
-          <p className="text-sm text-gray-500">
-            Si no se especifica, el rol no expirará
-          </p>
+          <p className="text-sm text-gray-500">Si no se especifica, el rol no expirará.</p>
         </div>
 
         {/* Razón (opcional) */}
@@ -165,31 +159,20 @@ export default function AssignRoleForm({
           />
         </div>
 
-        {/* Información adicional */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <p className="text-sm text-blue-800">
-            <strong>Nota:</strong> El usuario puede tener múltiples roles
-            simultáneamente. Los permisos se acumulan de todos los roles
-            asignados.
+            <strong>Nota:</strong> El usuario puede tener múltiples roles simultáneamente. Los
+            permisos se acumulan.
           </p>
         </div>
       </div>
 
-      {/* Botones de acción */}
+      {/* Acciones */}
       <div className="flex justify-end gap-3">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onCancel}
-          disabled={isLoading}
-        >
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
           Cancelar
         </Button>
-        <Button
-          type="submit"
-          disabled={isLoading || !roleId}
-          className="bg-blue-600 hover:bg-blue-700"
-        >
+        <Button type="submit" disabled={isLoading || !roleId} className="bg-blue-600 hover:bg-blue-700">
           {isLoading ? "Asignando..." : "Asignar Rol"}
         </Button>
       </div>

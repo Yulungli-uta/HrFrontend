@@ -136,7 +136,7 @@ export default function FinancialCertificationPage() {
 
   // ----------------- Query de listado -----------------
   const { data: apiResponse, isLoading, error } = useQuery<ApiResponse<FinancialCertification[]>>({
-    queryKey: ['/api/v1/rh/cv/financial-certification'],
+    queryKey: ['/api/v1/rh/financial-certification'],
     queryFn: () => FinancialCertificationAPI.list(),
   });
 
@@ -149,7 +149,7 @@ export default function FinancialCertificationPage() {
           title: "✅ Certificación creada",
           description: "Se guardó correctamente en el sistema."
         });
-        qc.invalidateQueries({ queryKey: ['/api/v1/rh/cv/financial-certification'] });
+        qc.invalidateQueries({ queryKey: ['/api/v1/rh/financial-certification'] });
         setIsFormOpen(false);
         resetForm();
       } else {
@@ -473,7 +473,7 @@ export default function FinancialCertificationPage() {
 
                     // Construir payload para guardar
                     const payload: FinancialCertification = {
-                      requestId: 0,
+                      requestId: 2,
                       certCode: form.certCode!.trim(),
                       certNumber: form.certNumber!.trim(),
                       budget: form.budget!.trim(),

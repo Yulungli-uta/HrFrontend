@@ -5,6 +5,7 @@ export interface EmployeeDetails {
   idCard: string;
   email: string;
   employeeType: number;
+  ImmediateBossID: number;
   department: string;
   faculty: string;
   baseSalary: number;

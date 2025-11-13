@@ -1,8 +1,18 @@
+// src/pages/admin/Roles.tsx
+import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -22,12 +32,41 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+
 import { Shield, Plus, Edit, Trash2, Search } from "lucide-react";
-import { useState } from "react";
-import { RolesAPI, type ApiResponse } from "@/lib/api";
+import { RolesAPI } from "@/lib/api/auth";
+import type { ApiResponse } from "@/lib/api/client";
 import type { Role } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
 import RoleForm from "@/components/forms/RoleForm";
+
+/** Normaliza cualquier payload común a arreglo de Role */
+function coerceToRoleArray(payload: unknown): Role[] {
+  if (Array.isArray(payload)) return payload as Role[];
+  if (payload && typeof payload === "object") {
+    // @ts-ignore
+    if (Array.isArray(payload.items)) return payload.items as Role[];
+    // @ts-ignore
+    if (Array.isArray(payload.results)) return payload.results as Role[];
+    // @ts-ignore
+    if (Array.isArray(payload.data)) return payload.data as Role[];
+    // Diccionario { [id]: Role }
+    // @ts-ignore
+    const values = Object.values(payload);
+    if (
+      values.length > 0 &&
+      values.every(
+        (v) =>
+          v &&
+          typeof v === "object" &&
+          ("name" in v || "description" in v)
+      )
+    ) {
+      return values as Role[];
+    }
+  }
+  return [];
+}
 
 export default function RolesPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -37,10 +76,32 @@ export default function RolesPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Obtener lista de roles
-  const { data: apiResponse, isLoading, error } = useQuery<ApiResponse<Role[]>>({
+  // Obtener lista de roles y normalizarla SIEMPRE a Role[]
+  const {
+    data: roles = [],
+    isLoading,
+    error,
+  } = useQuery<ApiResponse<unknown>, Error, Role[]>({
     queryKey: ["roles"],
-    queryFn: () => RolesAPI.list(),
+    queryFn: async () => {
+      const res = await RolesAPI.list();
+      // Deja este log mientras estabilizas el contrato del backend
+      // eslint-disable-next-line no-console
+      console.debug("[RolesPage] RolesAPI.list() raw:", res);
+      return res;
+    },
+    select: (res) => {
+      if (!res) return [];
+      // @ts-ignore
+      if ("status" in res && res.status !== "success") {
+        // @ts-ignore
+        const message = res?.error?.message || "No se pudo obtener la lista de roles";
+        toast({ title: "Error", description: message, variant: "destructive" });
+        return [];
+      }
+      // @ts-ignore
+      return coerceToRoleArray(res.data);
+    },
   });
 
   // Mutación para eliminar rol
@@ -54,23 +115,29 @@ export default function RolesPage() {
       });
       setDeleteRoleId(null);
     },
-    onError: (error: any) => {
+    onError: (err: any) => {
+      const message =
+        err?.message ||
+        err?.response?.data?.message ||
+        "No se pudo eliminar el rol";
       toast({
         title: "Error al eliminar",
-        description: error.message || "No se pudo eliminar el rol",
+        description: message,
         variant: "destructive",
       });
     },
   });
 
-  const roles = apiResponse?.status === "success" ? apiResponse.data : [];
-
-  // Filtrar roles por búsqueda
-  const filteredRoles = roles.filter(
-    (role) =>
-      role.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      role.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filtrar roles por búsqueda (campos opcionales)
+  const filteredRoles = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) return roles;
+    return roles.filter((r) => {
+      const name = (r.name ?? "").toLowerCase();
+      const desc = (r.description ?? "").toLowerCase();
+      return name.includes(term) || desc.includes(term);
+    });
+  }, [roles, searchTerm]);
 
   const handleEdit = (role: Role) => {
     setEditingRole(role);
@@ -86,6 +153,7 @@ export default function RolesPage() {
     setDeleteRoleId(id);
   };
 
+  // Loading skeleton
   if (isLoading) {
     return (
       <div className="container mx-auto p-6">
@@ -106,6 +174,7 @@ export default function RolesPage() {
     );
   }
 
+  // Error de red/fetch
   if (error) {
     return (
       <div className="container mx-auto p-6">
@@ -114,18 +183,6 @@ export default function RolesPage() {
             <p className="text-red-600">
               Error al cargar los roles. Intente nuevamente.
             </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (apiResponse?.status === "error") {
-    return (
-      <div className="container mx-auto p-6">
-        <Card className="border-red-200 bg-red-50">
-          <CardContent className="pt-6">
-            <p className="text-red-600">Error: {apiResponse.error.message}</p>
           </CardContent>
         </Card>
       </div>
@@ -144,6 +201,8 @@ export default function RolesPage() {
             Administre los roles y permisos del sistema
           </p>
         </div>
+
+        {/* Modal Crear/Editar Rol — Accesible */}
         <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
           <DialogTrigger asChild>
             <Button
@@ -154,7 +213,17 @@ export default function RolesPage() {
               Agregar Rol
             </Button>
           </DialogTrigger>
+
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {editingRole ? "Editar rol" : "Nuevo rol"}
+              </DialogTitle>
+              <DialogDescription>
+                Complete los campos y guarde para {editingRole ? "actualizar" : "crear"} el rol.
+              </DialogDescription>
+            </DialogHeader>
+
             <RoleForm
               role={editingRole}
               onSuccess={handleCloseForm}
@@ -168,7 +237,7 @@ export default function RolesPage() {
       <Card className="mb-6">
         <CardContent className="pt-6">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
               placeholder="Buscar por nombre o descripción..."
               value={searchTerm}
@@ -196,46 +265,39 @@ export default function RolesPage() {
             <TableBody>
               {filteredRoles.length === 0 ? (
                 <TableRow>
-                  <TableCell
-                    colSpan={6}
-                    className="text-center py-8 text-gray-500"
-                  >
-                    {searchTerm
-                      ? "No se encontraron roles"
-                      : "No hay roles registrados"}
+                  <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                    {searchTerm ? "No se encontraron roles" : "No hay roles registrados"}
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredRoles.map((role) => (
-                  <TableRow key={role.id}>
+                  <TableRow key={String(role.id)}>
                     <TableCell className="font-medium">{role.name}</TableCell>
                     <TableCell>{role.description || "-"}</TableCell>
                     <TableCell>
-                      <Badge variant="outline">{role.priority}</Badge>
+                      <Badge variant="outline">
+                        {role.priority ?? "-"}
+                      </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        variant={role.isActive ? "default" : "destructive"}
-                      >
+                      <Badge variant={role.isActive ? "default" : "destructive"}>
                         {role.isActive ? "Activo" : "Inactivo"}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {new Date(role.createdAt).toLocaleDateString()}
+                      {role.createdAt
+                        ? new Date(role.createdAt as any).toLocaleDateString()
+                        : "-"}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(role)}
-                        >
+                        <Button variant="outline" size="sm" onClick={() => handleEdit(role)}>
                           <Edit className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleDelete(role.id)}
+                          onClick={() => handleDelete(role.id as any)}
                           className="text-red-600 hover:text-red-700"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -250,18 +312,13 @@ export default function RolesPage() {
         </CardContent>
       </Card>
 
-      {/* Dialog de confirmación de eliminación */}
-      <AlertDialog
-        open={!!deleteRoleId}
-        onOpenChange={() => setDeleteRoleId(null)}
-      >
+      {/* Confirmación de eliminación */}
+      <AlertDialog open={!!deleteRoleId} onOpenChange={() => setDeleteRoleId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Está seguro?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción no se puede deshacer. El rol será eliminado
-              permanentemente y se removerá de todos los usuarios que lo tengan
-              asignado.
+              Esta acción no se puede deshacer. El rol será eliminado permanentemente.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

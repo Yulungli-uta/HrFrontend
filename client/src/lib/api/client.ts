@@ -10,7 +10,8 @@ import { tokenService } from '@/services/auth';
 // =============================================================================
 
 export const API_CONFIG = {
-  BASE_URL: import.meta.env.VITE_API_BASE || "http://localhost:5000",
+  // BASE_URL: import.meta.env.VITE_API_BASE || "http://localhost:5000",
+  BASE_URL: import.meta.env.VITE_AUTH_API_BASE || "http://localhost:5010",
   DEFAULT_HEADERS: {
     "Content-Type": "application/json",
     "Accept": "application/json"

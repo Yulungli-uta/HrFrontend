@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCrudMutation } from "@/hooks/useCrudMutation";
-import { AuthUsersAPI } from "@/lib/api";
+import { AuthUsersAPI } from "@/lib/api/auth";
 import type { User, CreateUserDto, UpdateUserDto } from "@/types/auth";
 import type { BaseCrudFormProps } from "@/types/components";
 

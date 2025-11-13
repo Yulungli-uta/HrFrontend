@@ -1,16 +1,24 @@
+// src/pages/EmployeesPage.tsx
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card, CardContent, CardDescription, CardHeader, CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { UserCog, Building2, Calendar, Users, UserCheck, UserX, Briefcase, Search, Eye } from "lucide-react";
+import {
+  UserCog, Building2, Calendar, Users, UserCheck, UserX, Briefcase, Search, Eye,
+} from "lucide-react";
 import EmployeeForm from "@/components/forms/EmployeeForm";
-import { useState, useMemo } from "react";
-import { VistaEmpleadosAPI, TiposReferenciaAPI } from "@/lib/api"; 
+import { VistaEmpleadosAPI, TiposReferenciaAPI } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 
-// Interfaz para los empleados de la vista
-interface EmployeeView {
+// =================== Tipos ===================
+export interface EmployeeView {
   employeeID: number;
   firstName: string;
   lastName: string;
@@ -23,12 +31,12 @@ interface EmployeeView {
   gender: string | null;
   address: string;
   personIsActive: boolean;
-  employeeType: number;
-  employeeTypeName: string;
+  employeeType: number | null;
+  employeeTypeName: string | null;
   hireDate: string;
   employeeIsActive: boolean;
-  department: string;
-  faculty: string;
+  department: string | null;
+  faculty: string | null;
   immediateBoss: string | null;
   yearsOfService: number;
   maritalStatusTypeID: number | null;
@@ -44,124 +52,186 @@ interface EmployeeView {
   cantonName: string | null;
 }
 
-// Función para extraer el array de empleados
-const extractEmployees = (response: any): EmployeeView[] => {
-  if (Array.isArray(response)) return response;
-  if (response?.data && Array.isArray(response.data)) return response.data;
-  if (response?.results && Array.isArray(response.results)) return response.results;
-  return [];
-};
+interface RefType {
+  typeId: number;
+  name: string;
+  category: string;
+}
 
-// Función para extraer el array de tipos de contrato
-const extractContractTypes = (response: any): any[] => {
-  if (Array.isArray(response)) return response;
-  if (response?.data && Array.isArray(response.data)) return response.data;
-  if (response?.results && Array.isArray(response.results)) return response.results;
-  return [];
-};
+const DEBUG = import.meta.env.VITE_DEBUG_AUTH === "true";
 
-// Función para mapear tipos de contrato
-const mapContractTypes = (contractTypes: any[]): Record<number, string> => {
-  const mapping: Record<number, string> = {};
-  contractTypes.forEach(type => {
-    mapping[type.typeId] = type.name;
+// =================== Utilidades ===================
+function useDebounced<T>(value: T, delay = 350) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return debounced;
+}
+
+function extractArray<T = any>(response: any): T[] {
+  if (Array.isArray(response)) return response;
+  if (response?.status === "success" && Array.isArray(response.data)) return response.data;
+  if (Array.isArray(response?.data)) return response.data;
+  if (Array.isArray(response?.results)) return response.results;
+  return [];
+}
+
+function normalizeEmployees(raw: any[]): EmployeeView[] {
+  return raw
+    .filter(Boolean)
+    .map((e: any) => ({
+      employeeID: Number(e.employeeID ?? e.employeeId ?? e.id ?? 0),
+      firstName: String(e.firstName ?? ""),
+      lastName: String(e.lastName ?? ""),
+      fullName: String(e.fullName ?? `${e.firstName ?? ""} ${e.lastName ?? ""}`.trim()),
+      idCard: String(e.idCard ?? ""),
+      email: String(e.email ?? ""),
+      phone: String(e.phone ?? ""),
+      birthDate: e.birthDate ?? "",
+      sex: String(e.sex ?? ""),
+      gender: e.gender ?? null,
+      address: String(e.address ?? ""),
+      personIsActive: Boolean(e.personIsActive ?? true),
+      employeeType: e.employeeType != null ? Number(e.employeeType) : null,
+      employeeTypeName: e.employeeTypeName ?? null,
+      hireDate: e.hireDate ?? "",
+      employeeIsActive: Boolean(e.employeeIsActive ?? true),
+      department: e.department ?? null,
+      faculty: e.faculty ?? null,
+      immediateBoss: e.immediateBoss ?? null,
+      yearsOfService: Number(e.yearsOfService ?? 0),
+      maritalStatusTypeID: e.maritalStatusTypeID ?? null,
+      maritalStatus: e.maritalStatus ?? null,
+      ethnicityTypeID: e.ethnicityTypeID ?? null,
+      ethnicity: e.ethnicity ?? null,
+      bloodTypeTypeID: e.bloodTypeTypeID ?? null,
+      bloodType: e.bloodType ?? null,
+      disabilityPercentage: e.disabilityPercentage ?? null,
+      conadisCard: e.conadisCard ?? null,
+      countryName: e.countryName ?? null,
+      provinceName: e.provinceName ?? null,
+      cantonName: e.cantonName ?? null,
+    }))
+    .filter(e => e.employeeID > 0);
+}
+
+function mapContractTypes(types: RefType[]) {
+  const map: Record<number, string> = {};
+  types.forEach(t => {
+    if (t?.category === "CONTRACT_TYPE" && typeof t.typeId === "number") {
+      map[t.typeId] = t.name;
+    }
   });
-  return mapping;
-};
+  return map;
+}
 
-// Colores para los badges de tipos de contrato
-const contractTypeColors: Record<number, string> = {
-  57: "bg-blue-100 text-blue-800 border-blue-200",
-  58: "bg-green-100 text-green-800 border-green-200",
-  59: "bg-purple-100 text-purple-800 border-purple-200"
-};
-
+// =================== Página ===================
 export default function EmployeesPage() {
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedEmployee, setSelectedEmployee] = useState<EmployeeView | null>(null);
-  const [viewMode, setViewMode] = useState<"grid" | "table">("table");
-  
-  // Obtener empleados desde la vista
-  const { data: apiResponse, isLoading, error } = useQuery({
-    queryKey: ['/api/v1/rh/vw/EmployeeComplete'],
+  const { toast } = useToast();
+
+  // Empleados (vista)
+  const { data: employeesResp, isLoading, error } = useQuery({
+    queryKey: ["/api/v1/rh/vw/EmployeeComplete"],
     queryFn: VistaEmpleadosAPI.list,
-  });
-  
-  // Obtener tipos de contrato
-  const { data: contractTypesResponse } = useQuery({
-    queryKey: ['/api/v1/rh/ref/types/category/CONTRACT_TYPE'],
-    queryFn: () => TiposReferenciaAPI.byCategory("CONTRACT_TYPE"),
+    refetchOnWindowFocus: false,
   });
 
-  // Extraer empleados de la respuesta
-  const employees = extractEmployees(apiResponse);
-  
-  // Extraer tipos de contrato de la respuesta
-  const contractTypes = extractContractTypes(contractTypesResponse);
-  
-  // Mapear tipos de contrato
-  const contractTypeMap = mapContractTypes(contractTypes);
+  // Tipos de contrato
+  const { data: refTypesResp } = useQuery({
+    queryKey: ["/api/v1/rh/ref/types"],
+    queryFn: TiposReferenciaAPI.list,
+    refetchOnWindowFocus: false,
+  });
 
-  // Filtrar empleados basado en el término de búsqueda
+  const employees = useMemo(
+    () => normalizeEmployees(extractArray(employeesResp)),
+    [employeesResp]
+  );
+
+  const refTypes = useMemo(
+    () => extractArray<RefType>(refTypesResp),
+    [refTypesResp]
+  );
+
+  const contractTypeMap = useMemo(() => mapContractTypes(refTypes), [refTypes]);
+
+  // Estado UI
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"grid" | "table">("table");
+  const [selectedEmployee, setSelectedEmployee] = useState<EmployeeView | null>(null);
+  const [editSeed, setEditSeed] = useState<EmployeeView | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebounced(searchTerm);
+
+  // Filtrado
   const filteredEmployees = useMemo(() => {
-    if (!searchTerm) return employees;
-    
-    return employees.filter(employee => 
-      employee.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.idCard.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.email.toLowerCase().includes(searchTerm.toLowerCase())
+    if (!debouncedSearch) return employees;
+    const q = debouncedSearch.toLowerCase().trim();
+    return employees.filter((e) =>
+      (e.fullName ?? "").toLowerCase().includes(q) ||
+      (e.idCard ?? "").toLowerCase().includes(q) ||
+      (e.email ?? "").toLowerCase().includes(q)
     );
-  }, [employees, searchTerm]);
+  }, [employees, debouncedSearch]);
 
-  // Calcular estadísticas
-  const employeeStats = {
-    total: employees.length,
-    active: employees.filter(emp => emp.employeeIsActive).length,
-    inactive: employees.filter(emp => !emp.employeeIsActive).length,
-    byContractType: contractTypes.reduce((acc: Record<number, number>, type: any) => {
-      const typeId = Number(type.typeId);
-      acc[typeId] = employees.filter(emp => 
-        emp.employeeType !== null && 
-        emp.employeeType !== undefined && 
-        Number(emp.employeeType) === typeId
-      ).length;
-      return acc;
-    }, {})
-  };
+  // Estadísticas
+  const employeeStats = useMemo(() => {
+    const total = employees.length;
+    const active = employees.filter(e => e.employeeIsActive).length;
+    const inactive = total - active;
+
+    const byContractType: Record<number, number> = {};
+    Object.keys(contractTypeMap).forEach(k => (byContractType[Number(k)] = 0));
+    employees.forEach(e => {
+      const typeId = e.employeeType != null ? Number(e.employeeType) : NaN;
+      if (!Number.isNaN(typeId)) {
+        byContractType[typeId] = (byContractType[typeId] ?? 0) + 1;
+      }
+    });
+
+    return { total, active, inactive, byContractType };
+  }, [employees, contractTypeMap]);
+
+  useEffect(() => {
+    if (!DEBUG) return;
+    console.group("🔍 EmployeesPage DEBUG");
+    console.log("employees (normalized):", employees);
+    console.log("refTypes:", refTypes);
+    console.log("contractTypeMap:", contractTypeMap);
+    console.log("filteredEmployees:", filteredEmployees.length);
+    console.groupEnd();
+  }, [employees, refTypes, contractTypeMap, filteredEmployees]);
 
   if (isLoading) {
     return (
       <div className="container mx-auto p-6">
         <div className="flex items-center justify-between mb-8">
           <div className="space-y-2">
-            <div className="h-10 w-64 bg-gray-200 rounded animate-pulse"></div>
-            <div className="h-5 w-80 bg-gray-200 rounded animate-pulse"></div>
+            <div className="h-10 w-64 bg-gray-200 rounded animate-pulse" />
+            <div className="h-5 w-80 bg-gray-200 rounded animate-pulse" />
           </div>
-          <div className="h-10 w-44 bg-gray-200 rounded animate-pulse"></div>
+          <div className="h-10 w-44 bg-gray-200 rounded animate-pulse" />
         </div>
-        
-        {/* Loading para tarjetas de resumen */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
           {Array.from({ length: 4 }).map((_, i) => (
             <Card key={i} className="animate-pulse border-0 shadow-md">
               <CardHeader className="space-y-2 pb-3">
-                <div className="h-5 w-32 bg-gray-200 rounded"></div>
-                <div className="h-4 w-24 bg-gray-200 rounded"></div>
+                <div className="h-5 w-32 bg-gray-200 rounded" />
+                <div className="h-4 w-24 bg-gray-200 rounded" />
               </CardHeader>
               <CardContent>
-                <div className="h-8 w-16 bg-gray-200 rounded"></div>
+                <div className="h-8 w-16 bg-gray-200 rounded" />
               </CardContent>
             </Card>
           ))}
         </div>
-        
-        {/* Loading para tabla de empleados */}
         <div className="bg-white rounded-lg shadow-md p-4 animate-pulse">
-          <div className="h-10 w-full bg-gray-200 rounded mb-4"></div>
+          <div className="h-10 w-full bg-gray-200 rounded mb-4" />
           <div className="space-y-3">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-12 w-full bg-gray-200 rounded"></div>
+              <div key={i} className="h-12 w-full bg-gray-200 rounded" />
             ))}
           </div>
         </div>
@@ -174,7 +244,9 @@ export default function EmployeesPage() {
       <div className="container mx-auto p-6">
         <Card className="border-red-200 bg-red-50 shadow-md">
           <CardContent className="pt-6">
-            <p className="text-red-600 font-medium">Error al cargar los empleados. Intente nuevamente.</p>
+            <p className="text-red-600 font-medium">
+              Error al cargar los empleados. Intente nuevamente.
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -188,20 +260,56 @@ export default function EmployeesPage() {
           <h1 className="text-3xl font-bold text-gray-900">Gestión de Empleados</h1>
           <p className="text-gray-600 mt-2">Administre la información laboral del personal universitario</p>
         </div>
-        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+
+        <Dialog open={isFormOpen} onOpenChange={(open) => {
+          setIsFormOpen(open);
+          if (!open) {
+            setEditSeed(null);
+            // Reset completo del estado
+            setTimeout(() => setEditSeed(null), 100);
+          }
+        }}>
           <DialogTrigger asChild>
-            <Button 
+            <Button
               data-testid="button-add-employee"
               className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg flex items-center gap-2"
+              onClick={() => {
+                setEditSeed(null); // modo crear
+                // Forzar reset del estado
+                setTimeout(() => setEditSeed(null), 50);
+              }}
             >
               <UserCog className="h-5 w-5" />
               Agregar Empleado
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <EmployeeForm 
-              onSuccess={() => setIsFormOpen(false)}
-              onCancel={() => setIsFormOpen(false)}
+            <DialogHeader>
+              <DialogTitle>
+                {editSeed ? "Editar Empleado" : "Agregar Nuevo Empleado"}
+              </DialogTitle>
+              <DialogDescription>
+                {editSeed 
+                  ? "Modifique la información del empleado seleccionado" 
+                  : "Complete los datos del nuevo empleado"
+                }
+              </DialogDescription>
+            </DialogHeader>
+            <EmployeeForm
+              key={editSeed ? `edit-${editSeed.employeeID}` : 'create'} // 🔑 KEY IMPORTANTE para forzar re-render
+              viewSeed={editSeed ?? undefined}
+              onSuccess={() => {
+                setIsFormOpen(false);
+                setEditSeed(null);
+                toast({ 
+                  title: "Operación exitosa", 
+                  description: editSeed ? "Empleado actualizado correctamente" : "Empleado creado correctamente"
+                });
+              }}
+              onCancel={() => {
+                setIsFormOpen(false);
+                setEditSeed(null);
+              }}
             />
           </DialogContent>
         </Dialog>
@@ -219,7 +327,7 @@ export default function EmployeesPage() {
             <p className="text-xs text-blue-600 mt-1">Total de empleados registrados</p>
           </CardContent>
         </Card>
-        
+
         <Card className="border-0 shadow-md bg-gradient-to-r from-green-50 to-green-100">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
             <CardTitle className="text-sm font-medium text-green-800">Empleados Activos</CardTitle>
@@ -230,7 +338,7 @@ export default function EmployeesPage() {
             <p className="text-xs text-green-600 mt-1">Empleados actualmente activos</p>
           </CardContent>
         </Card>
-        
+
         <Card className="border-0 shadow-md bg-gradient-to-r from-red-50 to-red-100">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
             <CardTitle className="text-sm font-medium text-red-800">Empleados Inactivos</CardTitle>
@@ -241,41 +349,23 @@ export default function EmployeesPage() {
             <p className="text-xs text-red-600 mt-1">Empleados actualmente inactivos</p>
           </CardContent>
         </Card>
-        
-        {/* Tarjeta para el tipo de contrato más común o primera tarjeta especial */}
-        {/* {contractTypes.length > 0 && (
-          <Card className="border-0 shadow-md bg-gradient-to-r from-purple-50 to-purple-100">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-sm font-medium text-purple-800">
-                {contractTypes[0]?.name || "Tipo de Contrato"}
-              </CardTitle>
-              <Briefcase className="h-5 w-5 text-purple-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-purple-900">
-                {employeeStats.byContractType[contractTypes[0]?.typeId] || 0}
-              </div>
-              <p className="text-xs text-purple-600 mt-1">Empleados con este tipo de contrato</p>
-            </CardContent>
-          </Card>
-        )} */}
       </div>
 
-      {/* Tarjetas para todos los tipos de contrato */}
-      {contractTypes.length > 0 && (
+      {/* Distribución por tipo de contrato */}
+      {Object.keys(employeeStats.byContractType).length > 0 && (
         <>
           <h2 className="text-xl font-semibold text-gray-800 mb-4">Distribución por Tipo de Contrato</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
-            {contractTypes.map((contractType: any) => (
-              <Card key={contractType.typeId} className="border-0 shadow-md">
+            {Object.entries(employeeStats.byContractType).map(([typeId, count]) => (
+              <Card key={typeId} className="border-0 shadow-md">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                  <CardTitle className="text-sm font-medium">{contractType.name}</CardTitle>
+                  <CardTitle className="text-sm font-medium">
+                    {contractTypeMap[Number(typeId)] ?? `Tipo #${typeId}`}
+                  </CardTitle>
                   <Briefcase className="h-5 w-5 text-gray-500" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">
-                    {employeeStats.byContractType[contractType.typeId] || 0}
-                  </div>
+                  <div className="text-2xl font-bold">{count}</div>
                   <p className="text-xs text-gray-500 mt-1">Empleados con este tipo de contrato</p>
                 </CardContent>
               </Card>
@@ -287,23 +377,25 @@ export default function EmployeesPage() {
       {/* Barra de búsqueda y controles */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-4">
         <h2 className="text-xl font-semibold text-gray-800">Lista de Empleados</h2>
-        
+
         <div className="flex items-center gap-3 w-full md:w-auto">
           <div className="relative flex-1 md:flex-initial">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Input
               placeholder="Buscar por nombre, cédula o email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 pr-4 py-2 w-full md:w-64"
+              aria-label="Buscar empleados"
             />
           </div>
-          
+
           <div className="flex gap-2">
             <Button
               variant={viewMode === "table" ? "default" : "outline"}
               size="sm"
               onClick={() => setViewMode("table")}
+              aria-pressed={viewMode === "table"}
             >
               Tabla
             </Button>
@@ -311,6 +403,7 @@ export default function EmployeesPage() {
               variant={viewMode === "grid" ? "default" : "outline"}
               size="sm"
               onClick={() => setViewMode("grid")}
+              aria-pressed={viewMode === "grid"}
             >
               Grid
             </Button>
@@ -318,80 +411,49 @@ export default function EmployeesPage() {
         </div>
       </div>
 
-      {/* Tabla de empleados */}
+      {/* Tabla o Grid */}
       {viewMode === "table" ? (
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Nombre Completo
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Cédula
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Email
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Tipo de Empleado
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Departamento
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Estado
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Acciones
-                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre Completo</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cédula</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo de Empleado</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Departamento</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredEmployees.map((employee) => (
                   <tr key={employee.employeeID} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {employee.fullName}
+                    <td className="px-6 py-4">
+                      <div className="text-sm font-medium text-gray-900">{employee.fullName}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-gray-600">{employee.idCard || "N/A"}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-gray-600">{employee.email || "N/A"}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-gray-600">
+                        {employee.employeeTypeName ?? (employee.employeeType != null ? `#${employee.employeeType}` : "N/A")}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">
-                        {employee.idCard || "N/A"}
-                      </div>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-gray-600">{employee.department || "N/A"}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">
-                        {employee.email || "N/A"}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">
-                        {employee.employeeTypeName || "N/A"}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">
-                        {employee.department || "N/A"}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <Badge 
-                        className={employee.employeeIsActive 
-                          ? "bg-green-100 text-green-800 border-green-200" 
-                          : "bg-red-100 text-red-800 border-red-200"
-                        }
-                      >
+                    <td className="px-6 py-4">
+                      <Badge className={employee.employeeIsActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
                         {employee.employeeIsActive ? "Activo" : "Inactivo"}
                       </Badge>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSelectedEmployee(employee)}
-                      >
+                    <td className="px-6 py-4 text-sm font-medium">
+                      <Button variant="outline" size="sm" onClick={() => setSelectedEmployee(employee)}>
                         <Eye className="h-4 w-4 mr-1" />
                         Ver detalle
                       </Button>
@@ -401,19 +463,22 @@ export default function EmployeesPage() {
               </tbody>
             </table>
           </div>
-          
+
           {filteredEmployees.length === 0 && (
             <div className="text-center py-12">
               <UserCog className="mx-auto h-16 w-16 text-gray-400 mb-4" />
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                {searchTerm ? "No se encontraron empleados" : "No hay empleados registrados"}
+                {debouncedSearch ? "No se encontraron empleados" : "No hay empleados registrados"}
               </h3>
               <p className="text-gray-600 mb-4">
-                {searchTerm ? "Intente con otro término de búsqueda" : "Comience agregando el primer empleado al sistema"}
+                {debouncedSearch ? "Intente con otro término de búsqueda" : "Comience agregando el primer empleado al sistema"}
               </p>
-              {!searchTerm && (
-                <Button 
-                  onClick={() => setIsFormOpen(true)}
+              {!debouncedSearch && (
+                <Button
+                  onClick={() => {
+                    setEditSeed(null);
+                    setIsFormOpen(true);
+                  }}
                   className="bg-blue-600 hover:bg-blue-700"
                 >
                   <UserCog className="mr-2 h-4 w-4" />
@@ -424,85 +489,58 @@ export default function EmployeesPage() {
           )}
         </div>
       ) : (
-        /* Vista en grid (opcional) */
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {filteredEmployees.map((employee) => (
             <Card key={employee.employeeID} className="border-0 shadow-md hover:shadow-lg transition-all duration-200">
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
-                  <span className="text-lg">
-                    {employee.fullName}
-                  </span>
-                  <Badge 
-                    variant={employee.employeeIsActive ? "default" : "secondary"}
-                    className={employee.employeeIsActive 
-                      ? "bg-green-100 text-green-800 border-green-200" 
-                      : "bg-red-100 text-red-800 border-red-200"
-                    }
-                  >
+                  <span className="text-lg">{employee.fullName}</span>
+                  <Badge className={employee.employeeIsActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
                     {employee.employeeIsActive ? "Activo" : "Inactivo"}
                   </Badge>
                 </CardTitle>
                 <CardDescription>
-                  {employee.idCard && (
-                    <div className="text-sm">Cédula: {employee.idCard}</div>
-                  )}
-                  {employee.employeeTypeName && (
-                    <div className="text-sm mt-1">Tipo: {employee.employeeTypeName}</div>
-                  )}
+                  {employee.idCard && <div className="text-sm">Cédula: {employee.idCard}</div>}
+                  {employee.employeeTypeName && <div className="text-sm mt-1">Tipo: {employee.employeeTypeName}</div>}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                {employee.email && (
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
-                    <span className="truncate">Email: {employee.email}</span>
-                  </div>
-                )}
+                {employee.email && <div className="text-sm text-gray-600 truncate">Email: {employee.email}</div>}
                 {employee.department && (
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
-                    <Building2 className="h-4 w-4 flex-shrink-0" />
-                    <span className="truncate">
-                      Departamento: {employee.department}
-                    </span>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Building2 className="h-4 w-4" />
+                    <span className="truncate">Departamento: {employee.department}</span>
                   </div>
                 )}
-                {employee.faculty && (
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
-                    <span>Facultad: {employee.faculty}</span>
-                  </div>
-                )}
-                <div className="flex items-center space-x-2 text-sm text-gray-600">
-                  <Calendar className="h-4 w-4 flex-shrink-0" />
-                  <span>
-                    Ingreso: {new Date(employee.hireDate).toLocaleDateString()}
-                  </span>
+                {employee.faculty && <div className="text-sm text-gray-600">Facultad: {employee.faculty}</div>}
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Calendar className="h-4 w-4" />
+                  <span>Ingreso: {employee.hireDate ? new Date(employee.hireDate).toLocaleDateString() : "—"}</span>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full mt-3"
-                  onClick={() => setSelectedEmployee(employee)}
-                >
+                <Button variant="outline" size="sm" className="w-full mt-3" onClick={() => setSelectedEmployee(employee)}>
                   <Eye className="h-4 w-4 mr-1" />
                   Ver detalle
                 </Button>
               </CardContent>
             </Card>
           ))}
-          
+
           {filteredEmployees.length === 0 && (
             <Card className="text-center py-12 border-0 shadow-md col-span-full">
               <CardContent>
                 <UserCog className="mx-auto h-16 w-16 text-gray-400 mb-4" />
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  {searchTerm ? "No se encontraron empleados" : "No hay empleados registrados"}
+                  {debouncedSearch ? "No se encontraron empleados" : "No hay empleados registrados"}
                 </h3>
                 <p className="text-gray-600 mb-4">
-                  {searchTerm ? "Intente con otro término de búsqueda" : "Comience agregando el primer empleado al sistema"}
+                  {debouncedSearch ? "Intente con otro término de búsqueda" : "Comience agregando el primer empleado al sistema"}
                 </p>
-                {!searchTerm && (
-                  <Button 
-                    onClick={() => setIsFormOpen(true)}
+                {!debouncedSearch && (
+                  <Button
+                    onClick={() => {
+                      setEditSeed(null);
+                      setIsFormOpen(true);
+                    }}
                     className="bg-blue-600 hover:bg-blue-700"
                   >
                     <UserCog className="mr-2 h-4 w-4" />
@@ -515,9 +553,14 @@ export default function EmployeesPage() {
         </div>
       )}
 
-      {/* Diálogo para ver detalles del empleado */}
+      {/* Diálogo de Detalle */}
       <Dialog open={!!selectedEmployee} onOpenChange={(open) => !open && setSelectedEmployee(null)}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Detalle del Empleado</DialogTitle>
+            <DialogDescription>Información general y laboral del empleado seleccionado</DialogDescription>
+          </DialogHeader>
+
           {selectedEmployee && (
             <>
               <div className="flex items-center gap-4 mb-6">
@@ -525,71 +568,50 @@ export default function EmployeesPage() {
                   <UserCog className="h-8 w-8 text-blue-600" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">
-                    {selectedEmployee.fullName}
-                  </h2>
-                  <p className="text-gray-600">
-                    {selectedEmployee.idCard && `Cédula: ${selectedEmployee.idCard}`}
-                  </p>
+                  <h2 className="text-2xl font-bold text-gray-900">{selectedEmployee.fullName}</h2>
+                  <p className="text-gray-600">{selectedEmployee.idCard ? `Cédula: ${selectedEmployee.idCard}` : ""}</p>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-800 mb-3">Información Laboral</h3>
                   <div className="space-y-3">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Estado:</span>
-                      <Badge 
-                        className={selectedEmployee.employeeIsActive 
-                          ? "bg-green-100 text-green-800 border-green-200" 
-                          : "bg-red-100 text-red-800 border-red-200"
-                        }
-                      >
+                      <Badge className={selectedEmployee.employeeIsActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
                         {selectedEmployee.employeeIsActive ? "Activo" : "Inactivo"}
                       </Badge>
                     </div>
-                    
                     {selectedEmployee.employeeTypeName && (
                       <div className="flex justify-between">
                         <span className="text-gray-600">Tipo de empleado:</span>
                         <span className="font-medium">{selectedEmployee.employeeTypeName}</span>
                       </div>
                     )}
-                    
                     {selectedEmployee.department && (
                       <div className="flex justify-between">
                         <span className="text-gray-600">Departamento:</span>
                         <span className="font-medium">{selectedEmployee.department}</span>
                       </div>
                     )}
-                    
                     {selectedEmployee.faculty && (
                       <div className="flex justify-between">
                         <span className="text-gray-600">Facultad:</span>
                         <span className="font-medium">{selectedEmployee.faculty}</span>
                       </div>
                     )}
-                    
-                    {selectedEmployee.immediateBoss && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Jefe inmediato:</span>
-                        <span className="font-medium">{selectedEmployee.immediateBoss}</span>
-                      </div>
-                    )}
-                    
                     <div className="flex justify-between">
                       <span className="text-gray-600">Fecha de ingreso:</span>
-                      <span className="font-medium">{new Date(selectedEmployee.hireDate).toLocaleDateString()}</span>
+                      <span className="font-medium">{selectedEmployee.hireDate ? new Date(selectedEmployee.hireDate).toLocaleDateString() : "—"}</span>
                     </div>
-                    
                     <div className="flex justify-between">
                       <span className="text-gray-600">Años de servicio:</span>
                       <span className="font-medium">{selectedEmployee.yearsOfService}</span>
                     </div>
                   </div>
                 </div>
-                
+
                 <div>
                   <h3 className="text-lg font-semibold text-gray-800 mb-3">Información Personal</h3>
                   <div className="space-y-3">
@@ -599,35 +621,30 @@ export default function EmployeesPage() {
                         <span className="font-medium">{selectedEmployee.email}</span>
                       </div>
                     )}
-                    
                     {selectedEmployee.phone && (
                       <div className="flex justify-between">
                         <span className="text-gray-600">Teléfono:</span>
                         <span className="font-medium">{selectedEmployee.phone}</span>
                       </div>
                     )}
-                    
                     {selectedEmployee.address && (
                       <div className="flex justify-between">
                         <span className="text-gray-600">Dirección:</span>
                         <span className="font-medium text-right max-w-xs">{selectedEmployee.address}</span>
                       </div>
                     )}
-                    
                     {selectedEmployee.birthDate && (
                       <div className="flex justify-between">
                         <span className="text-gray-600">Fecha de nacimiento:</span>
                         <span className="font-medium">{new Date(selectedEmployee.birthDate).toLocaleDateString()}</span>
                       </div>
                     )}
-                    
                     {selectedEmployee.sex && (
                       <div className="flex justify-between">
                         <span className="text-gray-600">Sexo:</span>
-                        <span className="font-medium">{selectedEmployee.sex === 'M' ? 'Masculino' : 'Femenino'}</span>
+                        <span className="font-medium">{selectedEmployee.sex === "M" ? "Masculino" : "Femenino"}</span>
                       </div>
                     )}
-                    
                     {selectedEmployee.maritalStatus && (
                       <div className="flex justify-between">
                         <span className="text-gray-600">Estado civil:</span>
@@ -637,69 +654,40 @@ export default function EmployeesPage() {
                   </div>
                 </div>
               </div>
-              
-              {/* Información adicional */}
-              <div className="mt-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-3">Información Adicional</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {selectedEmployee.ethnicity && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Etnia:</span>
-                      <span className="font-medium">{selectedEmployee.ethnicity}</span>
-                    </div>
-                  )}
-                  
-                  {selectedEmployee.bloodType && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Tipo de sangre:</span>
-                      <span className="font-medium">{selectedEmployee.bloodType}</span>
-                    </div>
-                  )}
-                  
-                  {selectedEmployee.disabilityPercentage !== null && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Porcentaje de discapacidad:</span>
-                      <span className="font-medium">{selectedEmployee.disabilityPercentage}%</span>
-                    </div>
-                  )}
-                  
-                  {selectedEmployee.conadisCard && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Carnet CONADIS:</span>
-                      <span className="font-medium">{selectedEmployee.conadisCard}</span>
-                    </div>
-                  )}
-                  
-                  {selectedEmployee.countryName && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">País:</span>
-                      <span className="font-medium">{selectedEmployee.countryName}</span>
-                    </div>
-                  )}
-                  
-                  {selectedEmployee.provinceName && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Provincia:</span>
-                      <span className="font-medium">{selectedEmployee.provinceName}</span>
-                    </div>
-                  )}
-                  
-                  {selectedEmployee.cantonName && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Cantón:</span>
-                      <span className="font-medium">{selectedEmployee.cantonName}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-              
+
               <div className="flex justify-end gap-3 mt-6">
-                <Button variant="outline" onClick={() => setSelectedEmployee(null)}>
-                  Cerrar
-                </Button>
-                <Button 
+                <Button variant="outline" onClick={() => setSelectedEmployee(null)}>Cerrar</Button>
+                <Button
                   onClick={() => {
+                    const seed = selectedEmployee;
                     setSelectedEmployee(null);
+                    // Pasar todos los datos necesarios al seed
+                    setEditSeed({
+                      ...seed,
+                      employeeID: seed.employeeID,
+                      idCard: seed.idCard,
+                      email: seed.email,
+                      hireDate: seed.hireDate,
+                      employeeIsActive: seed.employeeIsActive,
+                      employeeType: seed.employeeType,
+                      department: seed.department,
+                      // Incluir todos los campos necesarios para el mapeo
+                      firstName: seed.firstName,
+                      lastName: seed.lastName,
+                      fullName: seed.fullName,
+                      phone: seed.phone,
+                      birthDate: seed.birthDate,
+                      sex: seed.sex,
+                      address: seed.address,
+                      faculty: seed.faculty,
+                      immediateBoss: seed.immediateBoss,
+                      yearsOfService: seed.yearsOfService,
+                      maritalStatus: seed.maritalStatus,
+                      ethnicity: seed.ethnicity,
+                      bloodType: seed.bloodType,
+                      disabilityPercentage: seed.disabilityPercentage,
+                      conadisCard: seed.conadisCard,
+                    });
                     setIsFormOpen(true);
                   }}
                 >

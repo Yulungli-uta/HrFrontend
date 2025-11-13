@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,8 @@ import { PermisosAPI, VacacionesAPI, type ApiResponse } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+
+const DEBUG = import.meta.env.VITE_DEBUG_AUTH === "true";
 
 const permStatusLabels: Record<string, string> = {
   Pending: "Pendiente",
@@ -42,12 +44,23 @@ const fmt = (d: string | Date) =>
 export default function PermissionsPage() {
   const { employeeDetails } = useAuth();
   const { toast } = useToast();
-  const employeeId = employeeDetails?.employeeID ?? 0;
+
+  // 🔒 Normaliza SIEMPRE a number (evita "0" string o undefined)
+  const employeeId = Number(employeeDetails?.employeeID ?? 0) || 0;
 
   const [activeTab, setActiveTab] = useState<"permissions" | "vacations">("permissions");
   const [isPermissionFormOpen, setIsPermissionFormOpen] = useState(false);
   const [isVacationFormOpen, setIsVacationFormOpen] = useState(false);
   const [search, setSearch] = useState("");
+
+  // ---- DEBUG: ver qué llega del contexto y cuándo habilitamos queries
+  useEffect(() => {
+    if (!DEBUG) return;
+    console.group("🔍 PAGE DEBUG → PermissionsPage init");
+    console.log("employeeDetails:", employeeDetails);
+    console.log("employeeId (normalized):", employeeId, "enabled:", employeeId > 0);
+    console.groupEnd();
+  }, [employeeDetails, employeeId]);
 
   const {
     data: permissionsResp,
@@ -55,8 +68,14 @@ export default function PermissionsPage() {
     error: permissionsError,
   } = useQuery<ApiResponse<any>>({
     queryKey: ["/api/v1/rh/permissions", "by-employee", employeeId],
-    queryFn: () => PermisosAPI.getByEmployee(employeeId),
+    queryFn: async () => {
+      if (DEBUG) console.log("▶️ Fetch PermisosAPI.getByEmployee(", employeeId, ")");
+      const r = await PermisosAPI.getByEmployee(employeeId);
+      if (DEBUG) console.log("✅ PermisosAPI response:", r);
+      return r;
+    },
     enabled: employeeId > 0,
+    refetchOnWindowFocus: false,
   });
 
   const {
@@ -65,8 +84,14 @@ export default function PermissionsPage() {
     error: vacationsError,
   } = useQuery<ApiResponse<any>>({
     queryKey: ["/api/v1/rh/vacations", "by-employee", employeeId],
-    queryFn: () => VacacionesAPI.getByEmployee(employeeId),
+    queryFn: async () => {
+      if (DEBUG) console.log("▶️ Fetch VacacionesAPI.getByEmployee(", employeeId, ")");
+      const r = await VacacionesAPI.getByEmployee(employeeId);
+      if (DEBUG) console.log("✅ VacacionesAPI response:", r);
+      return r;
+    },
     enabled: employeeId > 0,
+    refetchOnWindowFocus: false,
   });
 
   const permissionsRaw = useMemo(() => {
@@ -147,17 +172,24 @@ export default function PermissionsPage() {
   const anyLoading = permissionsLoading || vacationsLoading;
 
   const ErrorMessage = ({ error, apiResponse }: { error?: any; apiResponse?: ApiResponse<any> }) => {
-    if (error) return <p className="text-red-600">Error al cargar los datos. Intente nuevamente.</p>;
+    if (error) {
+      if (DEBUG) console.error("❌ React Query error:", error);
+      return <p className="text-red-600">Error al cargar los datos. Intente nuevamente.</p>;
+    }
     if (apiResponse?.status === "error") {
-      const msg =
-        (apiResponse.error.details && (apiResponse.error.details.message || apiResponse.error.details)) ||
-        apiResponse.error.message;
-      return <p className="text-red-600">Error: {String(msg)}</p>;
+      const details =
+        (apiResponse.error?.details &&
+          (apiResponse.error.details.message || apiResponse.error.details)) ||
+        apiResponse.error?.message ||
+        "Error desconocido";
+      if (DEBUG) console.error("❌ API error:", apiResponse);
+      return <p className="text-red-600">Error: {String(details)}</p>;
     }
     return null;
   };
 
   if (!employeeId) {
+    // Aún no hay employeeId -> no dispares queries, muestra loader corto
     return (
       <div className="container mx-auto p-4 sm:p-6">
         <h1 className="text-2xl font-bold mb-2">Gestión de Permisos y Vacaciones</h1>

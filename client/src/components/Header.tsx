@@ -12,23 +12,25 @@ interface HeaderProps {
   onLogout: () => void;
   onToggleSidebar?: () => void;
   sidebarCollapsed?: boolean;
-  currentUserId?: number; // ID del usuario actual
+  currentUserId?: number;
+  currentUserName?: string; // ⬅️ nuevo
 }
 
-export default function Header({ onLogout, onToggleSidebar, sidebarCollapsed, currentUserId }: HeaderProps) {
+export default function Header({ onLogout, onToggleSidebar, sidebarCollapsed, currentUserId, currentUserName }: HeaderProps) {
   const [location, navigate] = useLocation();
 
   const handleUpdateData = () => {
     if (currentUserId) {
       navigate(`/people/${currentUserId}`);
     } else {
-      // Redirigir a una página de error o mostrar mensaje si no hay ID
       console.error("No user ID available for profile update");
     }
   };
 
+  const displayName = currentUserName || "Usuario";
+
   return (
-    <header className="border-b bg-white dark:bg-gray-800 px-6 py-3">
+    <header className="border-b bg-white dark:bg-gray-800 px-4 sm:px-6 py-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           {onToggleSidebar && (
@@ -38,13 +40,15 @@ export default function Header({ onLogout, onToggleSidebar, sidebarCollapsed, cu
               onClick={onToggleSidebar}
               className="text-gray-600 hover:text-gray-900"
               data-testid="sidebar-toggle-button"
+              aria-label={sidebarCollapsed ? "Abrir menú" : "Colapsar menú"}
+              title={sidebarCollapsed ? "Abrir menú" : "Colapsar menú"}
             >
               <Menu className="h-5 w-5" />
             </Button>
           )}
         </div>
         
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2 sm:space-x-4">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button 
@@ -59,11 +63,11 @@ export default function Header({ onLogout, onToggleSidebar, sidebarCollapsed, cu
                 >
                   <User className="h-4 w-4 text-white" />
                 </div>
-                <span className="text-sm font-medium">Admin Usuario</span>
+                {/* Si quieres ocultar el nombre en móviles, usa: <span className="text-sm font-medium hidden sm:inline"> */}
+                <span className="text-sm font-medium">{displayName}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              {/* Nueva opción para actualizar datos */}
               <DropdownMenuItem 
                 onClick={handleUpdateData}
                 className="text-gray-700 focus:text-gray-700 cursor-pointer"

@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { FileText, Plus, Search, Clock, Calendar, DollarSign, BookOpen, Eye } from "lucide-react";
 import { useState } from "react";
-import { ContractTypeAPI, type ApiResponse } from "@/lib/api";
+import { ContratosAPI, type ApiResponse } from "@/lib/api";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -56,7 +56,7 @@ export default function ContractTypesPage() {
   
   const { data: apiResponse, isLoading, error } = useQuery<ApiResponse<ContractType[]>>({
     queryKey: ['/api/v1/rh/cv/contract-type'],
-    queryFn: () => ContractTypeAPI.list(),
+    queryFn: () => ContratosAPI.list(),
   });
 
   // Función para determinar la categoría basada en el código

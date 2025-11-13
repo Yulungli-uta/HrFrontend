@@ -1,4 +1,3 @@
-// pages/LoginPage.tsx
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,8 +9,6 @@ import logoPath from "@assets/LogoUTA.png";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from '@/contexts/AuthContext';
 
-const APP_CLIENT_ID = import.meta.env.VITE_APP_CLIENT_ID;
-
 export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -21,9 +18,10 @@ export default function LoginPage() {
   const [, setLocation] = useLocation();
   const { login, loginWithOffice365, isLoading: authLoading, isAuthenticated, isWebSocketConnected } = useAuth();
 
+  // Respaldo: si por cualquier razón ya estás autenticado, navega.
   useEffect(() => {
     if (isAuthenticated) {
-      setLocation("/");
+      setLocation("/"); // o "/dashboard" si prefieres
     }
   }, [isAuthenticated, setLocation]);
 
@@ -38,9 +36,11 @@ export default function LoginPage() {
           title: "Inicio de sesión exitoso",
           description: "Bienvenido al Sistema UTA",
         });
-      } else {
-        throw new Error("Credenciales inválidas");
+        // ✅ Navega ya, sin esperar al efecto
+        setLocation("/"); // o "/dashboard"
+        return;
       }
+      throw new Error("Credenciales inválidas");
     } catch (error) {
       toast({
         title: "Error de autenticación",
@@ -56,6 +56,7 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       await loginWithOffice365();
+      // La navegación la hace el flujo de WebSocket dentro del AuthContext
     } catch (error) {
       console.error("Error en Office 365 login:", error);
       toast({
@@ -147,6 +148,7 @@ export default function LoginPage() {
                   onClick={handleOffice365Login}
                   disabled={loading}
                 >
+                  {/* Ícono simple genérico */}
                   <svg className="w-5 h-5 mr-2" viewBox="0 0 23 23" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M11.6666 9.16667H21.6666V12.5H11.6666V9.16667Z" fill="white"/>
                     <path d="M11.6666 14.1667H21.6666V17.5H11.6666V14.1667Z" fill="white"/>
