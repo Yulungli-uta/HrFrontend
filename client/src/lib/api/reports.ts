@@ -9,13 +9,12 @@
  * 3. ¡Listo! El servicio funciona automáticamente
  */
 
-import { apiClient } from './client';
+import { apiFetch, API_CONFIG } from './client';
 import type {
   ReportType,
   ReportFormat,
   ReportFilter,
   PreviewResponse,
-  DownloadResponse,
   ReportAudit,
   ReportAuditFilter
 } from '@/types/reports';
@@ -25,7 +24,24 @@ import type {
 // ============================================
 
 class ReportService {
-  private baseUrl = '/reports';
+  private baseUrl = '/api/reports';
+
+  /**
+   * Construye query params desde un objeto de filtros
+   */
+  private buildQueryString(filter?: ReportFilter): string {
+    if (!filter) return '';
+    
+    const params = new URLSearchParams();
+    Object.entries(filter).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        params.append(key, String(value));
+      }
+    });
+    
+    const queryString = params.toString();
+    return queryString ? `?${queryString}` : '';
+  }
 
   /**
    * Construye la URL del endpoint basado en tipo, formato y acción
@@ -34,7 +50,7 @@ class ReportService {
     if (action === 'preview') {
       return `${this.baseUrl}/${type}/preview`;
     }
-    return `${this.baseUrl}/${type}/${format}`;
+    return `${this.baseUrl}/${type}/download/${format}`;
   }
 
   /**
@@ -42,7 +58,13 @@ class ReportService {
    */
   async preview(type: ReportType, filter?: ReportFilter): Promise<PreviewResponse> {
     const endpoint = this.buildEndpoint(type, 'pdf', 'preview');
-    const response = await apiClient.get<PreviewResponse>(endpoint, { params: filter });
+    const queryString = this.buildQueryString(filter);
+    const response = await apiFetch<PreviewResponse>(`${endpoint}${queryString}`);
+    
+    if (response.status === 'error') {
+      throw new Error(response.error.message);
+    }
+    
     return response.data;
   }
 
@@ -51,20 +73,37 @@ class ReportService {
    */
   async download(type: ReportType, format: ReportFormat, filter?: ReportFilter): Promise<Blob> {
     const endpoint = this.buildEndpoint(type, format, 'download');
-    const response = await apiClient.get<Blob>(endpoint, {
-      params: filter,
-      responseType: 'blob'
+    const queryString = this.buildQueryString(filter);
+    
+    // Para descargar archivos, usamos fetch directo para obtener blob
+    const token = localStorage.getItem('accessToken');
+    const headers: HeadersInit = {
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    };
+    
+    const response = await fetch(`${API_CONFIG.BASE_URL}${endpoint}${queryString}`, {
+      headers,
+      credentials: API_CONFIG.CREDENTIALS
     });
-    return response.data;
+    
+    if (!response.ok) {
+      throw new Error(`Error al descargar reporte: ${response.statusText}`);
+    }
+    
+    return await response.blob();
   }
 
   /**
    * Obtiene auditorías de reportes
    */
   async getAudits(filter?: ReportAuditFilter): Promise<ReportAudit[]> {
-    const response = await apiClient.get<ReportAudit[]>(`${this.baseUrl}/audit`, {
-      params: filter
-    });
+    const queryString = this.buildQueryString(filter as any);
+    const response = await apiFetch<ReportAudit[]>(`${this.baseUrl}/audit${queryString}`);
+    
+    if (response.status === 'error') {
+      throw new Error(response.error.message);
+    }
+    
     return response.data;
   }
 }
@@ -72,39 +111,15 @@ class ReportService {
 // Exportar instancia singleton
 export const reportService = new ReportService();
 
-// ============================================
-// API Legacy (para compatibilidad)
-// ============================================
-
-/**
- * @deprecated Usar reportService.preview() en su lugar
- */
-export const ReportsAPI = {
-  // Preview
-  previewEmployees: (filter?: ReportFilter) => reportService.preview('employees', filter),
-  previewAttendance: (filter?: ReportFilter) => reportService.preview('attendance', filter),
-  previewDepartments: (filter?: ReportFilter) => reportService.preview('departments', filter),
-
-  // Download PDF
-  downloadEmployeesPdf: (filter?: ReportFilter) => reportService.download('employees', 'pdf', filter),
-  downloadAttendancePdf: (filter?: ReportFilter) => reportService.download('attendance', 'pdf', filter),
-  downloadDepartmentsPdf: (filter?: ReportFilter) => reportService.download('departments', 'pdf', filter),
-
-  // Download Excel
-  downloadEmployeesExcel: (filter?: ReportFilter) => reportService.download('employees', 'excel', filter),
-  downloadAttendanceExcel: (filter?: ReportFilter) => reportService.download('attendance', 'excel', filter),
-  downloadDepartmentsExcel: (filter?: ReportFilter) => reportService.download('departments', 'excel', filter),
-
-  // Audit
-  getAudits: (filter?: ReportAuditFilter) => reportService.getAudits(filter)
-};
+// Exportar también como default
+export default reportService;
 
 // ============================================
-// Funciones de Utilidad
+// Utilidades
 // ============================================
 
 /**
- * Descarga un blob como archivo
+ * Descarga un blob como archivo en el navegador
  */
 export function downloadBlob(blob: Blob, fileName: string): void {
   const url = window.URL.createObjectURL(blob);
@@ -116,24 +131,3 @@ export function downloadBlob(blob: Blob, fileName: string): void {
   document.body.removeChild(link);
   window.URL.revokeObjectURL(url);
 }
-
-/**
- * Convierte Base64 a Blob
- */
-export function base64ToBlob(base64: string, mimeType: string): Blob {
-  const byteCharacters = atob(base64);
-  const byteNumbers = new Array(byteCharacters.length);
-  
-  for (let i = 0; i < byteCharacters.length; i++) {
-    byteNumbers[i] = byteCharacters.charCodeAt(i);
-  }
-  
-  const byteArray = new Uint8Array(byteNumbers);
-  return new Blob([byteArray], { type: mimeType });
-}
-
-// ============================================
-// Exportación por Defecto
-// ============================================
-
-export default reportService;
