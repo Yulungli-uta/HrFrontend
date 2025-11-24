@@ -1,56 +1,67 @@
 // src/App.tsx
-import { Suspense } from "react";
+import { Suspense, lazy } from "react";
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
-// Si usas shadcn/ui, es mejor este provider:
 import { TooltipProvider } from "@/components/ui/tooltip";
-// import { TooltipProvider } from "@radix-ui/react-tooltip"; // Alternativa directa a Radix
-
-import Layout from "@/components/Layout";
-import LoginPage from "@/pages/Login";
-import Dashboard from "@/pages/Dashboard";
-import PeoplePage from "@/pages/People";
-import EmployeesPage from "@/pages/Employees";
-import FacultiesPage from "@/pages/Faculties";
-import DepartmentsPage from "@/pages/Departments";
-import ContractsPage from "@/pages/Contracts";
-import PermissionsPage from "@/pages/Permissions";
-import VacationsPage from "@/pages/Vacations";
-import AttendancePage from "@/pages/Attendance";
-import PayrollPage from "@/pages/Payroll";
-import SchedulesPage from "@/pages/Schedules";
-import OvertimePage from "@/pages/Overtime";
-import ReportsPage from "@/pages/Reports";
-import NotFound from "@/pages/not-found";
-import PersonDetail from "@/pages/PersonDetail";
-import JustificationPage from "@/pages/Justifications";
-import ContractTypePage from "@/pages/ContractType";
-import ContractRequestPage from "@/pages/ContractRequest";
-import CertificationFinancePage from "@/pages/CertificationFinance";
-import EmployeeSchedulesPage from "@/pages/EmployeeSchedules";
-import PermissionTypesPage from "@/pages/PermissionTypes";
-import ApprovalsPermissionsPage from "@/pages/ApprovalsPermissions";
-import JobActivitiesPage from "@/pages/JobActivities";
-import ReferenceTypesPage from "@/pages/ReferenceTypes";
-import HolidaysPage from "@/pages/Holidays";
-import FilesUploadPage from "@/pages/FilesUploadPage";
-
-import UsersPage from "@/pages/admin/Users";
-import RolesPage from "@/pages/admin/Roles";
-import UserRolesPage from "@/pages/admin/UserRoles";
-import MenuItemsPage from "@/pages/admin/MenuItems";
-import RoleMenuItemsPage from "@/pages/admin/RoleMenuItems";
-import ChangePasswordPage from "@/pages/profile/ChangePassword";
-import EmployeesReportPage from "@/pages/reports/EmployeesReport";
-import AttendanceReportPage from "@/pages/reports/AttendanceReport";
-import DepartmentsReportPage from "@/pages/reports/DepartmentsReport";
-import ReportAuditPage from "@/pages/reports/ReportAudit";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ErrorBoundary } from "react-error-boundary";
 
-// --- Fallbacks simples ---
+// Componentes que se cargan inmediatamente (críticos)
+import Layout from "@/components/Layout";
+import LoginPage from "@/pages/Login";
+import Dashboard from "@/pages/Dashboard";
+import NotFound from "@/pages/not-found";
+
+// ============================================
+// CODE SPLITTING - Lazy Loading de Páginas
+// ============================================
+
+// Páginas principales - Se cargan bajo demanda
+const PeoplePage = lazy(() => import("@/pages/People"));
+const PersonDetail = lazy(() => import("@/pages/PersonDetail"));
+const EmployeesPage = lazy(() => import("@/pages/Employees"));
+const FacultiesPage = lazy(() => import("@/pages/Faculties"));
+const DepartmentsPage = lazy(() => import("@/pages/Departments"));
+const ContractsPage = lazy(() => import("@/pages/Contracts"));
+const PermissionsPage = lazy(() => import("@/pages/Permissions"));
+const VacationsPage = lazy(() => import("@/pages/Vacations"));
+const AttendancePage = lazy(() => import("@/pages/Attendance"));
+const PayrollPage = lazy(() => import("@/pages/Payroll"));
+const SchedulesPage = lazy(() => import("@/pages/Schedules"));
+const OvertimePage = lazy(() => import("@/pages/Overtime"));
+const ReportsPage = lazy(() => import("@/pages/Reports"));
+const JustificationPage = lazy(() => import("@/pages/Justifications"));
+const ContractTypePage = lazy(() => import("@/pages/ContractType"));
+const ContractRequestPage = lazy(() => import("@/pages/ContractRequest"));
+const CertificationFinancePage = lazy(() => import("@/pages/CertificationFinance"));
+const EmployeeSchedulesPage = lazy(() => import("@/pages/EmployeeSchedules"));
+const PermissionTypesPage = lazy(() => import("@/pages/PermissionTypes"));
+const ApprovalsPermissionsPage = lazy(() => import("@/pages/ApprovalsPermissions"));
+const JobActivitiesPage = lazy(() => import("@/pages/JobActivities"));
+const ReferenceTypesPage = lazy(() => import("@/pages/ReferenceTypes"));
+const HolidaysPage = lazy(() => import("@/pages/Holidays"));
+const FilesUploadPage = lazy(() => import("@/pages/FilesUploadPage"));
+
+// Páginas de administración
+const UsersPage = lazy(() => import("@/pages/admin/Users"));
+const RolesPage = lazy(() => import("@/pages/admin/Roles"));
+const UserRolesPage = lazy(() => import("@/pages/admin/UserRoles"));
+const MenuItemsPage = lazy(() => import("@/pages/admin/MenuItems"));
+const RoleMenuItemsPage = lazy(() => import("@/pages/admin/RoleMenuItems"));
+const ChangePasswordPage = lazy(() => import("@/pages/profile/ChangePassword"));
+
+// Páginas de reportes
+const EmployeesReportPage = lazy(() => import("@/pages/reports/EmployeesReport"));
+const AttendanceReportPage = lazy(() => import("@/pages/reports/AttendanceReport"));
+const DepartmentsReportPage = lazy(() => import("@/pages/reports/DepartmentsReport"));
+const ReportAuditPage = lazy(() => import("@/pages/reports/ReportAudit"));
+
+// ============================================
+// Fallbacks
+// ============================================
+
 function ErrorFallback() {
   return (
     <div style={{ padding: 16 }}>
@@ -60,8 +71,22 @@ function ErrorFallback() {
 }
 
 function LoadingFallback() {
-  return <div style={{ padding: 16 }}>Cargando…</div>;
+  return (
+    <div style={{ 
+      padding: 16, 
+      display: 'flex', 
+      justifyContent: 'center', 
+      alignItems: 'center',
+      minHeight: '200px'
+    }}>
+      <div>Cargando...</div>
+    </div>
+  );
 }
+
+// ============================================
+// Router
+// ============================================
 
 function AppRouter() {
   const { isAuthenticated } = useAuth();
@@ -127,13 +152,16 @@ function AppRouter() {
   );
 }
 
+// ============================================
+// App Principal
+// ============================================
+
 export default function App() {
   return (
     <ErrorBoundary fallback={<ErrorFallback />}>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <TooltipProvider>
-            {/* Con wouter no necesitas BrowserRouter */}
             <AppRouter />
             <Toaster />
           </TooltipProvider>
