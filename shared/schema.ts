@@ -24,8 +24,8 @@ export const people = pgTable("people", {
   email: varchar("email", { length: 150 }).notNull().unique(),
   phone: varchar("phone", { length: 30 }),
   birthDate: date("birth_date"),
-  sex: integer("sex"),//("sex", { length:  }), // 'M'|'F'|'O'
-  gender: integer("gender"),//varchar("gender", { length: 50 }),
+  sex: integer("sex"),
+  gender: integer("gender"),
   disability: text("disability"),
   address: text("address"),
   isActive: boolean("is_active").default(true).notNull(),
@@ -33,8 +33,8 @@ export const people = pgTable("people", {
 
 // 2. Empleados
 export const employees = pgTable("employees", {
-  id: integer("id").primaryKey().references(() => people.id), // PersonID
-  type: varchar("type", { length: 30 }).notNull(), // EmpType
+  id: integer("id").primaryKey().references(() => people.id),
+  type: varchar("type", { length: 30 }).notNull(),
   departmentId: integer("department_id"),
   immediateBossId: integer("immediate_boss_id"),
   hireDate: date("hire_date").notNull(),
@@ -57,19 +57,21 @@ export const departments = pgTable("departments", {
   isActive: boolean("is_active").default(true).notNull(),
 });
 
-// 5. Horarios
+// 5. Horarios - TABLA DESCOMENTADA Y CORREGIDA
 export const schedules = pgTable("schedules", {
   id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
   description: text("description").notNull(),
-  entryTime: varchar("entry_time", { length: 8 }).notNull(), // HH:mm:ss
+  entryTime: varchar("entry_time", { length: 8 }).notNull(),
   exitTime: varchar("exit_time", { length: 8 }).notNull(),
-  workingDays: text("working_days").notNull(), // "1,2,3,4,5"
+  workingDays: text("working_days").notNull(),
   requiredHoursPerDay: decimal("required_hours_per_day", { precision: 5, scale: 2 }).notNull(),
   hasLunchBreak: boolean("has_lunch_break").default(true).notNull(),
   lunchStart: varchar("lunch_start", { length: 8 }),
   lunchEnd: varchar("lunch_end", { length: 8 }),
   isRotating: boolean("is_rotating").default(false).notNull(),
   rotationPattern: text("rotation_pattern"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // 6. Asignación de Horarios
@@ -142,7 +144,7 @@ export const attendancePunches = pgTable("attendance_punches", {
   id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
   employeeId: integer("employee_id").references(() => employees.id).notNull(),
   punchTime: timestamp("punch_time").notNull(),
-  punchType: varchar("punch_type", { length: 3 }).notNull(), // 'In'|'Out'
+  punchType: varchar("punch_type", { length: 3 }).notNull(),
   deviceId: varchar("device_id", { length: 50 }),
   longitude: real("longitude"),
   latitude: real("latitude"),
@@ -201,7 +203,7 @@ export const timeRecoveryPlans = pgTable("time_recovery_plans", {
   employeeId: integer("employee_id").references(() => employees.id).notNull(),
   owedMinutes: integer("owed_minutes").notNull(),
   planDate: date("plan_date").notNull(),
-  fromTime: varchar("from_time", { length: 8 }).notNull(), // HH:mm:ss
+  fromTime: varchar("from_time", { length: 8 }).notNull(),
   toTime: varchar("to_time", { length: 8 }).notNull(),
   reason: text("reason"),
   createdBy: integer("created_by"),
@@ -247,7 +249,7 @@ export const personnelMovements = pgTable("personnel_movements", {
 export const payroll = pgTable("payroll", {
   id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
   employeeId: integer("employee_id").references(() => employees.id).notNull(),
-  period: varchar("period", { length: 7 }).notNull(), // "YYYY-MM"
+  period: varchar("period", { length: 7 }).notNull(),
   baseSalary: decimal("base_salary", { precision: 10, scale: 2 }).notNull(),
   status: varchar("status", { length: 20 }).default("Pending").notNull(),
   paymentDate: date("payment_date"),
@@ -281,7 +283,7 @@ export const insertPersonSchema = createInsertSchema(people).omit({ id: true });
 export const insertEmployeeSchema = createInsertSchema(employees);
 export const insertFacultySchema = createInsertSchema(faculties).omit({ id: true });
 export const insertDepartmentSchema = createInsertSchema(departments).omit({ id: true });
-export const insertScheduleSchema = createInsertSchema(schedules).omit({ id: true });
+export const insertScheduleSchema = createInsertSchema(schedules).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertContractSchema = createInsertSchema(contracts).omit({ id: true });
 export const insertPermissionTypeSchema = createInsertSchema(permissionTypes).omit({ id: true });
 export const insertPermissionSchema = createInsertSchema(permissions).omit({ id: true, requestDate: true });
@@ -332,7 +334,7 @@ export const publications = pgTable("publications", {
   issn: varchar("issn", { length: 50 }),
   doi: varchar("doi", { length: 100 }),
   url: varchar("url", { length: 500 }),
-  type: varchar("type", { length: 100 }), // Artículo científico, libro, capítulo, etc.
+  type: varchar("type", { length: 100 }),
   description: text("description"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -346,7 +348,7 @@ export const familyMembers = pgTable("family_members", {
   lastName: varchar("last_name", { length: 255 }).notNull(),
   idCard: varchar("id_card", { length: 20 }),
   birthDate: date("birth_date"),
-  relationship: varchar("relationship", { length: 100 }).notNull(), // hijo/a, cónyuge, etc.
+  relationship: varchar("relationship", { length: 100 }).notNull(),
   hasDisability: boolean("has_disability").default(false),
   disabilityType: varchar("disability_type", { length: 255 }),
   disabilityPercentage: integer("disability_percentage"),
@@ -381,8 +383,8 @@ export const trainings = pgTable("trainings", {
   personId: integer("person_id").references(() => people.id).notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   institution: varchar("institution", { length: 255 }).notNull(),
-  type: varchar("type", { length: 100 }).notNull(), // curso, seminario, diplomado, etc.
-  modality: varchar("modality", { length: 50 }), // presencial, virtual, semipresencial
+  type: varchar("type", { length: 100 }).notNull(),
+  modality: varchar("modality", { length: 50 }),
   startDate: date("start_date").notNull(),
   endDate: date("end_date"),
   durationHours: integer("duration_hours"),
@@ -447,7 +449,7 @@ export const bankAccounts = pgTable("bank_accounts", {
   id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
   personId: integer("person_id").references(() => people.id).notNull(),
   bankName: varchar("bank_name", { length: 255 }).notNull(),
-  accountType: varchar("account_type", { length: 50 }).notNull(), // ahorros, corriente, etc.
+  accountType: varchar("account_type", { length: 50 }).notNull(),
   accountNumber: varchar("account_number", { length: 50 }).notNull(),
   isActive: boolean("is_active").default(true),
   isPrimary: boolean("is_primary").default(false),
@@ -485,3 +487,30 @@ export type InsertBook = z.infer<typeof insertBookSchema>;
 export type InsertEmergencyContact = z.infer<typeof insertEmergencyContactSchema>;
 export type InsertCatastrophicIllness = z.infer<typeof insertCatastrophicIllnessSchema>;
 export type InsertBankAccount = z.infer<typeof insertBankAccountSchema>;
+
+// ===============================
+// TIPOS COMPATIBILIDAD FRONTEND
+// ===============================
+
+// Tipo extendido para frontend que maneja tanto id como scheduleId
+export type FrontendSchedule = Schedule & {
+  scheduleId?: number;
+};
+
+// Función para normalizar datos del backend al frontend
+export function normalizeSchedule(backendSchedule: any): FrontendSchedule {
+  // Si el backend devuelve scheduleId, lo mapeamos a id
+  if (backendSchedule.scheduleId !== undefined) {
+    return {
+      ...backendSchedule,
+      id: backendSchedule.scheduleId,
+      scheduleId: backendSchedule.scheduleId
+    };
+  }
+  
+  // Si el backend devuelve id, aseguramos que scheduleId también esté presente
+  return {
+    ...backendSchedule,
+    scheduleId: backendSchedule.id
+  };
+}

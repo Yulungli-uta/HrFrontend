@@ -6,6 +6,7 @@ export interface EmployeeDetails {
   email: string;
   employeeType: number;
   ImmediateBossID: number;
+  scheduleID: number;
   department: string;
   faculty: string;
   baseSalary: number;

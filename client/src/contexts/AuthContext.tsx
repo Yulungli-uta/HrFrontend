@@ -22,6 +22,7 @@ export interface EmployeeDetails {
   email: string;
   employeeType: number;
   department: string;
+  scheduleID: number;
   faculty: string;
   baseSalary: number;
   hireDate: string;
@@ -75,6 +76,7 @@ const equalEmployeeDetails = (a: EmployeeDetails | null, b: EmployeeDetails | nu
     a.firstName === b.firstName &&
     a.lastName === b.lastName &&
     a.department === b.department &&
+    a.scheduleID === b.scheduleID &&
     a.faculty === b.faculty &&
     a.hasActiveSalary === b.hasActiveSalary
   );

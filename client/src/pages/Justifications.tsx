@@ -15,12 +15,14 @@ import { TiposReferenciaAPI, JustificationsAPI, handleApiError } from "@/lib/api
 import { useAuth } from "@/contexts/AuthContext";
 import JustificationForm from "@/components/justifications/JustificationForm";
 
-type Status = "PENDING" | "APPROVED" | "REJECTED";
+type Status = "PENDING" | "APPROVED" | "REJECTED" | "APPLIED";
 
+// 2) Agrega la entrada en STATUS_META
 const STATUS_META: Record<Status, { label: string; icon: any; klass: string }> = {
-  PENDING: { label: "Pendiente", icon: Clock, klass: "bg-yellow-100 text-yellow-800 border-yellow-200" },
-  APPROVED: { label: "Aprobada", icon: CheckCircle, klass: "bg-green-100 text-green-800 border-green-200" },
-  REJECTED: { label: "Rechazada", icon: AlertCircle, klass: "bg-red-100 text-red-800 border-red-200" },
+  PENDING:  { label: "Pendiente", icon: Clock,      klass: "bg-yellow-100 text-yellow-800 border-yellow-200" },
+  APPROVED: { label: "Aprobada",  icon: CheckCircle,klass: "bg-green-100 text-green-800 border-green-200" },
+  REJECTED: { label: "Rechazada", icon: AlertCircle,klass: "bg-red-100 text-red-800 border-red-200" },
+  APPLIED:  { label: "Aplicada",  icon: CheckCircle,klass: "bg-indigo-100 text-indigo-800 border-indigo-200" },
 };
 
 interface Justif {
@@ -93,6 +95,7 @@ export default function JustificationsPage() {
       pending: arr.filter((x) => x.status === "PENDING").length,
       approved: arr.filter((x) => x.status === "APPROVED").length,
       rejected: arr.filter((x) => x.status === "REJECTED").length,
+      applied: arr.filter((x) => x.status === "APPLIED").length,
     };
   }, [list]);
 
@@ -110,11 +113,12 @@ export default function JustificationsPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <Stat title="Total" value={stats.total} icon={FileText} klass="border-blue-200 bg-blue-50" />
-        <Stat title="Pendientes" value={stats.pending} icon={Clock} klass="border-yellow-200 bg-yellow-50" />
-        <Stat title="Aprobadas" value={stats.approved} icon={CheckCircle} klass="border-green-200 bg-green-50" />
-        <Stat title="Rechazadas" value={stats.rejected} icon={AlertCircle} klass="border-red-200 bg-red-50" />
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+        <Stat title="Total"       value={stats.total}    icon={FileText}   klass="border-blue-200 bg-blue-50" />
+        <Stat title="Pendientes"  value={stats.pending}  icon={Clock}      klass="border-yellow-200 bg-yellow-50" />
+        <Stat title="Aprobadas"   value={stats.approved} icon={CheckCircle}klass="border-green-200 bg-green-50" />
+        <Stat title="Rechazadas"  value={stats.rejected} icon={AlertCircle}klass="border-red-200 bg-red-50" />
+        <Stat title="Aplicadas"   value={stats.applied}  icon={CheckCircle}klass="border-indigo-200 bg-indigo-50" />
       </div>
 
       <Tabs defaultValue="list" className="space-y-6">

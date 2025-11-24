@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { JustificationsAPI, handleApiError } from "@/lib/api";
+import { JustificationsAPI, HorariosAPI, TiposReferenciaAPI, handleApiError } from "@/lib/api";
 import { getBossFromEmployeeDetails } from "@/helpers/AuthBoss";
 
 /** ------------- Helpers de fecha/hora (LOCAL, sin convertir a UTC) ------------- **/
@@ -18,13 +18,11 @@ const toDateOnlyLocal = (value: string | null) => (value && value.length >= 10 ?
 // yyyy-MM-ddTHH:mm -> devuelve yyyy-MM-ddTHH:mm:ss
 const localDateTimeToISOish = (value: string | null) => {
   if (!value) return "";
-  // value viene sin zona (ej: 2025-11-10T09:30); conservamos tal cual y agregamos :00
   return value.length === 16 ? `${value}:00` : value;
 };
 
 // Diferencia en horas (dos decimales) entre dos datetime-local del mismo día
 const diffHoursSameDay = (start: string, end: string) => {
-  // Ambos vienen sin zona, los parseamos como local sin ajustes
   const a = new Date(start.replace("T", " ") + ":00");
   const b = new Date(end.replace("T", " ") + ":00");
   if (a.toDateString() !== b.toDateString()) return NaN;
@@ -36,33 +34,18 @@ const diffHoursSameDay = (start: string, end: string) => {
 
 type Mode = "PICADA" | "HORAS" | "DIAS";
 
-// function normalizeTypeCode(t: any): Mode | null {
-//   // Ajusta aquí según la data real: code/value/name/typeName
-//   const raw =
-//     (typeof t === "string" ? t : (t?.code || t?.value || t?.name || t?.typeName || t?.description || ""))
-//       .toString()
-//       .trim()
-//       .toUpperCase();
-
-//   if (raw.includes("PICADA") || raw.includes("PUNCH")) return "PICADA";
-//   if (raw.includes("HORA")) return "HORAS";
-//   if (raw.includes("DIA")) return "DIAS";
-//   return null;
-// }
-// En JustificationForm.tsx - mejora la función normalizeTypeCode
 function normalizeTypeCode(t: any): Mode | null {
   const raw = (
-    typeof t === "string" 
+    typeof t === 'string' 
       ? t 
       : (t?.code || t?.value || t?.name || t?.typeName || t?.description || "")
   )
     .toString()
     .trim()
     .toUpperCase()
-    .normalize("NFD") // Elimina acentos
+    .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
 
-  // Patrones más flexibles para detectar cada modo
   if (raw.includes("PICADA") || raw.includes("PUNCH") || raw.includes("MARCA")) {
     return "PICADA";
   }
@@ -88,36 +71,97 @@ function extractTypeId(typ: any): number {
 /** ------------- Props ------------- **/
 
 interface Props {
-  types: any[];                 // Tipos de justificación (catálogo)
-  onCreated?: () => void;       // callback para refetch y cerrar
+  onCreated?: () => void;
   onCancel?: () => void;
 }
 
 /** ------------- Componente ------------- **/
 
-export default function JustificationForm({ types, onCreated, onCancel }: Props) {
+export default function JustificationForm({ onCreated, onCancel }: Props) {
   const { toast } = useToast();
   const { employeeDetails, user } = useAuth();
-
-  // jefe inmediato desde AuthContext
   const { bossId, bossName } = useMemo(() => getBossFromEmployeeDetails(employeeDetails), [employeeDetails]);
 
-  // formulario controlado
+  // Estados del formulario
   const [selectedTypeId, setSelectedTypeId] = useState<number>(0);
+  const [selectedPunchTypeId, setSelectedPunchTypeId] = useState<number>(0);
   const [mode, setMode] = useState<Mode | null>(null);
-
-  const [startDateTime, setStartDateTime] = useState<string>(""); // datetime-local
-  const [endDateTime, setEndDateTime] = useState<string>("");     // datetime-local
-  const [dateOnly, setDateOnly] = useState<string>("");           // date
-  const [startDateOnly, setStartDateOnly] = useState<string>(""); // date
-  const [endDateOnly, setEndDateOnly] = useState<string>("");     // date
+  const [startDateTime, setStartDateTime] = useState<string>("");
+  const [endDateTime, setEndDateTime] = useState<string>("");
+  const [dateOnly, setDateOnly] = useState<string>("");
+  const [startDateOnly, setStartDateOnly] = useState<string>("");
+  const [endDateOnly, setEndDateOnly] = useState<string>("");
   const [reason, setReason] = useState<string>("");
 
-  // Derivados
-  const selectedType = useMemo(() => types?.find((t) => extractTypeId(t) === selectedTypeId), [types, selectedTypeId]);
+  // Estados para los tipos
+  const [justificationTypes, setJustificationTypes] = useState<any[]>([]);
+  const [punchTypes, setPunchTypes] = useState<any[]>([]);
+  const [loadingTypes, setLoadingTypes] = useState<boolean>(true);
 
-  // Nombre arriba del motivo (corrige el "N/A")
-  const selectedTypeName = useMemo(() => (selectedType ? extractTypeName(selectedType) : ""), [selectedType]);
+  // Estados para el horario del empleado
+  const [employeeSchedule, setEmployeeSchedule] = useState<any>(null);
+  const [loadingSchedule, setLoadingSchedule] = useState<boolean>(false);
+  const [suggestedTime, setSuggestedTime] = useState<string>("");
+
+  // Obtener schedulerID del contexto
+  const schedulerID = useMemo(() => {
+    return employeeDetails?.schedulerID || employeeDetails?.scheduleID;
+  }, [employeeDetails]);
+
+  // Cargar tipos desde la API
+  useEffect(() => {
+    const loadTypes = async () => {
+      try {
+        setLoadingTypes(true);
+        
+        // Cargar tipos de justificación
+        const justificationResponse = await TiposReferenciaAPI.byCategory('JUSTIFICATION');
+        if (justificationResponse.status === 'success') {
+          setJustificationTypes(justificationResponse.data);
+        } else {
+          toast({
+            title: "Error",
+            description: "No se pudieron cargar los tipos de justificación.",
+            variant: "destructive",
+          });
+        }
+
+        // Cargar tipos de picada
+        const punchResponse = await TiposReferenciaAPI.byCategory('PUNCH_TYPE');
+        if (punchResponse.status === 'success') {
+          setPunchTypes(punchResponse.data);
+        } else {
+          toast({
+            title: "Error",
+            description: "No se pudieron cargar los tipos de picada.",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.error('Error loading types:', error);
+        toast({
+          title: "Error",
+          description: "Error al cargar los tipos de justificación.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingTypes(false);
+      }
+    };
+
+    loadTypes();
+  }, [toast]);
+
+  // Derivados
+  const selectedType = useMemo(() => 
+    justificationTypes?.find((t) => extractTypeId(t) === selectedTypeId), 
+    [justificationTypes, selectedTypeId]
+  );
+  
+  const selectedTypeName = useMemo(() => 
+    (selectedType ? extractTypeName(selectedType) : ""), 
+    [selectedType]
+  );
 
   // Modo según tipo
   useEffect(() => {
@@ -128,16 +172,108 @@ export default function JustificationForm({ types, onCreated, onCancel }: Props)
     setMode(normalizeTypeCode(selectedType));
   }, [selectedType]);
 
+  // Resetear punchTypeId cuando no es modo PICADA
+  useEffect(() => {
+    if (mode !== "PICADA") {
+      setSelectedPunchTypeId(0);
+      setSuggestedTime("");
+    }
+  }, [mode]);
+
+  // Cargar horario del empleado cuando se selecciona fecha en modo PICADA
+  useEffect(() => {
+    if (mode === "PICADA" && startDateTime && schedulerID) {
+      loadEmployeeSchedule();
+    } else {
+      setEmployeeSchedule(null);
+      setSuggestedTime("");
+    }
+  }, [mode, startDateTime, schedulerID]);
+
+  // Sugerir hora basada en el tipo de picada y el horario del empleado
+  useEffect(() => {
+    if (mode === "PICADA" && selectedPunchTypeId && employeeSchedule && startDateTime) {
+      suggestTimeBasedOnSchedule();
+    } else {
+      setSuggestedTime("");
+    }
+  }, [mode, selectedPunchTypeId, employeeSchedule, startDateTime]);
+
+  const loadEmployeeSchedule = async () => {
+    if (!schedulerID || !startDateTime) return;
+    
+    try {
+      setLoadingSchedule(true);
+      
+      // Usar HorariosAPI para obtener el horario por schedulerID
+      const response = await HorariosAPI.get(schedulerID);
+      
+      if (response && response.status === 'success' && response.data) {
+        setEmployeeSchedule(response.data);
+      } else {
+        setEmployeeSchedule(null);
+        toast({
+          title: "Sin horario",
+          description: "No se encontró horario asignado.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error loading schedule:", error);
+      setEmployeeSchedule(null);
+      toast({
+        title: "Error",
+        description: "No se pudo cargar el horario del empleado.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingSchedule(false);
+    }
+  };
+
+  const suggestTimeBasedOnSchedule = () => {
+    if (!employeeSchedule || !selectedPunchTypeId || !startDateTime) return;
+
+    const selectedPunchType = punchTypes.find(t => extractTypeId(t) === selectedPunchTypeId);
+    const punchTypeName = selectedPunchType ? extractTypeName(selectedPunchType).toLowerCase() : "";
+
+    let suggestedTimeValue = "";
+    const datePart = startDateTime.slice(0, 10); // yyyy-MM-dd
+
+    // Mapear tipo de picada a campo del horario según la estructura JSON proporcionada
+    if (punchTypeName.includes("entrada") && !punchTypeName.includes("almuerzo")) {
+      suggestedTimeValue = employeeSchedule.entryTime || "08:00";
+    } else if (punchTypeName.includes("salida") && punchTypeName.includes("almuerzo")) {
+      suggestedTimeValue = employeeSchedule.lunchStart || "12:00";
+    } else if (punchTypeName.includes("regreso") || (punchTypeName.includes("entrada") && punchTypeName.includes("almuerzo"))) {
+      suggestedTimeValue = employeeSchedule.lunchEnd || "13:00";
+    } else if (punchTypeName.includes("salida") && !punchTypeName.includes("almuerzo")) {
+      suggestedTimeValue = employeeSchedule.exitTime || "17:00";
+    }
+
+    // Si encontramos una hora sugerida, actualizar el datetime
+    if (suggestedTimeValue) {
+      // Asegurarnos de que la hora tenga formato HH:mm (remover segundos si existen)
+      const formattedTime = suggestedTimeValue.includes(':') 
+        ? suggestedTimeValue.slice(0, 5)  // Tomar solo HH:mm
+        : "08:00";
+      
+      const newDateTime = `${datePart}T${formattedTime}`;
+      setStartDateTime(newDateTime);
+      setEndDateTime(newDateTime);
+      setSuggestedTime(formattedTime);
+    }
+  };
+
   // Al cambiar a PICADA replico hora final = inicial
   useEffect(() => {
     if (mode === "PICADA" && startDateTime) {
       setEndDateTime(startDateTime);
-      // y auto seteo fecha (dateOnly) desde start
       setDateOnly(toDateOnlyLocal(startDateTime));
     }
   }, [mode, startDateTime]);
 
-  // Para HORAS fuerzo que ambos sean el mismo día (si no, limpio)
+  // Para HORAS fuerzo que ambos sean el mismo día
   useEffect(() => {
     if (mode === "HORAS" && startDateTime && endDateTime) {
       const d1 = startDateTime.slice(0, 10);
@@ -150,7 +286,7 @@ export default function JustificationForm({ types, onCreated, onCancel }: Props)
         });
         setEndDateTime("");
       }
-      setDateOnly(d1); // fecha justificada
+      setDateOnly(d1);
     }
   }, [mode, startDateTime, endDateTime, toast]);
 
@@ -173,6 +309,12 @@ export default function JustificationForm({ types, onCreated, onCancel }: Props)
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (loadingTypes) {
+      toast({ title: "Error", description: "Los tipos aún se están cargando.", variant: "destructive" });
+      return;
+    }
+    
     if (!employeeDetails?.employeeID) {
       toast({ title: "Error", description: "No se encontró su ID de empleado.", variant: "destructive" });
       return;
@@ -186,8 +328,13 @@ export default function JustificationForm({ types, onCreated, onCancel }: Props)
       return;
     }
 
-    // Construcción del payload exactamente con los nombres que espera tu backend
-    // (según JSON ejemplo que mostraste)
+    // Validación específica para PICADA
+    if (mode === "PICADA" && !selectedPunchTypeId) {
+      toast({ title: "Error", description: "Para justificación de picada, debe seleccionar el tipo de picada.", variant: "destructive" });
+      return;
+    }
+
+    // Construcción del payload
     const nowLocal = new Date();
     const nowStr = `${nowLocal.getFullYear()}-${String(nowLocal.getMonth() + 1).padStart(2, "0")}-${String(
       nowLocal.getDate()
@@ -201,9 +348,10 @@ export default function JustificationForm({ types, onCreated, onCancel }: Props)
       employeeId: Number(employeeDetails.employeeID),
       bossEmployeeId: Number(bossId),
       justificationTypeId: Number(selectedTypeId),
+      punchTypeId: null as number | null,
       startDate: null as string | null,
       endDate: null as string | null,
-      justificationDate: nowStr, // valor por defecto; se ajusta abajo por modo
+      justificationDate: nowStr,
       reason: reason.trim(),
       hoursRequested: 0,
       approved: false,
@@ -223,6 +371,7 @@ export default function JustificationForm({ types, onCreated, onCancel }: Props)
       payload.endDate = dt;
       payload.justificationDate = toDateOnlyLocal(startDateTime) + "T00:00:00";
       payload.hoursRequested = 0;
+      payload.punchTypeId = selectedPunchTypeId;
     }
 
     if (mode === "HORAS") {
@@ -279,9 +428,20 @@ export default function JustificationForm({ types, onCreated, onCancel }: Props)
     }
   };
 
+  if (loadingTypes) {
+    return (
+      <div className="flex justify-center items-center p-8">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p>Cargando tipos de justificación...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      {/* Tipo */}
+      {/* Tipo de justificación */}
       <div className="space-y-2">
         <Label>Tipo de justificación *</Label>
         <Select
@@ -293,7 +453,7 @@ export default function JustificationForm({ types, onCreated, onCancel }: Props)
             <SelectValue placeholder="Seleccione el tipo" />
           </SelectTrigger>
           <SelectContent>
-            {types?.map((t) => {
+            {justificationTypes?.map((t) => {
               const id = extractTypeId(t);
               const name = extractTypeName(t);
               return (
@@ -305,6 +465,33 @@ export default function JustificationForm({ types, onCreated, onCancel }: Props)
           </SelectContent>
         </Select>
       </div>
+
+      {/* Campo para tipo de picada (solo visible en modo PICADA) */}
+      {mode === "PICADA" && (
+        <div className="space-y-2">
+          <Label>Tipo de picada *</Label>
+          <Select
+            value={selectedPunchTypeId ? String(selectedPunchTypeId) : ""}
+            onValueChange={(v) => setSelectedPunchTypeId(Number(v))}
+            required
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Seleccione el tipo de picada" />
+            </SelectTrigger>
+            <SelectContent>
+              {punchTypes?.map((t) => {
+                const id = extractTypeId(t);
+                const name = extractTypeName(t);
+                return (
+                  <SelectItem key={`punch-type-${id}`} value={String(id)}>
+                    {name}
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {/* Cabecera: nombre del tipo */}
       {selectedTypeName && (
@@ -322,21 +509,71 @@ export default function JustificationForm({ types, onCreated, onCancel }: Props)
 
       {/* Campos dinámicos según modo */}
       {mode === "PICADA" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>Fecha y hora *</Label>
-            <Input
-              type="datetime-local"
-              max={new Date().toISOString().slice(0, 16)} // solo para UI; no cambia zona
-              value={startDateTime}
-              onChange={(e) => setStartDateTime(e.target.value)}
-              required
-            />
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Fecha *</Label>
+              <Input
+                type="date"
+                value={startDateTime ? startDateTime.slice(0, 10) : ""}
+                onChange={(e) => {
+                  const date = e.target.value;
+                  const time = startDateTime ? startDateTime.slice(11, 16) : "00:00";
+                  setStartDateTime(date && time ? `${date}T${time}` : date);
+                }}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Hora *</Label>
+              <Input
+                type="time"
+                value={startDateTime ? startDateTime.slice(11, 16) : ""}
+                onChange={(e) => {
+                  const time = e.target.value;
+                  const date = startDateTime ? startDateTime.slice(0, 10) : "";
+                  setStartDateTime(date && time ? `${date}T${time}` : "");
+                }}
+                required
+              />
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label>Hora final (auto)</Label>
-            <Input type="text" disabled value={startDateTime ? startDateTime.slice(11, 16) : ""} />
-          </div>
+
+          {/* Información del horario */}
+          {loadingSchedule && (
+            <div className="text-sm text-blue-600">Cargando horario del empleado...</div>
+          )}
+
+          {employeeSchedule && suggestedTime && (
+            <div className="rounded-md border p-3 bg-blue-50">
+              <p className="text-sm text-blue-700">
+                <span className="font-medium">Horario asignado:</span> 
+                {employeeSchedule.entryTime && ` Entrada: ${employeeSchedule.entryTime}`}
+                {employeeSchedule.lunchStart && ` | Almuerzo salida: ${employeeSchedule.lunchStart}`}
+                {employeeSchedule.lunchEnd && ` | Almuerzo regreso: ${employeeSchedule.lunchEnd}`}
+                {employeeSchedule.exitTime && ` | Salida: ${employeeSchedule.exitTime}`}
+              </p>
+              <p className="text-sm text-blue-700 mt-1">
+                <span className="font-medium">Hora sugerida:</span> {suggestedTime}
+              </p>
+            </div>
+          )}
+
+          {!schedulerID && (
+            <div className="rounded-md border p-3 bg-yellow-50">
+              <p className="text-sm text-yellow-700">
+                No se encontró schedulerID en su perfil. No se puede cargar el horario automáticamente.
+              </p>
+            </div>
+          )}
+
+          {employeeSchedule === null && startDateTime && schedulerID && (
+            <div className="rounded-md border p-3 bg-yellow-50">
+              <p className="text-sm text-yellow-700">
+                No se encontró horario asignado. Por favor, ingrese la hora manualmente.
+              </p>
+            </div>
+          )}
         </div>
       )}
 
@@ -403,10 +640,10 @@ export default function JustificationForm({ types, onCreated, onCancel }: Props)
       </div>
 
       <div className="flex items-center justify-end gap-2 pt-2">
-        <Button type="button" variant="outline" onClick={onCancel} disabled={submitting}>
+        <Button type="button" variant="outline" onClick={onCancel} disabled={submitting || loadingTypes}>
           Cancelar
         </Button>
-        <Button type="submit" disabled={submitting || !mode}>
+        <Button type="submit" disabled={submitting || loadingTypes || !mode || (mode === "PICADA" && !selectedPunchTypeId)}>
           {submitting ? "Enviando..." : "Enviar justificación"}
         </Button>
       </div>
