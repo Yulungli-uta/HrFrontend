@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Tag, Edit, Trash2, RefreshCw, AlertCircle, Search } from "lucide-react";
+import { Plus, Tag, Edit, Trash2, RefreshCw, AlertCircle, Search, X, Save, List } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { TiposReferenciaAPI } from "@/lib/api";
@@ -84,6 +84,13 @@ const COMMON_CATEGORIES = [
   'Priority'
 ];
 
+// Tipo para el modo de inserción múltiple
+interface BatchReferenceType {
+  Name: string;
+  Description?: string;
+  IsActive: boolean;
+}
+
 export default function ReferenceTypesPage() {
   const { toast } = useToast();
   const { user, employeeDetails } = useAuth();
@@ -103,6 +110,12 @@ export default function ReferenceTypesPage() {
     Description: '',
     IsActive: true
   });
+
+  // Estados para inserción múltiple
+  const [batchMode, setBatchMode] = useState(false);
+  const [batchTypes, setBatchTypes] = useState<BatchReferenceType[]>([
+    { Name: '', Description: '', IsActive: true }
+  ]);
 
   // Modo para categoría (select vs personalizada)
   const [categoryMode, setCategoryMode] = useState<'select' | 'custom'>('select');
@@ -202,7 +215,7 @@ export default function ReferenceTypesPage() {
 
   const stats = getStats();
 
-  // Obtener estadísticas por categoría (puede usar referenceTypes o filteredTypes)
+  // Obtener estadísticas por categoría
   const getCategoryStats = (source: ReferenceType[] = referenceTypes) => {
     const categoryStats: { [key: string]: { total: number; active: number } } = {};
     source.forEach(type => {
@@ -218,7 +231,7 @@ export default function ReferenceTypesPage() {
     return categoryStats;
   };
 
-  // Manejar creación/edición de tipos
+  // Manejar creación/edición de tipos (modo simple)
   const handleSaveType = async () => {
     if (!newType.Category || !newType.Name) {
       toast({
@@ -270,6 +283,71 @@ export default function ReferenceTypesPage() {
     }
   };
 
+  // Manejar inserción múltiple
+  const handleBatchSave = async () => {
+    if (!newType.Category) {
+      toast({
+        title: "Error",
+        description: "La categoría es requerida",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const validTypes = batchTypes.filter(type => type.Name.trim() !== '');
+    if (validTypes.length === 0) {
+      toast({
+        title: "Error",
+        description: "Debe agregar al menos un tipo válido",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const promises = validTypes.map(type => 
+        TiposReferenciaAPI.create(toRaw({
+          Category: newType.Category,
+          Name: type.Name,
+          Description: type.Description,
+          IsActive: type.IsActive
+        }))
+      );
+
+      const results = await Promise.allSettled(promises);
+      const successful = results.filter(result => 
+        result.status === 'fulfilled' && result.value.status === 'success'
+      ).length;
+      const failed = results.length - successful;
+
+      if (successful > 0) {
+        toast({
+          title: "Éxito",
+          description: `Se crearon ${successful} tipos de referencia${failed > 0 ? `, ${failed} fallaron` : ''}`,
+        });
+      }
+
+      if (failed > 0) {
+        toast({
+          title: "Advertencia",
+          description: `${failed} tipos no se pudieron crear`,
+          variant: "destructive",
+        });
+      }
+
+      setIsDialogOpen(false);
+      resetBatchForm();
+      await loadReferenceTypes();
+    } catch (error: any) {
+      console.error('Error in batch creation:', error);
+      toast({
+        title: "Error",
+        description: "Error al crear los tipos de referencia",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Manejar eliminación de tipo
   const handleDeleteType = async () => {
     if (!typeToDelete?.TypeID) return;
@@ -301,6 +379,7 @@ export default function ReferenceTypesPage() {
   const handleEditType = (type: ReferenceType) => {
     setEditingType(type);
     setNewType({ ...type });
+    setBatchMode(false);
     setCategoryMode('select');
     setIsDialogOpen(true);
   };
@@ -311,8 +390,21 @@ export default function ReferenceTypesPage() {
     setIsDeleteDialogOpen(true);
   };
 
-  // Resetear formulario
+  // Resetear formulario simple
   const resetForm = () => {
+    setNewType({
+      Category: '',
+      Name: '',
+      Description: '',
+      IsActive: true
+    });
+    setCategoryMode('select');
+    setBatchMode(false);
+  };
+
+  // Resetear formulario de inserción múltiple
+  const resetBatchForm = () => {
+    setBatchTypes([{ Name: '', Description: '', IsActive: true }]);
     setNewType({
       Category: '',
       Name: '',
@@ -326,7 +418,25 @@ export default function ReferenceTypesPage() {
   const handleDialogClose = () => {
     setIsDialogOpen(false);
     setEditingType(null);
+    setBatchMode(false);
     resetForm();
+  };
+
+  // Manejar inserción múltiple
+  const addBatchRow = () => {
+    setBatchTypes([...batchTypes, { Name: '', Description: '', IsActive: true }]);
+  };
+
+  const removeBatchRow = (index: number) => {
+    if (batchTypes.length > 1) {
+      setBatchTypes(batchTypes.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateBatchRow = (index: number, field: keyof BatchReferenceType, value: string | boolean) => {
+    const updated = [...batchTypes];
+    updated[index] = { ...updated[index], [field]: value };
+    setBatchTypes(updated);
   };
 
   // Formatear fecha
@@ -349,7 +459,7 @@ export default function ReferenceTypesPage() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="container mx-auto p-4 sm:p-6">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <RefreshCw className="mx-auto h-8 w-8 animate-spin mb-4" />
@@ -361,134 +471,218 @@ export default function ReferenceTypesPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-4 sm:p-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Gestión de Tipos de Referencia</h1>
-          <p className="text-gray-600 mt-2">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 truncate">Gestión de Tipos de Referencia</h1>
+          <p className="text-gray-600 mt-2 text-sm sm:text-base">
             Administre los tipos de referencia y categorías del sistema de recursos humanos
           </p>
         </div>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-blue-600 hover:bg-blue-700">
+            <Button className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto">
               <Plus className="mr-2 h-4 w-4" />
               Nuevo Tipo
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
-                {editingType ? 'Editar Tipo de Referencia' : 'Crear Nuevo Tipo de Referencia'}
+                {editingType ? 'Editar Tipo de Referencia' : 'Crear Tipos de Referencia'}
               </DialogTitle>
               <DialogDescription>
                 {editingType
                   ? 'Modifique la información del tipo de referencia'
-                  : 'Complete la información para crear un nuevo tipo de referencia'
+                  : 'Complete la información para crear tipos de referencia'
                 }
               </DialogDescription>
             </DialogHeader>
 
+            {!editingType && (
+              <div className="flex space-x-2 border-b pb-4">
+                <Button
+                  type="button"
+                  variant={batchMode ? "outline" : "default"}
+                  className="flex-1"
+                  onClick={() => setBatchMode(false)}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Tipo Individual
+                </Button>
+                <Button
+                  type="button"
+                  variant={batchMode ? "default" : "outline"}
+                  className="flex-1"
+                  onClick={() => setBatchMode(true)}
+                >
+                  <List className="mr-2 h-4 w-4" />
+                  Múltiples Tipos
+                </Button>
+              </div>
+            )}
+
             <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Categoría */}
-                <div className="space-y-2">
-                  <Label htmlFor="category">Categoría *</Label>
-                  <Select
-                    value={categoryMode === 'select' ? (newType.Category || 'none') : 'custom'}
-                    onValueChange={(value) => {
-                      if (value === 'custom') {
-                        setCategoryMode('custom');
-                        setNewType({ ...newType, Category: '' });
-                      } else {
-                        setCategoryMode('select');
-                        setNewType({ ...newType, Category: value === 'none' ? '' : value });
-                      }
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar categoría" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Seleccionar…</SelectItem>
-                      {/* Sugeridas */}
-                      {COMMON_CATEGORIES.map(category => (
+              {/* Categoría - Compartida para ambos modos */}
+              <div className="space-y-2">
+                <Label htmlFor="category">Categoría *</Label>
+                <Select
+                  value={categoryMode === 'select' ? (newType.Category || 'none') : 'custom'}
+                  onValueChange={(value) => {
+                    if (value === 'custom') {
+                      setCategoryMode('custom');
+                      setNewType({ ...newType, Category: '' });
+                    } else {
+                      setCategoryMode('select');
+                      setNewType({ ...newType, Category: value === 'none' ? '' : value });
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar categoría" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Seleccionar…</SelectItem>
+                    {/* Sugeridas */}
+                    {COMMON_CATEGORIES.map(category => (
+                      <SelectItem key={category} value={category}>
+                        {category}
+                      </SelectItem>
+                    ))}
+                    {/* Desde backend */}
+                    {categories
+                      .filter(cat => !COMMON_CATEGORIES.includes(cat))
+                      .map(category => (
                         <SelectItem key={category} value={category}>
                           {category}
                         </SelectItem>
                       ))}
-                      {/* Desde backend */}
-                      {categories
-                        .filter(cat => !COMMON_CATEGORIES.includes(cat))
-                        .map(category => (
-                          <SelectItem key={category} value={category}>
-                            {category}
-                          </SelectItem>
-                        ))}
-                      <SelectItem value="custom">Personalizada…</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    <SelectItem value="custom">Personalizada…</SelectItem>
+                  </SelectContent>
+                </Select>
 
-                  {categoryMode === 'custom' && (
-                    <Input
-                      placeholder="Escriba una nueva categoría (se guardará tal cual)"
-                      value={newType.Category}
-                      onChange={(e) => setNewType({ ...newType, Category: e.target.value })}
-                    />
-                  )}
-                </div>
-
-                {/* Nombre */}
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nombre *</Label>
+                {categoryMode === 'custom' && (
                   <Input
-                    id="name"
-                    value={newType.Name}
-                    onChange={(e) => setNewType({ ...newType, Name: e.target.value })}
-                    placeholder="Nombre del tipo"
+                    placeholder="Escriba una nueva categoría (se guardará tal cual)"
+                    value={newType.Category}
+                    onChange={(e) => setNewType({ ...newType, Category: e.target.value })}
                   />
+                )}
+              </div>
+
+              {batchMode ? (
+                /* Modo inserción múltiple */
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <Label>Tipos a crear ({batchTypes.filter(t => t.Name.trim()).length})</Label>
+                    <Button type="button" variant="outline" size="sm" onClick={addBatchRow}>
+                      <Plus className="h-4 w-4 mr-1" />
+                      Agregar Fila
+                    </Button>
+                  </div>
+                  
+                  <div className="space-y-3 max-h-60 overflow-y-auto">
+                    {batchTypes.map((batchType, index) => (
+                      <div key={index} className="flex gap-2 items-start p-3 border rounded-lg">
+                        <div className="flex-1 grid gap-2">
+                          <Input
+                            placeholder="Nombre del tipo *"
+                            value={batchType.Name}
+                            onChange={(e) => updateBatchRow(index, 'Name', e.target.value)}
+                          />
+                          <Input
+                            placeholder="Descripción (opcional)"
+                            value={batchType.Description || ''}
+                            onChange={(e) => updateBatchRow(index, 'Description', e.target.value)}
+                          />
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center space-x-2">
+                            <Switch
+                              checked={batchType.IsActive}
+                              onCheckedChange={(checked) => updateBatchRow(index, 'IsActive', checked)}
+                              size="sm"
+                            />
+                          </div>
+                          {batchTypes.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeBatchRow(index)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                /* Modo individual */
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Nombre *</Label>
+                    <Input
+                      id="name"
+                      value={newType.Name}
+                      onChange={(e) => setNewType({ ...newType, Name: e.target.value })}
+                      placeholder="Nombre del tipo"
+                    />
+                  </div>
 
-              {/* Descripción */}
-              <div className="space-y-2">
-                <Label htmlFor="description">Descripción</Label>
-                <Textarea
-                  id="description"
-                  value={newType.Description || ''}
-                  onChange={(e) => setNewType({ ...newType, Description: e.target.value })}
-                  placeholder="Descripción del tipo de referencia..."
-                  rows={3}
-                />
-              </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Descripción</Label>
+                    <Textarea
+                      id="description"
+                      value={newType.Description || ''}
+                      onChange={(e) => setNewType({ ...newType, Description: e.target.value })}
+                      placeholder="Descripción del tipo de referencia..."
+                      rows={3}
+                    />
+                  </div>
 
-              {/* Activo */}
-              <div className="flex items-center space-x-2">
-                <Switch
-                  checked={newType.IsActive}
-                  onCheckedChange={(checked) => setNewType({ ...newType, IsActive: checked })}
-                />
-                <Label htmlFor="isActive">Tipo activo</Label>
-              </div>
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      checked={newType.IsActive}
+                      onCheckedChange={(checked) => setNewType({ ...newType, IsActive: checked })}
+                    />
+                    <Label htmlFor="isActive">Tipo activo</Label>
+                  </div>
 
-              {editingType && !newType.IsActive && (
-                <div className="bg-yellow-50 p-3 rounded-md flex items-center space-x-2">
-                  <AlertCircle className="h-4 w-4 text-yellow-600" />
-                  <span className="text-sm text-yellow-600">
-                    Desactivar este tipo puede afectar funcionalidades que lo utilicen.
-                  </span>
+                  {editingType && !newType.IsActive && (
+                    <div className="bg-yellow-50 p-3 rounded-md flex items-center space-x-2">
+                      <AlertCircle className="h-4 w-4 text-yellow-600" />
+                      <span className="text-sm text-yellow-600">
+                        Desactivar este tipo puede afectar funcionalidades que lo utilicen.
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
-            <DialogFooter>
-              <Button variant="outline" onClick={handleDialogClose}>
+            <DialogFooter className="flex-col sm:flex-row gap-2">
+              <Button variant="outline" onClick={handleDialogClose} className="w-full sm:w-auto">
                 Cancelar
               </Button>
-              <Button onClick={handleSaveType}>
-                {editingType ? 'Actualizar' : 'Crear'} Tipo
+              <Button 
+                onClick={batchMode ? handleBatchSave : handleSaveType}
+                className="w-full sm:w-auto"
+              >
+                {batchMode ? (
+                  <>
+                    <Save className="mr-2 h-4 w-4" />
+                    Crear {batchTypes.filter(t => t.Name.trim()).length} Tipos
+                  </>
+                ) : editingType ? (
+                  'Actualizar'
+                ) : (
+                  'Crear Tipo'
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -496,182 +690,190 @@ export default function ReferenceTypesPage() {
       </div>
 
       {/* Tarjetas de estadísticas */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:gap-6 grid-cols-2 lg:grid-cols-4">
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center">
-              <Tag className="mr-2 h-5 w-5 text-blue-600" />
+            <CardTitle className="text-sm sm:text-lg flex items-center">
+              <Tag className="mr-2 h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
               Total Tipos
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.totalTypes}</div>
-            <p className="text-sm text-gray-500">tipos registrados</p>
+            <div className="text-xl sm:text-2xl font-bold text-blue-600">{stats.totalTypes}</div>
+            <p className="text-xs sm:text-sm text-gray-500">tipos registrados</p>
           </CardContent>
         </Card>
 
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center">
-              <Tag className="mr-2 h-5 w-5 text-green-600" />
+            <CardTitle className="text-sm sm:text-lg flex items-center">
+              <Tag className="mr-2 h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
               Activos
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.activeTypes}</div>
-            <p className="text-sm text-gray-500">tipos en uso</p>
+            <div className="text-xl sm:text-2xl font-bold text-green-600">{stats.activeTypes}</div>
+            <p className="text-xs sm:text-sm text-gray-500">tipos en uso</p>
           </CardContent>
         </Card>
 
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center">
-              <Tag className="mr-2 h-5 w-5 text-purple-600" />
+            <CardTitle className="text-sm sm:text-lg flex items-center">
+              <Tag className="mr-2 h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
               Categorías
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-600">{stats.totalCategories}</div>
-            <p className="text-sm text-gray-500">categorías diferentes</p>
+            <div className="text-xl sm:text-2xl font-bold text-purple-600">{stats.totalCategories}</div>
+            <p className="text-xs sm:text-sm text-gray-500">categorías diferentes</p>
           </CardContent>
         </Card>
 
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center">
-              <Tag className="mr-2 h-5 w-5 text-gray-600" />
+            <CardTitle className="text-sm sm:text-lg flex items-center">
+              <Tag className="mr-2 h-4 w-4 sm:h-5 sm:w-5 text-gray-600" />
               Inactivos
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-600">{stats.inactiveTypes}</div>
-            <p className="text-sm text-gray-500">tipos deshabilitados</p>
+            <div className="text-xl sm:text-2xl font-bold text-gray-600">{stats.inactiveTypes}</div>
+            <p className="text-xs sm:text-sm text-gray-500">tipos deshabilitados</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Pestañas para vista por tabla y por categoría */}
       <Tabs defaultValue="table" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="table">Vista de Tabla</TabsTrigger>
-          <TabsTrigger value="categories">Vista por Categorías</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="table" className="text-xs sm:text-sm">Vista de Tabla</TabsTrigger>
+          <TabsTrigger value="categories" className="text-xs sm:text-sm">Vista por Categorías</TabsTrigger>
         </TabsList>
 
         <TabsContent value="table">
           {/* Filtros y búsqueda */}
           <Card>
             <CardHeader>
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                  <CardTitle>Tipos de Referencia</CardTitle>
-                  <CardDescription>
+              <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="flex-1 min-w-0">
+                  <CardTitle className="text-lg sm:text-xl">Tipos de Referencia</CardTitle>
+                  <CardDescription className="text-sm">
                     Lista de todos los tipos de referencia registrados en el sistema
                   </CardDescription>
                 </div>
-                <div className="flex gap-2 w-full sm:w-auto">
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                   <div className="relative flex-1 sm:flex-none">
                     <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                       placeholder="Buscar tipos..."
-                      className="pl-8"
+                      className="pl-8 text-sm"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />
                   </div>
-                  <Select
-                    value={filters.category}
-                    onValueChange={(value) => setFilters({ ...filters, category: value })}
-                  >
-                    <SelectTrigger className="w-40">
-                      <SelectValue placeholder="Categoría" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todas las categorías</SelectItem>
-                      {categories.map(category => (
-                        <SelectItem key={category} value={category}>
-                          {category}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select
-                    value={filters.status}
-                    onValueChange={(value) => setFilters({ ...filters, status: value })}
-                  >
-                    <SelectTrigger className="w-28">
-                      <SelectValue placeholder="Estado" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
-                      <SelectItem value="active">Activos</SelectItem>
-                      <SelectItem value="inactive">Inactivos</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Button variant="outline" size="icon" onClick={loadReferenceTypes} title="Refrescar">
-                    <RefreshCw className="h-4 w-4" />
-                  </Button>
+                  <div className="flex gap-2">
+                    <Select
+                      value={filters.category}
+                      onValueChange={(value) => setFilters({ ...filters, category: value })}
+                    >
+                      <SelectTrigger className="w-full sm:w-40 text-sm">
+                        <SelectValue placeholder="Categoría" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas las categorías</SelectItem>
+                        {categories.map(category => (
+                          <SelectItem key={category} value={category}>
+                            {category}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select
+                      value={filters.status}
+                      onValueChange={(value) => setFilters({ ...filters, status: value })}
+                    >
+                      <SelectTrigger className="w-full sm:w-28 text-sm">
+                        <SelectValue placeholder="Estado" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos</SelectItem>
+                        <SelectItem value="active">Activos</SelectItem>
+                        <SelectItem value="inactive">Inactivos</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button variant="outline" size="icon" onClick={loadReferenceTypes} title="Refrescar" className="shrink-0">
+                      <RefreshCw className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
               {filteredTypes.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>ID</TableHead>
-                      <TableHead>Categoría</TableHead>
-                      <TableHead>Nombre</TableHead>
-                      <TableHead>Descripción</TableHead>
-                      <TableHead>Estado</TableHead>
-                      <TableHead>Creado</TableHead>
-                      <TableHead>Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredTypes.map((type) => (
-                      <TableRow key={type.TypeID ?? `${type.Category}-${type.Name}`}>
-                        <TableCell className="font-mono text-sm">{type.TypeID ?? '—'}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{prettyCategory(type.Category) || '—'}</Badge>
-                        </TableCell>
-                        <TableCell className="font-medium">{type.Name || '—'}</TableCell>
-                        <TableCell className="max-w-xs truncate">
-                          {type.Description || 'Sin descripción'}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={type.IsActive ? "default" : "secondary"}>
-                            {type.IsActive ? 'Activo' : 'Inactivo'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-sm text-gray-500">
-                          {formatDate(type.CreatedAt)}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleEditType(type)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDeleteClick(type)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <div className="rounded-md border">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="hidden sm:table-cell">ID</TableHead>
+                          <TableHead>Categoría</TableHead>
+                          <TableHead>Nombre</TableHead>
+                          <TableHead className="hidden md:table-cell">Descripción</TableHead>
+                          <TableHead>Estado</TableHead>
+                          <TableHead className="hidden lg:table-cell">Creado</TableHead>
+                          <TableHead>Acciones</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredTypes.map((type) => (
+                          <TableRow key={type.TypeID ?? `${type.Category}-${type.Name}`}>
+                            <TableCell className="hidden sm:table-cell font-mono text-sm">{type.TypeID ?? '—'}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="text-xs">{prettyCategory(type.Category) || '—'}</Badge>
+                            </TableCell>
+                            <TableCell className="font-medium text-sm">{type.Name || '—'}</TableCell>
+                            <TableCell className="hidden md:table-cell max-w-xs truncate text-sm">
+                              {type.Description || 'Sin descripción'}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={type.IsActive ? "default" : "secondary"} className="text-xs">
+                                {type.IsActive ? 'Activo' : 'Inactivo'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="hidden lg:table-cell text-sm text-gray-500">
+                              {formatDate(type.CreatedAt)}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-1">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleEditType(type)}
+                                  className="h-8 w-8 p-0"
+                                >
+                                  <Edit className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleDeleteClick(type)}
+                                  className="h-8 w-8 p-0"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
               ) : (
                 <div className="text-center py-8 text-gray-500">
                   <Tag className="mx-auto h-12 w-12 mb-4 opacity-50" />
-                  <p className="text-lg mb-2">No hay tipos de referencia registrados</p>
+                  <p className="text-base sm:text-lg mb-2">No hay tipos de referencia registrados</p>
                   <p className="text-sm">Los tipos aparecerán aquí una vez que se creen</p>
                 </div>
               )}
@@ -681,7 +883,7 @@ export default function ReferenceTypesPage() {
 
         <TabsContent value="categories">
           {/* Vista agrupada por categorías */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {categories.map(category => {
               const categoryTypes = filteredTypes.filter(type => type.Category === category);
               const statsByCat = getCategoryStats(filteredTypes)[category] || { total: 0, active: 0 };
@@ -690,24 +892,24 @@ export default function ReferenceTypesPage() {
                 <Card key={category} className="hover:shadow-md transition-shadow">
                   <CardHeader className="pb-3">
                     <div className="flex justify-between items-start">
-                      <CardTitle className="text-lg">{prettyCategory(category)}</CardTitle>
-                      <Badge variant="outline">{statsByCat.total} tipos</Badge>
+                      <CardTitle className="text-base sm:text-lg">{prettyCategory(category)}</CardTitle>
+                      <Badge variant="outline" className="text-xs">{statsByCat.total} tipos</Badge>
                     </div>
-                    <CardDescription>
+                    <CardDescription className="text-sm">
                       {statsByCat.active} activos de {statsByCat.total} total
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2 max-h-48 overflow-y-auto">
                       {categoryTypes.map(type => (
-                        <div key={type.TypeID ?? `${type.Name}-${type.CreatedAt}`} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                          <div className="flex-1">
-                            <p className="font-medium text-sm">{type.Name || '—'}</p>
+                        <div key={type.TypeID ?? `${type.Name}-${type.CreatedAt}`} className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate">{type.Name || '—'}</p>
                             {type.Description && (
                               <p className="text-xs text-gray-500 truncate">{type.Description}</p>
                             )}
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 shrink-0">
                             <Badge
                               variant={type.IsActive ? "default" : "secondary"}
                               className="text-xs"
@@ -718,6 +920,7 @@ export default function ReferenceTypesPage() {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleEditType(type)}
+                              className="h-6 w-6 p-0"
                             >
                               <Edit className="h-3 w-3" />
                             </Button>
@@ -735,20 +938,20 @@ export default function ReferenceTypesPage() {
 
       {/* Diálogo de confirmación para eliminar */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Confirmar Eliminación</DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-sm">
               ¿Está seguro de que desea eliminar el tipo "{typeToDelete?.Name}"
               de la categoría "{prettyCategory(typeToDelete?.Category || '')}"? Esta acción no se puede deshacer
               y podría afectar datos relacionados.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)} className="w-full sm:w-auto">
               Cancelar
             </Button>
-            <Button variant="destructive" onClick={handleDeleteType}>
+            <Button variant="destructive" onClick={handleDeleteType} className="w-full sm:w-auto">
               Eliminar
             </Button>
           </DialogFooter>

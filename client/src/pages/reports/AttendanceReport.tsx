@@ -1,7 +1,4 @@
-/**
- * Página de Reporte de Asistencia
- * Universidad Técnica de Ambato
- */
+//client/src/pages/reports/AttendanceReport.tsx
 
 import { ReportPage } from './ReportPage';
 

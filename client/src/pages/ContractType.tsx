@@ -1,11 +1,33 @@
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useMemo } from "react";
+
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { FileText, Plus, Search, Clock, Calendar, DollarSign, BookOpen, Eye } from "lucide-react";
-import { useState } from "react";
-import { ContratosAPI, type ApiResponse } from "@/lib/api";
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  FileText,
+  Plus,
+  Search,
+  Clock,
+  Calendar,
+  DollarSign,
+  BookOpen,
+  Eye,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -16,18 +38,21 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-// Tipo basado en tu JSON
+import { ContractTypeForm } from "@/components/forms/ContractTypeForm";
+import { ContractTypeAPI, type ApiResponse } from "@/lib/api";
+
+// ---------------- TIPOS ----------------
+
 interface ContractType {
   contractTypeId: number;
   personalContractTypeId: number;
   name: string;
   description?: string;
-  status: string;
+  status: string; // "1" activo, "0" inactivo
   contractText: string;
   contractCode: string;
 }
 
-// Tipo transformado para la UI
 interface UIContractType {
   contractTypeId: number;
   name: string;
@@ -42,100 +67,144 @@ interface UIContractType {
   maxSalary?: number;
   minSalary?: number;
   legalRequirements?: string;
-  // Campos originales
   contractText?: string;
   personalContractTypeId?: number;
   status?: string;
 }
 
+// --------------- PAGE -------------------
+
 export default function ContractTypesPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [selectedContractType, setSelectedContractType] = useState<UIContractType | null>(null);
+  const [selectedContractType, setSelectedContractType] =
+    useState<UIContractType | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  
-  const { data: apiResponse, isLoading, error } = useQuery<ApiResponse<ContractType[]>>({
-    queryKey: ['/api/v1/rh/cv/contract-type'],
-    queryFn: () => ContratosAPI.list(),
+
+  const [formMode, setFormMode] = useState<"create" | "edit">("create");
+  const [editingContract, setEditingContract] =
+    useState<UIContractType | null>(null);
+
+  const {
+    data: apiResponse,
+    isLoading,
+    error,
+  } = useQuery<ApiResponse<ContractType[]>>({
+    queryKey: ["/api/v1/rh/contract-type"],
+    queryFn: () =>
+      ContractTypeAPI.list() as Promise<ApiResponse<ContractType[]>>,
   });
 
-  // Función para determinar la categoría basada en el código
+  // --------- Helpers de negocio ---------
+
   const getCategoryFromCode = (code: string): string => {
-    const categoryMap: { [key: string]: string } = {
-      'DTH': 'Docente',
-      'Administrativo': 'Administrativo',
-      'Adendum': 'Adendum'
+    const categoryMap: Record<string, string> = {
+      DTH: "Docente",
+      Administrativo: "Administrativo",
+      Adendum: "Adendum",
     };
-    return categoryMap[code] || 'General';
+    return categoryMap[code] || "General";
   };
 
-  // Función para determinar si es renovable basado en el tipo de contrato
   const getIsRenewable = (contract: ContractType): boolean => {
-    // Basado en tu JSON, los contratos parecen ser renovables según el texto
-    return contract.contractText.includes('renovado automáticamente');
+    const texto = contract.contractText?.toLowerCase?.() ?? "";
+    return texto.includes("renovado automáticamente");
   };
 
-  // Función para determinar la duración en días
   const getDurationDays = (contract: ContractType): number => {
-    // Ejemplo: calcular duración basada en el tipo
-    if (contract.contractCode === 'DTH') return 365; // 1 año para docentes
-    if (contract.contractCode === 'Administrativo') return 180; // 6 meses administrativos
-    return 365; // Por defecto 1 año
+    if (contract.contractCode === "DTH") return 365;
+    if (contract.contractCode === "Administrativo") return 180;
+    return 365;
   };
 
-  // Transformar los datos del API al formato que espera la UI
-  const contractTypes: UIContractType[] = apiResponse?.status === 'success' 
-    ? apiResponse.data.map(contract => ({
-        contractTypeId: contract.contractTypeId,
-        name: contract.name,
-        code: contract.contractCode,
-        description: contract.description,
-        durationDays: getDurationDays(contract),
-        isRenewable: getIsRenewable(contract),
-        requiresProbation: contract.contractCode === 'Administrativo', // Solo administrativos requieren prueba
-        probationDays: contract.contractCode === 'Administrativo' ? 90 : undefined,
-        isActive: contract.status === "1",
-        category: getCategoryFromCode(contract.contractCode),
-        // Campos de salario (valores ejemplo - ajusta según tu lógica de negocio)
-        minSalary: contract.contractCode === 'DTH' ? 1500 : 800,
-        maxSalary: contract.contractCode === 'DTH' ? 3000 : 2000,
-        legalRequirements: "Cumplir con la Ley Orgánica de Educación Superior y Reglamento Interno",
-        // Campos originales
-        contractText: contract.contractText,
-        personalContractTypeId: contract.personalContractTypeId,
-        status: contract.status
-      }))
-    : [];
+  const contractTypes: UIContractType[] = useMemo(() => {
+    if (apiResponse?.status !== "success") return [];
 
-  // Filtrar tipos de contrato
-  const filteredContractTypes = contractTypes.filter(contractType =>
-    contractType.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    contractType.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    contractType.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    contractType.category?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+    return apiResponse.data.map((contract) => ({
+      contractTypeId: contract.contractTypeId,
+      name: contract.name,
+      code: contract.contractCode,
+      description: contract.description,
+      durationDays: getDurationDays(contract),
+      isRenewable: getIsRenewable(contract),
+      requiresProbation: contract.contractCode === "Administrativo",
+      probationDays:
+        contract.contractCode === "Administrativo" ? 90 : undefined,
+      isActive: contract.status === "1",
+      category: getCategoryFromCode(contract.contractCode),
+      minSalary: contract.contractCode === "DTH" ? 1500 : 800,
+      maxSalary: contract.contractCode === "DTH" ? 3000 : 2000,
+      legalRequirements:
+        "Cumplir con la Ley Orgánica de Educación Superior y Reglamento Interno",
+      contractText: contract.contractText,
+      personalContractTypeId: contract.personalContractTypeId,
+      status: contract.status,
+    }));
+  }, [apiResponse]);
 
-  // Función para manejar clic en ver detalles
+  const filteredContractTypes = useMemo(() => {
+    const term = searchTerm.toLowerCase().trim();
+    if (!term) return contractTypes;
+
+    return contractTypes.filter((contractType) => {
+      const name = contractType.name.toLowerCase();
+      const code = contractType.code.toLowerCase();
+      const description = contractType.description?.toLowerCase() ?? "";
+      const category = contractType.category?.toLowerCase() ?? "";
+
+      return (
+        name.includes(term) ||
+        code.includes(term) ||
+        description.includes(term) ||
+        category.includes(term)
+      );
+    });
+  }, [contractTypes, searchTerm]);
+
+  const {
+    totalContractTypes,
+    activeContractTypes,
+    inactiveContractTypes,
+    renewableContractTypes,
+    probationContractTypes,
+    avgDuration,
+  } = useMemo(() => {
+    const total = contractTypes.length;
+    const active = contractTypes.filter((ct) => ct.isActive).length;
+    const inactive = contractTypes.filter((ct) => !ct.isActive).length;
+    const renewable = contractTypes.filter((ct) => ct.isRenewable).length;
+    const probation = contractTypes.filter((ct) => ct.requiresProbation).length;
+
+    const avg =
+      total > 0
+        ? Math.round(
+            contractTypes.reduce(
+              (sum, ct) => sum + (ct.durationDays || 0),
+              0
+            ) / total
+          )
+        : 0;
+
+    return {
+      totalContractTypes: total,
+      activeContractTypes: active,
+      inactiveContractTypes: inactive,
+      renewableContractTypes: renewable,
+      probationContractTypes: probation,
+      avgDuration: avg,
+    };
+  }, [contractTypes]);
+
   const handleViewDetails = (contractType: UIContractType) => {
     setSelectedContractType(contractType);
     setIsDetailOpen(true);
   };
 
-  // Estadísticas
-  const totalContractTypes = contractTypes.length;
-  const activeContractTypes = contractTypes.filter(ct => ct.isActive).length;
-  const inactiveContractTypes = contractTypes.filter(ct => !ct.isActive).length;
-  const renewableContractTypes = contractTypes.filter(ct => ct.isRenewable).length;
-  const probationContractTypes = contractTypes.filter(ct => ct.requiresProbation).length;
-
-  // Calcular duración promedio
-  const avgDuration = contractTypes.length > 0 
-    ? Math.round(contractTypes.reduce((sum, ct) => sum + (ct.durationDays || 0), 0) / contractTypes.length)
-    : 0;
+  // --------------- Loading / error ----------------
 
   if (isLoading) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="container mx-auto p-4 lg:p-6">
         <div className="flex items-center space-x-2 mb-6">
           <div className="h-8 w-8 rounded bg-gray-200 animate-pulse" />
           <div className="h-6 w-32 bg-gray-200 rounded animate-pulse" />
@@ -157,27 +226,34 @@ export default function ContractTypesPage() {
 
   if (error) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="container mx-auto p-4 lg:p-6">
         <Card className="border-red-200 bg-red-50">
           <CardContent className="pt-6">
-            <p className="text-red-600">Error al cargar los tipos de contrato. Intente nuevamente.</p>
+            <p className="text-red-600">
+              Error al cargar los tipos de contrato. Intente nuevamente.
+            </p>
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  if (apiResponse?.status === 'error') {
+  if (apiResponse?.status === "error") {
     return (
-      <div className="container mx-auto p-6">
+      <div className="container mx-auto p-4 lg:p-6">
         <Card className="border-red-200 bg-red-50">
           <CardContent className="pt-6">
-            <p className="text-red-600">Error al cargar los tipos de contrato: {apiResponse.error.message}</p>
+            <p className="text-red-600">
+              Error al cargar los tipos de contrato:{" "}
+              {apiResponse.error.message}
+            </p>
           </CardContent>
         </Card>
       </div>
     );
   }
+
+  // --------------- Render principal ----------------
 
   return (
     <div className="container mx-auto p-4 lg:p-6">
@@ -192,34 +268,64 @@ export default function ContractTypesPage() {
             Administre los diferentes tipos de contrato laboral del sistema
           </p>
         </div>
+
+        {/* Dialog de creación / edición */}
         <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
           <DialogTrigger asChild>
-            <Button 
-              className="bg-blue-600 hover:bg-blue-700 w-full lg:w-auto"
+            <Button
+              className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
               data-testid="button-add-contract-type"
+              onClick={() => {
+                setFormMode("create");
+                setEditingContract(null);
+                setIsFormOpen(true);
+              }}
             >
               <Plus className="mr-2 h-4 w-4" />
               Agregar Tipo de Contrato
             </Button>
           </DialogTrigger>
+
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Formulario de Tipo de Contrato</h3>
-              <p className="text-gray-600">Formulario para crear/editar tipos de contrato (pendiente de implementar)</p>
-              <div className="flex gap-3 mt-6">
-                <Button variant="outline" onClick={() => setIsFormOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button onClick={() => setIsFormOpen(false)}>
-                  Guardar
-                </Button>
-              </div>
+            <DialogHeader>
+              <DialogTitle>
+                {formMode === "create"
+                  ? "Nuevo Tipo de Contrato"
+                  : "Editar Tipo de Contrato"}
+              </DialogTitle>
+              <DialogDescription>
+                Complete la información del tipo de contrato.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="mt-4">
+              <ContractTypeForm
+                key={formMode + (editingContract?.contractTypeId ?? "new")}
+                mode={formMode}
+                contractId={editingContract?.contractTypeId}
+                initialValues={
+                  editingContract
+                    ? {
+                        name: editingContract.name,
+                        code: editingContract.code,
+                        description: editingContract.description,
+                        contractText: editingContract.contractText,
+                        isActive: editingContract.isActive,
+                        personalContractTypeId: editingContract.personalContractTypeId
+                          ? String(editingContract.personalContractTypeId)
+                          : "",
+                      }
+                    : undefined
+                }
+                onCancel={() => setIsFormOpen(false)}
+                onSuccess={() => setIsFormOpen(false)}
+              />
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* Sección de estadísticas */}
+      {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
         <Card className="bg-gradient-to-r from-blue-50 to-blue-100">
           <CardHeader className="pb-2">
@@ -228,7 +334,7 @@ export default function ContractTypesPage() {
                 <FileText className="h-4 w-4 lg:h-5 lg:w-5 text-blue-600 mr-2" />
                 Total
               </span>
-              <Badge variant="secondary" className="bg-blue-200 text-blue-800 text-xs lg:text-sm">
+              <Badge className="bg-blue-200 text-blue-800 text-xs lg:text-sm">
                 {totalContractTypes}
               </Badge>
             </CardTitle>
@@ -239,28 +345,31 @@ export default function ContractTypesPage() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-gradient-to-r from-green-50 to-green-100">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm lg:text-lg flex items-center justify-between">
               <span className="flex items-center">
                 <div className="h-4 w-4 lg:h-5 lg:w-5 bg-green-100 rounded-full flex items-center justify-center mr-2">
-                  <div className="h-2 w-2 bg-green-600 rounded-full"></div>
+                  <div className="h-2 w-2 bg-green-600 rounded-full" />
                 </div>
                 Activos
               </span>
-              <Badge variant="secondary" className="bg-green-200 text-green-800 text-xs lg:text-sm">
+              <Badge className="bg-green-200 text-green-800 text-xs lg:text-sm">
                 {activeContractTypes}
               </Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-xs lg:text-sm text-gray-600">
-              {totalContractTypes > 0 ? ((activeContractTypes / totalContractTypes) * 100).toFixed(1) : 0}% del total
+              {totalContractTypes > 0
+                ? ((activeContractTypes / totalContractTypes) * 100).toFixed(1)
+                : 0}
+              % del total
             </div>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-gradient-to-r from-orange-50 to-orange-100">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm lg:text-lg flex items-center justify-between">
@@ -268,18 +377,23 @@ export default function ContractTypesPage() {
                 <Clock className="h-4 w-4 lg:h-5 lg:w-5 text-orange-600 mr-2" />
                 Renovables
               </span>
-              <Badge variant="secondary" className="bg-orange-200 text-orange-800 text-xs lg:text-sm">
+              <Badge className="bg-orange-200 text-orange-800 text-xs lg:text-sm">
                 {renewableContractTypes}
               </Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-xs lg:text-sm text-gray-600">
-              {totalContractTypes > 0 ? ((renewableContractTypes / totalContractTypes) * 100).toFixed(1) : 0}% del total
+              {totalContractTypes > 0
+                ? ((renewableContractTypes / totalContractTypes) * 100).toFixed(
+                    1
+                  )
+                : 0}
+              % del total
             </div>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-gradient-to-r from-purple-50 to-purple-100">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm lg:text-lg flex items-center justify-between">
@@ -287,7 +401,7 @@ export default function ContractTypesPage() {
                 <Calendar className="h-4 w-4 lg:h-5 lg:w-5 text-purple-600 mr-2" />
                 Con Período Prueba
               </span>
-              <Badge variant="secondary" className="bg-purple-200 text-purple-800 text-xs lg:text-sm">
+              <Badge className="bg-purple-200 text-purple-800 text-xs lg:text-sm">
                 {probationContractTypes}
               </Badge>
             </CardTitle>
@@ -298,7 +412,7 @@ export default function ContractTypesPage() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-gradient-to-r from-red-50 to-red-100">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm lg:text-lg flex items-center justify-between">
@@ -306,8 +420,8 @@ export default function ContractTypesPage() {
                 <BookOpen className="h-4 w-4 lg:h-5 lg:w-5 text-red-600 mr-2" />
                 Legales
               </span>
-              <Badge variant="secondary" className="bg-red-200 text-red-800 text-xs lg:text-sm">
-                {contractTypes.filter(ct => ct.legalRequirements).length}
+              <Badge className="bg-red-200 text-red-800 text-xs lg:text-sm">
+                {contractTypes.filter((ct) => ct.legalRequirements).length}
               </Badge>
             </CardTitle>
           </CardHeader>
@@ -319,12 +433,13 @@ export default function ContractTypesPage() {
         </Card>
       </div>
 
-      {/* Barra de búsqueda */}
+      {/* Búsqueda */}
       <div className="mb-6">
         <div className="relative">
           <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
           <Input
             placeholder="Buscar tipo de contrato por nombre, código, descripción o categoría..."
+            aria-label="Buscar tipo de contrato"
             className="pl-10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -332,12 +447,13 @@ export default function ContractTypesPage() {
         </div>
       </div>
 
-      {/* Tabla de tipos de contrato */}
+      {/* Tabla */}
       <Card>
         <CardHeader>
           <CardTitle>Lista de Tipos de Contrato</CardTitle>
           <CardDescription>
-            {filteredContractTypes.length} de {totalContractTypes} tipos mostrados
+            {filteredContractTypes.length} de {totalContractTypes} tipos
+            mostrados
             {searchTerm && ` - Filtrado por: "${searchTerm}"`}
           </CardDescription>
         </CardHeader>
@@ -346,21 +462,34 @@ export default function ContractTypesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[200px]">Tipo de Contrato</TableHead>
+                  <TableHead className="min-w-[200px]">
+                    Tipo de Contrato
+                  </TableHead>
                   <TableHead className="min-w-[120px]">Código</TableHead>
-                  <TableHead className="min-w-[150px]">Categoría</TableHead>
-                  <TableHead className="min-w-[120px]">Duración</TableHead>
-                  <TableHead className="min-w-[120px]">Renovable</TableHead>
+                  <TableHead className="min-w-[150px] hidden md:table-cell">
+                    Categoría
+                  </TableHead>
+                  <TableHead className="min-w-[120px] hidden md:table-cell">
+                    Duración
+                  </TableHead>
+                  <TableHead className="min-w-[120px] hidden md:table-cell">
+                    Renovable
+                  </TableHead>
                   <TableHead className="min-w-[100px]">Estado</TableHead>
-                  <TableHead className="text-right min-w-[140px]">Acciones</TableHead>
+                  <TableHead className="text-right min-w-[140px]">
+                    Acciones
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredContractTypes.map((contractType) => (
-                  <TableRow key={contractType.contractTypeId} className="group">
+                  <TableRow
+                    key={contractType.contractTypeId}
+                    className="group"
+                  >
                     <TableCell>
                       <div>
-                        <div 
+                        <div
                           className="font-medium"
                           data-testid={`text-contract-type-name-${contractType.contractTypeId}`}
                         >
@@ -373,13 +502,15 @@ export default function ContractTypesPage() {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell 
-                      className="font-mono font-medium" 
+
+                    <TableCell
+                      className="font-mono font-medium"
                       data-testid={`text-contract-type-code-${contractType.contractTypeId}`}
                     >
                       {contractType.code}
                     </TableCell>
-                    <TableCell>
+
+                    <TableCell className="hidden md:table-cell">
                       {contractType.category ? (
                         <Badge variant="outline" className="bg-gray-50">
                           {contractType.category}
@@ -388,35 +519,37 @@ export default function ContractTypesPage() {
                         "-"
                       )}
                     </TableCell>
-                    <TableCell>
+
+                    <TableCell className="hidden md:table-cell">
                       <div className="flex items-center gap-1">
                         <Clock className="h-3 w-3 text-gray-500" />
                         <span>
-                          {contractType.durationDays 
-                            ? `${contractType.durationDays} días` 
-                            : "Indefinido"
-                          }
+                          {contractType.durationDays
+                            ? `${contractType.durationDays} días`
+                            : "Indefinido"}
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <Badge 
+
+                    <TableCell className="hidden md:table-cell">
+                      <Badge
                         variant="outline"
                         className={
-                          contractType.isRenewable 
-                            ? "bg-green-50 text-green-700 border-green-200" 
+                          contractType.isRenewable
+                            ? "bg-green-50 text-green-700 border-green-200"
                             : "bg-gray-50 text-gray-700 border-gray-200"
                         }
                       >
                         {contractType.isRenewable ? "Sí" : "No"}
                       </Badge>
                     </TableCell>
+
                     <TableCell>
-                      <Badge 
+                      <Badge
                         variant={contractType.isActive ? "default" : "secondary"}
                         className={
-                          contractType.isActive 
-                            ? "bg-green-100 text-green-800 hover:bg-green-100" 
+                          contractType.isActive
+                            ? "bg-green-100 text-green-800 hover:bg-green-100"
                             : "bg-gray-100 text-gray-800 hover:bg-gray-100"
                         }
                         data-testid={`status-active-${contractType.contractTypeId}`}
@@ -424,16 +557,18 @@ export default function ContractTypesPage() {
                         {contractType.isActive ? "Activo" : "Inactivo"}
                       </Badge>
                     </TableCell>
+
                     <TableCell className="text-right">
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         onClick={() => handleViewDetails(contractType)}
                         data-testid={`button-view-contract-type-${contractType.contractTypeId}`}
-                        className="flex items-center gap-1"
+                        className="inline-flex items-center gap-1"
                       >
                         <Eye className="h-3 w-3" />
-                        Ver Detalles
+                        <span className="hidden sm:inline">Ver Detalles</span>
+                        <span className="sm:hidden">Ver</span>
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -446,18 +581,23 @@ export default function ContractTypesPage() {
             <div className="text-center py-12">
               <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                {searchTerm ? "No se encontraron tipos de contrato" : "No hay tipos de contrato registrados"}
+                {searchTerm
+                  ? "No se encontraron tipos de contrato"
+                  : "No hay tipos de contrato registrados"}
               </h3>
               <p className="text-gray-600 mb-4">
-                {searchTerm 
-                  ? "Intente con otros términos de búsqueda" 
-                  : "Comience agregando el primer tipo de contrato al sistema"
-                }
+                {searchTerm
+                  ? "Intente con otros términos de búsqueda"
+                  : "Comience agregando el primer tipo de contrato al sistema"}
               </p>
               {!searchTerm && (
-                <Button 
+                <Button
                   data-testid="button-add-first-contract-type"
-                  onClick={() => setIsFormOpen(true)}
+                  onClick={() => {
+                    setFormMode("create");
+                    setEditingContract(null);
+                    setIsFormOpen(true);
+                  }}
                 >
                   <Plus className="mr-2 h-4 w-4" />
                   Agregar Primer Tipo de Contrato
@@ -468,67 +608,101 @@ export default function ContractTypesPage() {
         </CardContent>
       </Card>
 
-      {/* Diálogo de detalles del tipo de contrato */}
+      {/* Diálogo de detalles */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Detalles del Tipo de Contrato</DialogTitle>
+            <DialogDescription>
+              Información completa del tipo de contrato seleccionado.
+            </DialogDescription>
+          </DialogHeader>
+
           {selectedContractType && (
-            <div className="space-y-6">
+            <div className="space-y-6 mt-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-blue-100 rounded-lg">
                   <FileText className="h-6 w-6 text-blue-600" />
                 </div>
                 <div>
-                  <h2 className="text-xl lg:text-2xl font-bold text-gray-900">{selectedContractType.name}</h2>
-                  <p className="text-gray-600">Detalles del tipo de contrato</p>
+                  <h2 className="text-xl lg:text-2xl font-bold text-gray-900">
+                    {selectedContractType.name}
+                  </h2>
+                  <p className="text-gray-600">
+                    Detalles del tipo de contrato
+                  </p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base lg:text-lg">Información General</CardTitle>
+                    <CardTitle className="text-base lg:text-lg">
+                      Información General
+                    </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Código</label>
-                      <p className="font-mono font-medium">{selectedContractType.code}</p>
+                      <label className="text-sm font-medium text-gray-500">
+                        Código
+                      </label>
+                      <p className="font-mono font-medium">
+                        {selectedContractType.code}
+                      </p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Categoría</label>
-                      <p className="font-medium">{selectedContractType.category || "No especificada"}</p>
+                      <label className="text-sm font-medium text-gray-500">
+                        Categoría
+                      </label>
+                      <p className="font-medium">
+                        {selectedContractType.category || "No especificada"}
+                      </p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Descripción</label>
-                      <p className="font-medium">{selectedContractType.description || "No especificada"}</p>
+                      <label className="text-sm font-medium text-gray-500">
+                        Descripción
+                      </label>
+                      <p className="font-medium">
+                        {selectedContractType.description || "No especificada"}
+                      </p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-500">ID Original</label>
-                      <p className="font-medium">{selectedContractType.contractTypeId}</p>
+                      <label className="text-sm font-medium text-gray-500">
+                        ID Original
+                      </label>
+                      <p className="font-medium">
+                        {selectedContractType.contractTypeId}
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
 
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base lg:text-lg">Características</CardTitle>
+                    <CardTitle className="text-base lg:text-lg">
+                      Características
+                    </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Duración</label>
+                      <label className="text-sm font-medium text-gray-500">
+                        Duración
+                      </label>
                       <p className="font-medium flex items-center gap-1">
                         <Clock className="h-4 w-4" />
-                        {selectedContractType.durationDays 
-                          ? `${selectedContractType.durationDays} días` 
-                          : "Contrato indefinido"
-                        }
+                        {selectedContractType.durationDays
+                          ? `${selectedContractType.durationDays} días`
+                          : "Contrato indefinido"}
                       </p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Renovable</label>
-                      <Badge 
+                      <label className="text-sm font-medium text-gray-500">
+                        Renovable
+                      </label>
+                      <Badge
                         className={
-                          selectedContractType.isRenewable 
-                            ? "bg-green-100 text-green-800" 
+                          selectedContractType.isRenewable
+                            ? "bg-green-100 text-green-800"
                             : "bg-gray-100 text-gray-800"
                         }
                       >
@@ -536,20 +710,25 @@ export default function ContractTypesPage() {
                       </Badge>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Período de Prueba</label>
+                      <label className="text-sm font-medium text-gray-500">
+                        Período de Prueba
+                      </label>
                       <p className="font-medium">
-                        {selectedContractType.requiresProbation 
-                          ? `${selectedContractType.probationDays || 30} días` 
-                          : "No requiere"
-                        }
+                        {selectedContractType.requiresProbation
+                          ? `${
+                              selectedContractType.probationDays || 30
+                            } días`
+                          : "No requiere"}
                       </p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Estado</label>
-                      <Badge 
+                      <label className="text-sm font-medium text-gray-500">
+                        Estado
+                      </label>
+                      <Badge
                         className={
-                          selectedContractType.isActive 
-                            ? "bg-green-100 text-green-800" 
+                          selectedContractType.isActive
+                            ? "bg-green-100 text-green-800"
                             : "bg-gray-100 text-gray-800"
                         }
                       >
@@ -559,7 +738,8 @@ export default function ContractTypesPage() {
                   </CardContent>
                 </Card>
 
-                {(selectedContractType.minSalary || selectedContractType.maxSalary) && (
+                {(selectedContractType.minSalary ||
+                  selectedContractType.maxSalary) && (
                   <Card className="md:col-span-2">
                     <CardHeader>
                       <CardTitle className="text-base lg:text-lg flex items-center gap-2">
@@ -570,21 +750,23 @@ export default function ContractTypesPage() {
                     <CardContent>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="text-sm font-medium text-gray-500">Salario Mínimo</label>
+                          <label className="text-sm font-medium text-gray-500">
+                            Salario Mínimo
+                          </label>
                           <p className="font-medium">
-                            {selectedContractType.minSalary 
-                              ? `$${selectedContractType.minSalary.toLocaleString()}` 
-                              : "No definido"
-                            }
+                            {selectedContractType.minSalary
+                              ? `$${selectedContractType.minSalary.toLocaleString()}`
+                              : "No definido"}
                           </p>
                         </div>
                         <div>
-                          <label className="text-sm font-medium text-gray-500">Salario Máximo</label>
+                          <label className="text-sm font-medium text-gray-500">
+                            Salario Máximo
+                          </label>
                           <p className="font-medium">
-                            {selectedContractType.maxSalary 
-                              ? `$${selectedContractType.maxSalary.toLocaleString()}` 
-                              : "No definido"
-                            }
+                            {selectedContractType.maxSalary
+                              ? `$${selectedContractType.maxSalary.toLocaleString()}`
+                              : "No definido"}
                           </p>
                         </div>
                       </div>
@@ -601,7 +783,9 @@ export default function ContractTypesPage() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-sm text-gray-700">{selectedContractType.legalRequirements}</p>
+                      <p className="text-sm text-gray-700">
+                        {selectedContractType.legalRequirements}
+                      </p>
                     </CardContent>
                   </Card>
                 )}
@@ -617,11 +801,13 @@ export default function ContractTypesPage() {
                     <CardContent>
                       <div className="max-h-60 overflow-y-auto p-3 bg-gray-50 rounded-md">
                         <pre className="text-sm text-gray-700 whitespace-pre-wrap">
-                          {selectedContractType.contractText.substring(0, 500)}...
+                          {selectedContractType.contractText.substring(0, 500)}
+                          ...
                         </pre>
                       </div>
                       <p className="text-xs text-gray-500 mt-2">
-                        Mostrando primeros 500 caracteres de {selectedContractType.contractText.length} totales
+                        Mostrando primeros 500 caracteres de{" "}
+                        {selectedContractType.contractText.length} totales
                       </p>
                     </CardContent>
                   </Card>
@@ -629,17 +815,21 @@ export default function ContractTypesPage() {
               </div>
 
               <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={() => setIsDetailOpen(false)}
                   className="w-full sm:w-auto"
                 >
                   Cerrar
                 </Button>
-                <Button 
+                <Button
                   onClick={() => {
-                    setIsDetailOpen(false);
-                    // Aquí podrías implementar la edición
+                    if (selectedContractType) {
+                      setIsDetailOpen(false);
+                      setFormMode("edit");
+                      setEditingContract(selectedContractType);
+                      setIsFormOpen(true);
+                    }
                   }}
                   className="w-full sm:w-auto"
                 >

@@ -1,6 +1,6 @@
+//client/src/pages/reports/ReportPage.tsx
 /**
  * Componente Base Genérico para Páginas de Reportes
- * Universidad Técnica de Ambato
  * 
  * Componente reutilizable que encapsula la lógica común de todas las páginas de reportes.
  */

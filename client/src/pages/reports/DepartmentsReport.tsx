@@ -1,7 +1,4 @@
-/**
- * Página de Reporte de Departamentos
- * Universidad Técnica de Ambato
- */
+//client/src/pages/reports/DepartmentsReport.tsx
 
 import { ReportPage } from './ReportPage';
 

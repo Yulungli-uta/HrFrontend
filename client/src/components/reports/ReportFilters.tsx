@@ -42,7 +42,7 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
   const handleChange = (key: keyof ReportFilter, value: any) => {
     setFilter(prev => ({
       ...prev,
-      [key]: value === '' ? undefined : value
+      [key]: value === '' || value === 'all' ? undefined : value
     }));
   };
 
@@ -92,14 +92,14 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
             <div className="space-y-2">
               <Label htmlFor="departmentId">Departamento</Label>
               <Select
-                value={filter.departmentId?.toString() || ''}
-                onValueChange={(value) => handleChange('departmentId', value ? Number(value) : undefined)}
+                value={filter.departmentId?.toString() || 'all'}
+                onValueChange={(value) => handleChange('departmentId', value)}
               >
                 <SelectTrigger id="departmentId">
                   <SelectValue placeholder="Todos los departamentos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos</SelectItem>
+                  <SelectItem value="all">Todos</SelectItem>
                   {/* TODO: Cargar departamentos dinámicamente */}
                   <SelectItem value="1">Recursos Humanos</SelectItem>
                   <SelectItem value="2">Tecnología</SelectItem>
@@ -114,14 +114,14 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
             <div className="space-y-2">
               <Label htmlFor="facultyId">Facultad</Label>
               <Select
-                value={filter.facultyId?.toString() || ''}
-                onValueChange={(value) => handleChange('facultyId', value ? Number(value) : undefined)}
+                value={filter.facultyId?.toString() || 'all'}
+                onValueChange={(value) => handleChange('facultyId', value)}
               >
                 <SelectTrigger id="facultyId">
                   <SelectValue placeholder="Todas las facultades" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas</SelectItem>
+                  <SelectItem value="all">Todas</SelectItem>
                   {/* TODO: Cargar facultades dinámicamente */}
                   <SelectItem value="1">Ingeniería</SelectItem>
                   <SelectItem value="2">Ciencias Administrativas</SelectItem>
@@ -150,14 +150,14 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
             <div className="space-y-2">
               <Label htmlFor="employeeType">Tipo de Empleado</Label>
               <Select
-                value={filter.employeeType || ''}
-                onValueChange={(value) => handleChange('employeeType', value || undefined)}
+                value={filter.employeeType || 'all'}
+                onValueChange={(value) => handleChange('employeeType', value)}
               >
                 <SelectTrigger id="employeeType">
                   <SelectValue placeholder="Todos los tipos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos</SelectItem>
+                  <SelectItem value="all">Todos</SelectItem>
                   <SelectItem value="Docente">Docente</SelectItem>
                   <SelectItem value="Administrativo">Administrativo</SelectItem>
                   <SelectItem value="Servicio">Servicio</SelectItem>
@@ -171,14 +171,14 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
             <div className="space-y-2">
               <Label htmlFor="isActive">Estado</Label>
               <Select
-                value={filter.isActive === undefined ? '' : filter.isActive.toString()}
-                onValueChange={(value) => handleChange('isActive', value === '' ? undefined : value === 'true')}
+                value={filter.isActive === undefined ? 'all' : filter.isActive.toString()}
+                onValueChange={(value) => handleChange('isActive', value)}
               >
                 <SelectTrigger id="isActive">
                   <SelectValue placeholder="Todos los estados" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos</SelectItem>
+                  <SelectItem value="all">Todos</SelectItem>
                   <SelectItem value="true">Activos</SelectItem>
                   <SelectItem value="false">Inactivos</SelectItem>
                 </SelectContent>
@@ -191,8 +191,8 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
             <div className="space-y-2">
               <Label htmlFor="includeInactive">Incluir Inactivos</Label>
               <Select
-                value={filter.includeInactive === undefined ? '' : filter.includeInactive.toString()}
-                onValueChange={(value) => handleChange('includeInactive', value === '' ? undefined : value === 'true')}
+                value={filter.includeInactive === undefined ? 'false' : filter.includeInactive.toString()}
+                onValueChange={(value) => handleChange('includeInactive', value)}
               >
                 <SelectTrigger id="includeInactive">
                   <SelectValue placeholder="Solo activos" />

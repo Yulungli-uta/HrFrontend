@@ -5,16 +5,47 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, User, FileText, Clock, Calendar, DollarSign } from "lucide-react";
-import { PersonasAPI, ContratosAPI, MarcacionesAPI, PermisosAPI } from "@/lib/api";
+import { PersonasAPI, ContratosAPI, MarcacionesAPI, PermisosAPI, TiposReferenciaAPI } from "@/lib/api";
 import { Link } from "wouter";
 import PersonaForm from "@/components/forms/PersonaForm";
+import type { RefType } from "@/lib/api";
 
 export default function PersonaDetail() {
   const { id } = useParams();
   console.log("Persona ID:", id);
+  
   // Validar que el id sea un número válido
   const personaId = id && !isNaN(parseInt(id)) ? parseInt(id) : null;
     
+  // Consulta específica para tipos de sexo (categoría SEX_TYPE)
+  const { 
+    data: sexTypesResponse, 
+    isLoading: isLoadingSexTypes 
+  } = useQuery({
+    queryKey: ["refTypes", "SEX_TYPE"],
+    queryFn: () => TiposReferenciaAPI.byCategory("SEX_TYPE"),
+    enabled: !!personaId,
+  });
+
+  // Extraer los datos de la respuesta de la API
+  // La estructura de la respuesta es { status: 'success', data: [...] }
+  const sexTypes = sexTypesResponse?.status === 'success' ? sexTypesResponse.data : [];
+  console.log("Tipos de sexo cargados:", sexTypes);
+
+  // Función para obtener el nombre del sexo basado en el ID
+  const getSexName = (sexId: number | null | undefined): string => {
+    if (!sexId) return "No especificado";
+    
+    // Buscar el tipo de sexo por ID
+    const sexType = sexTypes.find((type: RefType) => type.id === sexId || type.typeID === sexId);
+    
+    // Intentar diferentes campos posibles para el nombre
+    if (sexType) {
+      return sexType.name || sexType.description || sexType.code || `ID: ${sexId}`;
+    }
+    
+    return `ID: ${sexId}`;
+  };
 
   // Consulta de persona solo si tenemos un ID válido
   const { data: persona, isLoading, isError } = useQuery({
@@ -29,7 +60,7 @@ export default function PersonaDetail() {
     queryFn: async () => {
       if (!personaId) return [];
       const data = await ContratosAPI.list();
-      return data.filter(c => c.personaId === personaId);
+      return data.filter((c: any) => c.personaId === personaId);
     },
     enabled: !!personaId,
   });
@@ -48,8 +79,14 @@ export default function PersonaDetail() {
     enabled: !!personaId,
   });
 
+  // Crear una versión modificada de persona con el nombre del sexo
+  const personaWithSexName = persona?.status === 'success' ? {
+    ...persona.data,
+    sexName: getSexName(persona.data.sex)
+  } : null;
+
   // Manejar estado de carga general
-  if (isLoading || isLoadingContratos || isLoadingMarcaciones || isLoadingPermisos) {
+  if (isLoading || isLoadingContratos || isLoadingMarcaciones || isLoadingPermisos || isLoadingSexTypes) {
     return (
       <div className="p-6 text-center">
         <p>Cargando información de la persona...</p>
@@ -58,7 +95,20 @@ export default function PersonaDetail() {
   }
 
   // Manejar errores o ID inválido
-  if (isError || !personaId || !persona) {
+  if (isError || !personaId || !persona || persona.status === 'error') {
+    return (
+      <div className="p-6 text-center">
+        <p>Persona no encontrada</p>
+        <Link href="/personas">
+          <Button className="mt-4">Volver a Personas</Button>
+        </Link>
+      </div>
+    );
+  }
+
+  // Extraer los datos de la persona de la respuesta exitosa
+  const personaData = persona.status === 'success' ? persona.data : null;
+  if (!personaData) {
     return (
       <div className="p-6 text-center">
         <p>Persona no encontrada</p>
@@ -81,10 +131,13 @@ export default function PersonaDetail() {
           </Link>
           <div>
             <h2 className="text-2xl font-semibold text-foreground" data-testid="text-persona-name">
-              {persona.firstName} {persona.lastName}
+              {personaData.firstName} {personaData.lastName}
             </h2>
             <p className="text-sm text-muted-foreground" data-testid="text-persona-id">
-              ID: {persona.idCard}
+              ID: {personaData.idCard}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Sexo: {getSexName(personaData.sex)}
             </p>
           </div>
         </div>
@@ -139,7 +192,11 @@ export default function PersonaDetail() {
             </div>
 
             <TabsContent value="info" className="p-6">
-              <PersonaForm persona={persona} />
+              {/* Pasar la persona con el nombre del sexo al formulario */}
+              <PersonaForm 
+                persona={personaWithSexName} 
+                refTypes={sexTypes}
+              />
             </TabsContent>
 
             <TabsContent value="contracts" className="p-6">
@@ -154,7 +211,7 @@ export default function PersonaDetail() {
                 {contratos.length === 0 ? (
                   <p className="text-muted-foreground text-center py-6">No hay contratos registrados</p>
                 ) : (
-                  contratos.map((contrato) => (
+                  contratos.map((contrato: any) => (
                     <Card key={contrato.id} className="p-4">
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="font-medium">Contrato #{contrato.id}</h4>
@@ -185,7 +242,7 @@ export default function PersonaDetail() {
                 {marcaciones.length === 0 ? (
                   <p className="text-muted-foreground text-center py-6">No hay marcaciones registradas</p>
                 ) : (
-                  marcaciones.slice(0, 10).map((marcacion) => (
+                  marcaciones.slice(0, 10).map((marcacion: any) => (
                     <Card key={marcacion.id} className="p-4">
                       <div className="flex items-center justify-between">
                         <div>
@@ -210,7 +267,7 @@ export default function PersonaDetail() {
                 {permisos.length === 0 ? (
                   <p className="text-muted-foreground text-center py-6">No hay permisos registrados</p>
                 ) : (
-                  permisos.map((permiso) => (
+                  permisos.map((permiso: any) => (
                     <Card key={permiso.id} className="p-4">
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="font-medium">{permiso.type}</h4>

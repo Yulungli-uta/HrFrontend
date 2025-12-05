@@ -1,0 +1,1 @@
+import{j as e,_ as s}from"./index-DjoJwhNf.js";function t({className:t,...i}){return e.jsxDEV("div",{className:s("animate-pulse rounded-md bg-muted",t),...i},void 0,!1,{fileName:"C:/Users/yl.li/Desktop/UTA/Git_repository/HrFrontend/client/src/components/ui/skeleton.tsx",lineNumber:8,columnNumber:5},this)}export{t as S};

@@ -56,6 +56,7 @@ const ChangePasswordPage = lazy(() => import("@/pages/profile/ChangePassword"));
 const EmployeesReportPage = lazy(() => import("@/pages/reports/EmployeesReport"));
 const AttendanceReportPage = lazy(() => import("@/pages/reports/AttendanceReport"));
 const DepartmentsReportPage = lazy(() => import("@/pages/reports/DepartmentsReport"));
+const AttendanceSumaryReportPage = lazy(() => import("@/pages/reports/AttendanceSumaryReport"));
 const ReportAuditPage = lazy(() => import("@/pages/reports/ReportAudit"));
 
 // ============================================
@@ -84,21 +85,52 @@ function LoadingFallback() {
   );
 }
 
+// 🆕 Pantalla de carga inicial
+function InitialLoadingScreen() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+      <div className="text-center">
+        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+        <p className="text-gray-600 dark:text-gray-300">Cargando aplicación...</p>
+      </div>
+    </div>
+  );
+}
+
 // ============================================
 // Router
 // ============================================
 
 function AppRouter() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
 
-  if (!isAuthenticated) {
-    return (
-      <Suspense fallback={<LoadingFallback />}>
-        <LoginPage />
-      </Suspense>
-    );
+  // 🆕 Mostrar pantalla de carga mientras se verifica la autenticación
+  if (isLoading) {
+    return <InitialLoadingScreen />;
   }
 
+  // if (!isAuthenticated) {
+  //   return (
+  //     <Suspense fallback={<LoadingFallback />}>
+  //       <LoginPage />
+  //     </Suspense>
+  //   );
+  // }
+
+  // Si no está autenticado, mostrar solo login
+  if (!isAuthenticated) {
+    return (
+      <Switch>
+        <Route path="/login" component={LoginPage} />
+        <Route path="/:rest*">
+          {() => {
+            // Redirigir cualquier otra ruta a /login
+            return <Redirect to="/login" />;
+          }}
+        </Route>
+      </Switch>
+    );
+  }
   return (
     <Layout>
       <Suspense fallback={<LoadingFallback />}>
@@ -142,6 +174,7 @@ function AppRouter() {
         <Route path="/reports/employees" component={EmployeesReportPage} />
         <Route path="/reports/attendance" component={AttendanceReportPage} />
         <Route path="/reports/departments" component={DepartmentsReportPage} />
+        <Route path="/reports/attedancesumary" component={AttendanceSumaryReportPage} />
         <Route path="/reports/audit" component={ReportAuditPage} />
         
         {/* Ruta de "no encontrado" */}

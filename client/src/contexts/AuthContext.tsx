@@ -1,4 +1,4 @@
-// contexts/AuthContext.tsx (revisado v2: evita bucles de checkAuth y estados idénticos)
+// contexts/AuthContext.tsx (v3: sincronización mejorada post-login)
 import React, {
   createContext,
   useContext,
@@ -42,12 +42,11 @@ interface AuthContextType {
   refreshAuth: () => Promise<void>;
 }
 
-// 🔛 Switch de depuración por variable de entorno
 const AUTH_DEBUG = import.meta.env.VITE_DEBUG_AUTH === 'true';
 
 const debugAuthContext = (label: string, state: any) => {
   if (!AUTH_DEBUG) return;
-  console.group(`🔍 AUTH CONTEXT DEBUG → ${label}`);
+  console.group(`🔐 AUTH CONTEXT DEBUG → ${label}`);
   console.log("isAuthenticated:", state.isAuthenticated);
   console.log("user:", state.user);
   console.log("employeeDetails:", state.employeeDetails);
@@ -57,7 +56,6 @@ const debugAuthContext = (label: string, state: any) => {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const APP_CLIENT_ID = import.meta.env.VITE_APP_CLIENT_ID;
 
-// Claves de storage centralizadas
 const LS_EMPLOYEE_DETAILS = 'wsuta-employee-details';
 const LS_LAST_ACTIVITY = 'wsuta-last-activity';
 
@@ -65,11 +63,9 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-// Utilidad ligera para comparar detalles y evitar setState con objetos equivalentes
 const equalEmployeeDetails = (a: EmployeeDetails | null, b: EmployeeDetails | null) => {
   if (a === b) return true;
   if (!a || !b) return false;
-  // comparar campos clave que cambian raramente
   return (
     a.employeeID === b.employeeID &&
     a.email === b.email &&
@@ -90,26 +86,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
-  // Notificaciones WebSocket
   const clientId = APP_CLIENT_ID;
   const { isConnected, lastMessage } = useNotificationWebSocket(clientId);
 
-  // Anti-duplicado: recordar eventos de login ya procesados
   const processedLoginEventsRef = useRef<Set<string>>(new Set());
-  // Anti-carrera: evita que dos flujos (WS y checkAuth) entren al mismo tiempo
   const isProcessingLoginRef = useRef(false);
+  
+  // 🆕 Flag para evitar navegaciones duplicadas
+  const hasNavigatedAfterLoginRef = useRef(false);
 
-  // 15 minutos de inactividad
   const INACTIVITY_TIMEOUT = 15 * 60 * 1000;
   const [lastActivity, setLastActivity] = useState(Date.now());
 
-  // Refs a funciones para que el efecto de checkAuth no dependa de ellas
   const logoutRef = useRef<() => void>(() => {});
-  const doLoginStateRef = useRef<(u: UserSession, showToast?: boolean) => Promise<void>>(async () => {});
+  const doLoginStateRef = useRef<(u: UserSession, showToast?: boolean, shouldNavigate?: boolean) => Promise<void>>(async () => {});
   const fetchEmployeeDetailsRef = useRef<(email: string) => Promise<void>>(async () => {});
 
   const persistEmployeeDetails = (details: EmployeeDetails) => {
-    // evitar set si no cambia
     setEmployeeDetails((prev) => (equalEmployeeDetails(prev, details) ? prev : details));
     try {
       localStorage.setItem(LS_EMPLOYEE_DETAILS, JSON.stringify(details));
@@ -131,11 +124,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, [user]);
   fetchEmployeeDetailsRef.current = fetchEmployeeDetails;
 
-  const doLoginState = useCallback(async (userInfo: UserSession, showToast: boolean = true) => {
+  // 🆕 Parámetro shouldNavigate para controlar la navegación
+  const doLoginState = useCallback(async (
+    userInfo: UserSession, 
+    showToast: boolean = true,
+    shouldNavigate: boolean = false
+  ) => {
     setIsAuthenticated(true);
     setUser((prev) => (prev?.id === userInfo.id && prev?.email === userInfo.email ? prev : userInfo));
 
-    // cacheo de actividad
     const now = Date.now();
     setLastActivity(now);
     try { localStorage.setItem(LS_LAST_ACTIVITY, String(now)); } catch {}
@@ -143,11 +140,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     await fetchEmployeeDetailsRef.current(userInfo.email);
 
     if (showToast) {
-      toast({ title: "Inicio de sesión exitoso", description: `Bienvenido ${userInfo.displayName || userInfo.email}` });
+      toast({ 
+        title: "Inicio de sesión exitoso", 
+        description: `Bienvenido ${userInfo.displayName || userInfo.email}` 
+      });
     }
 
-    debugAuthContext("LOGIN STATE APPLIED", { isAuthenticated: true, user: userInfo, employeeDetails });
-  }, [toast, employeeDetails]);
+    // 🆕 Solo navega si se solicita explícitamente y no se ha navegado antes
+    if (shouldNavigate && !hasNavigatedAfterLoginRef.current) {
+      hasNavigatedAfterLoginRef.current = true;
+      // Pequeño delay para asegurar que el estado se ha propagado
+      setTimeout(() => {
+        setLocation('/');
+      }, 100);
+    }
+
+    debugAuthContext("LOGIN STATE APPLIED", { 
+      isAuthenticated: true, 
+      user: userInfo, 
+      employeeDetails,
+      navigated: shouldNavigate 
+    });
+  }, [toast, employeeDetails, setLocation]);
   doLoginStateRef.current = doLoginState;
 
   const logout = useCallback(() => {
@@ -155,6 +169,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser(null);
     setEmployeeDetails(null);
     tokenService.clearTokens();
+    
+    // 🆕 Reset del flag de navegación
+    hasNavigatedAfterLoginRef.current = false;
+    
     try {
       localStorage.removeItem(LS_LAST_ACTIVITY);
       localStorage.removeItem(LS_EMPLOYEE_DETAILS);
@@ -185,7 +203,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
           const userInfo = await authService.getCurrentUser(newTokens.accessToken);
           tokenService.setUserSession(userInfo);
-          await doLoginState(userInfo, false);
+          await doLoginState(userInfo, false, false); // No navegar en refresh
 
           debugAuthContext("REFRESH AUTH / TOKEN RENEWED", { isAuthenticated: true, user: userInfo, employeeDetails });
         } else {
@@ -209,7 +227,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         } else {
           const userInfo = await authService.getCurrentUser(accessToken);
           tokenService.setUserSession(userInfo);
-          await doLoginState(userInfo, false);
+          await doLoginState(userInfo, false, false); // No navegar en refresh
           debugAuthContext("REFRESH AUTH / API USERINFO", { isAuthenticated: true, user: userInfo, employeeDetails });
         }
       }
@@ -219,17 +237,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [employeeDetails, logout, doLoginState, fetchEmployeeDetails]);
 
-  // ===========================
-  // WebSocket: manejar Login UNA SOLA VEZ por evento
-  // ===========================
+  // WebSocket: manejar Login
   useEffect(() => {
     if (!lastMessage || lastMessage.eventType !== 'Login') return;
 
     const eventKey = (lastMessage as any).eventId || (lastMessage as any).id || JSON.stringify({ t: lastMessage.eventType, u: (lastMessage as any)?.data?.email });
-    if (processedLoginEventsRef.current.has(eventKey)) return; // ya procesado
+    if (processedLoginEventsRef.current.has(eventKey)) return;
 
     processedLoginEventsRef.current.add(eventKey);
-    if (isProcessingLoginRef.current) return; // otro flujo en curso
+    if (isProcessingLoginRef.current) return;
     isProcessingLoginRef.current = true;
 
     (async () => {
@@ -244,21 +260,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           displayName: (data as any).displayName,
           userType: 'AzureAD'
         };
-        await doLoginStateRef.current(wsUser, true);
+        
+        // 🆕 WebSocket login SÍ debe navegar
+        await doLoginStateRef.current(wsUser, true, true);
         debugAuthContext("LOGIN VIA WEBSOCKET", { isAuthenticated: true, user: wsUser, employeeDetails });
-        setLocation('/');
       } catch (e) {
         console.error('WS login handling error:', e);
       } finally {
         isProcessingLoginRef.current = false;
       }
     })();
-  // deps mínimas para no re-procesar
-  }, [lastMessage, setLocation]);
+  }, [lastMessage]);
 
-  // ===========================
-  // Revisión de sesión al montar (una sola vez)
-  // ===========================
+  // Revisión de sesión al montar
   useEffect(() => {
     let active = true;
     const checkAuth = async () => {
@@ -271,7 +285,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           return;
         }
 
-        // Si ya hay un flujo WS en curso, espera a que termine para no duplicar
         if (isProcessingLoginRef.current) return;
 
         if (tokenService.isTokenExpired(accessToken)) {
@@ -282,7 +295,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               tokenService.setTokens(newTokens);
               const userInfo = await authService.getCurrentUser(newTokens.accessToken);
               tokenService.setUserSession(userInfo);
-              await doLoginStateRef.current(userInfo, false);
+              await doLoginStateRef.current(userInfo, false, false); // No navegar en checkAuth
               debugAuthContext("CHECK AUTH / REFRESH OK", { isAuthenticated: true, user: userInfo, employeeDetails });
             } catch (error) {
               logoutRef.current();
@@ -308,7 +321,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           } else {
             const userInfo = await authService.getCurrentUser(accessToken);
             tokenService.setUserSession(userInfo);
-            await doLoginStateRef.current(userInfo, false);
+            await doLoginStateRef.current(userInfo, false, false); // No navegar en checkAuth
             debugAuthContext("CHECK AUTH / API USERINFO", { isAuthenticated: true, user: userInfo, employeeDetails });
           }
         }
@@ -321,12 +334,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     checkAuth();
     return () => { active = false; };
-    // ⚠️ Intencionalmente sin dependencias para que no se re-ejecute en cada cambio de estado
   }, []);
 
-  // ===========================
-  // Inactividad (cierre de sesión)
-  // ===========================
+  // Inactividad
   const updateActivity = useCallback(() => {
     const now = Date.now();
     setLastActivity(now);
@@ -356,9 +366,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
   }, [isAuthenticated, lastActivity, toast, updateActivity]);
 
-  // ===========================
-  // Flujos de login manuales
-  // ===========================
+  // Login local
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       setIsLoading(true);
@@ -370,7 +378,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       tokenService.setTokens(tokens);
       tokenService.setUserSession(userInfo);
 
-      await doLoginState(userInfo, true);
+      // 🆕 Login local NO navega aquí (lo hará Login.tsx)
+      await doLoginState(userInfo, true, false);
       debugAuthContext("LOGIN LOCAL", { isAuthenticated: true, user: userInfo, employeeDetails });
       return true;
     } catch (error: any) {
@@ -386,12 +395,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsLoading(true);
       const { url, state } = await authService.getAzureAuthUrl();
       sessionStorage.setItem("oauth_state", state);
-      // Abrimos popup; el flujo continuará por WebSocket -> no mantengas loading indefinido
       window.open(url, 'office365login', 'width=600,height=700,left=200,top=100');
     } catch (error: any) {
       toast({ title: "Error de autenticación", description: error?.message || "No se pudo iniciar sesión con Office 365", variant: "destructive" });
     } finally {
-      // Dejamos que la UI vuelva a interactiva. El estado real llegará vía WebSocket
       setIsLoading(false);
     }
   };

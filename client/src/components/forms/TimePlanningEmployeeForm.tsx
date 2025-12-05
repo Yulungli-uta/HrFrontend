@@ -1,4 +1,4 @@
-// src/components/forms/TimePlanningEmployeeForm.tsx
+// client/src/components/person-detail/TimePlanningEmployeeForm.tsx
 import { useState, useEffect } from "react";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle

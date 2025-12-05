@@ -1,8 +1,4 @@
-/**
- * Página de Reporte de Empleados
- * Universidad Técnica de Ambato
- */
-
+//client/src/pages/reports/EmployeesReport.tsx
 import { ReportPage } from './ReportPage';
 
 export function EmployeesReport() {

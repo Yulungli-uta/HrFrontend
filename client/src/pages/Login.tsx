@@ -18,10 +18,10 @@ export default function LoginPage() {
   const [, setLocation] = useLocation();
   const { login, loginWithOffice365, isLoading: authLoading, isAuthenticated, isWebSocketConnected } = useAuth();
 
-  // Respaldo: si por cualquier razón ya estás autenticado, navega.
+  // Respaldo: si ya está autenticado, navega
   useEffect(() => {
     if (isAuthenticated) {
-      setLocation("/"); // o "/dashboard" si prefieres
+      setLocation("/");
     }
   }, [isAuthenticated, setLocation]);
 
@@ -36,8 +36,10 @@ export default function LoginPage() {
           title: "Inicio de sesión exitoso",
           description: "Bienvenido al Sistema UTA",
         });
-        // ✅ Navega ya, sin esperar al efecto
-        setLocation("/"); // o "/dashboard"
+        
+        // ✅ Espera un momento antes de navegar para que el estado se propague
+        await new Promise(resolve => setTimeout(resolve, 300));
+        setLocation("/");
         return;
       }
       throw new Error("Credenciales inválidas");
@@ -92,8 +94,8 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent>
           {/* Indicador de estado de WebSocket */}
-          <div className={`mb-4 text-sm ${isWebSocketConnected ? 'text-green-600' : 'text-red-600'}`}>
-            WebSocket: {isWebSocketConnected ? 'Conectado' : 'Desconectado'}
+          <div className={`mb-4 text-sm text-center ${isWebSocketConnected ? 'text-green-600' : 'text-amber-600'}`}>
+            WebSocket: {isWebSocketConnected ? '✓ Conectado' : '○ Desconectado'}
           </div>                   
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
@@ -112,6 +114,7 @@ export default function LoginPage() {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     required
+                    disabled={loading}
                     data-testid="input-username"
                   />
                 </div>
@@ -124,6 +127,7 @@ export default function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
+                    disabled={loading}
                     data-testid="input-password"
                   />
                 </div>
@@ -148,7 +152,6 @@ export default function LoginPage() {
                   onClick={handleOffice365Login}
                   disabled={loading}
                 >
-                  {/* Ícono simple genérico */}
                   <svg className="w-5 h-5 mr-2" viewBox="0 0 23 23" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M11.6666 9.16667H21.6666V12.5H11.6666V9.16667Z" fill="white"/>
                     <path d="M11.6666 14.1667H21.6666V17.5H11.6666V14.1667Z" fill="white"/>

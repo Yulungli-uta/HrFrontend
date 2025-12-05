@@ -11,6 +11,8 @@ import { tokenService } from '@/services/auth';
 // ✅ Necesario para el retry 401
 import { authService } from '@/services/auth';
 
+import type { Department } from '@/types/department';
+
 export interface HolidayResponseDTO {
   holidayID: number;
   name: string;
@@ -105,6 +107,17 @@ export interface FileDeleteResponseDto {
   filePath?: string;
 }
 
+
+export interface RefType {
+  typeID: number;
+  category?: string;
+  code?: string;
+  name: string;
+  description: string;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string | null;
+}
 // --------------------------------------------------------------------------
 // CONFIGURACIÓN CENTRALIZADA (EXISTENTE)
 // --------------------------------------------------------------------------
@@ -767,6 +780,12 @@ export const PermisosAPI = {
     apiFetch<any>(`/api/v1/rh/permissions/bossId/${employeeId}`)
 };
 
+export const AreaConocimientoAPI = {
+  ...createApiService<any, any>("/api/v1/rh/cv/knowledgeArea"),
+  byParentId: (parentId: number): Promise<ApiResponse<any[]>> =>
+    apiFetch<any[]>(`/api/v1/rh/cv/knowledgeArea/parentId/${parentId}`),
+};
+
 // Vacaciones API
 export const VacacionesAPI = {
   ...createApiService<Vacation, InsertVacation>("/api/v1/rh/vacations"),
@@ -776,8 +795,6 @@ export const VacacionesAPI = {
     apiFetch<any>(`/api/v1/rh/vacations/bossId/${employeeId}`)
 };
 
-// Publicaciones API
-export const PublicacionesAPI = createApiService<Publication, InsertPublication>("/api/v1/rh/cv/publications");
 
 // Health Check API
 export const HealthAPI = {
@@ -789,7 +806,7 @@ export const HealthAPI = {
 export const TiposReferenciaAPI = {
   ...createApiService<any, any>("/api/v1/rh/ref/types"),
   byCategory: (category: string): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`/api/v1/rh/ref/types/category/${category}`)
+    apiFetch<any[]>(`/api/v1/rh/ref/types/category/${category}`),
 };
 
 // Servicios especializados para AttendancePunches
@@ -921,41 +938,136 @@ export const HolidaysAPI = {
     apiFetch<boolean>(`/api/v1/rh/holiday/check/${date}`)
 };
 
+export const ProvinciasAPI = {
+  ...createApiService<any, any>("/api/v1/rh/geo/provinces"),
+
+  getByCountry: (countryId: number): Promise<ApiResponse<any[]>> =>
+    apiFetch<any[]>(`/api/v1/rh/geo/provinces/country/${countryId}`),
+};
+
+export const CantonesAPI = {
+  ...createApiService<any, any>("/api/v1/rh/geo/cantons"),
+
+  getByProvince: (provinceId: number): Promise<ApiResponse<any[]>> =>
+    apiFetch<any[]>(`/api/v1/rh/geo/cantons/province/${provinceId}`),
+};
+// --------------------------------------------------------------------------
+// HOJA DE VIDA - SERVICIOS CRUD EXISTENTES (SIN CAMBIOS)
+// -
+
+// Publicaciones API
+export const PublicacionesAPI = {
+  ...createApiService<Publication, InsertPublication>("/api/v1/rh/cv/publications"),
+  getByPersonId: (PersonId: number): Promise<ApiResponse<any>> =>
+    apiFetch<any>(`/api/v1/rh/cv/publications/person/${PersonId}`),
+};
+
+export const EnfermedadesCatastroficasAPI = {
+  ...createApiService<any, any>("/api/v1/rh/cv/catastrophic-illnesses"),
+
+  getByPersonId: (PersonId: number): Promise<ApiResponse<any>> =>
+    apiFetch<any>(`/api/v1/rh/cv/catastrophic-illnesses/person/${PersonId}`),
+};
+export const CapacitacionesAPI = {
+  ...createApiService<any, any>("/api/v1/rh/cv/trainings"),
+
+  getByPersonId: (PersonId: number): Promise<ApiResponse<any>> =>
+    apiFetch<any>(`/api/v1/rh/cv/trainings/person/${PersonId}`),  
+};
+
+export const ExperienciasLaboralesAPI = {
+  ...createApiService<any, any>("/api/v1/rh/cv/work-experiences"),
+  
+  getByPersonId: (PersonId: number): Promise<ApiResponse<any>> =>
+    apiFetch<any>(`/api/v1/rh/cv/work-experiences/person/${PersonId}`),  
+};
+
+export const CuentasBancariasAPI = {
+  ...createApiService<any, any>("/api/v1/rh/cv/bank-accounts"),
+
+  getByPersonId: (PersonId: number): Promise<ApiResponse<any>> =>
+    apiFetch<any>(`/api/v1/rh/cv/bank-accounts/person/${PersonId}`),  
+};
+export const LibrosAPI = {
+  ...createApiService<any, any>("/api/v1/rh/cv/books"),
+
+  getByPersonId: (PersonId: number): Promise<ApiResponse<any>> =>   
+    apiFetch<any>(`/api/v1/rh/cv/books/person/${PersonId}`),
+};
+
+export const NivelesEducativosAPI = {
+  ...createApiService<any, any>("/api/v1/rh/cv/education-levels"),
+  
+  getByPersonId: (PersonId: number): Promise<ApiResponse<any>> =>   
+    apiFetch<any>(`/api/v1/rh/cv/education-levels/person/${PersonId}`),
+};
+
+export const ContactosEmergenciaAPI = {
+  ...createApiService<any, any>("/api/v1/rh/cv/emergency-contacts"),
+  
+  getByPersonId: (PersonId: number): Promise<ApiResponse<any>> =>   
+    apiFetch<any>(`/api/v1/rh/cv/emergency-contacts/person/${PersonId}`),
+};
+export const CargasFamiliaresAPI = {
+  ...createApiService<any, any>("/api/v1/rh/cv/family-burden"),
+    
+  getByPersonId: (PersonId: number): Promise<ApiResponse<any>> =>   
+    apiFetch<any>(`/api/v1/rh/cv/family-burden/person/${PersonId}`),
+};
+
+export const DepartamentosAPI = {
+  ... createApiService<any, any>("/api/v1/rh/departments"),
+
+  update: async (id: number, data: any): Promise<ApiResponse<Department>> => {
+    try {
+      const response = await api.put(`/api/v1/rh/departments/${id}`, data);
+      return { status: "success", data: response.data };
+    } catch (error: any) {
+      return { 
+        status: "error", 
+        error: error.response?.data || { 
+          title: 'Error de red', 
+          status: error.response?.status || 500,
+          detail: 'No se pudo conectar con el servidor'
+        } 
+      };
+    }
+  },
+};
+
 // --------------------------------------------------------------------------
 // SERVICIOS CRUD EXISTENTES (SIN CAMBIOS)
 // --------------------------------------------------------------------------
-
+export const PaisesAPI = createApiService<any, any>("/api/v1/rh/geo/countries");
 export const DireccionesAPI = createApiService<any, any>("/api/v1/rh/cv/addresses");
 export const CalculosAsistenciaAPI = createApiService<any, any>("/api/v1/rh/attendance/calculations");
 export const AuditoriaAPI = createApiService<any, any>("/api/v1/rh/audit");
-export const CuentasBancariasAPI = createApiService<any, any>("/api/v1/rh/cv/bank-accounts");
-export const LibrosAPI = createApiService<any, any>("/api/v1/rh/cv/books");
-export const CantonesAPI = createApiService<any, any>("/api/v1/rh/geo/cantons");
-export const EnfermedadesCatastroficasAPI = createApiService<any, any>("/api/v1/rh/cv/catastrophic-illnesses");
-export const PaisesAPI = createApiService<any, any>("/api/v1/rh/geo/countries");
-export const DepartamentosAPI = createApiService<any, any>("/api/v1/rh/departments");
-export const NivelesEducativosAPI = createApiService<any, any>("/api/v1/rh/cv/education-levels");
-export const ContactosEmergenciaAPI = createApiService<any, any>("/api/v1/rh/cv/emergency-contacts");
+
+
+
+
+//export const ProvinciasAPI = createApiService<any, any>("/api/v1/rh/geo/provinces");
+//export const CantonesAPI = createApiService<any, any>("/api/v1/rh/geo/cantons");
+
+
 export const HorariosEmpleadosAPI = createApiService<any, any>("/api/v1/rh/employee-schedules");
 export const EmpleadosAPI = createApiService<any, any>("/api/v1/rh/employees");
 export const FacultadesAPI = createApiService<any, any>("/api/v1/rh/faculties");
-export const CargasFamiliaresAPI = createApiService<any, any>("/api/v1/rh/cv/family-burden");
+
 export const InstitucionesAPI = createApiService<any, any>("/api/v1/rh/cv/institutions");
 export const HorasExtrasAPI = createApiService<any, any>("/api/v1/rh/overtime");
 export const NominaAPI = createApiService<any, any>("/api/v1/rh/payroll");
 export const LineasNominaAPI = createApiService<any, any>("/api/v1/rh/payroll-lines");
 export const TiposPermisosAPI = createApiService<any, any>("/api/v1/rh/permission-types");
 export const MovimientosPersonalAPI = createApiService<any, any>("/api/v1/rh/personnel-movements");
-export const ProvinciasAPI = createApiService<any, any>("/api/v1/rh/geo/provinces");
+
 //export const JustificacionesMarcacionesAPI = createApiService<any, any>("/api/v1/rh/attendance/punch-justifications");
 export const HistorialSalarialAPI = createApiService<any, any>("/api/v1/rh/salary-history");
 export const HorariosAPI = createApiService<any, any>("/api/v1/rh/schedules");
 export const SubrogacionesAPI = createApiService<any, any>("/api/v1/rh/subrogations");
 export const RegistrosRecuperacionTiempoAPI = createApiService<any, any>("/api/v1/rh/time-recovery/logs");
 export const PlanesRecuperacionTiempoAPI = createApiService<any, any>("/api/v1/rh/time-recovery/plans");
-export const CapacitacionesAPI = createApiService<any, any>("/api/v1/rh/cv/trainings");
-export const ExperienciasLaboralesAPI = createApiService<any, any>("/api/v1/rh/cv/work-experiences");
-export const CargosAPI = createApiService<any, any>("/api/v1/rh/jobs");
+
 export const ContractRequestAPI = createApiService<any, any>("/api/v1/rh/cv/contract-request");
 export const FinancialCertificationAPI = createApiService<any, any>("/api/v1/rh/financial-certification");
 export const ParametersAPI = createApiService<any, any>("/api/v1/rh/cv/parameters");
@@ -965,7 +1077,7 @@ export const ContractTypeAPI = createApiService<any, any>("/api/v1/rh/contract-t
 export const DegreeAPI = createApiService<any, any>("/api/v1/rh/degree");
 export const JobActivityAPI = createApiService<any, any>("/api/v1/rh/job-activity");
 export const OccupationalGroupAPI = createApiService<any, any>("/api/v1/rh/occupational-group");
-
+export const CargosAPI = createApiService<any, any>("/api/v1/rh/jobs");
 // --------------------------------------------------------------------------
 // 🆕 MEJORAS EN FILE MANAGEMENT API (corregido uso de FILES_BASE_URL)
 // --------------------------------------------------------------------------
@@ -1191,6 +1303,7 @@ import type {
   CreateRoleMenuItemDto, UpdateRoleMenuItemDto,
   ChangePasswordDto, ChangePasswordResponse
 } from '@/types/auth';
+import { get } from 'react-hook-form';
 
 // (Bloque de APIs comentadas se mantiene sin cambios)
 /*

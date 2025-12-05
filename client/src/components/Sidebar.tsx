@@ -33,8 +33,8 @@ import {
   MapPin,
   Lock,
   ClipboardCheck,
-  Search, // Importamos el ícono de búsqueda
-  X // Importamos el ícono para limpiar búsqueda
+  Search,
+  X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -43,8 +43,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import LogoUTA from "@assets/LogoUTA.png";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { tokenService } from '@/services/auth';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface SidebarProps {
   onLogout?: () => void;
@@ -115,24 +116,68 @@ const AUTH_API_BASE_URL = import.meta.env.VITE_AUTH_API_BASE_URL || "http://loca
 export default function Sidebar({ onLogout, collapsed = false }: SidebarProps) {
   const [location] = useLocation();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
-  const [navGroups, setNavGroups] = useState<NavGroup[]>([]);
+  const [navGroups, setNavGroups] = useState<NavGroup[]>([
+    {
+      title: "Principal",
+      icon: LayoutDashboard,
+      initiallyOpen: true,
+      items: [
+        {
+          path: "/dashboard",
+          label: "Dashboard",
+          icon: LayoutDashboard
+        }
+      ]
+    }
+  ]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState(""); // Estado para el término de búsqueda
+  const [searchTerm, setSearchTerm] = useState("");
+  
+  const isMounted = useRef(true);
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const { isAuthenticated } = useAuth();
+  
+  // 🆕 Flag para evitar cargar antes de tiempo
+  const hasLoadedMenuRef = useRef(false);
 
   useEffect(() => {
-    const fetchMenuData = async () => {
+    isMounted.current = true;
+    
+    return () => {
+      isMounted.current = false;
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (retryTimeoutRef.current) {
+      clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = null;
+    }
+
+    const fetchMenuData = async (retryCount = 0) => {
+      if (!isMounted.current) return;
+
+      // 🆕 Delay inicial más largo para asegurar que el token esté listo
+      if (retryCount === 0) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
       try {
-        setLoading(true);
+        if (retryCount === 0) {
+          setLoading(true);
+        }
         setError(null);
         
-        // Verificar si tenemos un token de acceso
         const accessToken = tokenService.getAccessToken();
         if (!accessToken) {
+          console.warn("No hay token de acceso disponible, reintentando...");
           throw new Error("No hay token de autenticación disponible");
         }
         
-        // Usar la API de autenticación para obtener el menú
         const response = await fetch(`${AUTH_API_BASE_URL}/api/menu/user`, {
           method: 'GET',
           headers: {
@@ -141,15 +186,16 @@ export default function Sidebar({ onLogout, collapsed = false }: SidebarProps) {
           }
         });
         
-        // Verificar si la respuesta es JSON
         const contentType = response.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) {
-          // Si no es JSON, obtener el texto para diagnosticar el problema
           const textResponse = await response.text();
           console.error("Respuesta no JSON recibida:", textResponse.substring(0, 200));
           
           if (response.status === 404) {
-            throw new Error("Endpoint de menú no encontrado (404)");
+            console.warn("Endpoint de menú no encontrado (404), usando menú por defecto");
+            setError(null);
+            hasLoadedMenuRef.current = true;
+            return;
           } else if (response.status === 401 || response.status === 403) {
             throw new Error("No autorizado para acceder al menú");
           } else {
@@ -158,31 +204,33 @@ export default function Sidebar({ onLogout, collapsed = false }: SidebarProps) {
         }
         
         if (!response.ok) {
+          if (response.status === 404) {
+            console.warn("Endpoint de menú no encontrado (404), usando menú por defecto");
+            setError(null);
+            hasLoadedMenuRef.current = true;
+            return;
+          }
           throw new Error(`Error ${response.status}: ${response.statusText}`);
         }
         
         const result = await response.json();
         
         if (!result.success || !result.data || result.data.length === 0) {
-          setNavGroups([]);
-          setError("No tiene asignada ninguna opción de menú");
+          console.warn("No tiene asignada ninguna opción de menú, usando menú por defecto");
+          setError(null);
+          hasLoadedMenuRef.current = true;
           return;
         }
         
-        // Procesar los datos del menú
         const menuItems = result.data;
         
-        // Obtener los grupos principales (parentId es null)
         const mainGroups = menuItems
           .filter(item => item.parentId === null)
           .sort((a, b) => a.order - b.order);
         
-        // Crear la estructura de grupos con sus items
         const transformedGroups: NavGroup[] = mainGroups.map(group => {
-          // Obtener el componente de icono
           const IconComponent = iconMap[group.icon] || Folder;
           
-          // Encontrar los items que pertenecen a este grupo
           const groupItems = menuItems
             .filter(item => item.parentId === group.id && item.url !== null)
             .sort((a, b) => a.order - b.order)
@@ -201,28 +249,66 @@ export default function Sidebar({ onLogout, collapsed = false }: SidebarProps) {
             initiallyOpen: groupItems.length > 0,
             items: groupItems
           };
-        }).filter(group => group.items.length > 0); // Solo mostrar grupos con items
+        }).filter(group => group.items.length > 0);
         
-        setNavGroups(transformedGroups);
-        
-        // Inicializar el estado de grupos abiertos
-        const initialOpenState: Record<string, boolean> = {};
-        transformedGroups.forEach(group => {
-          const key = group.title.toLowerCase().replace(/\s+/g, '-');
-          initialOpenState[key] = group.initiallyOpen || false;
-        });
-        setOpenGroups(initialOpenState);
+        if (transformedGroups.length > 0 && isMounted.current) {
+          setNavGroups(transformedGroups);
+          
+          const initialOpenState: Record<string, boolean> = {};
+          transformedGroups.forEach(group => {
+            const key = group.title.toLowerCase().replace(/\s+/g, '-');
+            initialOpenState[key] = group.initiallyOpen || false;
+          });
+          setOpenGroups(initialOpenState);
+          hasLoadedMenuRef.current = true;
+        }
         
       } catch (err: any) {
-        console.error("Error fetching menu:", err);
-        setError(err.message || "Error al cargar el menú. Verifique la conexión con el servidor.");
+        console.error(`Error fetching menu (intento ${retryCount + 1}):`, err);
+        
+        // 🆕 Reintentos más inteligentes
+        const maxRetries = 3;
+        if (retryCount < maxRetries && !hasLoadedMenuRef.current) {
+          const delay = 1000 * Math.pow(2, retryCount);
+          console.log(`Reintentando en ${delay}ms... (${retryCount + 1}/${maxRetries})`);
+          
+          retryTimeoutRef.current = setTimeout(() => {
+            if (isMounted.current) {
+              fetchMenuData(retryCount + 1);
+            }
+          }, delay);
+          return;
+        }
+        
+        if (isMounted.current) {
+          const errorMessage = err.message || "Error al cargar el menú. Verifique la conexión con el servidor.";
+          
+          if (errorMessage.includes("No hay token")) {
+            setError("Usuario no autenticado");
+          } else {
+            setError(errorMessage);
+          }
+        }
       } finally {
-        setLoading(false);
+        if (isMounted.current && retryTimeoutRef.current === null) {
+          setLoading(false);
+        }
       }
     };
 
-    fetchMenuData();
-  }, []);
+    // 🆕 Solo cargar si está autenticado Y no se ha cargado antes
+    if (isAuthenticated && !hasLoadedMenuRef.current) {
+      fetchMenuData();
+    } else if (!isAuthenticated) {
+      setLoading(false);
+      setError("No autenticado");
+      hasLoadedMenuRef.current = false;
+    } else {
+      // Ya está cargado
+      setLoading(false);
+    }
+
+  }, [isAuthenticated]);
 
   const toggleGroup = (groupKey: string) => {
     setOpenGroups(prev => ({ ...prev, [groupKey]: !prev[groupKey] }));
@@ -307,6 +393,24 @@ export default function Sidebar({ onLogout, collapsed = false }: SidebarProps) {
   }
 
   if (error || navGroups.length === 0) {
+    // No mostrar error si es "No autenticado" - eso significa que aún no se ha iniciado sesión
+    if (error === "No autenticado") {
+      return (
+        <aside className={`${collapsed ? 'w-16' : 'w-60'} shadow-lg border-r flex flex-col transition-all duration-300`}
+          style={{ 
+            backgroundColor: '#ffffff',
+            borderColor: '#e2e8f0'
+          }}>
+          <div className="flex flex-col items-center justify-center h-full p-4 text-center">
+            <Lock className="h-8 w-8 text-gray-400 mb-2" />
+            <p className="text-sm text-muted-foreground">
+              Inicie sesión para ver el menú
+            </p>
+          </div>
+        </aside>
+      );
+    }
+
     return (
       <aside className={`${collapsed ? 'w-16' : 'w-60'} shadow-lg border-r flex flex-col transition-all duration-300`}
         style={{ 

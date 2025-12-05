@@ -7,7 +7,7 @@
 // Tipos Base
 // ============================================
 
-export type ReportType = 'employees' | 'attendance' | 'departments';
+export type ReportType = 'employees' | 'attendance' | 'departments' | 'attendancesumary';
 export type ReportFormat = 'pdf' | 'excel';
 
 // ============================================
@@ -63,6 +63,14 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
     icon: 'Building',
     availableFormats: ['pdf', 'excel'],
     availableFilters: ['facultyId', 'includeInactive']
+  },
+  attendancesumary: {
+    type: 'attendancesumary',
+    title: 'Reporte de resumen de Asistencias',
+    description: 'Estadísticas y resumen por asistencia',
+    icon: 'Building',
+    availableFormats: ['pdf', 'excel'],
+    availableFilters: ['startDate', 'endDate',  'employeeId', 'employeeType']
   }
 };
 
