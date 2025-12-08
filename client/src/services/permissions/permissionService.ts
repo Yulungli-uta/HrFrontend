@@ -278,22 +278,64 @@ export class PermissionService {
 
   /**
    * Obtiene todos los datos de permisos del usuario (roles + permisos)
+   * Usa el nuevo endpoint /api/users/{userId}/permissions que devuelve todo en una sola llamada
    */
   static async fetchAllPermissions(userId: string): Promise<{
     roles: string[];
     permissions: string[];
     menuItems: any[];
   }> {
-    const [roles, permissionsData] = await Promise.all([
-      this.fetchUserRoles(userId),
-      this.fetchUserPermissions(userId),
-    ]);
+    try {
+      const accessToken = tokenService.getAccessToken();
+      if (!accessToken) {
+        throw new Error('No hay token de acceso');
+      }
 
-    return {
-      roles,
-      permissions: permissionsData.permissions,
-      menuItems: permissionsData.menuItems,
-    };
+      const response = await fetch(`${this.getApiBaseUrl()}/api/users/${userId}/permissions`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        const { roles, permissions, menuItems } = result.data;
+        
+        // Extraer solo los nombres de roles
+        const roleNames = roles.map((r: any) => r.roleName || r);
+        
+        // Guardar en caché
+        PermissionCacheService.setRoles(roleNames, userId);
+        PermissionCacheService.setPermissions(permissions, userId);
+        PermissionCacheService.setMenuItems(menuItems, userId);
+        
+        if (import.meta.env.DEV) {
+          console.log('🔐 Permisos cargados desde backend:', {
+            roles: roleNames.length,
+            permissions: permissions.length,
+            menuItems: menuItems.length,
+          });
+        }
+        
+        return {
+          roles: roleNames,
+          permissions,
+          menuItems,
+        };
+      }
+
+      return { roles: [], permissions: [], menuItems: [] };
+    } catch (error) {
+      console.error('Error obteniendo permisos completos:', error);
+      return { roles: [], permissions: [], menuItems: [] };
+    }
   }
 
   /**
