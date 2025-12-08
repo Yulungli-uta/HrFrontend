@@ -13,15 +13,19 @@ export interface UserSession {
   username: string;
   fullName: string;
   email: string;
-  role?: string;
+  role?: string;              // Rol principal (deprecated, usar roles[])
   department?: string;
   avatar?: string;
   userType?: string;
   displayName?: string;
   isActive?: boolean;
   azureObjectId?: string;
-  permissions?: string[];
+  permissions?: string[];     // URLs de menús asignados
   lastLogin?: string;
+  
+  // ✅ NUEVOS CAMPOS PARA AUTORIZACIÓN
+  roles?: string[];           // Lista de roles del usuario ["Admin", "Manager"]
+  menuItems?: MenuItem[];     // Menús completos asignados al usuario
 }
 
 export interface LoginRequest {

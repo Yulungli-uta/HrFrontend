@@ -130,6 +130,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     showToast: boolean = true,
     shouldNavigate: boolean = false
   ) => {
+    // ✅ OBTENER ROLES Y PERMISOS CON CACHÉ
+    try {
+      const { PermissionService } = await import('@/services/permissions');
+      const permissionsData = await PermissionService.fetchAllPermissions(userInfo.id);
+      
+      userInfo.roles = permissionsData.roles;
+      userInfo.permissions = permissionsData.permissions;
+      userInfo.menuItems = permissionsData.menuItems;
+      
+      if (import.meta.env.DEV) {
+        console.log('🔐 Permisos cargados:', {
+          roles: permissionsData.roles,
+          permissions: permissionsData.permissions.length,
+          menuItems: permissionsData.menuItems.length,
+        });
+      }
+    } catch (error) {
+      console.error('Error obteniendo permisos:', error);
+      // Continuar sin permisos en caso de error
+      userInfo.roles = [];
+      userInfo.permissions = [];
+      userInfo.menuItems = [];
+    }
+    
     setIsAuthenticated(true);
     setUser((prev) => (prev?.id === userInfo.id && prev?.email === userInfo.email ? prev : userInfo));
 
@@ -172,6 +196,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     // 🆕 Reset del flag de navegación
     hasNavigatedAfterLoginRef.current = false;
+    
+    // ✅ INVALIDAR CACHÉ DE PERMISOS
+    try {
+      import('@/services/permissions').then(({ CacheService }) => {
+        CacheService.clearAll();
+      });
+    } catch (error) {
+      console.error('Error limpiando caché:', error);
+    }
     
     try {
       localStorage.removeItem(LS_LAST_ACTIVITY);

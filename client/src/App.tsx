@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ErrorBoundary } from "react-error-boundary";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 // Componentes que se cargan inmediatamente (críticos)
 import Layout from "@/components/Layout";
@@ -135,50 +136,314 @@ function AppRouter() {
     <Layout>
       <Suspense fallback={<LoadingFallback />}>
         <Switch>
-        {/* Rutas principales */}
-        <Route path="/" component={Dashboard} />
-        <Route path="/people" component={PeoplePage} />
-        <Route path="/people/:id" component={PersonDetail} />
-        <Route path="/employees" component={EmployeesPage} />
-        <Route path="/faculties" component={FacultiesPage} />
-        <Route path="/departments" component={DepartmentsPage} />
-        <Route path="/contracts" component={ContractsPage} />
-        <Route path="/permissions" component={PermissionsPage} />
-        <Route path="/vacations" component={VacationsPage} />
-        <Route path="/attendance" component={AttendancePage} />
-        <Route path="/payroll" component={PayrollPage} />
-        <Route path="/schedules" component={SchedulesPage} />
-        <Route path="/overtime" component={OvertimePage} />
-        <Route path="/reports" component={ReportsPage} />
-        <Route path="/justifications" component={JustificationPage} />
-        <Route path="/contractType" component={ContractTypePage} />
-        <Route path="/contractRequest" component={ContractRequestPage} />
-        <Route path="/certFinance" component={CertificationFinancePage} />
-        <Route path="/shedulerAssig" component={EmployeeSchedulesPage} />
-        <Route path="/permissionTypes" component={PermissionTypesPage} />
-        <Route path="/ApprovalsPermissions" component={ApprovalsPermissionsPage} />
-        <Route path="/jobActivities" component={JobActivitiesPage} />
-        <Route path="/referenceTypes" component={ReferenceTypesPage} />
-        <Route path="/holidays" component={HolidaysPage} />
-        <Route path="/FilesUploadPage" component={FilesUploadPage} />
-        
-        {/* Rutas de Administracion */}
-        <Route path="/admin/users" component={UsersPage} />
-        <Route path="/admin/roles" component={RolesPage} />
-        <Route path="/admin/user-roles" component={UserRolesPage} />
-        <Route path="/admin/menu-items" component={MenuItemsPage} />
-        <Route path="/admin/role-menu-items" component={RoleMenuItemsPage} />
-        <Route path="/profile/change-password" component={ChangePasswordPage} />
-        
-        {/* Rutas de Reportes */}
-        <Route path="/reports/employees" component={EmployeesReportPage} />
-        <Route path="/reports/attendance" component={AttendanceReportPage} />
-        <Route path="/reports/departments" component={DepartmentsReportPage} />
-        <Route path="/reports/attedancesumary" component={AttendanceSumaryReportPage} />
-        <Route path="/reports/audit" component={ReportAuditPage} />
-        
-        {/* Ruta de "no encontrado" */}
-        <Route component={NotFound} />
+          {/* ========================================== */}
+          {/* RUTAS PÚBLICAS (para usuarios autenticados) */}
+          {/* ========================================== */}
+          <Route path="/" component={Dashboard} />
+          <Route path="/profile/change-password" component={ChangePasswordPage} />
+
+          {/* ========================================== */}
+          {/* RUTAS PROTEGIDAS - Gestión de Personal */}
+          {/* ========================================== */}
+          
+          <Route path="/people">
+            {() => (
+              <ProtectedRoute requiredPath="/people">
+                <PeoplePage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          <Route path="/people/:id">
+            {(params) => (
+              <ProtectedRoute requiredPath="/people">
+                <PersonDetail />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          <Route path="/employees">
+            {() => (
+              <ProtectedRoute requiredPath="/employees">
+                <EmployeesPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          <Route path="/faculties">
+            {() => (
+              <ProtectedRoute requiredPath="/faculties">
+                <FacultiesPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          <Route path="/departments">
+            {() => (
+              <ProtectedRoute requiredPath="/departments">
+                <DepartmentsPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          {/* ========================================== */}
+          {/* RUTAS PROTEGIDAS - Contratos y Permisos */}
+          {/* ========================================== */}
+
+          <Route path="/contracts">
+            {() => (
+              <ProtectedRoute requiredPath="/contracts">
+                <ContractsPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          <Route path="/contractType">
+            {() => (
+              <ProtectedRoute requiredPath="/contractType">
+                <ContractTypePage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          <Route path="/contractRequest">
+            {() => (
+              <ProtectedRoute requiredPath="/contractRequest">
+                <ContractRequestPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          <Route path="/permissions">
+            {() => (
+              <ProtectedRoute requiredPath="/permissions">
+                <PermissionsPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          <Route path="/permissionTypes">
+            {() => (
+              <ProtectedRoute requiredPath="/permissionTypes">
+                <PermissionTypesPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          <Route path="/ApprovalsPermissions">
+            {() => (
+              <ProtectedRoute requiredPath="/ApprovalsPermissions">
+                <ApprovalsPermissionsPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          {/* ========================================== */}
+          {/* RUTAS PROTEGIDAS - Asistencia y Horarios */}
+          {/* ========================================== */}
+
+          <Route path="/attendance">
+            {() => (
+              <ProtectedRoute requiredPath="/attendance">
+                <AttendancePage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          <Route path="/schedules">
+            {() => (
+              <ProtectedRoute requiredPath="/schedules">
+                <SchedulesPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          <Route path="/shedulerAssig">
+            {() => (
+              <ProtectedRoute requiredPath="/shedulerAssig">
+                <EmployeeSchedulesPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          <Route path="/overtime">
+            {() => (
+              <ProtectedRoute requiredPath="/overtime">
+                <OvertimePage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          <Route path="/justifications">
+            {() => (
+              <ProtectedRoute requiredPath="/justifications">
+                <JustificationPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          {/* ========================================== */}
+          {/* RUTAS PROTEGIDAS - Vacaciones y Nómina */}
+          {/* ========================================== */}
+
+          <Route path="/vacations">
+            {() => (
+              <ProtectedRoute requiredPath="/vacations">
+                <VacationsPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          <Route path="/holidays">
+            {() => (
+              <ProtectedRoute requiredPath="/holidays">
+                <HolidaysPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          <Route path="/payroll">
+            {() => (
+              <ProtectedRoute requiredPath="/payroll" requiredRoles={["Admin", "PayrollManager"]}>
+                <PayrollPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          <Route path="/certFinance">
+            {() => (
+              <ProtectedRoute requiredPath="/certFinance">
+                <CertificationFinancePage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          {/* ========================================== */}
+          {/* RUTAS PROTEGIDAS - Reportes */}
+          {/* ========================================== */}
+
+          <Route path="/reports">
+            {() => (
+              <ProtectedRoute requiredPath="/reports">
+                <ReportsPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          <Route path="/reports/employees">
+            {() => (
+              <ProtectedRoute requiredPath="/reports/employees">
+                <EmployeesReportPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          <Route path="/reports/attendance">
+            {() => (
+              <ProtectedRoute requiredPath="/reports/attendance">
+                <AttendanceReportPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          <Route path="/reports/departments">
+            {() => (
+              <ProtectedRoute requiredPath="/reports/departments">
+                <DepartmentsReportPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          <Route path="/reports/attedancesumary">
+            {() => (
+              <ProtectedRoute requiredPath="/reports/attedancesumary">
+                <AttendanceSumaryReportPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          <Route path="/reports/audit">
+            {() => (
+              <ProtectedRoute requiredPath="/reports/audit">
+                <ReportAuditPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          {/* ========================================== */}
+          {/* RUTAS PROTEGIDAS - Otros */}
+          {/* ========================================== */}
+
+          <Route path="/jobActivities">
+            {() => (
+              <ProtectedRoute requiredPath="/jobActivities">
+                <JobActivitiesPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          <Route path="/referenceTypes">
+            {() => (
+              <ProtectedRoute requiredPath="/referenceTypes">
+                <ReferenceTypesPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          <Route path="/FilesUploadPage">
+            {() => (
+              <ProtectedRoute requiredPath="/FilesUploadPage">
+                <FilesUploadPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          {/* ========================================== */}
+          {/* RUTAS DE ADMINISTRACIÓN - Solo Admin */}
+          {/* ========================================== */}
+
+          <Route path="/admin/users">
+            {() => (
+              <ProtectedRoute requiredPath="/admin/users" requiredRoles={["Admin"]}>
+                <UsersPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          <Route path="/admin/roles">
+            {() => (
+              <ProtectedRoute requiredPath="/admin/roles" requiredRoles={["Admin"]}>
+                <RolesPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          <Route path="/admin/user-roles">
+            {() => (
+              <ProtectedRoute requiredPath="/admin/user-roles" requiredRoles={["Admin"]}>
+                <UserRolesPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          <Route path="/admin/menu-items">
+            {() => (
+              <ProtectedRoute requiredPath="/admin/menu-items" requiredRoles={["Admin"]}>
+                <MenuItemsPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          <Route path="/admin/role-menu-items">
+            {() => (
+              <ProtectedRoute requiredPath="/admin/role-menu-items" requiredRoles={["Admin"]}>
+                <RoleMenuItemsPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          {/* Ruta de "no encontrado" */}
+          <Route component={NotFound} />
         </Switch>
       </Suspense>
     </Layout>
