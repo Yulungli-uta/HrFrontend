@@ -130,9 +130,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     showToast: boolean = true,
     shouldNavigate: boolean = false
   ) => {
-    // ✅ OBTENER ROLES Y PERMISOS CON CACHÉ
+    // ✅ OBTENER ROLES Y PERMISOS FRESCOS DESDE BD (sin caché en login)
     try {
-      const { PermissionService } = await import('@/services/permissions');
+      const { PermissionService, CacheService } = await import('@/services/permissions');
+      
+      // 🚨 IMPORTANTE: Invalidar caché anterior para forzar carga fresca
+      CacheService.invalidateAll();
+      
+      if (import.meta.env.DEV) {
+        console.log('🔄 Cargando permisos frescos desde BD...');
+      }
+      
       const permissionsData = await PermissionService.fetchAllPermissions(userInfo.id);
       
       userInfo.roles = permissionsData.roles;
@@ -140,14 +148,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       userInfo.menuItems = permissionsData.menuItems;
       
       if (import.meta.env.DEV) {
-        console.log('🔐 Permisos cargados:', {
+        console.log('🔐 Permisos cargados desde BD:', {
+          userId: userInfo.id,
           roles: permissionsData.roles,
           permissions: permissionsData.permissions.length,
           menuItems: permissionsData.menuItems.length,
         });
+        console.log('📝 Menús asignados:', permissionsData.menuItems.map(m => m.url).filter(Boolean));
       }
     } catch (error) {
-      console.error('Error obteniendo permisos:', error);
+      console.error('❌ Error obteniendo permisos:', error);
       // Continuar sin permisos en caso de error
       userInfo.roles = [];
       userInfo.permissions = [];

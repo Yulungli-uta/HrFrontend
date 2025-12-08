@@ -28,6 +28,7 @@ interface CachedData<T> {
   timestamp: number;
   hash: string;
   userId: string;
+  tokenHash: string; // Hash del token para validar sesión
 }
 
 /**
@@ -87,19 +88,33 @@ export class CacheService {
   }
 
   /**
+   * Genera hash del token actual
+   */
+  private static getTokenHash(): string {
+    try {
+      const token = localStorage.getItem('wsuta_access_token') || '';
+      return this.generateHash(token);
+    } catch {
+      return '';
+    }
+  }
+
+  /**
    * Guarda datos en caché de forma segura
    */
   static set<T>(key: string, data: T, userId: string): void {
     try {
       const timestamp = Date.now();
+      const tokenHash = this.getTokenHash();
       const dataString = JSON.stringify(data);
-      const hash = this.generateHash(dataString + userId + timestamp);
+      const hash = this.generateHash(dataString + userId + timestamp + tokenHash);
 
       const cachedData: CachedData<T> = {
         data,
         timestamp,
         hash,
         userId,
+        tokenHash,
       };
 
       const encrypted = this.encrypt(JSON.stringify(cachedData));
@@ -140,6 +155,14 @@ export class CacheService {
       // Validar userId
       if (cachedData.userId !== userId) {
         console.warn('Caché de otro usuario, eliminando...');
+        this.remove(key);
+        return null;
+      }
+
+      // Validar token (sesión)
+      const currentTokenHash = this.getTokenHash();
+      if (cachedData.tokenHash && cachedData.tokenHash !== currentTokenHash) {
+        console.warn('Caché de otra sesión, eliminando...');
         this.remove(key);
         return null;
       }

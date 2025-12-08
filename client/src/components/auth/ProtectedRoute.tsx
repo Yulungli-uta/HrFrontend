@@ -51,11 +51,33 @@ export function ProtectedRoute({
   }
   
   // Verificar permisos por ruta
-  if (requiredPath && !PermissionService.hasRouteAccess(user, requiredPath)) {
-    if (showUnauthorized) {
-      return <UnauthorizedPage reason="route" requiredPath={requiredPath} />;
+  if (requiredPath) {
+    // Validar que el usuario tenga permisos cargados
+    if (!user?.permissions || user.permissions.length === 0) {
+      console.warn('⚠️ Usuario sin permisos cargados, denegando acceso');
+      if (showUnauthorized) {
+        return <UnauthorizedPage reason="route" requiredPath={requiredPath} noPermissions />;
+      }
+      return <Redirect to={fallbackPath} />;
     }
-    return <Redirect to={fallbackPath} />;
+
+    // Validar acceso a la ruta
+    if (!PermissionService.hasRouteAccess(user, requiredPath)) {
+      console.warn(`⚠️ Acceso denegado a ${requiredPath}`);
+      if (import.meta.env.DEV) {
+        console.log('Permisos del usuario:', user.permissions);
+        console.log('Ruta requerida:', requiredPath);
+      }
+      if (showUnauthorized) {
+        return <UnauthorizedPage reason="route" requiredPath={requiredPath} />;
+      }
+      return <Redirect to={fallbackPath} />;
+    }
+
+    // Log de acceso exitoso (solo en desarrollo)
+    if (import.meta.env.DEV) {
+      console.log(`✅ Acceso permitido a ${requiredPath}`);
+    }
   }
   
   // Verificar permisos por rol
@@ -97,10 +119,14 @@ interface UnauthorizedPageProps {
   reason?: 'route' | 'role';
   requiredPath?: string;
   requiredRoles?: string[];
+  noPermissions?: boolean;
 }
 
-function UnauthorizedPage({ reason, requiredPath, requiredRoles }: UnauthorizedPageProps) {
+function UnauthorizedPage({ reason, requiredPath, requiredRoles, noPermissions }: UnauthorizedPageProps) {
   const getMessage = () => {
+    if (noPermissions) {
+      return 'No tienes permisos asignados en el sistema. Contacta con el administrador para que te asigne los permisos necesarios.';
+    }
     if (reason === 'route' && requiredPath) {
       return `No tienes permiso para acceder a la ruta: ${requiredPath}`;
     }
