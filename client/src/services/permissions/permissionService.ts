@@ -1,365 +1,253 @@
 // services/permissions/permissionService.ts
 /**
- * Servicio de validación de permisos
- * 
- * Responsabilidades:
- * - Validar acceso a rutas
- * - Validar roles de usuario
- * - Validar permisos específicos
- * - Integración con caché
+ * Servicio de validación y carga de permisos
  */
 
-import { UserSession } from '@/services/auth/types';
-import { PermissionCacheService } from './cacheService';
-import { tokenService } from '@/services/auth';
+import { UserSession } from "@/services/auth/types";
+import { tokenService, authService } from "@/services/auth";
+import { CacheService } from "./cacheService";
 
-/**
- * Configuración de permisos
- */
+const DEBUG = import.meta.env.VITE_DEBUG_AUTH === "true";
+
 const PERMISSION_CONFIG = {
-  // Roles con acceso total
-  SUPER_ROLES: ['Admin', 'SuperAdmin'],
-  
-  // Rutas públicas (accesibles para todos los usuarios autenticados)
+  SUPER_ROLES: ["Administrador", "SuperAdmin"],
   PUBLIC_ROUTES: [
-    '/',
-    '/dashboard',
-    '/profile',
-    '/profile/change-password',
+    "/",
+    "/dashboard",
+    "/profile",
+    "/profile/change-password",
   ],
-  
-  // Mapeo de rutas a permisos requeridos
   ROUTE_PERMISSIONS: {
-    '/admin': ['Admin'],
-    '/admin/users': ['Admin'],
-    '/admin/roles': ['Admin'],
-    '/admin/user-roles': ['Admin'],
-    '/admin/menu-items': ['Admin'],
-    '/admin/role-menu-items': ['Admin'],
-    '/payroll': ['Admin', 'PayrollManager'],
-    '/reports': ['Admin', 'Manager', 'ReportViewer'],
+    "/admin": ["Administrador"],
+    "/admin/users": ["Administrador"],
+    "/admin/roles": ["Administrador"],
+    "/admin/user-roles": ["Administrador"],
+    "/admin/menu-items": ["Administrador"],
+    "/admin/role-menu-items": ["Administrador"],
+    // "/payroll": ["Admin", "PayrollManager"],
+    // "/reports": ["Admin", "Manager", "ReportViewer"],
   } as Record<string, string[]>,
 };
 
-/**
- * Servicio de permisos
- */
 export class PermissionService {
-  /**
-   * Obtiene la URL base de la API
-   */
+  // ---------------------------------------------------------------------------
+  // Utilidades base
+  // ---------------------------------------------------------------------------
+
   private static getApiBaseUrl(): string {
-    return import.meta.env.VITE_AUTH_API_BASE_URL || 'http://localhost:5010';
+    return import.meta.env.VITE_AUTH_API_BASE_URL || "http://localhost:5010";
   }
 
-  /**
-   * Verifica si un usuario tiene un rol de super administrador
-   */
   static isSuperUser(user: UserSession | null): boolean {
-    if (!user || !user.roles) return false;
-    return user.roles.some(role => PERMISSION_CONFIG.SUPER_ROLES.includes(role));
+    if (!user?.roles) return false;
+    return user.roles.some(r => PERMISSION_CONFIG.SUPER_ROLES.includes(r));
   }
 
-  /**
-   * Verifica si una ruta es pública
-   */
   static isPublicRoute(routePath: string): boolean {
-    return PERMISSION_CONFIG.PUBLIC_ROUTES.some(publicRoute => 
-      routePath === publicRoute || routePath.startsWith(publicRoute + '/')
+    return PERMISSION_CONFIG.PUBLIC_ROUTES.some(
+      (r) => routePath === r || routePath.startsWith(r + "/")
     );
   }
 
-  /**
-   * Verifica si el usuario tiene acceso a una ruta específica
-   */
-  static hasRouteAccess(user: UserSession | null, routePath: string): boolean {
-    // Sin usuario, sin acceso
-    if (!user) return false;
-
-    // Super usuarios tienen acceso a todo
-    if (this.isSuperUser(user)) return true;
-
-    // Rutas públicas son accesibles para todos
-    if (this.isPublicRoute(routePath)) return true;
-
-    // Verificar si la ruta requiere permisos específicos
-    const requiredRoles = this.getRequiredRolesForRoute(routePath);
-    if (requiredRoles.length > 0) {
-      return this.hasAnyRole(user, requiredRoles);
-    }
-
-    // Verificar si la ruta está en los permisos del usuario (menús asignados)
-    if (user.permissions && user.permissions.length > 0) {
-      return user.permissions.some(permission => 
-        routePath === permission || routePath.startsWith(permission + '/')
-      );
-    }
-
-    // Por defecto, denegar acceso
-    return false;
-  }
-
-  /**
-   * Obtiene los roles requeridos para una ruta
-   */
   static getRequiredRolesForRoute(routePath: string): string[] {
-    // Buscar coincidencia exacta
     if (PERMISSION_CONFIG.ROUTE_PERMISSIONS[routePath]) {
       return PERMISSION_CONFIG.ROUTE_PERMISSIONS[routePath];
     }
-
-    // Buscar coincidencia por prefijo (ej: /admin/users coincide con /admin)
-    for (const [route, roles] of Object.entries(PERMISSION_CONFIG.ROUTE_PERMISSIONS)) {
-      if (routePath.startsWith(route + '/') || routePath === route) {
+    for (const [route, roles] of Object.entries(
+      PERMISSION_CONFIG.ROUTE_PERMISSIONS
+    )) {
+      if (routePath === route || routePath.startsWith(route + "/")) {
         return roles;
       }
     }
-
     return [];
   }
 
-  /**
-   * Verifica si el usuario tiene un rol específico
-   */
   static hasRole(user: UserSession | null, role: string): boolean {
-    if (!user || !user.roles) return false;
+    if (!user?.roles) return false;
     return user.roles.includes(role);
   }
 
-  /**
-   * Verifica si el usuario tiene alguno de los roles especificados
-   */
   static hasAnyRole(user: UserSession | null, roles: string[]): boolean {
-    if (!user || !user.roles) return false;
-    return roles.some(role => user.roles!.includes(role));
+    if (!user?.roles) return false;
+    return roles.some((r) => user.roles!.includes(r));
   }
 
-  /**
-   * Verifica si el usuario tiene todos los roles especificados
-   */
   static hasAllRoles(user: UserSession | null, roles: string[]): boolean {
-    if (!user || !user.roles) return false;
-    return roles.every(role => user.roles!.includes(role));
+    if (!user?.roles) return false;
+    return roles.every((r) => user.roles!.includes(r));
   }
 
-  /**
-   * Verifica si el usuario tiene un permiso específico
-   */
   static hasPermission(user: UserSession | null, permission: string): boolean {
     if (!user) return false;
-    
-    // Super usuarios tienen todos los permisos
     if (this.isSuperUser(user)) return true;
-    
     if (!user.permissions) return false;
     return user.permissions.includes(permission);
   }
 
-  /**
-   * Obtiene roles del usuario desde el backend con caché
-   */
-  static async fetchUserRoles(userId: string): Promise<string[]> {
-    // Intentar obtener de caché primero
-    const cachedRoles = PermissionCacheService.getRoles(userId);
-    if (cachedRoles) {
-      if (import.meta.env.DEV) {
-        console.log('📦 Roles obtenidos de caché:', cachedRoles);
-      }
-      return cachedRoles;
+  static hasRouteAccess(user: UserSession | null, routePath: string): boolean {
+    if (!user) return false;
+    if (this.isSuperUser(user)) return true;
+    if (this.isPublicRoute(routePath)) return true;
+
+    const required = this.getRequiredRolesForRoute(routePath);
+    if (required.length > 0) {
+      return this.hasAnyRole(user, required);
     }
 
+    if (user.permissions?.length) {
+      return user.permissions.some(
+        (perm) => routePath === perm || routePath.startsWith(perm + "/")
+      );
+    }
+
+    return false;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Token helper
+  // ---------------------------------------------------------------------------
+
+  private static async ensureValidToken(): Promise<string | null> {
     try {
-      const accessToken = tokenService.getAccessToken();
+      let accessToken = tokenService.getAccessToken();
+
       if (!accessToken) {
-        throw new Error('No hay token de acceso');
+        DEBUG && console.warn("[PERMISSIONS] No hay accessToken");
+        return null;
       }
 
-      const response = await fetch(`${this.getApiBaseUrl()}/api/users/${userId}/roles`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      if (!tokenService.isTokenExpired(accessToken)) {
+        return accessToken;
       }
 
-      const result = await response.json();
-      
-      if (result.success && result.data) {
-        const roles = result.data.map((r: any) => r.roleName || r.name);
-        
-        // Guardar en caché
-        PermissionCacheService.setRoles(roles, userId);
-        
-        if (import.meta.env.DEV) {
-          console.log('🌐 Roles obtenidos del backend:', roles);
-        }
-        
-        return roles;
+      // Token expirado → intentar renovar
+      const refreshToken = tokenService.getRefreshToken();
+      if (!refreshToken) {
+        DEBUG && console.warn("[PERMISSIONS] No hay refreshToken para renovar");
+        return null;
       }
 
-      return [];
-    } catch (error) {
-      console.error('Error obteniendo roles:', error);
-      return [];
+      DEBUG && console.log("[PERMISSIONS] Token expirado, renovando...");
+      const newPair = await authService.refreshToken(refreshToken);
+      tokenService.setTokens(newPair);
+      accessToken = newPair.accessToken;
+      DEBUG && console.log("[PERMISSIONS] Token renovado OK");
+      return accessToken;
+    } catch (err) {
+      console.error("[PERMISSIONS] Error al validar/renovar token:", err);
+      return null;
     }
   }
 
-  /**
-   * Obtiene permisos (menús) del usuario desde el backend con caché
-   */
-  static async fetchUserPermissions(userId: string): Promise<{ permissions: string[]; menuItems: any[] }> {
-    // Intentar obtener de caché primero
-    const cachedPermissions = PermissionCacheService.getPermissions(userId);
-    const cachedMenuItems = PermissionCacheService.getMenuItems(userId);
-    
-    if (cachedPermissions && cachedMenuItems) {
-      if (import.meta.env.DEV) {
-        console.log('📦 Permisos obtenidos de caché:', {
-          permissions: cachedPermissions.length,
-          menuItems: cachedMenuItems.length,
-        });
-      }
-      return {
-        permissions: cachedPermissions,
-        menuItems: cachedMenuItems,
-      };
-    }
-
-    try {
-      const accessToken = tokenService.getAccessToken();
-      if (!accessToken) {
-        throw new Error('No hay token de acceso');
-      }
-
-      const response = await fetch(`${this.getApiBaseUrl()}/api/menu/user`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      
-      if (result.success && result.data) {
-        const menuItems = result.data;
-        const permissions = menuItems
-          .filter((m: any) => m.url && m.url !== null)
-          .map((m: any) => m.url);
-        
-        // Guardar en caché
-        PermissionCacheService.setPermissions(permissions, userId);
-        PermissionCacheService.setMenuItems(menuItems, userId);
-        
-        if (import.meta.env.DEV) {
-          console.log('🌐 Permisos obtenidos del backend:', {
-            permissions: permissions.length,
-            menuItems: menuItems.length,
-          });
-        }
-        
-        return { permissions, menuItems };
-      }
-
-      return { permissions: [], menuItems: [] };
-    } catch (error) {
-      console.error('Error obteniendo permisos:', error);
-      return { permissions: [], menuItems: [] };
-    }
-  }
+  // ---------------------------------------------------------------------------
+  // Fetch + caché (un solo endpoint)
+  // ---------------------------------------------------------------------------
 
   /**
-   * Obtiene todos los datos de permisos del usuario (roles + permisos)
-   * Usa el nuevo endpoint /api/users/{userId}/permissions que devuelve todo en una sola llamada
+   * 🔥 Carga TODOS los permisos en una sola llamada:
+   * roles, permissions (urls) y menuItems
    */
   static async fetchAllPermissions(userId: string): Promise<{
     roles: string[];
     permissions: string[];
     menuItems: any[];
   }> {
-    try {
-      const accessToken = tokenService.getAccessToken();
-      if (!accessToken) {
-        throw new Error('No hay token de acceso');
-      }
+    const DEBUG = import.meta.env.VITE_DEBUG_AUTH === "true";
 
-      const response = await fetch(`${this.getApiBaseUrl()}/api/users/${userId}/permissions`, {
-        method: 'GET',
+    const accessToken = await this.ensureValidToken();
+    if (!accessToken) {
+      DEBUG && console.warn("[PERMISSIONS] No se puede cargar /api/menu/user: token inválido");
+      return { roles: [], permissions: [], menuItems: [] };
+    }
+
+    // 🔒 Cache por usuario + sesión para no reventar al recargar
+    const cache = new CacheService(userId);
+
+    return cache.tryGetOrSet<{
+      roles: string[];
+      permissions: string[];
+      menuItems: any[];
+    }>("all-permissions", async () => {
+      const url = `${this.getApiBaseUrl()}/api/menu/user`;
+
+      DEBUG && console.log("[PERMISSIONS] Fetching menu from:", url);
+
+      const res = await fetch(url, {
+        method: "GET",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
         },
       });
-
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      console.log("Menu: "+ res);
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
       }
 
-      const result = await response.json();
-      
-      if (result.success && result.data) {
-        const { roles, permissions, menuItems } = result.data;
-        
-        // Extraer solo los nombres de roles
-        const roleNames = roles.map((r: any) => r.roleName || r);
-        
-        // Guardar en caché
-        PermissionCacheService.setRoles(roleNames, userId);
-        PermissionCacheService.setPermissions(permissions, userId);
-        PermissionCacheService.setMenuItems(menuItems, userId);
-        
-        if (import.meta.env.DEV) {
-          console.log('🔐 Permisos cargados desde backend:', {
-            roles: roleNames.length,
-            permissions: permissions.length,
-            menuItems: menuItems.length,
-          });
+      const json = await res.json();
+
+      if (!json?.success || !json.data) {
+        DEBUG && console.warn("[PERMISSIONS] Respuesta inválida de /api/menu/user:", json);
+        return { roles: [], permissions: [], menuItems: [] };
+      }
+
+      let menuItems: any[] = [];
+      let roles: string[] = [];
+
+      // 📦 Flexibilidad según cómo responda tu backend:
+      // 1) data es directamente un array de menús
+      // 2) data.menuItems contiene el array
+      if (Array.isArray(json.data)) {
+        menuItems = json.data;
+      } else if (Array.isArray(json.data.menuItems)) {
+        menuItems = json.data.menuItems;
+      } else {
+        DEBUG && console.warn("[PERMISSIONS] No se encontraron menuItems en data:", json.data);
+        menuItems = [];
+      }
+
+      // 🎭 Intentar obtener roles si el backend los envía en data
+      if (Array.isArray(json.data?.roles)) {
+        roles = json.data.roles.map((r: any) => r.roleName || r.name || r);
+      } else {
+        // Opcional: intentar deducir roles desde cada menuItem si traen algo como item.roles
+        const roleSet = new Set<string>();
+        for (const item of menuItems) {
+          const itemRoles = (item as any).roles;
+          if (Array.isArray(itemRoles)) {
+            itemRoles.forEach((r: any) =>
+              roleSet.add(r.roleName || r.name || r)
+            );
+          }
         }
-        
-        return {
-          roles: roleNames,
-          permissions,
-          menuItems,
-        };
+        roles = Array.from(roleSet);
       }
 
-      return { roles: [], permissions: [], menuItems: [] };
-    } catch (error) {
-      console.error('Error obteniendo permisos completos:', error);
-      return { roles: [], permissions: [], menuItems: [] };
-    }
+      // 🔑 Permisos = URLs de los menús (para route-guard)
+      const permissions: string[] = menuItems
+        .filter((m: any) => m.url && m.url !== null)
+        .map((m: any) => m.url as string);
+
+      DEBUG &&
+        console.log("[PERMISSIONS] /api/menu/user mapeado:", {
+          roles,
+          permissionsCount: permissions.length,
+          menuItemsCount: menuItems.length,
+        });
+
+      // 👉 Esto es lo que se inyecta en userInfo en AuthContext
+      // userInfo.roles = roles
+      // userInfo.permissions = permissions
+      // userInfo.menuItems = menuItems (con parentId para Sidebar)
+      return { roles, permissions, menuItems };
+    });
   }
 
   /**
-   * Invalida el caché de permisos
+   * Limpiar caché global de permisos (opcional, usado en logout/login limpio)
    */
-  static invalidateCache(): void {
-    PermissionCacheService.invalidate();
-    
-    if (import.meta.env.DEV) {
-      console.log('🗑️ Caché de permisos invalidado');
-    }
-  }
-
-  /**
-   * Obtiene estadísticas del caché
-   */
-  static getCacheStats(userId: string) {
-    return PermissionCacheService.getCacheStats(userId);
-  }
-
-  /**
-   * Verifica si hay caché completo válido
-   */
-  static hasValidCache(userId: string): boolean {
-    return PermissionCacheService.hasCompleteCache(userId);
+  static invalidateAllCache() {
+    CacheService.clearAll();
   }
 }

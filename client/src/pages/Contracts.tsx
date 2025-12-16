@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { FileText, User, Calendar, DollarSign, Search, Plus } from "lucide-react";
-import type { Contract } from "@shared/schema";
+import type { Contract } from "@/shared/schema";
 import ContractForm from "@/components/forms/ContractForm";
 import { useState, useMemo } from "react";
 import { ContratosAPI, type ApiResponse } from "@/lib/api";

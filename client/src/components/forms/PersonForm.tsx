@@ -22,7 +22,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Loader2 } from "lucide-react";
 
 import { useToast } from "@/hooks/use-toast";
-import type { Person, InsertPerson } from "@shared/schema";
+import type { Person, InsertPerson } from "@/shared/schema";
 import { PaisesAPI, ProvinciasAPI, CantonesAPI } from "@/lib/api";
 import type { ApiResponse } from "@/lib/api";
 

@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { PersonasAPI, ProvinciasAPI, CantonesAPI } from "@/lib/api";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Persona, InsertPersona } from "@shared/schema";
+import type { Persona, InsertPersona } from "@/shared/schema";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,

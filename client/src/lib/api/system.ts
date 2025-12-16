@@ -4,7 +4,7 @@
 
 import { apiFetch, createCrudService } from './client';
 import type { ApiResponse } from './client';
-import type { Publication, InsertPublication } from '@shared/schema';
+import type { Publication, InsertPublication } from '@/shared/schema';
 
 // =============================================================================
 // API de Health Check

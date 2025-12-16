@@ -1,208 +1,233 @@
 // services/auth/authService.ts
-import { ApiResponse } from '@/lib/api';
-import { TokenPair, UserSession, LoginRequest } from './types';
+import { ApiResponse } from "@/lib/api";
+import { TokenPair, UserSession, LoginRequest } from "./types";
+import { getBrowserId } from "@/utils/browserId";
 
-// Configuración específica para autenticación
-const AUTH_API_BASE_URL = import.meta.env.VITE_AUTH_API_BASE_URL || 'http://localhost:5010';
+const DEBUG = import.meta.env.VITE_DEBUG_AUTH === "true";
+
+const AUTH_API_BASE_URL =
+  import.meta.env.VITE_AUTH_API_BASE_URL || "http://localhost:5010";
+
 const APP_CLIENT_ID = import.meta.env.VITE_APP_CLIENT_ID;
-// Cliente específico para autenticación con mejor manejo de errores
+
+/** -------------------------------------------
+ * Cliente seguro para autenticación
+ * ------------------------------------------- */
 async function authFetch<T = any>(
   path: string,
   init: RequestInit = {}
 ): Promise<ApiResponse<T>> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
-  
+  const timeout = setTimeout(() => controller.abort(), 15000);
+
   try {
-    // console.log(`🔐 Making auth request to: ${AUTH_API_BASE_URL}${path}`);
-    
-    const response = await fetch(`${AUTH_API_BASE_URL}${path}`, {
-      credentials: 'include',
+    const res = await fetch(`${AUTH_API_BASE_URL}${path}`, {
+      credentials: "include",
       headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        ...init.headers,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        ...(init.headers ?? {}),
       },
       ...init,
-      signal: controller.signal
+      signal: controller.signal,
     });
-    
-    clearTimeout(timeoutId);
-    
-    // console.log(`📨 Auth response status: ${response.status} ${response.statusText}`);
-    
-    if (response.ok) {
-      if (response.status === 204) {
-        return { status: 'success', data: undefined as unknown as T };
+
+    clearTimeout(timeout);
+
+    if (res.ok) {
+      if (res.status === 204) {
+        return { status: "success", data: undefined as T };
       }
-      
+
       try {
-        const data = await response.json();
-        // console.log('✅ Auth response data:', data);
-        return { status: 'success', data };
-      } catch (jsonError) {
-        console.warn('⚠️ Could not parse JSON response, returning text');
-        const text = await response.text();
-        return { status: 'success', data: text as unknown as T };
+        const data = await res.json();
+        return { status: "success", data };
+      } catch {
+        const text = await res.text();
+        return { status: "success", data: text as T };
       }
     }
-    
-    let errorDetails: any;
+
+    // Errores HTTP
+    let details: any;
     try {
-      errorDetails = await response.json();
-      console.error('❌ Auth error details:', errorDetails);
+      details = await res.json();
     } catch {
       try {
-        errorDetails = await response.text();
-        console.error('❌ Auth error text:', errorDetails);
+        details = await res.text();
       } catch {
-        errorDetails = response.statusText;
-        console.error('❌ Auth error status:', errorDetails);
+        details = res.statusText;
       }
     }
-    
+
     return {
-      status: 'error',
+      status: "error",
       error: {
-        code: response.status,
-        message: `HTTP Error ${response.status}: ${response.statusText}`,
-        details: errorDetails
-      }
+        code: res.status,
+        message: `HTTP Error ${res.status}: ${res.statusText}`,
+        details,
+      },
     };
-    
-  } catch (error: any) {
-    clearTimeout(timeoutId);
-    console.error('🚨 Auth network error:', error);
-    
+  } catch (err: any) {
+    clearTimeout(timeout);
+
     return {
-      status: 'error',
+      status: "error",
       error: {
         code: 0,
-        message: error.name === 'AbortError' 
-          ? 'Request timed out' 
-          : `Network error: ${error.message || 'Unknown error'}`
-      }
+        message:
+          err.name === "AbortError"
+            ? "Request timed out"
+            : `Network error: ${err.message || "Unknown error"}`,
+      },
     };
   }
 }
 
+/** -------------------------------------------
+ * Servicio de autenticación
+ * ------------------------------------------- */
 export const authService = {
+  /** -----------------------------------------
+   * LOGIN LOCAL
+   * -------------------------------------- */
   async loginLocal(credentials: LoginRequest): Promise<TokenPair> {
-    // console.log('🔐 Attempting local login with:', { email: credentials.email });
-    
-    const response = await authFetch<{ data: TokenPair; success: boolean; message: string }>('/api/auth/login', {
-      method: 'POST',
+    DEBUG && console.log("[AUTH] loginLocal initiated", credentials.email);
+
+    const res = await authFetch<{
+      data: TokenPair;
+      success: boolean;
+      message: string;
+    }>("/api/auth/login", {
+      method: "POST",
       body: JSON.stringify(credentials),
     });
-    
-    if (response.status === 'error') {
-      console.error('❌ Login failed:', response.error);
-      throw new Error(response.error.message || 'Credenciales inválidas');
+    console.log("loginLocal - respuesta: "+ res);
+    if (res.status === "error") {
+      DEBUG && console.error("[AUTH] loginLocal failed", res.error);
+      throw new Error(res.error.message ?? "Credenciales inválidas");
     }
 
-    // console.log('✅ Login successful, tokens received:', response.data);
-    
-    // Extraer los tokens de la estructura de respuesta
-    if (response.data && response.data.success && response.data.data) {
-      return response.data.data;
-    } else {
-      console.error('❌ Invalid response structure:', response.data);
-      throw new Error('Estructura de respuesta inválida');
+    if (res.data?.success && res.data?.data) {
+      DEBUG && console.log("[AUTH] loginLocal success");
+      return res.data.data;
     }
+
+    throw new Error("Estructura de respuesta inválida");
   },
 
+  /** -----------------------------------------
+   * REFRESH TOKEN
+   * -------------------------------------- */
   async refreshToken(refreshToken: string): Promise<TokenPair> {
-    console.log('🔄 Attempting token refresh');
-    
-    const response = await authFetch<{ data: TokenPair; success: boolean }>('/api/auth/refresh', {
-      method: 'POST',
-      body: JSON.stringify({ refreshToken }),
-    });
-    
-    if (response.status === 'error') {
-      console.error('❌ Token refresh failed:', response.error);
-      throw new Error(response.error.message || 'Error al renovar token');
-    }
+    DEBUG && console.log("[AUTH] refreshToken initiated");
 
-    // Extraer los tokens de la estructura de respuesta
-    if (response.data && response.data.success && response.data.data) {
-      // console.log('✅ Token refresh successful');
-      return response.data.data;
-    } else {
-      console.error('❌ Invalid response structure:', response.data);
-      throw new Error('Estructura de respuesta inválida');
-    }
-  },
-
-  async getCurrentUser(accessToken: string): Promise<UserSession> {
-    // console.log('👤 Fetching current user info');
-    // console.log('🔑 Access token being used:', accessToken ? `${accessToken.substring(0, 20)}...` : 'NULL');
-    
-    const response = await authFetch<{ data: UserSession; success: boolean }>('/api/auth/me', {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-      },
-    });
-    
-    if (response.status === 'error') {
-      console.error('❌ Failed to get user info:', response.error);
-      throw new Error(response.error.message || 'Error al obtener información del usuario');
-    }
-
-    // Extraer los datos del usuario de la estructura de respuesta
-    if (response.data && response.data.success && response.data.data) {
-      // console.log('✅ User info retrieved successfully');
-      return response.data.data;
-    } else {
-      console.error('❌ Invalid response structure:', response.data);
-      throw new Error('Estructura de respuesta inválida');
-    }
-  },
-
-  async getAzureAuthUrl(): Promise<{ url: string; state: string }> {
-    console.log('🌐 Getting Azure Auth URL');
-    const clientId = APP_CLIENT_ID; 
-    const urlAux = `/api/auth/azure/url?clientId=${encodeURIComponent(APP_CLIENT_ID)}`;
-    // const response = await authFetch<{ data: { url: string; state: string }; success: boolean }>('/api/auth/azure/url');
-    const response = await authFetch<{ 
-      data: { url: string; state: string }; 
-      // success: boolean }>('/api/auth/azure/url');
-      success: boolean }>(urlAux);
-    
-    if (response.status === 'error') {
-      console.error('❌ Failed to get Azure Auth URL:', response.error);
-      throw new Error(response.error.message || 'Error al obtener URL de autenticación');
-    }
-
-    // Extraer la URL de la estructura de respuesta
-    if (response.data && response.data.success && response.data.data) {
-      // console.log('✅ Azure Auth URL received');
-      return response.data.data;
-    } else {
-      console.error('❌ Invalid response structure:', response.data);
-      throw new Error('Estructura de respuesta inválida');
-    }
-  },
-
-  async handleAzureCallback(code: string, state: string): Promise<TokenPair> {
-    // console.log('🔄 Handling Azure callback');
-    
-    const response = await authFetch<{ data: TokenPair; success: boolean }>(
-      `/api/auth/azure/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`
+    const res = await authFetch<{ data: TokenPair; success: boolean }>(
+      "/api/auth/refresh",
+      {
+        method: "POST",
+        body: JSON.stringify({ refreshToken }),
+      }
     );
-    
-    if (response.status === 'error') {
-      console.error('❌ Azure callback failed:', response.error);
-      throw new Error(response.error.message || 'Error en autenticación con Azure');
+
+    if (res.status === "error") {
+      DEBUG && console.error("[AUTH] refreshToken failed", res.error);
+      throw new Error(res.error.message ?? "Error al renovar token");
     }
 
-    // Extraer los tokens de la estructura de respuesta
-    if (response.data && response.data.success && response.data.data) {
-      // console.log('✅ Azure callback handled successfully');
-      return response.data.data;
-    } else {
-      console.error('❌ Invalid response structure:', response.data);
-      throw new Error('Estructura de respuesta inválida');
+    if (res.data?.success && res.data?.data) {
+      DEBUG && console.log("[AUTH] refreshToken success");
+      return res.data.data;
     }
+
+    throw new Error("Estructura de respuesta inválida");
+  },
+
+  /** -----------------------------------------
+   * GET CURRENT USER
+   * -------------------------------------- */
+  async getCurrentUser(accessToken: string): Promise<UserSession> {
+    DEBUG &&
+      console.log("[AUTH] getCurrentUser with token:", accessToken?.slice(0, 10));
+
+    const res = await authFetch<{ data: UserSession; success: boolean }>(
+      "/api/auth/me",
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }
+    );
+
+    if (res.status === "error") {
+      DEBUG && console.error("[AUTH] getCurrentUser FAILED", res.error);
+      throw new Error(
+        res.error.message ?? "Error al obtener información del usuario"
+      );
+    }
+
+    if (res.data?.success && res.data?.data) {
+      DEBUG && console.log("[AUTH] getCurrentUser OK");
+      return res.data.data;
+    }
+
+    throw new Error("Estructura de respuesta inválida");
+  },
+
+  /** -----------------------------------------
+   * OBTENER URL DE LOGIN AZURE
+   * -------------------------------------- */
+  async getAzureAuthUrl(): Promise<{ url: string; state: string }> {
+    DEBUG && console.log("[AUTH] getAzureAuthUrl initiated");
+
+    const browserId = getBrowserId();
+
+    const params = new URLSearchParams({
+      clientId: APP_CLIENT_ID,
+      browserId, // 🔥 CLAVE para Opción A
+    });
+
+    const res = await authFetch<{
+      data: { url: string; state: string };
+      success: boolean;
+    }>(`/api/auth/azure/url?${params.toString()}`);
+
+    if (res.status === "error") {
+      DEBUG && console.error("[AUTH] getAzureAuthUrl FAILED", res.error);
+      throw new Error(res.error.message ?? "Error al obtener URL de Azure");
+    }
+
+    if (res.data?.success && res.data?.data) {
+      DEBUG &&
+        console.log("[AUTH] getAzureAuthUrl SUCCESS", res.data.data.url);
+      return res.data.data;
+    }
+
+    throw new Error("Estructura de respuesta inválida");
+  },
+
+  /** -----------------------------------------
+   * HANDLE CALLBACK AZURE
+   * -------------------------------------- */
+  async handleAzureCallback(code: string, state: string): Promise<TokenPair> {
+    DEBUG && console.log("[AUTH] handleAzureCallback", { state });
+
+    const res = await authFetch<{ data: TokenPair; success: boolean }>(
+      `/api/auth/azure/callback?code=${encodeURIComponent(
+        code
+      )}&state=${encodeURIComponent(state)}`
+    );
+
+    if (res.status === "error") {
+      DEBUG && console.error("[AUTH] Azure callback FAILED", res.error);
+      throw new Error(
+        res.error.message ?? "Error al procesar autenticación con Azure"
+      );
+    }
+
+    if (res.data?.success && res.data?.data) {
+      DEBUG && console.log("[AUTH] Azure callback OK");
+      return res.data.data;
+    }
+
+    throw new Error("Estructura de respuesta inválida");
   },
 };

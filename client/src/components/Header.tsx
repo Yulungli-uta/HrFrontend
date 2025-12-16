@@ -4,30 +4,50 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
+  DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
+
 import { useLocation } from "wouter";
+
+const DEBUG = import.meta.env.VITE_DEBUG_AUTH === "true";
 
 interface HeaderProps {
   onLogout: () => void;
   onToggleSidebar?: () => void;
   sidebarCollapsed?: boolean;
-  currentUserId?: number;
-  currentUserName?: string; // ⬅️ nuevo
+  currentUserId?: number | null;
+  currentUserName?: string | null;
 }
 
-export default function Header({ onLogout, onToggleSidebar, sidebarCollapsed, currentUserId, currentUserName }: HeaderProps) {
-  const [location, navigate] = useLocation();
+export default function Header({
+  onLogout,
+  onToggleSidebar,
+  sidebarCollapsed,
+  currentUserId,
+  currentUserName
+}: HeaderProps) {
+  const [, navigate] = useLocation();
 
+  /* --------------------------------------------
+   * Manejar navegación a perfil
+   * -------------------------------------------- */
   const handleUpdateData = () => {
-    if (currentUserId) {
+    if (typeof currentUserId === "number") {
       navigate(`/people/${currentUserId}`);
     } else {
-      console.error("No user ID available for profile update");
+      if (DEBUG) {
+        console.warn("[HEADER] No user ID available for profile update");
+      }
     }
   };
 
-  const displayName = currentUserName || "Usuario";
+  /* --------------------------------------------
+   * Mostrar nombre o skeleton
+   * -------------------------------------------- */
+  const displayName =
+    currentUserName && currentUserName.trim() !== ""
+      ? currentUserName
+      : "Cargando...";
 
   return (
     <header className="border-b bg-white dark:bg-gray-800 px-4 sm:px-6 py-3">
@@ -47,38 +67,43 @@ export default function Header({ onLogout, onToggleSidebar, sidebarCollapsed, cu
             </Button>
           )}
         </div>
-        
+
+        {/* MENU USUARIO */}
         <div className="flex items-center space-x-2 sm:space-x-4">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 className="flex items-center space-x-2"
                 data-testid="user-menu-trigger"
               >
-                <div 
+                <div
                   className="w-8 h-8 rounded-full flex items-center justify-center"
-                  style={{ backgroundColor: '#265792' }}
+                  style={{ backgroundColor: "#265792" }}
                 >
                   <User className="h-4 w-4 text-white" />
                 </div>
-                {/* Si quieres ocultar el nombre en móviles, usa: <span className="text-sm font-medium hidden sm:inline"> */}
-                <span className="text-sm font-medium">{displayName}</span>
+
+                <span className="text-sm font-medium truncate max-w-[140px]">
+                  {displayName}
+                </span>
               </Button>
             </DropdownMenuTrigger>
+
             <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 onClick={handleUpdateData}
-                className="text-gray-700 focus:text-gray-700 cursor-pointer"
+                className="text-gray-700 cursor-pointer"
                 data-testid="update-data-menu-item"
               >
                 <UserCog className="mr-2 h-4 w-4" />
                 Actualizar Datos
               </DropdownMenuItem>
-              <DropdownMenuItem 
+
+              <DropdownMenuItem
                 onClick={onLogout}
-                className="text-red-600 focus:text-red-600 cursor-pointer"
+                className="text-red-600 cursor-pointer"
                 data-testid="logout-menu-item"
               >
                 <LogOut className="mr-2 h-4 w-4" />

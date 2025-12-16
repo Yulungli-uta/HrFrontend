@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { insertAttendancePunchSchema, type InsertAttendancePunch } from "@shared/schema";
+import { insertAttendancePunchSchema, type InsertAttendancePunch } from "@/shared/schema";
 import { Timer, Save, X, MapPin, Calendar, AlertCircle, RefreshCw } from "lucide-react";
 import { useState, useEffect } from "react";
 import { 

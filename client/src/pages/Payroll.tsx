@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { DollarSign, User, Calendar, CreditCard, Plus } from "lucide-react";
-import type { Payroll } from "@shared/schema";
+import type { Payroll } from "@/shared/schema";
 import PayrollForm from "@/components/forms/PayrollForm";
 import { useState } from "react";
 import { NominaAPI, type ApiResponse } from "@/lib/api"; // Importamos desde lib/api

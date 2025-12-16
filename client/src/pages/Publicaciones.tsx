@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import type { Publicacion, InsertPublicacion } from "@shared/schema";
+import type { Publicacion, InsertPublicacion } from "@/shared/schema";
 
 const publicacionSchema = z.object({
   titulo: z.string().min(1, "El título es requerido"),

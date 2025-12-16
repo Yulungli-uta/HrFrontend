@@ -13,7 +13,7 @@ import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import PersonaForm from "@/components/forms/PersonaForm";
 import { Link } from "wouter";
-import type { Persona } from "@shared/schema";
+import type { Persona } from "@/shared/schema";
 
 export default function Personas() {
   const [searchTerm, setSearchTerm] = useState("");

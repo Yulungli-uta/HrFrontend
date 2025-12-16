@@ -54,3 +54,10 @@ Thumbs.db
 
 # TypeScript
 *.tsbuildinfo
+
+# Vite / React build output
+client/dist/
+dist/
+
+client/.env*
+!client/.env.example

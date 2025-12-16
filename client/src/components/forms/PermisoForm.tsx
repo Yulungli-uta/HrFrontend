@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { insertPermissionSchema, type InsertPermission, type Employee, type Person, type PermissionType } from "@shared/schema";
+import { insertPermissionSchema, type InsertPermission, type Employee, type Person, type PermissionType } from "@/shared/schema";
 import { CalendarCheck, Save, X, Clock } from "lucide-react";
 
 interface PermissionFormProps {

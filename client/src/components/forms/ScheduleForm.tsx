@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { insertScheduleSchema, type InsertSchedule, type FrontendSchedule } from "@shared/schema";
+import { insertScheduleSchema, type InsertSchedule, type FrontendSchedule } from "@/shared/schema";
 import { Clock, Save, X, Calendar, Zap, Smartphone } from "lucide-react";
 import { HorariosAPI, type ApiResponse } from "@/lib/api";
 import { useEffect, useState } from "react";

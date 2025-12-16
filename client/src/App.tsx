@@ -1,6 +1,6 @@
 // src/App.tsx
 import { Suspense, lazy } from "react";
-import { Switch, Route } from "wouter";
+import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -8,18 +8,21 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ErrorBoundary } from "react-error-boundary";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { Loader2 } from "lucide-react";
 
-// Componentes que se cargan inmediatamente (críticos)
+// Componentes críticos
 import Layout from "@/components/Layout";
 import LoginPage from "@/pages/Login";
-import Dashboard from "@/pages/Dashboard";
 import NotFound from "@/pages/not-found";
+
+// Dashboard lazy
+const Dashboard = lazy(() => import("@/pages/Dashboard"));
 
 // ============================================
 // CODE SPLITTING - Lazy Loading de Páginas
 // ============================================
 
-// Páginas principales - Se cargan bajo demanda
+// Páginas principales
 const PeoplePage = lazy(() => import("@/pages/People"));
 const PersonDetail = lazy(() => import("@/pages/PersonDetail"));
 const EmployeesPage = lazy(() => import("@/pages/Employees"));
@@ -36,10 +39,16 @@ const ReportsPage = lazy(() => import("@/pages/Reports"));
 const JustificationPage = lazy(() => import("@/pages/Justifications"));
 const ContractTypePage = lazy(() => import("@/pages/ContractType"));
 const ContractRequestPage = lazy(() => import("@/pages/ContractRequest"));
-const CertificationFinancePage = lazy(() => import("@/pages/CertificationFinance"));
-const EmployeeSchedulesPage = lazy(() => import("@/pages/EmployeeSchedules"));
+const CertificationFinancePage = lazy(
+  () => import("@/pages/CertificationFinance")
+);
+const EmployeeSchedulesPage = lazy(
+  () => import("@/pages/EmployeeSchedules")
+);
 const PermissionTypesPage = lazy(() => import("@/pages/PermissionTypes"));
-const ApprovalsPermissionsPage = lazy(() => import("@/pages/ApprovalsPermissions"));
+const ApprovalsPermissionsPage = lazy(
+  () => import("@/pages/ApprovalsPermissions")
+);
 const JobActivitiesPage = lazy(() => import("@/pages/JobActivities"));
 const ReferenceTypesPage = lazy(() => import("@/pages/ReferenceTypes"));
 const HolidaysPage = lazy(() => import("@/pages/Holidays"));
@@ -50,102 +59,123 @@ const UsersPage = lazy(() => import("@/pages/admin/Users"));
 const RolesPage = lazy(() => import("@/pages/admin/Roles"));
 const UserRolesPage = lazy(() => import("@/pages/admin/UserRoles"));
 const MenuItemsPage = lazy(() => import("@/pages/admin/MenuItems"));
-const RoleMenuItemsPage = lazy(() => import("@/pages/admin/RoleMenuItems"));
-const ChangePasswordPage = lazy(() => import("@/pages/profile/ChangePassword"));
+const RoleMenuItemsPage = lazy(
+  () => import("@/pages/admin/RoleMenuItems")
+);
+const ChangePasswordPage = lazy(
+  () => import("@/pages/profile/ChangePassword")
+);
 
 // Páginas de reportes
-const EmployeesReportPage = lazy(() => import("@/pages/reports/EmployeesReport"));
-const AttendanceReportPage = lazy(() => import("@/pages/reports/AttendanceReport"));
-const DepartmentsReportPage = lazy(() => import("@/pages/reports/DepartmentsReport"));
-const AttendanceSumaryReportPage = lazy(() => import("@/pages/reports/AttendanceSumaryReport"));
+const EmployeesReportPage = lazy(
+  () => import("@/pages/reports/EmployeesReport")
+);
+const AttendanceReportPage = lazy(
+  () => import("@/pages/reports/AttendanceReport")
+);
+const DepartmentsReportPage = lazy(
+  () => import("@/pages/reports/DepartmentsReport")
+);
+const AttendanceSumaryReportPage = lazy(
+  () => import("@/pages/reports/AttendanceSumaryReport")
+);
 const ReportAuditPage = lazy(() => import("@/pages/reports/ReportAudit"));
 
 // ============================================
 // Fallbacks
 // ============================================
 
-function ErrorFallback() {
+function ErrorFallback({ error }: { error?: Error }) {
   return (
-    <div style={{ padding: 16 }}>
-      Ocurrió un error inesperado. Recarga la página o intenta de nuevo.
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
+      <div className="text-center max-w-md">
+        <div className="text-red-500 text-5xl mb-4">⚠️</div>
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">
+          Ocurrió un error inesperado
+        </h2>
+        <p className="text-gray-600 dark:text-gray-400 mb-4">
+          {error?.message ||
+            "Por favor, recarga la página o intenta de nuevo."}
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+        >
+          Recargar página
+        </button>
+      </div>
     </div>
   );
 }
 
 function LoadingFallback() {
   return (
-    <div style={{ 
-      padding: 16, 
-      display: 'flex', 
-      justifyContent: 'center', 
-      alignItems: 'center',
-      minHeight: '200px'
-    }}>
-      <div>Cargando...</div>
+    <div className="min-h-[400px] flex items-center justify-center">
+      <div className="text-center">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-2" />
+        <p className="text-gray-600 dark:text-gray-400 text-sm">Cargando...</p>
+      </div>
     </div>
   );
 }
 
-// 🆕 Pantalla de carga inicial
+// Pantalla de carga inicial (cuando AuthContext está comprobando sesión)
 function InitialLoadingScreen() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
       <div className="text-center">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-        <p className="text-gray-600 dark:text-gray-300">Cargando aplicación...</p>
+        <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
+        <p className="text-gray-600 dark:text-gray-300">
+          Cargando aplicación...
+        </p>
       </div>
     </div>
   );
 }
 
 // ============================================
-// Router
+// Router principal (dependiente de AuthContext)
 // ============================================
 
 function AppRouter() {
   const { isAuthenticated, isLoading } = useAuth();
 
-  // 🆕 Mostrar pantalla de carga mientras se verifica la autenticación
+  // Mientras AuthContext está revisando tokens → pantalla de carga
   if (isLoading) {
     return <InitialLoadingScreen />;
   }
 
-  // if (!isAuthenticated) {
-  //   return (
-  //     <Suspense fallback={<LoadingFallback />}>
-  //       <LoginPage />
-  //     </Suspense>
-  //   );
-  // }
-
-  // Si no está autenticado, mostrar solo login
+  // No autenticado → solo /login; todo lo demás redirige a /login
   if (!isAuthenticated) {
     return (
-      <Switch>
-        <Route path="/login" component={LoginPage} />
-        <Route path="/:rest*">
-          {() => {
-            // Redirigir cualquier otra ruta a /login
-            return <Redirect to="/login" />;
-          }}
-        </Route>
-      </Switch>
+      <Suspense fallback={<InitialLoadingScreen />}>
+        <Switch>
+          <Route path="/login" component={LoginPage} />
+          <Route path="/:rest*">
+            {() => <Redirect to="/login" />}
+          </Route>
+        </Switch>
+      </Suspense>
     );
   }
+
+  // Autenticado → app completa dentro de Layout
   return (
     <Layout>
       <Suspense fallback={<LoadingFallback />}>
         <Switch>
-          {/* ========================================== */}
-          {/* RUTAS PÚBLICAS (para usuarios autenticados) */}
-          {/* ========================================== */}
+          {/* RUTA PRINCIPAL */}
           <Route path="/" component={Dashboard} />
+
+          {/* Evitar volver al login si ya está autenticado */}
+          <Route path="/login">
+            {() => <Redirect to="/" />}
+          </Route>
+
+          {/* Perfil */}
           <Route path="/profile/change-password" component={ChangePasswordPage} />
 
-          {/* ========================================== */}
-          {/* RUTAS PROTEGIDAS - Gestión de Personal */}
-          {/* ========================================== */}
-          
+          {/* ===== Gestión de Personal ===== */}
           <Route path="/people">
             {() => (
               <ProtectedRoute requiredPath="/people">
@@ -186,10 +216,7 @@ function AppRouter() {
             )}
           </Route>
 
-          {/* ========================================== */}
-          {/* RUTAS PROTEGIDAS - Contratos y Permisos */}
-          {/* ========================================== */}
-
+          {/* ===== Contratos y Permisos ===== */}
           <Route path="/contracts">
             {() => (
               <ProtectedRoute requiredPath="/contracts">
@@ -238,10 +265,7 @@ function AppRouter() {
             )}
           </Route>
 
-          {/* ========================================== */}
-          {/* RUTAS PROTEGIDAS - Asistencia y Horarios */}
-          {/* ========================================== */}
-
+          {/* ===== Asistencia y Horarios ===== */}
           <Route path="/attendance">
             {() => (
               <ProtectedRoute requiredPath="/attendance">
@@ -282,10 +306,7 @@ function AppRouter() {
             )}
           </Route>
 
-          {/* ========================================== */}
-          {/* RUTAS PROTEGIDAS - Vacaciones y Nómina */}
-          {/* ========================================== */}
-
+          {/* ===== Vacaciones / Nómina / Finanzas ===== */}
           <Route path="/vacations">
             {() => (
               <ProtectedRoute requiredPath="/vacations">
@@ -304,7 +325,7 @@ function AppRouter() {
 
           <Route path="/payroll">
             {() => (
-              <ProtectedRoute requiredPath="/payroll" requiredRoles={["Admin", "PayrollManager"]}>
+              <ProtectedRoute requiredPath="/payroll">
                 <PayrollPage />
               </ProtectedRoute>
             )}
@@ -318,10 +339,7 @@ function AppRouter() {
             )}
           </Route>
 
-          {/* ========================================== */}
-          {/* RUTAS PROTEGIDAS - Reportes */}
-          {/* ========================================== */}
-
+          {/* ===== Reportes ===== */}
           <Route path="/reports">
             {() => (
               <ProtectedRoute requiredPath="/reports">
@@ -370,10 +388,7 @@ function AppRouter() {
             )}
           </Route>
 
-          {/* ========================================== */}
-          {/* RUTAS PROTEGIDAS - Otros */}
-          {/* ========================================== */}
-
+          {/* ===== Otros ===== */}
           <Route path="/jobActivities">
             {() => (
               <ProtectedRoute requiredPath="/jobActivities">
@@ -398,13 +413,10 @@ function AppRouter() {
             )}
           </Route>
 
-          {/* ========================================== */}
-          {/* RUTAS DE ADMINISTRACIÓN - Solo Admin */}
-          {/* ========================================== */}
-
+          {/* ===== Administración ===== */}
           <Route path="/admin/users">
             {() => (
-              <ProtectedRoute requiredPath="/admin/users" requiredRoles={["Admin"]}>
+              <ProtectedRoute requiredPath="/admin/users">
                 <UsersPage />
               </ProtectedRoute>
             )}
@@ -412,7 +424,7 @@ function AppRouter() {
 
           <Route path="/admin/roles">
             {() => (
-              <ProtectedRoute requiredPath="/admin/roles" requiredRoles={["Admin"]}>
+              <ProtectedRoute requiredPath="/admin/roles">
                 <RolesPage />
               </ProtectedRoute>
             )}
@@ -420,7 +432,7 @@ function AppRouter() {
 
           <Route path="/admin/user-roles">
             {() => (
-              <ProtectedRoute requiredPath="/admin/user-roles" requiredRoles={["Admin"]}>
+              <ProtectedRoute requiredPath="/admin/user-roles">
                 <UserRolesPage />
               </ProtectedRoute>
             )}
@@ -428,7 +440,7 @@ function AppRouter() {
 
           <Route path="/admin/menu-items">
             {() => (
-              <ProtectedRoute requiredPath="/admin/menu-items" requiredRoles={["Admin"]}>
+              <ProtectedRoute requiredPath="/admin/menu-items">
                 <MenuItemsPage />
               </ProtectedRoute>
             )}
@@ -436,14 +448,14 @@ function AppRouter() {
 
           <Route path="/admin/role-menu-items">
             {() => (
-              <ProtectedRoute requiredPath="/admin/role-menu-items" requiredRoles={["Admin"]}>
+              <ProtectedRoute requiredPath="/admin/role-menu-items">
                 <RoleMenuItemsPage />
               </ProtectedRoute>
             )}
           </Route>
 
-          {/* Ruta de "no encontrado" */}
-          <Route component={NotFound} />
+          {/* ===== 404 (siempre al final) ===== */}
+          <Route path="/:rest*" component={NotFound} />
         </Switch>
       </Suspense>
     </Layout>
@@ -456,7 +468,7 @@ function AppRouter() {
 
 export default function App() {
   return (
-    <ErrorBoundary fallback={<ErrorFallback />}>
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <TooltipProvider>

@@ -5,7 +5,7 @@
 import { createCrudService } from './client';
 import type {
   Contract, InsertContract
-} from '@shared/schema';
+} from '@/shared/schema';
 
 // =============================================================================
 // API de Contratos

@@ -18,7 +18,7 @@ import {
   Edit,
   Trash2
 } from "lucide-react";
-import type { Schedule } from "@shared/schema";
+import type { Schedule } from "@/shared/schema";
 import ScheduleForm from "@/components/forms/ScheduleForm";
 import { HorariosAPI, type ApiResponse } from "@/lib/api";
 import { 

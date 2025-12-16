@@ -1,72 +1,7 @@
-import React from "react";
-import { 
-  Users, 
-  LayoutDashboard, 
-  Clock, 
-  CalendarCheck, 
-  DollarSign, 
-  Building2,
-  FileText,
-  Settings,
-  Calendar,
-  ClipboardList,
-  UserCog,
-  Timer,
-  LogOut,
-  ChevronDown,
-  ChevronRight,
-  Folder,
-  Briefcase,
-  User,
-  Loader2,
-  Home,
-  BarChart3,
-  Shield,
-  AlertTriangle,
-  Heart,
-  Star,
-  BookOpen,
-  UserPlus,
-  FolderOpen,
-  Bell,
-  GraduationCap,
-  MapPin,
-  Lock,
-  ClipboardCheck,
-  Search,
-  X
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
+// components/layout/Sidebar.tsx
+import React, { useState, useEffect, useMemo } from "react";
+import { Link, useLocation } from "wouter";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import LogoUTA from "@assets/LogoUTA.png";
-import { useState, useEffect, useMemo } from "react";
-import { useAuth } from '@/contexts/AuthContext';
-
-interface SidebarProps {
-  onLogout?: () => void;
-  collapsed?: boolean;
-}
-
-interface NavGroup {
-  title: string;
-  items: NavItem[];
-  icon: React.ComponentType<any>;
-  initiallyOpen?: boolean;
-}
-
-interface NavItem {
-  path: string;
-  label: string;
-  icon: React.ComponentType<any>;
-}
-
-// Mapa de iconos para convertir strings a componentes
-const iconMap: Record<string, React.ComponentType<any>> = {
-  Home,
   Users,
   LayoutDashboard,
   Clock,
@@ -81,268 +16,569 @@ const iconMap: Record<string, React.ComponentType<any>> = {
   Timer,
   LogOut,
   Folder,
-  Briefcase,
-  User,
-  BarChart3,
-  Shield,
-  AlertTriangle,
-  Heart,
-  Star,
-  BookOpen,
-  UserPlus,
-  FolderOpen,
   Bell,
-  GraduationCap,
-  MapPin,
-  Lock,
+  ShieldCheck,
+  HardHat,
   ClipboardCheck,
+  FileCheck,
+  FileWarning,
+  FileSignature,
+  FileSearch,
+  FileClock,
+  FileSpreadsheet,
+  FilePlus,
+  User,
+  Briefcase,
+  BadgeCheck,
+  Handshake,
+  GraduationCap,
+  BookOpen,
+  PenSquare,
+  Clipboard,
+  AlarmClock,
+  CalendarDays,
+  CalendarX,
+  CalendarPlus,
+  CalendarSearch,
+  CalendarClock,
+  Cog,
+  Info,
+  HelpCircle,
+  MessageSquare,
+  Settings2,
+  Layers,
+  PanelLeftClose,
+  PanelLeftOpen,
+  ChevronDown,
+  ChevronRight,
+  Loader2,
+  User2,
+  ChartLine,
   Search,
+} from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import logoPath from "../../public/LogoUTA.png";
+
+const DEBUG = import.meta.env.VITE_DEBUG_AUTH === "true";
+
+const logSidebar = (...args: any[]) => {
+  if (DEBUG) {
+    // eslint-disable-next-line no-console
+    console.log("[SIDEBAR]", ...args);
+  }
 };
 
-export default function Sidebar({ onLogout, collapsed = false }: SidebarProps) {
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
-  const [searchQuery, setSearchQuery] = useState("");
-  const [showSearch, setShowSearch] = useState(false);
-  
-  const { user, isAuthenticated } = useAuth();
+interface NavItem {
+  id: number;
+  path: string;
+  label: string;
+  icon: React.ComponentType<any>;
+}
 
-  /**
-   * Transforma menuItems del AuthContext en NavGroups
-   * Usa useMemo para evitar recalcular en cada render
-   */
-  const navGroups = useMemo(() => {
-    if (!user?.menuItems || user.menuItems.length === 0) {
-      return [];
+interface NavGroup {
+  id: number;
+  title: string;
+  icon: React.ComponentType<any>;
+  initiallyOpen?: boolean;
+  items: NavItem[];
+}
+
+const iconMap: Record<string, React.ComponentType<any>> = {
+  Dashboard: LayoutDashboard,
+  Users,
+  Clock,
+  CalendarCheck,
+  DollarSign,
+  Building2,
+  FileText,
+  Settings,
+  Calendar,
+  ClipboardList,
+  UserCog,
+  Timer,
+  LogOut,
+  Bell,
+  ShieldCheck,
+  HardHat,
+  ClipboardCheck,
+  FileCheck,
+  FileWarning,
+  FileSignature,
+  FileSearch,
+  FileClock,
+  FileSpreadsheet,
+  FilePlus,
+  User,
+  Briefcase,
+  BadgeCheck,
+  Handshake,
+  GraduationCap,
+  BookOpen,
+  PenSquare,
+  Clipboard,
+  AlarmClock,
+  CalendarDays,
+  CalendarX,
+  CalendarPlus,
+  CalendarSearch,
+  CalendarClock,
+  Cog,
+  Info,
+  HelpCircle,
+  MessageSquare,
+  Settings2,
+  Layers,
+  ChartLine,
+  Folder,
+};
+
+interface SidebarProps {
+  collapsed: boolean;
+  onToggle: () => void;
+  onLogout?: () => void;
+}
+
+interface NormalizedMenuItem {
+  id: number;
+  parentId: number | null;
+  name: string;
+  url: string | null;
+  icon: string;
+  order: number;
+}
+
+const Sidebar: React.FC<SidebarProps> = ({
+  collapsed,
+  onToggle,
+  onLogout,
+}) => {
+  const [location] = useLocation();
+  const [navGroups, setNavGroups] = useState<NavGroup[]>([]);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  const [searchTerm, setSearchTerm] = useState(""); // 🔍 nuevo
+  const { user, isAuthenticated, isLoading } = useAuth();
+
+  const normalizeMenuItem = (item: any): NormalizedMenuItem => {
+    const id = item.menuItemId ?? item.id;
+    const parentId =
+      item.parentId === undefined || item.parentId === null
+        ? null
+        : item.parentId;
+    const name = item.menuItemName ?? item.name ?? "";
+    const url = item.url ?? null;
+    const icon = item.icon ?? "Folder";
+    const order = item.order ?? 0;
+
+    return { id, parentId, name, url, icon, order };
+  };
+
+  useEffect(() => {
+    if (!user) {
+      setNavGroups([]);
+      return;
     }
 
-    const menuItems = user.menuItems;
+    if (typeof (user as any).menuItems === "undefined") {
+      // AuthContext todavía no terminó de cargar menú
+      return;
+    }
 
-    // Filtrar grupos principales (sin padre)
-    const mainGroups = menuItems
-      .filter(item => item.parentId === null)
+    const rawItems: any[] = (user.menuItems || []) as any[];
+
+    if (!rawItems.length) {
+      setNavGroups([]);
+      return;
+    }
+
+    // (logs de debug se mantienen igual)
+    const normalized: NormalizedMenuItem[] = rawItems.map(normalizeMenuItem);
+
+    const roots = normalized
+      .filter((m) => m.parentId === null || m.parentId === 0)
       .sort((a, b) => a.order - b.order);
 
-    // Transformar a NavGroups
-    const groups: NavGroup[] = mainGroups.map(group => {
-      const IconComponent = iconMap[group.icon] || Folder;
+    const groups: NavGroup[] = roots
+      .map((root) => {
+        const IconComponent = iconMap[root.icon] || Folder;
 
-      // Obtener items hijos del grupo
-      const groupItems = menuItems
-        .filter(item => item.parentId === group.menuItemId && item.url !== null)
-        .sort((a, b) => a.order - b.order)
-        .map(item => {
-          const ItemIcon = iconMap[item.icon] || FileText;
-          return {
-            path: item.url || "#",
-            label: item.menuItemName,
-            icon: ItemIcon
-          };
-        });
+        const children = normalized
+          .filter((item) => item.parentId === root.id && item.url !== null)
+          .sort((a, b) => a.order - b.order)
+          .map((item) => {
+            const ItemIcon = iconMap[item.icon] || FileText;
+            return {
+              id: item.id,
+              path: item.url || "#",
+              label: item.name,
+              icon: ItemIcon,
+            };
+          });
 
-      return {
-        title: group.menuItemName,
-        icon: IconComponent,
-        initiallyOpen: groupItems.length > 0,
-        items: groupItems
-      };
+        return {
+          id: root.id,
+          title: root.name,
+          icon: IconComponent,
+          initiallyOpen: children.length > 0,
+          items: children,
+        };
+      })
+      .filter((group) => group.items.length > 0);
+
+    DEBUG && logSidebar("NavGroups finales", groups);
+
+    setNavGroups(groups);
+
+    const initialOpenState: Record<string, boolean> = {};
+    groups.forEach((group) => {
+      const key = group.id.toString();
+      initialOpenState[key] = group.initiallyOpen || false;
     });
+    setOpenGroups(initialOpenState);
+  }, [user]);
 
-    return groups;
-  }, [user?.menuItems]);
-
-  // Inicializar grupos abiertos
-  useEffect(() => {
-    if (navGroups.length > 0) {
-      const initialOpenState: Record<string, boolean> = {};
-      navGroups.forEach(group => {
-        if (group.initiallyOpen) {
-          initialOpenState[group.title] = true;
-        }
-      });
-      setOpenGroups(initialOpenState);
-    }
-  }, [navGroups]);
-
-  const toggleGroup = (groupTitle: string) => {
-    setOpenGroups(prev => ({
-      ...prev,
-      [groupTitle]: !prev[groupTitle]
-    }));
+  const toggleGroup = (groupKey: string) => {
+    setOpenGroups((prev) => ({ ...prev, [groupKey]: !prev[groupKey] }));
   };
 
-  // Filtrar grupos y items según búsqueda
-  const filteredGroups = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return navGroups;
+  // Normalización de rutas para active
+  const normalizePath = (p: string) => {
+    if (!p) return "/";
+    const trimmed = p.replace(/\/+$/, "");
+    return trimmed === "" ? "/" : trimmed;
+  };
+
+  const isActivePath = (path: string) => {
+    const current = normalizePath(location);
+    const target = normalizePath(path);
+
+    if (target === "/") {
+      return current === "/";
     }
 
-    const query = searchQuery.toLowerCase();
-    return navGroups
-      .map(group => ({
-        ...group,
-        items: group.items.filter(item =>
-          item.label.toLowerCase().includes(query) ||
-          item.path.toLowerCase().includes(query)
-        )
-      }))
-      .filter(group => 
-        group.title.toLowerCase().includes(query) || 
-        group.items.length > 0
-      );
-  }, [navGroups, searchQuery]);
-
-  // Auto-abrir grupos cuando hay búsqueda
-  useEffect(() => {
-    if (searchQuery.trim()) {
-      const allOpen: Record<string, boolean> = {};
-      filteredGroups.forEach(group => {
-        allOpen[group.title] = true;
-      });
-      setOpenGroups(allOpen);
-    }
-  }, [searchQuery, filteredGroups]);
+    return current === target || current.startsWith(target + "/");
+  };
 
   const handleLogout = () => {
-    if (onLogout) {
-      onLogout();
-    }
+    if (onLogout) onLogout();
   };
 
-  // Mostrar loading mientras se cargan los permisos
-  if (isAuthenticated && !user?.menuItems) {
+  // 🔍 Filtro de búsqueda (por título de grupo e items)
+  const filteredNavGroups = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) return navGroups;
+
+    return navGroups
+      .map((group) => {
+        const groupMatches = group.title.toLowerCase().includes(term);
+        const filteredItems = group.items.filter((item) =>
+          item.label.toLowerCase().includes(term)
+        );
+
+        if (!groupMatches && filteredItems.length === 0) {
+          return null;
+        }
+
+        return {
+          ...group,
+          items: groupMatches ? group.items : filteredItems,
+        };
+      })
+      .filter(Boolean) as NavGroup[];
+  }, [navGroups, searchTerm]);
+
+  // Loader mientras esperamos menú/permiso
+  if (
+    isLoading ||
+    (isAuthenticated && user && typeof (user as any).menuItems === "undefined")
+  ) {
     return (
-      <aside className={`bg-gradient-to-b from-blue-900 to-blue-800 text-white h-screen flex flex-col transition-all duration-300 ${collapsed ? 'w-16' : 'w-64'}`}>
+      <aside
+        className={`${
+          collapsed ? "w-16" : "w-60"
+        } h-screen shadow-lg border-r flex flex-col transition-all duration-300`}
+        style={{
+          backgroundColor: "#ffffff",
+          borderColor: "#e2e8f0",
+        }}
+      >
         <div className="flex items-center justify-center h-full">
-          <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
-            <p className="text-sm">Cargando menú...</p>
-          </div>
+          <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+          {!collapsed && <span className="ml-2">Cargando menú...</span>}
         </div>
       </aside>
     );
   }
 
-  // Mostrar mensaje si no hay menú asignado
+  // Usuario sin menús asignados
   if (isAuthenticated && navGroups.length === 0) {
     return (
-      <aside className={`bg-gradient-to-b from-blue-900 to-blue-800 text-white h-screen flex flex-col transition-all duration-300 ${collapsed ? 'w-16' : 'w-64'}`}>
-        <div className="flex items-center justify-center h-full p-4">
-          <div className="text-center">
-            <AlertTriangle className="h-8 w-8 mx-auto mb-2 text-yellow-400" />
-            <p className="text-sm">No tienes opciones de menú asignadas</p>
-            <p className="text-xs mt-2 text-blue-200">Contacta al administrador</p>
-          </div>
-        </div>
-      </aside>
-    );
-  }
-
-  return (
-    <aside className={`bg-gradient-to-b from-blue-900 to-blue-800 text-white h-screen flex flex-col transition-all duration-300 ${collapsed ? 'w-16' : 'w-64'}`}>
-      {/* Logo y título */}
-      <div className="p-4 border-b border-blue-700">
-        <div className="flex items-center justify-center gap-2">
-          <img src={LogoUTA} alt="Logo UTA" className={`transition-all ${collapsed ? 'w-8 h-8' : 'w-12 h-12'}`} />
-          {!collapsed && (
-            <div className="text-center">
-              <h2 className="text-sm font-semibold">Universidad Técnica de Ambato</h2>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Barra de búsqueda */}
-      {!collapsed && (
-        <div className="p-4 border-b border-blue-700">
-          {showSearch ? (
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Buscar en el menú..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-3 py-2 pr-8 bg-blue-800 border border-blue-600 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                autoFocus
-              />
-              <button
-                onClick={() => {
-                  setShowSearch(false);
-                  setSearchQuery("");
-                }}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-blue-300 hover:text-white"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setShowSearch(true)}
-              className="w-full flex items-center gap-2 px-3 py-2 bg-blue-800 hover:bg-blue-700 rounded-md text-sm transition-colors"
-            >
-              <Search className="h-4 w-4" />
-              <span>Buscar en el menú...</span>
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Navegación */}
-      <nav className="flex-1 overflow-y-auto p-4 space-y-2">
-        {filteredGroups.map((group) => (
-          <div key={group.title} className="space-y-1">
-            <button
-              onClick={() => toggleGroup(group.title)}
-              className="w-full flex items-center justify-between px-3 py-2 rounded-md hover:bg-blue-700 transition-colors group"
-            >
-              <div className="flex items-center gap-2">
-                <group.icon className="h-5 w-5" />
-                {!collapsed && <span className="font-medium">{group.title}</span>}
-              </div>
-              {!collapsed && (
-                openGroups[group.title] ? 
-                  <ChevronDown className="h-4 w-4" /> : 
-                  <ChevronRight className="h-4 w-4" />
-              )}
-            </button>
-
-            {openGroups[group.title] && !collapsed && (
-              <div className="ml-4 space-y-1">
-                {group.items.map((item) => (
-                  <a
-                    key={item.path}
-                    href={item.path}
-                    className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-blue-700 transition-colors text-sm"
-                  >
-                    <item.icon className="h-4 w-4" />
-                    <span>{item.label}</span>
-                  </a>
-                ))}
+      <aside
+        className={`${
+          collapsed ? "w-16" : "w-60"
+        } h-screen shadow-lg border-r flex flex-col transition-all duration-300`}
+        style={{
+          backgroundColor: "#ffffff",
+          borderColor: "#e2e8f0",
+        }}
+      >
+        {/* Header con logo aunque no haya menú */}
+        <div
+          className="flex flex-col items-center justify-center border-b px-3 py-3"
+          style={{
+            background:
+              "linear-gradient(to right, rgba(38, 87, 146, 0.05), rgba(255, 193, 7, 0.05))",
+            borderColor: "#e2e8f0",
+          }}
+        >
+          <div className="flex items-center w-full justify-center">
+            <img
+              src={logoPath}
+              alt="Universidad Técnica de Ambato"
+              className="h-10 w-auto mr-3"
+            />
+            {!collapsed && (
+              <div className="flex flex-col">
+                <span className="font-semibold text-sm text-blue-900 leading-tight">
+                  Universidad Técnica
+                </span>
+                <span className="font-semibold text-sm text-blue-900 leading-tight -mt-1">
+                  de Ambato
+                </span>
+                <span className="text-[11px] text-gray-500 mt-1">
+                  Sistema de Licencias
+                </span>
               </div>
             )}
           </div>
-        ))}
+          <button
+            onClick={onToggle}
+            className="mt-2 flex items-center justify-center w-7 h-7 rounded-full border text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-all duration-200"
+            style={{ borderColor: "#e2e8f0" }}
+          >
+            {collapsed ? (
+              <PanelLeftOpen className="h-4 w-4" />
+            ) : (
+              <PanelLeftClose className="h-4 w-4" />
+            )}
+          </button>
+        </div>
+
+        <div className="flex-1 flex items-center justify-center px-4 text-center">
+          <div>
+            <Folder className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+            <p className="text-sm font-medium text-gray-700">
+              No tienes opciones de menú asignadas.
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              Contacta al administrador del sistema para asignar tus permisos.
+            </p>
+          </div>
+        </div>
+
+        {/* Footer fijado abajo */}
+        <SidebarFooter
+          collapsed={collapsed}
+          userName={user?.displayName || user?.email}
+          userType={user?.userType}
+          onLogout={handleLogout}
+        />
+      </aside>
+    );
+  }
+
+  const currentUserName = user?.displayName || user?.email || "Usuario";
+
+  return (
+    <aside
+      className={`${
+        collapsed ? "w-16" : "w-60"
+      } h-screen shadow-lg border-r flex flex-col transition-all duration-300`}
+      style={{
+        backgroundColor: "#ffffff",
+        borderColor: "#e2e8f0",
+      }}
+    >
+      {/* HEADER CON LOGO UTA */}
+      <div
+        className="flex flex-col items-center justify-center border-b px-3 py-3"
+        style={{
+          background:
+            "linear-gradient(to right, rgba(38, 87, 146, 0.05), rgba(255, 193, 7, 0.05))",
+          borderColor: "#e2e8f0",
+        }}
+      >
+        <div className="flex items-center w-full justify-center">
+          <img
+            src={logoPath}
+            alt="Universidad Técnica de Ambato"
+            className="h-10 w-auto mr-3"
+          />
+          {!collapsed && (
+            <div className="flex flex-col">
+              <span className="font-semibold text-sm text-blue-900 leading-tight">
+                Universidad Técnica
+              </span>
+              <span className="font-semibold text-sm text-blue-900 leading-tight -mt-1">
+                de Ambato
+              </span>
+              <span className="text-[11px] text-gray-500 mt-1">
+                Sistema de Licencias
+              </span>
+            </div>
+          )}
+        </div>
+
+        <button
+          onClick={onToggle}
+          className="mt-2 flex items-center justify-center w-7 h-7 rounded-full border text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-all duration-200"
+          style={{ borderColor: "#e2e8f0" }}
+        >
+          {collapsed ? (
+            <PanelLeftOpen className="h-4 w-4" />
+          ) : (
+            <PanelLeftClose className="h-4 w-4" />
+          )}
+        </button>
+      </div>
+
+      {/* 🔍 BÚSQUEDA (solo cuando no está colapsado) */}
+      {!collapsed && (
+        <div className="px-3 pt-3 pb-1 border-b" style={{ borderColor: "#e2e8f0" }}>
+          <div className="relative">
+            <span className="absolute inset-y-0 left-2 flex items-center pointer-events-none">
+              <Search className="h-4 w-4 text-gray-400" />
+            </span>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar en el menú..."
+              className="w-full pl-8 pr-2 py-1.5 rounded-md border text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-700"
+              style={{ borderColor: "#e2e8f0" }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* NAV: ocupa todo el espacio disponible y hace scroll */}
+      <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-2">
+        {filteredNavGroups.map((group) => {
+          const groupKey = group.id.toString();
+          const isOpen = openGroups[groupKey] ?? group.initiallyOpen ?? false;
+          const GroupIcon = group.icon || Folder;
+
+          return (
+            <div key={groupKey} className="mb-1">
+              <button
+                onClick={() => toggleGroup(groupKey)}
+                className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-xs font-semibold transition-colors
+                  ${
+                    isOpen
+                      ? "bg-blue-50 text-blue-800"
+                      : "text-gray-600 hover:bg-gray-50"
+                  }`}
+              >
+                <span className="flex items-center space-x-2">
+                  <GroupIcon className="h-4 w-4" />
+                  {!collapsed && <span>{group.title}</span>}
+                </span>
+                {!collapsed && (
+                  <span className="ml-1">
+                    {isOpen ? (
+                      <ChevronDown className="h-3 w-3" />
+                    ) : (
+                      <ChevronRight className="h-3 w-3" />
+                    )}
+                  </span>
+                )}
+              </button>
+
+              {isOpen && (
+                <div className="mt-1 space-y-0.5 ml-2">
+                  {group.items.map((item) => {
+                    const ItemIcon = item.icon;
+                    const active = isActivePath(item.path);
+
+                    return (
+                      <Link
+                        key={item.id}
+                        href={item.path}
+                        className={`flex items-center px-2 py-1.5 rounded-lg text-xs transition-colors
+                          ${
+                            active
+                              ? "bg-blue-600 text-white"
+                              : "text-gray-600 hover:bg-gray-50 hover:text-gray-800"
+                          }`}
+                      >
+                        <ItemIcon className="h-3.5 w-3.5 mr-2" />
+                        {!collapsed && (
+                          <span className="truncate">{item.label}</span>
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {/* Mensaje si hay búsqueda y no se encontró nada */}
+        {!collapsed && searchTerm.trim() && filteredNavGroups.length === 0 && (
+          <p className="text-[11px] text-gray-500 px-2 mt-2">
+            No se encontraron opciones para “{searchTerm.trim()}”.
+          </p>
+        )}
       </nav>
 
-      {/* Botón de logout */}
-      <div className="p-4 border-t border-blue-700">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              className="w-full justify-start text-white hover:bg-blue-700"
-              onClick={handleLogout}
-            >
-              <LogOut className="h-5 w-5" />
-              {!collapsed && <span className="ml-2">Cerrar Sesión</span>}
-            </Button>
-          </TooltipTrigger>
-          {collapsed && (
-            <TooltipContent side="right">
-              <p>Cerrar Sesión</p>
-            </TooltipContent>
-          )}
-        </Tooltip>
-      </div>
+      {/* FOOTER FIJADO ABAJO */}
+      <SidebarFooter
+        collapsed={collapsed}
+        userName={currentUserName}
+        userType={user?.userType}
+        onLogout={handleLogout}
+      />
     </aside>
   );
+};
+
+interface SidebarFooterProps {
+  collapsed: boolean;
+  userName?: string;
+  userType?: string;
+  onLogout: () => void;
 }
+
+const SidebarFooter: React.FC<SidebarFooterProps> = ({
+  collapsed,
+  userName,
+  userType,
+  onLogout,
+}) => (
+  <div
+    className="border-t px-2 py-2 text-xs flex items-center justify-between mt-auto"
+    style={{ borderColor: "#e2e8f0" }}
+  >
+    <div className="flex items-center space-x-2 min-w-0">
+      <User2 className="h-4 w-4 text-gray-500" />
+      {!collapsed && (
+        <div className="flex flex-col min-w-0">
+          <span className="font-medium text-gray-700 truncate">
+            {userName || "Usuario"}
+          </span>
+          <span className="text-[11px] text-gray-500 truncate">
+            {userType === "AzureAD" ? "Cuenta institucional" : "Usuario local"}
+          </span>
+        </div>
+      )}
+    </div>
+    <button
+      onClick={onLogout}
+      className="ml-2 p-1.5 rounded-full hover:bg-red-50 text-gray-500 hover:text-red-600 transition-colors flex-shrink-0"
+    >
+      <LogOut className="h-4 w-4" />
+    </button>
+  </div>
+);
+
+export default Sidebar;

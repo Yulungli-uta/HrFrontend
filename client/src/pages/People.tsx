@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Person, InsertPerson, Employee } from "@shared/schema";
+import type { Person, InsertPerson, Employee } from "@/shared/schema";
 import PersonForm from "@/components/forms/PersonForm";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

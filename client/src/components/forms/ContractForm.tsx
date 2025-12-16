@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { insertContractSchema, type InsertContract, type Contract, type Employee, type Person } from "@shared/schema";
+import { insertContractSchema, type InsertContract, type Contract, type Employee, type Person } from "@/shared/schema";
 import { FileText, Save, X, Calendar, DollarSign } from "lucide-react";
 import { ContratosAPI, EmpleadosAPI, PersonasAPI, type ApiResponse } from "@/lib/api"; // Importamos los servicios de API
 

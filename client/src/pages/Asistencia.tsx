@@ -13,7 +13,7 @@ import { MarcacionesAPI, PersonasAPI } from "@/lib/api";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import MarcacionForm from "@/components/forms/MarcacionForm";
-import type { Marcacion } from "@shared/schema";
+import type { Marcacion } from "@/shared/schema";
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function Asistencia() {

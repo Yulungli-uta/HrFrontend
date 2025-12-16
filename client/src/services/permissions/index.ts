@@ -1,3 +1,4 @@
 // services/permissions/index.ts
-export { PermissionService } from './permissionService';
-export { CacheService, PermissionCacheService } from './cacheService';
+
+export { PermissionService } from "./permissionService";
+export { CacheService } from "./cacheService";

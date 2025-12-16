@@ -6,7 +6,7 @@ import type {
   Permission, InsertPermission,
   Vacation, InsertVacation,
   Publication, InsertPublication
-} from '@shared/schema';
+} from '@/shared/schema';
 import { tokenService } from '@/services/auth';
 // ✅ Necesario para el retry 401
 import { authService } from '@/services/auth';
@@ -121,11 +121,26 @@ export interface RefType {
 // --------------------------------------------------------------------------
 // CONFIGURACIÓN CENTRALIZADA (EXISTENTE)
 // --------------------------------------------------------------------------
+function normalizeBase(base: string) {
+  // quita slash final
+  return base.replace(/\/+$/, "");
+}
+
+function baseFromSameOrigin() {
+  // Vite inyecta BASE_URL en runtime (ej: "/" o "/WsUtaSystem/")
+  // Queremos que las APIs cuelguen del mismo "subpath" del frontend.
+  const basePath = normalizeBase(import.meta.env.BASE_URL || "/");
+  // si basePath === "" => usar solo origin
+  return `${window.location.origin}${basePath === "/" ? "" : basePath}`;
+}
 
 const API_CONFIG = {
-  BASE_URL: import.meta.env.VITE_API_BASE || "http://localhost:5000",
-  AUTH_BASE_URL: import.meta.env.VITE_AUTH_API_BASE || "http://localhost:5010",
-  FILES_BASE_URL: import.meta.env.VITE_FILES_API_BASE || "http://localhost:5000",
+  // BASE_URL: import.meta.env.VITE_API_BASE || "http://localhost:5000",
+  // AUTH_BASE_URL: import.meta.env.VITE_AUTH_API_BASE_URL || "http://localhost:5010",
+  // FILES_BASE_URL: import.meta.env.VITE_FILES_API_BASE || "http://localhost:5000",
+  BASE_URL: normalizeBase(import.meta.env.VITE_API_BASE || baseFromSameOrigin()),
+  AUTH_BASE_URL: normalizeBase(import.meta.env.VITE_AUTH_API_BASE || baseFromSameOrigin()),
+  FILES_BASE_URL: normalizeBase(import.meta.env.VITE_FILES_API_BASE || baseFromSameOrigin()),
   DEFAULT_HEADERS: {
     "Content-Type": "application/json",
     "Accept": "application/json"
@@ -133,6 +148,13 @@ const API_CONFIG = {
   TIMEOUT: 15000, // 15 segundos
   CREDENTIALS: "include" as RequestCredentials
 };
+
+function resolveBaseUrl(path: string): string {
+  const p = path.startsWith('/') ? path : `/${path}`;
+  if (p.startsWith('/api/v1/rh/files')) return API_CONFIG.FILES_BASE_URL;
+  if (p.startsWith('/api/auth') || p.startsWith('/api/app-auth')) return API_CONFIG.AUTH_BASE_URL;
+  return API_CONFIG.BASE_URL;
+}
 
 // --------------------------------------------------------------------------
 // TIPOS Y ESTRUCTURAS (EXISTENTES)
@@ -151,13 +173,6 @@ export interface ApiError {
 // --------------------------------------------------------------------------
 // Helpers: selección de host, body FormData, apiFetch con token y refresh
 // --------------------------------------------------------------------------
-
-function resolveBaseUrl(path: string): string {
-  const p = path.startsWith('/') ? path : `/${path}`;
-  if (p.startsWith('/api/v1/rh/files')) return API_CONFIG.FILES_BASE_URL;
-  if (p.startsWith('/api/auth') || p.startsWith('/api/app-auth')) return API_CONFIG.AUTH_BASE_URL;
-  return API_CONFIG.BASE_URL;
-}
 
 function isFormDataBody(body: any): body is FormData {
   return typeof FormData !== 'undefined' && body instanceof FormData;
@@ -216,6 +231,7 @@ export async function apiFetch<T = any>(
 
   try {
     // ✅ Usar baseUrl resuelto (antes se usaba BASE_URL fijo)
+    console.log(`Fetching URL: ${baseUrl}${path}`);
     const response = await fetch(`${baseUrl}${path}`, {
       credentials: API_CONFIG.CREDENTIALS,
       headers,

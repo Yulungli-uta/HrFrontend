@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { UserCog, Building2, Calendar, Users } from "lucide-react";
-import type { Employee } from "@shared/schema";
+import type { Employee } from "@/shared/schema";
 import EmployeeForm from "@/components/forms/EmployeeForm";
 import { useState } from "react";
 import { EmpleadosAPI } from "@/lib/api"; 

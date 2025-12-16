@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, User, CalendarDays, Plus } from "lucide-react";
-import type { Vacation } from "@shared/schema";
+import type { Vacation } from "@/shared/schema";
 import { VacacionesAPI, type ApiResponse } from "@/lib/api"; // Cambiamos la importación
 
 const statusLabels: Record<string, string> = {

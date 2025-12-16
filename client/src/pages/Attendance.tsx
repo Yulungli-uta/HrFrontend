@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format, isToday, parseISO, isSameDay } from "date-fns";
 import { es } from "date-fns/locale";
 import { Timer, Clock, MapPin, Filter, AlertCircle, CheckCircle, Calendar, Search, RefreshCw, Info } from "lucide-react";
-import type { AttendancePunch, InsertAttendancePunch } from "@shared/schema";
+import type { AttendancePunch, InsertAttendancePunch } from "@/shared/schema";
 import type { ApiResponse } from "@/lib/api";
 import { MarcacionesAPI, MarcacionesEspecializadasAPI, handleApiError, TimeAPI } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";

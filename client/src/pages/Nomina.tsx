@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, FileSpreadsheet, DollarSign } from "lucide-react";
 import { NominaAPI } from "@/lib/api";
-import type { NominaPeriodo, NominaConcepto, NominaMovimiento } from "@shared/schema";
+import type { NominaPeriodo, NominaConcepto, NominaMovimiento } from "@/shared/schema";
 
 export default function Nomina() {
   const [activeTab, setActiveTab] = useState<"periodos" | "conceptos" | "movimientos">("periodos");

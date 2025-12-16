@@ -10,7 +10,7 @@ import { PermisosAPI, VacacionesAPI, PersonasAPI } from "@/lib/api";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import PermisoForm from "@/components/forms/PermisoForm";
-import type { Permiso, Vacacion } from "@shared/schema";
+import type { Permiso, Vacacion } from "@/shared/schema";
 
 export default function Permisos() {
   const [activeTab, setActiveTab] = useState<"permisos" | "vacaciones">("permisos");

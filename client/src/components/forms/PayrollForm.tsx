@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { insertPayrollSchema, type InsertPayroll, type Employee, type Person, type Contract } from "@shared/schema";
+import { insertPayrollSchema, type InsertPayroll, type Employee, type Person, type Contract } from "@/shared/schema";
 import { DollarSign, Save, X, Calculator, Users } from "lucide-react";
 import { useState } from "react";
 

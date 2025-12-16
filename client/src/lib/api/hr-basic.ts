@@ -10,7 +10,7 @@ import type {
   Employee, InsertEmployee,
   Department, InsertDepartment,
   Faculty, InsertFaculty
-} from '@shared/schema';
+} from '@/shared/schema';
 
 // =============================================================================
 // API de Personas

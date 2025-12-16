@@ -1,4 +1,5 @@
 import { createRoot } from "react-dom/client";
+import { Router } from "wouter";
 import App from "./App";
 import "./index.css";
 import "./uta-branding.css";
@@ -14,4 +15,15 @@ window.addEventListener('error', (event) => {
   console.error('Unhandled error:', event.error);
 });
 
-createRoot(document.getElementById("root")!).render(<App />);
+
+// ✅ Base dinámico: local "/" ; producción "/WsUtaSystem"
+const base =
+  import.meta.env.PROD ? (import.meta.env.VITE_BASE_PATH?.replace(/\/$/, "") || "/WsUtaSystem") : "/";
+
+createRoot(document.getElementById("root")!).render(
+  <Router base={base}>
+    <App />
+  </Router>
+);
+
+// createRoot(document.getElementById("root")!).render(<App />);

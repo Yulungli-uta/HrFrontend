@@ -8,7 +8,7 @@ import type {
   AttendancePunch, InsertAttendancePunch,
   Permission, InsertPermission,
   Vacation, InsertVacation
-} from '@shared/schema';
+} from '@/shared/schema';
 
 // =============================================================================
 // API de Marcaciones

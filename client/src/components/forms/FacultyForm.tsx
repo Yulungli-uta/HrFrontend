@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { insertFacultySchema, type InsertFaculty, type Faculty, type Employee, type Person } from "@shared/schema";
+import { insertFacultySchema, type InsertFaculty, type Faculty, type Employee, type Person } from "@/shared/schema";
 import { Building2, Save, X, User } from "lucide-react";
 import { useCrudMutation } from "@/hooks/useCrudMutation";
 import { FacultadesAPI, EmpleadosAPI, PersonasAPI } from "@/lib/api";

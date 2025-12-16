@@ -1,4 +1,4 @@
-// contexts/AuthContext.tsx (v3: sincronización mejorada post-login)
+// contexts/AuthContext.tsx
 import React, {
   createContext,
   useContext,
@@ -7,12 +7,24 @@ import React, {
   ReactNode,
   useCallback,
   useRef,
-} from 'react';
-import { authService, tokenService, UserSession } from '@/services/auth';
+} from "react";
+import { authService, tokenService, UserSession } from "@/services/auth";
 import { useToast } from "@/hooks/use-toast";
-import { useLocation } from 'wouter';
-import { VistaDetallesEmpleadosAPI } from '@/lib/api';
-import { useNotificationWebSocket, WebSocketMessage } from '@/hooks/useNotificationWebSocket';
+import { useLocation } from "wouter";
+import { VistaDetallesEmpleadosAPI } from "@/lib/api";
+import {
+  useNotificationWebSocket,
+  WebSocketMessage,
+} from "@/hooks/useNotificationWebSocket";
+
+const AUTH_DEBUG = import.meta.env.VITE_DEBUG_AUTH === "true";
+
+const logAuth = (...args: any[]) => {
+  if (AUTH_DEBUG) {
+    // eslint-disable-next-line no-console
+    console.log("[AUTH]", ...args);
+  }
+};
 
 export interface EmployeeDetails {
   employeeID: number;
@@ -42,28 +54,20 @@ interface AuthContextType {
   refreshAuth: () => Promise<void>;
 }
 
-const AUTH_DEBUG = import.meta.env.VITE_DEBUG_AUTH === 'true';
-
-const debugAuthContext = (label: string, state: any) => {
-  if (!AUTH_DEBUG) return;
-  console.group(`🔐 AUTH CONTEXT DEBUG → ${label}`);
-  console.log("isAuthenticated:", state.isAuthenticated);
-  console.log("user:", state.user);
-  console.log("employeeDetails:", state.employeeDetails);
-  console.groupEnd();
-};
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const APP_CLIENT_ID = import.meta.env.VITE_APP_CLIENT_ID;
 
-const LS_EMPLOYEE_DETAILS = 'wsuta-employee-details';
-const LS_LAST_ACTIVITY = 'wsuta-last-activity';
+const LS_EMPLOYEE_DETAILS = "wsuta-employee-details";
+const LS_LAST_ACTIVITY = "wsuta-last-activity";
 
 interface AuthProviderProps {
   children: ReactNode;
 }
 
-const equalEmployeeDetails = (a: EmployeeDetails | null, b: EmployeeDetails | null) => {
+const equalEmployeeDetails = (
+  a: EmployeeDetails | null,
+  b: EmployeeDetails | null
+) => {
   if (a === b) return true;
   if (!a || !b) return false;
   return (
@@ -81,7 +85,8 @@ const equalEmployeeDetails = (a: EmployeeDetails | null, b: EmployeeDetails | nu
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<UserSession | null>(null);
-  const [employeeDetails, setEmployeeDetails] = useState<EmployeeDetails | null>(null);
+  const [employeeDetails, setEmployeeDetails] =
+    useState<EmployeeDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -91,150 +96,216 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const processedLoginEventsRef = useRef<Set<string>>(new Set());
   const isProcessingLoginRef = useRef(false);
-  
-  // 🆕 Flag para evitar navegaciones duplicadas
-  const hasNavigatedAfterLoginRef = useRef(false);
 
-  const INACTIVITY_TIMEOUT = 15 * 60 * 1000;
+  // 15 minutos real:
+  // const INACTIVITY_TIMEOUT = 15 * 60 * 1000;
+  // Para pruebas:
+  //const INACTIVITY_TIMEOUT = 30 * 1000;
+  const INACTIVITY_TIMEOUT =Number(import.meta.env.VITE_INACTIVITY_TIMEOUT) || 15 * 60 * 1000;
+
   const [lastActivity, setLastActivity] = useState(Date.now());
 
   const logoutRef = useRef<() => void>(() => {});
-  const doLoginStateRef = useRef<(u: UserSession, showToast?: boolean, shouldNavigate?: boolean) => Promise<void>>(async () => {});
-  const fetchEmployeeDetailsRef = useRef<(email: string) => Promise<void>>(async () => {});
+  const doLoginStateRef = useRef<
+    (u: UserSession, showToast?: boolean) => Promise<void>
+  >(async () => {});
+  const fetchEmployeeDetailsRef = useRef<(email: string) => Promise<void>>(
+    async () => {}
+  );
 
+  // ---------------------------------------------------------------------------
+  // Persistencia de detalles del empleado
+  // ---------------------------------------------------------------------------
   const persistEmployeeDetails = (details: EmployeeDetails) => {
-    setEmployeeDetails((prev) => (equalEmployeeDetails(prev, details) ? prev : details));
+    setEmployeeDetails((prev) =>
+      equalEmployeeDetails(prev, details) ? prev : details
+    );
     try {
       localStorage.setItem(LS_EMPLOYEE_DETAILS, JSON.stringify(details));
-    } catch {}
+    } catch {
+      /* ignore */
+    }
   };
 
-  const fetchEmployeeDetails = useCallback(async (email: string) => {
-    try {
-      const response = await VistaDetallesEmpleadosAPI.byEmail(email);
-      if (response.status === 'success' && response.data) {
-        persistEmployeeDetails(response.data);
-        debugAuthContext("FETCH EMPLOYEE DETAILS", { isAuthenticated: true, user, employeeDetails: response.data });
-      } else {
-        console.error('Error al obtener detalles del empleado:', response.error);
+  const fetchEmployeeDetails = useCallback(
+    async (email: string) => {
+      try {
+        const response = await VistaDetallesEmpleadosAPI.byEmail(email);
+        if (response.status === "success" && response.data) {
+          persistEmployeeDetails(response.data);
+          logAuth("FETCH EMPLOYEE DETAILS", {
+            isAuthenticated: true,
+            user,
+            employeeDetails: response.data,
+          });
+        } else {
+          console.error(
+            "Error al obtener detalles del empleado:",
+            response.error
+          );
+        }
+      } catch (error) {
+        console.error("Error en fetchEmployeeDetails:", error);
       }
-    } catch (error) {
-      console.error('Error en fetchEmployeeDetails:', error);
-    }
-  }, [user]);
+    },
+    [user]
+  );
   fetchEmployeeDetailsRef.current = fetchEmployeeDetails;
 
-  // 🆕 Parámetro shouldNavigate para controlar la navegación
-  const doLoginState = useCallback(async (
-    userInfo: UserSession, 
-    showToast: boolean = true,
-    shouldNavigate: boolean = false
-  ) => {
-    // ✅ OBTENER ROLES Y PERMISOS FRESCOS DESDE BD (sin caché en login)
-    try {
-      const { PermissionService, CacheService } = await import('@/services/permissions');
-      
-      // 🚨 IMPORTANTE: Invalidar caché anterior para forzar carga fresca
-      CacheService.invalidateAll();
-      
-      if (import.meta.env.DEV) {
-        console.log('🔄 Cargando permisos frescos desde BD...');
+  // ---------------------------------------------------------------------------
+  // APLICAR ESTADO DE LOGIN (No navega, solo actualiza contexto)
+  // ---------------------------------------------------------------------------
+  const doLoginState = useCallback(
+    async (userInfo: UserSession, showToast: boolean = true) => {
+      setIsAuthenticated(true);
+      setUser((prev) =>
+        prev?.id === userInfo.id && prev?.email === userInfo.email
+          ? prev
+          : userInfo
+      );
+
+      const now = Date.now();
+      setLastActivity(now);
+      try {
+        localStorage.setItem(LS_LAST_ACTIVITY, String(now));
+      } catch {
+        /* ignore */
       }
-      
-      const permissionsData = await PermissionService.fetchAllPermissions(userInfo.id);
-      
-      userInfo.roles = permissionsData.roles;
-      userInfo.permissions = permissionsData.permissions;
-      userInfo.menuItems = permissionsData.menuItems;
-      
-      if (import.meta.env.DEV) {
-        console.log('🔐 Permisos cargados desde BD:', {
+
+      try {
+        const { PermissionService, CacheService } =
+          await import("@/services/permissions");
+
+        try {
+          CacheService.clearAll();
+        } catch (err) {
+          console.warn("[AUTH] Error limpiando caché permisos:", err);
+        }
+
+        logAuth("Cargando permisos desde /api/menu/user...", {
           userId: userInfo.id,
-          roles: permissionsData.roles,
-          permissions: permissionsData.permissions.length,
-          menuItems: permissionsData.menuItems.length,
         });
-        console.log('📝 Menús asignados:', permissionsData.menuItems.map(m => m.url).filter(Boolean));
+
+        const perms = await PermissionService.fetchAllPermissions(userInfo.id);
+
+        const mergedUser: UserSession = {
+          ...userInfo,
+          roles:
+            (perms.roles && perms.roles.length > 0
+              ? perms.roles
+              : userInfo.roles) ?? [],
+          permissions:
+            (perms.permissions && perms.permissions.length > 0
+              ? perms.permissions
+              : userInfo.permissions) ?? [],
+          menuItems:
+            (perms.menuItems && perms.menuItems.length > 0
+              ? perms.menuItems
+              : (userInfo as any).menuItems) ?? [],
+        };
+
+        setUser(mergedUser);
+        tokenService.setUserSession(mergedUser);
+
+        logAuth("Permisos cargados", {
+          roles: mergedUser.roles,
+          permissions: mergedUser.permissions?.length ?? 0,
+          menuItems: mergedUser.menuItems?.length ?? 0,
+        });
+      } catch (err) {
+        console.error("[AUTH] Error loading permissions/menu:", err);
+
+        const safeUser: UserSession = {
+          ...userInfo,
+          roles: userInfo.roles ?? [],
+          permissions: userInfo.permissions ?? [],
+          menuItems: (userInfo as any).menuItems ?? [],
+        };
+
+        setUser(safeUser);
+        tokenService.setUserSession(safeUser);
       }
-    } catch (error) {
-      console.error('❌ Error obteniendo permisos:', error);
-      // Continuar sin permisos en caso de error
-      userInfo.roles = [];
-      userInfo.permissions = [];
-      userInfo.menuItems = [];
-    }
-    
-    setIsAuthenticated(true);
-    setUser((prev) => (prev?.id === userInfo.id && prev?.email === userInfo.email ? prev : userInfo));
 
-    const now = Date.now();
-    setLastActivity(now);
-    try { localStorage.setItem(LS_LAST_ACTIVITY, String(now)); } catch {}
+      // Detalles del empleado en background
+      fetchEmployeeDetailsRef.current(userInfo.email);
 
-    await fetchEmployeeDetailsRef.current(userInfo.email);
+      if (showToast) {
+        toast({
+          title: "Inicio de sesión exitoso",
+          description: `Bienvenido ${
+            userInfo.displayName || userInfo.email || ""
+          }`,
+        });
+      }
 
-    if (showToast) {
-      toast({ 
-        title: "Inicio de sesión exitoso", 
-        description: `Bienvenido ${userInfo.displayName || userInfo.email}` 
-      });
-    }
-
-    // 🆕 Solo navega si se solicita explícitamente y no se ha navegado antes
-    if (shouldNavigate && !hasNavigatedAfterLoginRef.current) {
-      hasNavigatedAfterLoginRef.current = true;
-      // Pequeño delay para asegurar que el estado se ha propagado
-      setTimeout(() => {
-        setLocation('/');
-      }, 100);
-    }
-
-    debugAuthContext("LOGIN STATE APPLIED", { 
-      isAuthenticated: true, 
-      user: userInfo, 
-      employeeDetails,
-      navigated: shouldNavigate 
-    });
-  }, [toast, employeeDetails, setLocation]);
+      AUTH_DEBUG &&
+        console.log("🔐 AUTH DEBUG → LOGIN STATE FINAL", {
+          isAuthenticated: true,
+          user: userInfo,
+          employeeDetails,
+        });
+    },
+    [toast, employeeDetails]
+  );
   doLoginStateRef.current = doLoginState;
 
+  // ---------------------------------------------------------------------------
+  // LOGOUT
+  // ---------------------------------------------------------------------------
   const logout = useCallback(() => {
+    // Para no quedarse en blanco en ningún caso
+    setIsLoading(false);
+
     setIsAuthenticated(false);
     setUser(null);
     setEmployeeDetails(null);
     tokenService.clearTokens();
-    
-    // 🆕 Reset del flag de navegación
-    hasNavigatedAfterLoginRef.current = false;
-    
-    // ✅ INVALIDAR CACHÉ DE PERMISOS
+
+    // Limpiar caché de permisos
     try {
-      import('@/services/permissions').then(({ CacheService }) => {
+      import("@/services/permissions").then(({ CacheService }) => {
         CacheService.clearAll();
       });
     } catch (error) {
-      console.error('Error limpiando caché:', error);
+      console.error("Error limpiando caché:", error);
     }
-    
+
     try {
       localStorage.removeItem(LS_LAST_ACTIVITY);
       localStorage.removeItem(LS_EMPLOYEE_DETAILS);
-    } catch {}
+    } catch {
+      /* ignore */
+    }
 
-    toast({ title: "Sesión cerrada", description: "Has cerrado sesión correctamente" });
-    setLocation('/login');
+    toast({
+      title: "Sesión cerrada",
+      description: "Has cerrado sesión correctamente",
+    });
 
-    debugAuthContext("LOGOUT", { isAuthenticated: false, user: null, employeeDetails: null });
+    setLocation("/login");
+
+    logAuth("LOGOUT", {
+      isAuthenticated: false,
+      user: null,
+      employeeDetails: null,
+    });
   }, [setLocation, toast]);
   logoutRef.current = logout;
 
+  // ---------------------------------------------------------------------------
+  // REFRESH AUTH
+  // ---------------------------------------------------------------------------
   const refreshAuth = useCallback(async () => {
     try {
       const accessToken = tokenService.getAccessToken();
       if (!accessToken) {
         setIsAuthenticated(false);
         setUser(null);
-        debugAuthContext("REFRESH AUTH / NO ACCESS TOKEN", { isAuthenticated: false, user: null, employeeDetails });
+        logAuth("REFRESH AUTH / NO ACCESS TOKEN", {
+          isAuthenticated: false,
+          user: null,
+          employeeDetails,
+        });
         return;
       }
 
@@ -244,49 +315,95 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const newTokens = await authService.refreshToken(refreshToken);
           tokenService.setTokens(newTokens);
 
-          const userInfo = await authService.getCurrentUser(newTokens.accessToken);
-          tokenService.setUserSession(userInfo);
-          await doLoginState(userInfo, false, false); // No navegar en refresh
+          const userInfo = await authService.getCurrentUser(
+            newTokens.accessToken
+          );
+          await doLoginState(userInfo, false);
 
-          debugAuthContext("REFRESH AUTH / TOKEN RENEWED", { isAuthenticated: true, user: userInfo, employeeDetails });
+          logAuth("REFRESH AUTH / TOKEN RENEWED", {
+            isAuthenticated: true,
+            user: userInfo,
+            employeeDetails,
+          });
         } else {
           logout();
         }
       } else {
         const userSession = tokenService.getUserSession();
         if (userSession) {
-          setIsAuthenticated(true);
-          setUser((prev) => (prev?.id === userSession.id ? prev : userSession));
-
-          const savedDetailsStr = (() => { try { return localStorage.getItem(LS_EMPLOYEE_DETAILS); } catch { return null; } })();
-          if (savedDetailsStr) {
-            const parsed = JSON.parse(savedDetailsStr) as EmployeeDetails;
-            setEmployeeDetails((prev) => (equalEmployeeDetails(prev, parsed) ? prev : parsed));
-            debugAuthContext("REFRESH AUTH / SESSION + CACHED DETAILS", { isAuthenticated: true, user: userSession, employeeDetails: parsed });
+          if (!userSession.permissions || !(userSession as any).menuItems) {
+            logAuth(
+              "REFRESH AUTH / userSession sin permisos, recargando permisos..."
+            );
+            await doLoginState(userSession, false);
           } else {
-            await fetchEmployeeDetails(userSession.email);
-            debugAuthContext("REFRESH AUTH / SESSION + API DETAILS", { isAuthenticated: true, user: userSession, employeeDetails });
+            setIsAuthenticated(true);
+            setUser((prev) =>
+              prev?.id === userSession.id ? prev : userSession
+            );
+
+            const savedDetailsStr = (() => {
+              try {
+                return localStorage.getItem(LS_EMPLOYEE_DETAILS);
+              } catch {
+                return null;
+              }
+            })();
+
+            if (savedDetailsStr) {
+              const parsed = JSON.parse(savedDetailsStr) as EmployeeDetails;
+              setEmployeeDetails((prev) =>
+                equalEmployeeDetails(prev, parsed) ? prev : parsed
+              );
+              logAuth("REFRESH AUTH / SESSION + CACHED DETAILS", {
+                isAuthenticated: true,
+                user: userSession,
+                employeeDetails: parsed,
+              });
+            } else {
+              await fetchEmployeeDetails(userSession.email);
+              logAuth("REFRESH AUTH / SESSION + API DETAILS", {
+                isAuthenticated: true,
+                user: userSession,
+                employeeDetails,
+              });
+            }
           }
         } else {
           const userInfo = await authService.getCurrentUser(accessToken);
-          tokenService.setUserSession(userInfo);
-          await doLoginState(userInfo, false, false); // No navegar en refresh
-          debugAuthContext("REFRESH AUTH / API USERINFO", { isAuthenticated: true, user: userInfo, employeeDetails });
+          await doLoginState(userInfo, false);
+          logAuth("REFRESH AUTH / API USERINFO", {
+            isAuthenticated: true,
+            user: userInfo,
+            employeeDetails,
+          });
         }
       }
     } catch (error) {
-      console.error('Error refreshing auth:', error);
+      console.error("Error refreshing auth:", error);
       logout();
     }
   }, [employeeDetails, logout, doLoginState, fetchEmployeeDetails]);
 
-  // WebSocket: manejar Login
+  // ---------------------------------------------------------------------------
+  // WebSocket: LoginNotification → completar login AzureAD
+  // ---------------------------------------------------------------------------
   useEffect(() => {
-    if (!lastMessage || lastMessage.eventType !== 'Login') return;
+    if (!lastMessage || lastMessage.eventType !== "Login") return;
 
-    const eventKey = (lastMessage as any).eventId || (lastMessage as any).id || JSON.stringify({ t: lastMessage.eventType, u: (lastMessage as any)?.data?.email });
-    if (processedLoginEventsRef.current.has(eventKey)) return;
+    logAuth("WS LOGIN EVENT", { msg: lastMessage });
 
+    const eventKey =
+      (lastMessage as any).eventId ||
+      (lastMessage as any).id ||
+      JSON.stringify({
+        t: lastMessage.eventType,
+        u: (lastMessage as any)?.data?.email,
+      });
+
+    if (processedLoginEventsRef.current.has(eventKey)) {
+      return;
+    }
     processedLoginEventsRef.current.add(eventKey);
     if (isProcessingLoginRef.current) return;
     isProcessingLoginRef.current = true;
@@ -297,34 +414,50 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (!pair) return;
 
         tokenService.setTokens(pair);
+
         const wsUser: UserSession = {
           id: (data as any).userId,
           email: (data as any).email,
           displayName: (data as any).displayName,
-          userType: 'AzureAD'
+          userType: "AzureAD",
+          roles: (data as any).roles ?? [],
         };
-        
-        // 🆕 WebSocket login SÍ debe navegar
-        await doLoginStateRef.current(wsUser, true, true);
-        debugAuthContext("LOGIN VIA WEBSOCKET", { isAuthenticated: true, user: wsUser, employeeDetails });
+
+        await doLoginStateRef.current(wsUser, true);
+
+        setTimeout(() => {
+          setLocation("/");
+        }, 300);
+
+        logAuth("LOGIN VIA WEBSOCKET COMPLETADO", {
+          isAuthenticated: true,
+          user: wsUser,
+        });
       } catch (e) {
-        console.error('WS login handling error:', e);
+        console.error("WS login handling error:", e);
       } finally {
         isProcessingLoginRef.current = false;
       }
     })();
-  }, [lastMessage]);
+  }, [lastMessage, setLocation]);
 
-  // Revisión de sesión al montar
+  // ---------------------------------------------------------------------------
+  // Chequeo inicial de sesión al montar
+  // ---------------------------------------------------------------------------
   useEffect(() => {
     let active = true;
+
     const checkAuth = async () => {
       try {
         const accessToken = tokenService.getAccessToken();
         if (!accessToken) {
           if (!active) return;
           setIsLoading(false);
-          debugAuthContext("CHECK AUTH / NO ACCESS TOKEN", { isAuthenticated, user, employeeDetails });
+          logAuth("CHECK AUTH / NO ACCESS TOKEN", {
+            isAuthenticated,
+            user,
+            employeeDetails,
+          });
           return;
         }
 
@@ -336,10 +469,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             try {
               const newTokens = await authService.refreshToken(refreshToken);
               tokenService.setTokens(newTokens);
-              const userInfo = await authService.getCurrentUser(newTokens.accessToken);
-              tokenService.setUserSession(userInfo);
-              await doLoginStateRef.current(userInfo, false, false); // No navegar en checkAuth
-              debugAuthContext("CHECK AUTH / REFRESH OK", { isAuthenticated: true, user: userInfo, employeeDetails });
+              const userInfo = await authService.getCurrentUser(
+                newTokens.accessToken
+              );
+              await doLoginStateRef.current(userInfo, false);
+              logAuth("CHECK AUTH / REFRESH OK", {
+                isAuthenticated: true,
+                user: userInfo,
+                employeeDetails,
+              });
             } catch (error) {
               logoutRef.current();
             }
@@ -349,23 +487,51 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         } else {
           const userSession = tokenService.getUserSession();
           if (userSession) {
-            setIsAuthenticated(true);
-            setUser((prev) => (prev?.id === userSession.id ? prev : userSession));
-
-            const savedDetailsStr = (() => { try { return localStorage.getItem(LS_EMPLOYEE_DETAILS); } catch { return null; } })();
-            if (savedDetailsStr) {
-              const parsed = JSON.parse(savedDetailsStr) as EmployeeDetails;
-              setEmployeeDetails((prev) => (equalEmployeeDetails(prev, parsed) ? prev : parsed));
-              debugAuthContext("CHECK AUTH / SESSION + CACHED DETAILS", { isAuthenticated: true, user: userSession, employeeDetails: parsed });
+            if (!userSession.permissions || !(userSession as any).menuItems) {
+              logAuth(
+                "CHECK AUTH / userSession sin permisos, recargando permisos..."
+              );
+              await doLoginStateRef.current(userSession, false);
             } else {
-              await fetchEmployeeDetailsRef.current(userSession.email);
-              debugAuthContext("CHECK AUTH / SESSION + API DETAILS", { isAuthenticated: true, user: userSession, employeeDetails });
+              setIsAuthenticated(true);
+              setUser((prev) =>
+                prev?.id === userSession.id ? prev : userSession
+              );
+
+              const savedDetailsStr = (() => {
+                try {
+                  return localStorage.getItem(LS_EMPLOYEE_DETAILS);
+                } catch {
+                  return null;
+                }
+              })();
+              if (savedDetailsStr) {
+                const parsed = JSON.parse(savedDetailsStr) as EmployeeDetails;
+                setEmployeeDetails((prev) =>
+                  equalEmployeeDetails(prev, parsed) ? prev : parsed
+                );
+                logAuth("CHECK AUTH / SESSION + CACHED DETAILS", {
+                  isAuthenticated: true,
+                  user: userSession,
+                  employeeDetails: parsed,
+                });
+              } else {
+                await fetchEmployeeDetailsRef.current(userSession.email);
+                logAuth("CHECK AUTH / SESSION + API DETAILS", {
+                  isAuthenticated: true,
+                  user: userSession,
+                  employeeDetails,
+                });
+              }
             }
           } else {
             const userInfo = await authService.getCurrentUser(accessToken);
-            tokenService.setUserSession(userInfo);
-            await doLoginStateRef.current(userInfo, false, false); // No navegar en checkAuth
-            debugAuthContext("CHECK AUTH / API USERINFO", { isAuthenticated: true, user: userInfo, employeeDetails });
+            await doLoginStateRef.current(userInfo, false);
+            logAuth("CHECK AUTH / API USERINFO", {
+              isAuthenticated: true,
+              user: userInfo,
+              employeeDetails,
+            });
           }
         }
       } catch (error) {
@@ -376,44 +542,101 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
 
     checkAuth();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Inactividad
+  // ---------------------------------------------------------------------------
+  // Inactividad → auto-logout
+  // ---------------------------------------------------------------------------
   const updateActivity = useCallback(() => {
     const now = Date.now();
     setLastActivity(now);
     if (isAuthenticated) {
-      try { localStorage.setItem(LS_LAST_ACTIVITY, now.toString()); } catch {}
+      try {
+        localStorage.setItem(LS_LAST_ACTIVITY, now.toString());
+      } catch {
+        /* ignore */
+      }
     }
   }, [isAuthenticated]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'] as const;
-    events.forEach((event) => document.addEventListener(event, updateActivity, true));
+    const events = [
+      "mousedown",
+      "mousemove",
+      "keypress",
+      "scroll",
+      "touchstart",
+      "click",
+    ] as const;
+
+    events.forEach((event) =>
+      document.addEventListener(event, updateActivity, true)
+    );
 
     const interval = setInterval(() => {
       const now = Date.now();
-      const timeSinceActivity = now - lastActivity;
-      if (timeSinceActivity >= INACTIVITY_TIMEOUT) {
-        toast({ title: "Sesión expirada", description: "Su sesión ha expirado por inactividad", variant: "destructive" });
+      const diffMs = now - lastActivity;
+      const diffSegundos = Math.round(diffMs / 1000);
+
+      if (diffMs >= INACTIVITY_TIMEOUT) {
+        logAuth("AUTO-LOGOUT por inactividad", {
+          lastActivity,
+          now,
+          diffSegundos,
+        });
+
+        toast({
+          title: "Sesión expirada",
+          description: "Su sesión ha expirado por inactividad",
+          variant: "destructive",
+        });
+
+        // 1️⃣ Intento de navegación SPA
+        setLocation("/login");
+
+        // 2️⃣ Logout para limpiar estado
         logoutRef.current();
+
+        // 3️⃣ Fallback fuerte: recarga completa en /login
+        if (typeof window !== "undefined") {
+          try {
+            window.location.href = "/login";
+          } catch {
+            // último recurso, pero prácticamente nunca llega aquí
+          }
+        }
       }
     }, 30_000);
 
     return () => {
-      events.forEach((event) => document.removeEventListener(event, updateActivity, true));
+      events.forEach((event) =>
+        document.removeEventListener(event, updateActivity, true)
+      );
       clearInterval(interval);
     };
-  }, [isAuthenticated, lastActivity, toast, updateActivity]);
+  }, [
+    isAuthenticated,
+    lastActivity,
+    toast,
+    updateActivity,
+    setLocation,
+    INACTIVITY_TIMEOUT,
+  ]);
 
-  // Login local
+  // ---------------------------------------------------------------------------
+  // LOGIN LOCAL
+  // ---------------------------------------------------------------------------
   const login = async (email: string, password: string): Promise<boolean> => {
+    logAuth("login() called", { email });
     try {
       setIsLoading(true);
-      if (AUTH_DEBUG) console.log("🔐 Entro al login local");
+      logAuth("🔐 Iniciando login local...", { username: email });
 
       const tokens = await authService.loginLocal({ email, password });
       const userInfo = await authService.getCurrentUser(tokens.accessToken);
@@ -421,26 +644,46 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       tokenService.setTokens(tokens);
       tokenService.setUserSession(userInfo);
 
-      // 🆕 Login local NO navega aquí (lo hará Login.tsx)
-      await doLoginState(userInfo, true, false);
-      debugAuthContext("LOGIN LOCAL", { isAuthenticated: true, user: userInfo, employeeDetails });
+      await doLoginState(userInfo, true);
+
+      logAuth("LOGIN LOCAL OK", { user: userInfo });
       return true;
     } catch (error: any) {
-      toast({ title: "Error de autenticación", description: error?.message || "Credenciales incorrectas", variant: "destructive" });
+      console.error("[AUTH] Error en login local:", error);
+      toast({
+        title: "Error de autenticación",
+        description:
+          error?.message || "Credenciales incorrectas o error interno",
+        variant: "destructive",
+      });
       return false;
     } finally {
       setIsLoading(false);
     }
   };
 
+  // ---------------------------------------------------------------------------
+  // LOGIN O365
+  // ---------------------------------------------------------------------------
   const loginWithOffice365 = async (): Promise<void> => {
     try {
       setIsLoading(true);
+      logAuth("🔐 Iniciando login Office 365...");
       const { url, state } = await authService.getAzureAuthUrl();
       sessionStorage.setItem("oauth_state", state);
-      window.open(url, 'office365login', 'width=600,height=700,left=200,top=100');
+      window.open(
+        url,
+        "office365login",
+        "width=600,height=700,left=200,top=100"
+      );
     } catch (error: any) {
-      toast({ title: "Error de autenticación", description: error?.message || "No se pudo iniciar sesión con Office 365", variant: "destructive" });
+      console.error("❌ Error en Office 365 login:", error);
+      toast({
+        title: "Error de autenticación",
+        description:
+          error?.message || "No se pudo iniciar sesión con Office 365",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -468,9 +711,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth debe ser usado dentro de un AuthProvider');
+    throw new Error("useAuth debe ser usado dentro de un AuthProvider");
   }
   return context;
 };
 
-useAuth.displayName = 'useAuth';
+useAuth.displayName = "useAuth";

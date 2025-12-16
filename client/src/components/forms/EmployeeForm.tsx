@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { insertEmployeeSchema, type InsertEmployee, type Employee, type Department, type Person } from "@shared/schema";
+import { insertEmployeeSchema, type InsertEmployee, type Employee, type Department, type Person } from "@/shared/schema";
 import { UserCog, Save, X, Mail } from "lucide-react";
 import { PersonasAPI, DepartamentosAPI, EmpleadosAPI, TiposReferenciaAPI, type ApiResponse } from "@/lib/api";
 

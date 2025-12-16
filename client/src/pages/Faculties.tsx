@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Building2, User, Plus } from "lucide-react";
-import type { Faculty } from "@shared/schema";
+import type { Faculty } from "@/shared/schema";
 import FacultyForm from "@/components/forms/FacultyForm";
 import { useState } from "react";
 import { FacultadesAPI, type ApiResponse } from "@/lib/api"; // Cambiamos la importación
