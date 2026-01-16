@@ -57,7 +57,8 @@ import {
   Search,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import logoPath from "../../public/LogoUTA.png";
+// import logoPath from "../../public/LogoUTA.png";
+import logoPath from "@/assets/LogoUTA.png";
 
 const DEBUG = import.meta.env.VITE_DEBUG_AUTH === "true";
 

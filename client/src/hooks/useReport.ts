@@ -1,9 +1,10 @@
 /**
  * Hook Genérico para Reportes
  * Universidad Técnica de Ambato
- * 
- * Hook completamente reutilizable para cualquier tipo de reporte.
- * Maneja preview, descarga, loading states y errores.
+ *
+ * Buenas prácticas:
+ * - Usa cleanFilters + validateDateRange del servicio
+ * - No duplica instancias: se usa desde ReportPage
  */
 
 import { useState, useCallback } from 'react';
@@ -17,10 +18,6 @@ import type {
 } from '@/types/reports';
 import { getReportFileName, REPORT_CONFIGS } from '@/types/reports';
 
-// ============================================
-// Hook useReport
-// ============================================
-
 export function useReport() {
   const [state, setState] = useState<UseReportState>({
     isDownloading: false,
@@ -29,111 +26,95 @@ export function useReport() {
     error: null,
   });
 
-  /**
-   * Preview de PDF (genérico para cualquier reporte)
-   * - Llama a reportService.preview (POST)
-   * - Espera un objeto data con base64Data, fileName, mimeType
-   * - Guarda SOLO el base64 en previewData (para el Modal)
-   */
-  const preview = useCallback(
-    async (params: DownloadReportParams): Promise<string | null> => {
-      const { type, filter } = params;
-      const reportConfig = REPORT_CONFIGS[type];
+  const preview = useCallback(async (params: DownloadReportParams): Promise<string | null> => {
+    const { type, filter } = params;
+    const reportConfig = REPORT_CONFIGS[type];
 
-      setState((prev) => ({ ...prev, isPreviewing: true, error: null }));
+    // Limpieza + validación
+    const cleaned = reportService.cleanFilters(filter ?? {});
+    if (!reportService.validateDateRange(cleaned)) {
+      toast.error('Rango de fechas inválido: la fecha inicio no puede ser mayor que la fecha fin.');
+      return null;
+    }
 
-      try {
-        // reportService.preview devuelve PreviewResponse['data']
-        const data = await reportService.preview(type, filter);
+    setState((prev) => ({ ...prev, isPreviewing: true, error: null }));
 
-        if (!data || !data.base64Data) {
-          throw new Error('El servidor no devolvió datos para la vista previa.');
-        }
+    try {
+      const data = await reportService.preview(type, cleaned);
 
-        // Guardamos solo el base64 para el PdfPreviewModal
-        setState((prev) => ({
-          ...prev,
-          previewData: data.base64Data,
-          isPreviewing: false,
-        }));
-
-        toast.success(`Preview de ${reportConfig.title} generado`);
-        return data.base64Data;
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : 'Error desconocido';
-
-        setState((prev) => ({
-          ...prev,
-          isPreviewing: false,
-          error: error instanceof Error ? error : new Error(errorMessage),
-        }));
-
-        toast.error(`Error al generar preview: ${errorMessage}`);
-        return null;
+      if (!data?.base64Data) {
+        throw new Error('El servidor no devolvió datos para la vista previa.');
       }
-    },
-    []
-  );
 
-  /**
-   * Descarga de reporte (genérico para cualquier tipo y formato)
-   */
-  const download = useCallback(
-    async (params: DownloadReportParams): Promise<boolean> => {
-      const { type, format, filter } = params;
-      const reportConfig = REPORT_CONFIGS[type];
+      setState((prev) => ({
+        ...prev,
+        previewData: data.base64Data,
+        isPreviewing: false,
+      }));
 
-      setState((prev) => ({ ...prev, isDownloading: true, error: null }));
+      toast.success(`Preview de ${reportConfig.title} generado`);
+      return data.base64Data;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Error desconocido';
 
-      try {
-        const blob = await reportService.download(type, format, filter);
+      setState((prev) => ({
+        ...prev,
+        isPreviewing: false,
+        error: error instanceof Error ? error : new Error(msg),
+      }));
 
-        if (!blob || blob.size === 0) {
-          throw new Error('El archivo descargado está vacío');
-        }
+      toast.error(`Error al generar preview: ${msg}`);
+      return null;
+    }
+  }, []);
 
-        const fileName = getReportFileName(type, format);
-        downloadBlob(blob, fileName);
+  const download = useCallback(async (params: DownloadReportParams): Promise<boolean> => {
+    const { type, format, filter } = params;
+    const reportConfig = REPORT_CONFIGS[type];
 
-        setState((prev) => ({ ...prev, isDownloading: false }));
+    const cleaned = reportService.cleanFilters(filter ?? {});
+    if (!reportService.validateDateRange(cleaned)) {
+      toast.error('Rango de fechas inválido: la fecha inicio no puede ser mayor que la fecha fin.');
+      return false;
+    }
 
-        toast.success(`${reportConfig.title} descargado: ${fileName}`);
-        return true;
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : 'Error desconocido';
+    setState((prev) => ({ ...prev, isDownloading: true, error: null }));
 
-        setState((prev) => ({
-          ...prev,
-          isDownloading: false,
-          error: error instanceof Error ? error : new Error(errorMessage),
-        }));
+    try {
+      const blob = await reportService.download(type, format, cleaned);
 
-        toast.error(`Error al descargar: ${errorMessage}`);
-        return false;
+      if (!blob || blob.size === 0) {
+        throw new Error('El archivo descargado está vacío');
       }
-    },
-    []
-  );
 
-  /**
-   * Cierra el preview
-   */
+      const fileName = getReportFileName(type, format);
+      downloadBlob(blob, fileName);
+
+      setState((prev) => ({ ...prev, isDownloading: false }));
+      toast.success(`${reportConfig.title} descargado: ${fileName}`);
+      return true;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Error desconocido';
+
+      setState((prev) => ({
+        ...prev,
+        isDownloading: false,
+        error: error instanceof Error ? error : new Error(msg),
+      }));
+
+      toast.error(`Error al descargar: ${msg}`);
+      return false;
+    }
+  }, []);
+
   const closePreview = useCallback(() => {
     setState((prev) => ({ ...prev, previewData: null }));
   }, []);
 
-  /**
-   * Limpia el estado de error
-   */
   const clearError = useCallback(() => {
     setState((prev) => ({ ...prev, error: null }));
   }, []);
 
-  /**
-   * Reset completo del estado
-   */
   const reset = useCallback(() => {
     setState({
       isDownloading: false,
@@ -144,26 +125,20 @@ export function useReport() {
   }, []);
 
   return {
-    // Acciones
     preview,
     download,
     closePreview,
     clearError,
     reset,
-
-    // Estado
     isDownloading: state.isDownloading,
     isPreviewing: state.isPreviewing,
-    previewData: state.previewData, // base64 string | null
+    previewData: state.previewData,
     error: state.error,
     isLoading: state.isDownloading || state.isPreviewing,
   };
 }
 
-// ============================================
-// Hook Especializado para Auditoría
-// ============================================
-
+// Auditoría (igual que tenías, sin cambios funcionales)
 export function useReportAudit() {
   const [audits, setAudits] = useState<ReportAudit[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -177,25 +152,15 @@ export function useReportAudit() {
       const data = await reportService.getAudits(filter);
       setAudits(data);
     } catch (err) {
-      const error =
-        err instanceof Error ? err : new Error('Error al cargar auditorías');
-      setError(error);
-      toast.error(error.message);
+      const e = err instanceof Error ? err : new Error('Error al cargar auditorías');
+      setError(e);
+      toast.error(e.message);
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  return {
-    audits,
-    isLoading,
-    error,
-    fetchAudits,
-  };
+  return { audits, isLoading, error, fetchAudits };
 }
-
-// ============================================
-// Exportación por Defecto
-// ============================================
 
 export default useReport;

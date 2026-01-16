@@ -1,58 +1,42 @@
 /**
  * Componente Genérico de Acciones de Reportes
  * Universidad Técnica de Ambato
- * 
- * Botones reutilizables para preview y descarga de reportes.
+ *
+ * Buenas prácticas:
+ * - NO crea su propio useReport (evita estados duplicados)
+ * - Recibe callbacks y estados por props
  */
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, Eye, FileText, FileSpreadsheet } from 'lucide-react';
-import { useReport } from '@/hooks/useReport';
-import type { ReportType, ReportFilter } from '@/types/reports';
-import { REPORT_CONFIGS } from '@/types/reports';
-
-// ============================================
-// Props
-// ============================================
 
 interface ReportActionsProps {
-  reportType: ReportType;
-  filter?: ReportFilter;
-  onPreviewClick?: () => void;
+  onPreview: () => void | Promise<void>;
+  onDownloadPdf: () => void | Promise<void>;
+  onDownloadExcel: () => void | Promise<void>;
+  isPreviewing?: boolean;
+  isDownloading?: boolean;
+  description?: string;
 }
 
-// ============================================
-// Componente Principal
-// ============================================
-
-export function ReportActions({ reportType, filter, onPreviewClick }: ReportActionsProps) {
-  const { download, preview, isDownloading, isPreviewing } = useReport();
-  const reportConfig = REPORT_CONFIGS[reportType];
-
-  const handlePreview = async () => {
-    await preview({ type: reportType, format: 'pdf', filter });
-    onPreviewClick?.();
-  };
-
-  const handleDownloadPdf = async () => {
-    await download({ type: reportType, format: 'pdf', filter });
-  };
-
-  const handleDownloadExcel = async () => {
-    await download({ type: reportType, format: 'excel', filter });
-  };
-
-  const isLoading = isDownloading || isPreviewing;
+export function ReportActions({
+  onPreview,
+  onDownloadPdf,
+  onDownloadExcel,
+  isPreviewing = false,
+  isDownloading = false,
+  description,
+}: ReportActionsProps) {
+  const isLoading = isPreviewing || isDownloading;
 
   return (
     <Card>
       <CardContent className="pt-6">
         <div className="flex flex-wrap gap-3">
-          
           {/* Vista Previa */}
           <Button
-            onClick={handlePreview}
+            onClick={onPreview}
             disabled={isLoading}
             variant="outline"
             size="lg"
@@ -73,7 +57,7 @@ export function ReportActions({ reportType, filter, onPreviewClick }: ReportActi
 
           {/* Descargar PDF */}
           <Button
-            onClick={handleDownloadPdf}
+            onClick={onDownloadPdf}
             disabled={isLoading}
             size="lg"
             className="flex-1 min-w-[200px]"
@@ -93,7 +77,7 @@ export function ReportActions({ reportType, filter, onPreviewClick }: ReportActi
 
           {/* Descargar Excel */}
           <Button
-            onClick={handleDownloadExcel}
+            onClick={onDownloadExcel}
             disabled={isLoading}
             variant="secondary"
             size="lg"
@@ -111,13 +95,11 @@ export function ReportActions({ reportType, filter, onPreviewClick }: ReportActi
               </>
             )}
           </Button>
-
         </div>
 
-        {/* Información adicional */}
-        <p className="text-sm text-muted-foreground mt-4">
-          {reportConfig.description}
-        </p>
+        {description && (
+          <p className="text-sm text-muted-foreground mt-4">{description}</p>
+        )}
       </CardContent>
     </Card>
   );

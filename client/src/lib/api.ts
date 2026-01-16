@@ -13,6 +13,16 @@ import { authService } from '@/services/auth';
 
 import type { Department } from '@/types/department';
 
+import type {
+  UploadSingleArgs, 
+  DocumentUploadItemResultDto, 
+  DocumentUploadResultDto, 
+  StoredFileDto,
+  UploadMappedItem,
+  UploadMappedArgs 
+
+} from '@/types/documents'
+
 export interface HolidayResponseDTO {
   holidayID: number;
   name: string;
@@ -108,6 +118,7 @@ export interface FileDeleteResponseDto {
 }
 
 
+
 export interface RefType {
   typeID: number;
   category?: string;
@@ -118,6 +129,183 @@ export interface RefType {
   createdAt?: string;
   updatedAt?: string | null;
 }
+
+type LogLevel = 'none' | 'error' | 'info' | 'debug';
+
+interface LogConfig {
+  enabled: boolean;
+  level: LogLevel;
+  showTimings: boolean;
+  showHeaders: boolean;
+  showBody: boolean;
+  maxBodyLength: number;
+}
+
+class ApiLogger {
+  private config: LogConfig;
+
+  constructor() {
+    // Configuración basada en variables de entorno
+    const debugMode = import.meta.env.VITE_API_DEBUG === "true";
+    const logLevel = (import.meta.env.VITE_API_LOG_LEVEL || 
+      (debugMode ? 'debug' : 'error')) as LogLevel;
+
+    this.config = {
+      enabled: import.meta.env.VITE_API_LOGGING !== "false",
+      level: logLevel,
+      showTimings: import.meta.env.VITE_API_LOG_TIMINGS !== "false",
+      showHeaders: debugMode,
+      showBody: debugMode,
+      maxBodyLength: parseInt(import.meta.env.VITE_API_LOG_MAX_BODY || "1000", 10)
+    };
+  }
+
+  private shouldLog(level: LogLevel): boolean {
+    if (!this.config.enabled) return false;
+    
+    const levels: LogLevel[] = ['none', 'error', 'info', 'debug'];
+    const configLevelIndex = levels.indexOf(this.config.level);
+    const messageLevelIndex = levels.indexOf(level);
+    
+    return messageLevelIndex <= configLevelIndex;
+  }
+
+  private truncateBody(body: any): any {
+    if (!body) return body;
+    
+    const str = typeof body === 'string' ? body : JSON.stringify(body);
+    if (str.length <= this.config.maxBodyLength) {
+      return body;
+    }
+    
+    return str.substring(0, this.config.maxBodyLength) + `... (truncated ${str.length - this.config.maxBodyLength} chars)`;
+  }
+
+  private formatHeaders(headers: Headers): Record<string, string> {
+    const formatted: Record<string, string> = {};
+    headers.forEach((value, key) => {
+      // Ofuscar tokens sensibles
+      if (key.toLowerCase() === 'authorization') {
+        formatted[key] = value.substring(0, 20) + '...';
+      } else {
+        formatted[key] = value;
+      }
+    });
+    return formatted;
+  }
+
+  logRequest(method: string, url: string, headers: Headers, body?: any, startTime?: number): void {
+    if (!this.shouldLog('debug')) return;
+
+    console.groupCollapsed(
+      `%c→ ${method} %c${url}`,
+      'color: #0ea5e9; font-weight: bold',
+      'color: #64748b'
+    );
+
+    if (this.config.showTimings && startTime) {
+      console.log(`⏱️ Started at: ${new Date(startTime).toISOString()}`);
+    }
+
+    if (this.config.showHeaders) {
+      console.log('📋 Headers:', this.formatHeaders(headers));
+    }
+
+    if (this.config.showBody && body && !(body instanceof FormData)) {
+      console.log('📦 Body:', this.truncateBody(body));
+    } else if (body instanceof FormData) {
+      console.log('📦 Body: FormData (use browser DevTools to inspect)');
+    }
+
+    console.groupEnd();
+  }
+
+  logResponse(
+    method: string,
+    url: string,
+    response: Response,
+    data: any,
+    duration: number
+  ): void {
+    if (!this.shouldLog('info')) return;
+
+    const status = response.status;
+    const isSuccess = status >= 200 && status < 300;
+    const color = isSuccess ? '#10b981' : '#f59e0b';
+    const icon = isSuccess ? '✓' : '⚠';
+
+    console.groupCollapsed(
+      `%c${icon} ${method} %c${status} %c${url} %c${duration}ms`,
+      `color: ${color}; font-weight: bold`,
+      `color: ${color}; font-weight: bold`,
+      'color: #64748b',
+      'color: #8b5cf6; font-weight: bold'
+    );
+
+    if (this.config.showTimings) {
+      console.log(`⏱️ Duration: ${duration}ms`);
+      console.log(`📅 Completed at: ${new Date().toISOString()}`);
+    }
+
+    if (this.config.showHeaders) {
+      console.log('📋 Response Headers:', this.formatHeaders(response.headers));
+    }
+
+    if (this.config.showBody) {
+      if (data instanceof Blob) {
+        console.log(`📦 Response: Blob (${data.size} bytes, type: ${data.type})`);
+      } else {
+        console.log('📦 Response Data:', this.truncateBody(data));
+      }
+    }
+
+    console.groupEnd();
+  }
+
+  logError(
+    method: string,
+    url: string,
+    error: ApiError | Error,
+    duration: number,
+    response?: Response
+  ): void {
+    if (!this.shouldLog('error')) return;
+
+    console.groupCollapsed(
+      `%c✗ ${method} %c${url} %cFAILED %c${duration}ms`,
+      'color: #ef4444; font-weight: bold',
+      'color: #64748b',
+      'color: #ef4444; font-weight: bold',
+      'color: #8b5cf6; font-weight: bold'
+    );
+
+    if (this.config.showTimings) {
+      console.log(`⏱️ Duration: ${duration}ms`);
+      console.log(`📅 Failed at: ${new Date().toISOString()}`);
+    }
+
+    if ('code' in error) {
+      console.error('❌ API Error:', {
+        code: error.code,
+        message: error.message,
+        details: error.details
+      });
+    } else {
+      console.error('❌ Network Error:', error.message);
+    }
+
+    if (response && this.config.showHeaders) {
+      console.log('📋 Response Headers:', this.formatHeaders(response.headers));
+    }
+
+    console.trace('📍 Stack trace');
+    console.groupEnd();
+  }
+}
+
+// Instancia singleton del logger
+const apiLogger = new ApiLogger();
+
 // --------------------------------------------------------------------------
 // CONFIGURACIÓN CENTRALIZADA (EXISTENTE)
 // --------------------------------------------------------------------------
@@ -182,73 +370,76 @@ function isFormDataBody(body: any): body is FormData {
 // FUNCIÓN PRINCIPAL API FETCH (CORREGIDA: baseUrl + debug + retry import)
 // --------------------------------------------------------------------------
 
+function isAbsoluteUrl(url: string) {
+  return /^https?:\/\//i.test(url);
+}
+
+// --------------------------------------------------------------------------
+// FUNCIÓN PRINCIPAL API FETCH (ACTUALIZADA CON LOGGING)
+// --------------------------------------------------------------------------
+
 export async function apiFetch<T = any>(
   path: string,
   init: RequestInit = {},
   _retry = false
 ): Promise<ApiResponse<T>> {
+  const startTime = Date.now();
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
 
-  const DEBUG_API = import.meta.env.VITE_API_DEBUG === 'true';
+  // ✅ URL robusta
   const baseUrl = resolveBaseUrl(path);
+  const finalUrl = isAbsoluteUrl(path) ? path : `${baseUrl}${path}`;
+  const method = (init.method || "GET").toUpperCase();
+
   const accessToken = tokenService.getAccessToken();
 
-  const headers: Record<string, string> = {
-    ...API_CONFIG.DEFAULT_HEADERS,
-    ...(init.headers as Record<string, string> | undefined)
-  };
+  // ✅ Headers robustos
+  const headers = new Headers();
 
-  // Si es FormData, no forzar JSON ni boundary
-  if (isFormDataBody(init.body)) {
-    delete headers['Content-Type'];
+  if (API_CONFIG.DEFAULT_HEADERS) {
+    Object.entries(API_CONFIG.DEFAULT_HEADERS).forEach(([k, v]) => {
+      if (v != null) headers.set(k, String(v));
+    });
   }
 
-  // Agregar Authorization si hay token
-  if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
-  }
-
-  if (DEBUG_API) {
-    const method = (init.method || "GET").toUpperCase();
-    console.groupCollapsed(`🌐 API REQUEST → ${method} ${path}`);
-    console.log("Authorization:", accessToken ? `Bearer ${accessToken.substring(0, 10)}...` : "(sin token)");
-    console.log("Headers:", headers);
-    if (init.body) {
-      if (isFormDataBody(init.body)) {
-        console.log("Body: FormData");
-      } else {
-        try {
-          const parsed = typeof init.body === "string" ? JSON.parse(init.body) : init.body;
-          console.log("Body:", parsed);
-        } catch {
-          console.log("Body (raw):", init.body);
-        }
-      }
+  if (init.headers) {
+    const h = init.headers as any;
+    if (h instanceof Headers) {
+      h.forEach((value: string, key: string) => headers.set(key, value));
+    } else if (Array.isArray(h)) {
+      h.forEach(([key, value]) => headers.set(key, value));
+    } else {
+      Object.entries(h).forEach(([key, value]) => {
+        if (value != null) headers.set(key, String(value));
+      });
     }
-    console.groupEnd();
   }
+
+  if (isFormDataBody(init.body)) {
+    headers.delete("content-type");
+    headers.delete("Content-Type");
+  }
+
+  if (accessToken) {
+    headers.set("Authorization", `Bearer ${accessToken}`);
+  }
+
+  // 🆕 Log de request
+  apiLogger.logRequest(method, finalUrl, headers, init.body, startTime);
 
   try {
-    // ✅ Usar baseUrl resuelto (antes se usaba BASE_URL fijo)
-    console.log(`Fetching URL: ${baseUrl}${path}`);
-    const response = await fetch(`${baseUrl}${path}`, {
+    const response = await fetch(finalUrl, {
+      ...init,
       credentials: API_CONFIG.CREDENTIALS,
       headers,
-      ...init,
-      signal: controller.signal
+      signal: controller.signal,
     });
 
     clearTimeout(timeoutId);
+    const duration = Date.now() - startTime;
 
-    if (DEBUG_API) {
-      console.groupCollapsed(`⬅️ API RESPONSE ${response.status} ${path}`);
-      console.log("Status:", response.status, response.statusText);
-      console.log("Headers:", Object.fromEntries(response.headers.entries()));
-      console.groupEnd();
-    }
-
-    // Reintento (una vez) en 401 con refreshToken
+    // ✅ retry 401
     if (response.status === 401 && !_retry) {
       try {
         const rt = tokenService.getRefreshToken();
@@ -258,32 +449,36 @@ export async function apiFetch<T = any>(
           return apiFetch<T>(path, init, true);
         }
       } catch {
-        // sigue como error normal
+        // continúa con el flujo de error
       }
     }
 
     if (response.ok) {
+      let data: T;
+
       if (response.status === 204) {
-        return { status: "success", data: undefined as unknown as T };
+        data = undefined as unknown as T;
+      } else {
+        const ct = response.headers.get("content-type") || "";
+        
+        if (ct && !ct.includes("application/json")) {
+          data = (await response.blob()) as unknown as T;
+        } else {
+          try {
+            data = await response.json();
+          } catch {
+            data = (await response.text()) as unknown as T;
+          }
+        }
       }
-      // Si no es JSON devolvemos blob/texto
-      const ct = response.headers.get('content-type') || '';
-      if (ct && !ct.includes('application/json')) {
-        const blob = await response.blob();
-        // @ts-expect-error: T puede ser Blob
-        return { status: "success", data: blob as T };
-      }
-      try {
-        const data = await response.json();
-        if (DEBUG_API) console.log("✅ Data:", data);
-        return { status: "success", data };
-      } catch {
-        const text = await response.text();
-        if (DEBUG_API) console.log("📝 Text:", text);
-        return { status: "success", data: text as unknown as T };
-      }
+
+      // 🆕 Log de respuesta exitosa
+      apiLogger.logResponse(method, finalUrl, response, data, duration);
+
+      return { status: "success", data };
     }
 
+    // Response no exitosa
     let errorDetails: any;
     try {
       errorDetails = await response.json();
@@ -291,34 +486,41 @@ export async function apiFetch<T = any>(
       errorDetails = await response.text();
     }
 
-    if (DEBUG_API) {
-      console.groupCollapsed(`❌ API ERROR ${response.status} ${path}`);
-      console.log(errorDetails);
-      console.groupEnd();
-    }
+    const apiError: ApiError = {
+      code: response.status,
+      message: `HTTP Error ${response.status}: ${response.statusText}`,
+      details: errorDetails,
+    };
+
+    // 🆕 Log de error HTTP
+    apiLogger.logError(method, finalUrl, apiError, duration, response);
 
     return {
       status: "error",
-      error: {
-        code: response.status,
-        message: `HTTP Error ${response.status}: ${response.statusText}`,
-        details: errorDetails
-      }
+      error: apiError,
     };
 
   } catch (error: any) {
     clearTimeout(timeoutId);
-    if (DEBUG_API) console.error("🚨 Network/Timeout Error:", error);
+    const duration = Date.now() - startTime;
+
+    const networkError: ApiError = {
+      code: 0,
+      message:
+        error?.name === "AbortError"
+          ? "Request timed out"
+          : `Network error: ${error?.message || "Unknown error"}`,
+    };
+
+    // 🆕 Log de error de red
+    apiLogger.logError(method, finalUrl, networkError, duration);
+
     return {
       status: "error",
-      error: {
-        code: 0,
-        message: error.name === "AbortError" ? "Request timed out" : `Network error: ${error.message || "Unknown error"}`
-      }
+      error: networkError,
     };
   }
 }
-
 // --------------------------------------------------------------------------
 // FÁBRICA DE SERVICIOS CRUD (EXISTENTE - SIN CAMBIOS)
 // --------------------------------------------------------------------------
@@ -811,6 +1013,15 @@ export const VacacionesAPI = {
     apiFetch<any>(`/api/v1/rh/vacations/bossId/${employeeId}`)
 };
 
+// Saldo Vacaciones - recuperacion API
+export const TimeBalanceAPI = {
+  ...createApiService<any, any>("/api/v1/rh/timebalances"),
+  // getByEmployee: (employeeId: number): Promise<ApiResponse<any>> =>
+  //   apiFetch<any>(`/api/v1/rh/timebalances/by-employees/${employeeId}`),
+  getByEmployee: (employeeId: number): Promise<ApiResponse<any>> =>
+    apiFetch<any>(`/api/v1/rh/timebalances/${employeeId}`),
+};
+
 
 // Health Check API
 export const HealthAPI = {
@@ -939,6 +1150,14 @@ export const DirectoryParametersAPI = {
   getByCode: (code: string): Promise<ApiResponse<any>> =>
     apiFetch<any>(`/api/v1/rh/cv/directory-parameters/by-code/${code}`)
 };
+
+export const ParametersAPI = { 
+  ... createApiService<any, any>("/api/v1/rh/cv/parameters"),
+  
+  getByName: (name: string): Promise<ApiResponse<any>> =>   
+    apiFetch<any>(`/api/v1/rh/cv/parameters/name/${name}`),
+};
+
 
 // Holidays API
 export const HolidaysAPI = {
@@ -1086,7 +1305,7 @@ export const PlanesRecuperacionTiempoAPI = createApiService<any, any>("/api/v1/r
 
 export const ContractRequestAPI = createApiService<any, any>("/api/v1/rh/cv/contract-request");
 export const FinancialCertificationAPI = createApiService<any, any>("/api/v1/rh/financial-certification");
-export const ParametersAPI = createApiService<any, any>("/api/v1/rh/cv/parameters");
+
 export const ActivityAPI = createApiService<any, any>("/api/v1/rh/activity");
 export const AdditionalActivityAPI = createApiService<any, any>("/api/v1/rh/additional-activity");
 export const ContractTypeAPI = createApiService<any, any>("/api/v1/rh/contract-type");
@@ -1247,6 +1466,101 @@ export const FileManagementAPI = {
       method: "DELETE"
     })
 };
+
+// --------------------------------------------------------------------------
+// ✅ DOCUMENTS API (ORQUESTADOR) - usa apiFetch + mismo estándar del sistema
+// --------------------------------------------------------------------------
+
+export const DocumentsAPI = {
+  listByEntity: (params: {
+    directoryCode: string;
+    entityType: string;
+    entityId: string | number;
+    uploadYear?: number;
+    status?: number;
+  }): Promise<ApiResponse<StoredFileDto[]>> => {
+    const qs = new URLSearchParams();
+    qs.append("directoryCode", params.directoryCode);
+    qs.append("entityType", params.entityType);
+    qs.append("entityId", String(params.entityId));
+    if (params.uploadYear != null) qs.append("uploadYear", String(params.uploadYear));
+    if (params.status != null) qs.append("status", String(params.status));
+
+    return apiFetch<StoredFileDto[]>(`/api/v1/rh/documents/entity?${qs.toString()}`);
+  },
+
+  // (1) MISMO TIPO PARA VARIOS ARCHIVOS
+  upload: (payload: {
+    directoryCode: string;
+    entityType: string;
+    entityId: string | number;
+    relativePath?: string;
+    files: File[];
+    documentTypeId?: string;
+  }): Promise<ApiResponse<DocumentUploadResultDto>> => {
+    const form = new FormData();
+    form.append("DirectoryCode", payload.directoryCode);
+    form.append("EntityType", payload.entityType);
+    form.append("EntityId", String(payload.entityId));
+    if (payload.relativePath) form.append("RelativePath", payload.relativePath);
+    if (payload.documentTypeId) form.append("DocumentTypeId", payload.documentTypeId);
+    payload.files.forEach((f) => form.append("Files", f));
+
+    return apiFetch<DocumentUploadResultDto>("/api/v1/rh/documents/upload", {
+      method: "POST",
+      body: form,
+    });
+  },
+
+  // (3) 1 TIPO POR ARCHIVO (SINGLE)
+  uploadSingle: (args: UploadSingleArgs): Promise<ApiResponse<DocumentUploadResultDto>> => {
+    const form = new FormData();
+    form.append("DirectoryCode", args.directoryCode);
+    form.append("EntityType", args.entityType);
+    form.append("EntityId", String(args.entityId));
+    if (args.relativePath) form.append("RelativePath", args.relativePath);
+    if (args.documentTypeId) form.append("DocumentTypeId", args.documentTypeId);
+    form.append("File", args.file);
+
+    return apiFetch<DocumentUploadResultDto>("/api/v1/rh/documents/upload-single", {
+      method: "POST",
+      body: form,
+    });
+  },
+
+  // (2) DIFERENTES TIPOS PARA CADA ARCHIVO (MAPPED BATCH)
+  uploadMapped: (args: UploadMappedArgs): Promise<ApiResponse<DocumentUploadResultDto>> => {
+    const form = new FormData();
+    form.append("DirectoryCode", args.directoryCode);
+    form.append("EntityType", args.entityType);
+    form.append("EntityId", String(args.entityId));
+    if (args.relativePath) form.append("RelativePath", args.relativePath);
+
+    // Binder ASP.NET Core: Items[0].DocumentTypeId + Items[0].File
+    args.items.forEach((it, i) => {
+      form.append(`Items[${i}].DocumentTypeId`, it.documentTypeId);
+      form.append(`Items[${i}].File`, it.file);
+    });
+
+    return apiFetch<DocumentUploadResultDto>("/api/v1/rh/documents/upload-mapped", {
+      method: "POST",
+      body: form,
+    });
+  },
+
+  download: (fileGuid: string): Promise<ApiResponse<Blob>> =>
+    apiFetch<Blob>(`/api/v1/rh/documents/download/${encodeURIComponent(fileGuid)}`, {
+      method: "GET",
+      headers: { Accept: "*/*" },
+    }),
+
+  remove: (fileGuid: string, deletePhysical = false): Promise<ApiResponse<void>> =>
+    apiFetch<void>(
+      `/api/v1/rh/documents/${encodeURIComponent(fileGuid)}?deletePhysical=${deletePhysical}`,
+      { method: "DELETE" }
+    ),
+};
+
 
 // --------------------------------------------------------------------------
 // API UTILITARIA Y UTILIDADES (EXISTENTES - SIN CAMBIOS)

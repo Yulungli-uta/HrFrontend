@@ -11,7 +11,8 @@ import {
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import logoPath from "../../public/LogoUTA.png";
+// import logoPath from "../../public/LogoUTA.png";
+import logoPath from "@/assets/LogoUTA.png";
 import {
   Tabs,
   TabsContent,

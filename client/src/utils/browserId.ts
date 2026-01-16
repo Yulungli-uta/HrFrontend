@@ -23,7 +23,7 @@ export function getBrowserId(): string {
 
     // Si no existe, lo generamos
     if (!id) {
-      DEBUG && console.log("[BROWSER-ID] Generando nuevo ID…");
+      // DEBUG && console.log("[BROWSER-ID] Generando nuevo ID…");
 
       if (
         typeof crypto !== "undefined" &&
@@ -38,12 +38,12 @@ export function getBrowserId(): string {
       localStorage.setItem(BROWSER_ID_KEY, id);
     }
 
-    DEBUG && console.log("[BROWSER-ID] ID usado:", id);
+    // DEBUG && console.log("[BROWSER-ID] ID usado:", id);
     return id;
 
   } catch (err) {
     // Modo incógnito extremo o fallo en localStorage
-    DEBUG && console.error("[BROWSER-ID] localStorage falló:", err);
+    // DEBUG && console.error("[BROWSER-ID] localStorage falló:", err);
 
     return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   }

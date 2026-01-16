@@ -15,6 +15,8 @@ import type { AttendancePunch, InsertAttendancePunch } from "@/shared/schema";
 import type { ApiResponse } from "@/lib/api";
 import { MarcacionesAPI, MarcacionesEspecializadasAPI, handleApiError, TimeAPI } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { isMobile, isTablet, isBrowser } from 'react-device-detect';
+import { PunchTable } from "@/components/forms/PunchTable";
 
 // =========================
 // Utilidades y constantes
@@ -255,7 +257,7 @@ export default function AttendancePage() {
       const rows = Array.isArray(response.data) ? response.data : [];
       return rows
         .filter((p: AttendancePunch) => p.employeeId === employeeId && isToday(parseISO(String(p.punchTime))))
-        .sort((a: AttendancePunch, b: AttendancePunch) => +new Date(a.punchTime) - +new Date(b.punchTime));
+        .sort((a: AttendancePunch, b: AttendancePunch) => +new Date(b.punchTime) - +new Date(a.punchTime));
     },
     enabled: !!employeeId,
     staleTime: 15_000,
@@ -312,9 +314,26 @@ export default function AttendancePage() {
     });
   }, []);
 
+  // obteniendo el tipo de dispositivo
+  // const getDeviceType = () => {
+  //   const ua = navigator.userAgent;
+  //   if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua)) {
+  //     return "WEB-TABLET";
+  //   }
+  //   if (/Mobile|Android|iP(hone|od)|IEMobile|BlackBerry|Kindle|Silk-Accelerated|(hpw|web)OS|Opera M(obi|ini)/.test(ua)) {
+  //     return "WEB-MOBILE";
+  //   }
+  //   return "WEB-DESKTOP";
+  // };
+  const getDeviceType = () => {
+    if (isTablet) return "WEB-TABLET";
+    if (isMobile) return "WEB-MOBILE";
+    return "WEB-DESKTOP";
+  };
+
   // Mutación con optimistic update
   const createPunchMutation = useMutation({
-    mutationFn: async (punchType: PunchKind) => {
+    mutationFn: async ({ punchType, coords }: { punchType: PunchKind, coords: { latitude: number, longitude: number } }) => {
       const timeResponse = await TimeAPI.getServerTime();
       if (timeResponse.status === 'error') throw new Error(timeResponse.error.message);
 
@@ -333,16 +352,19 @@ export default function AttendancePage() {
         employeeId: employeeId as number,
         punchTime: formatLocalDateTime(serverTime),
         punchType,
-        deviceId: "WEB",
-        latitude: currentLocation?.latitude || 0,
-        longitude: currentLocation?.longitude || 0,
+        deviceId: getDeviceType(),
+        // deviceId: "WEB",
+        // latitude: currentLocation?.latitude || 0,
+        // longitude: currentLocation?.longitude || 0,
+        latitude: coords?.latitude || 0,
+        longitude: coords?.longitude || 0,
       } as InsertAttendancePunch;
 
       const response = await MarcacionesAPI.create(punchData);
       if (response.status === 'error') throw response.error;
       return response.data;
     },
-    onMutate: async (punchType) => {
+    onMutate: async ({ punchType, coords }) => {
       await queryClient.cancelQueries({ queryKey: ['/api/v1/rh/attendance/punches', employeeId, TODAY_KEY] });
       const prev = queryClient.getQueryData<AttendancePunch[]>(['/api/v1/rh/attendance/punches', employeeId, TODAY_KEY]) || [];
 
@@ -351,7 +373,8 @@ export default function AttendancePage() {
         employeeId: employeeId as number,
         punchTime: format(new Date(Date.now() + serverDriftMs), "yyyy-MM-dd'T'HH:mm:ss"),
         punchType: punchType as any,
-        deviceId: "WEB",
+        // deviceId: "WEB",
+        deviceId: getDeviceType(),
         latitude: currentLocation?.latitude || 0,
         longitude: currentLocation?.longitude || 0,
       };
@@ -395,8 +418,16 @@ export default function AttendancePage() {
       return;
     }
     const loc = await ensureLocation();
+
+    const coords = loc 
+      ? { latitude: loc.lat, longitude: loc.lon } 
+      : { latitude: 0, longitude: 0 };
     setCurrentLocation(loc ? { latitude: loc.lat, longitude: loc.lon } : null);
-    createPunchMutation.mutate(nextPunchType);
+    // createPunchMutation.mutate(nextPunchType);
+    createPunchMutation.mutate({ 
+      punchType: nextPunchType, 
+      coords: coords 
+    });
   }, [apiStatus, ensureLocation, isWithinCooldown, timeSinceLastPunch, nextPunchType, createPunchMutation]);
 
   const handleRetry = () => {
@@ -630,62 +661,63 @@ export default function AttendancePage() {
               <p className="text-gray-600">Use el botón de arriba para registrar su marcación.</p>
             </div>
           ) : (
-            <>
-              {/* Tabla para md+ */}
-              <div className="hidden md:block overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      <th className="px-6 py-3">Hora</th>
-                      <th className="px-6 py-3">Tipo</th>
-                      <th className="px-6 py-3">Dispositivo</th>
-                      <th className="px-6 py-3">Ubicación</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {filteredPunches.map((punch) => (
-                      <tr key={punch.punchId ?? `${punch.punchTime}-${punch.deviceId}`} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center text-sm text-gray-900"><Clock className="h-4 w-4 mr-1 text-gray-400" />{format(new Date(punch.punchTime), 'HH:mm:ss')}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <Badge className={`${PUNCH_TYPES[punch.punchType as PunchKind]?.className ?? 'bg-gray-100 text-gray-800'} border`}>
-                            {PUNCH_TYPES[punch.punchType as PunchKind]?.label ?? punch.punchType}
-                          </Badge>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{punch.deviceId || '-'}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                          {punch.latitude && punch.longitude ? (
-                            <div className="flex items-center"><MapPin className="h-4 w-4 mr-1 text-gray-400" /><span>{nf.format(Number(punch.latitude))}, {nf.format(Number(punch.longitude))}</span></div>
-                          ) : (
-                            '-'
-                          )}
-                        </td>
-                      </tr>) )}
-                  </tbody>
-                </table>
-              </div>
+            // <>
+            //   {/* // Tabla para md+  */}
+            //   <div className="hidden md:block overflow-x-auto">
+            //     <table className="w-full">
+            //       <thead>
+            //         <tr className="border-b bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            //           <th className="px-6 py-3">Hora</th>
+            //           <th className="px-6 py-3">Tipo</th>
+            //           <th className="px-6 py-3">Dispositivo</th>
+            //           <th className="px-6 py-3">Ubicación</th>
+            //         </tr>
+            //       </thead>
+            //       <tbody className="divide-y divide-gray-200">
+            //         {filteredPunches.map((punch) => (
+            //           <tr key={punch.punchId ?? `${punch.punchTime}-${punch.deviceId}`} className="hover:bg-gray-50">
+            //             <td className="px-6 py-4 whitespace-nowrap">
+            //               <div className="flex items-center text-sm text-gray-900"><Clock className="h-4 w-4 mr-1 text-gray-400" />{format(new Date(punch.punchTime), 'HH:mm:ss')}</div>
+            //             </td>
+            //             <td className="px-6 py-4 whitespace-nowrap">
+            //               <Badge className={`${PUNCH_TYPES[punch.punchType as PunchKind]?.className ?? 'bg-gray-100 text-gray-800'} border`}>
+            //                 {PUNCH_TYPES[punch.punchType as PunchKind]?.label ?? punch.punchType}
+            //               </Badge>
+            //             </td>
+            //             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{punch.deviceId || '-'}</td>
+            //             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+            //               {punch.latitude && punch.longitude ? (
+            //                 <div className="flex items-center"><MapPin className="h-4 w-4 mr-1 text-gray-400" /><span>{nf.format(Number(punch.latitude))}, {nf.format(Number(punch.longitude))}</span></div>
+            //               ) : (
+            //                 '-'
+            //               )}
+            //             </td>
+            //           </tr>) )}
+            //       </tbody>
+            //     </table>
+            //   </div>
 
-              {/* Lista para mobile */}
-              <div className="md:hidden divide-y">
-                {filteredPunches.map((punch) => (
-                  <div key={punch.punchId ?? `${punch.punchTime}-${punch.deviceId}`} className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center text-sm text-gray-900"><Clock className="h-4 w-4 mr-1 text-gray-400" />{format(new Date(punch.punchTime), 'HH:mm:ss')}</div>
-                      <Badge className={`${PUNCH_TYPES[punch.punchType as PunchKind]?.className ?? 'bg-gray-100 text-gray-800'} border`}>
-                        {PUNCH_TYPES[punch.punchType as PunchKind]?.label ?? punch.punchType}
-                      </Badge>
-                    </div>
-                    <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-gray-600">
-                      <div><span className="font-medium">Dispositivo:</span> {punch.deviceId || '-'}</div>
-                      <div>
-                        <span className="font-medium">Ubicación:</span> {punch.latitude && punch.longitude ? `${nf.format(Number(punch.latitude))}, ${nf.format(Number(punch.longitude))}` : '-'}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
+            //   {/* Lista para mobile */}
+            //   <div className="md:hidden divide-y">
+            //     {filteredPunches.map((punch) => (
+            //       <div key={punch.punchId ?? `${punch.punchTime}-${punch.deviceId}`} className="p-4">
+            //         <div className="flex items-center justify-between">
+            //           <div className="flex items-center text-sm text-gray-900"><Clock className="h-4 w-4 mr-1 text-gray-400" />{format(new Date(punch.punchTime), 'HH:mm:ss')}</div>
+            //           <Badge className={`${PUNCH_TYPES[punch.punchType as PunchKind]?.className ?? 'bg-gray-100 text-gray-800'} border`}>
+            //             {PUNCH_TYPES[punch.punchType as PunchKind]?.label ?? punch.punchType}
+            //           </Badge>
+            //         </div>
+            //         <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-gray-600">
+            //           <div><span className="font-medium">Dispositivo:</span> {punch.deviceId || '-'}</div>
+            //           <div>
+            //             <span className="font-medium">Ubicación:</span> {punch.latitude && punch.longitude ? `${nf.format(Number(punch.latitude))}, ${nf.format(Number(punch.longitude))}` : '-'}
+            //           </div>
+            //         </div>
+            //       </div>
+            //     ))}
+            //   </div>
+            // </>
+            <PunchTable punches={filteredPunches} />
           )}
         </CardContent>
       </Card>

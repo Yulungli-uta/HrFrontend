@@ -80,6 +80,7 @@ const AttendanceSumaryReportPage = lazy(
   () => import("@/pages/reports/AttendanceSumaryReport")
 );
 const ReportAuditPage = lazy(() => import("@/pages/reports/ReportAudit"));
+const AzureManagementPage = lazy(() => import("@/pages/admin/AzureManagement"));
 
 // ============================================
 // Fallbacks
@@ -453,6 +454,15 @@ function AppRouter() {
               </ProtectedRoute>
             )}
           </Route>
+
+           <Route path="/admin/AzureMagnament">
+            {() => (
+              <ProtectedRoute requiredPath="/admin/AzureMagnament">
+                <AzureManagementPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
 
           {/* ===== 404 (siempre al final) ===== */}
           <Route path="/:rest*" component={NotFound} />

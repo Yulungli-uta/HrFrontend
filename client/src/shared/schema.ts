@@ -746,6 +746,7 @@ export type Schedule = typeof schedules.$inferSelect;
 export type Contract = typeof contracts.$inferSelect;
 export type PermissionType = typeof permissionTypes.$inferSelect;
 export type Permission = typeof permissions.$inferSelect;
+export type InsertPermiso = typeof permissions.$inferSelect;
 export type Vacation = typeof vacations.$inferSelect;
 export type AttendancePunch = typeof attendancePunches.$inferSelect;
 export type Payroll = typeof payroll.$inferSelect;

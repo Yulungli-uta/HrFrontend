@@ -65,10 +65,10 @@ function hasRouteAccessFromPermissions(
   // console.groupEnd();
 
   // Coincidencia exacta
-  if (normalizedPerms.includes(normalizedRequired)) {
-    console.log('✅ [ProtectedRoute] Coincidencia EXACTA encontrada en permisos');
-    return true;
-  }
+  // if (normalizedPerms.includes(normalizedRequired)) {
+  //   console.log('✅ [ProtectedRoute] Coincidencia EXACTA encontrada en permisos');
+  //   return true;
+  // }
 
   // (Opcional) si quieres permitir acceso a subrutas cuando el permiso es padre:
   // Ej: permiso "/admin" y ruta "/admin/users"
@@ -77,11 +77,11 @@ function hasRouteAccessFromPermissions(
   );
 
   if (hasParentPermission) {
-    console.log('✅ [ProtectedRoute] Coincidencia por PERMISO PADRE encontrada');
+    // console.log('✅ [ProtectedRoute] Coincidencia por PERMISO PADRE encontrada');
     return true;
   }
 
-  console.warn('❌ [ProtectedRoute] Ningún permiso coincide con la ruta requerida');
+  // console.warn('❌ [ProtectedRoute] Ningún permiso coincide con la ruta requerida');
   return false;
 }
 
@@ -147,15 +147,14 @@ export function ProtectedRoute({
         console.log('Ruta requerida:', requiredPath);
       }
       if (showUnauthorized) {
-        return <UnauthorizedPage reason="route" requiredPath={requiredPath} />;
       }
       return <Redirect to={fallbackPath} />;
     }
 
     // Log de acceso exitoso (solo en desarrollo)
-    if (import.meta.env.DEV) {
-      console.log(`✅ Acceso permitido a ${requiredPath}`);
-    }
+    // if (import.meta.env.DEV) {
+    //   console.log(`✅ Acceso permitido a ${requiredPath}`);
+    // }
   }
   
   // Verificar permisos por rol

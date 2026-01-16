@@ -1,8 +1,11 @@
 // src/pages/PermissionTypesPage.tsx
+// ✅ Agrega el flag "requiresDocumentation" (o "AttachedFile") en el tipo de permiso
+// ✅ Incluye Switch en modal (crear/editar), columna en tabla y filtro opcional
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Shield, Edit, Trash2, RefreshCw, AlertCircle, Search, CheckCircle, XCircle } from "lucide-react";
+import { Plus, Shield, Edit, Trash2, RefreshCw, AlertCircle, Search, CheckCircle, XCircle, Paperclip } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { TiposPermisosAPI } from "@/lib/api";
@@ -15,15 +18,22 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Switch } from "@/components/ui/switch";
 
 // -----------------------------------------------------------------------------
-// Formato esperado por backend
+// Formato esperado por backend (AGREGANDO requiresDocumentation)
 // {
 //   "typeId": 0,
 //   "name": "string",
 //   "deductsFromVacation": true,
 //   "requiresApproval": true,
-//   "maxDays": 0
+//   "maxDays": 0,
+//   "requiresDocumentation": true
 // }
 // -----------------------------------------------------------------------------
+// ⚠️ IMPORTANTE:
+// - Si en tu BD el campo se llama AttachedFile BIT (1=requiere adjunto), entonces:
+//   - En backend deberías exponerlo como "requiresDocumentation" o "attachedFile".
+//   - En este front lo manejamos como "RequiresDocumentation" (UI) y lo enviamos en payload.
+// - Si tu backend ya usa "AttachedFile", cambia "requiresDocumentation" por "attachedFile" en:
+//   PermissionTypeRaw, normalizePermissionType, toPayload, y en loadPermissionTypes.
 
 // Tipos crudos del backend
 type PermissionTypeRaw = {
@@ -32,6 +42,7 @@ type PermissionTypeRaw = {
   deductsFromVacation?: boolean | number | string;
   requiresApproval?: boolean | number | string;
   maxDays?: number | null;
+  attachedFile?: boolean | number | string; // <- o "attachedFile" si así viene del API
   createdAt?: string;
 };
 
@@ -42,6 +53,10 @@ interface PermissionTypeUI {
   DeductsFromVacation: boolean;
   RequiresApproval: boolean;
   MaxDays?: number | null; // null/undefined = ilimitado
+
+  // ✅ NUEVO
+  RequiresDocumentation: boolean;
+
   CreatedAt?: string;
 }
 
@@ -54,6 +69,10 @@ const normalizePermissionType = (raw: PermissionTypeRaw): PermissionTypeUI => ({
   DeductsFromVacation: toBool(raw?.deductsFromVacation ?? false),
   RequiresApproval: toBool(raw?.requiresApproval ?? true),
   MaxDays: raw?.maxDays ?? null,
+
+  // ✅ NUEVO: default false para evitar “obligar” adjuntos sin querer
+  RequiresDocumentation: toBool((raw as any)?.attachedFile ?? (raw as any)?.attachedFile ?? false),
+
   CreatedAt: raw?.createdAt,
 });
 
@@ -64,6 +83,7 @@ const toPayload = (ui: PermissionTypeUI): PermissionTypeRaw => ({
   deductsFromVacation: ui.DeductsFromVacation,
   requiresApproval: ui.RequiresApproval,
   maxDays: ui.MaxDays ?? 0, // si no se especifica, enviamos 0 (ilimitado/por convención)
+  attachedFile: ui.RequiresDocumentation,
 });
 
 export default function PermissionTypesPage() {
@@ -86,12 +106,18 @@ export default function PermissionTypesPage() {
     DeductsFromVacation: false,
     RequiresApproval: true,
     MaxDays: null,
+
+    // ✅ NUEVO
+    RequiresDocumentation: false,
   });
 
   // Filtros
   const [filters, setFilters] = useState({
     requiresApproval: 'all',      // all | yes | no
     deductsFromVacation: 'all',   // all | yes | no
+
+    // ✅ NUEVO
+    requiresDocumentation: 'all', // all | yes | no
   });
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -151,6 +177,13 @@ export default function PermissionTypesPage() {
       );
     }
 
+    // ✅ NUEVO: requiere documentación
+    if (filters.requiresDocumentation !== 'all') {
+      filtered = filtered.filter(t =>
+        filters.requiresDocumentation === 'yes' ? t.RequiresDocumentation : !t.RequiresDocumentation
+      );
+    }
+
     // búsqueda por nombre
     if (searchTerm) {
       const q = searchTerm.toLowerCase();
@@ -168,6 +201,9 @@ export default function PermissionTypesPage() {
     approvalYes: permissionTypes.filter(t => t.RequiresApproval).length,
     deductYes: permissionTypes.filter(t => t.DeductsFromVacation).length,
     unlimited: permissionTypes.filter(t => !t.MaxDays || t.MaxDays === 0).length,
+
+    // ✅ NUEVO
+    docsYes: permissionTypes.filter(t => t.RequiresDocumentation).length,
   };
 
   const resetForm = () => {
@@ -176,6 +212,9 @@ export default function PermissionTypesPage() {
       DeductsFromVacation: false,
       RequiresApproval: true,
       MaxDays: null,
+
+      // ✅ NUEVO
+      RequiresDocumentation: false,
     });
   };
 
@@ -357,6 +396,18 @@ export default function PermissionTypesPage() {
                     <p className="text-xs text-gray-500">Se resta del saldo de vacaciones</p>
                   </div>
                 </div>
+
+                {/* ✅ NUEVO: Requiere documentación */}
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    checked={newType.RequiresDocumentation}
+                    onCheckedChange={(checked) => setNewType({ ...newType, RequiresDocumentation: checked })}
+                  />
+                  <div>
+                    <Label className="cursor-pointer">Requiere documentación</Label>
+                    <p className="text-xs text-gray-500">Obliga a subir archivos de soporte</p>
+                  </div>
+                </div>
               </div>
 
               {editingType && (
@@ -382,7 +433,7 @@ export default function PermissionTypesPage() {
       </div>
 
       {/* Tarjetas de estadísticas */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center">
@@ -434,6 +485,20 @@ export default function PermissionTypesPage() {
             <p className="text-sm text-gray-500">maxDays = 0</p>
           </CardContent>
         </Card>
+
+        {/* ✅ NUEVO: estadística de documentación */}
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center">
+              <Paperclip className="mr-2 h-5 w-5 text-slate-600" />
+              Con Documentación
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-slate-700">{stats.docsYes}</div>
+            <p className="text-sm text-gray-500">requieren adjuntos</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filtros y tabla */}
@@ -444,7 +509,7 @@ export default function PermissionTypesPage() {
               <CardTitle>Tipos de Permisos</CardTitle>
               <CardDescription>Lista de todos los tipos registrados</CardDescription>
             </div>
-            <div className="flex gap-2 w-full sm:w-auto">
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
               <div className="relative flex-1 sm:flex-none">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -459,7 +524,7 @@ export default function PermissionTypesPage() {
                 value={filters.requiresApproval}
                 onValueChange={(value) => setFilters({ ...filters, requiresApproval: value })}
               >
-                <SelectTrigger className="w-44">
+                <SelectTrigger className="w-full sm:w-44">
                   <SelectValue placeholder="Aprobación" />
                 </SelectTrigger>
                 <SelectContent>
@@ -473,13 +538,28 @@ export default function PermissionTypesPage() {
                 value={filters.deductsFromVacation}
                 onValueChange={(value) => setFilters({ ...filters, deductsFromVacation: value })}
               >
-                <SelectTrigger className="w-52">
+                <SelectTrigger className="w-full sm:w-52">
                   <SelectValue placeholder="Descuenta vacaciones" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas</SelectItem>
                   <SelectItem value="yes">Sí descuenta</SelectItem>
                   <SelectItem value="no">No descuenta</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* ✅ NUEVO: filtro documentación */}
+              <Select
+                value={filters.requiresDocumentation}
+                onValueChange={(value) => setFilters({ ...filters, requiresDocumentation: value })}
+              >
+                <SelectTrigger className="w-full sm:w-56">
+                  <SelectValue placeholder="Documentación" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  <SelectItem value="yes">Requiere documentación</SelectItem>
+                  <SelectItem value="no">No requiere</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -499,6 +579,10 @@ export default function PermissionTypesPage() {
                   <TableHead>Nombre</TableHead>
                   <TableHead>Descuenta Vacaciones</TableHead>
                   <TableHead>Requiere Aprobación</TableHead>
+
+                  {/* ✅ NUEVO */}
+                  <TableHead>Requiere Documentación</TableHead>
+
                   <TableHead>Máx. Días/Año</TableHead>
                   <TableHead>Acciones</TableHead>
                 </TableRow>
@@ -508,6 +592,7 @@ export default function PermissionTypesPage() {
                   <TableRow key={type.TypeId ?? type.Name}>
                     <TableCell className="font-mono text-sm">{type.TypeId ?? '—'}</TableCell>
                     <TableCell className="font-medium">{type.Name}</TableCell>
+
                     <TableCell>
                       {type.DeductsFromVacation ? (
                         <Badge variant="default" className="bg-purple-100 text-purple-800 hover:bg-purple-200">
@@ -521,6 +606,7 @@ export default function PermissionTypesPage() {
                         </Badge>
                       )}
                     </TableCell>
+
                     <TableCell>
                       {type.RequiresApproval ? (
                         <Badge variant="default" className="bg-orange-100 text-orange-800 hover:bg-orange-200">
@@ -534,6 +620,22 @@ export default function PermissionTypesPage() {
                         </Badge>
                       )}
                     </TableCell>
+
+                    {/* ✅ NUEVO */}
+                    <TableCell>
+                      {type.RequiresDocumentation ? (
+                        <Badge variant="default" className="bg-slate-100 text-slate-800 hover:bg-slate-200">
+                          <Paperclip className="h-3 w-3 mr-1" />
+                          Sí
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline">
+                          <XCircle className="h-3 w-3 mr-1" />
+                          No
+                        </Badge>
+                      )}
+                    </TableCell>
+
                     <TableCell>
                       {type.MaxDays && type.MaxDays > 0 ? (
                         <Badge variant="outline">{type.MaxDays} días</Badge>
@@ -541,6 +643,7 @@ export default function PermissionTypesPage() {
                         <span className="text-gray-500">Ilimitado (0)</span>
                       )}
                     </TableCell>
+
                     <TableCell>
                       <div className="flex gap-2">
                         <Button variant="outline" size="sm" onClick={() => handleEditType(type)}>
