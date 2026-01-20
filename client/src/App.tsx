@@ -81,6 +81,7 @@ const AttendanceSumaryReportPage = lazy(
 );
 const ReportAuditPage = lazy(() => import("@/pages/reports/ReportAudit"));
 const AzureManagementPage = lazy(() => import("@/pages/admin/AzureManagement"));
+const JobexecutionPage = lazy(() => import("@/pages/admin/Jobexecution"));
 
 // ============================================
 // Fallbacks
@@ -459,6 +460,14 @@ function AppRouter() {
             {() => (
               <ProtectedRoute requiredPath="/admin/AzureMagnament">
                 <AzureManagementPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          <Route path="/admin/Jobexecution">
+            {() => (
+              <ProtectedRoute requiredPath="/admin/Jobexecution">
+                <JobexecutionPage />
               </ProtectedRoute>
             )}
           </Route>

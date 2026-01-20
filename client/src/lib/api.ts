@@ -562,11 +562,12 @@ export function createApiService<Resource, CreateDTO, UpdateDTO = Partial<Resour
  * 🆕 Servicio para cálculos de asistencia
  */
 export const AttendanceCalculationAPI = {
+  base: "/api/v1/rh/attendance/calculations",
   /**
    * Ejecuta el cálculo masivo de asistencia para un rango de fechas
    */
   calculateRange: (data: AttendanceCalculationRequestDto): Promise<ApiResponse<any>> =>
-    apiFetch<any>('/api/v1/rh/cv/attendance/calculate-range', {
+    apiFetch<any>('/api/v1/rh/attendance/calculations/calculate-range', {
       method: 'POST',
       body: JSON.stringify(data)
     }),
@@ -575,10 +576,36 @@ export const AttendanceCalculationAPI = {
    * Calcula los minutos nocturnos trabajados para un rango de fechas
    */
   calculateNightMinutes: (data: AttendanceCalculationRequestDto): Promise<ApiResponse<any>> =>
-    apiFetch<any>('/api/v1/rh/cv/attendance/calc-night-minutes', {
+    apiFetch<any>('/api/v1/rh/attendance/calculations/calc-night-minutes', {
       method: 'POST',
       body: JSON.stringify(data)
-    })
+    }),
+     /**
+ * Procesa el rango completo de asistencia (orquestador principal)
+ */
+processAttendanceRange: (data: AttendanceCalculationRequestDto): Promise<ApiResponse<any>> =>
+  apiFetch<any>('/api/v1/rh/attendance/calculations/process-range', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+
+/**
+ * Aplica justificaciones aprobadas para anular atrasos o ausencias
+ */
+applyJustifications: (data: AttendanceCalculationRequestDto): Promise<ApiResponse<any>> =>
+  apiFetch<any>('/api/v1/rh/attendance/calculations/apply-justifications', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+
+/**
+ * Procesa el cálculo y aplicación de recuperación de horas extra
+ */
+applyOvertimeRecovery: (data: AttendanceCalculationRequestDto): Promise<ApiResponse<any>> =>
+  apiFetch<any>('/api/v1/rh/attendance/calculations/apply-overtime-recovery', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  })
 };
 
 /**
@@ -1313,6 +1340,10 @@ export const DegreeAPI = createApiService<any, any>("/api/v1/rh/degree");
 export const JobActivityAPI = createApiService<any, any>("/api/v1/rh/job-activity");
 export const OccupationalGroupAPI = createApiService<any, any>("/api/v1/rh/occupational-group");
 export const CargosAPI = createApiService<any, any>("/api/v1/rh/jobs");
+
+
+
+
 // --------------------------------------------------------------------------
 // 🆕 MEJORAS EN FILE MANAGEMENT API (corregido uso de FILES_BASE_URL)
 // --------------------------------------------------------------------------
@@ -1619,6 +1650,8 @@ export function setAuthToken(token: string): void {
     "Authorization": `Bearer ${token}`
   };
 }
+
+
 
 // --------------------------------------------------------------------------
 // SERVICIOS DE GESTIÓN DE AUTENTICACIÓN, USUARIOS, ROLES Y MENÚS (EXISTENTES)
