@@ -12,6 +12,7 @@ import {
   PermisosAPI,
   VacacionesAPI,
   TiposPermisosAPI,
+  ParametersAPI,
   type ApiResponse,
   apiFetch,
 } from "@/lib/api";
@@ -36,6 +37,7 @@ const localTodayISO = () => {
 };
 
 const dateOnly = (s: string) => String(s).split("T")[0];
+
 const toDate = (s: string) => new Date(dateOnly(s) + "T00:00:00");
 
 const rangesOverlap = (a1: string, a2: string, b1: string, b2: string) => {
@@ -58,7 +60,9 @@ const clean = (obj: any) => {
 const normStatus = (s?: string) => (s ?? "").trim().toLowerCase();
 
 const isExcludedPermission = (s?: string) =>
-  ["rejected", "rechazado", "canceled", "cancelled", "cancelado", "anulado", "anulada", "annulled", "void"].includes(normStatus(s));
+  ["rejected", "rechazado", "canceled", "cancelled", "cancelado", "anulado", "anulada", "annulled", "void"].includes(
+    normStatus(s)
+  );
 
 const isActivePermission = (s?: string) => {
   const st = normStatus(s);
@@ -100,6 +104,38 @@ const extractPermissionId = (resp: any): string | null => {
   return id != null ? String(id) : null;
 };
 
+const safeInt = (v: any, fallback = 0) => {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.trunc(n);
+};
+
+const safeMinutes = (v: any) => {
+  const n = Number(v);
+  if (!Number.isFinite(n) || Number.isNaN(n)) return 0;
+  return Math.max(0, Math.trunc(n));
+};
+
+// Extrae "HH:mm" de un string ISO o "YYYY-MM-DDTHH:mm:ss"
+const timeHHmmFromISO = (s?: any) => {
+  if (!s) return null;
+  const str = String(s);
+  const parts = str.split("T");
+  if (parts.length < 2) return null;
+  // Puede venir "08:00:00" o "08:00:00.000Z"
+  const timePart = parts[1];
+  const hhmm = timePart.slice(0, 5);
+  if (!/^\d{2}:\d{2}$/.test(hhmm)) return null;
+  return hhmm;
+};
+
+// Arma "YYYY-MM-DDTHH:mm:00" (sin zona) para evitar offsets raros
+const buildLocalDateTime = (date: string, timeHHmm: string) => {
+  const d = dateOnly(date);
+  const t = (timeHHmm || "00:00").slice(0, 5);
+  return `${d}T${t}:00`;
+};
+
 type RangeMode = "full-day" | "multi-day" | "hours";
 
 type PermissionType = {
@@ -137,7 +173,7 @@ interface PermissionFormProps {
   initialPermission?: any | null;
   timeBalance?: TimeBalance | null;
   documents: DocumentsConfig;
-  workMinutesPerDay: number; // ✅ viene desde la page
+  workMinutesPerDay: number; // viene desde la page (se mantiene)
 }
 
 export default function PermissionForm({
@@ -146,7 +182,7 @@ export default function PermissionForm({
   initialPermission = null,
   timeBalance = null,
   documents,
-  workMinutesPerDay,
+  workMinutesPerDay: workMinutesPerDayProp,
 }: PermissionFormProps) {
   const queryClient = useQueryClient();
   const { employeeDetails } = useAuth();
@@ -169,7 +205,47 @@ export default function PermissionForm({
 
   const isEdit = editingId != null;
 
+  // -----------------------
+  // Param: WORK_MINUTES_PER_DAY
+  // -----------------------
+  const { data: paramResp } = useQuery<ApiResponse<any>>({
+    queryKey: ["/api/v1/rh/cv/parameters", "name", "WORK_MINUTES_PER_DAY"],
+    queryFn: () => ParametersAPI.getByName("WORK_MINUTES_PER_DAY"),
+    staleTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
+  const workMinutesPerDayFromApi = useMemo(() => {
+    if (paramResp?.status !== "success") return null;
+
+    const raw =
+      paramResp?.data?.value ??
+      paramResp?.data?.Value ??
+      paramResp?.data?.parameterValue ??
+      paramResp?.data?.ParameterValue ??
+      paramResp?.data?.valor ??
+      paramResp?.data?.Valor ??
+      paramResp?.data?.data?.value ??
+      null;
+
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n <= 0) return null;
+    return Math.trunc(n);
+  }, [paramResp]);
+
+  // Prioridad: API -> prop -> 480
+  const effectiveWorkMinutesPerDay = useMemo(() => {
+    if (workMinutesPerDayFromApi && workMinutesPerDayFromApi > 0) return workMinutesPerDayFromApi;
+
+    const propN = Number(workMinutesPerDayProp);
+    if (Number.isFinite(propN) && propN > 0) return Math.trunc(propN);
+
+    return 480;
+  }, [workMinutesPerDayFromApi, workMinutesPerDayProp]);
+
+  // -----------------------
   // Types
+  // -----------------------
   const { data: typesResp, isLoading: typesLoading } = useQuery<ApiResponse<PermissionType[]>>({
     queryKey: ["/api/v1/rh/permission-types"],
     queryFn: () => TiposPermisosAPI.list(),
@@ -239,10 +315,7 @@ export default function PermissionForm({
   const initialTypeNameFromRecord = useMemo(() => {
     if (!initialPermission) return "";
     return String(
-      initialPermission?.permissionTypeName ??
-        initialPermission?.typeName ??
-        initialPermission?.permissionType ??
-        ""
+      initialPermission?.permissionTypeName ?? initialPermission?.typeName ?? initialPermission?.permissionType ?? ""
     ).trim();
   }, [initialPermission]);
 
@@ -251,9 +324,7 @@ export default function PermissionForm({
     if (initialTypeIdFromRecord) return initialTypeIdFromRecord;
 
     if (initialTypeNameFromRecord && types.length) {
-      const found = types.find(
-        (t) => String(t.name).trim().toLowerCase() === initialTypeNameFromRecord.toLowerCase()
-      );
+      const found = types.find((t) => String(t.name).trim().toLowerCase() === initialTypeNameFromRecord.toLowerCase());
       return found?.typeId ?? 0;
     }
 
@@ -272,13 +343,32 @@ export default function PermissionForm({
       return;
     }
 
-    const s = initialPermission?.startDate ?? initialPermission?.StartDate;
-    const e = initialPermission?.endDate ?? initialPermission?.EndDate ?? s;
+    const rawS = initialPermission?.startDate ?? initialPermission?.StartDate;
+    const rawE = initialPermission?.endDate ?? initialPermission?.EndDate ?? rawS;
 
-    const sd = s ? dateOnly(String(s)) : today;
-    const ed = e ? dateOnly(String(e)) : sd;
+    const sd = rawS ? dateOnly(String(rawS)) : today;
+    const ed = rawE ? dateOnly(String(rawE)) : sd;
 
-    const hourTaken = Number(initialPermission?.hourTaken ?? initialPermission?.HourTaken ?? 0) || 0;
+    const hourTaken = safeMinutes(initialPermission?.hourTaken ?? initialPermission?.HourTaken ?? 0);
+
+    // extraer horas si vienen en ISO
+    const st = timeHHmmFromISO(rawS);
+    const et = timeHHmmFromISO(rawE);
+
+    // Determinar modo con coherencia:
+    // - multi-day si sd != ed
+    // - hours si sd == ed y (tiene horas distintas o hourTaken < jornada)
+    // - full-day caso contrario
+    if (sd !== ed) {
+      setMode("multi-day");
+    } else if ((st && et && st !== et) || (hourTaken > 0 && hourTaken < effectiveWorkMinutesPerDay)) {
+      setMode("hours");
+    } else {
+      setMode("full-day");
+    }
+
+    if (st) setStartTime(st);
+    if (et) setEndTime(et);
 
     setFormData((prev) => ({
       ...defaults,
@@ -292,15 +382,9 @@ export default function PermissionForm({
       hourTaken,
     }));
 
-    if (sd !== ed) setMode("multi-day");
-    else {
-      if (hourTaken > 0 && hourTaken < workMinutesPerDay) setMode("hours");
-      else setMode("full-day");
-    }
-
     setErrorMsg("");
     docManagerRef.current?.clearSelected();
-  }, [initialPermission, defaults, today, resolvedInitialTypeId, workMinutesPerDay]);
+  }, [initialPermission, defaults, today, resolvedInitialTypeId, effectiveWorkMinutesPerDay]);
 
   // Set default type para create
   useEffect(() => {
@@ -338,26 +422,38 @@ export default function PermissionForm({
   const computeDays = (s: string, e: string) => {
     const ds = toDate(s).getTime();
     const de = toDate(e).getTime();
+    if (!Number.isFinite(ds) || !Number.isFinite(de)) return 0;
     return Math.max(0, Math.floor((de - ds) / 86400000) + 1);
   };
 
-  // hours => minutes y endDate=startDate
-  useEffect(() => {
-    if (mode !== "hours") return;
-    const [sh, sm] = startTime.split(":").map(Number);
-    const [eh, em] = endTime.split(":").map(Number);
-    const diff = Math.max(0, eh * 60 + em - (sh * 60 + sm));
-    setFormData((p) => ({ ...p, hourTaken: diff, endDate: p.startDate }));
-  }, [mode, startTime, endTime]);
+  // -----------------------
+  // hourTaken derivado (fuente de verdad)
+  // -----------------------
+  const computedHourTaken = useMemo(() => {
+    if (mode === "hours") {
+      const [sh, sm] = startTime.split(":").map((x) => safeInt(x, 0));
+      const [eh, em] = endTime.split(":").map((x) => safeInt(x, 0));
+      const diff = eh * 60 + em - (sh * 60 + sm);
+      return safeMinutes(diff);
+    }
 
-  // day modes => minutes = days * workMinutesPerDay
+    if (mode === "multi-day") {
+      const days = computeDays(formData.startDate, formData.endDate);
+      return safeMinutes(days * effectiveWorkMinutesPerDay);
+    }
+
+    // full-day
+    return safeMinutes(1 * effectiveWorkMinutesPerDay);
+  }, [mode, startTime, endTime, formData.startDate, formData.endDate, effectiveWorkMinutesPerDay]);
+
+  // Mantener formData.hourTaken sincronizado para UI
   useEffect(() => {
-    if (mode === "hours") return;
-    const end = mode === "multi-day" ? formData.endDate : formData.startDate;
-    const days = mode === "multi-day" ? computeDays(formData.startDate, end) : 1;
-    setFormData((p) => ({ ...p, hourTaken: days * workMinutesPerDay }));
+    setFormData((p) => {
+      if (p.hourTaken === computedHourTaken) return p;
+      return { ...p, hourTaken: computedHourTaken, endDate: mode === "multi-day" ? p.endDate : p.startDate };
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, formData.startDate, formData.endDate, workMinutesPerDay]);
+  }, [computedHourTaken, mode]);
 
   const handleChange = (field: keyof InsertPermiso, value: any) => {
     setFormData((p) => ({ ...p, [field]: value }));
@@ -365,7 +461,7 @@ export default function PermissionForm({
 
   // Saldo
   const availableVacationMin = useMemo(() => Number(timeBalance?.vacationAvailableMin ?? 0), [timeBalance]);
-  const requestedMin = useMemo(() => Number(formData.hourTaken ?? 0), [formData.hourTaken]);
+  const requestedMin = useMemo(() => safeMinutes(computedHourTaken), [computedHourTaken]);
 
   const insufficientBalance = useMemo(() => {
     if (!selectedType?.deductsFromVacation) return false;
@@ -382,8 +478,8 @@ export default function PermissionForm({
     if (mode === "multi-day" && reqEnd < reqStart) return setErrorMsg("La fecha fin no puede ser menor a la fecha inicio.");
 
     if (mode === "hours") {
-      const [sh, sm] = startTime.split(":").map(Number);
-      const [eh, em] = endTime.split(":").map(Number);
+      const [sh, sm] = startTime.split(":").map((x) => safeInt(x, 0));
+      const [eh, em] = endTime.split(":").map((x) => safeInt(x, 0));
       if (eh * 60 + em <= sh * 60 + sm) return setErrorMsg("La hora fin debe ser mayor que la hora inicio.");
     }
 
@@ -425,7 +521,7 @@ export default function PermissionForm({
     // saldo
     if (selectedType?.deductsFromVacation && timeBalance) {
       const available = Number(timeBalance.vacationAvailableMin ?? 0);
-      const requested = Number(formData.hourTaken ?? 0);
+      const requested = safeMinutes(computedHourTaken);
       if (requested > available) {
         return setErrorMsg(`Saldo insuficiente. Disponible: ${fmtMinutes(available)}. Solicitado: ${fmtMinutes(requested)}.`);
       }
@@ -435,7 +531,6 @@ export default function PermissionForm({
   }, [
     formData.startDate,
     formData.endDate,
-    formData.hourTaken,
     mode,
     startTime,
     endTime,
@@ -445,13 +540,14 @@ export default function PermissionForm({
     today,
     editingId,
     timeBalance,
+    computedHourTaken,
   ]);
 
   const mutation = useMutation({
     mutationFn: async () => {
       if (selectedType?.deductsFromVacation && timeBalance) {
         const available = Number(timeBalance.vacationAvailableMin ?? 0);
-        const requested = Number(formData.hourTaken ?? 0);
+        const requested = safeMinutes(computedHourTaken);
         if (requested > available) {
           throw new Error(`Saldo insuficiente. Disponible: ${fmtMinutes(available)}. Solicitado: ${fmtMinutes(requested)}.`);
         }
@@ -465,15 +561,28 @@ export default function PermissionForm({
         }
       }
 
+      const minutesToSend = safeMinutes(computedHourTaken);
+
+      // Fechas a enviar:
+      // - hours: incluir hora en startDate / endDate
+      // - day modes: dateOnly como antes
+      const payloadStartDate =
+        mode === "hours" ? buildLocalDateTime(formData.startDate, startTime) : dateOnly(formData.startDate);
+
+      const payloadEndDate =
+        mode === "hours"
+          ? buildLocalDateTime(formData.startDate, endTime) // hours siempre mismo día (coherencia)
+          : dateOnly(mode === "multi-day" ? formData.endDate : formData.startDate);
+
       const payloadBase: any = {
         employeeId,
         permissionTypeId: formData.permissionTypeId,
-        startDate: dateOnly(formData.startDate),
-        endDate: dateOnly(mode === "multi-day" ? formData.endDate : formData.startDate),
+        startDate: payloadStartDate,
+        endDate: payloadEndDate,
         justification: formData.justification,
         chargedToVacation: !!formData.chargedToVacation,
         status: "Pending",
-        hourTaken: Number(formData.hourTaken ?? 0),
+        hourTaken: minutesToSend,
       };
 
       const payload = clean(payloadBase) as InsertPermiso;
@@ -545,9 +654,10 @@ export default function PermissionForm({
         {selectedType.maxDays ? <div>• Máx. días: {selectedType.maxDays}</div> : null}
         <div>• {selectedType.requiresApproval ? "Requiere aprobación" : "No requiere aprobación"}</div>
         <div>• {requiresDocs ? "Requiere documentación" : "No requiere documentación"}</div>
+        <div>• Minutos laborables por día: {effectiveWorkMinutesPerDay}</div>
       </div>
     );
-  }, [selectedType, requiresDocs]);
+  }, [selectedType, requiresDocs, effectiveWorkMinutesPerDay]);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -566,7 +676,7 @@ export default function PermissionForm({
             </div>
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Solicitado (calculado)</span>
-              <span className={`font-medium ${insufficientBalance ? "text-red-600" : ""}`}>{fmtMinutes(formData.hourTaken)}</span>
+              <span className={`font-medium ${insufficientBalance ? "text-red-600" : ""}`}>{fmtMinutes(computedHourTaken)}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Recuperación pendiente</span>
@@ -617,13 +727,27 @@ export default function PermissionForm({
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <Label htmlFor="startDate">Fecha Inicio</Label>
-          <Input id="startDate" type="date" min={today} value={formData.startDate} onChange={(e) => handleChange("startDate", e.target.value)} required />
+          <Input
+            id="startDate"
+            type="date"
+            min={today}
+            value={formData.startDate}
+            onChange={(e) => handleChange("startDate", e.target.value)}
+            required
+          />
         </div>
 
         {mode === "multi-day" ? (
           <div>
             <Label htmlFor="endDate">Fecha Fin</Label>
-            <Input id="endDate" type="date" min={formData.startDate} value={formData.endDate} onChange={(e) => handleChange("endDate", e.target.value)} required />
+            <Input
+              id="endDate"
+              type="date"
+              min={formData.startDate}
+              value={formData.endDate}
+              onChange={(e) => handleChange("endDate", e.target.value)}
+              required
+            />
           </div>
         ) : (
           <div className="flex items-center gap-3 pt-6">
@@ -650,7 +774,15 @@ export default function PermissionForm({
           </div>
           <div>
             <Label>Minutos calculados</Label>
-            <Input value={fmtMinutes(formData.hourTaken)} readOnly />
+            <Input value={fmtMinutes(computedHourTaken)} readOnly />
+          </div>
+        </div>
+      )}
+
+      {mode !== "hours" && (
+        <div className="grid grid-cols-1 gap-2">
+          <div className="text-xs text-muted-foreground">
+            Minutos calculados: <span className="font-medium">{fmtMinutes(computedHourTaken)}</span>
           </div>
         </div>
       )}
@@ -680,7 +812,6 @@ export default function PermissionForm({
             maxSizeMB={documents.maxSizeMB ?? 25}
             maxFiles={documents.maxFiles ?? 10}
             documentType={documents.documentType ?? { enabled: true, required: true }}
-
             entityId={isEdit ? String(editingId) : undefined}
             entityReady={isEdit}
             allowSelectWhenNotReady={true}

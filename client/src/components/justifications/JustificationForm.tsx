@@ -36,8 +36,8 @@ type Mode = "PICADA" | "HORAS" | "DIAS";
 
 function normalizeTypeCode(t: any): Mode | null {
   const raw = (
-    typeof t === 'string' 
-      ? t 
+    typeof t === "string"
+      ? t
       : (t?.code || t?.value || t?.name || t?.typeName || t?.description || "")
   )
     .toString()
@@ -55,7 +55,7 @@ function normalizeTypeCode(t: any): Mode | null {
   if (raw.includes("DIA") || raw.includes("DAY") || raw.includes("COMPLETO") || raw.includes("FULL")) {
     return "DIAS";
   }
-  
+
   console.warn("Tipo no reconocido:", raw, t);
   return null;
 }
@@ -79,7 +79,7 @@ interface Props {
 
 export default function JustificationForm({ onCreated, onCancel }: Props) {
   const { toast } = useToast();
-  const { employeeDetails, user } = useAuth();
+  const { employeeDetails } = useAuth();
   const { bossId, bossName } = useMemo(() => getBossFromEmployeeDetails(employeeDetails), [employeeDetails]);
 
   // Estados del formulario
@@ -113,10 +113,10 @@ export default function JustificationForm({ onCreated, onCancel }: Props) {
     const loadTypes = async () => {
       try {
         setLoadingTypes(true);
-        
+
         // Cargar tipos de justificación
-        const justificationResponse = await TiposReferenciaAPI.byCategory('JUSTIFICATION');
-        if (justificationResponse.status === 'success') {
+        const justificationResponse = await TiposReferenciaAPI.byCategory("JUSTIFICATION");
+        if (justificationResponse.status === "success") {
           setJustificationTypes(justificationResponse.data);
         } else {
           toast({
@@ -127,8 +127,8 @@ export default function JustificationForm({ onCreated, onCancel }: Props) {
         }
 
         // Cargar tipos de picada
-        const punchResponse = await TiposReferenciaAPI.byCategory('PUNCH_TYPE');
-        if (punchResponse.status === 'success') {
+        const punchResponse = await TiposReferenciaAPI.byCategory("PUNCH_TYPE");
+        if (punchResponse.status === "success") {
           setPunchTypes(punchResponse.data);
         } else {
           toast({
@@ -138,7 +138,7 @@ export default function JustificationForm({ onCreated, onCancel }: Props) {
           });
         }
       } catch (error) {
-        console.error('Error loading types:', error);
+        console.error("Error loading types:", error);
         toast({
           title: "Error",
           description: "Error al cargar los tipos de justificación.",
@@ -153,15 +153,12 @@ export default function JustificationForm({ onCreated, onCancel }: Props) {
   }, [toast]);
 
   // Derivados
-  const selectedType = useMemo(() => 
-    justificationTypes?.find((t) => extractTypeId(t) === selectedTypeId), 
+  const selectedType = useMemo(
+    () => justificationTypes?.find((t) => extractTypeId(t) === selectedTypeId),
     [justificationTypes, selectedTypeId]
   );
-  
-  const selectedTypeName = useMemo(() => 
-    (selectedType ? extractTypeName(selectedType) : ""), 
-    [selectedType]
-  );
+
+  const selectedTypeName = useMemo(() => (selectedType ? extractTypeName(selectedType) : ""), [selectedType]);
 
   // Modo según tipo
   useEffect(() => {
@@ -201,14 +198,14 @@ export default function JustificationForm({ onCreated, onCancel }: Props) {
 
   const loadEmployeeSchedule = async () => {
     if (!schedulerID || !startDateTime) return;
-    
+
     try {
       setLoadingSchedule(true);
-      
+
       // Usar HorariosAPI para obtener el horario por schedulerID
       const response = await HorariosAPI.get(schedulerID);
-      
-      if (response && response.status === 'success' && response.data) {
+
+      if (response && response.status === "success" && response.data) {
         setEmployeeSchedule(response.data);
       } else {
         setEmployeeSchedule(null);
@@ -234,7 +231,7 @@ export default function JustificationForm({ onCreated, onCancel }: Props) {
   const suggestTimeBasedOnSchedule = () => {
     if (!employeeSchedule || !selectedPunchTypeId || !startDateTime) return;
 
-    const selectedPunchType = punchTypes.find(t => extractTypeId(t) === selectedPunchTypeId);
+    const selectedPunchType = punchTypes.find((t) => extractTypeId(t) === selectedPunchTypeId);
     const punchTypeName = selectedPunchType ? extractTypeName(selectedPunchType).toLowerCase() : "";
 
     let suggestedTimeValue = "";
@@ -253,14 +250,14 @@ export default function JustificationForm({ onCreated, onCancel }: Props) {
 
     // Si encontramos una hora sugerida, actualizar el datetime
     if (suggestedTimeValue) {
-      // Asegurarnos de que la hora tenga formato HH:mm (remover segundos si existen)
-      const formattedTime = suggestedTimeValue.includes(':') 
-        ? suggestedTimeValue.slice(0, 5)  // Tomar solo HH:mm
-        : "08:00";
-      
+      const formattedTime = suggestedTimeValue.includes(":") ? suggestedTimeValue.slice(0, 5) : "08:00";
       const newDateTime = `${datePart}T${formattedTime}`;
-      setStartDateTime(newDateTime);
-      setEndDateTime(newDateTime);
+
+      // Evita re-render/loops si la sugerencia ya está aplicada
+      if (newDateTime !== startDateTime) {
+        setStartDateTime(newDateTime);
+        setEndDateTime(newDateTime);
+      }
       setSuggestedTime(formattedTime);
     }
   };
@@ -268,10 +265,10 @@ export default function JustificationForm({ onCreated, onCancel }: Props) {
   // Al cambiar a PICADA replico hora final = inicial
   useEffect(() => {
     if (mode === "PICADA" && startDateTime) {
-      setEndDateTime(startDateTime);
+      if (endDateTime !== startDateTime) setEndDateTime(startDateTime);
       setDateOnly(toDateOnlyLocal(startDateTime));
     }
-  }, [mode, startDateTime]);
+  }, [mode, startDateTime, endDateTime]);
 
   // Para HORAS fuerzo que ambos sean el mismo día
   useEffect(() => {
@@ -309,12 +306,12 @@ export default function JustificationForm({ onCreated, onCancel }: Props) {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (loadingTypes) {
       toast({ title: "Error", description: "Los tipos aún se están cargando.", variant: "destructive" });
       return;
     }
-    
+
     if (!employeeDetails?.employeeID) {
       toast({ title: "Error", description: "No se encontró su ID de empleado.", variant: "destructive" });
       return;
@@ -330,7 +327,11 @@ export default function JustificationForm({ onCreated, onCancel }: Props) {
 
     // Validación específica para PICADA
     if (mode === "PICADA" && !selectedPunchTypeId) {
-      toast({ title: "Error", description: "Para justificación de picada, debe seleccionar el tipo de picada.", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: "Para justificación de picada, debe seleccionar el tipo de picada.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -444,11 +445,7 @@ export default function JustificationForm({ onCreated, onCancel }: Props) {
       {/* Tipo de justificación */}
       <div className="space-y-2">
         <Label>Tipo de justificación *</Label>
-        <Select
-          value={selectedTypeId ? String(selectedTypeId) : ""}
-          onValueChange={(v) => setSelectedTypeId(Number(v))}
-          required
-        >
+        <Select value={selectedTypeId ? String(selectedTypeId) : ""} onValueChange={(v) => setSelectedTypeId(Number(v))} required>
           <SelectTrigger>
             <SelectValue placeholder="Seleccione el tipo" />
           </SelectTrigger>
@@ -470,11 +467,7 @@ export default function JustificationForm({ onCreated, onCancel }: Props) {
       {mode === "PICADA" && (
         <div className="space-y-2">
           <Label>Tipo de picada *</Label>
-          <Select
-            value={selectedPunchTypeId ? String(selectedPunchTypeId) : ""}
-            onValueChange={(v) => setSelectedPunchTypeId(Number(v))}
-            required
-          >
+          <Select value={selectedPunchTypeId ? String(selectedPunchTypeId) : ""} onValueChange={(v) => setSelectedPunchTypeId(Number(v))} required>
             <SelectTrigger>
               <SelectValue placeholder="Seleccione el tipo de picada" />
             </SelectTrigger>
@@ -539,15 +532,12 @@ export default function JustificationForm({ onCreated, onCancel }: Props) {
             </div>
           </div>
 
-          {/* Información del horario */}
-          {loadingSchedule && (
-            <div className="text-sm text-blue-600">Cargando horario del empleado...</div>
-          )}
+          {loadingSchedule && <div className="text-sm text-blue-600">Cargando horario del empleado...</div>}
 
           {employeeSchedule && suggestedTime && (
             <div className="rounded-md border p-3 bg-blue-50">
               <p className="text-sm text-blue-700">
-                <span className="font-medium">Horario asignado:</span> 
+                <span className="font-medium">Horario asignado:</span>
                 {employeeSchedule.entryTime && ` Entrada: ${employeeSchedule.entryTime}`}
                 {employeeSchedule.lunchStart && ` | Almuerzo salida: ${employeeSchedule.lunchStart}`}
                 {employeeSchedule.lunchEnd && ` | Almuerzo regreso: ${employeeSchedule.lunchEnd}`}
@@ -582,23 +572,11 @@ export default function JustificationForm({ onCreated, onCancel }: Props) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Hora inicial *</Label>
-              <Input
-                type="datetime-local"
-                max={new Date().toISOString().slice(0, 16)}
-                value={startDateTime}
-                onChange={(e) => setStartDateTime(e.target.value)}
-                required
-              />
+              <Input type="datetime-local" max={new Date().toISOString().slice(0, 16)} value={startDateTime} onChange={(e) => setStartDateTime(e.target.value)} required />
             </div>
             <div className="space-y-2">
               <Label>Hora final *</Label>
-              <Input
-                type="datetime-local"
-                max={new Date().toISOString().slice(0, 16)}
-                value={endDateTime}
-                onChange={(e) => setEndDateTime(e.target.value)}
-                required
-              />
+              <Input type="datetime-local" max={new Date().toISOString().slice(0, 16)} value={endDateTime} onChange={(e) => setEndDateTime(e.target.value)} required />
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -630,13 +608,7 @@ export default function JustificationForm({ onCreated, onCancel }: Props) {
       {/* Motivo */}
       <div className="space-y-2">
         <Label>Motivo detallado *</Label>
-        <Textarea
-          placeholder="Describa el motivo..."
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          required
-          rows={4}
-        />
+        <Textarea placeholder="Describa el motivo..." value={reason} onChange={(e) => setReason(e.target.value)} required rows={4} />
       </div>
 
       <div className="flex items-center justify-end gap-2 pt-2">

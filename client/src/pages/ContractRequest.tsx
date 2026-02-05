@@ -1,6 +1,7 @@
 // src/pages/ContractRequest.tsx
-import { useMemo, useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+
 import {
   Dialog,
   DialogContent,
@@ -13,48 +14,26 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
-import {
-  FileText, Plus, Search, Clock, Calendar, User, Building, Eye, CheckCircle, Download,
-} from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
+import { FileText, Plus, Search, Calendar, Eye } from "lucide-react";
 
 import { useToast } from "@/hooks/use-toast";
-import { ContractRequestAPI, type ApiResponse } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 
-/** ===== Tipos ===== */
-interface ContractRequest {
-  requestId: number;
-  workModalityId: number;
-  numberTeacher: number;
-  numberHour: number;
-  status: number;
-  contractCode?: string;
-  contractNumber?: string;
-  applicantName?: string;
-  department?: string;
-  position?: string;
-  contractType?: string;
-  startDate?: string;
-  endDate?: string;
-  salary?: number;
-  filename?: string;
-  filepath?: string;
-  createdAt?: string;
-  createdBy?: number;
-}
+import { useContractRequest } from "@/hooks/contractRequest/useContractRequests";
 
-interface UIContractRequest extends ContractRequest {
-  isActive: boolean;
-  daysRemaining?: number;
-  statusText: string;
-  statusVariant: "default" | "secondary" | "destructive" | "outline";
-}
+import type { ContractRequestCreate, UIContractRequest } from "@/types/contractRequest";
+import { ContractRequestForm } from "@/components/contractRequest/ContractRequestForm";
+import { AttachmentSection } from "@/components/contractRequest/AttachmentSection";
 
-/** ===================== Página ===================== */
+import {
+  CONTRACT_REQUEST_DIRECTORY_CODE as DIRECTORY_CODE,
+  CONTRACT_REQUEST_ENTITY_TYPE as ENTITY_TYPE,
+} from "@/features/constants";
+
+import type { ReusableDocumentManagerHandle } from "@/components/ReusableDocumentManager";
+
 export default function ContractRequestPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -64,204 +43,249 @@ export default function ContractRequestPage() {
     ? Number(employeeDetails?.employeeID)
     : (Number.isFinite(Number(user?.id)) ? Number(user?.id) : 0);
 
-  // Diálogos / estado general
+  const cr = useContractRequest(DIRECTORY_CODE);
+  const { contracts, listQ, createMut, directoryUi } = cr;
+
+  const accept = directoryUi.accept ?? "*/*";
+  const maxSizeMB = directoryUi.maxSizeMB ?? 20;
+  const relativePath = directoryUi.relativePath ?? "";
+
+  // UI state
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [selectedContract, setSelectedContract] = useState<UIContractRequest | null>(null);
+  const [selected, setSelected] = useState<UIContractRequest | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // ----------------- Estado del formulario de creación -----------------
-  const [form, setForm] = useState<Partial<ContractRequest>>({
-    workModalityId: 0,
-    numberTeacher: 0,
+  // Create form
+  const [form, setForm] = useState<ContractRequestCreate>({
+    workModalityId: null,
+    departmentId: null,
+    numberOfPeopleToHire: 1, // ✅ inicia en 1
     numberHour: 0,
-    status: 2, // Pendiente
-    contractCode: "",
-    contractNumber: "",
-    applicantName: "",
-    department: "",
-    position: "",
-    contractType: "",
-    startDate: new Date().toISOString().split('T')[0],
-    endDate: "",
-    salary: 0,
-    createdAt: new Date().toISOString(),
+    observation: "",
+    status: null, // ✅ se asigna por defecto desde catálogo ("GENERADO")
     createdBy: ctxCreatedBy,
   });
 
-  // ----------------- Query de listado -----------------
-  const { data: apiResponse, isLoading, error } = useQuery<ApiResponse<ContractRequest[]>>({
-    queryKey: ['/api/v1/rh/cv/contract-request'],
-    queryFn: () => ContractRequestAPI.list(),
-  });
+  // ✅ Estado por defecto: "GENERADO" (desde catálogo CONTRACT_REQUEST_STATUS)
+  useEffect(() => {
+    // no sobreescribir si el usuario ya seleccionó algo
+    if (form.status != null) return;
 
-  // ----------------- Mutación de creación -----------------
-  const createMutation = useMutation({
-    mutationFn: (payload: ContractRequest) => ContractRequestAPI.create(payload as any),
-    onSuccess: (resp) => {
-      console.log("✅ Respuesta del servidor:", resp);
-      
-      if (resp.status === "success") {
-        toast({ 
-          title: "✅ Solicitud de contrato creada", 
-          description: "Se guardó correctamente en el sistema." 
-        });
-        qc.invalidateQueries({ 
-          queryKey: ['/api/v1/rh/cv/contract-request'] 
-        });
-        setIsFormOpen(false);
-        resetForm();
-      } else {
-        console.error("❌ Error del servidor:", resp.error);
-        toast({
-          title: "❌ Error al guardar",
-          description: resp.error?.message ?? "No se pudo guardar la solicitud de contrato",
-          variant: "destructive"
-        });
-      }
-    },
-    onError: (e: any) => {
-      console.error("❌ Error de red:", e);
-      toast({ 
-        title: "❌ Error de conexión", 
-        description: e?.message ?? "No se pudo conectar con el servidor", 
-        variant: "destructive" 
-      });
+    const generated = cr.statuses.find(
+      (s) => (s.name ?? "").trim().toUpperCase() === "GENERADO"
+    );
+
+    if (generated?.id) {
+      setForm((prev) => ({ ...prev, status: generated.id }));
     }
-  });
+  }, [cr.statuses, form.status]);
+
+  const [attachEnabled, setAttachEnabled] = useState(false);
+  const createDocsRef = useRef<ReusableDocumentManagerHandle | null>(null);
+  const detailDocsRef = useRef<ReusableDocumentManagerHandle | null>(null);
 
   const resetForm = () => {
     setForm({
-      workModalityId: 0,
-      numberTeacher: 0,
+      workModalityId: null,
+      departmentId: null,
+      numberOfPeopleToHire: 1,
       numberHour: 0,
-      status: 2,
-      contractCode: "",
-      contractNumber: "",
-      applicantName: "",
-      department: "",
-      position: "",
-      contractType: "",
-      startDate: new Date().toISOString().split('T')[0],
-      endDate: "",
-      salary: 0,
-      createdAt: new Date().toISOString(),
+      observation: "",
+      status: null, // ✅ vuelve a default por efecto ("GENERADO")
       createdBy: ctxCreatedBy,
     });
+    setAttachEnabled(false);
+    createDocsRef.current?.clearSelected();
   };
 
-  // ----------------- Helpers de UI -----------------
-  const getStatusInfo = (status: number): { text: string; variant: UIContractRequest["statusVariant"] } => {
-    switch (status) {
-      case 1: return { text: "Activo", variant: "default" };
-      case 2: return { text: "Pendiente", variant: "secondary" };
-      case 3: return { text: "Aprobado", variant: "default" };
-      case 4: return { text: "Rechazado", variant: "destructive" };
-      case 0: return { text: "Inactivo", variant: "outline" };
-      default: return { text: "Desconocido", variant: "outline" };
+  const filtered = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return contracts;
+
+    return contracts.filter((c) => {
+      const modalityName = c.workModalityId
+        ? (cr.workModalityNameById.get(c.workModalityId) ?? "")
+        : "";
+      const deptName = c.departmentId
+        ? (cr.departmentNameById.get(c.departmentId) ?? "")
+        : "";
+
+      const hay = [
+        `#${c.requestId}`,
+        modalityName,
+        deptName,
+        String(c.numberOfPeopleToHire),
+        String(c.numberHour),
+        String(c.totalPeopleHired),
+        c.statusText,
+        c.observation ?? "",
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return hay.includes(q);
+    });
+  }, [contracts, searchTerm, cr.workModalityNameById, cr.departmentNameById]);
+
+  const openDetails = (c: UIContractRequest) => {
+    setSelected(c);
+    setIsDetailOpen(true);
+    setTimeout(() => detailDocsRef.current?.refresh(c.requestId), 0);
+  };
+
+  const handleCreate = async () => {
+    if (!ctxCreatedBy || ctxCreatedBy <= 0) {
+      toast({
+        title: "❌ Usuario inválido",
+        description: "No se pudo determinar el solicitante.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!form.workModalityId) {
+      toast({
+        title: "❌ Campo requerido",
+        description: "Seleccione la modalidad de trabajo.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!form.departmentId) {
+      toast({
+        title: "❌ Campo requerido",
+        description: "Seleccione el departamento.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (form.status == null) {
+      toast({
+        title: "❌ Campo requerido",
+        description: "Seleccione el estado.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (Number(form.numberOfPeopleToHire) < 1) {
+      toast({
+        title: "❌ Valor inválido",
+        description: "El número de personas debe ser ≥ 1.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (Number(form.numberHour) < 0) {
+      toast({
+        title: "❌ Valor inválido",
+        description: "Las horas no pueden ser negativas.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const payload: ContractRequestCreate = {
+      ...form,
+      createdBy: ctxCreatedBy,
+      numberOfPeopleToHire: Math.max(1, Number(form.numberOfPeopleToHire || 1)),
+      numberHour: Math.max(0, Number(form.numberHour || 0)),
+      observation: (form.observation ?? "").trim() || undefined,
+    };
+
+    try {
+      const { id, resp } = await createMut.mutateAsync(payload);
+
+      if (resp.status !== "success") {
+        toast({
+          title: "❌ Error",
+          description: resp.error?.message ?? "No se pudo crear.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      qc.invalidateQueries({ queryKey: ["/api/v1/rh/cv/contract-request"] });
+
+      // Adjuntos opcionales: crear -> subir
+      const count = createDocsRef.current?.getSelectedCount() ?? 0;
+      if (attachEnabled && id && count > 0) {
+        const up = await createDocsRef.current?.uploadAll(id);
+        if (!up || (up as any).status === "error") {
+          toast({
+            title: "⚠️ Creado con advertencia",
+            description: "Se creó la solicitud pero falló la subida. Puedes reintentar en Detalles.",
+            variant: "destructive",
+          });
+        }
+      }
+
+      toast({ title: "✅ Solicitud creada", description: "Se guardó correctamente." });
+      setIsFormOpen(false);
+      resetForm();
+    } catch (e: any) {
+      toast({ title: "❌ Error", description: e?.message ?? "No se pudo procesar.", variant: "destructive" });
     }
   };
 
-  const getDaysRemaining = (endDate: string): number => {
-    const expiryDate = new Date(endDate);
-    const today = new Date();
-    const diffTime = expiryDate.getTime() - today.getTime();
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  const handleUploadDetail = async () => {
+    if (!selected) return;
+
+    const count = detailDocsRef.current?.getSelectedCount() ?? 0;
+    if (count <= 0) {
+      toast({ title: "Sin archivos", description: "No hay archivos seleccionados para subir." });
+      return;
+    }
+
+    const up = await detailDocsRef.current?.uploadAll(selected.requestId);
+    if (!up || (up as any).status === "error") {
+      toast({ title: "❌ Error", description: "No se pudieron subir los documentos.", variant: "destructive" });
+      return;
+    }
+
+    toast({ title: "✅ Documentos subidos", description: "Se subieron correctamente." });
+    await detailDocsRef.current?.refresh(selected.requestId);
   };
 
-  const contracts: UIContractRequest[] = useMemo(() => {
-    if (apiResponse?.status !== "success") return [];
-    return apiResponse.data.map((contract) => {
-      const statusInfo = getStatusInfo(contract.status);
-      const daysRemaining = contract.endDate ? getDaysRemaining(contract.endDate) : undefined;
-      return {
-        ...contract,
-        isActive: contract.status === 1 || contract.status === 3,
-        daysRemaining: daysRemaining && daysRemaining > 0 ? daysRemaining : undefined,
-        statusText: statusInfo.text,
-        statusVariant: statusInfo.variant,
-      };
-    });
-  }, [apiResponse]);
-
-  const filteredContracts = useMemo(() => {
-    const q = searchTerm.toLowerCase();
-    return contracts.filter((c) =>
-      (c.contractCode?.toLowerCase() || '').includes(q) ||
-      (c.contractNumber?.toLowerCase() || '').includes(q) ||
-      (c.applicantName?.toLowerCase() || '').includes(q) ||
-      (c.department?.toLowerCase() || '').includes(q) ||
-      (c.position?.toLowerCase() || '').includes(q) ||
-      (c.contractType?.toLowerCase() || '').includes(q) ||
-      c.statusText.toLowerCase().includes(q)
-    );
-  }, [searchTerm, contracts]);
-
-  // Stats
-  const totalContracts = contracts.length;
-  const approvedContracts = contracts.filter(c => c.status === 3).length;
-  const pendingContracts = contracts.filter(c => c.status === 2).length;
-  const activeContracts = contracts.filter(c => c.status === 1).length;
-  const expiringSoon = contracts.filter(c => c.daysRemaining && c.daysRemaining < 30).length;
-
-  // Ver detalles
-  const handleViewDetails = (c: UIContractRequest) => {
-    setSelectedContract(c);
-    setIsDetailOpen(true);
-  };
-
-  // ----------------- Loading / Error de lista -----------------
-  if (isLoading) {
+  if (listQ.isLoading) {
     return (
-      <div className="container mx-auto p-4 md:p-6">
-        <div className="flex items-center space-x-2 mb-4 md:mb-6">
-          <div className="h-8 w-8 rounded bg-gray-200 animate-pulse" />
-          <div className="h-6 w-32 bg-gray-200 rounded animate-pulse" />
-        </div>
-        <div className="space-y-3 md:space-y-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="flex space-x-3 md:space-x-4 animate-pulse">
-              <div className="h-12 flex-1 bg-gray-200 rounded" />
-              <div className="h-12 flex-1 bg-gray-200 rounded" />
-              <div className="h-12 flex-1 bg-gray-200 rounded" />
-              <div className="h-12 w-20 md:w-24 bg-gray-200 rounded" />
-            </div>
-          ))}
-        </div>
+      <div className="container mx-auto p-4 lg:p-6">
+        <Card>
+          <CardContent className="pt-6">Cargando...</CardContent>
+        </Card>
       </div>
     );
   }
 
-  if (error || apiResponse?.status === "error") {
+  if (listQ.error || listQ.data?.status === "error") {
     return (
-      <div className="container mx-auto p-4 md:p-6">
+      <div className="container mx-auto p-4 lg:p-6">
         <Card className="border-red-200 bg-red-50">
           <CardContent className="pt-6">
-            <p className="text-red-600">
-              Error al cargar las solicitudes de contrato. {apiResponse?.status === "error" ? apiResponse.error.message : "Intente nuevamente."}
-            </p>
+            Error al cargar. {listQ.data?.status === "error" ? listQ.data.error.message : "Intente nuevamente."}
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  // ----------------- Render -----------------
+  const formDisabled = createMut.isPending;
+
   return (
     <div className="container mx-auto p-4 lg:p-6">
-      {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 flex items-center gap-2">
             <FileText className="h-6 w-6 lg:h-8 lg:w-8 text-blue-600" />
-            Gestión de Solicitudes de Contrato
+            Solicitud de Contrato
           </h1>
-          <p className="text-gray-600 mt-1 lg:mt-2 text-sm lg:text-base">
-            Administre las solicitudes de contrato del sistema
-          </p>
+          <p className="text-gray-600 mt-1 text-sm lg:text-base">Gestión de solicitudes</p>
         </div>
 
-        {/* Botón abrir formulario */}
         <Dialog
           open={isFormOpen}
           onOpenChange={(open) => {
@@ -276,306 +300,55 @@ export default function ContractRequestPage() {
             </Button>
           </DialogTrigger>
 
-          {/* ------------------- FORMULARIO ------------------- */}
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Nueva Solicitud de Contrato</DialogTitle>
-              <DialogDescription>
-                Complete la información de la solicitud de contrato.
-              </DialogDescription>
+              <DialogTitle>Nueva Solicitud</DialogTitle>
+              <DialogDescription>Campos alineados a HR.tbl_contractRequest.</DialogDescription>
             </DialogHeader>
 
-            {/* Campos principales del JSON */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-              <div>
-                <Label htmlFor="workModalityId">ID Modalidad de Trabajo *</Label>
-                <Input
-                  id="workModalityId"
-                  type="number"
-                  value={form.workModalityId ?? 0}
-                  onChange={(e) => setForm((f) => ({ ...f, workModalityId: Number(e.target.value) }))}
-                  placeholder="Ej: 1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="numberTeacher">Número de Docente</Label>
-                <Input
-                  id="numberTeacher"
-                  type="number"
-                  value={form.numberTeacher ?? 0}
-                  onChange={(e) => setForm((f) => ({ ...f, numberTeacher: Number(e.target.value) }))}
-                  placeholder="Ej: 5"
-                />
-              </div>
-              <div>
-                <Label htmlFor="numberHour">Número de Horas</Label>
-                <Input
-                  id="numberHour"
-                  type="number"
-                  value={form.numberHour ?? 0}
-                  onChange={(e) => setForm((f) => ({ ...f, numberHour: Number(e.target.value) }))}
-                  placeholder="Ej: 40"
-                />
-              </div>
-              <div>
-                <Label htmlFor="status">Estado</Label>
-                <Input
-                  id="status"
-                  type="number"
-                  value={form.status ?? 2}
-                  onChange={(e) => setForm((f) => ({ ...f, status: Number(e.target.value) }))}
-                  placeholder="0=Inactivo, 1=Activo, 2=Pendiente, 3=Aprobado, 4=Rechazado"
-                />
-              </div>
-            </div>
+            <ContractRequestForm
+              value={form}
+              onChange={setForm}
+              workModalities={cr.workModalities}
+              departments={cr.departments}
+              statuses={cr.statuses}
+              disabled={formDisabled}
+            />
 
-            {/* Campos adicionales (opcionales) */}
             <div className="mt-6">
-              <h3 className="text-lg font-semibold mb-4">Información Adicional del Contrato</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="contractCode">Código de Contrato</Label>
-                  <Input
-                    id="contractCode"
-                    value={form.contractCode ?? ""}
-                    onChange={(e) => setForm((f) => ({ ...f, contractCode: e.target.value }))}
-                    placeholder="Ej: CONT-2025-001"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="contractNumber">Número de Contrato</Label>
-                  <Input
-                    id="contractNumber"
-                    value={form.contractNumber ?? ""}
-                    onChange={(e) => setForm((f) => ({ ...f, contractNumber: e.target.value }))}
-                    placeholder="Ej: CT-001"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <Label htmlFor="applicantName">Nombre del Solicitante</Label>
-                  <Input
-                    id="applicantName"
-                    value={form.applicantName ?? ""}
-                    onChange={(e) => setForm((f) => ({ ...f, applicantName: e.target.value }))}
-                    placeholder="Ej: Juan Pérez"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="department">Departamento</Label>
-                  <Input
-                    id="department"
-                    value={form.department ?? ""}
-                    onChange={(e) => setForm((f) => ({ ...f, department: e.target.value }))}
-                    placeholder="Ej: Recursos Humanos"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="position">Cargo</Label>
-                  <Input
-                    id="position"
-                    value={form.position ?? ""}
-                    onChange={(e) => setForm((f) => ({ ...f, position: e.target.value }))}
-                    placeholder="Ej: Analista de RH"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="contractType">Tipo de Contrato</Label>
-                  <Input
-                    id="contractType"
-                    value={form.contractType ?? ""}
-                    onChange={(e) => setForm((f) => ({ ...f, contractType: e.target.value }))}
-                    placeholder="Ej: Tiempo Completo"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="startDate">Fecha de Inicio</Label>
-                  <Input
-                    id="startDate"
-                    type="date"
-                    value={form.startDate ?? ""}
-                    onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="endDate">Fecha de Fin</Label>
-                  <Input
-                    id="endDate"
-                    type="date"
-                    value={form.endDate ?? ""}
-                    onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="salary">Salario</Label>
-                  <Input
-                    id="salary"
-                    type="number"
-                    step="0.01"
-                    value={form.salary ?? 0}
-                    onChange={(e) => setForm((f) => ({ ...f, salary: Number(e.target.value) }))}
-                    placeholder="0.00"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="createdBy">Creado por (ID usuario)</Label>
-                  <Input id="createdBy" type="number" value={ctxCreatedBy} disabled />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Se toma del usuario en sesión {employeeDetails?.fullName ? `(${employeeDetails.fullName})` : ""}.
-                  </p>
-                </div>
-              </div>
+              <AttachmentSection
+                ref={createDocsRef}
+                enabled={attachEnabled}
+                onEnabledChange={setAttachEnabled}
+                label="Documentos de la Solicitud"
+                directoryCode={DIRECTORY_CODE}
+                entityType={ENTITY_TYPE}
+                entityReady={false}
+                accept={accept}
+                maxSizeMB={maxSizeMB}
+                relativePath={relativePath}
+                disabled={formDisabled || cr.directoryQ.isLoading}
+                showUploadButton={false}
+              />
             </div>
 
-            {/* Acciones */}
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-6 justify-end">
-              <Button variant="outline" onClick={() => setIsFormOpen(false)} className="w-full sm:w-auto">
+              <Button variant="outline" onClick={() => setIsFormOpen(false)} disabled={formDisabled}>
                 Cancelar
               </Button>
-              <Button
-                onClick={() => {
-                  // Validaciones de campos requeridos según el JSON
-                  if (form.workModalityId === undefined || form.workModalityId === null) {
-                    toast({ 
-                      title: "❌ Campo requerido", 
-                      description: "El ID de modalidad de trabajo es obligatorio", 
-                      variant: "destructive" 
-                    });
-                    return;
-                  }
-
-                  // Prepara el payload con los campos del JSON
-                  const payload: ContractRequest = {
-                    workModalityId: form.workModalityId ?? 0,
-                    numberTeacher: form.numberTeacher ?? 0,
-                    numberHour: form.numberHour ?? 0,
-                    status: form.status ?? 2,
-                    // Campos adicionales opcionales
-                    contractCode: form.contractCode,
-                    contractNumber: form.contractNumber,
-                    applicantName: form.applicantName,
-                    department: form.department,
-                    position: form.position,
-                    contractType: form.contractType,
-                    startDate: form.startDate,
-                    endDate: form.endDate,
-                    salary: form.salary,
-                    createdAt: new Date().toISOString(),
-                    createdBy: ctxCreatedBy,
-                    requestId: 0, // Se genera automáticamente en el backend
-                  };
-
-                  console.log("📤 Enviando payload:", payload);
-                  
-                  createMutation.mutate(payload);
-                }}
-                disabled={createMutation.isPending}
-                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700"
-              >
-                {createMutation.isPending ? "🔄 Guardando..." : "💾 Guardar Solicitud"}
+              <Button onClick={handleCreate} disabled={formDisabled} className="bg-blue-600 hover:bg-blue-700">
+                {formDisabled ? "Guardando..." : "Guardar Solicitud"}
               </Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* Stats (grid responsivo) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
-        <Card className="bg-gradient-to-r from-blue-50 to-blue-100">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm lg:text-lg flex items-center justify-between">
-              <span className="flex items-center">
-                <FileText className="h-4 w-4 lg:h-5 lg:w-5 text-blue-600 mr-2" />
-                Total
-              </span>
-              <Badge variant="secondary" className="bg-blue-200 text-blue-800 text-xs lg:text-sm">
-                {totalContracts}
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xs lg:text-sm text-gray-600">Solicitudes registradas</div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-r from-green-50 to-green-100">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm lg:text-lg flex items-center justify-between">
-              <span className="flex items-center">
-                <CheckCircle className="h-4 w-4 lg:h-5 lg:w-5 text-green-600 mr-2" />
-                Aprobadas
-              </span>
-              <Badge variant="secondary" className="bg-green-200 text-green-800 text-xs lg:text-sm">
-                {approvedContracts}
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xs lg:text-sm text-gray-600">
-              {totalContracts > 0 ? ((approvedContracts / totalContracts) * 100).toFixed(1) : 0}% del total
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-r from-orange-50 to-orange-100">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm lg:text-lg flex items-center justify-between">
-              <span className="flex items-center">
-                <Clock className="h-4 w-4 lg:h-5 lg:w-5 text-orange-600 mr-2" />
-                Pendientes
-              </span>
-              <Badge variant="secondary" className="bg-orange-200 text-orange-800 text-xs lg:text-sm">
-                {pendingContracts}
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xs lg:text-sm text-gray-600">
-              {totalContracts > 0 ? ((pendingContracts / totalContracts) * 100).toFixed(1) : 0}% del total
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-r from-purple-50 to-purple-100">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm lg:text-lg flex items-center justify-between">
-              <span className="flex items-center">
-                <User className="h-4 w-4 lg:h-5 lg:w-5 text-purple-600 mr-2" />
-                Activos
-              </span>
-              <Badge variant="secondary" className="bg-purple-200 text-purple-800 text-xs lg:text-sm">
-                {activeContracts}
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xs lg:text-sm text-gray-600">Contratos vigentes</div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-r from-red-50 to-red-100">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm lg:text-lg flex items-center justify-between">
-              <span className="flex items-center">
-                <Calendar className="h-4 w-4 lg:h-5 lg:w-5 text-red-600 mr-2" />
-                Por Vencer
-              </span>
-              <Badge variant="secondary" className="bg-red-200 text-red-800 text-xs lg:text-sm">
-                {expiringSoon}
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xs lg:text-sm text-gray-600">En los próximos 30 días</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Búsqueda */}
       <div className="mb-6">
         <div className="relative">
           <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
           <Input
-            placeholder="Buscar solicitud por código, número, solicitante, departamento o estado..."
+            placeholder="Buscar por ID, modalidad, departamento, observación o estado..."
             className="pl-10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -583,372 +356,161 @@ export default function ContractRequestPage() {
         </div>
       </div>
 
-      {/* Cards (móvil) */}
-      <div className="grid grid-cols-1 gap-4 md:hidden">
-        {filteredContracts.map((c) => (
-          <Card key={c.requestId} className="shadow-sm">
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-blue-600" />
-                    <span className="truncate">{c.contractCode || `Contrato #${c.requestId}`}</span>
-                  </CardTitle>
-                  <CardDescription className="mt-1">
-                    <span className="font-medium">Modalidad:</span> {c.workModalityId} ·{" "}
-                    <span className="font-medium">Horas:</span> {c.numberHour}
-                  </CardDescription>
-                </div>
-                <Badge
-                  variant={c.statusVariant}
-                  className={
-                    c.status === 1 || c.status === 3
-                      ? "bg-green-100 text-green-800"
-                      : c.status === 2
-                      ? "bg-orange-100 text-orange-800"
-                      : "bg-gray-100 text-gray-800"
-                  }
-                >
-                  {c.statusText}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="text-sm text-gray-600">
-                  <div className="flex items-center gap-1">
-                    <User className="h-4 w-4" />
-                    {c.applicantName || "No especificado"}
-                  </div>
-                  <div className="flex items-center gap-1 mt-1">
-                    <Building className="h-4 w-4" />
-                    {c.department || "No especificado"}
-                  </div>
-                </div>
-                <div className="text-sm text-gray-600">
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
-                    {c.startDate ? new Date(c.startDate).toLocaleDateString() : "No definida"}
-                  </div>
-                  {c.daysRemaining && c.daysRemaining < 30 && (
-                    <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs mt-1">
-                      {c.daysRemaining}d
-                    </Badge>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleViewDetails(c)}
-                  className="h-8"
-                >
-                  <Eye className="h-3 w-3 mr-1" />
-                  Detalles
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-
-        {filteredContracts.length === 0 && (
-          <Card className="text-center py-10">
-            <CardContent>
-              <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-base font-semibold text-gray-900 mb-2">
-                {searchTerm ? "No se encontraron solicitudes" : "No hay solicitudes de contrato registradas"}
-              </h3>
-              <p className="text-gray-600 mb-4 text-sm">
-                {searchTerm ? "Intente con otros términos de búsqueda" : "Comience agregando la primera solicitud al sistema"}
-              </p>
-              {!searchTerm && (
-                <Button onClick={() => setIsFormOpen(true)}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Agregar Primera Solicitud
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        )}
-      </div>
-
-      {/* Tabla (desktop) */}
-      <Card className="hidden md:block">
+      <Card>
         <CardHeader>
-          <CardTitle>Lista de Solicitudes de Contrato</CardTitle>
-          <CardDescription>
-            {filteredContracts.length} de {totalContracts} solicitudes mostradas
-            {searchTerm && ` - Filtrado por: "${searchTerm}"`}
-          </CardDescription>
+          <CardTitle>Solicitudes</CardTitle>
+          <CardDescription>{filtered.length} mostradas</CardDescription>
         </CardHeader>
+
         <CardContent>
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[100px]">ID</TableHead>
-                  <TableHead className="min-w-[150px]">Código</TableHead>
-                  <TableHead className="min-w-[100px]">Modalidad</TableHead>
-                  <TableHead className="min-w-[100px]">Docentes</TableHead>
-                  <TableHead className="min-w-[100px]">Horas</TableHead>
-                  <TableHead className="min-w-[200px]">Solicitante</TableHead>
-                  <TableHead className="min-w-[150px]">Departamento</TableHead>
-                  <TableHead className="min-w-[120px]">Fecha Inicio</TableHead>
-                  <TableHead className="min-w-[100px]">Estado</TableHead>
-                  <TableHead className="text-right min-w-[120px]">Acciones</TableHead>
+                  <TableHead>ID</TableHead>
+                  <TableHead>Modalidad</TableHead>
+                  <TableHead>Departamento</TableHead>
+                  <TableHead>Personas</TableHead>
+                  <TableHead>Horas</TableHead>
+                  <TableHead>Contratadas</TableHead>
+                  <TableHead>Creado</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
+
               <TableBody>
-                {filteredContracts.map((c) => (
-                  <TableRow key={c.requestId} className="group">
-                    <TableCell className="font-medium">
-                      <div className="font-mono">#{c.requestId}</div>
-                    </TableCell>
-                    <TableCell>{c.contractCode || "N/A"}</TableCell>
-                    <TableCell>{c.workModalityId}</TableCell>
-                    <TableCell>{c.numberTeacher}</TableCell>
-                    <TableCell>{c.numberHour}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <User className="h-3 w-3 text-gray-500" />
-                        {c.applicantName || "No especificado"}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Building className="h-3 w-3 text-gray-500" />
-                        {c.department || "No especificado"}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3 text-gray-500" />
-                        {c.startDate ? new Date(c.startDate).toLocaleDateString() : "No definida"}
-                      </div>
-                      {c.daysRemaining && c.daysRemaining < 30 && (
-                        <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs mt-1">
-                          {c.daysRemaining}d
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={c.statusVariant}
-                        className={
-                          c.status === 1 || c.status === 3
-                            ? "bg-green-100 text-green-800 hover:bg-green-100"
-                            : c.status === 2
-                            ? "bg-orange-100 text-orange-800 hover:bg-orange-100"
-                            : "bg-gray-100 text-gray-800 hover:bg-gray-100"
-                        }
-                      >
-                        {c.statusText}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleViewDetails(c)}
-                          className="flex items-center gap-1"
-                        >
-                          <Eye className="h-3 w-3" />
-                          Detalles
+                {filtered.map((c) => {
+                  const modality = c.workModalityId
+                    ? (cr.workModalityNameById.get(c.workModalityId) ?? `#${c.workModalityId}`)
+                    : "—";
+
+                  const dept = c.departmentId
+                    ? (cr.departmentNameById.get(c.departmentId) ?? `#${c.departmentId}`)
+                    : "—";
+
+                  return (
+                    <TableRow key={c.requestId}>
+                      <TableCell className="font-mono">#{c.requestId}</TableCell>
+                      <TableCell>{modality}</TableCell>
+                      <TableCell>{dept}</TableCell>
+                      <TableCell>{c.numberOfPeopleToHire}</TableCell>
+                      <TableCell>{Number(c.numberHour).toFixed(2)}</TableCell>
+                      <TableCell>{c.totalPeopleHired}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3 text-gray-500" />
+                          {c.createdAt ? new Date(c.createdAt).toLocaleString() : "—"}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={c.statusVariant}>{c.statusText}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="outline" size="sm" onClick={() => openDetails(c)}>
+                          <Eye className="h-3 w-3 mr-1" /> Detalles
                         </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+
+                {filtered.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={9}>
+                      <div className="text-center py-10 text-sm text-muted-foreground">
+                        No hay solicitudes para mostrar.
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                )}
               </TableBody>
             </Table>
           </div>
-
-          {filteredContracts.length === 0 && (
-            <div className="text-center py-12">
-              <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                {searchTerm ? "No se encontraron solicitudes" : "No hay solicitudes de contrato registradas"}
-              </h3>
-              <p className="text-gray-600 mb-4">
-                {searchTerm
-                  ? "Intente con otros términos de búsqueda"
-                  : "Comience agregando la primera solicitud al sistema"}
-              </p>
-              {!searchTerm && (
-                <Button onClick={() => setIsFormOpen(true)}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Agregar Primera Solicitud
-                </Button>
-              )}
-            </div>
-          )}
         </CardContent>
       </Card>
 
-      {/* Diálogo de detalles */}
-      <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <Dialog
+        open={isDetailOpen}
+        onOpenChange={(open) => {
+          setIsDetailOpen(open);
+          if (!open) setSelected(null);
+        }}
+      >
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Detalles de Solicitud de Contrato</DialogTitle>
-            <DialogDescription>Información completa de la solicitud seleccionada.</DialogDescription>
+            <DialogTitle>Detalles</DialogTitle>
+            <DialogDescription>Información + documentos</DialogDescription>
           </DialogHeader>
 
-          {selectedContract && (
-            <div className="space-y-6 mt-2">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <FileText className="h-6 w-6 text-blue-600" />
-                </div>
-                <div className="min-w-0">
-                  <h2 className="text-xl lg:text-2xl font-bold text-gray-900 truncate">
-                    {selectedContract.contractCode || `Contrato #${selectedContract.requestId}`}
-                  </h2>
-                  <p className="text-gray-600">Detalles de la solicitud de contrato</p>
-                </div>
-              </div>
+          {selected && (
+            <div className="space-y-4">
+              <Card>
+                <CardContent className="pt-6 space-y-2 text-sm">
+                  <div>
+                    <b>ID:</b> #{selected.requestId}
+                  </div>
+                  <div>
+                    <b>Modalidad:</b>{" "}
+                    {selected.workModalityId
+                      ? (cr.workModalityNameById.get(selected.workModalityId) ?? `#${selected.workModalityId}`)
+                      : "—"}
+                  </div>
+                  <div>
+                    <b>Departamento:</b>{" "}
+                    {selected.departmentId
+                      ? (cr.departmentNameById.get(selected.departmentId) ?? `#${selected.departmentId}`)
+                      : "—"}
+                  </div>
+                  <div>
+                    <b>Personas a contratar:</b> {selected.numberOfPeopleToHire}
+                  </div>
+                  <div>
+                    <b>Horas:</b> {Number(selected.numberHour).toFixed(2)}
+                  </div>
+                  <div>
+                    <b>Observación:</b> {selected.observation ?? "—"}
+                  </div>
+                  <div>
+                    <b>Estado:</b> <Badge variant={selected.statusVariant}>{selected.statusText}</Badge>
+                  </div>
+                </CardContent>
+              </Card>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base lg:text-lg">Información Principal</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
+              <Card>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between gap-2">
                     <div>
-                      <label className="text-sm font-medium text-gray-500">ID de Solicitud</label>
-                      <p className="font-mono font-medium break-all">#{selectedContract.requestId}</p>
+                      <CardTitle className="text-base">Documentos</CardTitle>
+                      <CardDescription className="text-xs">directoryCode: {DIRECTORY_CODE}</CardDescription>
                     </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Modalidad de Trabajo</label>
-                      <p className="font-medium">{selectedContract.workModalityId}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Número de Docentes</label>
-                      <p className="font-medium">{selectedContract.numberTeacher}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Número de Horas</label>
-                      <p className="font-medium">{selectedContract.numberHour}</p>
-                    </div>
-                  </CardContent>
-                </Card>
+                    <Button variant="outline" onClick={handleUploadDetail}>
+                      Subir seleccionados
+                    </Button>
+                  </div>
+                </CardHeader>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base lg:text-lg">Información del Contrato</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Código de Contrato</label>
-                      <p className="font-medium">{selectedContract.contractCode || "No especificado"}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Número de Contrato</label>
-                      <p className="font-medium">{selectedContract.contractNumber || "No especificado"}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Tipo de Contrato</label>
-                      <p className="font-medium">{selectedContract.contractType || "No especificado"}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Estado</label>
-                      <Badge
-                        variant={selectedContract.statusVariant}
-                        className={
-                          selectedContract.status === 1 || selectedContract.status === 3
-                            ? "bg-green-100 text-green-800"
-                            : selectedContract.status === 2
-                            ? "bg-orange-100 text-orange-800"
-                            : "bg-gray-100 text-gray-800"
-                        }
-                      >
-                        {selectedContract.statusText}
-                      </Badge>
-                    </div>
-                  </CardContent>
-                </Card>
+                <CardContent>
+                  <AttachmentSection
+                    ref={detailDocsRef}
+                    enabled={true}
+                    onEnabledChange={() => void 0}
+                    label="Documentos"
+                    directoryCode={DIRECTORY_CODE}
+                    entityType={ENTITY_TYPE}
+                    entityId={selected.requestId}
+                    entityReady={true}
+                    accept={accept}
+                    maxSizeMB={maxSizeMB}
+                    relativePath={relativePath}
+                    disabled={cr.directoryQ.isLoading}
+                    showUploadButton={false}
+                  />
+                </CardContent>
+              </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base lg:text-lg">Información Personal</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Solicitante</label>
-                      <p className="font-medium flex items-center gap-1">
-                        <User className="h-4 w-4" />
-                        {selectedContract.applicantName || "No especificado"}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Departamento</label>
-                      <p className="font-medium flex items-center gap-1">
-                        <Building className="h-4 w-4" />
-                        {selectedContract.department || "No especificado"}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Cargo</label>
-                      <p className="font-medium">{selectedContract.position || "No especificado"}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Salario</label>
-                      <p className="font-medium text-lg text-green-600">
-                        {selectedContract.salary ? `$${selectedContract.salary.toLocaleString()}` : "No especificado"}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base lg:text-lg">Fechas</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Fecha de Inicio</label>
-                      <p className="font-medium flex items-center gap-1">
-                        <Calendar className="h-4 w-4" />
-                        {selectedContract.startDate ? new Date(selectedContract.startDate).toLocaleDateString() : "No definida"}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Fecha de Fin</label>
-                      <p className="font-medium flex items-center gap-1">
-                        <Calendar className="h-4 w-4" />
-                        {selectedContract.endDate ? new Date(selectedContract.endDate).toLocaleDateString() : "No definida"}
-                      </p>
-                    </div>
-                    {selectedContract.daysRemaining && (
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">Tiempo Restante</label>
-                        <p className="font-medium flex items-center gap-1">
-                          <Clock className="h-4 w-4" />
-                          {selectedContract.daysRemaining > 0
-                            ? `${selectedContract.daysRemaining} días hasta la expiración`
-                            : "Expirado"}
-                        </p>
-                        {selectedContract.daysRemaining < 30 && selectedContract.daysRemaining > 0 && (
-                          <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 mt-1">
-                            Próximo a vencer
-                          </Badge>
-                        )}
-                      </div>
-                    )}
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Fecha de Creación</label>
-                      <p className="font-medium">
-                        {selectedContract.createdAt ? new Date(selectedContract.createdAt).toLocaleDateString() : "No disponible"}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <div className="flex flex-col sm:flex-row justify-end gap-3 pt-2">
-                <Button variant="outline" onClick={() => setIsDetailOpen(false)} className="w-full sm:w-auto">
+              <div className="flex justify-end">
+                <Button variant="outline" onClick={() => setIsDetailOpen(false)}>
                   Cerrar
                 </Button>
               </div>

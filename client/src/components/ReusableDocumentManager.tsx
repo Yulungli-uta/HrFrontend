@@ -202,17 +202,21 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [previewLoading, setPreviewLoading] = useState(false);
 
+    // ✅ PASO 1: Calcular permisos y bandera showUploadUi
     const canUpload = roles?.canUpload ?? true;
     const canDelete = roles?.canDelete ?? true;
     const canDownload = roles?.canDownload ?? true;
     const canPreview = roles?.canPreview ?? true;
 
+    // ✅ Si no puede subir, no mostramos UI de subida
+    const showUploadUi = canUpload;
+
     const sizeLimitBytes = useMemo(() => maxSizeMB * 1024 * 1024, [maxSizeMB]);
 
     // -----------------------------
-    // ✅ Tipo de Documento
+    // ✅ PASO 2: Tipo de Documento solo si hay UI de subida
     // -----------------------------
-    const docTypeEnabled = !!documentType?.enabled;
+    const docTypeEnabled = showUploadUi && !!documentType?.enabled;
     const docTypeRequired = !!documentType?.required;
     const docTypeCategory = documentType?.category ?? DEFAULT_DOCUMENT_TYPE_CATEGORY;
 
@@ -403,17 +407,19 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
     }, [refresh]);
 
     // -----------------------------
-    // ✅ uploadAll (3 modos)
+    // ✅ PASO 5: uploadAll con protección canUpload
     // -----------------------------
     const uploadAll = useCallback(
       async (entityIdOverride?: string | number): Promise<DocumentUploadResultDto | null> => {
         setErrorText(null);
         setUploadResult(null);
 
+        // ✅ Protección: no subir si no tiene permisos
         if (!canUpload) {
           setErrorText("No tienes permisos para subir archivos.");
           return null;
         }
+
         if (uploading) return null;
 
         if (!directoryCode || !entityType) {
@@ -666,8 +672,8 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
           </CardHeader>
 
           <CardContent className="space-y-4">
-            {/* ✅ Selector modo + tipo */}
-            {docTypeEnabled && (
+            {/* ✅ PASO 3: Selector modo + tipo SOLO si showUploadUi */}
+            {showUploadUi && docTypeEnabled && (
               <div className="space-y-3">
                 <div className="space-y-2">
                   <Label>Aplicación del tipo</Label>
@@ -752,171 +758,173 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
               </div>
             )}
 
-            {/* Selector archivos */}
-            <div className="space-y-2">
-              <Label>Subir archivos</Label>
+            {/* ✅ PASO 4: Selector archivos SOLO si showUploadUi */}
+            {showUploadUi && (
+              <div className="space-y-2">
+                <Label>Subir archivos</Label>
 
-              <input
-                ref={inputRef}
-                type="file"
-                multiple
-                accept={accept}
-                disabled={!canInteractSelect}
-                onChange={onSelect}
-                className="hidden"
-              />
+                <input
+                  ref={inputRef}
+                  type="file"
+                  multiple
+                  accept={accept}
+                  disabled={!canInteractSelect}
+                  onChange={onSelect}
+                  className="hidden"
+                />
 
-              <div
-                onDrop={onDrop}
-                onDragOver={onDragOver}
-                onDragLeave={onDragLeave}
-                onClick={() => canInteractSelect && pickFiles()}
-                className={[
-                  "rounded-xl border p-4 sm:p-5 border-dashed",
-                  "flex items-start gap-3 cursor-pointer",
-                  dragOver ? "ring-2 ring-offset-2" : "",
-                  !canInteractSelect ? "opacity-60 pointer-events-none" : "",
-                ].join(" ")}
-                role="button"
-                tabIndex={0}
-              >
-                <Upload className="h-6 w-6" />
-                <div className="min-w-0">
-                  <p className="text-sm">
-                    Arrastra y suelta o <span className="underline">haz clic</span> para seleccionar.
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Tipos: <code>{accept}</code> · Máx por archivo: {maxSizeMB} MB
-                    {maxFiles ? ` · Máx archivos: ${maxFiles}` : ""}
-                  </p>
-
-                  {!entityReady && (
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Aún no se ha creado la entidad. Puedes seleccionar archivos, pero se subirán cuando presiones Guardar.
+                <div
+                  onDrop={onDrop}
+                  onDragOver={onDragOver}
+                  onDragLeave={onDragLeave}
+                  onClick={() => canInteractSelect && pickFiles()}
+                  className={[
+                    "rounded-xl border p-4 sm:p-5 border-dashed",
+                    "flex items-start gap-3 cursor-pointer",
+                    dragOver ? "ring-2 ring-offset-2" : "",
+                    !canInteractSelect ? "opacity-60 pointer-events-none" : "",
+                  ].join(" ")}
+                  role="button"
+                  tabIndex={0}
+                >
+                  <Upload className="h-6 w-6" />
+                  <div className="min-w-0">
+                    <p className="text-sm">
+                      Arrastra y suelta o <span className="underline">haz clic</span> para seleccionar.
                     </p>
-                  )}
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Tipos: <code>{accept}</code> · Máx por archivo: {maxSizeMB} MB
+                      {maxFiles ? ` · Máx archivos: ${maxFiles}` : ""}
+                    </p>
+
+                    {!entityReady && (
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Aún no se ha creado la entidad. Puedes seleccionar archivos, pero se subirán cuando presiones Guardar.
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              {/* Lista seleccionados */}
-              {selected.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <p className="text-sm text-muted-foreground">
-                      Seleccionados: <b>{selected.length}</b>
-                    </p>
+                {/* Lista seleccionados */}
+                {selected.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <p className="text-sm text-muted-foreground">
+                        Seleccionados: <b>{selected.length}</b>
+                      </p>
 
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={clearSelected}
-                        disabled={uploading}
-                        className="w-full sm:w-auto"
-                      >
-                        Limpiar
-                      </Button>
-
-                      {showInternalUploadButton && (
+                      <div className="flex flex-col sm:flex-row gap-2">
                         <Button
+                          variant="secondary"
                           size="sm"
-                          onClick={() => uploadAll()}
-                          disabled={!canSubmitNow}
-                          title={!entityReady ? "Guarda primero para subir" : "Subir ahora"}
+                          onClick={clearSelected}
+                          disabled={uploading}
                           className="w-full sm:w-auto"
                         >
-                          {uploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                          Subir
+                          Limpiar
                         </Button>
-                      )}
-                    </div>
-                  </div>
 
-                  <div className="max-h-56 overflow-auto space-y-2">
-                    {selected.map((s, i) => (
-                      <div
-                        key={`${s.file.name}-${s.file.size}-${s.file.lastModified}-${i}`}
-                        className="border rounded-lg p-2 space-y-2"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="min-w-0 flex items-center gap-2">
-                            <FileIcon className="h-4 w-4" />
-                            <div className="min-w-0">
-                              <p className="text-sm truncate">{s.file.name}</p>
-                              <p className="text-xs text-muted-foreground">{formatBytes(s.file.size)}</p>
-                            </div>
-                          </div>
-
+                        {showInternalUploadButton && (
                           <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setSelected((prev) => prev.filter((_, idx) => idx !== i))}
-                            disabled={uploading}
+                            size="sm"
+                            onClick={() => uploadAll()}
+                            disabled={!canSubmitNow}
+                            title={!entityReady ? "Guarda primero para subir" : "Subir ahora"}
+                            className="w-full sm:w-auto"
                           >
-                            <X className="h-4 w-4" />
+                            {uploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Subir
                           </Button>
-                        </div>
-
-                        {/* ✅ Tipo por archivo */}
-                        {docTypeEnabled && docTypeMode === "PER_FILE" && (
-                          <div className="space-y-1">
-                            <Label className="text-xs">Tipo de documento</Label>
-                            <Select
-                              value={s.documentTypeId ?? ""}
-                              onValueChange={(v) => {
-                                setSelected((prev) =>
-                                  prev.map((p, idx) => (idx === i ? { ...p, documentTypeId: v || null } : p))
-                                );
-                                setErrorText(null);
-                              }}
-                              disabled={disabled || uploading || isLoadingRefTypes}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder={isLoadingRefTypes ? "Cargando..." : "Seleccione un tipo"} />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {refTypes.map((rt) => {
-                                  const id = getRefTypeId(rt);
-                                  if (!id) return null;
-                                  return (
-                                    <SelectItem key={id} value={id}>
-                                      {getRefTypeLabel(rt)}
-                                    </SelectItem>
-                                  );
-                                })}
-                              </SelectContent>
-                            </Select>
-                            {docTypeRequired && <p className="text-xs text-muted-foreground">Obligatorio.</p>}
-                          </div>
                         )}
                       </div>
-                    ))}
+                    </div>
+
+                    <div className="max-h-56 overflow-auto space-y-2">
+                      {selected.map((s, i) => (
+                        <div
+                          key={`${s.file.name}-${s.file.size}-${s.file.lastModified}-${i}`}
+                          className="border rounded-lg p-2 space-y-2"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="min-w-0 flex items-center gap-2">
+                              <FileIcon className="h-4 w-4" />
+                              <div className="min-w-0">
+                                <p className="text-sm truncate">{s.file.name}</p>
+                                <p className="text-xs text-muted-foreground">{formatBytes(s.file.size)}</p>
+                              </div>
+                            </div>
+
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setSelected((prev) => prev.filter((_, idx) => idx !== i))}
+                              disabled={uploading}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+
+                          {/* ✅ Tipo por archivo */}
+                          {docTypeEnabled && docTypeMode === "PER_FILE" && (
+                            <div className="space-y-1">
+                              <Label className="text-xs">Tipo de documento</Label>
+                              <Select
+                                value={s.documentTypeId ?? ""}
+                                onValueChange={(v) => {
+                                  setSelected((prev) =>
+                                    prev.map((p, idx) => (idx === i ? { ...p, documentTypeId: v || null } : p))
+                                  );
+                                  setErrorText(null);
+                                }}
+                                disabled={disabled || uploading || isLoadingRefTypes}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder={isLoadingRefTypes ? "Cargando..." : "Seleccione un tipo"} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {refTypes.map((rt) => {
+                                    const id = getRefTypeId(rt);
+                                    if (!id) return null;
+                                    return (
+                                      <SelectItem key={id} value={id}>
+                                        {getRefTypeLabel(rt)}
+                                      </SelectItem>
+                                    );
+                                  })}
+                                </SelectContent>
+                              </Select>
+                              {docTypeRequired && <p className="text-xs text-muted-foreground">Obligatorio.</p>}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {uploading && (
-                <div className="space-y-2">
-                  <p className="text-xs text-muted-foreground">Subiendo…</p>
-                  <Progress value={undefined as any} className="h-2" />
-                </div>
-              )}
+                {uploading && (
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground">Subiendo…</p>
+                    <Progress value={undefined as any} className="h-2" />
+                  </div>
+                )}
 
-              {uploadResult && (
-                <div className="border rounded-lg p-3 text-sm">
-                  <p className="font-medium">{uploadResult.message}</p>
-                  <p className="text-muted-foreground">
-                    Total: {uploadResult.total} · OK: {uploadResult.uploaded} · Fallidos: {uploadResult.failed}
-                  </p>
-                </div>
-              )}
-            </div>
+                {uploadResult && (
+                  <div className="border rounded-lg p-3 text-sm">
+                    <p className="font-medium">{uploadResult.message}</p>
+                    <p className="text-muted-foreground">
+                      Total: {uploadResult.total} · OK: {uploadResult.uploaded} · Fallidos: {uploadResult.failed}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {errorText && <p className="text-sm text-destructive">{errorText}</p>}
 
-            {/* Lista items */}
+            {/* Lista items - SIEMPRE visible */}
             <div className="space-y-2">
-              <Label>Archivos cargados</Label>
+              <Label>Archivos {showUploadUi ? 'cargados' : ''}</Label>
 
               {!entityReady ? (
                 <p className="text-sm text-muted-foreground">No hay documentos (la entidad aún no está creada).</p>
@@ -994,23 +1002,10 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
                 </div>
               )}
             </div>
-
-            {/* {(relativePath || directoryCode) && (
-              <p className="text-xs text-muted-foreground break-words">
-                DirectoryCode: <code>{directoryCode}</code> · Entity:{" "}
-                <code>{entityType}:{entityReady && entityId != null ? String(entityId) : "PENDING"}</code>
-                {relativePath ? (
-                  <>
-                    {" "}
-                    · Base folder: <code>{relativePath}</code>
-                  </>
-                ) : null}
-              </p>
-            )} */}
           </CardContent>
         </Card>
 
-        {/* Preview dialog */}
+        {/* Preview dialog - SIEMPRE disponible */}
         <Dialog
           modal={false}
           open={previewOpen}
@@ -1023,7 +1018,6 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
             }
           }}
         >
-          {/* <DialogContent className="max-w-4xl h-[90vh] flex flex-col"> */}
           <DialogContent className="w-[95vw] sm:max-w-4xl h-[90vh] flex flex-col"
             onPointerDownOutside={(e) => e.preventDefault()}
             onInteractOutside={(e) => e.preventDefault()}

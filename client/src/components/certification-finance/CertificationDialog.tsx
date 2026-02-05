@@ -11,7 +11,16 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Download, Pencil } from "lucide-react";
+import { Download, Pencil, FileText } from "lucide-react";
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 
 import { ReusableDocumentManager, type ReusableDocumentManagerHandle } from "@/components/ReusableDocumentManager";
 import { useToast } from "@/hooks/use-toast";
@@ -22,13 +31,15 @@ import type { DirectoryParameter } from "@/types/directoryParameter";
 import { useQuery } from "@tanstack/react-query";
 import { TiposReferenciaAPI, type ApiResponse } from "@/lib/api";
 
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
+// ✅ ContractRequest (para requestId + preview + documentos)
+import { useContractRequest } from "@/hooks/contractRequest/useContractRequests";
+import type { UIContractRequest } from "@/types/contractRequest";
+import { 
+  CONTRACT_REQUEST_DIRECTORY_CODE,
+  CONTRACT_REQUEST_ENTITY_TYPE,
+  FINANCE_CERTIFICATION_DIRECTORY_CODE, 
+  FINANCE_CERTIFICATION_ENTITY_TYPE
+} from "@/features/constants";
 
 /**
  * Helpers de fecha:
@@ -56,7 +67,70 @@ type FormState = Partial<Omit<FinancialCertification, "certificationId">> & {
   certBudgetDate?: string; // "YYYY-MM-DD"
 };
 
+// 👇 ESTE ES EL "ESTADO" de la certificación (ANULADO/APROBADO), NO el "tipo de archivo"
 const CERT_FINANCE_TYPE_CATEGORY = "CERT_FINANCE_TYPE";
+
+function ContractRequestPreviewCard(props: {
+  item: UIContractRequest;
+  workModalityNameById: Map<number, string>;
+  departmentNameById: Map<number, string>;
+  onViewDocuments?: () => void;
+}) {
+  const { item, workModalityNameById, departmentNameById, onViewDocuments } = props;
+
+  const modality = workModalityNameById.get(Number(item.workModalityId)) ?? "—";
+  const dept = departmentNameById.get(Number(item.departmentId)) ?? "—";
+
+  return (
+    <Card>
+      <CardContent className="pt-6 space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-sm">
+            <span className="font-medium">Request ID:</span> #{item.requestId}
+          </div>
+          <Badge variant={item.statusVariant}>{item.statusText}</Badge>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+          <div>
+            <span className="text-muted-foreground">Modalidad:</span> {modality}
+          </div>
+          <div>
+            <span className="text-muted-foreground">Departamento:</span> {dept}
+          </div>
+          <div>
+            <span className="text-muted-foreground">Personas:</span> {item.numberOfPeopleToHire}
+          </div>
+          <div>
+            <span className="text-muted-foreground">Horas:</span> {item.numberHour}
+          </div>
+        </div>
+
+        {item.observation ? (
+          <div className="text-sm">
+            <span className="text-muted-foreground">Observación:</span> {item.observation}
+          </div>
+        ) : (
+          <div className="text-sm text-muted-foreground">Sin observación.</div>
+        )}
+
+        {onViewDocuments && (
+          <div className="pt-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={onViewDocuments}
+              className="w-full"
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Ver documentos anexados
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 export function CertificationDialog(props: {
   open: boolean;
@@ -108,12 +182,16 @@ export function CertificationDialog(props: {
   const isEdit = mode === "edit";
 
   const docManagerRef = useRef<ReusableDocumentManagerHandle | null>(null);
+  const contractRequestDocsRef = useRef<ReusableDocumentManagerHandle | null>(null);
 
   const [createdCertificationId, setCreatedCertificationId] = useState<number | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // ✅ Estado para mostrar/ocultar documentos de CONTRACT_REQUEST
+  const [showContractRequestDocs, setShowContractRequestDocs] = useState(false);
+
   // =========================
-  // 1) Cargar estados desde TiposReferenciaAPI (Select)
+  // 1) Estados desde TiposReferenciaAPI (Select "Estado *")
   // =========================
   const {
     data: refTypesResponse,
@@ -123,13 +201,41 @@ export function CertificationDialog(props: {
     queryKey: ["refTypes", CERT_FINANCE_TYPE_CATEGORY],
     queryFn: () =>
       TiposReferenciaAPI.byCategory(CERT_FINANCE_TYPE_CATEGORY) as Promise<ApiResponse<any[]>>,
-    enabled: open, // solo consulta cuando el modal abre
+    enabled: open,
   });
 
   const refTypes = refTypesResponse?.status === "success" ? refTypesResponse.data : [];
 
   // =========================
-  // 2) Form
+  // 2) ContractRequest: lista + mapeos + preview (requestId)
+  // =========================
+  const cr = useContractRequest(CONTRACT_REQUEST_DIRECTORY_CODE);
+
+  const [requestSearch, setRequestSearch] = useState<string>("");
+  const [candidateRequestId, setCandidateRequestId] = useState<number | null>(null);
+
+  const filteredContractRequests = useMemo(() => {
+    const q = requestSearch.trim().toLowerCase();
+    const list = cr.contracts ?? [];
+    if (!q) return list;
+
+    return list.filter((x) => {
+      const modality = cr.workModalityNameById.get(Number(x.workModalityId)) ?? "";
+      const dept = cr.departmentNameById.get(Number(x.departmentId)) ?? "";
+      const statusText = x.statusText ?? "";
+      const obs = x.observation ?? "";
+      const haystack = `${x.requestId} ${modality} ${dept} ${statusText} ${obs}`.toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [requestSearch, cr.contracts, cr.workModalityNameById, cr.departmentNameById]);
+
+  const candidateContract: UIContractRequest | null = useMemo(() => {
+    if (!candidateRequestId) return null;
+    return (cr.contracts ?? []).find((x) => Number(x.requestId) === Number(candidateRequestId)) ?? null;
+  }, [candidateRequestId, cr.contracts]);
+
+  // =========================
+  // 3) Form
   // =========================
   const buildEmptyForm = (): FormState => ({
     certCode: "",
@@ -148,13 +254,28 @@ export function CertificationDialog(props: {
 
   const [form, setForm] = useState<FormState>(buildEmptyForm);
 
+  const confirmedContract: UIContractRequest | null = useMemo(() => {
+    if (!form.requestId) return null;
+    return (cr.contracts ?? []).find((x) => Number(x.requestId) === Number(form.requestId)) ?? null;
+  }, [form.requestId, cr.contracts]);
+
+  const confirmCandidateRequest = () => {
+    if (!candidateContract) return;
+    setForm((f) => ({ ...f, requestId: Number(candidateContract.requestId) }));
+  };
+
+  const clearConfirmedRequest = () => {
+    setForm((f) => ({ ...f, requestId: null }));
+    setShowContractRequestDocs(false);
+  };
+
   useEffect(() => {
     if (open) refetchDir();
   }, [open, refetchDir]);
 
   /**
-   * FIX: Reset total en CREATE sin selected
-   * FIX: En VIEW/EDIT cargar selected + certBudgetDate => date-only
+   * Reset total en CREATE sin selected
+   * En VIEW/EDIT cargar selected + certBudgetDate => date-only
    */
   useEffect(() => {
     if (!open) return;
@@ -164,6 +285,11 @@ export function CertificationDialog(props: {
       setCreatedCertificationId(null);
       setIsProcessing(false);
       docManagerRef.current?.clearSelected();
+
+      // reset request picker state
+      setRequestSearch("");
+      setCandidateRequestId(null);
+      setShowContractRequestDocs(false);
       return;
     }
 
@@ -183,9 +309,13 @@ export function CertificationDialog(props: {
         status: selected.status ?? 2,
       });
 
+      // set request picker candidate to current selection (si existe)
+      setCandidateRequestId(selected.requestId ?? null);
+
       setCreatedCertificationId(null);
       setIsProcessing(false);
       docManagerRef.current?.clearSelected();
+      setShowContractRequestDocs(false);
     }
   }, [open, selected, isCreate, ctxCreatedBy]);
 
@@ -202,6 +332,16 @@ export function CertificationDialog(props: {
   }, [isCreate, isView]);
 
   const validateRequired = () => {
+    // ✅ RequestId obligatorio (según tu requerimiento)
+    if (!form.requestId) {
+      toast({
+        title: "⚠️ Solicitud requerida",
+        description: "Selecciona un Request ID y confirma la selección antes de guardar.",
+        variant: "destructive",
+      });
+      return false;
+    }
+
     if (!form.certCode?.trim() || !form.certNumber?.trim() || !form.budget?.trim() || !form.certBudgetDate?.trim()) {
       toast({
         title: "⚠️ Datos incompletos",
@@ -229,6 +369,10 @@ export function CertificationDialog(props: {
     setIsProcessing(false);
     docManagerRef.current?.clearSelected();
     setForm(buildEmptyForm());
+
+    setRequestSearch("");
+    setCandidateRequestId(null);
+    setShowContractRequestDocs(false);
   };
 
   // =========================================
@@ -321,68 +465,63 @@ export function CertificationDialog(props: {
   // UPDATE (edit)
   // =========================================
   const handleSaveEdit = async () => {
-  if (!selected?.certificationId) return;
-  if (!validateRequired()) return;
+    if (!selected?.certificationId) return;
+    if (!validateRequired()) return;
+    if (isProcessing) return;
 
-  if (isProcessing) return;
+    const entityId = selected.certificationId;
+    const pendingDocs = docManagerRef.current?.getSelectedCount() ?? 0;
 
-  const entityId = selected.certificationId;
-  const pendingDocs = docManagerRef.current?.getSelectedCount() ?? 0;
+    setIsProcessing(true);
 
-  setIsProcessing(true);
+    try {
+      const payload: Partial<Omit<FinancialCertification, "certificationId">> = {
+        requestId: form.requestId ?? null,
+        certCode: form.certCode!.trim(),
+        certNumber: form.certNumber!.trim(),
+        budget: form.budget!.trim(),
+        certBudgetDate: toEcuadorMidnightISO(form.certBudgetDate!),
 
-  try {
-    const payload: Partial<Omit<FinancialCertification, "certificationId">> = {
-      requestId: form.requestId ?? null,
-      certCode: form.certCode!.trim(),
-      certNumber: form.certNumber!.trim(),
-      budget: form.budget!.trim(),
-      certBudgetDate: toEcuadorMidnightISO(form.certBudgetDate!),
+        rmuHour: form.rmuHour ?? 0,
+        rmuCon: form.rmuCon ?? 0,
+        status: Number(form.status ?? 2),
 
-      rmuHour: form.rmuHour ?? 0,
-      rmuCon: form.rmuCon ?? 0,
-      status: Number(form.status ?? 2),
+        filename: form.filename ?? selected.filename ?? null,
+        filepath: form.filepath ?? selected.filepath ?? null,
+        createdAt: selected.createdAt,
+        createdBy: selected.createdBy,
+      };
 
-      filename: form.filename ?? selected.filename ?? null,
-      filepath: form.filepath ?? selected.filepath ?? null,
-      createdAt: selected.createdAt,
-      createdBy: selected.createdBy,
-    };
+      const resp: any = await updateAsync({ id: entityId, payload });
+      if (resp?.status !== "success") return;
 
-    // 1) Guardar certificación
-    const resp: any = await updateAsync({ id: entityId, payload });
-    if (resp?.status !== "success") return;
+      if (pendingDocs > 0) {
+        const result = await docManagerRef.current?.uploadAll(entityId);
+        await docManagerRef.current?.refresh(entityId);
 
-    // 2) Si hay archivos seleccionados => subir + refrescar
-    if (pendingDocs > 0) {
-      const result = await docManagerRef.current?.uploadAll(entityId);
-      await docManagerRef.current?.refresh(entityId);
+        if (!result?.success) {
+          toast({
+            title: "⚠️ Certificación actualizada, pero upload falló",
+            description: result?.message ?? "Revisa los archivos seleccionados.",
+            variant: "destructive",
+          });
+          return;
+        }
 
-      // Si falló el upload, NO cambies a view (para reintentar)
-      if (!result?.success) {
-        toast({
-          title: "⚠️ Certificación actualizada, pero upload falló",
-          description: result?.message ?? "Revisa los archivos seleccionados.",
-          variant: "destructive",
-        });
-        return;
+        docManagerRef.current?.clearSelected();
       }
 
-      docManagerRef.current?.clearSelected();
+      setMode("view");
+    } catch (e: any) {
+      toast({
+        title: "❌ Error inesperado",
+        description: e?.message ?? "No se pudo guardar la edición.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
     }
-
-    // 3) Final OK
-    setMode("view");
-  } catch (e: any) {
-    toast({
-      title: "❌ Error inesperado",
-      description: e?.message ?? "No se pudo guardar la edición.",
-      variant: "destructive",
-    });
-  } finally {
-    setIsProcessing(false);
-  }
-};
+  };
 
   // upload for existing entity (view/edit)
   const handleUploadSelectedExisting = async () => {
@@ -424,6 +563,19 @@ export function CertificationDialog(props: {
     }
   };
 
+  // ✅ Función para mostrar documentos del CONTRACT_REQUEST confirmado
+  const handleViewContractRequestDocs = () => {
+    if (!confirmedContract?.requestId) {
+      toast({
+        title: "⚠️ Sin solicitud confirmada",
+        description: "Primero debes confirmar una solicitud para ver sus documentos.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setShowContractRequestDocs(true);
+  };
+
   return (
     <Dialog open={open} onOpenChange={(o) => (o ? onOpenChange(true) : close())}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -459,8 +611,164 @@ export function CertificationDialog(props: {
           </div>
         )}
 
-        {/* Form */}
+        {/* =========================
+            FORM (incluye RequestId + preview)
+           ========================= */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+
+          {/* ✅ RequestId + preview (NO afecta al "Tipo de documento" de archivos) */}
+          <Card className="col-span-2">
+            <CardHeader className="pb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <CardTitle className="text-base">Solicitud de Contratación (Request ID)</CardTitle>
+                {form.requestId ? (
+                  <Badge variant="secondary" className="w-fit">
+                    Confirmado: #{form.requestId}
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="w-fit">Sin selección</Badge>
+                )}
+              </div>
+            </CardHeader>
+
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="requestSearch">Buscar</Label>
+                  <Input
+                    id="requestSearch"
+                    value={requestSearch}
+                    disabled={isView}
+                    onChange={(e) => setRequestSearch(e.target.value)}
+                    placeholder="Ej: 1234, Departamento, Modalidad, Estado..."
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Request ID (candidato)</Label>
+                  <Select
+                    disabled={isView || cr.listQ.isLoading || cr.listQ.isFetching}
+                    value={candidateRequestId ? String(candidateRequestId) : ""}
+                    onValueChange={(v) => {
+                      const id = Number(v);
+                      setCandidateRequestId(Number.isFinite(id) ? id : null);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={cr.listQ.isLoading ? "Cargando..." : "Selecciona una solicitud"} />
+                    </SelectTrigger>
+
+                    <SelectContent className="max-h-72">
+                      {filteredContractRequests.map((x) => {
+                        const modality = cr.workModalityNameById.get(Number(x.workModalityId)) ?? "—";
+                        const dept = cr.departmentNameById.get(Number(x.departmentId)) ?? "—";
+                        return (
+                          <SelectItem key={x.requestId} value={String(x.requestId)}>
+                            #{x.requestId} · {dept} · {modality} · {x.statusText}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+
+                  {cr.listQ.isError && (
+                    <p className="text-xs text-red-600">
+                      No se pudo cargar la lista de solicitudes.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {!isView && (
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Button type="button" variant="outline" disabled={!candidateContract} onClick={confirmCandidateRequest}>
+                    Confirmar selección
+                  </Button>
+                  <Button type="button" variant="ghost" disabled={!form.requestId} onClick={clearConfirmedRequest}>
+                    Limpiar confirmado
+                  </Button>
+                </div>
+              )}
+
+              <div className="h-px bg-border" />
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Previsualización (candidato)</p>
+                  {candidateContract ? (
+                    <ContractRequestPreviewCard
+                      item={candidateContract}
+                      workModalityNameById={cr.workModalityNameById}
+                      departmentNameById={cr.departmentNameById}
+                    />
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Selecciona un Request ID para ver el detalle.
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Seleccionado (confirmado)</p>
+                  {confirmedContract ? (
+                    <ContractRequestPreviewCard
+                      item={confirmedContract}
+                      workModalityNameById={cr.workModalityNameById}
+                      departmentNameById={cr.departmentNameById}
+                      onViewDocuments={handleViewContractRequestDocs}
+                    />
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Aún no has confirmado una solicitud.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* ✅ Sección de documentos de CONTRACT_REQUEST (solo lectura) */}
+              {showContractRequestDocs && confirmedContract && (
+                <div className="mt-4 pt-4 border-t space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-medium">
+                      Documentos anexados en Request #{confirmedContract.requestId}
+                    </h3>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowContractRequestDocs(false)}
+                    >
+                      Ocultar
+                    </Button>
+                  </div>
+
+                  <ReusableDocumentManager
+                    ref={contractRequestDocsRef}
+                    label=""
+                    directoryCode={CONTRACT_REQUEST_DIRECTORY_CODE}
+                    entityType={CONTRACT_REQUEST_ENTITY_TYPE}
+                    entityId={confirmedContract.requestId}
+                    entityReady={true}
+                    allowSelectWhenNotReady={false}
+                    showInternalUploadButton={false}
+                    relativePath=""
+                    accept="*/*"
+                    maxSizeMB={20}
+                    roles={{
+                      canUpload: false,
+                      canDelete: false,
+                      canDownload: true,
+                      canPreview: true,
+                    }}
+                  />
+
+                  <p className="text-xs text-muted-foreground">
+                    Estos documentos pertenecen a la solicitud de contratación. Solo visualización.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <div>
             <Label htmlFor="certCode">Código *</Label>
             <Input
@@ -534,7 +842,7 @@ export function CertificationDialog(props: {
             <Input id="createdBy" type="number" value={Number(form.createdBy ?? ctxCreatedBy)} disabled />
           </div>
 
-          {/* ✅ Estado desde TiposReferenciaAPI */}
+          {/* ✅ Estado desde TiposReferenciaAPI (NO es el tipo de archivo) */}
           <div>
             <Label>Estado *</Label>
             <Select
@@ -572,16 +880,11 @@ export function CertificationDialog(props: {
            ========================= */}
         {isCreate && (
           <div className="mt-8 space-y-4">
-            {/* <div className="flex items-center justify-between">
-              <Label className="mb-2 block">🧪 Carga múltiple (Orquestador)</Label>
-              <Badge variant="outline" className="text-xs">NO reemplaza al actual</Badge>
-            </div> */}
-
             <ReusableDocumentManager
               ref={docManagerRef}
               label="Anexar Documentos"
-              directoryCode={directoryCode}
-              entityType="FINCERT"
+              directoryCode={FINANCE_CERTIFICATION_DIRECTORY_CODE}
+              entityType={FINANCE_CERTIFICATION_ENTITY_TYPE}
               entityId={createdCertificationId ?? undefined}
               entityReady={!!createdCertificationId}
               allowSelectWhenNotReady={true}
@@ -592,15 +895,13 @@ export function CertificationDialog(props: {
               maxFiles={10}
               disabled={isCreatePending || isProcessing}
               roles={{ canUpload: true, canPreview: true, canDownload: true, canDelete: true }}
-              documentType={{ enabled: true, required: true }}// category se omite => usa DOCUMENT_TYPE 
-                           
+              documentType={{ enabled: true, required: true }} // usa DOCUMENT_TYPE interno
             />
 
             <p className="text-xs text-muted-foreground">
               Selecciona archivos aquí y luego presiona <b>Guardar</b>.
             </p>
 
-            {/* ✅ Botón Guardar al final (DESPUÉS del upload) */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pt-2">
               <Badge variant="outline" className="text-xs w-fit">
                 entityId: {createdCertificationId ? `FINCERT:${createdCertificationId}` : "PENDING"}

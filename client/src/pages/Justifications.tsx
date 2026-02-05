@@ -5,31 +5,35 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { AlertCircle, CheckCircle, Clock, Eye, Trash2, FileText, Plus } from "lucide-react";
+import { AlertCircle, CheckCircle, Clock, Eye, Trash2, FileText, Plus, Search, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { TiposReferenciaAPI, JustificationsAPI, handleApiError } from "@/lib/api";
+import { TiposReferenciaAPI, JustificationsAPI } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import JustificationForm from "@/components/justifications/JustificationForm";
 
 type Status = "PENDING" | "APPROVED" | "REJECTED" | "APPLIED";
 
-// 2) Agrega la entrada en STATUS_META
 const STATUS_META: Record<Status, { label: string; icon: any; klass: string }> = {
-  PENDING:  { label: "Pendiente", icon: Clock,      klass: "bg-yellow-100 text-yellow-800 border-yellow-200" },
-  APPROVED: { label: "Aprobada",  icon: CheckCircle,klass: "bg-green-100 text-green-800 border-green-200" },
-  REJECTED: { label: "Rechazada", icon: AlertCircle,klass: "bg-red-100 text-red-800 border-red-200" },
-  APPLIED:  { label: "Aplicada",  icon: CheckCircle,klass: "bg-indigo-100 text-indigo-800 border-indigo-200" },
+  PENDING: { label: "Pendiente", icon: Clock, klass: "bg-yellow-100 text-yellow-800 border-yellow-200" },
+  APPROVED: { label: "Aprobada", icon: CheckCircle, klass: "bg-green-100 text-green-800 border-green-200" },
+  REJECTED: { label: "Rechazada", icon: AlertCircle, klass: "bg-red-100 text-red-800 border-red-200" },
+  APPLIED: { label: "Aplicada", icon: CheckCircle, klass: "bg-indigo-100 text-indigo-800 border-indigo-200" },
 };
 
 interface Justif {
   punchJustId: number;
   employeeId: number;
   bossEmployeeId: number;
+
+  // OJO: lo normalizamos, no asumimos que el backend lo trae así
   justificationTypeId: number;
+
   startDate: string | null;
   endDate: string | null;
   justificationDate: string | null;
@@ -43,12 +47,62 @@ interface Justif {
   status: Status;
 }
 
+/** ---------- Extractores (mismos criterios que tu Form) ---------- **/
+function extractTypeId(typ: any): number {
+  return Number(typ?.typeId ?? typ?.id ?? typ?.value ?? typ?.code ?? typ?.tipoReferenciaId ?? typ?.tipo_referencia_id ?? 0);
+}
+function extractTypeName(typ: any): string {
+  return (typ?.nombre ?? typ?.name ?? typ?.typeName ?? typ?.label ?? typ?.description ?? typ?.descripcion ?? "Tipo").toString();
+}
+
+/** ---------- Normalización del item del backend ---------- **/
+function normalizeJustification(raw: any): Justif {
+  const justificationTypeId = Number(
+    raw?.justificationTypeId ??
+      raw?.justificationTypeID ??
+      raw?.JustificationTypeId ??
+      raw?.JustificationTypeID ??
+      raw?.tipoJustificacionId ??
+      raw?.tipoJustificacionID ??
+      raw?.justificationType?.id ??
+      raw?.justificationType?.typeId ??
+      0
+  );
+
+  return {
+    punchJustId: Number(raw?.punchJustId ?? raw?.punchJustID ?? raw?.PunchJustId ?? raw?.PunchJustID ?? raw?.id ?? 0),
+    employeeId: Number(raw?.employeeId ?? raw?.employeeID ?? raw?.EmployeeId ?? raw?.EmployeeID ?? 0),
+    bossEmployeeId: Number(raw?.bossEmployeeId ?? raw?.bossEmployeeID ?? raw?.BossEmployeeId ?? raw?.BossEmployeeID ?? 0),
+    justificationTypeId,
+
+    startDate: raw?.startDate ?? raw?.StartDate ?? null,
+    endDate: raw?.endDate ?? raw?.EndDate ?? null,
+    justificationDate: raw?.justificationDate ?? raw?.JustificationDate ?? null,
+    reason: String(raw?.reason ?? raw?.Reason ?? ""),
+    hoursRequested: Number(raw?.hoursRequested ?? raw?.HoursRequested ?? 0),
+    approved: Boolean(raw?.approved ?? raw?.Approved ?? false),
+    approvedAt: raw?.approvedAt ?? raw?.ApprovedAt ?? null,
+    createdAt: String(raw?.createdAt ?? raw?.CreatedAt ?? ""),
+    createdBy: Number(raw?.createdBy ?? raw?.CreatedBy ?? 0),
+    comments: raw?.comments ?? raw?.Comments ?? null,
+    status: (raw?.status ?? raw?.Status ?? "PENDING") as Status,
+  };
+}
+
 export default function JustificationsPage() {
   const { employeeDetails } = useAuth();
   const queryClient = useQueryClient();
 
   const [openCreate, setOpenCreate] = useState(false);
   const [openDetail, setOpenDetail] = useState<Justif | null>(null);
+
+  const currentYear = new Date().getFullYear();
+
+  // filtros
+  const [yearFilter, setYearFilter] = useState<number>(currentYear);
+  const [statusFilter, setStatusFilter] = useState<Status | "ALL">("ALL");
+  const [typeFilter, setTypeFilter] = useState<number | "ALL">("ALL");
+  const [searchText, setSearchText] = useState<string>("");
 
   const { data: types } = useQuery({
     queryKey: ["justificationTypes"],
@@ -59,27 +113,37 @@ export default function JustificationsPage() {
     },
   });
 
+  const typeNameById = useMemo(() => {
+    const map = new Map<number, string>();
+    (types || []).forEach((t: any) => {
+      const id = extractTypeId(t);
+      if (!Number.isFinite(id) || id <= 0) return;
+      const name = extractTypeName(t);
+      map.set(id, name || `Tipo #${id}`);
+    });
+    return map;
+  }, [types]);
+
   const empId = employeeDetails?.employeeID ? Number(employeeDetails.employeeID) : undefined;
 
-  const { data: list, isLoading } = useQuery({
+  const { data: listRaw, isLoading } = useQuery({
     queryKey: ["justifications", empId],
     enabled: !!empId,
     queryFn: async () => {
-      // Endpoint correcto con /cv/ según tus logs
       const resp = await JustificationsAPI.getByEmployeeId(empId!);
       if (resp.status === "error") {
-        // si tu API retorna 404 cuando no hay data, devuelvo []
         if (resp.error.code === 404) return [];
         throw new Error(resp.error.message);
       }
-      const data = Array.isArray(resp.data) ? resp.data : [];
-      return data as Justif[];
+      return Array.isArray(resp.data) ? resp.data : [];
     },
   });
 
+  const list = useMemo(() => (listRaw || []).map(normalizeJustification), [listRaw]);
+
   const del = useMutation({
     mutationFn: async (id: number) => {
-      const resp = await JustificationsAPI.remove(id); // DELETE /api/v1/rh/cv/justifications/:id
+      const resp = await JustificationsAPI.remove(id);
       if (resp.status === "error") throw resp.error;
       return true;
     },
@@ -89,24 +153,56 @@ export default function JustificationsPage() {
   });
 
   const stats = useMemo(() => {
-    const arr = list || [];
     return {
-      total: arr.length,
-      pending: arr.filter((x) => x.status === "PENDING").length,
-      approved: arr.filter((x) => x.status === "APPROVED").length,
-      rejected: arr.filter((x) => x.status === "REJECTED").length,
-      applied: arr.filter((x) => x.status === "APPLIED").length,
+      total: list.length,
+      pending: list.filter((x) => x.status === "PENDING").length,
+      approved: list.filter((x) => x.status === "APPROVED").length,
+      rejected: list.filter((x) => x.status === "REJECTED").length,
+      applied: list.filter((x) => x.status === "APPLIED").length,
     };
   }, [list]);
 
+  const availableYears = useMemo(() => {
+    const years = new Set<number>([currentYear]);
+    list.forEach((j) => {
+      const d = j.justificationDate || j.startDate || j.createdAt;
+      if (!d) return;
+      const y = new Date(d).getFullYear();
+      if (Number.isFinite(y)) years.add(y);
+    });
+    return Array.from(years).sort((a, b) => b - a);
+  }, [list, currentYear]);
+
+  const filteredList = useMemo(() => {
+    const q = searchText.trim().toLowerCase();
+    return list.filter((j) => {
+      const d = j.justificationDate || j.startDate || j.createdAt;
+      const y = d ? new Date(d).getFullYear() : NaN;
+
+      const okYear = y === yearFilter;
+      const okStatus = statusFilter === "ALL" ? true : j.status === statusFilter;
+      const okType = typeFilter === "ALL" ? true : j.justificationTypeId === typeFilter;
+      const okQ = !q ? true : (j.reason || "").toLowerCase().includes(q);
+
+      return okYear && okStatus && okType && okQ;
+    });
+  }, [list, yearFilter, statusFilter, typeFilter, searchText]);
+
+  const getTypeLabel = (id: number | undefined | null) => {
+    const safeId = Number(id ?? 0);
+    if (!safeId) return "Tipo";
+    return typeNameById.get(safeId) ?? `Tipo #${safeId}`;
+  };
+
   return (
     <div className="container mx-auto p-4 lg:p-6 max-w-7xl">
-      <div className="flex items-center justify-between mb-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Justificación de Marcaciones</h1>
-          <p className="text-gray-600 mt-2">Gestione sus solicitudes de justificación</p>
+          <p className="text-gray-600 mt-1">Gestione sus solicitudes de justificación</p>
         </div>
-        <Button className="gap-2 bg-blue-600 hover:bg-blue-700" onClick={() => setOpenCreate(true)}>
+        <Button className="gap-2 bg-blue-600 hover:bg-blue-700 w-full sm:w-auto" onClick={() => setOpenCreate(true)}>
           <Plus className="h-4 w-4" />
           Nueva Justificación
         </Button>
@@ -114,14 +210,14 @@ export default function JustificationsPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-        <Stat title="Total"       value={stats.total}    icon={FileText}   klass="border-blue-200 bg-blue-50" />
-        <Stat title="Pendientes"  value={stats.pending}  icon={Clock}      klass="border-yellow-200 bg-yellow-50" />
-        <Stat title="Aprobadas"   value={stats.approved} icon={CheckCircle}klass="border-green-200 bg-green-50" />
-        <Stat title="Rechazadas"  value={stats.rejected} icon={AlertCircle}klass="border-red-200 bg-red-50" />
-        <Stat title="Aplicadas"   value={stats.applied}  icon={CheckCircle}klass="border-indigo-200 bg-indigo-50" />
+        <Stat title="Total" value={stats.total} icon={FileText} klass="border-blue-200 bg-blue-50" />
+        <Stat title="Pendientes" value={stats.pending} icon={Clock} klass="border-yellow-200 bg-yellow-50" />
+        <Stat title="Aprobadas" value={stats.approved} icon={CheckCircle} klass="border-green-200 bg-green-50" />
+        <Stat title="Rechazadas" value={stats.rejected} icon={AlertCircle} klass="border-red-200 bg-red-50" />
+        <Stat title="Aplicadas" value={stats.applied} icon={CheckCircle} klass="border-indigo-200 bg-indigo-50" />
       </div>
 
-      <Tabs defaultValue="list" className="space-y-6">
+      <Tabs defaultValue="list" className="space-y-4">
         <TabsList>
           <TabsTrigger value="list">Lista</TabsTrigger>
           <TabsTrigger value="cards">Tarjetas</TabsTrigger>
@@ -129,15 +225,70 @@ export default function JustificationsPage() {
 
         <TabsContent value="list">
           <ListView
-            items={list || []}
+            items={filteredList}
+            allCount={list.length}
+            getTypeLabel={getTypeLabel}
             onView={(j) => setOpenDetail(j)}
             onDelete={(j) => del.mutate(j.punchJustId)}
             isLoading={isLoading}
+            // 👉 filtros “pegados” encima de la lista (estándar)
+            filters={
+              <FiltersBar
+                availableYears={availableYears}
+                yearFilter={yearFilter}
+                setYearFilter={setYearFilter}
+                statusFilter={statusFilter}
+                setStatusFilter={setStatusFilter}
+                typeFilter={typeFilter}
+                setTypeFilter={setTypeFilter}
+                types={types || []}
+                searchText={searchText}
+                setSearchText={setSearchText}
+                currentYear={currentYear}
+                onReset={() => {
+                  setYearFilter(currentYear);
+                  setStatusFilter("ALL");
+                  setTypeFilter("ALL");
+                  setSearchText("");
+                }}
+                shown={filteredList.length}
+                total={list.length}
+              />
+            }
           />
         </TabsContent>
 
         <TabsContent value="cards">
-          <CardView items={list || []} onView={(j) => setOpenDetail(j)} onDelete={(j) => del.mutate(j.punchJustId)} />
+          {/* En tarjetas también va arriba, pero aquí sí es normal que quede como barra arriba del grid */}
+          <div className="space-y-4">
+            <Card>
+              <CardContent className="p-4">
+                <FiltersBar
+                  availableYears={availableYears}
+                  yearFilter={yearFilter}
+                  setYearFilter={setYearFilter}
+                  statusFilter={statusFilter}
+                  setStatusFilter={setStatusFilter}
+                  typeFilter={typeFilter}
+                  setTypeFilter={setTypeFilter}
+                  types={types || []}
+                  searchText={searchText}
+                  setSearchText={setSearchText}
+                  currentYear={currentYear}
+                  onReset={() => {
+                    setYearFilter(currentYear);
+                    setStatusFilter("ALL");
+                    setTypeFilter("ALL");
+                    setSearchText("");
+                  }}
+                  shown={filteredList.length}
+                  total={list.length}
+                />
+              </CardContent>
+            </Card>
+
+            <CardView items={filteredList} getTypeLabel={getTypeLabel} onView={(j) => setOpenDetail(j)} onDelete={(j) => del.mutate(j.punchJustId)} />
+          </div>
         </TabsContent>
       </Tabs>
 
@@ -148,8 +299,8 @@ export default function JustificationsPage() {
             <DialogTitle>Solicitar Justificación</DialogTitle>
             <DialogDescription>Complete los campos según el tipo.</DialogDescription>
           </DialogHeader>
+
           <JustificationForm
-            types={types || []}
             onCreated={() => {
               setOpenCreate(false);
               queryClient.invalidateQueries({ queryKey: ["justifications", empId] });
@@ -160,46 +311,45 @@ export default function JustificationsPage() {
       </Dialog>
 
       {/* Detalle */}
-      <Dialog open={!!openDetail} onOpenChange={(o) => !o && setOpenDetail(null)}>
+      <Dialog open={!!openDetail} onOpenChange={(v) => !v && setOpenDetail(null)}>
         <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Detalle de Justificación</DialogTitle>
+            <DialogDescription>Información completa de la solicitud</DialogDescription>
+          </DialogHeader>
+
           {openDetail && (
-            <>
-              <DialogHeader>
-                <DialogTitle>Detalle de la justificación</DialogTitle>
-                <DialogDescription>
-                  Creado el{" "}
-                  {openDetail.createdAt
-                    ? format(parseISO(openDetail.createdAt), "dd/MM/yyyy 'a las' HH:mm", { locale: es })
-                    : "-"}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Info label="Estado">
-                  <Badge className={`${STATUS_META[openDetail.status].klass} flex items-center gap-1`}>
-                    {STATUS_META[openDetail.status].label}
-                  </Badge>
-                </Info>
-                <Info label="Horas">{openDetail.hoursRequested || 0}</Info>
-                <Info label="Inicio">
-                  {openDetail.startDate ? format(parseISO(openDetail.startDate), "dd/MM/yyyy HH:mm") : "-"}
-                </Info>
-                <Info label="Fin">
-                  {openDetail.endDate ? format(parseISO(openDetail.endDate), "dd/MM/yyyy HH:mm") : "-"}
-                </Info>
-                <Info label="Fecha justificada">
-                  {openDetail.justificationDate
-                    ? format(parseISO(openDetail.justificationDate), "dd/MM/yyyy")
-                    : "-"}
-                </Info>
-                <Info label="Comentarios">{openDetail.comments || "-"}</Info>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm text-gray-500">Tipo</p>
+                  <p className="font-medium truncate">{getTypeLabel(openDetail.justificationTypeId)}</p>
+                </div>
+
+                <Badge className={`${STATUS_META[openDetail.status].klass} flex items-center gap-1`}>
+                  {(() => {
+                    const Icon = STATUS_META[openDetail.status].icon;
+                    return <Icon className="h-3 w-3" />;
+                  })()}
+                  {STATUS_META[openDetail.status].label}
+                </Badge>
               </div>
-              <div className="mt-4">
-                <p className="text-sm font-medium mb-1">Motivo</p>
-                <Card className="bg-gray-50">
-                  <CardContent className="p-3 text-sm">{openDetail.reason}</CardContent>
-                </Card>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Info label="Fecha" value={fmtDate(openDetail.justificationDate)} />
+                <Info label="Horas" value={String(openDetail.hoursRequested ?? 0)} />
               </div>
-            </>
+
+              {openDetail.startDate ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Info label="Inicio" value={fmtDateTime(openDetail.startDate)} />
+                  <Info label="Fin" value={fmtDateTime(openDetail.endDate)} />
+                </div>
+              ) : null}
+
+              <Info label="Motivo" value={openDetail.reason || "-"} />
+              {openDetail.comments ? <Info label="Comentarios" value={openDetail.comments} /> : null}
+            </div>
           )}
         </DialogContent>
       </Dialog>
@@ -207,92 +357,228 @@ export default function JustificationsPage() {
   );
 }
 
-/** Auxiliares UI */
-
-function Stat({ title, value, icon: Icon, klass }: any) {
+/** ---------- Barra de filtros (reutilizable) ---------- **/
+function FiltersBar({
+  availableYears,
+  yearFilter,
+  setYearFilter,
+  statusFilter,
+  setStatusFilter,
+  typeFilter,
+  setTypeFilter,
+  types,
+  searchText,
+  setSearchText,
+  currentYear,
+  onReset,
+  shown,
+  total,
+}: {
+  availableYears: number[];
+  yearFilter: number;
+  setYearFilter: (v: number) => void;
+  statusFilter: Status | "ALL";
+  setStatusFilter: (v: Status | "ALL") => void;
+  typeFilter: number | "ALL";
+  setTypeFilter: (v: number | "ALL") => void;
+  types: any[];
+  searchText: string;
+  setSearchText: (v: string) => void;
+  currentYear: number;
+  onReset: () => void;
+  shown: number;
+  total: number;
+}) {
   return (
-    <Card className={klass}>
-      <CardContent className="p-4 flex items-center justify-between">
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div>
-          <p className="text-sm font-medium text-gray-600">{title}</p>
-          <p className="text-2xl font-bold text-gray-900">{value}</p>
+          <p className="text-sm text-gray-600 mb-1">Año</p>
+          <Select value={String(yearFilter)} onValueChange={(v) => setYearFilter(Number(v))}>
+            <SelectTrigger>
+              <SelectValue placeholder="Año" />
+            </SelectTrigger>
+            <SelectContent>
+              {availableYears.map((y) => (
+                <SelectItem key={y} value={String(y)}>
+                  {y}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-        <Icon className="h-8 w-8 text-gray-400" />
-      </CardContent>
-    </Card>
-  );
-}
 
-// function Info({ label, children }: { label: string; children: any }) {
-//   return (
-//     <div>
-//       <p className="text-sm font-medium text-gray-600">{label}</p>
-//       <p className="text-sm">{children}</p>
-//     </div>
-//   );
-// }
-function Info({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <p className="text-sm font-medium text-gray-600 mb-1">{label}</p>
-      <div className="text-sm mt-1">{children}</div>
+        <div>
+          <p className="text-sm text-gray-600 mb-1">Estado</p>
+          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Todos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Todos</SelectItem>
+              <SelectItem value="PENDING">Pendiente</SelectItem>
+              <SelectItem value="APPROVED">Aprobada</SelectItem>
+              <SelectItem value="REJECTED">Rechazada</SelectItem>
+              <SelectItem value="APPLIED">Aplicada</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <p className="text-sm text-gray-600 mb-1">Tipo</p>
+          <Select value={typeFilter === "ALL" ? "ALL" : String(typeFilter)} onValueChange={(v) => setTypeFilter(v === "ALL" ? "ALL" : Number(v))}>
+            <SelectTrigger>
+              <SelectValue placeholder="Todos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Todos</SelectItem>
+              {types.map((t: any) => {
+                const id = extractTypeId(t);
+                if (!Number.isFinite(id) || id <= 0) return null;
+                const name = extractTypeName(t);
+                return (
+                  <SelectItem key={id} value={String(id)}>
+                    {name}
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <p className="text-sm text-gray-600 mb-1">Buscar</p>
+          <div className="relative">
+            <Search className="h-4 w-4 text-gray-400 absolute left-3 top-3" />
+            <Input className="pl-9" value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="Motivo..." />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <Badge variant="outline" className="bg-gray-50 w-fit">
+          Mostrando {shown} de {total}
+        </Badge>
+
+        {/* <Button variant="ghost" className="gap-2 w-fit" onClick={onReset}>
+          <X className="h-4 w-4" />
+          Limpiar (año {currentYear})
+        </Button> */}
+      </div>
     </div>
   );
 }
 
-function ListView({
-  items,
-  onView,
-  onDelete,
-  isLoading,
-}: {
-  items: Justif[];
-  onView: (j: Justif) => void;
-  onDelete: (j: Justif) => void;
-  isLoading: boolean;
-}) {
-  if (isLoading) {
-    return (
-      <Card>
-        <CardContent className="p-6">Cargando...</CardContent>
-      </Card>
-    );
-  }
-  if (!items.length) {
-    return (
-      <Card>
-        <CardContent className="p-8 text-center">
-          <FileText className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-          <p className="text-gray-600">No hay justificaciones registradas</p>
-        </CardContent>
-      </Card>
-    );
-  }
+/** ---------- Subcomponentes ---------- **/
 
+function Stat({ title, value, icon: Icon, klass }: { title: string; value: number; icon: any; klass: string }) {
   return (
-    <Card>
-      <CardHeader className="bg-gray-50 py-3">
+    <Card className={`border ${klass}`}>
+      <CardContent className="p-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">Lista de justificaciones</CardTitle>
-          <Badge variant="outline" className="bg-blue-50 text-blue-700">
-            {items.length} registros
-          </Badge>
-        </div>
-      </CardHeader>
-      <CardContent className="p-0">
-        <ScrollArea className="h-[580px]">
-          <div className="divide-y">
-            {items.map((j) => (
-              <Row key={`j-${j.punchJustId ?? `${j.employeeId}-${j.createdAt}`}`} j={j} onView={onView} onDelete={onDelete} />
-            ))}
+          <div>
+            <p className="text-xs text-gray-600">{title}</p>
+            <p className="text-xl font-bold text-gray-900">{value}</p>
           </div>
-        </ScrollArea>
+          <Icon className="h-6 w-6 text-gray-700" />
+        </div>
       </CardContent>
     </Card>
   );
 }
 
-function Row({ j, onView, onDelete }: { j: Justif; onView: (x: Justif) => void; onDelete: (x: Justif) => void }) {
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-sm text-gray-500">{label}</p>
+      <p className="text-sm font-medium text-gray-900 break-words">{value}</p>
+    </div>
+  );
+}
+
+function fmtDate(value: string | null | undefined) {
+  if (!value) return "-";
+  try {
+    return format(parseISO(value), "dd/MM/yyyy", { locale: es });
+  } catch {
+    return value;
+  }
+}
+
+function fmtDateTime(value: string | null | undefined) {
+  if (!value) return "-";
+  try {
+    return format(parseISO(value), "dd/MM/yyyy HH:mm", { locale: es });
+  } catch {
+    return value;
+  }
+}
+
+function ListView({
+  items,
+  allCount,
+  getTypeLabel,
+  onView,
+  onDelete,
+  isLoading,
+  filters,
+}: {
+  items: Justif[];
+  allCount: number;
+  getTypeLabel: (id: number) => string;
+  onView: (j: Justif) => void;
+  onDelete: (j: Justif) => void;
+  isLoading: boolean;
+  filters: React.ReactNode;
+}) {
+  return (
+    <Card>
+      {/* Header de tabla + filtros pegados (estándar) */}
+      <CardHeader className="bg-gray-50">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">Lista de justificaciones</CardTitle>
+            <Badge variant="outline" className="bg-blue-50 text-blue-700">
+              Mostrando: {items.length} de {allCount}
+            </Badge>
+          </div>
+          {filters}
+        </div>
+      </CardHeader>
+
+      <CardContent className="p-0">
+        {isLoading ? (
+          <div className="p-6">Cargando...</div>
+        ) : !items.length ? (
+          <div className="p-8 text-center">
+            <FileText className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+            <p className="text-gray-600">No hay justificaciones registradas</p>
+          </div>
+        ) : (
+          <ScrollArea className="h-[580px]">
+            <div className="divide-y">
+              {items.map((j) => (
+                <Row key={`j-${j.punchJustId}`} j={j} getTypeLabel={getTypeLabel} onView={onView} onDelete={onDelete} />
+              ))}
+            </div>
+          </ScrollArea>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function Row({
+  j,
+  getTypeLabel,
+  onView,
+  onDelete,
+}: {
+  j: Justif;
+  getTypeLabel: (id: number) => string;
+  onView: (x: Justif) => void;
+  onDelete: (x: Justif) => void;
+}) {
   const Meta = STATUS_META[j.status];
   const Icon = Meta.icon;
 
@@ -301,9 +587,7 @@ function Row({ j, onView, onDelete }: { j: Justif; onView: (x: Justif) => void; 
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <p className="font-medium truncate">
-              {j.justificationTypeId ? `Tipo #${j.justificationTypeId}` : "Tipo"}
-            </p>
+            <p className="font-medium truncate">{getTypeLabel(j.justificationTypeId)}</p>
             <Badge className={`${Meta.klass} flex items-center gap-1`}>
               <Icon className="h-3 w-3" />
               {Meta.label}
@@ -311,6 +595,7 @@ function Row({ j, onView, onDelete }: { j: Justif; onView: (x: Justif) => void; 
           </div>
           <p className="text-sm text-gray-600 line-clamp-1">{j.reason}</p>
         </div>
+
         <div className="flex items-center gap-1">
           <Tooltip>
             <TooltipTrigger asChild>
@@ -320,39 +605,17 @@ function Row({ j, onView, onDelete }: { j: Justif; onView: (x: Justif) => void; 
             </TooltipTrigger>
             <TooltipContent>Ver</TooltipContent>
           </Tooltip>
+
           {j.status === "PENDING" && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onDelete(j)}
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                >
-                  <Trash2 className="h-4 w-4" />
+                <Button variant="ghost" size="sm" onClick={() => onDelete(j)}>
+                  <Trash2 className="h-4 w-4 text-red-600" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Eliminar</TooltipContent>
             </Tooltip>
           )}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mt-3">
-        <div>
-          <span className="font-medium">Fecha:</span>{" "}
-          {j.justificationDate ? format(parseISO(j.justificationDate), "dd/MM/yyyy") : "-"}
-        </div>
-        <div>
-          <span className="font-medium">Inicio:</span>{" "}
-          {j.startDate ? format(parseISO(j.startDate), "dd/MM/yyyy HH:mm") : "-"}
-        </div>
-        <div>
-          <span className="font-medium">Fin:</span>{" "}
-          {j.endDate ? format(parseISO(j.endDate), "dd/MM/yyyy HH:mm") : "-"}
-        </div>
-        <div>
-          <span className="font-medium">Horas:</span> {j.hoursRequested || 0}
         </div>
       </div>
     </div>
@@ -361,10 +624,12 @@ function Row({ j, onView, onDelete }: { j: Justif; onView: (x: Justif) => void; 
 
 function CardView({
   items,
+  getTypeLabel,
   onView,
   onDelete,
 }: {
   items: Justif[];
+  getTypeLabel: (id: number) => string;
   onView: (j: Justif) => void;
   onDelete: (j: Justif) => void;
 }) {
@@ -380,52 +645,60 @@ function CardView({
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
       {items.map((j) => (
-        <Card key={`jc-${j.punchJustId ?? `${j.employeeId}-${j.createdAt}`}`} className="hover:shadow">
-          <CardHeader className="pb-2">
-            <div className="flex justify-between items-start">
-              <Badge className={`${STATUS_META[j.status].klass} flex items-center gap-1`}>
-                {STATUS_META[j.status].label}
-              </Badge>
-              <div className="flex gap-1">
-                <Button size="sm" variant="ghost" onClick={() => onView(j)}>
-                  <Eye className="h-4 w-4" />
-                </Button>
-                {j.status === "PENDING" && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                    onClick={() => onDelete(j)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-            </div>
-            <CardTitle className="text-base">{`Tipo #${j.justificationTypeId}`}</CardTitle>
-            <CardDescription className="line-clamp-2">{j.reason}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <p>
-              <span className="font-medium">Fecha:</span>{" "}
-              {j.justificationDate ? format(parseISO(j.justificationDate), "dd/MM/yyyy") : "-"}
-            </p>
-            <p>
-              <span className="font-medium">Inicio:</span>{" "}
-              {j.startDate ? format(parseISO(j.startDate), "dd/MM/yyyy HH:mm") : "-"}
-            </p>
-            <p>
-              <span className="font-medium">Fin:</span>{" "}
-              {j.endDate ? format(parseISO(j.endDate), "dd/MM/yyyy HH:mm") : "-"}
-            </p>
-            <p>
-              <span className="font-medium">Horas:</span> {j.hoursRequested || 0}
-            </p>
-          </CardContent>
-        </Card>
+        <CardItem key={`jc-${j.punchJustId}`} j={j} getTypeLabel={getTypeLabel} onView={onView} onDelete={onDelete} />
       ))}
     </div>
+  );
+}
+
+function CardItem({
+  j,
+  getTypeLabel,
+  onView,
+  onDelete,
+}: {
+  j: Justif;
+  getTypeLabel: (id: number) => string;
+  onView: (x: Justif) => void;
+  onDelete: (x: Justif) => void;
+}) {
+  const Meta = STATUS_META[j.status];
+  const Icon = Meta.icon;
+
+  return (
+    <Card className="hover:shadow-md transition-shadow">
+      <CardHeader className="pb-2">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <CardTitle className="text-base truncate">{getTypeLabel(j.justificationTypeId)}</CardTitle>
+            <CardDescription className="mt-1">{fmtDate(j.justificationDate)}</CardDescription>
+          </div>
+          <Badge className={`${Meta.klass} flex items-center gap-1`}>
+            <Icon className="h-3 w-3" />
+            {Meta.label}
+          </Badge>
+        </div>
+      </CardHeader>
+
+      <CardContent className="pt-0">
+        <p className="text-sm text-gray-700 line-clamp-2">{j.reason}</p>
+
+        <div className="mt-4 flex items-center justify-end gap-2">
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => onView(j)}>
+            <Eye className="h-4 w-4" />
+            Ver
+          </Button>
+
+          {j.status === "PENDING" && (
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => onDelete(j)}>
+              <Trash2 className="h-4 w-4 text-red-600" />
+              Eliminar
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

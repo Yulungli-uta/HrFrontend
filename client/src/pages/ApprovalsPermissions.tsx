@@ -2,13 +2,30 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Card, CardContent, CardDescription, CardHeader, CardTitle
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -18,7 +35,7 @@ import {
   VacacionesAPI,
   TiposPermisosAPI,
   VistaDetallesEmpleadosAPI,
-  JustificationsAPI, // <-- requiere export en lib/api
+  JustificationsAPI,
   handleApiError,
 } from "@/lib/api";
 import {
@@ -59,7 +76,7 @@ interface Vacation {
   EndDate?: string;
   DaysGranted?: number;
   DaysTaken?: number;
-  Status?: "Planned" | "InProgress" | "Completed" | "Canceled";
+  Status?: "Planned" | "Approved" | "InProgress" | "Completed" | "Canceled";
   Reason?: string;
   ApprovedBy?: number;
   ApprovedAt?: string;
@@ -68,8 +85,15 @@ interface Vacation {
   RowVersion?: string;
 }
 
-interface PermissionType { id: number; name: string; }
-interface EmployeeLite { employeeID: number; fullName: string; departmentName?: string; }
+interface PermissionType {
+  id: number;
+  name: string;
+}
+interface EmployeeLite {
+  employeeID: number;
+  fullName: string;
+  departmentName?: string;
+}
 
 type JustStatus = "PENDING" | "APPROVED" | "REJECTED";
 interface Justification {
@@ -77,6 +101,7 @@ interface Justification {
   employeeId?: number;
   bossEmployeeId?: number;
   justificationTypeId?: number;
+  punchTypeId?: number | null;
   startDate?: string | null;
   endDate?: string | null;
   justificationDate?: string | null;
@@ -90,31 +115,60 @@ interface Justification {
 }
 
 /* -------------------- Helpers genéricos -------------------- */
-const statusChip: Record<string, { label: string; color: string; icon: any }> = {
-  Pending:   { label: "Pendiente",  color: "bg-yellow-100 text-yellow-800", icon: Clock },
-  Approved:  { label: "Aprobado",   color: "bg-green-100 text-green-800",  icon: CheckCircle },
-  Rejected:  { label: "Rechazado",  color: "bg-red-100 text-red-800",      icon: XCircle },
-  Planned:   { label: "Planeado",   color: "bg-yellow-100 text-yellow-800", icon: Clock },
-  InProgress:{ label: "En Proceso", color: "bg-blue-100 text-blue-800",    icon: AlertCircle },
-  Completed: { label: "Completado", color: "bg-green-100 text-green-800",  icon: CheckCircle },
-  Canceled:  { label: "Cancelado",  color: "bg-red-100 text-red-800",      icon: XCircle },
-  PENDING:   { label: "Pendiente",  color: "bg-yellow-100 text-yellow-800", icon: Clock },
-  APPROVED:  { label: "Aprobada",   color: "bg-green-100 text-green-800",  icon: CheckCircle },
-  REJECTED:  { label: "Rechazada",  color: "bg-red-100 text-red-800",      icon: XCircle },
+const statusChip: Record<
+  string,
+  { label: string; color: string; icon: any }
+> = {
+  Pending: { label: "Pendiente", color: "bg-yellow-100 text-yellow-800", icon: Clock },
+  Approved: { label: "Aprobado", color: "bg-green-100 text-green-800", icon: CheckCircle },
+  Rejected: { label: "Rechazado", color: "bg-red-100 text-red-800", icon: XCircle },
+
+  Planned: { label: "Planeado", color: "bg-yellow-100 text-yellow-800", icon: Clock },
+  InProgress: { label: "En Proceso", color: "bg-blue-100 text-blue-800", icon: AlertCircle },
+  Completed: { label: "Completado", color: "bg-green-100 text-green-800", icon: CheckCircle },
+  Canceled: { label: "Cancelado", color: "bg-red-100 text-red-800", icon: XCircle },
+
+  PENDING: { label: "Pendiente", color: "bg-yellow-100 text-yellow-800", icon: Clock },
+  APPROVED: { label: "Aprobada", color: "bg-green-100 text-green-800", icon: CheckCircle },
+  REJECTED: { label: "Rechazada", color: "bg-red-100 text-red-800", icon: XCircle },
 };
+
+function parseDateSafe(s?: string): Date | null {
+  if (!s) return null;
+  const m = /\/Date\((\d+)\)\//.exec(s);
+  if (m) {
+    const d = new Date(Number(m[1]));
+    return isNaN(d.getTime()) ? null : d;
+  }
+  let str = s.trim();
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/.test(str)) str = str.replace(" ", "T");
+  const d1 = new Date(str);
+  if (!isNaN(d1.getTime())) return d1;
+  const only = str.split("T")[0];
+  const d2 = new Date(only);
+  return isNaN(d2.getTime()) ? null : d2;
+}
 
 const fmtDate = (s?: string | null) => {
   const d = parseDateSafe(s ?? undefined);
   return d ? d.toLocaleDateString("es-ES") : "—";
 };
+
 const yearOf = (s?: string | null) => {
   const d = parseDateSafe(s ?? undefined);
   return d ? d.getFullYear() : -1;
 };
+
 const currentYear = new Date().getFullYear();
 
 const safeArray = (data: any): any[] =>
-  Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : Array.isArray(data?.results) ? data.results : [];
+  Array.isArray(data)
+    ? data
+    : Array.isArray(data?.items)
+      ? data.items
+      : Array.isArray(data?.results)
+        ? data.results
+        : [];
 
 const pick = (obj: any, names: string[]) => {
   for (const n of names) if (obj?.[n] !== undefined && obj?.[n] !== null) return obj[n];
@@ -133,6 +187,7 @@ const statusFromCode = (code: number): "Pending" | "Approved" | "Rejected" => {
   if (code === 3) return "Rejected";
   return "Pending";
 };
+
 const canonicalPermissionStatus = (s?: string | number): "Pending" | "Approved" | "Rejected" => {
   if (s === undefined || s === null) return "Pending";
   if (typeof s === "number") return statusFromCode(s);
@@ -146,28 +201,10 @@ const canonicalPermissionStatus = (s?: string | number): "Pending" | "Approved" 
   return "Pending";
 };
 
-/* === Parser de fechas robusto === */
-function parseDateSafe(s?: string): Date | null {
-  if (!s) return null;
-  const m = /\/Date\((\d+)\)\//.exec(s);
-  if (m) {
-    const d = new Date(Number(m[1]));
-    return isNaN(d.getTime()) ? null : d;
-  }
-  let str = s.trim();
-  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/.test(str)) {
-    str = str.replace(" ", "T");
-  }
-  const d1 = new Date(str);
-  if (!isNaN(d1.getTime())) return d1;
-  const only = str.split("T")[0];
-  const d2 = new Date(only);
-  return isNaN(d2.getTime()) ? null : d2;
-}
-
 const normalizeVacStatus = (s: any): Vacation["Status"] => {
   const val = String(s ?? "").toLowerCase();
   if (["planned", "planeado", "planeada"].includes(val)) return "Planned";
+  if (["approved", "aprobado", "aprobada"].includes(val)) return "Approved";
   if (["inprogress", "enproceso", "en proceso"].includes(val)) return "InProgress";
   if (["completed", "completado", "completada"].includes(val)) return "Completed";
   if (["canceled", "cancelado", "cancelada"].includes(val)) return "Canceled";
@@ -181,23 +218,25 @@ const normalizePermissionType = (t: any): PermissionType => ({
 
 /* -------- Normalizadores -------- */
 const normalizePermission = (p: any): Permission => {
-  const id = toNumber(pick(p, ["id","Id","ID","permissionId","PermissionId","PermissionID","permissionID","permission_id"]));
+  const id = toNumber(
+    pick(p, ["id", "Id", "ID", "permissionId", "PermissionId", "PermissionID", "permissionID", "permission_id"])
+  );
   return {
     id,
-    employeeId: toNumber(pick(p, ["employeeId","EmployeeID","employeeID","EmployeeId","employee_id"])),
-    permissionTypeId: toNumber(pick(p, ["permissionTypeId","PermissionTypeID","PermissionTypeId","permission_type_id"])),
-    startDate: pick(p, ["startDate","StartDate","start_date"]),
-    endDate: pick(p, ["endDate","EndDate","end_date"]),
-    justification: pick(p, ["justification","Justification"]),
-    status: canonicalPermissionStatus(pick(p, ["status","Status"])),
-    requestDate: pick(p, ["requestDate","RequestDate","createdAt","CreatedAt"]),
-    createdAt: pick(p, ["createdAt","CreatedAt"]),
-    approvedAt: pick(p, ["approvedAt","ApprovedAt"]),
-    approvedBy: toNumber(pick(p, ["approvedBy","ApprovedBy"])),
-    RowVersion: pick(p, ["RowVersion","rowVersion","row_version"]),
-    chargedToVacation: !!pick(p, ["chargedToVacation","ChargedToVacation"]),
-    vacationId: toNumber(pick(p, ["VacationID","vacationID","vacationId"])),
-    hourTaken: toNumber(pick(p, ["hourTaken","HourTaken"])) ?? 0,
+    employeeId: toNumber(pick(p, ["employeeId", "EmployeeID", "employeeID", "EmployeeId", "employee_id"])),
+    permissionTypeId: toNumber(pick(p, ["permissionTypeId", "PermissionTypeID", "PermissionTypeId", "permission_type_id"])),
+    startDate: pick(p, ["startDate", "StartDate", "start_date"]),
+    endDate: pick(p, ["endDate", "EndDate", "end_date"]),
+    justification: pick(p, ["justification", "Justification"]),
+    status: canonicalPermissionStatus(pick(p, ["status", "Status"])),
+    requestDate: pick(p, ["requestDate", "RequestDate", "createdAt", "CreatedAt"]),
+    createdAt: pick(p, ["createdAt", "CreatedAt"]),
+    approvedAt: pick(p, ["approvedAt", "ApprovedAt"]),
+    approvedBy: toNumber(pick(p, ["approvedBy", "ApprovedBy"])),
+    RowVersion: pick(p, ["RowVersion", "rowVersion", "row_version"]),
+    chargedToVacation: !!pick(p, ["chargedToVacation", "ChargedToVacation"]),
+    vacationId: toNumber(pick(p, ["VacationID", "vacationID", "vacationId"])),
+    hourTaken: toNumber(pick(p, ["hourTaken", "HourTaken"])) ?? 0,
   };
 };
 
@@ -210,10 +249,10 @@ const normalizeVacation = (v: any): Vacation => ({
   DaysTaken: toNumber(pick(v, ["DaysTaken", "daysTaken"])),
   Status: normalizeVacStatus(pick(v, ["Status", "status"])),
   Reason: pick(v, ["Reason", "reason"]),
-  ApprovedBy: toNumber(pick(v, ["ApprovedBy","approvedBy"])),
-  ApprovedAt: pick(v, ["ApprovedAt","approvedAt"]),
-  CreatedAt: pick(v, ["CreatedAt","createdAt"]),
-  UpdatedAt: pick(v, ["UpdatedAt","updatedAt"]),
+  ApprovedBy: toNumber(pick(v, ["ApprovedBy", "approvedBy"])),
+  ApprovedAt: pick(v, ["ApprovedAt", "approvedAt"]),
+  CreatedAt: pick(v, ["CreatedAt", "createdAt"]),
+  UpdatedAt: pick(v, ["UpdatedAt", "updatedAt"]),
   RowVersion: pick(v, ["RowVersion", "rowVersion", "row_version"]),
 });
 
@@ -225,20 +264,21 @@ const normalizeJustStatus = (s: any): JustStatus => {
 };
 
 const normalizeJustification = (j: any): Justification => ({
-  punchJustId: toNumber(pick(j, ["punchJustId","id","Id","ID"])),
-  employeeId: toNumber(pick(j, ["employeeId","EmployeeID","employeeID"])),
-  bossEmployeeId: toNumber(pick(j, ["bossEmployeeId","BossEmployeeID","bossId"])),
-  justificationTypeId: toNumber(pick(j, ["justificationTypeId","JustificationTypeID"])),
-  startDate: pick(j, ["startDate","StartDate"]) ?? null,
-  endDate: pick(j, ["endDate","EndDate"]) ?? null,
-  justificationDate: pick(j, ["justificationDate","JustificationDate"]) ?? null,
-  reason: pick(j, ["reason","Reason"]) ?? null,
-  hoursRequested: toNumber(pick(j, ["hoursRequested","HoursRequested"])) ?? null,
-  approved: Boolean(pick(j, ["approved","Approved"])) ?? false,
-  createdAt: pick(j, ["createdAt","CreatedAt"]) ?? null,
-  createdBy: toNumber(pick(j, ["createdBy","CreatedBy"])) ?? null,
-  comments: pick(j, ["comments","Comments"]) ?? null,
-  status: normalizeJustStatus(pick(j, ["status","Status"])),
+  punchJustId: toNumber(pick(j, ["punchJustId", "id", "Id", "ID"])),
+  employeeId: toNumber(pick(j, ["employeeId", "EmployeeID", "employeeID"])),
+  bossEmployeeId: toNumber(pick(j, ["bossEmployeeId", "BossEmployeeID", "bossId"])),
+  justificationTypeId: toNumber(pick(j, ["justificationTypeId", "JustificationTypeID"])),
+  punchTypeId: toNumber(pick(j, ["punchTypeId", "PunchTypeID", "PunchTypeId", "punchTypeID"])) ?? null,
+  startDate: pick(j, ["startDate", "StartDate"]) ?? null,
+  endDate: pick(j, ["endDate", "EndDate"]) ?? null,
+  justificationDate: pick(j, ["justificationDate", "JustificationDate"]) ?? null,
+  reason: pick(j, ["reason", "Reason"]) ?? null,
+  hoursRequested: toNumber(pick(j, ["hoursRequested", "HoursRequested"])) ?? null,
+  approved: Boolean(pick(j, ["approved", "Approved"])) ?? false,
+  createdAt: pick(j, ["createdAt", "CreatedAt"]) ?? null,
+  createdBy: toNumber(pick(j, ["createdBy", "CreatedBy"])) ?? null,
+  comments: pick(j, ["comments", "Comments"]) ?? null,
+  status: normalizeJustStatus(pick(j, ["status", "Status"])),
 });
 
 /* -------- Keys únicas -------- */
@@ -269,6 +309,28 @@ const asValidFkId = (v: any): number | undefined => {
   return Number.isFinite(n) && n > 0 ? n : undefined;
 };
 
+/* -------- Orden: pendientes/planeados primero + fecha desc -------- */
+const asTime = (s?: string | null) => {
+  const d = parseDateSafe(s ?? undefined);
+  return d ? d.getTime() : 0;
+};
+
+const permRank = (s: "Pending" | "Approved" | "Rejected") =>
+  s === "Pending" ? 0 : 1;
+
+const vacRank = (s?: Vacation["Status"]) =>
+  s === "Planned" ? 0 : 1;
+
+const justRank = (s: JustStatus) =>
+  s === "PENDING" ? 0 : 1;
+
+type YearScope = "current" | "all";
+const inYearScope = (scope: YearScope, d: Date | null) => {
+  if (scope === "all") return true;
+  if (!d) return false;
+  return d.getFullYear() === currentYear;
+};
+
 /* -------------------- Página -------------------- */
 export default function ApprovalsPermissions() {
   const { toast } = useToast();
@@ -291,7 +353,9 @@ export default function ApprovalsPermissions() {
 
   const permissionTypes: PermissionType[] = useMemo(() => {
     if (typesRes?.status !== "success") return [];
-    return safeArray(typesRes.data).map(normalizePermissionType).filter((t) => t.id != null);
+    return safeArray(typesRes.data)
+      .map(normalizePermissionType)
+      .filter((t) => t.id != null);
   }, [typesRes]);
 
   const employeesMap: Record<number, EmployeeLite> = useMemo(() => {
@@ -299,16 +363,23 @@ export default function ApprovalsPermissions() {
     const arr = safeArray(employeesRes.data);
     const map: Record<number, EmployeeLite> = {};
     for (const r of arr) {
-      const id = toNumber(pick(r, ["employeeID","EmployeeID","id","Id","ID"]));
+      const id = toNumber(pick(r, ["employeeID", "EmployeeID", "id", "Id", "ID"]));
       const fullName =
-        pick(r, ["fullName","FullName"]) ??
-        `${pick(r, ["firstName","FirstName"]) ?? ""} ${pick(r, ["lastName","LastName"]) ?? ""}`.trim();
-      if (id != null) map[id] = { employeeID: id, fullName: fullName || `#${id}`, departmentName: pick(r, ["departmentName","DepartmentName"]) };
+        pick(r, ["fullName", "FullName"]) ??
+        `${pick(r, ["firstName", "FirstName"]) ?? ""} ${pick(r, ["lastName", "LastName"]) ?? ""}`.trim();
+      if (id != null) {
+        map[id] = {
+          employeeID: id,
+          fullName: fullName || `#${id}`,
+          departmentName: pick(r, ["departmentName", "DepartmentName"]),
+        };
+      }
     }
     return map;
   }, [employeesRes]);
 
-  const getTypeName = (id?: number) => id == null ? "—" : (permissionTypes.find(t => Number(t.id) === Number(id))?.name ?? "—");
+  const getTypeName = (id?: number) =>
+    id == null ? "—" : (permissionTypes.find((t) => Number(t.id) === Number(id))?.name ?? "—");
 
   /* --------- Consultas por bossId (aprobador actual) --------- */
   const { data: permsRes, isLoading: loadingPerms } = useQuery({
@@ -335,16 +406,44 @@ export default function ApprovalsPermissions() {
     }
   }, [permsRes]);
 
-  const allPerms: Permission[] = permsRes?.status === "success" ? safeArray(permsRes.data).map(normalizePermission) : [];
-  const allVacs: Vacation[] = vacsRes?.status === "success" ? safeArray(vacsRes.data).map(normalizeVacation) : [];
-  const allJusts: Justification[] = justRes?.status === "success" ? safeArray(justRes.data).map(normalizeJustification) : [];
+  const allPerms: Permission[] =
+    permsRes?.status === "success" ? safeArray(permsRes.data).map(normalizePermission) : [];
+  const allVacs: Vacation[] =
+    vacsRes?.status === "success" ? safeArray(vacsRes.data).map(normalizeVacation) : [];
+  const allJusts: Justification[] =
+    justRes?.status === "success" ? safeArray(justRes.data).map(normalizeJustification) : [];
 
   /* --------- Filtros UI --------- */
   const [tab, setTab] = useState<"permisos" | "vacaciones" | "justificaciones">("permisos");
 
-  const [permFilters, setPermFilters] = useState<{ q: string; status: "all" | "Pending" | "Approved" | "Rejected"; from?: string; to?: string; }>({ q: "", status: "all" });
-  const [vacFilters, setVacFilters] = useState<{ q: string; status: "all" | "Planned" | "InProgress" | "Completed" | "Canceled"; from?: string; to?: string; }>({ q: "", status: "all" });
-  const [justFilters, setJustFilters] = useState<{ q: string; status: "all" | JustStatus; from?: string; to?: string; }>({ q: "", status: "all" });
+  // Inicial: año actual + estado pendiente/planeado/pendiente
+  const [permFilters, setPermFilters] = useState<{
+    q: string;
+    status: "all" | "Pending" | "Approved" | "Rejected";
+    year: YearScope;
+    from?: string;
+    to?: string;
+  }>({ q: "", status: "Pending", year: "current" });
+
+  const [vacFilters, setVacFilters] = useState<{
+    q: string;
+    status: "all" | "Planned" | "Approved" | "InProgress" | "Completed" | "Canceled";
+    year: YearScope;
+    from?: string;
+    to?: string;
+  }>({ q: "", status: "Planned", year: "current" });
+
+  const [justFilters, setJustFilters] = useState<{
+    q: string;
+    status: "all" | JustStatus;
+    year: YearScope;
+    from?: string;
+    to?: string;
+  }>({ q: "", status: "PENDING", year: "current" });
+
+  /* --------- Orden/Fecha primaria --------- */
+  const primaryPermCreated = (p: Permission) =>
+    p.createdAt || p.requestDate || p.startDate || p.endDate || p.approvedAt;
 
   const filteredPerms = useMemo(() => {
     return allPerms
@@ -354,38 +453,68 @@ export default function ApprovalsPermissions() {
         const typeName = getTypeName(p.permissionTypeId).toLowerCase();
         const q = permFilters.q.toLowerCase();
         const textOk = !q || empName.includes(q) || just.includes(q) || typeName.includes(q);
+
         const canon = canonicalPermissionStatus(p.status);
         const statusOk = permFilters.status === "all" || canon === permFilters.status;
+
         const df = permFilters.from ? parseDateSafe(permFilters.from) : null;
         const dt = permFilters.to ? parseDateSafe(permFilters.to) : null;
         const s = parseDateSafe(p.startDate || "");
         const e = parseDateSafe(p.endDate || "");
         const fromOk = !df || (s && s >= df);
         const toOk = !dt || (e && e <= dt);
-        return textOk && statusOk && fromOk && toOk;
+
+        const createdD = parseDateSafe(primaryPermCreated(p));
+        const yearOk = inYearScope(permFilters.year, createdD);
+
+        return textOk && statusOk && fromOk && toOk && yearOk;
       })
       .sort((a, b) => {
-        const sa = canonicalPermissionStatus(a.status) === "Pending" ? 0 : 1;
-        const sb = canonicalPermissionStatus(b.status) === "Pending" ? 0 : 1;
-        return sa - sb;
+        const ra = permRank(canonicalPermissionStatus(a.status));
+        const rb = permRank(canonicalPermissionStatus(b.status));
+        if (ra !== rb) return ra - rb;
+
+        const ta = asTime(primaryPermCreated(a));
+        const tb = asTime(primaryPermCreated(b));
+        if (ta !== tb) return tb - ta; // desc
+
+        return (b.id ?? 0) - (a.id ?? 0);
       });
   }, [allPerms, permFilters, employeesMap, permissionTypes]);
 
   const filteredVacs = useMemo(() => {
-    return allVacs.filter((v) => {
-      const empName = (v.EmployeeID && employeesMap[v.EmployeeID]?.fullName?.toLowerCase()) ?? "";
-      const reason = (v.Reason ?? "").toLowerCase();
-      const q = vacFilters.q.toLowerCase();
-      const textOk = !q || empName.includes(q) || reason.includes(q);
-      const statusOk = vacFilters.status === "all" || v.Status === vacFilters.status;
-      const df = vacFilters.from ? parseDateSafe(vacFilters.from) : null;
-      const dt = vacFilters.to ? parseDateSafe(vacFilters.to) : null;
-      const s = parseDateSafe(v.StartDate || "");
-      const e = parseDateSafe(v.EndDate || "");
-      const fromOk = !df || (s && s >= df);
-      const toOk = !dt || (e && e <= dt);
-      return textOk && statusOk && fromOk && toOk;
-    }).sort((a, b) => (a.Status === "Planned" ? 0 : 1) - (b.Status === "Planned" ? 0 : 1));
+    return allVacs
+      .filter((v) => {
+        const empName = (v.EmployeeID && employeesMap[v.EmployeeID]?.fullName?.toLowerCase()) ?? "";
+        const reason = (v.Reason ?? "").toLowerCase();
+        const q = vacFilters.q.toLowerCase();
+        const textOk = !q || empName.includes(q) || reason.includes(q);
+
+        const statusOk = vacFilters.status === "all" || v.Status === vacFilters.status;
+
+        const df = vacFilters.from ? parseDateSafe(vacFilters.from) : null;
+        const dt = vacFilters.to ? parseDateSafe(vacFilters.to) : null;
+        const s = parseDateSafe(v.StartDate || "");
+        const e = parseDateSafe(v.EndDate || "");
+        const fromOk = !df || (s && s >= df);
+        const toOk = !dt || (e && e <= dt);
+
+        const createdD = parseDateSafe(v.CreatedAt ?? v.StartDate ?? "");
+        const yearOk = inYearScope(vacFilters.year, createdD);
+
+        return textOk && statusOk && fromOk && toOk && yearOk;
+      })
+      .sort((a, b) => {
+        const ra = vacRank(a.Status);
+        const rb = vacRank(b.Status);
+        if (ra !== rb) return ra - rb;
+
+        const ta = asTime(a.CreatedAt ?? a.StartDate);
+        const tb = asTime(b.CreatedAt ?? b.StartDate);
+        if (ta !== tb) return tb - ta;
+
+        return (b.VacationID ?? 0) - (a.VacationID ?? 0);
+      });
   }, [allVacs, vacFilters, employeesMap]);
 
   const filteredJusts = useMemo(() => {
@@ -395,7 +524,10 @@ export default function ApprovalsPermissions() {
         const reason = (j.reason ?? "").toLowerCase();
         const q = justFilters.q.toLowerCase();
         const textOk = !q || empName.includes(q) || reason.includes(q);
-        const statusOk = justFilters.status === "all" || normalizeJustStatus(j.status) === justFilters.status;
+
+        const js = normalizeJustStatus(j.status);
+        const statusOk = justFilters.status === "all" || js === justFilters.status;
+
         const df = justFilters.from ? parseDateSafe(justFilters.from) : null;
         const dt = justFilters.to ? parseDateSafe(justFilters.to) : null;
 
@@ -403,19 +535,32 @@ export default function ApprovalsPermissions() {
         const e = parseDateSafe(j.endDate ?? j.justificationDate ?? "");
         const fromOk = !df || (s && s >= df);
         const toOk = !dt || (e && e <= dt);
-        return textOk && statusOk && fromOk && toOk;
+
+        const createdD = parseDateSafe(j.createdAt ?? j.justificationDate ?? j.startDate ?? "");
+        const yearOk = inYearScope(justFilters.year, createdD);
+
+        return textOk && statusOk && fromOk && toOk && yearOk;
       })
       .sort((a, b) => {
-        const sa = normalizeJustStatus(a.status) === "PENDING" ? 0 : 1;
-        const sb = normalizeJustStatus(b.status) === "PENDING" ? 0 : 1;
-        return sa - sb;
+        const ra = justRank(normalizeJustStatus(a.status));
+        const rb = justRank(normalizeJustStatus(b.status));
+        if (ra !== rb) return ra - rb;
+
+        const ta = asTime(a.createdAt ?? a.justificationDate ?? a.startDate);
+        const tb = asTime(b.createdAt ?? b.justificationDate ?? b.startDate);
+        if (ta !== tb) return tb - ta;
+
+        return (b.punchJustId ?? 0) - (a.punchJustId ?? 0);
       });
   }, [allJusts, justFilters, employeesMap]);
 
   /* --------- Invalidate helpers --------- */
-  const qcInvalidatePerms = () => qc.invalidateQueries({ queryKey: ["/api/v1/rh/permissions", "boss", approverId] });
-  const qcInvalidateVacs  = () => qc.invalidateQueries({ queryKey: ["/api/v1/rh/vacations", "boss", approverId] });
-  const qcInvalidateJusts = () => qc.invalidateQueries({ queryKey: ["/api/v1/rh/cv/justifications", "boss", approverId] });
+  const qcInvalidatePerms = () =>
+    qc.invalidateQueries({ queryKey: ["/api/v1/rh/permissions", "boss", approverId] });
+  const qcInvalidateVacs = () =>
+    qc.invalidateQueries({ queryKey: ["/api/v1/rh/vacations", "boss", approverId] });
+  const qcInvalidateJusts = () =>
+    qc.invalidateQueries({ queryKey: ["/api/v1/rh/cv/justifications", "boss", approverId] });
 
   /* ------------ Payloads de actualización ------------- */
   const buildPermissionsPayload = (raw: any, normalized: Permission, newStatus: "Approved" | "Rejected") => {
@@ -427,7 +572,7 @@ export default function ApprovalsPermissions() {
       raw?.PermissionTypeID ?? raw?.permissionTypeID ?? raw?.permissionTypeId ?? normalized.permissionTypeId;
 
     const StartDate = onlyDate(raw?.StartDate ?? raw?.startDate) ?? onlyDate(normalized.startDate);
-    const EndDate   = onlyDate(raw?.EndDate   ?? raw?.endDate)   ?? onlyDate(normalized.endDate);
+    const EndDate = onlyDate(raw?.EndDate ?? raw?.endDate) ?? onlyDate(normalized.endDate);
     const Justification = raw?.Justification ?? raw?.justification ?? normalized.justification ?? "";
     const charged = !!(raw?.ChargedToVacation ?? raw?.chargedToVacation ?? normalized.chargedToVacation);
     const rawVacId = asValidFkId(raw?.VacationID ?? raw?.vacationID ?? raw?.vacationId ?? normalized.vacationId);
@@ -480,6 +625,7 @@ export default function ApprovalsPermissions() {
       employeeId: j.employeeId,
       bossEmployeeId: approverId ?? j.bossEmployeeId ?? null,
       justificationTypeId: j.justificationTypeId,
+      punchTypeId: j.punchTypeId ?? null,
       startDate: j.startDate,
       endDate: j.endDate,
       justificationDate: j.justificationDate,
@@ -503,13 +649,19 @@ export default function ApprovalsPermissions() {
       const normalized = normalizePermission(cur.data);
       const payload = buildPermissionsPayload(cur.data, normalized, "Approved");
       const res = await PermisosAPI.update(id, payload);
-      if (res.status === "error") {
-        throw new Error(handleApiError(res.error, "Validación de permiso fallida"));
-      }
+      if (res.status === "error") throw new Error(handleApiError(res.error, "Validación de permiso fallida"));
       return res.data;
     },
-    onSuccess: () => { qcInvalidatePerms(); toast({ title: "Permiso aprobado" }); },
-    onError: (e: any) => toast({ title: "Error al aprobar permiso", description: e?.message ?? "Intente nuevamente", variant: "destructive" }),
+    onSuccess: () => {
+      qcInvalidatePerms();
+      toast({ title: "Permiso aprobado" });
+    },
+    onError: (e: any) =>
+      toast({
+        title: "Error al aprobar permiso",
+        description: e?.message ?? "Intente nuevamente",
+        variant: "destructive",
+      }),
   });
 
   const rejectPermMut = useMutation({
@@ -519,13 +671,19 @@ export default function ApprovalsPermissions() {
       const normalized = normalizePermission(cur.data);
       const payload = buildPermissionsPayload(cur.data, normalized, "Rejected");
       const res = await PermisosAPI.update(id, payload);
-      if (res.status === "error") {
-        throw new Error(handleApiError(res.error, "Validación de permiso fallida"));
-      }
+      if (res.status === "error") throw new Error(handleApiError(res.error, "Validación de permiso fallida"));
       return res.data;
     },
-    onSuccess: () => { qcInvalidatePerms(); toast({ title: "Permiso rechazado" }); },
-    onError: (e: any) => toast({ title: "Error al rechazar permiso", description: e?.message ?? "Intente nuevamente", variant: "destructive" }),
+    onSuccess: () => {
+      qcInvalidatePerms();
+      toast({ title: "Permiso rechazado" });
+    },
+    onError: (e: any) =>
+      toast({
+        title: "Error al rechazar permiso",
+        description: e?.message ?? "Intente nuevamente",
+        variant: "destructive",
+      }),
   });
 
   /* ----------------- Mutaciones: Vacaciones ----------------- */
@@ -534,14 +692,24 @@ export default function ApprovalsPermissions() {
       const cur = await VacacionesAPI.get(id);
       if (cur.status !== "success") throw new Error("No se pudo obtener la vacación actual");
       const v = normalizeVacation(cur.data);
-      const nextStatus: Vacation["Status"] = v.Status === "Planned" ? "InProgress" : v.Status;
+      // const nextStatus: Vacation["Status"] = v.Status === "Planned" ? "InProgress" : v.Status;
+      const nextStatus: Vacation["Status"] = v.Status === "Planned" ? "Approved" : v.Status;
       const payload = buildVacationPayload(v, nextStatus);
       const res = await VacacionesAPI.update(id, payload);
       if (res.status === "error") throw new Error(handleApiError(res.error, "No se pudo aprobar la vacación"));
       return res.data;
     },
-    onSuccess: () => { qcInvalidateVacs(); toast({ title: "Vacación aprobada (InProgress)" }); },
-    onError: (e: any) => toast({ title: "Error al aprobar vacación", description: e?.message ?? "Conflicto de concurrencia.", variant: "destructive" }),
+    onSuccess: () => {
+      qcInvalidateVacs();
+      // toast({ title: "Vacación aprobada (InProgress)" });
+      toast({ title: "Vacación aprobada (Estado: Approved)" });
+    },
+    onError: (e: any) =>
+      toast({
+        title: "Error al aprobar vacación",
+        description: e?.message ?? "Conflicto de concurrencia.",
+        variant: "destructive",
+      }),
   });
 
   const rejectVacMut = useMutation({
@@ -554,8 +722,16 @@ export default function ApprovalsPermissions() {
       if (res.status === "error") throw new Error(handleApiError(res.error, "No se pudo rechazar la vacación"));
       return res.data;
     },
-    onSuccess: () => { qcInvalidateVacs(); toast({ title: "Vacación rechazada (Canceled)" }); },
-    onError: (e: any) => toast({ title: "Error al rechazar vacación", description: e?.message ?? "Conflicto de concurrencia.", variant: "destructive" }),
+    onSuccess: () => {
+      qcInvalidateVacs();
+      toast({ title: "Vacación rechazada (Canceled)" });
+    },
+    onError: (e: any) =>
+      toast({
+        title: "Error al rechazar vacación",
+        description: e?.message ?? "Conflicto de concurrencia.",
+        variant: "destructive",
+      }),
   });
 
   /* ----------------- Mutaciones: Justificaciones ----------------- */
@@ -570,8 +746,16 @@ export default function ApprovalsPermissions() {
       if (res.status === "error") throw new Error(handleApiError(res.error, "No se pudo aprobar la justificación"));
       return res.data;
     },
-    onSuccess: () => { qcInvalidateJusts(); toast({ title: "Justificación aprobada" }); },
-    onError: (e: any) => toast({ title: "Error al aprobar justificación", description: e?.message ?? "Intente nuevamente", variant: "destructive" }),
+    onSuccess: () => {
+      qcInvalidateJusts();
+      toast({ title: "Justificación aprobada" });
+    },
+    onError: (e: any) =>
+      toast({
+        title: "Error al aprobar justificación",
+        description: e?.message ?? "Intente nuevamente",
+        variant: "destructive",
+      }),
   });
 
   const rejectJustMut = useMutation({
@@ -585,19 +769,23 @@ export default function ApprovalsPermissions() {
       if (res.status === "error") throw new Error(handleApiError(res.error, "No se pudo rechazar la justificación"));
       return res.data;
     },
-    onSuccess: () => { qcInvalidateJusts(); toast({ title: "Justificación rechazada" }); },
-    onError: (e: any) => toast({ title: "Error al rechazar justificación", description: e?.message ?? "Intente nuevamente", variant: "destructive" }),
+    onSuccess: () => {
+      qcInvalidateJusts();
+      toast({ title: "Justificación rechazada" });
+    },
+    onError: (e: any) =>
+      toast({
+        title: "Error al rechazar justificación",
+        description: e?.message ?? "Intente nuevamente",
+        variant: "destructive",
+      }),
   });
 
-  /* ----------------- Resumen ----------------- */
-  const primaryPermDate = (p: Permission) =>
-    p.createdAt || p.requestDate || p.startDate || p.endDate || p.approvedAt;
-
+  /* ----------------- Resumen (siempre año actual) ----------------- */
   const permsThisYear = allPerms.filter((p) => {
-    const d = parseDateSafe(primaryPermDate(p));
+    const d = parseDateSafe(primaryPermCreated(p));
     return d ? d.getFullYear() === currentYear : false;
   });
-
   const permsCountBy = (s: "Pending" | "Approved" | "Rejected") =>
     permsThisYear.filter((p) => canonicalPermissionStatus(p.status) === s).length;
 
@@ -617,7 +805,9 @@ export default function ApprovalsPermissions() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Aprobaciones</h1>
-          <p className="text-gray-600 mt-1 text-sm md:text-base">Revise y gestione permisos, vacaciones y justificaciones</p>
+          <p className="text-gray-600 mt-1 text-sm md:text-base">
+            Revise y gestione permisos, vacaciones y justificaciones
+          </p>
         </div>
       </div>
 
@@ -633,7 +823,11 @@ export default function ApprovalsPermissions() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-3 gap-3">
-              {[{ key: "Pending", label: "Pendiente" }, { key: "Approved", label: "Aprobado" }, { key: "Rejected", label: "Rechazado" }].map((s) => (
+              {[
+                { key: "Pending", label: "Pendiente" },
+                { key: "Approved", label: "Aprobado" },
+                { key: "Rejected", label: "Rechazado" },
+              ].map((s) => (
                 <div key={s.key} className="p-3 rounded-lg bg-gray-50 text-center">
                   <div className="text-xs md:text-sm text-gray-500">{s.label}</div>
                   <div className="text-xl md:text-2xl font-semibold">{permsCountBy(s.key as any)}</div>
@@ -653,7 +847,13 @@ export default function ApprovalsPermissions() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {[{ key: "Planned", label: "Planeado" }, { key: "InProgress", label: "En Proceso" }, { key: "Completed", label: "Completado" }, { key: "Canceled", label: "Cancelado" }].map((s: any) => (
+              {[
+                { key: "Planned", label: "Planeado" },
+                { key: "Approved", label: "Aprobado" },
+                { key: "InProgress", label: "En Proceso" },
+                { key: "Completed", label: "Completado" },
+                { key: "Canceled", label: "Cancelado" },
+              ].map((s: any) => (
                 <div key={s.key} className="p-3 rounded-lg bg-gray-50 text-center">
                   <div className="text-xs md:text-sm text-gray-500">{s.label}</div>
                   <div className="text-xl md:text-2xl font-semibold">{vacsCountBy(s.key)}</div>
@@ -673,7 +873,11 @@ export default function ApprovalsPermissions() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-3 gap-3">
-              {[{ key: "PENDING", label: "Pendiente" }, { key: "APPROVED", label: "Aprobada" }, { key: "REJECTED", label: "Rechazada" }].map((s: any) => (
+              {[
+                { key: "PENDING", label: "Pendiente" },
+                { key: "APPROVED", label: "Aprobada" },
+                { key: "REJECTED", label: "Rechazada" },
+              ].map((s: any) => (
                 <div key={s.key} className="p-3 rounded-lg bg-gray-50 text-center">
                   <div className="text-xs md:text-sm text-gray-500">{s.label}</div>
                   <div className="text-xl md:text-2xl font-semibold">{justCountBy(s.key)}</div>
@@ -684,36 +888,66 @@ export default function ApprovalsPermissions() {
         </Card>
       </div>
 
+      {/* Tabs con header sticky en móvil */}
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 overflow-x-auto rounded-lg">
-          <TabsTrigger value="permisos" className="flex items-center gap-2 text-xs sm:text-sm">
-            <CalendarCheck className="h-4 w-4" /> Permisos ({allPerms.length})
-          </TabsTrigger>
-          <TabsTrigger value="vacaciones" className="flex items-center gap-2 text-xs sm:text-sm">
-            <Sun className="h-4 w-4" /> Vacaciones ({allVacs.length})
-          </TabsTrigger>
-          <TabsTrigger value="justificaciones" className="flex items-center gap-2 text-xs sm:text-sm">
-            <ClipboardCheck className="h-4 w-4" /> Justificaciones ({allJusts.length})
-          </TabsTrigger>
-        </TabsList>
+        <div className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b">
+          <div className="container mx-auto px-0 py-3">
+            <TabsList className="grid w-full grid-cols-3 overflow-x-auto rounded-lg">
+              <TabsTrigger value="permisos" className="flex items-center gap-2 text-xs sm:text-sm">
+                <CalendarCheck className="h-4 w-4" /> Permisos ({allPerms.length})
+              </TabsTrigger>
+              <TabsTrigger value="vacaciones" className="flex items-center gap-2 text-xs sm:text-sm">
+                <Sun className="h-4 w-4" /> Vacaciones ({allVacs.length})
+              </TabsTrigger>
+              <TabsTrigger value="justificaciones" className="flex items-center gap-2 text-xs sm:text-sm">
+                <ClipboardCheck className="h-4 w-4" /> Justificaciones ({allJusts.length})
+              </TabsTrigger>
+            </TabsList>
+          </div>
+        </div>
 
         {/* ======================= Permisos ======================= */}
         <TabsContent value="permisos" className="space-y-4">
           <Card>
-            <CardHeader className="pb-0">
+            <CardHeader className="pb-0 sticky top-[64px] z-20 bg-white/90 backdrop-blur border-b md:static md:bg-transparent md:backdrop-blur-0 md:border-0">
               <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-end">
                 <div className="flex-1">
                   <Label className="text-xs text-gray-500">Buscar</Label>
                   <div className="flex items-center gap-2">
                     <Search className="h-4 w-4 text-gray-500" />
-                    <Input placeholder="Empleado, tipo o motivo…" value={permFilters.q} onChange={(e) => setPermFilters((f) => ({ ...f, q: e.target.value }))} />
+                    <Input
+                      placeholder="Empleado, tipo o motivo…"
+                      value={permFilters.q}
+                      onChange={(e) => setPermFilters((f) => ({ ...f, q: e.target.value }))}
+                    />
                   </div>
                 </div>
 
                 <div className="min-w-[160px]">
+                  <Label className="text-xs text-gray-500">Año</Label>
+                  <Select
+                    value={permFilters.year}
+                    onValueChange={(v: any) => setPermFilters((f) => ({ ...f, year: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Año" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="current">Año actual</SelectItem>
+                      <SelectItem value="all">Todos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="min-w-[160px]">
                   <Label className="text-xs text-gray-500">Estado</Label>
-                  <Select value={permFilters.status} onValueChange={(v: any) => setPermFilters((f) => ({ ...f, status: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Estado" /></SelectTrigger>
+                  <Select
+                    value={permFilters.status}
+                    onValueChange={(v: any) => setPermFilters((f) => ({ ...f, status: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Estado" />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todos</SelectItem>
                       <SelectItem value="Pending">Pendiente</SelectItem>
@@ -726,16 +960,29 @@ export default function ApprovalsPermissions() {
                 <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
                   <div>
                     <Label className="text-xs text-gray-500">Desde</Label>
-                    <Input type="date" value={permFilters.from ?? ""} onChange={(e) => setPermFilters((f) => ({ ...f, from: e.target.value || undefined }))} />
+                    <Input
+                      type="date"
+                      value={permFilters.from ?? ""}
+                      onChange={(e) => setPermFilters((f) => ({ ...f, from: e.target.value || undefined }))}
+                    />
                   </div>
                   <div>
                     <Label className="text-xs text-gray-500">Hasta</Label>
-                    <Input type="date" value={permFilters.to ?? ""} onChange={(e) => setPermFilters((f) => ({ ...f, to: e.target.value || undefined }))} />
+                    <Input
+                      type="date"
+                      value={permFilters.to ?? ""}
+                      onChange={(e) => setPermFilters((f) => ({ ...f, to: e.target.value || undefined }))}
+                    />
                   </div>
                 </div>
 
                 <div className="lg:self-end">
-                  <Button variant="outline" onClick={() => setPermFilters({ q: "", status: "all" })}>Limpiar</Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setPermFilters({ q: "", status: "Pending", year: "current" })}
+                  >
+                    Limpiar
+                  </Button>
                 </div>
               </div>
             </CardHeader>
@@ -750,36 +997,73 @@ export default function ApprovalsPermissions() {
                 ) : (
                   filteredPerms.map((p, i) => {
                     const emp = p.employeeId ? employeesMap[p.employeeId] : undefined;
-                    const approver = p.approvedBy ? employeesMap[p.approvedBy] : undefined;
                     const canonical = canonicalPermissionStatus(p.status);
                     const chip = statusChip[canonical] ?? statusChip.Pending;
                     const Icon = chip.icon;
                     const canAct = !!p.id && canonical === "Pending";
+                    const created = primaryPermCreated(p);
                     return (
                       <Card key={getPermissionKey(p, i)} className="p-3">
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-2 min-w-0">
                             <User className="h-4 w-4 text-gray-500 shrink-0" />
                             <div className="truncate">
-                              <div className="font-medium truncate">{emp?.fullName ?? (p.employeeId ? `#${p.employeeId}` : "—")}</div>
-                              {emp?.departmentName && <div className="text-xs text-gray-500 truncate">{emp.departmentName}</div>}
+                              <div className="font-medium truncate">
+                                {emp?.fullName ?? (p.employeeId ? `#${p.employeeId}` : "—")}
+                              </div>
+                              {emp?.departmentName && (
+                                <div className="text-xs text-gray-500 truncate">{emp.departmentName}</div>
+                              )}
                             </div>
                           </div>
-                          <Badge className={chip.color}><Icon className="h-3 w-3 mr-1" />{chip.label}</Badge>
+                          <Badge className={chip.color}>
+                            <Icon className="h-3 w-3 mr-1" />
+                            {chip.label}
+                          </Badge>
                         </div>
-                        <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
-                          <div><span className="text-gray-500">Tipo: </span>{getTypeName(p.permissionTypeId)}</div>
-                          <div><span className="text-gray-500">Horas: </span>{p.hourTaken ?? 0}</div>
-                          <div><span className="text-gray-500">Desde: </span>{fmtDate(p.startDate)}</div>
-                          <div><span className="text-gray-500">Hasta: </span>{fmtDate(p.endDate)}</div>
-                          <div className="col-span-2"><span className="text-gray-500">Motivo: </span>{p.justification || "—"}</div>
-                          <div className="col-span-2"><span className="text-gray-500">Aprobado por: </span>{p.approvedBy ? (approver?.fullName ?? `#${p.approvedBy}`) : "—"}</div>
+
+                        <div className="mt-2 text-xs text-gray-500">Creado: {fmtDate(created)}</div>
+
+                        <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                          <div>
+                            <span className="text-gray-500">Tipo: </span>
+                            {getTypeName(p.permissionTypeId)}
+                          </div>
+                          <div>
+                            <span className="text-gray-500">Horas: </span>
+                            {p.hourTaken ?? 0}
+                          </div>
+                          <div>
+                            <span className="text-gray-500">Desde: </span>
+                            {fmtDate(p.startDate)}
+                          </div>
+                          <div>
+                            <span className="text-gray-500">Hasta: </span>
+                            {fmtDate(p.endDate)}
+                          </div>
+                          <div className="col-span-2">
+                            <span className="text-gray-500">Motivo: </span>
+                            {p.justification || "—"}
+                          </div>
                         </div>
-                        <div className="mt-3 flex justify-end gap-2">
-                          <Button size="sm" variant="outline" disabled={!canAct || approvePermMut.isPending} onClick={() => p.id && approvePermMut.mutate({ id: p.id })}>
+
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          <Button
+                            size="sm"
+                            className="w-full"
+                            variant="outline"
+                            disabled={!canAct || approvePermMut.isPending}
+                            onClick={() => p.id && approvePermMut.mutate({ id: p.id })}
+                          >
                             Aprobar
                           </Button>
-                          <Button size="sm" variant="destructive" disabled={!canAct || rejectPermMut.isPending} onClick={() => p.id && rejectPermMut.mutate({ id: p.id })}>
+                          <Button
+                            size="sm"
+                            className="w-full"
+                            variant="destructive"
+                            disabled={!canAct || rejectPermMut.isPending}
+                            onClick={() => p.id && rejectPermMut.mutate({ id: p.id })}
+                          >
                             Rechazar
                           </Button>
                         </div>
@@ -798,18 +1082,16 @@ export default function ApprovalsPermissions() {
                 ) : (
                   <div className="overflow-x-auto rounded-lg border">
                     <Table>
-                      <TableHeader>
+                      <TableHeader className="sticky top-0 bg-white z-10">
                         <TableRow>
                           <TableHead>ID</TableHead>
                           <TableHead>Empleado</TableHead>
                           <TableHead>Tipo</TableHead>
+                          <TableHead>Creado</TableHead>
                           <TableHead>Desde</TableHead>
                           <TableHead>Hasta</TableHead>
                           <TableHead>Horas</TableHead>
-                          <TableHead>Solicitado</TableHead>
                           <TableHead>Estado</TableHead>
-                          <TableHead>Aprobado Por</TableHead>
-                          <TableHead>Aprobado El</TableHead>
                           <TableHead>Motivo</TableHead>
                           <TableHead className="text-right">Acciones</TableHead>
                         </TableRow>
@@ -817,43 +1099,58 @@ export default function ApprovalsPermissions() {
                       <TableBody>
                         {filteredPerms.map((p, i) => {
                           const emp = p.employeeId ? employeesMap[p.employeeId] : undefined;
-                          const approver = p.approvedBy ? employeesMap[p.approvedBy] : undefined;
                           const canonical = canonicalPermissionStatus(p.status);
                           const chip = statusChip[canonical] ?? statusChip.Pending;
                           const Icon = chip.icon;
                           const canAct = !!p.id && canonical === "Pending";
+                          const created = primaryPermCreated(p);
                           return (
                             <TableRow key={getPermissionKey(p, i)}>
                               <TableCell>{p.id ?? "—"}</TableCell>
-                              <TableCell className="max-w-[220px]">
+                              <TableCell className="max-w-[240px]">
                                 <div className="flex items-center gap-2">
                                   <User className="h-4 w-4 text-gray-500" />
                                   <div className="truncate">
-                                    <div className="font-medium truncate">{emp?.fullName ?? (p.employeeId ? `#${p.employeeId}` : "—")}</div>
-                                    {emp?.departmentName && <div className="text-xs text-gray-500 truncate">{emp.departmentName}</div>}
+                                    <div className="font-medium truncate">
+                                      {emp?.fullName ?? (p.employeeId ? `#${p.employeeId}` : "—")}
+                                    </div>
+                                    {emp?.departmentName && (
+                                      <div className="text-xs text-gray-500 truncate">{emp.departmentName}</div>
+                                    )}
                                   </div>
                                 </div>
                               </TableCell>
                               <TableCell>{getTypeName(p.permissionTypeId)}</TableCell>
+                              <TableCell>{fmtDate(created)}</TableCell>
                               <TableCell>{fmtDate(p.startDate)}</TableCell>
                               <TableCell>{fmtDate(p.endDate)}</TableCell>
                               <TableCell>{p.hourTaken ?? 0}</TableCell>
-                              <TableCell>{fmtDate(p.requestDate ?? p.createdAt)}</TableCell>
                               <TableCell>
-                                <Badge className={chip.color}><Icon className="h-3 w-3 mr-1" />{chip.label}</Badge>
+                                <Badge className={chip.color}>
+                                  <Icon className="h-3 w-3 mr-1" />
+                                  {chip.label}
+                                </Badge>
                               </TableCell>
-                              <TableCell className="max-w-[180px]">
-                                {p.approvedBy ? (approver?.fullName ?? `#${p.approvedBy}`) : "—"}
-                              </TableCell>
-                              <TableCell>{fmtDate(p.approvedAt)}</TableCell>
-                              <TableCell title={p.justification || ""} className="max-w-[260px]">
-                                {(p.justification || "—").length > 60 ? (p.justification || "—").slice(0, 60) + "…" : p.justification || "—"}
+                              <TableCell title={p.justification || ""} className="max-w-[320px]">
+                                {(p.justification || "—").length > 60
+                                  ? (p.justification || "—").slice(0, 60) + "…"
+                                  : p.justification || "—"}
                               </TableCell>
                               <TableCell className="text-right space-x-2 whitespace-nowrap">
-                                <Button size="sm" variant="outline" disabled={!canAct || approvePermMut.isPending} onClick={() => p.id && approvePermMut.mutate({ id: p.id })}>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={!canAct || approvePermMut.isPending}
+                                  onClick={() => p.id && approvePermMut.mutate({ id: p.id })}
+                                >
                                   Aprobar
                                 </Button>
-                                <Button size="sm" variant="destructive" disabled={!canAct || rejectPermMut.isPending} onClick={() => p.id && rejectPermMut.mutate({ id: p.id })}>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  disabled={!canAct || rejectPermMut.isPending}
+                                  onClick={() => p.id && rejectPermMut.mutate({ id: p.id })}
+                                >
                                   Rechazar
                                 </Button>
                               </TableCell>
@@ -872,23 +1169,49 @@ export default function ApprovalsPermissions() {
         {/* ======================= Vacaciones ======================= */}
         <TabsContent value="vacaciones" className="space-y-4">
           <Card>
-            <CardHeader className="pb-0">
+            <CardHeader className="pb-0 sticky top-[64px] z-20 bg-white/90 backdrop-blur border-b md:static md:bg-transparent md:backdrop-blur-0 md:border-0">
               <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-end">
                 <div className="flex-1">
                   <Label className="text-xs text-gray-500">Buscar</Label>
                   <div className="flex items-center gap-2">
                     <Search className="h-4 w-4 text-gray-500" />
-                    <Input placeholder="Empleado o motivo…" value={vacFilters.q} onChange={(e) => setVacFilters((f) => ({ ...f, q: e.target.value }))} />
+                    <Input
+                      placeholder="Empleado o motivo…"
+                      value={vacFilters.q}
+                      onChange={(e) => setVacFilters((f) => ({ ...f, q: e.target.value }))}
+                    />
                   </div>
+                </div>
+
+                <div className="min-w-[160px]">
+                  <Label className="text-xs text-gray-500">Año</Label>
+                  <Select
+                    value={vacFilters.year}
+                    onValueChange={(v: any) => setVacFilters((f) => ({ ...f, year: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Año" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="current">Año actual</SelectItem>
+                      <SelectItem value="all">Todos</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="min-w-[180px]">
                   <Label className="text-xs text-gray-500">Estado</Label>
-                  <Select value={vacFilters.status} onValueChange={(v: any) => setVacFilters((f) => ({ ...f, status: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Estado" /></SelectTrigger>
+                  <Select
+                    value={vacFilters.status}
+                    onValueChange={(v: any) => setVacFilters((f) => ({ ...f, status: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Estado" />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todos</SelectItem>
                       <SelectItem value="Planned">Planeado</SelectItem>
+                      <SelectItem value="Approved">Aprobado</SelectItem>
                       <SelectItem value="InProgress">En Proceso</SelectItem>
                       <SelectItem value="Completed">Completado</SelectItem>
                       <SelectItem value="Canceled">Cancelado</SelectItem>
@@ -899,16 +1222,29 @@ export default function ApprovalsPermissions() {
                 <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
                   <div>
                     <Label className="text-xs text-gray-500">Desde</Label>
-                    <Input type="date" value={vacFilters.from ?? ""} onChange={(e) => setVacFilters((f) => ({ ...f, from: e.target.value || undefined }))} />
+                    <Input
+                      type="date"
+                      value={vacFilters.from ?? ""}
+                      onChange={(e) => setVacFilters((f) => ({ ...f, from: e.target.value || undefined }))}
+                    />
                   </div>
                   <div>
                     <Label className="text-xs text-gray-500">Hasta</Label>
-                    <Input type="date" value={vacFilters.to ?? ""} onChange={(e) => setVacFilters((f) => ({ ...f, to: e.target.value || undefined }))} />
+                    <Input
+                      type="date"
+                      value={vacFilters.to ?? ""}
+                      onChange={(e) => setVacFilters((f) => ({ ...f, to: e.target.value || undefined }))}
+                    />
                   </div>
                 </div>
 
                 <div className="lg:self-end">
-                  <Button variant="outline" onClick={() => setVacFilters({ q: "", status: "all" })}>Limpiar</Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setVacFilters({ q: "", status: "Planned", year: "current" })}
+                  >
+                    Limpiar
+                  </Button>
                 </div>
               </div>
             </CardHeader>
@@ -926,29 +1262,66 @@ export default function ApprovalsPermissions() {
                     const chip = statusChip[v.Status ?? "Planned"] ?? statusChip.Planned;
                     const Icon = chip.icon;
                     const canAct = !!v.VacationID && v.Status === "Planned";
+                    const created = v.CreatedAt ?? v.StartDate ?? null;
+
                     return (
                       <Card key={getVacationKey(v, i)} className="p-3">
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-2 min-w-0">
                             <User className="h-4 w-4 text-gray-500 shrink-0" />
                             <div className="truncate">
-                              <div className="font-medium truncate">{emp?.fullName ?? (v.EmployeeID ? `#${v.EmployeeID}` : "—")}</div>
-                              {emp?.departmentName && <div className="text-xs text-gray-500 truncate">{emp.departmentName}</div>}
+                              <div className="font-medium truncate">
+                                {emp?.fullName ?? (v.EmployeeID ? `#${v.EmployeeID}` : "—")}
+                              </div>
+                              {emp?.departmentName && (
+                                <div className="text-xs text-gray-500 truncate">{emp.departmentName}</div>
+                              )}
                             </div>
                           </div>
-                          <Badge className={chip.color}><Icon className="h-3 w-3 mr-1" />{chip.label}</Badge>
+                          <Badge className={chip.color}>
+                            <Icon className="h-3 w-3 mr-1" />
+                            {chip.label}
+                          </Badge>
                         </div>
-                        <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
-                          <div><span className="text-gray-500">Desde: </span>{fmtDate(v.StartDate)}</div>
-                          <div><span className="text-gray-500">Hasta: </span>{fmtDate(v.EndDate)}</div>
-                          <div><span className="text-gray-500">Días: </span>{v.DaysGranted ?? 0}</div>
-                          <div className="col-span-2"><span className="text-gray-500">Motivo: </span>{v.Reason || "—"}</div>
+
+                        <div className="mt-2 text-xs text-gray-500">Creado: {fmtDate(created)}</div>
+
+                        <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                          <div>
+                            <span className="text-gray-500">Desde: </span>
+                            {fmtDate(v.StartDate)}
+                          </div>
+                          <div>
+                            <span className="text-gray-500">Hasta: </span>
+                            {fmtDate(v.EndDate)}
+                          </div>
+                          <div>
+                            <span className="text-gray-500">Días: </span>
+                            {v.DaysGranted ?? 0}
+                          </div>
+                          <div className="col-span-2">
+                            <span className="text-gray-500">Motivo: </span>
+                            {v.Reason || "—"}
+                          </div>
                         </div>
-                        <div className="mt-3 flex justify-end gap-2">
-                          <Button size="sm" variant="outline" disabled={!canAct || approveVacMut.isPending} onClick={() => v.VacationID && approveVacMut.mutate({ id: v.VacationID })}>
+
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          <Button
+                            size="sm"
+                            className="w-full"
+                            variant="outline"
+                            disabled={!canAct || approveVacMut.isPending}
+                            onClick={() => v.VacationID && approveVacMut.mutate({ id: v.VacationID })}
+                          >
                             Aprobar
                           </Button>
-                          <Button size="sm" variant="destructive" disabled={!canAct || rejectVacMut.isPending} onClick={() => v.VacationID && rejectVacMut.mutate({ id: v.VacationID })}>
+                          <Button
+                            size="sm"
+                            className="w-full"
+                            variant="destructive"
+                            disabled={!canAct || rejectVacMut.isPending}
+                            onClick={() => v.VacationID && rejectVacMut.mutate({ id: v.VacationID })}
+                          >
                             Rechazar
                           </Button>
                         </div>
@@ -967,10 +1340,11 @@ export default function ApprovalsPermissions() {
                 ) : (
                   <div className="overflow-x-auto rounded-lg border">
                     <Table>
-                      <TableHeader>
+                      <TableHeader className="sticky top-0 bg-white z-10">
                         <TableRow>
                           <TableHead>ID</TableHead>
                           <TableHead>Empleado</TableHead>
+                          <TableHead>Creado</TableHead>
                           <TableHead>Desde</TableHead>
                           <TableHead>Hasta</TableHead>
                           <TableHead>Días</TableHead>
@@ -983,41 +1357,61 @@ export default function ApprovalsPermissions() {
                       </TableHeader>
                       <TableBody>
                         {filteredVacs.map((v, i) => {
-                          const emp = v.employeeID ? employeesMap[v.employeeID] : employeesMap[v.EmployeeID!];
+                          const emp = v.EmployeeID ? employeesMap[v.EmployeeID] : undefined;
                           const approver = v.ApprovedBy ? employeesMap[v.ApprovedBy] : undefined;
                           const chip = statusChip[v.Status ?? "Planned"] ?? statusChip.Planned;
                           const Icon = chip.icon;
                           const canAct = !!v.VacationID && v.Status === "Planned";
+                          const created = v.CreatedAt ?? v.StartDate ?? null;
+
                           return (
                             <TableRow key={getVacationKey(v, i)}>
                               <TableCell>{v.VacationID ?? "—"}</TableCell>
-                              <TableCell className="max-w-[220px]">
+                              <TableCell className="max-w-[240px]">
                                 <div className="flex items-center gap-2">
                                   <User className="h-4 w-4 text-gray-500" />
                                   <div className="truncate">
-                                    <div className="font-medium truncate">{emp?.fullName ?? (v.EmployeeID ? `#${v.EmployeeID}` : "—")}</div>
-                                    {emp?.departmentName && <div className="text-xs text-gray-500 truncate">{emp.departmentName}</div>}
+                                    <div className="font-medium truncate">
+                                      {emp?.fullName ?? (v.EmployeeID ? `#${v.EmployeeID}` : "—")}
+                                    </div>
+                                    {emp?.departmentName && (
+                                      <div className="text-xs text-gray-500 truncate">{emp.departmentName}</div>
+                                    )}
                                   </div>
                                 </div>
                               </TableCell>
+                              <TableCell>{fmtDate(created)}</TableCell>
                               <TableCell>{fmtDate(v.StartDate)}</TableCell>
                               <TableCell>{fmtDate(v.EndDate)}</TableCell>
                               <TableCell>{v.DaysGranted ?? 0}</TableCell>
                               <TableCell>
-                                <Badge className={chip.color}><Icon className="h-3 w-3 mr-1" />{chip.label}</Badge>
+                                <Badge className={chip.color}>
+                                  <Icon className="h-3 w-3 mr-1" />
+                                  {chip.label}
+                                </Badge>
                               </TableCell>
-                              <TableCell title={v.Reason || ""} className="max-w-[260px]">
+                              <TableCell title={v.Reason || ""} className="max-w-[320px]">
                                 {(v.Reason || "—").length > 60 ? (v.Reason || "—").slice(0, 60) + "…" : v.Reason || "—"}
                               </TableCell>
-                              <TableCell className="max-w-[180px]">
+                              <TableCell className="max-w-[200px]">
                                 {v.ApprovedBy ? (approver?.fullName ?? `#${v.ApprovedBy}`) : "—"}
                               </TableCell>
                               <TableCell>{fmtDate(v.ApprovedAt)}</TableCell>
                               <TableCell className="text-right space-x-2 whitespace-nowrap">
-                                <Button size="sm" variant="outline" disabled={!canAct || approveVacMut.isPending} onClick={() => v.VacationID && approveVacMut.mutate({ id: v.VacationID })}>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={!canAct || approveVacMut.isPending}
+                                  onClick={() => v.VacationID && approveVacMut.mutate({ id: v.VacationID })}
+                                >
                                   Aprobar
                                 </Button>
-                                <Button size="sm" variant="destructive" disabled={!canAct || rejectVacMut.isPending} onClick={() => v.VacationID && rejectVacMut.mutate({ id: v.VacationID })}>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  disabled={!canAct || rejectVacMut.isPending}
+                                  onClick={() => v.VacationID && rejectVacMut.mutate({ id: v.VacationID })}
+                                >
                                   Rechazar
                                 </Button>
                               </TableCell>
@@ -1036,20 +1430,45 @@ export default function ApprovalsPermissions() {
         {/* ======================= Justificaciones ======================= */}
         <TabsContent value="justificaciones" className="space-y-4">
           <Card>
-            <CardHeader className="pb-0">
+            <CardHeader className="pb-0 sticky top-[64px] z-20 bg-white/90 backdrop-blur border-b md:static md:bg-transparent md:backdrop-blur-0 md:border-0">
               <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-end">
                 <div className="flex-1">
                   <Label className="text-xs text-gray-500">Buscar</Label>
                   <div className="flex items-center gap-2">
                     <Search className="h-4 w-4 text-gray-500" />
-                    <Input placeholder="Empleado o motivo…" value={justFilters.q} onChange={(e) => setJustFilters((f) => ({ ...f, q: e.target.value }))} />
+                    <Input
+                      placeholder="Empleado o motivo…"
+                      value={justFilters.q}
+                      onChange={(e) => setJustFilters((f) => ({ ...f, q: e.target.value }))}
+                    />
                   </div>
+                </div>
+
+                <div className="min-w-[160px]">
+                  <Label className="text-xs text-gray-500">Año</Label>
+                  <Select
+                    value={justFilters.year}
+                    onValueChange={(v: any) => setJustFilters((f) => ({ ...f, year: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Año" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="current">Año actual</SelectItem>
+                      <SelectItem value="all">Todos</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="min-w-[180px]">
                   <Label className="text-xs text-gray-500">Estado</Label>
-                  <Select value={justFilters.status} onValueChange={(v: any) => setJustFilters((f) => ({ ...f, status: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Estado" /></SelectTrigger>
+                  <Select
+                    value={justFilters.status}
+                    onValueChange={(v: any) => setJustFilters((f) => ({ ...f, status: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Estado" />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todos</SelectItem>
                       <SelectItem value="PENDING">Pendiente</SelectItem>
@@ -1062,16 +1481,29 @@ export default function ApprovalsPermissions() {
                 <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
                   <div>
                     <Label className="text-xs text-gray-500">Desde</Label>
-                    <Input type="date" value={justFilters.from ?? ""} onChange={(e) => setJustFilters((f) => ({ ...f, from: e.target.value || undefined }))} />
+                    <Input
+                      type="date"
+                      value={justFilters.from ?? ""}
+                      onChange={(e) => setJustFilters((f) => ({ ...f, from: e.target.value || undefined }))}
+                    />
                   </div>
                   <div>
                     <Label className="text-xs text-gray-500">Hasta</Label>
-                    <Input type="date" value={justFilters.to ?? ""} onChange={(e) => setJustFilters((f) => ({ ...f, to: e.target.value || undefined }))} />
+                    <Input
+                      type="date"
+                      value={justFilters.to ?? ""}
+                      onChange={(e) => setJustFilters((f) => ({ ...f, to: e.target.value || undefined }))}
+                    />
                   </div>
                 </div>
 
                 <div className="lg:self-end">
-                  <Button variant="outline" onClick={() => setJustFilters({ q: "", status: "all" })}>Limpiar</Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setJustFilters({ q: "", status: "PENDING", year: "current" })}
+                  >
+                    Limpiar
+                  </Button>
                 </div>
               </div>
             </CardHeader>
@@ -1086,32 +1518,70 @@ export default function ApprovalsPermissions() {
                 ) : (
                   filteredJusts.map((j, i) => {
                     const emp = j.employeeId ? employeesMap[j.employeeId] : undefined;
-                    const chip = statusChip[normalizeJustStatus(j.status)] ?? statusChip.PENDING;
+                    const st = normalizeJustStatus(j.status);
+                    const chip = statusChip[st] ?? statusChip.PENDING;
                     const Icon = chip.icon;
-                    const canAct = !!j.punchJustId && normalizeJustStatus(j.status) === "PENDING";
+                    const canAct = !!j.punchJustId && st === "PENDING";
+                    const created = j.createdAt ?? j.justificationDate ?? j.startDate ?? null;
+
                     return (
                       <Card key={getJustKey(j, i)} className="p-3">
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-2 min-w-0">
                             <User className="h-4 w-4 text-gray-500 shrink-0" />
                             <div className="truncate">
-                              <div className="font-medium truncate">{emp?.fullName ?? (j.employeeId ? `#${j.employeeId}` : "—")}</div>
-                              {emp?.departmentName && <div className="text-xs text-gray-500 truncate">{emp.departmentName}</div>}
+                              <div className="font-medium truncate">
+                                {emp?.fullName ?? (j.employeeId ? `#${j.employeeId}` : "—")}
+                              </div>
+                              {emp?.departmentName && (
+                                <div className="text-xs text-gray-500 truncate">{emp.departmentName}</div>
+                              )}
                             </div>
                           </div>
-                          <Badge className={chip.color}><Icon className="h-3 w-3 mr-1" />{chip.label}</Badge>
+                          <Badge className={chip.color}>
+                            <Icon className="h-3 w-3 mr-1" />
+                            {chip.label}
+                          </Badge>
                         </div>
-                        <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
-                          <div><span className="text-gray-500">Fecha/Desde: </span>{fmtDate(j.justificationDate ?? j.startDate)}</div>
-                          <div><span className="text-gray-500">Hasta: </span>{fmtDate(j.endDate)}</div>
-                          <div><span className="text-gray-500">Horas: </span>{j.hoursRequested ?? 0}</div>
-                          <div className="col-span-2"><span className="text-gray-500">Motivo: </span>{j.reason || "—"}</div>
+
+                        <div className="mt-2 text-xs text-gray-500">Creado: {fmtDate(created)}</div>
+
+                        <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                          <div>
+                            <span className="text-gray-500">Fecha/Desde: </span>
+                            {fmtDate(j.justificationDate ?? j.startDate)}
+                          </div>
+                          <div>
+                            <span className="text-gray-500">Hasta: </span>
+                            {fmtDate(j.endDate)}
+                          </div>
+                          <div>
+                            <span className="text-gray-500">Horas: </span>
+                            {j.hoursRequested ?? 0}
+                          </div>
+                          <div className="col-span-2">
+                            <span className="text-gray-500">Motivo: </span>
+                            {j.reason || "—"}
+                          </div>
                         </div>
-                        <div className="mt-3 flex justify-end gap-2">
-                          <Button size="sm" variant="outline" disabled={!canAct || approveJustMut.isPending} onClick={() => j.punchJustId && approveJustMut.mutate({ id: j.punchJustId })}>
+
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          <Button
+                            size="sm"
+                            className="w-full"
+                            variant="outline"
+                            disabled={!canAct || approveJustMut.isPending}
+                            onClick={() => j.punchJustId && approveJustMut.mutate({ id: j.punchJustId })}
+                          >
                             Aprobar
                           </Button>
-                          <Button size="sm" variant="destructive" disabled={!canAct || rejectJustMut.isPending} onClick={() => j.punchJustId && rejectJustMut.mutate({ id: j.punchJustId })}>
+                          <Button
+                            size="sm"
+                            className="w-full"
+                            variant="destructive"
+                            disabled={!canAct || rejectJustMut.isPending}
+                            onClick={() => j.punchJustId && rejectJustMut.mutate({ id: j.punchJustId })}
+                          >
                             Rechazar
                           </Button>
                         </div>
@@ -1130,10 +1600,11 @@ export default function ApprovalsPermissions() {
                 ) : (
                   <div className="overflow-x-auto rounded-lg border">
                     <Table>
-                      <TableHeader>
+                      <TableHeader className="sticky top-0 bg-white z-10">
                         <TableRow>
                           <TableHead>ID</TableHead>
                           <TableHead>Empleado</TableHead>
+                          <TableHead>Creado</TableHead>
                           <TableHead>Fecha / Desde</TableHead>
                           <TableHead>Hasta</TableHead>
                           <TableHead>Horas</TableHead>
@@ -1145,35 +1616,56 @@ export default function ApprovalsPermissions() {
                       <TableBody>
                         {filteredJusts.map((j, i) => {
                           const emp = j.employeeId ? employeesMap[j.employeeId] : undefined;
-                          const chip = statusChip[normalizeJustStatus(j.status)] ?? statusChip.PENDING;
+                          const st = normalizeJustStatus(j.status);
+                          const chip = statusChip[st] ?? statusChip.PENDING;
                           const Icon = chip.icon;
-                          const canAct = !!j.punchJustId && normalizeJustStatus(j.status) === "PENDING";
+                          const canAct = !!j.punchJustId && st === "PENDING";
+                          const created = j.createdAt ?? j.justificationDate ?? j.startDate ?? null;
+
                           return (
                             <TableRow key={getJustKey(j, i)}>
                               <TableCell>{j.punchJustId ?? "—"}</TableCell>
-                              <TableCell className="max-w-[220px]">
+                              <TableCell className="max-w-[240px]">
                                 <div className="flex items-center gap-2">
                                   <User className="h-4 w-4 text-gray-500" />
                                   <div className="truncate">
-                                    <div className="font-medium truncate">{emp?.fullName ?? (j.employeeId ? `#${j.employeeId}` : "—")}</div>
-                                    {emp?.departmentName && <div className="text-xs text-gray-500 truncate">{emp.departmentName}</div>}
+                                    <div className="font-medium truncate">
+                                      {emp?.fullName ?? (j.employeeId ? `#${j.employeeId}` : "—")}
+                                    </div>
+                                    {emp?.departmentName && (
+                                      <div className="text-xs text-gray-500 truncate">{emp.departmentName}</div>
+                                    )}
                                   </div>
                                 </div>
                               </TableCell>
+                              <TableCell>{fmtDate(created)}</TableCell>
                               <TableCell>{fmtDate(j.justificationDate ?? j.startDate)}</TableCell>
                               <TableCell>{fmtDate(j.endDate)}</TableCell>
                               <TableCell>{j.hoursRequested ?? 0}</TableCell>
                               <TableCell>
-                                <Badge className={chip.color}><Icon className="h-3 w-3 mr-1" />{chip.label}</Badge>
+                                <Badge className={chip.color}>
+                                  <Icon className="h-3 w-3 mr-1" />
+                                  {chip.label}
+                                </Badge>
                               </TableCell>
-                              <TableCell title={j.reason || ""} className="max-w-[260px]">
+                              <TableCell title={j.reason || ""} className="max-w-[320px]">
                                 {(j.reason || "—").length > 60 ? (j.reason || "—").slice(0, 60) + "…" : j.reason || "—"}
                               </TableCell>
                               <TableCell className="text-right space-x-2 whitespace-nowrap">
-                                <Button size="sm" variant="outline" disabled={!canAct || approveJustMut.isPending} onClick={() => j.punchJustId && approveJustMut.mutate({ id: j.punchJustId })}>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={!canAct || approveJustMut.isPending}
+                                  onClick={() => j.punchJustId && approveJustMut.mutate({ id: j.punchJustId })}
+                                >
                                   Aprobar
                                 </Button>
-                                <Button size="sm" variant="destructive" disabled={!canAct || rejectJustMut.isPending} onClick={() => j.punchJustId && rejectJustMut.mutate({ id: j.punchJustId })}>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  disabled={!canAct || rejectJustMut.isPending}
+                                  onClick={() => j.punchJustId && rejectJustMut.mutate({ id: j.punchJustId })}
+                                >
                                   Rechazar
                                 </Button>
                               </TableCell>

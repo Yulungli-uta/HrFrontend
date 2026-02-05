@@ -25,6 +25,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
 import type { PermissionType } from "@/types/permission"
+
+import {   
+  PERMISSION_DIRECTORY_CODE, 
+  PERMISSION_ENTITY_TYPE
+} from "@/features/constants";
   
 
 // Turn on logs by setting VITE_DEBUG_AUTH=true in .env
@@ -52,6 +57,7 @@ const permStatusColors: Record<string, string> = {
 
 const vacStatusLabels: Record<string, string> = {
   Planned: "Planificado",
+  Approved: "Aprobado",
   InProgress: "En progreso",
   Completed: "Completado",
   Canceled: "Cancelado",
@@ -62,6 +68,7 @@ const vacStatusLabels: Record<string, string> = {
 
 const vacStatusColors: Record<string, string> = {
   Planned: "bg-indigo-100 text-indigo-800",
+  Approved: "bg-green-100 text-green-800",
   InProgress: "bg-blue-100 text-blue-800",
   Completed: "bg-green-100 text-green-800",
   Canceled: "bg-gray-100 text-gray-800",
@@ -328,7 +335,8 @@ export default function PermissionsPage() {
   }, [workdayParamResp]);
 
   // Directory parameters: HRPERMISSION
-  const DIR_CODE = "HRPERMISSION";
+  // const DIR_CODE = "HRPERMISSION";
+  const DIR_CODE = PERMISSION_DIRECTORY_CODE;
   const { data: dirResp, isLoading: dirLoading, isError: dirIsError } = useQuery<ApiResponse<any>>({
     queryKey: ["directory-params", DIR_CODE],
     queryFn: () => DirectoryParametersAPI.getByCode(DIR_CODE),
@@ -341,7 +349,8 @@ export default function PermissionsPage() {
   const documentsConfig: DocumentsConfig = useMemo(() => {
     return {
       directoryCode: dirParam?.code ?? DIR_CODE,
-      entityType: "PERMISSION",
+      // entityType: "PERMISSION",
+      entityType: PERMISSION_ENTITY_TYPE,
       relativePath: dirParam?.relativePath ?? "/hr-permissions/",
       accept: dirParam?.accept ?? ".pdf",
       maxSizeMB: dirParam?.maxSizeMb ?? 25,
@@ -399,6 +408,17 @@ export default function PermissionsPage() {
     arr.sort();
     return arr;
   }, [permissions]);
+
+  const vacationStatusOptions = useMemo(() => {
+  const set = new Set<string>();
+  vacations.forEach((v: any) => {
+    const s = String(v?.status ?? v?.Status ?? "").trim();
+    if (s) set.add(s);
+  });
+  const arr = Array.from(set);
+  arr.sort();
+  return arr;
+}, [vacations]);
 
   const inCurrentYear = (d?: string) => {
     if (!d) return false;
@@ -631,9 +651,14 @@ export default function PermissionsPage() {
             onChange={(e) => setStatusFilter(e.target.value)}
           >
             <option value="ALL">Estado: Todos</option>
-            {permissionStatusOptions.map((s) => (
+            {/* {permissionStatusOptions.map((s) => (
               <option key={s} value={s}>
                 {permStatusLabels[s] ?? s}
+              </option>
+            ))} */}
+            {(activeTab === "permissions" ? permissionStatusOptions : vacationStatusOptions).map((s) => (
+              <option key={s} value={s}>
+                {(activeTab === "permissions" ? permStatusLabels : vacStatusLabels)[s] ?? s}
               </option>
             ))}
           </select>

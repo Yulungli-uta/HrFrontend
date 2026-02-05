@@ -1,3 +1,4 @@
+// src/types/directoryParameter.ts
 export type DirectoryParameter = {
   directoryId: number;
   code: string;
@@ -12,3 +13,4 @@ export type DirectoryParameter = {
   updatedAt?: string | null;
   updatedBy?: number | null;
 };
+

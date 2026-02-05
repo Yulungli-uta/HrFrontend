@@ -606,7 +606,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // 3️⃣ Fallback fuerte: recarga completa en /login
         if (typeof window !== "undefined") {
           try {
-            window.location.href = "/login";
+            // winkdow.location.href = "/login";
+            window.location.replace(`${import.meta.env.BASE_URL}login`);
           } catch {
             // último recurso, pero prácticamente nunca llega aquí
           }
