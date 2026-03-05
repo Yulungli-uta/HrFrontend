@@ -524,15 +524,73 @@ export async function apiFetch<T = any>(
   }
 }
 // --------------------------------------------------------------------------
-// FÁBRICA DE SERVICIOS CRUD (EXISTENTE - SIN CAMBIOS)
+// TIPOS DE PAGINACIÓN
+// --------------------------------------------------------------------------
+
+/**
+ * Parámetros para solicitudes paginadas al backend.
+ * Corresponde al nuevo método GetPagedAsync del backend.
+ */
+export interface PagedRequest {
+  /** Número de página (base 1). */
+  page: number;
+  /** Cantidad de registros por página. */
+  pageSize: number;
+  /** Campo por el que ordenar (opcional). */
+  sortBy?: string;
+  /** Dirección del orden: 'asc' | 'desc' (opcional). */
+  sortDirection?: 'asc' | 'desc';
+}
+
+/**
+ * Respuesta paginada del backend.
+ * Corresponde al DTO PagedResult<T> del backend.
+ */
+export interface PagedResult<T> {
+  /** Lista de registros de la página actual. */
+  items: T[];
+  /** Número de página actual (base 1). */
+  page: number;
+  /** Cantidad de registros por página. */
+  pageSize: number;
+  /** Total de registros en la base de datos. */
+  totalCount: number;
+  /** Total de páginas calculadas. */
+  totalPages: number;
+  /** Indica si existe una página anterior. */
+  hasPreviousPage: boolean;
+  /** Indica si existe una página siguiente. */
+  hasNextPage: boolean;
+}
+
+// --------------------------------------------------------------------------
+// FÁBRICA DE SERVICIOS CRUD (EXTENDIDA CON PAGINACIÓN)
 // --------------------------------------------------------------------------
 
 export function createApiService<Resource, CreateDTO, UpdateDTO = Partial<Resource>>(
   endpoint: string
 ) {
   return {
+    /**
+     * Obtiene todos los registros sin paginación.
+     * @deprecated Usar listPaged() para listas grandes. Mantener para catálogos pequeños.
+     */
     list: (): Promise<ApiResponse<Resource[]>> =>
       apiFetch<Resource[]>(endpoint),
+
+    /**
+     * Obtiene registros paginados desde el backend.
+     * Usa el nuevo endpoint GET /endpoint?page=1&pageSize=20
+     */
+    listPaged: (params: PagedRequest): Promise<ApiResponse<PagedResult<Resource>>> => {
+      const qs = new URLSearchParams({
+        page: String(params.page),
+        pageSize: String(params.pageSize),
+        ...(params.sortBy ? { sortBy: params.sortBy } : {}),
+        ...(params.sortDirection ? { sortDirection: params.sortDirection } : {})
+      });
+      return apiFetch<PagedResult<Resource>>(`${endpoint}/paged?${qs.toString()}`);
+    },
 
     get: (id: number | string): Promise<ApiResponse<Resource>> =>
       apiFetch<Resource>(`${endpoint}/${id}`),

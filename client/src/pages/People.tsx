@@ -46,6 +46,8 @@ import {
   TiposReferenciaAPI,
 } from "@/lib/api";
 import type { ApiResponse } from "@/lib/api";
+import { usePaged } from "@/hooks/pagination/usePaged";
+import { DataPagination } from "@/components/ui/DataPagination";
 
 // Tipo que viene de la API
 interface ApiRefType {
@@ -139,33 +141,34 @@ export default function People() {
   const queryClient = useQueryClient();
 
   
-  // Personas
+  // ── Personas paginadas ───────────────────────────────────────────────────
   const {
-    data: peopleResponse,
+    items: people,
     isLoading: isLoadingPeople,
     isError: isErrorPeople,
-    error: errorPeople,
-  } = useQuery<ApiResponse<Person[]>>({
-    queryKey: ["people"],
-    queryFn: () => PersonasAPI.list(),
+    errorMessage: errorPeople,
+    page,
+    pageSize,
+    totalCount,
+    totalPages,
+    hasPreviousPage,
+    hasNextPage,
+    goToPage,
+    setPageSize,
+  } = usePaged<Person>({
+    queryKey: 'people',
+    queryFn: (params) => PersonasAPI.listPaged(params),
+    initialPageSize: 20,
   });
 
-  const people = useMemo(() => {
-    if (peopleResponse?.status === "success") {
-      return peopleResponse.data || [];
-    }
-    return [];
-  }, [peopleResponse]);
-
-  // Empleados
+  // ── Empleados (catálogo completo para stats - volumen bajo) ──────────────
   const {
     data: employeesResponse,
     isLoading: isLoadingEmployees,
-    isError: isErrorEmployees,
-    error: errorEmployees,
   } = useQuery<ApiResponse<Employee[]>>({
     queryKey: ["employees"],
     queryFn: () => EmpleadosAPI.list(),
+    staleTime: 5 * 60_000, // 5 minutos
   });
 
   const employees = useMemo(() => {
@@ -402,7 +405,7 @@ const stats = useMemo(() => {
     }
   }, [refTypesResponse]);
 
-  // Filtro + búsqueda
+  // Filtro local sobre la página actual (búsqueda en tiempo real)
   const filteredPeople = useMemo(() => {
     let filtered = people;
 
@@ -699,13 +702,18 @@ const stats = useMemo(() => {
             </div>
           </div>
 
-          {filteredPeople.length > 0 && (
-            <div className="flex items-center justify-between space-x-2 py-4">
-              <div className="text-sm text-muted-foreground">
-                Mostrando {filteredPeople.length} de {people.length} personas
-              </div>
-            </div>
-          )}
+          {/* Paginación */}
+          <DataPagination
+            page={page}
+            totalPages={totalPages}
+            totalCount={totalCount}
+            pageSize={pageSize}
+            hasPreviousPage={hasPreviousPage}
+            hasNextPage={hasNextPage}
+            onPageChange={goToPage}
+            onPageSizeChange={setPageSize}
+            disabled={isLoadingPeople}
+          />
         </CardContent>
       </Card>
     </div>
