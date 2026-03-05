@@ -9,6 +9,8 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ErrorBoundary } from "react-error-boundary";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { Loader2 } from "lucide-react";
+import { DocflowServiceProvider } from "@/services/docflow/docflow-service-context";
+import { DirectoryServiceProvider } from "@/services/docflow/directory-service-context";
 
 // Componentes críticos
 import Layout from "@/components/Layout";
@@ -82,6 +84,19 @@ const AttendanceSumaryReportPage = lazy(
 const ReportAuditPage = lazy(() => import("@/pages/reports/ReportAudit"));
 const AzureManagementPage = lazy(() => import("@/pages/admin/AzureManagement"));
 const JobexecutionPage = lazy(() => import("@/pages/admin/Jobexecution"));
+
+//Paginas de Docflow
+const DocFlowDashboard = lazy(() => import("@/pages/DocFlow/dashboard"));
+const Processes = lazy(() => import("@/pages/DocFlow/processes"));
+const InstancesList = lazy(() => import("@/pages/DocFlow/instances-list"));
+const InstanceDetail = lazy(() => import("@/pages/DocFlow/instance-detail"));
+const NewInstance = lazy(() => import("@/pages/DocFlow/new-instance"));
+const Audit = lazy(() => import("@/pages/DocFlow/audit"));
+const ProcessInstances = lazy(() => import("@/pages/DocFlow/process-instances"));
+const DynamicFields = lazy(() => import("@/pages/DocFlow/dynamic-fields"));
+const SearchInstances = lazy(() => import("@/pages/DocFlow/search-instances"));
+const InstanceHistory = lazy(() => import("@/pages/DocFlow/instance-history"));
+const GeneralSearch = lazy(() => import("@/pages/DocFlow/general-search"));
 
 // ============================================
 // Fallbacks
@@ -469,6 +484,139 @@ function AppRouter() {
               <ProtectedRoute requiredPath="/admin/Jobexecution">
                 <JobexecutionPage />
               </ProtectedRoute>
+            )}
+          </Route>
+
+          {/* ===== DocFlow ===== */}          
+          <Route path="/DocFlow/DocFlowDashboard">
+            {() => (
+              <DocflowServiceProvider>
+                <DirectoryServiceProvider>
+                  <ProtectedRoute requiredPath="/DocFlow/DocFlowDashboard">
+                    <DocFlowDashboard />
+                  </ProtectedRoute>
+                </DirectoryServiceProvider>
+              </DocflowServiceProvider>
+            )}
+          </Route>
+
+          <Route path="/DocFlow/expedientes/nuevo">
+            {() => (
+              <DocflowServiceProvider>
+                <DirectoryServiceProvider>
+                  <ProtectedRoute requiredPath="/DocFlow/expedientes">
+                    <NewInstance />
+                  </ProtectedRoute>
+                </DirectoryServiceProvider>
+              </DocflowServiceProvider>
+            )}
+          </Route>
+
+          <Route path="/DocFlow/expedientes/:id/historial">
+            {() => (
+              <DocflowServiceProvider>
+                <DirectoryServiceProvider>
+                  <ProtectedRoute requiredPath="/DocFlow/expedientes">
+                    <InstanceHistory />
+                  </ProtectedRoute>
+                </DirectoryServiceProvider>
+              </DocflowServiceProvider>
+            )}
+          </Route>
+
+          <Route path="/DocFlow/expedientes/:id">
+            {() => (
+              <DocflowServiceProvider>
+                <DirectoryServiceProvider>
+                  <ProtectedRoute requiredPath="/DocFlow/expedientes">
+                    <InstanceDetail />
+                  </ProtectedRoute>
+                </DirectoryServiceProvider>
+              </DocflowServiceProvider>
+            )}
+          </Route>
+
+          <Route path="/DocFlow/expedientes">
+            {() => (
+              <DocflowServiceProvider>
+                <DirectoryServiceProvider>
+                  <ProtectedRoute requiredPath="/DocFlow/expedientes">
+                    <InstancesList />
+                  </ProtectedRoute>
+                </DirectoryServiceProvider>
+              </DocflowServiceProvider>
+            )}
+          </Route>
+
+          <Route path="/DocFlow/procesos/:id/expedientes">
+            {() => (
+              <DocflowServiceProvider>
+                <DirectoryServiceProvider>
+                  <ProtectedRoute requiredPath="/DocFlow/procesos">
+                    <ProcessInstances />
+                  </ProtectedRoute>
+                </DirectoryServiceProvider>
+              </DocflowServiceProvider>
+            )}
+          </Route>
+
+          <Route path="/DocFlow/procesos">
+            {() => (
+              <DocflowServiceProvider>
+                <DirectoryServiceProvider>
+                  <ProtectedRoute requiredPath="/DocFlow/procesos">
+                    <Processes />
+                  </ProtectedRoute>
+                </DirectoryServiceProvider>
+              </DocflowServiceProvider>
+            )}
+          </Route>
+
+          <Route path="/DocFlow/busqueda">
+            {() => (
+              <DocflowServiceProvider>
+                <DirectoryServiceProvider>
+                  <ProtectedRoute requiredPath="/DocFlow/expedientes">
+                    <GeneralSearch />
+                  </ProtectedRoute>
+                </DirectoryServiceProvider>
+              </DocflowServiceProvider>
+            )}
+          </Route>
+
+          <Route path="/DocFlow/auditoria">
+            {() => (
+              <DocflowServiceProvider>
+                <DirectoryServiceProvider>
+                  <ProtectedRoute requiredPath="/DocFlow/auditoria">
+                    <Audit />
+                  </ProtectedRoute>
+                </DirectoryServiceProvider>
+              </DocflowServiceProvider>
+            )}
+          </Route>
+
+          <Route path="/DocFlow/buscar-expedientes">
+            {() => (
+              <DocflowServiceProvider>
+                <DirectoryServiceProvider>
+                  <ProtectedRoute requiredPath="/DocFlow/buscar-expedientes">
+                    <SearchInstances />
+                  </ProtectedRoute>
+                </DirectoryServiceProvider>
+              </DocflowServiceProvider>
+            )}
+          </Route>
+
+          <Route path="/DocFlow/campos-dinamicos">
+            {() => (
+              <DocflowServiceProvider>
+                <DirectoryServiceProvider>
+                  <ProtectedRoute requiredPath="/DocFlow/procesos">
+                    <DynamicFields />
+                  </ProtectedRoute>
+                </DirectoryServiceProvider>
+              </DocflowServiceProvider>
             )}
           </Route>
 

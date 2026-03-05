@@ -23,6 +23,8 @@ import type {
 
 } from '@/types/documents'
 
+import type { ContractDto, ContractsCreateDto } from "@/types/contract";
+
 export interface HolidayResponseDTO {
   holidayID: number;
   name: string;
@@ -1011,7 +1013,40 @@ export const AppAuthAPI = {
 export const PersonasAPI = createApiService<Person, InsertPerson>("/api/v1/rh/people");
 
 // Contratos API
-export const ContratosAPI = createApiService<Contract, InsertContract>("/api/v1/rh/contracts");
+// export const ContratosAPI = createApiService<Contract, InsertContract>("/api/v1/rh/contracts");
+// export const ContractsRHAPI = createApiService<ContractDto, ContractsCreateDto>("/api/v1/rh/contracts");
+// Extiende ContractsRHAPI con workflow/histórico/addendums
+export const ContractsRHAPI = {
+  // ... tus métodos existentes (list, create, update, etc.)
+  ...createApiService<HolidayResponseDTO, any>("/api/v1/rh/contracts"),
+  
+  allowedNextStatuses: (currentStatusTypeId: number) =>
+    apiFetch<number[]>(`/api/v1/rh/contracts/status/allowed?currentStatusTypeId=${currentStatusTypeId}`, { method: "GET" }),
+
+  changeStatus: (id: number, payload: { toStatusTypeID: number; comment?: string | null }) =>
+    apiFetch<void>(`/api/v1/rh/contracts/${id}/status`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  history: (id: number) =>
+    apiFetch<
+      ApiResponse<
+        Array<{
+          historyID: number;
+          contractID: number;
+          statusTypeID: number;
+          statusName?: string | null;
+          comment?: string | null;
+          changedAt: string;
+          changedBy?: number | null;
+        }>
+      >
+    >(`/api/v1/rh/contracts/${id}/history`, { method: "GET" }),
+
+  addendums: (id: number) =>
+    apiFetch<ApiResponse<any[]>>(`/api/v1/rh/contracts/${id}/addendums`, { method: "GET" }),
+};
 
 // Marcaciones API
 export const MarcacionesAPI = createApiService<AttendancePunch, InsertAttendancePunch>("/api/v1/rh/attendance/punches");
@@ -1297,6 +1332,8 @@ export const DepartamentosAPI = {
   },
 };
 
+
+
 // --------------------------------------------------------------------------
 // SERVICIOS CRUD EXISTENTES (SIN CAMBIOS)
 // --------------------------------------------------------------------------
@@ -1334,7 +1371,12 @@ export const ContractRequestAPI = createApiService<any, any>("/api/v1/rh/cv/cont
 export const FinancialCertificationAPI = createApiService<any, any>("/api/v1/rh/financial-certification");
 
 export const ActivityAPI = createApiService<any, any>("/api/v1/rh/activity");
-export const AdditionalActivityAPI = createApiService<any, any>("/api/v1/rh/additional-activity");
+export const AdditionalActivityAPI = {
+  ...createApiService<any, any>("/api/v1/rh/additional-activity"),
+    
+  getByContractId: (ContractId: number): Promise<ApiResponse<any>> =>   
+    apiFetch<any>(`/api/v1/rh/additional-activity/contract/${ContractId}`),
+};
 export const ContractTypeAPI = createApiService<any, any>("/api/v1/rh/contract-type");
 export const DegreeAPI = createApiService<any, any>("/api/v1/rh/degree");
 export const JobActivityAPI = createApiService<any, any>("/api/v1/rh/job-activity");

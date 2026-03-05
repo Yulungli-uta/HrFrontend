@@ -57,6 +57,7 @@ export default function Layout({ children }: LayoutProps) {
       <Sidebar
         onLogout={logout}
         collapsed={sidebarCollapsed}
+        onToggle={toggleSidebar}
       />
 
       <div className="flex-1 flex flex-col min-w-0">
