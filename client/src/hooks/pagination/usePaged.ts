@@ -56,7 +56,14 @@ export interface UsePagedResult<T> {
   setPageSize: (size: number) => void;
   /** Cambiar el campo de ordenamiento. */
   setSortBy: (field: string, direction?: 'asc' | 'desc') => void;
-  /** Parámetros actuales de paginación. */
+  /**
+   * Establecer el término de búsqueda para filtrar en el servidor.
+   * Resetea automáticamente a página 1 para evitar páginas inexistentes.
+   */
+  setSearch: (term: string) => void;
+  /** Limpiar el término de búsqueda y volver a la página 1. */
+  clearSearch: () => void;
+  /** Parámetros actuales de paginación (incluye search si está activo). */
   currentParams: PagedRequest;
 }
 
@@ -66,14 +73,18 @@ export interface UsePagedResult<T> {
 
 /**
  * Hook reutilizable para consumir endpoints paginados del backend.
+ * Soporta paginación, ordenamiento y búsqueda en servidor.
  *
  * Uso:
  * ```tsx
- * const { items, isLoading, totalCount, goToPage, nextPage } = usePaged<Employee>({
+ * const { items, isLoading, totalCount, goToPage, setSearch } = usePaged<Employee>({
  *   queryKey: 'employees',
  *   queryFn: (params) => EmpleadosAPI.listPaged(params),
  *   initialPageSize: 20,
  * });
+ *
+ * // Búsqueda en servidor (no filtra localmente)
+ * <input onChange={(e) => setSearch(e.target.value)} />
  * ```
  */
 export function usePaged<T>(options: UsePagedOptions<T>): UsePagedResult<T> {
@@ -97,7 +108,7 @@ export function usePaged<T>(options: UsePagedOptions<T>): UsePagedResult<T> {
 
   const normalizedKey = Array.isArray(queryKey) ? queryKey : [queryKey];
 
-  const { data, isLoading, isError, error } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: [...normalizedKey, params],
     queryFn: () => queryFn(params),
     placeholderData: keepPreviousData,
@@ -140,6 +151,22 @@ export function usePaged<T>(options: UsePagedOptions<T>): UsePagedResult<T> {
     setParams(prev => ({ ...prev, sortBy: field, sortDirection: direction, page: 1 }));
   }, []);
 
+  /**
+   * Envía el término de búsqueda al servidor y resetea a página 1.
+   * Si el término está vacío, elimina el filtro de búsqueda.
+   */
+  const setSearch = useCallback((term: string) => {
+    setParams(prev => ({
+      ...prev,
+      search: term.trim() || undefined,
+      page: 1, // Siempre volver a página 1 al buscar
+    }));
+  }, []);
+
+  const clearSearch = useCallback(() => {
+    setParams(prev => ({ ...prev, search: undefined, page: 1 }));
+  }, []);
+
   return {
     items: pagedData?.items ?? [],
     page: pagedData?.page ?? params.page,
@@ -156,6 +183,8 @@ export function usePaged<T>(options: UsePagedOptions<T>): UsePagedResult<T> {
     prevPage,
     setPageSize,
     setSortBy,
+    setSearch,
+    clearSearch,
     currentParams: params,
   };
 }

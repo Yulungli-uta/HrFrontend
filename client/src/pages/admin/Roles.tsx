@@ -74,7 +74,7 @@ export default function RolesPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [deleteRoleId, setDeleteRoleId] = useState<number | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
+  // searchTerm removed: búsqueda delegada al servidor via usePaged.setSearch
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -91,6 +91,9 @@ export default function RolesPage() {
     hasNextPage,
     goToPage,
     setPageSize,
+    setSearch,
+    clearSearch,
+    currentParams,
   } = usePaged<Role>({
     queryKey: 'roles',
     queryFn: (params) => RolesAPI.listPaged(params),
@@ -122,15 +125,8 @@ export default function RolesPage() {
   });
 
   // Filtrar roles por búsqueda (campos opcionales)
-  const filteredRoles = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase();
-    if (!term) return roles;
-    return roles.filter((r) => {
-      const name = (r.name ?? "").toLowerCase();
-      const desc = (r.description ?? "").toLowerCase();
-      return name.includes(term) || desc.includes(term);
-    });
-  }, [roles, searchTerm]);
+  // filteredRoles removed: el servidor ya filtra por search
+  const filteredRoles = roles;
 
   const handleEdit = (role: Role) => {
     setEditingRole(role);
@@ -233,8 +229,8 @@ export default function RolesPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
               placeholder="Buscar por nombre o descripción..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={currentParams.search ?? ""}
+              onChange={(e) => setSearch(e.target.value)}
               className="pl-10"
             />
           </div>
@@ -259,7 +255,7 @@ export default function RolesPage() {
               {filteredRoles.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                    {searchTerm ? "No se encontraron roles" : "No hay roles registrados"}
+                    {currentParams.search ? "No se encontraron roles" : "No hay roles registrados"}
                   </TableCell>
                 </TableRow>
               ) : (

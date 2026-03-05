@@ -567,6 +567,8 @@ export interface PagedRequest {
   sortBy?: string;
   /** Dirección del orden: 'asc' | 'desc' (opcional). */
   sortDirection?: 'asc' | 'desc';
+  /** Término de búsqueda para filtrar en el servidor (opcional). */
+  search?: string;
 }
 
 /**
@@ -613,7 +615,9 @@ export function createCrudService<TEntity, TInsert = TEntity, TUpdate = Partial<
         page: String(params.page),
         pageSize: String(params.pageSize),
         ...(params.sortBy ? { sortBy: params.sortBy } : {}),
-        ...(params.sortDirection ? { sortDirection: params.sortDirection } : {})
+        ...(params.sortDirection ? { sortDirection: params.sortDirection } : {}),
+        // Enviar search solo si tiene valor para no contaminar la URL
+        ...(params.search && params.search.trim() ? { search: params.search.trim() } : {})
       });
       return apiFetch<PagedResult<TEntity>>(`${basePath}/paged?${qs.toString()}`);
     },

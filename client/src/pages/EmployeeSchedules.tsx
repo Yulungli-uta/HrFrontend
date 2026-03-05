@@ -225,6 +225,8 @@ export default function EmployeeSchedules() {
     hasNextPage,
     goToPage,
     setPageSize,
+    setSearch,
+    currentParams,
   } = usePaged({
     queryKey: 'employee-details',
     queryFn: (params) => VistaDetallesEmpleadosAPI.listPaged(params),
@@ -306,28 +308,17 @@ export default function EmployeeSchedules() {
     return Object.values(counts).sort((a, b) => b.count - a.count);
   }, [employees, schedulesByEmployee]);
 
-  // Filtrado
+  // Filtro local: solo departamento y estado (el texto se filtra en servidor via setSearch)
   const filteredEmployees = useMemo(() => {
     return employees.filter((emp) => {
-      const q = filters.q.trim().toLowerCase();
-      const matchesSearch =
-        !q ||
-        emp.fullName.toLowerCase().includes(q) ||
-        emp.email?.toLowerCase().includes(q) ||
-        emp.idCard?.toLowerCase().includes(q) ||
-        (emp as any).scheduleName?.toLowerCase?.().includes(q) ||
-        emp.contractType?.toLowerCase?.().includes(q);
-
       const matchesDepartment =
         filters.department === "all" || emp.departmentName === filters.department;
-
       const hasActiveSchedule = schedulesByEmployee[emp.employeeID] != null;
       const matchesStatus =
         filters.status === "all" ||
         (filters.status === "withSchedule" && hasActiveSchedule) ||
         (filters.status === "withoutSchedule" && !hasActiveSchedule);
-
-      return matchesSearch && matchesDepartment && matchesStatus;
+      return matchesDepartment && matchesStatus;
     });
   }, [employees, filters, schedulesByEmployee]);
 
@@ -566,8 +557,8 @@ export default function EmployeeSchedules() {
                 <Search className="h-4 w-4 text-gray-500" />
                 <Input
                   placeholder="Nombre, email, cédula, horario o contrato..."
-                  value={filters.q}
-                  onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value }))}
+                  value={currentParams.search ?? ""}
+                  onChange={(e) => setSearch(e.target.value)}
                 />
               </div>
             </div>
@@ -616,7 +607,7 @@ export default function EmployeeSchedules() {
             <div className="lg:self-end">
               <Button
                 variant="outline"
-                onClick={() => setFilters({ q: "", department: "all", status: "all" })}
+                onClick={() => { setSearch(""); setFilters({ q: "", department: "all", status: "all" }); }}
               >
                 Limpiar
               </Button>
@@ -649,7 +640,7 @@ export default function EmployeeSchedules() {
                   <Button
                     variant="outline"
                     onClick={() =>
-                      setFilters({ q: "", department: "all", status: "all" })
+                      setSearch(""); setFilters({ q: "", department: "all", status: "all" })
                     }
                   >
                     Limpiar filtros

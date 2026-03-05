@@ -132,7 +132,7 @@ const PersonCard = ({
 
 export default function People() {
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
+  // searchTerm removed: búsqueda delegada al servidor via usePaged.setSearch
   const [editingPerson, setEditingPerson] = useState<Person | undefined>();
   const [activeFilter, setActiveFilter] =
     useState<"all" | "active" | "inactive">("all");
@@ -155,6 +155,9 @@ export default function People() {
     hasNextPage,
     goToPage,
     setPageSize,
+    setSearch,
+    clearSearch,
+    currentParams,
   } = usePaged<Person>({
     queryKey: 'people',
     queryFn: (params) => PersonasAPI.listPaged(params),
@@ -405,30 +408,13 @@ const stats = useMemo(() => {
     }
   }, [refTypesResponse]);
 
-  // Filtro local sobre la página actual (búsqueda en tiempo real)
+  // Filtro local solo por estado activo/inactivo (el texto ya se filtra en servidor)
   const filteredPeople = useMemo(() => {
-    let filtered = people;
-
-    if (activeFilter === "active") {
-      filtered = filtered.filter((p) => p.isActive);
-    } else if (activeFilter === "inactive") {
-      filtered = filtered.filter((p) => !p.isActive);
-    }
-
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (p) =>
-          p.firstName.toLowerCase().includes(term) ||
-          p.lastName.toLowerCase().includes(term) ||
-          p.idCard.toLowerCase().includes(term) ||
-          p.email.toLowerCase().includes(term) ||
-          (p.phone && p.phone.toLowerCase().includes(term))
-      );
-    }
-
-    return filtered;
-  }, [people, searchTerm, activeFilter]);
+    if (activeFilter === "all") return people;
+    return people.filter((p) =>
+      activeFilter === "active" ? p.isActive : !p.isActive
+    );
+  }, [people, activeFilter]);
 
   return (
     <div className="space-y-6 p-4 md:p-6">
@@ -581,15 +567,15 @@ const stats = useMemo(() => {
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Buscar por cédula, nombre o email..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  value={currentParams.search ?? ""}
+                  onChange={(e) => setSearch(e.target.value)}
                   className="pl-8 pr-8"
                   data-testid="input-search-people"
                 />
-                {searchTerm && (
+                {currentParams.search && (
                   <X
                     className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground cursor-pointer"
-                    onClick={() => setSearchTerm("")}
+                    onClick={() => clearSearch()}
                   />
                 )}
               </div>

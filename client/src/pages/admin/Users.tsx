@@ -71,7 +71,7 @@ export default function UsersPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
+  // searchTerm removed: búsqueda delegada al servidor via usePaged.setSearch
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -88,6 +88,9 @@ export default function UsersPage() {
     hasNextPage,
     goToPage,
     setPageSize,
+    setSearch,
+    clearSearch,
+    currentParams,
   } = usePaged<User>({
     queryKey: 'auth-users',
     queryFn: (params) => AuthUsersAPI.listPaged(params),
@@ -119,15 +122,8 @@ export default function UsersPage() {
   });
 
   // Filtrado seguro
-  const filteredUsers = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase();
-    if (!term) return users;
-    return users.filter((u) => {
-      const email = (u.email ?? "").toLowerCase();
-      const name = (u.displayName ?? "").toLowerCase();
-      return email.includes(term) || name.includes(term);
-    });
-  }, [users, searchTerm]);
+  // filteredUsers removed: el servidor ya filtra por search
+  const filteredUsers = users;
 
   const handleEdit = (user: User) => {
     setEditingUser(user);
@@ -230,8 +226,8 @@ export default function UsersPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
               placeholder="Buscar por email o nombre..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={currentParams.search ?? ""}
+              onChange={(e) => setSearch(e.target.value)}
               className="pl-10"
             />
           </div>
@@ -256,7 +252,7 @@ export default function UsersPage() {
               {filteredUsers.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                    {searchTerm ? "No se encontraron usuarios" : "No hay usuarios registrados"}
+                    {currentParams.search ? "No se encontraron usuarios" : "No hay usuarios registrados"}
                   </TableCell>
                 </TableRow>
               ) : (
