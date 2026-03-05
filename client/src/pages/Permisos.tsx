@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { CalendarCheck, Plus, Check, X } from "lucide-react";
 import { PermisosAPI, VacacionesAPI, PersonasAPI } from "@/lib/api";
+import { usePaged } from "@/hooks/pagination/usePaged";
+import { DataPagination } from "@/components/ui/DataPagination";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import PermisoForm from "@/components/forms/PermisoForm";
@@ -22,14 +24,38 @@ export default function Permisos() {
     queryFn: PersonasAPI.list,
   });
 
-  const { data: permisos = [], isLoading: permisosLoading } = useQuery({
-    queryKey: ["/api/v1/rh/permisos"],
-    queryFn: () => PermisosAPI.list(),
+  const {
+    items: permisos,
+    isLoading: permisosLoading,
+    page: permisosPage,
+    pageSize: permisosPageSize,
+    totalCount: permisosTotal,
+    totalPages: permisosTotalPages,
+    hasPreviousPage: permisosHasPrev,
+    hasNextPage: permisosHasNext,
+    goToPage: permisosGoToPage,
+    setPageSize: permisosSetPageSize,
+  } = usePaged<Permiso>({
+    queryKey: 'permisos',
+    queryFn: (params) => PermisosAPI.listPaged(params),
+    initialPageSize: 20,
   });
 
-  const { data: vacaciones = [], isLoading: vacacionesLoading } = useQuery({
-    queryKey: ["/api/v1/rh/vacaciones"],
-    queryFn: () => VacacionesAPI.list(),
+  const {
+    items: vacaciones,
+    isLoading: vacacionesLoading,
+    page: vacacionesPage,
+    pageSize: vacacionesPageSize,
+    totalCount: vacacionesTotal,
+    totalPages: vacacionesTotalPages,
+    hasPreviousPage: vacacionesHasPrev,
+    hasNextPage: vacacionesHasNext,
+    goToPage: vacacionesGoToPage,
+    setPageSize: vacacionesSetPageSize,
+  } = usePaged<Vacacion>({
+    queryKey: 'vacaciones',
+    queryFn: (params) => VacacionesAPI.listPaged(params),
+    initialPageSize: 20,
   });
 
   const updatePermisoMutation = useMutation({
@@ -271,8 +297,36 @@ export default function Permisos() {
                   </Table>
                 </div>
               )}
+              {/* Paginación Vacaciones */}
+              {activeTab === 'vacaciones' && (
+                <DataPagination
+                  page={vacacionesPage}
+                  totalPages={vacacionesTotalPages}
+                  totalCount={vacacionesTotal}
+                  pageSize={vacacionesPageSize}
+                  hasPreviousPage={vacacionesHasPrev}
+                  hasNextPage={vacacionesHasNext}
+                  onPageChange={vacacionesGoToPage}
+                  onPageSizeChange={vacacionesSetPageSize}
+                  disabled={vacacionesLoading}
+                />
+              )}
             </CardContent>
           </Card>
+        )}
+        {/* Paginación Permisos */}
+        {activeTab === 'permisos' && (
+          <DataPagination
+            page={permisosPage}
+            totalPages={permisosTotalPages}
+            totalCount={permisosTotal}
+            pageSize={permisosPageSize}
+            hasPreviousPage={permisosHasPrev}
+            hasNextPage={permisosHasNext}
+            onPageChange={permisosGoToPage}
+            onPageSizeChange={permisosSetPageSize}
+            disabled={permisosLoading}
+          />
         )}
       </div>
     </>

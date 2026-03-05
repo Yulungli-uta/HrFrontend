@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { usePaged } from "@/hooks/pagination/usePaged";
+import { DataPagination } from "@/components/ui/DataPagination";
 import {
   Card,
   CardContent,
@@ -210,15 +212,23 @@ export default function EmployeeSchedules() {
     status: "all",
   });
 
-  // Consulta para empleados
+  // Consulta para empleados con paginación
   const {
-    data: employeesRes,
+    items: employees,
     isLoading: loadingEmployees,
-    error: employeesError,
-  } = useQuery({
-    queryKey: ["employee-details"],
-    queryFn: async () => await VistaDetallesEmpleadosAPI.list(),
-    retry: 2,
+    isError: employeesError,
+    page,
+    pageSize,
+    totalCount,
+    totalPages,
+    hasPreviousPage,
+    hasNextPage,
+    goToPage,
+    setPageSize,
+  } = usePaged({
+    queryKey: 'employee-details',
+    queryFn: (params) => VistaDetallesEmpleadosAPI.listPaged(params),
+    initialPageSize: 25,
   });
 
   // NUEVA CONSULTA: Obtener todos los horarios disponibles
@@ -232,11 +242,7 @@ export default function EmployeeSchedules() {
     retry: 2,
   });
 
-  // Normalización
-  const employees: Employee[] = useMemo(() => {
-    const data = getArray<any>(employeesRes);
-    return data.map(normalizeEmployee).filter((e) => e.employeeID != null);
-  }, [employeesRes]);
+  // Nota: employees ya viene del backend paginado; se usa directamente en los useMemo siguientes.
 
   // NUEVO: Normalización de todos los horarios disponibles
   const allSchedules: Schedule[] = useMemo(() => {
@@ -783,6 +789,19 @@ export default function EmployeeSchedules() {
         employeeSchedule={selectedEmployeeSchedule}
         schedules={schedules}
         onScheduleUpdated={handleScheduleUpdated}
+      />
+
+      {/* Paginación */}
+      <DataPagination
+        page={page}
+        totalPages={totalPages}
+        totalCount={totalCount}
+        pageSize={pageSize}
+        hasPreviousPage={hasPreviousPage}
+        hasNextPage={hasNextPage}
+        onPageChange={goToPage}
+        onPageSizeChange={setPageSize}
+        disabled={loadingEmployees}
       />
     </div>
   );

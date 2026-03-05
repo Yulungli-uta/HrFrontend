@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Filter, FileText, User, Building2, Calendar } from "lucide-react";
 
-import { ContractsRHAPI, type ApiResponse } from "@/lib/api";
+import { ContractsRHAPI } from "@/lib/api";
+import { usePaged } from "@/hooks/pagination/usePaged";
+import { DataPagination } from "@/components/ui/DataPagination";
 import type { ContractDto } from "@/types/contract";
 import { ContractDialog } from "@/components/contracts/ContractDialog";
 import { useContractLookups } from "@/hooks/contracts/useContractLookups";
@@ -19,16 +20,25 @@ export default function ContractsPage() {
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  const queryKey = ["contracts-rh"] as const;
-
-  const { data, isLoading, error } = useQuery<ApiResponse<ContractDto[]>>({
-    queryKey,
-    queryFn: () => ContractsRHAPI.list(),
+  const {
+    items: contracts,
+    isLoading,
+    isError,
+    page,
+    pageSize,
+    totalCount,
+    totalPages,
+    hasPreviousPage,
+    hasNextPage,
+    goToPage,
+    setPageSize,
+  } = usePaged<ContractDto>({
+    queryKey: 'contracts-rh',
+    queryFn: (params) => ContractsRHAPI.listPaged(params),
+    initialPageSize: 20,
   });
 
   const lookups = useContractLookups({ enabled: true });
-
-  const contracts = data?.status === "success" ? data.data : [];
 
   // Mapeos para mostrar etiquetas
   const peopleById = useMemo(() => {
@@ -129,7 +139,7 @@ export default function ContractsPage() {
     );
   }
 
-  if (error || data?.status === "error") {
+  if (isError) {
     return (
       <div className="container mx-auto p-4 md:p-6">
         <Card className="border-red-200 bg-red-50">
@@ -420,6 +430,19 @@ export default function ContractsPage() {
           ))
         )}
       </div>
+
+      {/* Paginación */}
+      <DataPagination
+        page={page}
+        totalPages={totalPages}
+        totalCount={totalCount}
+        pageSize={pageSize}
+        hasPreviousPage={hasPreviousPage}
+        hasNextPage={hasNextPage}
+        onPageChange={goToPage}
+        onPageSizeChange={setPageSize}
+        disabled={isLoading}
+      />
 
       <ContractDialog
         open={open}

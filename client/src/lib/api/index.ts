@@ -8,7 +8,7 @@
 // =============================================================================
 
 export { apiFetch, createCrudService, API_CONFIG } from './client';
-export type { ApiResponse, ApiError } from './client';
+export type { ApiResponse, ApiError, PagedRequest, PagedResult } from './client';
 
 // =============================================================================
 // APIs de Autenticación y Gestión de Usuarios

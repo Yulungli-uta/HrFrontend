@@ -45,7 +45,7 @@ import {
   EmpleadosAPI,
   TiposReferenciaAPI,
 } from "@/lib/api";
-import type { ApiResponse } from "@/lib/api";
+import type { ApiResponse } from "@/lib/api/client";
 import { usePaged } from "@/hooks/pagination/usePaged";
 import { DataPagination } from "@/components/ui/DataPagination";
 

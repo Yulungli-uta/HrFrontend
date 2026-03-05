@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
-import type { PagedRequest, PagedResult, ApiResponse } from '@/lib/api';
+import type { PagedRequest, PagedResult, ApiResponse } from '@/lib/api/client';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tipos

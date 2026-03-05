@@ -1,6 +1,6 @@
 // src/pages/admin/Roles.tsx
 import { useMemo, useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,8 @@ import {
 import { Shield, Plus, Edit, Trash2, Search } from "lucide-react";
 import { RolesAPI } from "@/lib/api/auth";
 import type { ApiResponse } from "@/lib/api/client";
+import { usePaged } from "@/hooks/pagination/usePaged";
+import { DataPagination } from "@/components/ui/DataPagination";
 import type { Role } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
 import RoleForm from "@/components/forms/RoleForm";
@@ -76,32 +78,23 @@ export default function RolesPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Obtener lista de roles y normalizarla SIEMPRE a Role[]
+  // Obtener roles paginados
   const {
-    data: roles = [],
+    items: roles,
     isLoading,
-    error,
-  } = useQuery<ApiResponse<unknown>, Error, Role[]>({
-    queryKey: ["roles"],
-    queryFn: async () => {
-      const res = await RolesAPI.list();
-      // Deja este log mientras estabilizas el contrato del backend
-      // eslint-disable-next-line no-console
-      console.debug("[RolesPage] RolesAPI.list() raw:", res);
-      return res;
-    },
-    select: (res) => {
-      if (!res) return [];
-      // @ts-ignore
-      if ("status" in res && res.status !== "success") {
-        // @ts-ignore
-        const message = res?.error?.message || "No se pudo obtener la lista de roles";
-        toast({ title: "Error", description: message, variant: "destructive" });
-        return [];
-      }
-      // @ts-ignore
-      return coerceToRoleArray(res.data);
-    },
+    isError,
+    page,
+    pageSize,
+    totalCount,
+    totalPages,
+    hasPreviousPage,
+    hasNextPage,
+    goToPage,
+    setPageSize,
+  } = usePaged<Role>({
+    queryKey: 'roles',
+    queryFn: (params) => RolesAPI.listPaged(params),
+    initialPageSize: 20,
   });
 
   // Mutación para eliminar rol
@@ -313,6 +306,19 @@ export default function RolesPage() {
       </Card>
 
       {/* Confirmación de eliminación */}
+      {/* Paginación */}
+      <DataPagination
+        page={page}
+        totalPages={totalPages}
+        totalCount={totalCount}
+        pageSize={pageSize}
+        hasPreviousPage={hasPreviousPage}
+        hasNextPage={hasNextPage}
+        onPageChange={goToPage}
+        onPageSizeChange={setPageSize}
+        disabled={isLoading}
+      />
+
       <AlertDialog open={!!deleteRoleId} onOpenChange={() => setDeleteRoleId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

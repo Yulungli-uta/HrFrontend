@@ -1,6 +1,6 @@
 // src/pages/admin/Users.tsx
 import { useMemo, useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,8 @@ import {
 import { Users as UsersIcon, Plus, Edit, Trash2, Search } from "lucide-react";
 import { AuthUsersAPI } from "@/lib/api/auth";
 import type { ApiResponse } from "@/lib/api/client";
+import { usePaged } from "@/hooks/pagination/usePaged";
+import { DataPagination } from "@/components/ui/DataPagination";
 import type { User } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
 import UserForm from "@/components/forms/UserForm";
@@ -73,30 +75,23 @@ export default function UsersPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Obtener y normalizar lista de usuarios
+  // Obtener usuarios paginados
   const {
-    data: users = [],
+    items: users,
     isLoading,
-    error,
-  } = useQuery<ApiResponse<unknown>, Error, User[]>({
-    queryKey: ["auth-users"],
-    queryFn: async () => {
-      const res = await AuthUsersAPI.list();
-      console.debug("[UsersPage] AuthUsersAPI.list() raw:", res);
-      return res;
-    },
-    select: (res) => {
-      if (!res) return [];
-      // @ts-ignore
-      if ("status" in res && res.status !== "success") {
-        // @ts-ignore
-        const message = res?.error?.message || "No se pudo obtener la lista de usuarios";
-        toast({ title: "Error", description: message, variant: "destructive" });
-        return [];
-      }
-      // @ts-ignore
-      return coerceToUserArray(res.data);
-    },
+    isError,
+    page,
+    pageSize,
+    totalCount,
+    totalPages,
+    hasPreviousPage,
+    hasNextPage,
+    goToPage,
+    setPageSize,
+  } = usePaged<User>({
+    queryKey: 'auth-users',
+    queryFn: (params) => AuthUsersAPI.listPaged(params),
+    initialPageSize: 20,
   });
 
   // Mutación para eliminar usuario
@@ -308,6 +303,19 @@ export default function UsersPage() {
       </Card>
 
       {/* Confirmación de eliminación */}
+      {/* Paginación */}
+      <DataPagination
+        page={page}
+        totalPages={totalPages}
+        totalCount={totalCount}
+        pageSize={pageSize}
+        hasPreviousPage={hasPreviousPage}
+        hasNextPage={hasNextPage}
+        onPageChange={goToPage}
+        onPageSizeChange={setPageSize}
+        disabled={isLoading}
+      />
+
       <AlertDialog open={!!deleteUserId} onOpenChange={() => setDeleteUserId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

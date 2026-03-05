@@ -10,7 +10,7 @@
  */
 
 import { apiFetch } from './client';
-import type { ApiResponse } from './client';
+import type { ApiResponse, PagedRequest, PagedResult } from './client';
 
 import type {
   User,
@@ -244,6 +244,18 @@ export const AuthUsersAPI = {
     return res;
   },
 
+  /**
+   * Obtiene usuarios paginados, compatible con el hook usePaged.
+   * Mapea PagedRequest al formato que ya acepta el endpoint /api/users.
+   */
+  listPaged: async (params: PagedRequest): Promise<ApiResponse<PagedResult<User>>> => {
+    const raw = await apiFetch<PagedResult<User>>(
+      `/api/users/paged${serializeQuery({ page: params.page, pageSize: params.pageSize, sortBy: params.sortBy, sortDirection: params.sortDirection })}`,
+      { method: 'GET' }
+    );
+    return ensureApiResponse<PagedResult<User>>(raw);
+  },
+
   get: (id: string): Promise<ApiResponse<User>> =>
     apiFetch<User>(`/api/users/${encodeURIComponent(id)}`, { method: 'GET' }),
 
@@ -305,6 +317,17 @@ export const RolesAPI = {
 
   delete: (id: number): Promise<ApiResponse<void>> =>
     apiFetch<void>(`/api/roles/${toInt(id)}`, { method: 'DELETE' }),
+
+  /**
+   * Obtiene roles paginados, compatible con el hook usePaged.
+   */
+  listPaged: async (params: PagedRequest): Promise<ApiResponse<PagedResult<Role>>> => {
+    const raw = await apiFetch<PagedResult<Role>>(
+      `/api/roles/paged${serializeQuery({ page: params.page, pageSize: params.pageSize, sortBy: params.sortBy, sortDirection: params.sortDirection })}`,
+      { method: 'GET' }
+    );
+    return ensureApiResponse<PagedResult<Role>>(raw);
+  },
 
   // Alias para compatibilidad con UI que invoca remove()
   remove(id: number) {

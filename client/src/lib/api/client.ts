@@ -550,11 +550,74 @@ export async function apiFetch<T = any>(
 // Funciones auxiliares para CRUD
 // =============================================================================
 
+// =============================================================================
+// Tipos de Paginación
+// =============================================================================
+
+/**
+ * Parámetros para solicitudes paginadas al backend.
+ * Corresponde al nuevo método GetPagedAsync del backend.
+ */
+export interface PagedRequest {
+  /** Número de página (base 1). */
+  page: number;
+  /** Cantidad de registros por página. */
+  pageSize: number;
+  /** Campo por el que ordenar (opcional). */
+  sortBy?: string;
+  /** Dirección del orden: 'asc' | 'desc' (opcional). */
+  sortDirection?: 'asc' | 'desc';
+}
+
+/**
+ * Respuesta paginada del backend.
+ * Corresponde al DTO PagedResult<T> del backend.
+ */
+export interface PagedResult<T> {
+  /** Lista de registros de la página actual. */
+  items: T[];
+  /** Número de página actual (base 1). */
+  page: number;
+  /** Cantidad de registros por página. */
+  pageSize: number;
+  /** Total de registros en la base de datos. */
+  totalCount: number;
+  /** Total de páginas calculadas. */
+  totalPages: number;
+  /** Indica si existe una página anterior. */
+  hasPreviousPage: boolean;
+  /** Indica si existe una página siguiente. */
+  hasNextPage: boolean;
+}
+
+// =============================================================================
+// Fábrica de servicios CRUD
+// =============================================================================
+
 export function createCrudService<TEntity, TInsert = TEntity, TUpdate = Partial<TInsert>>(
   basePath: string
 ) {
   return {
+    /**
+     * Obtiene todos los registros sin paginación.
+     * @deprecated Usar listPaged() para listas grandes. Mantener para catálogos pequeños.
+     */
     list: () => apiFetch<TEntity[]>(basePath),
+
+    /**
+     * Obtiene registros paginados desde el backend.
+     * Usa el endpoint GET /basePath/paged?page=1&pageSize=20
+     */
+    listPaged: (params: PagedRequest): Promise<ApiResponse<PagedResult<TEntity>>> => {
+      const qs = new URLSearchParams({
+        page: String(params.page),
+        pageSize: String(params.pageSize),
+        ...(params.sortBy ? { sortBy: params.sortBy } : {}),
+        ...(params.sortDirection ? { sortDirection: params.sortDirection } : {})
+      });
+      return apiFetch<PagedResult<TEntity>>(`${basePath}/paged?${qs.toString()}`);
+    },
+
     get: (id: string | number) => apiFetch<TEntity>(`${basePath}/${id}`),
     create: (data: TInsert) => apiFetch<TEntity>(basePath, {
       method: 'POST',
