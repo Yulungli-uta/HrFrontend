@@ -75,6 +75,7 @@ import { useDocflowService } from "@/services/docflow/docflow-service-context";
 import { DirectorySelect } from "@/components/docflow/directory-select";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { parseApiError } from '@/lib/error-handling';
 
 const NO_PARENT_VALUE = "__none__";
 
@@ -175,10 +176,10 @@ function ProcessDialog({
       }
       onSaved();
       onOpenChange(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         title: "Error",
-        description: err?.message || "No se pudo guardar el proceso",
+        description: parseApiError(err).message,
         variant: "destructive",
       });
     } finally {
@@ -391,10 +392,10 @@ function RuleDialog({
       }
       onSaved();
       onOpenChange(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         title: "Error",
-        description: err?.message || "No se pudo guardar la regla",
+        description: parseApiError(err).message,
         variant: "destructive",
       });
     } finally {
@@ -534,10 +535,10 @@ function RulesSection({
         description: `"${deleteConfirm.docTypeName}" fue eliminada`,
       });
       onRefresh();
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         title: "Error",
-        description: err?.message || "No se pudo eliminar la regla",
+        description: parseApiError(err).message,
         variant: "destructive",
       });
     }

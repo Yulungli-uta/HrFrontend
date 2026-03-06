@@ -639,9 +639,9 @@ export default function EmployeeSchedules() {
                   </p>
                   <Button
                     variant="outline"
-                    onClick={() =>
-                      setSearch(""); setFilters({ q: "", department: "all", status: "all" })
-                    }
+                    onClick={() => {
+                      setSearch(""); setFilters({ q: "", department: "all", status: "all" });
+                    }}
                   >
                     Limpiar filtros
                   </Button>

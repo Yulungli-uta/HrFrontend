@@ -502,16 +502,16 @@ export async function apiFetch<T = any>(
       error: apiError,
     };
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     clearTimeout(timeoutId);
     const duration = Date.now() - startTime;
 
     const networkError: ApiError = {
       code: 0,
       message:
-        error?.name === "AbortError"
+        (error as Error)?.name === "AbortError"
           ? "Request timed out"
-          : `Network error: ${error?.message || "Unknown error"}`,
+          : `Network error: ${(error as Error)?.message || "Unknown error"}`,
     };
 
     // 🆕 Log de error de red
@@ -1377,12 +1377,12 @@ export const DepartamentosAPI = {
     try {
       const response = await api.put(`/api/v1/rh/departments/${id}`, data);
       return { status: "success", data: response.data };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return { 
         status: "error", 
-        error: error.response?.data || { 
+        error: (error as any).response?.data || { 
           title: 'Error de red', 
-          status: error.response?.status || 500,
+          status: (error as any).response?.status || 500,
           detail: 'No se pudo conectar con el servidor'
         } 
       };
@@ -1502,8 +1502,8 @@ export const FileManagementAPI = {
 
       const data = await resp.json();
       return { status: "success", data };
-    } catch (e: any) {
-      return { status: "error", error: { code: 0, message: e?.message || "Network error" } };
+    } catch (e: unknown) {
+      return { status: "error", error: { code: 0, message: parseApiError(e).message } };
     }
   },
 
@@ -1538,8 +1538,8 @@ export const FileManagementAPI = {
 
       const data = await resp.json();
       return { status: "success", data };
-    } catch (e: any) {
-      return { status: "error", error: { code: 0, message: e?.message || "Network error" } };
+    } catch (e: unknown) {
+      return { status: "error", error: { code: 0, message: parseApiError(e).message } };
     }
   },
 
@@ -1575,10 +1575,10 @@ export const FileManagementAPI = {
 
       const blob = await resp.blob();
       return { status: "success", data: blob };
-    } catch (e: any) {
+    } catch (e: unknown) {
       return {
         status: "error",
-        error: { code: 0, message: e?.message || "Network error" }
+        error: { code: 0, message: parseApiError(e).message }
       };
     }
   },
@@ -1767,6 +1767,7 @@ import type {
   ChangePasswordDto, ChangePasswordResponse
 } from '@/types/auth';
 import { get } from 'react-hook-form';
+import { parseApiError } from '@/lib/error-handling';
 
 // (Bloque de APIs comentadas se mantiene sin cambios)
 /*

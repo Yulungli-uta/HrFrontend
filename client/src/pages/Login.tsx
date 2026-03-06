@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/tabs";
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
+import { parseApiError } from '@/lib/error-handling';
 
 const DEBUG = import.meta.env.VITE_DEBUG_AUTH === "true";
 
@@ -80,12 +81,12 @@ export default function LoginPage() {
       DEBUG && console.log("✅ Login local exitoso (login() devolvió true)");
       // La redirección la hace el useEffect cuando isAuthenticated cambie a true
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("❌ Error inesperado en login local:", error);
       toast({
         title: "Error de autenticación",
         description:
-          error?.message || "Ocurrió un error durante el inicio de sesión.",
+          parseApiError(error).message,
         variant: "destructive"
       });
     } finally {

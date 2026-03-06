@@ -17,6 +17,7 @@ import { MarcacionesAPI, MarcacionesEspecializadasAPI, handleApiError, TimeAPI }
 import { useAuth } from "@/contexts/AuthContext";
 import { isMobile, isTablet, isBrowser } from 'react-device-detect';
 import { PunchTable } from "@/components/forms/PunchTable";
+import { parseApiError } from '@/lib/error-handling';
 
 // =========================
 // Utilidades y constantes
@@ -382,22 +383,13 @@ export default function AttendancePage() {
       queryClient.setQueryData(['/api/v1/rh/attendance/punches', employeeId, TODAY_KEY], [...prev, optimistic]);
       return { prev } as const;
     },
-    onError: (error: any, _vars, ctx) => {
+    onError: (error: unknown, _vars, ctx) => {
       if (ctx?.prev) queryClient.setQueryData(['/api/v1/rh/attendance/punches', employeeId, TODAY_KEY], ctx.prev);
-
-      let errorMessage = "Error al registrar marcación. Por favor, intente nuevamente.";
-      if (error?.code === 400 && error.details?.errors) {
-        const validationErrors = error.details.errors;
-        const messages = Object.entries(validationErrors).map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}`);
+      const apiErr = parseApiError(error);
+      let errorMessage = apiErr.message;
+      if (apiErr.status === 400 && apiErr.details && apiErr.details.length > 0) {
+        const messages = apiErr.details.map(d => d.field ? `${d.field}: ${d.message}` : d.message);
         errorMessage = `Errores de validación: ${messages.join('; ')}`;
-      } else if (error?.details?.message) {
-        errorMessage = error.details.message;
-      } else if (error?.details?.error) {
-        errorMessage = error.details.error;
-      } else if (typeof error?.details === 'string') {
-        errorMessage = error.details;
-      } else if (error?.message) {
-        errorMessage = error.message;
       }
       toast({ title: "Error al registrar marcación", description: errorMessage, variant: "destructive" });
     },

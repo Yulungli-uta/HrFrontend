@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { JustificationsAPI, HorariosAPI, TiposReferenciaAPI, handleApiError } from "@/lib/api";
 import { getBossFromEmployeeDetails } from "@/helpers/AuthBoss";
+import { parseApiError } from '@/lib/error-handling';
 
 /** ------------- Helpers de fecha/hora (LOCAL, sin convertir a UTC) ------------- **/
 
@@ -418,10 +419,10 @@ export default function JustificationForm({ onCreated, onCancel }: Props) {
       }
       toast({ title: "Justificación registrada", description: "Se envió correctamente." });
       onCreated?.();
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         title: "Error",
-        description: err?.message || "No se pudo registrar la justificación.",
+        description: parseApiError(err).message,
         variant: "destructive",
       });
     } finally {

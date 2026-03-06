@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { parseApiError } from '@/lib/error-handling';
 
 export default function SchedulesPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -99,10 +100,10 @@ export default function SchedulesPage() {
       } else {
         throw new Error(result.error.message);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "❌ Error al eliminar",
-        description: error.message || "No se pudo eliminar el horario",
+        description: parseApiError(error).message || "No se pudo eliminar el horario",
         variant: "destructive",
       });
     }

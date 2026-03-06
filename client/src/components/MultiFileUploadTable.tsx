@@ -29,6 +29,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { parseApiError } from '@/lib/error-handling';
 
 interface FileWithMeta {
   file: File;
@@ -389,8 +390,8 @@ export const ReusableMultipleFileUpload: React.FC<ReusableMultipleFileUploadProp
               ));
               onFileError?.(errorMsg, fileWithMeta.file, fileWithMeta.customName);
             }
-          } catch (error: any) {
-            const errorMsg = error?.message ?? "Error de red";
+          } catch (error: unknown) {
+            const errorMsg = parseApiError(error).message;
             setFiles(prev => prev.map((f, i) => 
               i === fileIndex ? { ...f, status: 'error', error: errorMsg } : f
             ));
@@ -428,8 +429,8 @@ export const ReusableMultipleFileUpload: React.FC<ReusableMultipleFileUploadProp
           ));
           onFileError?.(errorMsg, fileWithMeta.file, fileWithMeta.customName);
         }
-      } catch (error: any) {
-        const errorMsg = error?.message ?? "Error de red";
+      } catch (error: unknown) {
+        const errorMsg = parseApiError(error).message;
         setFiles(prev => prev.map((f, index) => 
           index === i ? { ...f, status: 'error', error: errorMsg } : f
         ));

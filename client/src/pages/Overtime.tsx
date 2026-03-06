@@ -36,6 +36,7 @@ import {
 } from "@/lib/api";
 
 import TimePlanningEmployeeForm from "@/components/forms/TimePlanningEmployeeForm";
+import { parseApiError } from '@/lib/error-handling';
 
 /* ---------------- Helpers y tipos ---------------- */
 
@@ -798,8 +799,8 @@ function CreatePlanningDialog({
         toast({ title: "Error", description: msg, variant: "destructive" });
       }
     },
-    onError: (e: any) => {
-      toast({ title: "Error", description: e?.message || "No se pudo crear", variant: "destructive" });
+    onError: (e: unknown) => {
+      toast({ title: "Error", description: parseApiError(e).message, variant: "destructive" });
     },
   });
 

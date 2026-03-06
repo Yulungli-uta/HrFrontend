@@ -2,6 +2,7 @@
 import { ApiResponse } from "@/lib/api";
 import { TokenPair, UserSession, LoginRequest } from "./types";
 import { getBrowserId } from "@/utils/browserId";
+import { parseApiError } from '@/lib/error-handling';
 
 const DEBUG = import.meta.env.VITE_DEBUG_AUTH === "true";
 
@@ -68,7 +69,7 @@ async function authFetch<T = any>(
         details,
       },
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
     clearTimeout(timeout);
 
     return {

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { AzureManagementAPI } from "@/lib/api/auth";
+import { parseApiError } from '@/lib/error-handling';
 
 const DEBUG_AUTH =
   String((import.meta as any)?.env?.VITE_DEBUG_AUTH || "").toLowerCase() === "true";
@@ -21,13 +22,9 @@ function safeJson(obj: any, maxLen = 12_000) {
   }
 }
 
-function pickErrorMessage(err: any, fallback: string) {
+function pickErrorMessage(err: unknown, fallback: string) {
   return (
-    err?.message ||
-    err?.response?.data?.message ||
-    err?.response?.data?.error?.message ||
-    err?.response?.data?.error ||
-    fallback
+    parseApiError(err).message
   );
 }
 
@@ -159,8 +156,8 @@ export default function AzureUserForm({ mode, user, onSuccess, onCancel }: Props
       toast({ title: "Usuario creado", description: "Usuario creado en Azure." });
       onSuccess();
     },
-    onError: (err: any) => {
-      const msg = pickErrorMessage(err, "No se pudo crear el usuario");
+    onError: (err: unknown) => {
+      const msg = parseApiError(err).message;
       pushDebug("CREATE_USER:error", { msg, err });
       toast({ title: "Error", description: msg, variant: "destructive" });
     },
@@ -190,8 +187,8 @@ export default function AzureUserForm({ mode, user, onSuccess, onCancel }: Props
       toast({ title: "Usuario actualizado", description: "Usuario actualizado en Azure." });
       onSuccess();
     },
-    onError: (err: any) => {
-      const msg = pickErrorMessage(err, "No se pudo actualizar el usuario");
+    onError: (err: unknown) => {
+      const msg = parseApiError(err).message;
       pushDebug("UPDATE_USER:error", { msg, err });
       toast({ title: "Error", description: msg, variant: "destructive" });
     },

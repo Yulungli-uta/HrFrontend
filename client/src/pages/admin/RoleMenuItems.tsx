@@ -18,6 +18,7 @@ import { RolesAPI, MenuItemsAPI, RoleMenuItemsAPI } from "@/lib/api/auth";
 import type { ApiResponse } from "@/lib/api/client";
 import type { Role, MenuItem, RoleMenuItem, CreateRoleMenuItemDto } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
+import { parseApiError } from '@/lib/error-handling';
 
 /* =========================
  * Helpers
@@ -345,11 +346,11 @@ export default function RoleMenuItemsPage() {
       toast({ title: "Cambios guardados", description: "Asignaciones actualizadas." });
       setDirty(false);
       qc.invalidateQueries({ queryKey: ["role-menu-items"] });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
       toast({
         title: "Error al guardar",
-        description: err?.message || "No se pudieron guardar todos los cambios.",
+        description: parseApiError(err).message,
         variant: "destructive",
       });
     }

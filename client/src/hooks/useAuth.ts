@@ -4,6 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocation } from 'wouter';
 import { authService, tokenService, UserSession, TokenPair } from '@/services/auth';
 import { analyzeToken } from '@/services/auth/debugUtils';
+import { parseApiError } from '@/lib/error-handling';
 
 export interface AuthState {
   isAuthenticated: boolean;
@@ -234,11 +235,11 @@ export function useAuth() {
       
       console.log('✅ Login process completed successfully');
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('❌ Login error:', error);
       toast({
         title: "Error de autenticación",
-        description: error.message || "Credenciales incorrectas",
+        description: parseApiError(error).message,
         variant: "destructive",
       });
       return false;
@@ -258,10 +259,10 @@ export function useAuth() {
       
       // Redirigir a Azure AD
       window.location.href = url;
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error de autenticación",
-        description: error.message || "No se pudo iniciar sesión con Office 365",
+        description: parseApiError(error).message,
         variant: "destructive",
       });
       setIsLoading(false);

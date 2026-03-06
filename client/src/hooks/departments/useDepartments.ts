@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { DepartamentosAPI, handleApiError, type ApiResponse } from "@/lib/api";
 import type { Department } from "@/types/department";
+import { parseApiError } from '@/lib/error-handling';
 
 export const useDepartments = () => {
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -18,8 +19,8 @@ export const useDepartments = () => {
         setError(handleApiError(res.error, "No se pudo cargar departamentos"));
         setDepartments([]);
       }
-    } catch (e: any) {
-      setError(e?.message || "Error desconocido al cargar");
+    } catch (e: unknown) {
+      setError(parseApiError(e).message);
       setDepartments([]);
     } finally {
       setLoading(false);

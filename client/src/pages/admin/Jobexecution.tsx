@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { AttendanceCalculationAPI } from '@/lib/api';
 import type { AttendanceCalculationRequestDto } from '@/lib/api';
+import { parseApiError } from '@/lib/error-handling';
 
 interface ExecutionState {
   loading: boolean;
@@ -114,12 +115,12 @@ const JobExecution: React.FC = () => {
           error: response.error?.message || `Error al ejecutar ${serviceName}`
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       setState({
         loading: false,
         success: false,
         message: '',
-        error: error?.message || `Error inesperado al ejecutar ${serviceName}`
+        error: parseApiError(error).message || `Error inesperado al ejecutar ${serviceName}`
       });
     }
   };

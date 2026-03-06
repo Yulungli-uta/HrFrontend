@@ -4,6 +4,7 @@ import type { FinancialCertification } from "@/types/certificationFinance";
 import type { DirectoryParameter } from "@/types/directoryParameter";
 import { DirectoryParametersAPI, FinancialCertificationAPI, type ApiResponse } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { parseApiError } from '@/lib/error-handling';
 
 export function useDirectoryParams(code: string) {
   return useQuery<ApiResponse<DirectoryParameter>>({
@@ -38,10 +39,10 @@ export function useCertificationMutations() {
         });
       }
     },
-    onError: (e: any) => {
+    onError: (e: unknown) => {
       toast({
         title: "❌ Error de conexión",
-        description: e?.message ?? "No se pudo conectar con el servidor",
+        description: parseApiError(e).message,
         variant: "destructive",
       });
     },
@@ -62,10 +63,10 @@ export function useCertificationMutations() {
         });
       }
     },
-    onError: (e: any) => {
+    onError: (e: unknown) => {
       toast({
         title: "❌ Error de conexión",
-        description: e?.message ?? "No se pudo conectar con el servidor",
+        description: parseApiError(e).message,
         variant: "destructive",
       });
     }

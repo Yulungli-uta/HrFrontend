@@ -2,7 +2,8 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { Link } from "wouter";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCrudMutation } from "@/hooks/useCrudMutation";
 import type { Person, InsertPerson, Employee } from "@/shared/schema";
 import PersonForm from "@/components/forms/PersonForm";
 import { useToast } from "@/hooks/use-toast";
@@ -243,26 +244,14 @@ export default function People() {
     return [];
   }, [refTypesResponse]);
 
-  // Mutación crear persona
-  const createPersonMutation = useMutation({
-    mutationFn: PersonasAPI.create,
+  const { create: createPersonMutation, isLoading: isSavingPerson } = useCrudMutation<Person, InsertPerson>({
+    queryKey: ["people"],
+    createFn: PersonasAPI.create,
+    createSuccessMessage: "Persona creada exitosamente",
+    createErrorMessage: "Error al crear la persona",
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["people"] });
-      toast({
-        title: "Persona creada",
-        description: "La persona ha sido registrada exitosamente",
-        variant: "default",
-      });
       setIsFormOpen(false);
       setEditingPerson(undefined);
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description:
-          error?.response?.data?.message || "Error al crear la persona",
-        variant: "destructive",
-      });
     },
   });
 

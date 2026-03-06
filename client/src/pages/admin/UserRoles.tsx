@@ -43,6 +43,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { parseApiError } from '@/lib/error-handling';
 
 /* =========================
    Página principal
@@ -125,17 +126,17 @@ export default function UserRolesPage() {
   // Mutación: eliminar asignación
   const deleteMutation = useMutation({
     mutationFn: async ({ userId, roleId }: { userId: string; roleId: number }) => {
-      return UserRolesAPI.remove(userId, roleId);
+      return UserRolesAPI.removeLegacy(userId, roleId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-roles"] });
       toast({ title: "✅ Asignación removida", description: "El rol ha sido removido del usuario exitosamente" });
       setDeleteAssignment(null);
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "❌ Error al remover asignación",
-        description: error?.message || "No se pudo remover la asignación",
+        description: parseApiError(error).message,
         variant: "destructive",
       });
     },
@@ -158,7 +159,7 @@ export default function UserRolesPage() {
         await UserRolesAPI.update(userId, oldRoleId, { roleId: newRoleId as any, expiresAt, reason } as any);
         return "updated";
       } catch {
-        await UserRolesAPI.remove(userId, oldRoleId);
+        await UserRolesAPI.removeLegacy(userId, oldRoleId);
         await UserRolesAPI.assign({ userId, roleId: newRoleId, expiresAt, reason });
         return "replaced";
       }
@@ -173,10 +174,10 @@ export default function UserRolesPage() {
       });
       setEditAssignment(null);
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       toast({
         title: "❌ Error al actualizar",
-        description: err?.message ?? "No se pudo actualizar la asignación.",
+        description: parseApiError(err).message,
         variant: "destructive",
       });
     },

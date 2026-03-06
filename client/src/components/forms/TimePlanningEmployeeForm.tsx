@@ -21,6 +21,7 @@ import {
 import {
   RefreshCw, Download, Edit, Play, Trash2, User, Mail, Building, Timer, List, PlusCircle
 } from "lucide-react";
+import { parseApiError } from '@/lib/error-handling';
 
 /* ============================
  * Tipos locales
@@ -196,7 +197,7 @@ export default function TimePlanningEmployeeForm({
       } else {
         toast({
           title: "Error",
-          description: resp.error?.message || "No se pudo actualizar el estado",
+          description: resp.error.message,
           variant: "destructive",
         });
       }
@@ -500,12 +501,12 @@ function ExecutionDialog({
       } else {
         toast({
           title: "Error",
-          description: r.error?.message || "No se pudo registrar",
+          description: r.error.message,
           variant: "destructive",
         });
       }
-    } catch (e: any) {
-      toast({ title: "Error", description: e?.message || "No se pudo registrar", variant: "destructive" });
+    } catch (e: unknown) {
+      toast({ title: "Error", description: parseApiError(e).message, variant: "destructive" });
     }
   };
 
@@ -522,12 +523,12 @@ function ExecutionDialog({
       } else {
         toast({
           title: "Error",
-          description: r.error?.message || "No se pudo actualizar",
+          description: r.error.message,
           variant: "destructive",
         });
       }
-    } catch (e: any) {
-      toast({ title: "Error", description: e?.message || "No se pudo actualizar", variant: "destructive" });
+    } catch (e: unknown) {
+      toast({ title: "Error", description: parseApiError(e).message, variant: "destructive" });
     }
   };
 

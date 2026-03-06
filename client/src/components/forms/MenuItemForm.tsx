@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { MenuItemsAPI } from "@/lib/api/auth";
 import type { ApiResponse } from "@/lib/api/client";
 import type { MenuItem } from "@/types/auth";
+import { parseApiError } from '@/lib/error-handling';
 
 type Props = {
   menuItem: MenuItem | null;
@@ -144,8 +145,8 @@ export default function MenuItemForm({ menuItem, onSuccess, onCancel }: Props) {
       toast({ title: "Item creado", description: "El item de menú se creó correctamente." });
       onSuccess();
     },
-    onError: (err: any) => {
-      const msg = err?.message || err?.response?.data?.message || "No se pudo crear el item.";
+    onError: (err: unknown) => {
+      const msg = parseApiError(err).message;
       toast({ title: "Error", description: msg, variant: "destructive" });
     },
   });
@@ -171,8 +172,8 @@ export default function MenuItemForm({ menuItem, onSuccess, onCancel }: Props) {
       toast({ title: "Item actualizado", description: "El item de menú se actualizó correctamente." });
       onSuccess();
     },
-    onError: (err: any) => {
-      const msg = err?.message || err?.response?.data?.message || "No se pudo actualizar el item.";
+    onError: (err: unknown) => {
+      const msg = parseApiError(err).message;
       toast({ title: "Error", description: msg, variant: "destructive" });
     },
   });

@@ -47,6 +47,7 @@ import type { IDocflowService } from "@/services/docflow/docflow-service.interfa
 import type { ProcessHierarchy, DynamicFieldSchema, DynamicFieldType } from "@/types/docflow/docflow.types";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { parseApiError } from '@/lib/error-handling';
 
 const FIELD_TYPE_OPTIONS: { value: DynamicFieldType; label: string; icon: typeof Type }[] = [
   { value: "string", label: "Texto", icon: Type },
@@ -407,9 +408,9 @@ function FieldEditor({
       title: "Campos guardados",
       description: `Se guardaron ${cleanFields.length} campo(s) para "${processName}"`,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Mostrar mensaje de error específico del backend
-    const errorMessage = error?.message || "No se pudieron guardar los campos dinámicos";
+    const errorMessage = parseApiError(error).message;
     toast({
       title: "Error al guardar",
       description: errorMessage,

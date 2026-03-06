@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Upload, X, File as FileIcon } from "lucide-react";
+import { parseApiError } from '@/lib/error-handling';
 
 type ReusableFileUploadProps = {
   /** Código del directorio configurado (obligatorio) */
@@ -161,8 +162,8 @@ export const ReusableFileUpload: React.FC<ReusableFileUploadProps> = ({
         setErrorText(msg);
         onError?.(msg);
       }
-    } catch (e: any) {
-      const msg = e?.message ?? "Error de red";
+    } catch (e: unknown) {
+      const msg = parseApiError(e).message;
       setErrorText(msg);
       onError?.(msg);
     } finally {

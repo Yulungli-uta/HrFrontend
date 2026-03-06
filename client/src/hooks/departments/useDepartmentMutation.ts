@@ -2,6 +2,7 @@
 import { useState, useCallback } from "react";
 import { DepartamentosAPI } from "@/lib/api";
 import type { Department, DepartmentFormData } from "@/types/department";
+import { parseApiError } from '@/lib/error-handling';
 
 export const useDepartmentMutation = (onSuccess: () => void) => {
   const [saving, setSaving] = useState(false);
@@ -64,7 +65,7 @@ export const useDepartmentMutation = (onSuccess: () => void) => {
 
       onSuccess();
       return true;
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Error en mutación:', e);
       setError(e?.message || `Error al ${mode === 'create' ? 'crear' : 'actualizar'}`);
       return false;

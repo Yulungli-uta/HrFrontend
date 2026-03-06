@@ -1,6 +1,7 @@
 // src/helpers/AuthBoss.ts
 import { useEffect, useState } from "react";
 import { VistaDetallesEmpleadosAPI } from "@/lib/api";
+import { parseApiError } from '@/lib/error-handling';
 
 export function getBossFromEmployeeDetails(employeeDetails: any) {
   const bossId =
@@ -48,8 +49,8 @@ export function useImmediateBoss(employeeId?: number) {
         } else {
           setError("No fue posible obtener su ficha laboral.");
         }
-      } catch (e: any) {
-        setError(e?.message ?? "Error consultando jefe inmediato.");
+      } catch (e: unknown) {
+        setError(parseApiError(e).message);
       } finally {
         setLoading(false);
       }

@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { VacacionesAPI, PermisosAPI, TimeBalanceAPI, ParametersAPI, apiFetch, type ApiResponse } from "@/lib/api";
 import type { InsertVacacion } from "@/shared/schema";
 import { useAuth } from "@/contexts/AuthContext";
+import { parseApiError } from '@/lib/error-handling';
 
 /** Utils */
 const localTodayISO = () => {
@@ -277,8 +278,8 @@ export default function VacationForm({
       queryClient.invalidateQueries({ queryKey: ["/api/v1/rh/permissions", "by-employee", employeeId] });
       onSuccess(!!isEdit);
     },
-    onError: (err: any) => {
-      const msg = err?.message ?? "No se pudo guardar.";
+    onError: (err: unknown) => {
+      const msg = parseApiError(err).message;
       setErrorMsg(msg);
     },
   });

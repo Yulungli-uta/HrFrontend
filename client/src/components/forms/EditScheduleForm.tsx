@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { HorariosEmpleadosAPI, handleApiError, type ApiResponse } from "@/lib/api";
 import type { Employee, Schedule } from "@/types/schedule";
+import { parseApiError } from "@/lib/error-handling";
 
 interface AssignScheduleFormProps {
   open: boolean;
@@ -101,10 +102,10 @@ export default function AssignScheduleForm({
       resetForm();
       onScheduleAssigned();
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Error al asignar horario",
-        description: error.message,
+        description: parseApiError(error).message,
         variant: "destructive",
       });
     },

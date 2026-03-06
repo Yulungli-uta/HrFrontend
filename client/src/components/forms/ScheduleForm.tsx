@@ -17,6 +17,7 @@ import { useEffect, useState } from "react";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { Badge } from "@/components/ui/badge";
 import { tokenService } from "@/services/auth";
+import { parseApiError } from '@/lib/error-handling';
 
 interface ScheduleFormProps {
   schedule?: FrontendSchedule;
@@ -87,7 +88,7 @@ const debugUpdateSchedule = async (id: number, data: any): Promise<ApiResponse<a
       status: "success",
       data: parsedData
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.groupEnd();
     console.error('💥 Network Error:', error);
     
@@ -236,11 +237,11 @@ export default function ScheduleForm({ schedule, onSuccess, onCancel }: Schedule
       });
       onSuccess?.();
     },
-    onError: (e: any) => {
+    onError: (e: unknown) => {
       console.error("💥 Error en creación:", e);
       toast({ 
         title: "❌ Error al crear horario", 
-        description: e?.message || "Error desconocido",
+        description: parseApiError(e).message,
         variant: "destructive" 
       });
     }
@@ -328,10 +329,10 @@ const updateMutation = useMutation({
     });
     onSuccess?.();
   },
-  onError: (e: any) => {
+  onError: (e: unknown) => {
     console.error("💥 Error en actualización:", e);
     
-    let errorMessage = e?.message || "Error desconocido al actualizar el horario";
+    let errorMessage = parseApiError(e).message;
     let title = "❌ Error al actualizar";
     let shouldReload = false;
 

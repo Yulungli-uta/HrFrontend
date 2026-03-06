@@ -33,6 +33,7 @@ import {
 } from "@/features/constants";
 
 import type { ReusableDocumentManagerHandle } from "@/components/ReusableDocumentManager";
+import { parseApiError } from '@/lib/error-handling';
 
 export default function ContractRequestPage() {
   const { toast } = useToast();
@@ -203,7 +204,7 @@ export default function ContractRequestPage() {
       if (resp.status !== "success") {
         toast({
           title: "❌ Error",
-          description: resp.error?.message ?? "No se pudo crear.",
+          description: resp.error.message,
           variant: "destructive",
         });
         return;
@@ -227,8 +228,8 @@ export default function ContractRequestPage() {
       toast({ title: "✅ Solicitud creada", description: "Se guardó correctamente." });
       setIsFormOpen(false);
       resetForm();
-    } catch (e: any) {
-      toast({ title: "❌ Error", description: e?.message ?? "No se pudo procesar.", variant: "destructive" });
+    } catch (e: unknown) {
+      toast({ title: "❌ Error", description: parseApiError(e).message, variant: "destructive" });
     }
   };
 

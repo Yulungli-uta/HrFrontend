@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
+import { parseApiError } from '@/lib/error-handling';
 
 // -----------------------------------------------------------------------------
 // Formato esperado por backend (AGREGANDO requiresDocumentation)
@@ -253,11 +254,11 @@ export default function PermissionTypesPage() {
 
       handleDialogClose();
       await loadPermissionTypes();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error saving permission type:', error);
       toast({
         title: "Error",
-        description: error?.message || "Error al guardar el tipo de permiso",
+        description: parseApiError(error).message,
         variant: "destructive",
       });
     }
@@ -286,11 +287,11 @@ export default function PermissionTypesPage() {
       } else {
         throw new Error((resp as any)?.error?.message || 'Error eliminando el tipo');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting permission type:', error);
       toast({
         title: "Error",
-        description: error?.message || "Error al eliminar el tipo de permiso",
+        description: parseApiError(error).message,
         variant: "destructive",
       });
     }

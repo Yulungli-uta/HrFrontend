@@ -9,6 +9,7 @@ import { useState } from "react";
 import { PasswordAPI } from "@/lib/api/auth";
 import type { ChangePasswordDto } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
+import { parseApiError } from '@/lib/error-handling';
 
 interface FormData {
   currentPassword: string;
@@ -48,7 +49,7 @@ export default function ChangePasswordPage() {
       });
       reset();
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Error al cambiar contraseña",
         description:

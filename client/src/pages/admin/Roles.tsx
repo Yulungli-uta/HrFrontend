@@ -41,6 +41,7 @@ import { DataPagination } from "@/components/ui/DataPagination";
 import type { Role } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
 import RoleForm from "@/components/forms/RoleForm";
+import { parseApiError } from "@/lib/error-handling";
 
 /** Normaliza cualquier payload común a arreglo de Role */
 function coerceToRoleArray(payload: unknown): Role[] {
@@ -111,14 +112,10 @@ export default function RolesPage() {
       });
       setDeleteRoleId(null);
     },
-    onError: (err: any) => {
-      const message =
-        err?.message ||
-        err?.response?.data?.message ||
-        "No se pudo eliminar el rol";
+    onError: (err: unknown) => {
       toast({
         title: "Error al eliminar",
-        description: message,
+        description: parseApiError(err).message,
         variant: "destructive",
       });
     },
@@ -164,7 +161,7 @@ export default function RolesPage() {
   }
 
   // Error de red/fetch
-  if (error) {
+  if (isError) {
     return (
       <div className="container mx-auto p-6">
         <Card className="border-red-200 bg-red-50">

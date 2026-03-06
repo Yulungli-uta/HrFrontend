@@ -49,6 +49,7 @@ import {
   AlertCircle,
   ClipboardCheck,
 } from "lucide-react";
+import { parseApiError } from '@/lib/error-handling';
 
 /* -------------------- Tipos de dominio -------------------- */
 interface Permission {
@@ -656,10 +657,10 @@ export default function ApprovalsPermissions() {
       qcInvalidatePerms();
       toast({ title: "Permiso aprobado" });
     },
-    onError: (e: any) =>
+    onError: (e: unknown) =>
       toast({
         title: "Error al aprobar permiso",
-        description: e?.message ?? "Intente nuevamente",
+        description: parseApiError(e).message,
         variant: "destructive",
       }),
   });
@@ -678,10 +679,10 @@ export default function ApprovalsPermissions() {
       qcInvalidatePerms();
       toast({ title: "Permiso rechazado" });
     },
-    onError: (e: any) =>
+    onError: (e: unknown) =>
       toast({
         title: "Error al rechazar permiso",
-        description: e?.message ?? "Intente nuevamente",
+        description: parseApiError(e).message,
         variant: "destructive",
       }),
   });
@@ -704,10 +705,10 @@ export default function ApprovalsPermissions() {
       // toast({ title: "Vacación aprobada (InProgress)" });
       toast({ title: "Vacación aprobada (Estado: Approved)" });
     },
-    onError: (e: any) =>
+    onError: (e: unknown) =>
       toast({
         title: "Error al aprobar vacación",
-        description: e?.message ?? "Conflicto de concurrencia.",
+        description: parseApiError(e).message,
         variant: "destructive",
       }),
   });
@@ -726,10 +727,10 @@ export default function ApprovalsPermissions() {
       qcInvalidateVacs();
       toast({ title: "Vacación rechazada (Canceled)" });
     },
-    onError: (e: any) =>
+    onError: (e: unknown) =>
       toast({
         title: "Error al rechazar vacación",
-        description: e?.message ?? "Conflicto de concurrencia.",
+        description: parseApiError(e).message,
         variant: "destructive",
       }),
   });
@@ -750,10 +751,10 @@ export default function ApprovalsPermissions() {
       qcInvalidateJusts();
       toast({ title: "Justificación aprobada" });
     },
-    onError: (e: any) =>
+    onError: (e: unknown) =>
       toast({
         title: "Error al aprobar justificación",
-        description: e?.message ?? "Intente nuevamente",
+        description: parseApiError(e).message,
         variant: "destructive",
       }),
   });
@@ -773,10 +774,10 @@ export default function ApprovalsPermissions() {
       qcInvalidateJusts();
       toast({ title: "Justificación rechazada" });
     },
-    onError: (e: any) =>
+    onError: (e: unknown) =>
       toast({
         title: "Error al rechazar justificación",
-        description: e?.message ?? "Intente nuevamente",
+        description: parseApiError(e).message,
         variant: "destructive",
       }),
   });

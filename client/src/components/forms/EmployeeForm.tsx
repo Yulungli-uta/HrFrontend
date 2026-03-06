@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { insertEmployeeSchema, type InsertEmployee, type Employee, type Department, type Person } from "@/shared/schema";
 import { UserCog, Save, X, Mail } from "lucide-react";
 import { PersonasAPI, DepartamentosAPI, EmpleadosAPI, TiposReferenciaAPI, type ApiResponse } from "@/lib/api";
+import { parseApiError } from '@/lib/error-handling';
 
 // Semilla proveniente de la vista para hidratar edición
 type EmployeeViewSeed = {
@@ -261,7 +262,7 @@ export default function EmployeeForm({ employee, viewSeed, onSuccess, onCancel }
       toast({ title: "Empleado creado exitosamente" });
       onSuccess?.();
     },
-    onError: (e: any) => {
+    onError: (e: unknown) => {
       toast({ title: "Error al crear empleado", description: String(e?.message ?? e), variant: "destructive" });
     },
   });
@@ -280,7 +281,7 @@ export default function EmployeeForm({ employee, viewSeed, onSuccess, onCancel }
       toast({ title: "Empleado actualizado exitosamente" });
       onSuccess?.();
     },
-    onError: (e: any) => {
+    onError: (e: unknown) => {
       toast({ title: "Error al actualizar empleado", description: String(e?.message ?? e), variant: "destructive" });
     },
   });

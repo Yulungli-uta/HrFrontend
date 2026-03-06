@@ -40,6 +40,7 @@ import type { ApiResponse } from "@/lib/api/client";
 import type { MenuItem, MenuItemTree } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
 import MenuItemForm from "@/components/forms/MenuItemForm";
+import { parseApiError } from '@/lib/error-handling';
 
 /** Normaliza cualquier payload común a arreglo de MenuItem */
 function coerceToMenuArray(payload: unknown): MenuItem[] {
@@ -160,8 +161,7 @@ export default function MenuItemsPage() {
       // @ts-ignore
       if ("status" in res && res.status !== "success") {
         // @ts-ignore
-        const message =
-          res?.error?.message || "No se pudo obtener los items de menú";
+        const message = res?.error?.message || "Error al cargar items de menú";
         toast({ title: "Error", description: message, variant: "destructive" });
         return [];
       }
@@ -185,14 +185,10 @@ export default function MenuItemsPage() {
       setDeleteMenuItemId(null);
       deletingRef.current = false;
     },
-    onError: async (err: any, id) => {
-      const message =
-        err?.message ||
-        err?.response?.data?.message ||
-        "No se pudo eliminar el item de menú";
+    onError: async (err: unknown, _id) => {
+      const apiErr = parseApiError(err);
       // Reintento simple si el backend devolvió 409 (por dependencias)
-      const status = err?.response?.status;
-      if (status === 409) {
+      if (apiErr.status === 409) {
         toast({
           title: "No se puede eliminar",
           description:
@@ -200,7 +196,7 @@ export default function MenuItemsPage() {
           variant: "destructive",
         });
       } else {
-        toast({ title: "Error al eliminar", description: message, variant: "destructive" });
+        toast({ title: "Error al eliminar", description: apiErr.message, variant: "destructive" });
       }
       deletingRef.current = false;
     },

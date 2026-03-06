@@ -29,6 +29,7 @@ import type {
   ActiveFilter,
 } from "@/types/department";
 import { buildTree } from "@/utils/departments";
+import { parseApiError } from '@/lib/error-handling';
 
 const INITIAL_FORM_DATA: DepartmentFormData = {
   name: "",
@@ -194,7 +195,7 @@ export default function DepartmentsPage() {
           setModalState({ open: false, mode: "create", department: null });
           await refetch();
         }
-      } catch (e: any) {
+      } catch (e: unknown) {
         setError(
           e?.message ||
             `Error al ${

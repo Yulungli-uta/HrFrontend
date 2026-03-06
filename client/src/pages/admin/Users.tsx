@@ -41,6 +41,7 @@ import { DataPagination } from "@/components/ui/DataPagination";
 import type { User } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
 import UserForm from "@/components/forms/UserForm";
+import { parseApiError } from "@/lib/error-handling";
 
 /** Normaliza cualquier payload común a arreglo de User */
 function coerceToUserArray(payload: unknown): User[] {
@@ -108,14 +109,10 @@ export default function UsersPage() {
       });
       setDeleteUserId(null);
     },
-    onError: (err: any) => {
-      const message =
-        err?.message ||
-        err?.response?.data?.message ||
-        "No se pudo eliminar el usuario";
+    onError: (err: unknown) => {
       toast({
         title: "Error al eliminar",
-        description: message,
+        description: parseApiError(err).message,
         variant: "destructive",
       });
     },

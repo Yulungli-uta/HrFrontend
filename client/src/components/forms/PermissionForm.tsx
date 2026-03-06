@@ -24,6 +24,7 @@ import {
   ReusableDocumentManager,
   type ReusableDocumentManagerHandle,
 } from "@/components/ReusableDocumentManager";
+import { parseApiError } from '@/lib/error-handling';
 
 // -----------------------
 // Utils
@@ -630,8 +631,8 @@ export default function PermissionForm({
       queryClient.invalidateQueries({ queryKey: ["/api/v1/rh/vacations", "by-employee", employeeId] });
       onSuccess(isEdit);
     },
-    onError: (err: any) => {
-      setErrorMsg(err?.message ?? "No se pudo guardar.");
+    onError: (err: unknown) => {
+      setErrorMsg(parseApiError(err).message);
     },
   });
 

@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { parseApiError } from '@/lib/error-handling';
 
 interface Holiday {
   holidayID?: number;
@@ -202,11 +203,11 @@ export default function HolidaysPage() {
         description: ''
       });
       await loadHolidays();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error saving holiday:', error);
       toast({
         title: "Error",
-        description: error.message || "Error al guardar el día feriado",
+        description: parseApiError(error).message,
         variant: "destructive",
       });
     }
@@ -229,11 +230,11 @@ export default function HolidaysPage() {
       } else {
         throw new Error(response.error?.message || 'Error deleting holiday');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting holiday:', error);
       toast({
         title: "Error",
-        description: error.message || "Error al eliminar el día feriado",
+        description: parseApiError(error).message,
         variant: "destructive",
       });
     }

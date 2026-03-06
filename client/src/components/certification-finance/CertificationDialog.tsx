@@ -34,6 +34,7 @@ import { TiposReferenciaAPI, type ApiResponse } from "@/lib/api";
 // ✅ ContractRequest (para requestId + preview + documentos)
 import { useContractRequest } from "@/hooks/contractRequest/useContractRequests";
 import type { UIContractRequest } from "@/types/contractRequest";
+import { parseApiError } from '@/lib/error-handling';
 import { 
   CONTRACT_REQUEST_DIRECTORY_CODE,
   CONTRACT_REQUEST_ENTITY_TYPE,
@@ -451,10 +452,10 @@ export function CertificationDialog(props: {
         });
         setIsProcessing(false);
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       toast({
         title: "❌ Error inesperado",
-        description: e?.message ?? "No se pudo completar el proceso.",
+        description: parseApiError(e).message,
         variant: "destructive",
       });
       setIsProcessing(false);
@@ -512,10 +513,10 @@ export function CertificationDialog(props: {
       }
 
       setMode("view");
-    } catch (e: any) {
+    } catch (e: unknown) {
       toast({
         title: "❌ Error inesperado",
-        description: e?.message ?? "No se pudo guardar la edición.",
+        description: parseApiError(e).message,
         variant: "destructive",
       });
     } finally {
@@ -552,10 +553,10 @@ export function CertificationDialog(props: {
           variant: "destructive",
         });
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       toast({
         title: "❌ Error inesperado",
-        description: e?.message ?? "No se pudo subir los documentos.",
+        description: parseApiError(e).message,
         variant: "destructive",
       });
     } finally {

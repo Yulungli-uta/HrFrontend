@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { parseApiError } from '@/lib/error-handling';
 
 // -----------------------------------------------------------------------------
 // Tipos reales del backend (camelCase) y tipos de la UI (PascalCase)
@@ -273,11 +274,11 @@ export default function ReferenceTypesPage() {
       setEditingType(null);
       resetForm();
       await loadReferenceTypes();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error saving reference type:', error);
       toast({
         title: "Error",
-        description: error.message || "Error al guardar el tipo de referencia",
+        description: parseApiError(error).message || "Error al guardar el tipo de referencia",
         variant: "destructive",
       });
     }
@@ -338,7 +339,7 @@ export default function ReferenceTypesPage() {
       setIsDialogOpen(false);
       resetBatchForm();
       await loadReferenceTypes();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error in batch creation:', error);
       toast({
         title: "Error",
@@ -365,11 +366,11 @@ export default function ReferenceTypesPage() {
       } else {
         throw new Error(response.error?.message || 'Error deleting reference type');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting reference type:', error);
       toast({
         title: "Error",
-        description: error.message || "Error al eliminar el tipo de referencia",
+        description: parseApiError(error).message || "Error al eliminar el tipo de referencia",
         variant: "destructive",
       });
     }

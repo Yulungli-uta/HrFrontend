@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { RolesAPI, UserRolesAPI } from "@/lib/api/auth";
 import type { ApiResponse } from "@/lib/api/client";
 import type { Role, CreateUserRoleDto } from "@/types/auth";
+import { parseApiError } from '@/lib/error-handling';
 
 interface AssignRoleFormProps {
   userId: string;
@@ -73,10 +74,10 @@ export default function AssignRoleForm({
       toast({ title: "Rol asignado", description: "El rol se asignó correctamente." });
       onSuccess();
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Error al asignar rol",
-        description: error?.message || "No se pudo asignar el rol",
+        description: parseApiError(error).message,
         variant: "destructive",
       });
     },

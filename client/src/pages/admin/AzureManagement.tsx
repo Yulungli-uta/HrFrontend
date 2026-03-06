@@ -60,6 +60,7 @@ import {
 
 import { AzureManagementAPI } from "@/lib/api/auth";
 import AzureUserForm, { type AzureUserFormMode } from "@/components/forms/AzureUserForm";
+import { parseApiError } from '@/lib/error-handling';
 
 /** =========================================================
  *  DEBUG FLAG: solo muestra Debug si VITE_DEBUG_AUTH === "true"
@@ -106,7 +107,7 @@ type DebugEvent = { at: string; action: string; detail?: any };
 /** =========================================================
  *  HELPERS
  *  ========================================================= */
-function pickErrorMessage(err: any, fallback: string) {
+function pickErrorMessage(err: unknown, fallback: string) {
   return (
     err?.response?.data?.message ||
     err?.response?.data?.error ||
@@ -333,7 +334,7 @@ export default function AzureManagement() {
     },
     staleTime: 30_000,
     retry: 1,
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       const msg = pickErrorMessage(err, "No se pudo obtener usuarios de Azure");
       pushDebug("LIST_USERS:error", { msg, err });
       toast({ title: "Error", description: msg, variant: "destructive" });
@@ -412,7 +413,7 @@ export default function AzureManagement() {
       setDeleteTarget(null);
       queryClient.invalidateQueries({ queryKey: ["azure-users"] });
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       const msg = pickErrorMessage(err, "No se pudo eliminar el usuario");
       pushDebug("DELETE_USER:error", { msg, err });
       toast({ title: "Error", description: msg, variant: "destructive" });
@@ -430,7 +431,7 @@ export default function AzureManagement() {
       setToggleTarget(null);
       queryClient.invalidateQueries({ queryKey: ["azure-users"] });
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       const msg = pickErrorMessage(err, "No se pudo actualizar el estado");
       pushDebug("TOGGLE_USER:error", { msg, err });
       toast({ title: "Error", description: msg, variant: "destructive" });
@@ -447,7 +448,7 @@ export default function AzureManagement() {
       toast({ title: "Contraseña reseteada", description: "Solicitud enviada al backend." });
       setResetPwdTarget(null);
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       const msg = pickErrorMessage(err, "No se pudo resetear la contraseña");
       pushDebug("RESET_PASSWORD:error", { msg, err });
       toast({ title: "Error", description: msg, variant: "destructive" });
@@ -475,7 +476,7 @@ export default function AzureManagement() {
       setFoundOpen(true);
       toast({ title: "Usuario encontrado", description: u.email || u.userPrincipalName });
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       const msg = pickErrorMessage(err, "No se encontró el usuario con ese correo");
       pushDebug("GET_USER_BY_EMAIL:error", { msg, err });
       toast({ title: "No encontrado", description: msg, variant: "destructive" });
@@ -501,7 +502,7 @@ export default function AzureManagement() {
 
       setRoles(rolesParsed);
       pushDebug("GET_USER_ROLES:parsed", { count: rolesParsed.length });
-    } catch (err: any) {
+    } catch (err: unknown) {
       const msg = pickErrorMessage(err, "No se pudieron obtener roles");
       setRolesError(msg);
       pushDebug("GET_USER_ROLES:error", { msg, err });

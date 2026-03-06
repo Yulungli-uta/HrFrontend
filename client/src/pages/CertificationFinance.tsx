@@ -17,6 +17,7 @@ import { CertificationSearch } from "@/components/certification-finance/Certific
 import { CertificationListMobile } from "@/components/certification-finance/CertificationListMobile";
 import { CertificationListDesktop } from "@/components/certification-finance/CertificationListDesktop";
 import { CertificationDialog } from "@/components/certification-finance/CertificationDialog";
+import { parseApiError } from '@/lib/error-handling';
 
 export default function FinancialCertificationPage() {
   const { toast } = useToast();
@@ -92,11 +93,11 @@ export default function FinancialCertificationPage() {
         } else {
           toast({
             title: "No se pudo descargar",
-            description: resp.error?.message ?? "Error desconocido",
+            description: resp.error.message,
             variant: "destructive",
           });
         }
-      } catch (e: any) {
+      } catch (e: unknown) {
         toast({ title: "Error de red al descargar", description: e?.message, variant: "destructive" });
       }
     },

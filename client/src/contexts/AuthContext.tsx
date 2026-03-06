@@ -16,6 +16,7 @@ import {
   useNotificationWebSocket,
   WebSocketMessage,
 } from "@/hooks/useNotificationWebSocket";
+import { parseApiError } from '@/lib/error-handling';
 
 const AUTH_DEBUG = import.meta.env.VITE_DEBUG_AUTH === "true";
 
@@ -649,12 +650,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       logAuth("LOGIN LOCAL OK", { user: userInfo });
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("[AUTH] Error en login local:", error);
       toast({
         title: "Error de autenticación",
         description:
-          error?.message || "Credenciales incorrectas o error interno",
+          parseApiError(error).message,
         variant: "destructive",
       });
       return false;
@@ -677,12 +678,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         "office365login",
         "width=600,height=700,left=200,top=100"
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("❌ Error en Office 365 login:", error);
       toast({
         title: "Error de autenticación",
         description:
-          error?.message || "No se pudo iniciar sesión con Office 365",
+          parseApiError(error).message,
         variant: "destructive",
       });
     } finally {

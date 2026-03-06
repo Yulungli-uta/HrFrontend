@@ -82,6 +82,7 @@ import { JobDetailForm } from "@/components/job-activities/JobDetailForm";
 import { DegreeForm } from "@/components/job-activities/DegreeForm";
 import { OccupationalGroupForm } from "@/components/job-activities/OccupationalGroupForm";
 import { ActivityForm } from "@/components/job-activities/ActivityForm";
+import { parseApiError } from '@/lib/error-handling';
 
 // -------- Helpers para manejo de ApiResponse --------
 
@@ -315,10 +316,10 @@ export default function JobActivitiesPage() {
       setEditingDegree(null);
       setIsDegreeDialogOpen(false);
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "❌ Error al guardar grado",
-        description: error?.message ?? "Revise la información.",
+        description: parseApiError(error).message,
         variant: "destructive",
       });
     },
@@ -359,10 +360,10 @@ export default function JobActivitiesPage() {
       setEditingGroup(null);
       setIsGroupDialogOpen(false);
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "❌ Error al guardar grupo ocupacional",
-        description: error?.message ?? "Revise la información.",
+        description: parseApiError(error).message,
         variant: "destructive",
       });
     },
@@ -405,10 +406,10 @@ export default function JobActivitiesPage() {
         setSelectedJobId(savedJob.jobID);
       }
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "❌ Error al guardar cargo",
-        description: error?.message ?? "Revise la información.",
+        description: parseApiError(error).message,
         variant: "destructive",
       });
     },
@@ -464,10 +465,10 @@ export default function JobActivitiesPage() {
       setEditingActivity(null);
       setIsActivityDialogOpen(false);
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "❌ Error al guardar actividad",
-        description: error?.message ?? "Revise la información.",
+        description: parseApiError(error).message,
         variant: "destructive",
       });
     },
@@ -486,10 +487,10 @@ export default function JobActivitiesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/v1/rh/job-activities"] });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "❌ Error al asignar actividad",
-        description: error?.message ?? "Revise la operación.",
+        description: parseApiError(error).message,
         variant: "destructive",
       });
     },
@@ -504,10 +505,10 @@ export default function JobActivitiesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/v1/rh/job-activities"] });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "❌ Error al desasignar actividad",
-        description: error?.message ?? "Revise la operación.",
+        description: parseApiError(error).message,
         variant: "destructive",
       });
     },
