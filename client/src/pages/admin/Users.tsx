@@ -158,14 +158,12 @@ export default function UsersPage() {
   }
 
   // Error de red/fetch
-  if (error) {
+  if (isError) {
     return (
       <div className="container mx-auto p-6">
         <Card className="border-red-200 bg-red-50">
           <CardContent className="pt-6">
-            <p className="text-red-600">
-              Error al cargar los usuarios. Intente nuevamente.
-            </p>
+            <p className="text-red-600">Error al cargar los usuarios.</p>
           </CardContent>
         </Card>
       </div>
