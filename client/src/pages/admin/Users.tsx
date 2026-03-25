@@ -1,6 +1,6 @@
 // src/pages/admin/Users.tsx
-import { useMemo, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,70 +35,108 @@ import {
 
 import { Users as UsersIcon, Plus, Edit, Trash2, Search } from "lucide-react";
 import { AuthUsersAPI } from "@/lib/api/auth";
-import type { ApiResponse } from "@/lib/api/client";
-import { usePaged } from "@/hooks/pagination/usePaged";
 import { DataPagination } from "@/components/ui/DataPagination";
 import type { User } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
 import UserForm from "@/components/forms/UserForm";
 import { parseApiError } from "@/lib/error-handling";
 
-/** Normaliza cualquier payload común a arreglo de User */
-function coerceToUserArray(payload: unknown): User[] {
-  if (Array.isArray(payload)) return payload as User[];
-  if (payload && typeof payload === "object") {
-    // @ts-ignore
-    if (Array.isArray(payload.items)) return payload.items as User[];
-    // @ts-ignore
-    if (Array.isArray(payload.results)) return payload.results as User[];
-    // @ts-ignore
-    if (Array.isArray(payload.data)) return payload.data as User[];
-    // Diccionario { [id]: User }
-    // @ts-ignore
-    const values = Object.values(payload);
-    if (
-      values.length > 0 &&
-      values.every(
-        (v) => v && typeof v === "object" && ("email" in v || "displayName" in v)
-      )
-    ) {
-      return values as User[];
-    }
+type UsersPagedData = {
+  items: User[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+  hasPreviousPage: boolean;
+  hasNextPage: boolean;
+};
+
+function normalizeUsersPagedResponse(res: any): UsersPagedData {
+  console.log("UsersPage raw response:", res);
+
+  // Caso 1: backend directo -> { success: true, data: { items: [...] } }
+  if (res?.success === true && res?.data) {
+    return {
+      items: Array.isArray(res.data.items) ? res.data.items : [],
+      page: Number(res.data.page ?? 1),
+      pageSize: Number(res.data.pageSize ?? 20),
+      totalCount: Number(res.data.totalCount ?? 0),
+      totalPages: Number(res.data.totalPages ?? 0),
+      hasPreviousPage: Boolean(res.data.hasPreviousPage),
+      hasNextPage: Boolean(res.data.hasNextPage),
+    };
   }
-  return [];
+
+  // Caso 2: apiFetch normalizado -> { status: 'success', data: { items: [...] } }
+  if (res?.status === "success" && res?.data?.items) {
+    return {
+      items: Array.isArray(res.data.items) ? res.data.items : [],
+      page: Number(res.data.page ?? 1),
+      pageSize: Number(res.data.pageSize ?? 20),
+      totalCount: Number(res.data.totalCount ?? 0),
+      totalPages: Number(res.data.totalPages ?? 0),
+      hasPreviousPage: Boolean(res.data.hasPreviousPage),
+      hasNextPage: Boolean(res.data.hasNextPage),
+    };
+  }
+
+  // Caso 3: doble anidación -> { status:'success', data:{ success:true, data:{ items:[...] } } }
+  if (res?.status === "success" && res?.data?.success === true && res?.data?.data) {
+    return {
+      items: Array.isArray(res.data.data.items) ? res.data.data.items : [],
+      page: Number(res.data.data.page ?? 1),
+      pageSize: Number(res.data.data.pageSize ?? 20),
+      totalCount: Number(res.data.data.totalCount ?? 0),
+      totalPages: Number(res.data.data.totalPages ?? 0),
+      hasPreviousPage: Boolean(res.data.data.hasPreviousPage),
+      hasNextPage: Boolean(res.data.data.hasNextPage),
+    };
+  }
+
+  return {
+    items: [],
+    page: 1,
+    pageSize: 20,
+    totalCount: 0,
+    totalPages: 0,
+    hasPreviousPage: false,
+    hasNextPage: false,
+  };
 }
 
 export default function UsersPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
-  // searchTerm removed: búsqueda delegada al servidor via usePaged.setSearch
+
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSizeState] = useState(20);
+  const [search, setSearchState] = useState("");
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Obtener usuarios paginados
-  const {
-    items: users,
-    isLoading,
-    isError,
-    page,
-    pageSize,
-    totalCount,
-    totalPages,
-    hasPreviousPage,
-    hasNextPage,
-    goToPage,
-    setPageSize,
-    setSearch,
-    clearSearch,
-    currentParams,
-  } = usePaged<User>({
-    queryKey: 'auth-users',
-    queryFn: (params) => AuthUsersAPI.listPaged(params),
-    initialPageSize: 20,
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["auth-users", page, pageSize, search],
+    queryFn: async () => {
+      const res = await AuthUsersAPI.listPaged({
+        page,
+        pageSize,
+        search: search.trim() || undefined,
+        sortDirection: "asc",
+      } as any);
+
+      return normalizeUsersPagedResponse(res);
+    },
+    placeholderData: (previousData) => previousData,
   });
 
-  // Mutación para eliminar usuario
+  const users = data?.items ?? [];
+  const totalCount = data?.totalCount ?? 0;
+  const totalPages = data?.totalPages ?? 0;
+  const hasPreviousPage = data?.hasPreviousPage ?? false;
+  const hasNextPage = data?.hasNextPage ?? false;
+
   const deleteMutation = useMutation({
     mutationFn: (id: string) => AuthUsersAPI.remove(id),
     onSuccess: () => {
@@ -118,10 +156,6 @@ export default function UsersPage() {
     },
   });
 
-  // Filtrado seguro
-  // filteredUsers removed: el servidor ya filtra por search
-  const filteredUsers = users;
-
   const handleEdit = (user: User) => {
     setEditingUser(user);
     setIsFormOpen(true);
@@ -136,7 +170,18 @@ export default function UsersPage() {
     setDeleteUserId(String(id));
   };
 
-  // Loading skeleton
+  const goToPage = (newPage: number) => setPage(newPage);
+
+  const setPageSize = (size: number) => {
+    setPageSizeState(size);
+    setPage(1);
+  };
+
+  const setSearch = (term: string) => {
+    setSearchState(term);
+    setPage(1);
+  };
+
   if (isLoading) {
     return (
       <div className="container mx-auto p-6">
@@ -157,7 +202,6 @@ export default function UsersPage() {
     );
   }
 
-  // Error de red/fetch
   if (isError) {
     return (
       <div className="container mx-auto p-6">
@@ -183,8 +227,13 @@ export default function UsersPage() {
           </p>
         </div>
 
-        {/* Modal Crear/Editar Usuario — Accesible (Title + Description) */}
-        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+        <Dialog
+          open={isFormOpen}
+          onOpenChange={(open) => {
+            setIsFormOpen(open);
+            if (!open) setEditingUser(null);
+          }}
+        >
           <DialogTrigger asChild>
             <Button
               className="bg-blue-600 hover:bg-blue-700"
@@ -201,7 +250,8 @@ export default function UsersPage() {
                 {editingUser ? "Editar usuario" : "Nuevo usuario"}
               </DialogTitle>
               <DialogDescription>
-                Complete los campos y guarde para {editingUser ? "actualizar" : "crear"} el usuario.
+                Complete los campos y guarde para{" "}
+                {editingUser ? "actualizar" : "crear"} el usuario.
               </DialogDescription>
             </DialogHeader>
 
@@ -214,14 +264,13 @@ export default function UsersPage() {
         </Dialog>
       </div>
 
-      {/* Barra de búsqueda */}
       <Card className="mb-6">
         <CardContent className="pt-6">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
               placeholder="Buscar por email o nombre..."
-              value={currentParams.search ?? ""}
+              value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-10"
             />
@@ -229,7 +278,6 @@ export default function UsersPage() {
         </CardContent>
       </Card>
 
-      {/* Tabla de usuarios */}
       <Card>
         <CardContent className="pt-6">
           <Table>
@@ -244,14 +292,14 @@ export default function UsersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredUsers.length === 0 ? (
+              {users.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                    {currentParams.search ? "No se encontraron usuarios" : "No hay usuarios registrados"}
+                    {search ? "No se encontraron usuarios" : "No hay usuarios registrados"}
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredUsers.map((user) => (
+                users.map((user) => (
                   <TableRow key={String(user.id)}>
                     <TableCell className="font-medium">{user.email}</TableCell>
                     <TableCell>{user.displayName || "-"}</TableCell>
@@ -293,8 +341,6 @@ export default function UsersPage() {
         </CardContent>
       </Card>
 
-      {/* Confirmación de eliminación */}
-      {/* Paginación */}
       <DataPagination
         page={page}
         totalPages={totalPages}

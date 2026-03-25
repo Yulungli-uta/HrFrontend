@@ -1,8 +1,8 @@
 // src/pages/People.tsx
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "wouter";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useCrudMutation } from "@/hooks/useCrudMutation";
 import type { Person, InsertPerson, Employee } from "@/shared/schema";
 import PersonForm from "@/components/forms/PersonForm";
@@ -32,8 +32,6 @@ import {
   Plus,
   Search,
   Users,
-  GraduationCap,
-  Building2,
   UserCheck,
   Eye,
   Smartphone,
@@ -133,15 +131,12 @@ const PersonCard = ({
 
 export default function People() {
   const [isFormOpen, setIsFormOpen] = useState(false);
-  // searchTerm removed: búsqueda delegada al servidor via usePaged.setSearch
   const [editingPerson, setEditingPerson] = useState<Person | undefined>();
   const [activeFilter, setActiveFilter] =
     useState<"all" | "active" | "inactive">("all");
 
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
-  
   // ── Personas paginadas ───────────────────────────────────────────────────
   const {
     items: people,
@@ -160,19 +155,19 @@ export default function People() {
     clearSearch,
     currentParams,
   } = usePaged<Person>({
-    queryKey: 'people',
+    queryKey: "people",
     queryFn: (params) => PersonasAPI.listPaged(params),
     initialPageSize: 20,
   });
 
-  // ── Empleados (catálogo completo para stats - volumen bajo) ──────────────
+  // ── Empleados (para stats) ───────────────────────────────────────────────
   const {
     data: employeesResponse,
     isLoading: isLoadingEmployees,
   } = useQuery<ApiResponse<Employee[]>>({
     queryKey: ["employees"],
     queryFn: () => EmpleadosAPI.list(),
-    staleTime: 5 * 60_000, // 5 minutos
+    staleTime: 5 * 60_000,
   });
 
   const employees = useMemo(() => {
@@ -182,7 +177,7 @@ export default function People() {
     return [];
   }, [employeesResponse]);
 
-  // RefTypes
+  // ── RefTypes ──────────────────────────────────────────────────────────────
   const {
     data: refTypesResponse,
     isLoading: isLoadingRefTypes,
@@ -192,7 +187,7 @@ export default function People() {
     queryFn: () => TiposReferenciaAPI.list(),
   });
 
-  // Agrupar por categoría y normalizar (para los selects del formulario)
+  // Agrupar por categoría y normalizar
   const refTypesByCategory = useMemo(() => {
     if (
       refTypesResponse?.status === "success" &&
@@ -244,7 +239,7 @@ export default function People() {
     return [];
   }, [refTypesResponse]);
 
-  const { create: createPersonMutation, isLoading: isSavingPerson } = useCrudMutation<Person, InsertPerson>({
+  const { create: createPersonMutation } = useCrudMutation<Person, InsertPerson>({
     queryKey: ["people"],
     createFn: PersonasAPI.create,
     createSuccessMessage: "Persona creada exitosamente",
@@ -263,141 +258,56 @@ export default function People() {
     window.location.href = `/people/${id}`;
   };
 
-  // === STATS: conteo por tipo de contrato (IDs numéricos) ===
- // === STATS: conteo por tipo de contrato (IDs numéricos) ===
-const stats = useMemo(() => {
-  // Si no hay tipos de contrato cargados, no calcular
-  if (contractTypes.length === 0) {
-    console.log("Stats: Tipos de contrato no cargados aún, retornando valores por defecto");
-    return {
-      totalPeople: people.filter(p => p.isActive).length,
-      byContractTypeId: new Map<number, number>(),
-      withoutType: 0,
-    };
-  }
+  // === STATS ===
+  const stats = useMemo(() => {
+    const activeEmployees = employees.filter((emp: any) => emp.isActive);
 
-  console.log("=== INICIO CÁLCULO STATS ===");
-  console.log("Total personas:", people.length);
-  console.log("Total empleados:", employees.length);
-  console.log("Tipos de contrato disponibles:", contractTypes.map(ct => ({ id: ct.id, name: ct.name })));
+    const byContractTypeId = new Map<number, number>();
+    let withoutType = 0;
 
-  const byContractTypeId = new Map<number, number>();
-  let withoutType = 0;
+    activeEmployees.forEach((emp: any) => {
+      const employeeTypeId = emp.employeeType;
 
-  // Contador para depuración
-  let totalEmpleadosProcesados = 0;
-  let empleadosConTipo = 0;
-  let empleadosSinTipo = 0;
-
-  employees.forEach((emp: any) => {
-    totalEmpleadosProcesados++;
-    
-    // 1. Obtener el tipo de contrato (ID numérico)
-    const employeeTypeId = emp.employeeType;
-    console.log(`Empleado ID ${emp.employeeId} - Tipo ID: ${employeeTypeId}`, typeof employeeTypeId);
-
-    // Caso: sin tipo definido
-    // Si employeeTypeId es null, undefined, 0, o string vacío, se considera sin tipo
-    if (employeeTypeId === null || employeeTypeId === undefined || employeeTypeId === "" || employeeTypeId === 0) {
-      withoutType++;
-      empleadosSinTipo++;
-      console.log(`Empleado ID ${emp.employeeId} - SIN TIPO (valor: ${JSON.stringify(employeeTypeId)})`);
-      return;
-    }
-
-    // Convertir a número
-    const typeId = Number(employeeTypeId);
-    
-    // Si no es un número válido, también es sin tipo
-    if (isNaN(typeId)) {
-      withoutType++;
-      empleadosSinTipo++;
-      console.log(`Empleado ID ${emp.employeeId} - SIN TIPO (no es número válido: ${employeeTypeId})`);
-      return;
-    }
-    
-    // Buscar el tipo de contrato por ID
-    const matchedType = contractTypes.find(ct => ct.id === typeId);
-    
-    if (matchedType) {
-      empleadosConTipo++;
-      const current = byContractTypeId.get(matchedType.id) ?? 0;
-      byContractTypeId.set(matchedType.id, current + 1);
-      console.log(`Empleado ID ${emp.employeeId} - CONTABILIZADO como ${matchedType.name} (ID: ${matchedType.id}). Total ahora: ${current + 1}`);
-    } else {
-      // Si no encuentra el ID (ejemplo: ID 99 que no existe en contractTypes)
-      withoutType++;
-      empleadosSinTipo++;
-      console.log(`Empleado ID ${emp.employeeId} - SIN TIPO (ID no existe). ID buscado: ${typeId}, Tipos disponibles: ${contractTypes.map(ct => `${ct.id}:${ct.name}`).join(', ')}`);
-    }
-  });
-
-  // Logs finales
-  console.log("=== RESUMEN STATS ===");
-  console.log("Total empleados procesados:", totalEmpleadosProcesados);
-  console.log("Empleados con tipo:", empleadosConTipo);
-  console.log("Empleados sin tipo:", empleadosSinTipo);
-  console.log("Tipos de contrato contabilizados:");
-  contractTypes.forEach(ct => {
-    const count = byContractTypeId.get(ct.id) ?? 0;
-    console.log(`  ${ct.name} (ID: ${ct.id}): ${count}`);
-  });
-  console.log("Sin tipo de contrato:", withoutType);
-  console.log("Personas activas total:", people.filter(p => p.isActive).length);
-  console.log("=== FIN CÁLCULO STATS ===");
-
-  return {
-    totalPeople: people.filter(p => p.isActive).length,
-    byContractTypeId,
-    withoutType,
-  };
-}, [people, employees, contractTypes]);
-
-  // Logs para depuración de datos
-  useEffect(() => {
-    if (employeesResponse?.status === "success" && employeesResponse.data?.length > 0) {
-      console.log("=== DATOS DE EMPLEADOS ===");
-      console.log("Total empleados en API:", employeesResponse.data.length);
-      
-      // Agrupar por employeeType para ver distribución
-      const groupedByType = employeesResponse.data.reduce((acc: Record<string, any[]>, emp: any) => {
-        const type = emp.employeeType || 'sin-tipo';
-        if (!acc[type]) acc[type] = [];
-        acc[type].push(emp);
-        return acc;
-      }, {});
-      
-      console.log("Distribución por employeeType:");
-      Object.keys(groupedByType).forEach(type => {
-        console.log(`  Tipo ${type}: ${groupedByType[type].length} empleados`);
-      });
-      
-      // Mostrar ejemplo de empleado
-      if (employeesResponse.data[0]) {
-        console.log("Ejemplo de empleado:", {
-          id: employeesResponse.data[0].employeeId,
-          employeeType: employeesResponse.data[0].employeeType,
-          personId: employeesResponse.data[0].personId,
-          allProperties: Object.keys(employeesResponse.data[0])
-        });
+      if (
+        employeeTypeId === null ||
+        employeeTypeId === undefined ||
+        employeeTypeId === "" ||
+        employeeTypeId === 0
+      ) {
+        withoutType++;
+        return;
       }
-      console.log("=== FIN DATOS DE EMPLEADOS ===");
-    }
-  }, [employeesResponse]);
 
-  useEffect(() => {
-    if (refTypesResponse?.status === "success") {
-      console.log("=== TIPOS DE CONTRATO ===");
-      const contractTypes = refTypesResponse.data?.filter(r => r.category === "CONTRACT_TYPE") || [];
-      console.log("Total tipos CONTRACT_TYPE:", contractTypes.length);
-      contractTypes.forEach(t => {
-        console.log(`  ID: ${t.typeId}, Nombre: "${t.name}"`);
-      });
-      console.log("=== FIN TIPOS DE CONTRATO ===");
-    }
-  }, [refTypesResponse]);
+      const typeId = Number(employeeTypeId);
 
-  // Filtro local solo por estado activo/inactivo (el texto ya se filtra en servidor)
+      if (isNaN(typeId)) {
+        withoutType++;
+        return;
+      }
+
+      const matchedType = contractTypes.find((ct) => ct.id === typeId);
+
+      if (matchedType) {
+        const current = byContractTypeId.get(matchedType.id) ?? 0;
+        byContractTypeId.set(matchedType.id, current + 1);
+      } else {
+        withoutType++;
+      }
+    });
+
+    return {
+      // Si quieres "Total Personal" como total real del endpoint paginado:
+      totalPeople: totalCount,
+
+      // Si prefieres solo empleados activos, usa esta línea en lugar de la de arriba:
+      // totalPeople: activeEmployees.length,
+
+      byContractTypeId,
+      withoutType,
+    };
+  }, [employees, contractTypes, totalCount]);
+
+  // Filtro local por estado activo/inactivo
   const filteredPeople = useMemo(() => {
     if (activeFilter === "all") return people;
     return people.filter((p) =>
@@ -472,12 +382,12 @@ const stats = useMemo(() => {
               {stats.totalPeople}
             </div>
             <p className="text-xs text-muted-foreground">
-              Personas activas registradas
+              Personas registradas
             </p>
           </CardContent>
         </Card>
 
-        {/* Cards dinámicos por tipo de contrato (CONTRACT_TYPE) */}
+        {/* Cards dinámicos por tipo de contrato */}
         {contractTypes.map((ct) => (
           <Card key={ct.id}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -496,24 +406,6 @@ const stats = useMemo(() => {
             </CardContent>
           </Card>
         ))}
-
-        {/* Card para empleados sin tipo de contrato */}
-        {/* <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Sin tipo de contrato
-            </CardTitle>
-            <Building2 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {stats.withoutType}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Empleados activos sin tipo asignado
-            </p>
-          </CardContent>
-        </Card> */}
       </div>
 
       {/* Listado + filtros + búsqueda */}
@@ -571,8 +463,9 @@ const stats = useMemo(() => {
             </div>
           </CardTitle>
         </CardHeader>
+
         <CardContent>
-          {/* Loading y error */}
+          {/* Loading */}
           {isLoadingPeople && (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-uta-blue mx-auto" />
@@ -582,18 +475,19 @@ const stats = useMemo(() => {
             </div>
           )}
 
+          {/* Error */}
           {isErrorPeople && (
             <div className="text-center py-8 text-destructive">
               Error al cargar las personas:{" "}
-              {(errorPeople as any)?.message || "Error desconocido"}
+              {errorPeople || "Error desconocido"}
             </div>
           )}
 
-          {/* Vista móvil: cards */}
+          {/* Vista móvil */}
           <div className="block md:hidden">
             {!isLoadingPeople && filteredPeople.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                {searchTerm || activeFilter !== "all"
+                {currentParams.search || activeFilter !== "all"
                   ? "No se encontraron personas con ese criterio"
                   : "No hay personas registradas"}
               </div>
@@ -608,7 +502,7 @@ const stats = useMemo(() => {
             )}
           </div>
 
-          {/* Vista desktop: tabla */}
+          {/* Vista desktop */}
           <div className="hidden md:block">
             <div className="rounded-md border">
               <div className="overflow-x-auto">
@@ -627,7 +521,7 @@ const stats = useMemo(() => {
                     {!isLoadingPeople && filteredPeople.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={6} className="h-24 text-center">
-                          {searchTerm || activeFilter !== "all"
+                          {currentParams.search || activeFilter !== "all"
                             ? "No se encontraron personas con ese criterio"
                             : "No hay personas registradas"}
                         </TableCell>

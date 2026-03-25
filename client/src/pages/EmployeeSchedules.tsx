@@ -30,7 +30,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { VistaDetallesEmpleadosAPI, HorariosAPI, handleApiError } from "@/lib/api";
+import {
+  VistaDetallesEmpleadosAPI,
+  HorariosAPI,
+  handleApiError,
+} from "@/lib/api";
 import {
   Search,
   User,
@@ -67,12 +71,6 @@ function getArray<T>(resp: any): T[] {
   return [];
 }
 
-const fmtDate = (s?: string) => {
-  if (!s) return "—";
-  const d = new Date(s);
-  return isNaN(d.getTime()) ? "—" : d.toLocaleDateString("es-ES");
-};
-
 const fmtTime = (s?: string) => {
   if (!s) return "—";
   if (s.includes(":")) return s.substring(0, 5);
@@ -80,8 +78,9 @@ const fmtTime = (s?: string) => {
 };
 
 const pick = (obj: any, names: string[]) => {
-  for (const n of names)
+  for (const n of names) {
     if (obj?.[n] !== undefined && obj?.[n] !== null) return obj[n];
+  }
   return undefined;
 };
 
@@ -89,6 +88,14 @@ const toNumber = (v: any) => {
   if (v === undefined || v === null) return undefined;
   const n = Number(v);
   return Number.isNaN(n) ? undefined : n;
+};
+
+const normalizeText = (v?: string | null) =>
+  String(v ?? "").trim().toLowerCase();
+
+const cleanDisplayText = (v?: string | null, fallback = "—") => {
+  const value = String(v ?? "").trim();
+  return value ? value : fallback;
 };
 
 /* -------------------- Normalizadores -------------------- */
@@ -123,100 +130,132 @@ const normalizeSchedule = (s: any): Schedule => ({
   ]),
   endTime: pick(s, ["endTime", "EndTime", "end_time", "exitTime", "ExitTime"]),
   description: pick(s, ["description", "Description", "name", "Name"]),
-  isActive: Boolean(pick(s, ["isActive", "IsActive", "active", "Active"]) ?? true),
+  isActive: Boolean(
+    pick(s, ["isActive", "IsActive", "active", "Active"]) ?? true
+  ),
 });
 
-// Normalizador alineado a la vista EmployeeDetails que enviaste
 const normalizeEmployee = (e: any): Employee => {
-  const scheduleID = toNumber(pick(e, ["scheduleID", "ScheduleID"]));
-  const scheduleData = pick(e, ["schedule", "Schedule"]);
+  const scheduleID = toNumber(
+    pick(e, ["scheduleID", "ScheduleID", "scheduleId", "ScheduleId"])
+  );
+
+  const rawScheduleName = pick(e, [
+    "scheduleName",
+    "ScheduleName",
+    "schedule",
+    "Schedule",
+  ]);
+
+  const departmentName =
+    pick(e, [
+      "departmentName",
+      "DepartmentName",
+      "department",
+      "Department",
+      "area",
+      "Area",
+    ]) ?? "—";
 
   return {
-    employeeID: toNumber(pick(e, ["employeeID", "EmployeeID", "id", "Id", "ID"]))!,
+    employeeID: toNumber(
+      pick(e, ["employeeID", "EmployeeID", "id", "Id", "ID"])
+    )!,
     fullName:
       pick(e, ["fullName", "FullName"]) ||
       `${pick(e, ["firstName", "FirstName"]) || ""} ${
         pick(e, ["lastName", "LastName"]) || ""
       }`.trim(),
-    departmentName:
-      pick(e, ["department", "departmentName", "DepartmentName", "Department"]) ||
-      "—",
-    facultyName: "—", // No viene en el JSON que compartiste
-    email: pick(e, ["email", "Email"]) || "—",
-    // Muestra la DESCRIPCIÓN de contrato (contractType). El backend manda "contracType".
+    departmentName: cleanDisplayText(departmentName),
+    facultyName: "—",
+    email: cleanDisplayText(pick(e, ["email", "Email"]), "—"),
     employeeType: String(
       pick(e, ["employeeType", "EmployeeType", "type", "Type"]) ||
         "No especificado"
     ),
-    contractType: pick(e, ["contractType", "contracType"]) || "—",
-    idCard: pick(e, ["idCard", "IdCard", "identification"]),
+    contractType: cleanDisplayText(
+      pick(e, ["contractType", "ContractType", "contracType"]),
+      "—"
+    ),
+    idCard: cleanDisplayText(
+      pick(e, ["idCard", "IdCard", "identification", "Identification"]),
+      "—"
+    ),
     hireDate: pick(e, ["hireDate", "HireDate"]),
     hasActiveSalary: Boolean(pick(e, ["hasActiveSalary", "HasActiveSalary"])),
     baseSalary: toNumber(pick(e, ["baseSalary", "BaseSalary"])),
-    // info de horario desde la vista
     scheduleID,
-    scheduleName: scheduleData,
-    // posibles tiempos si la vista los trae (por si luego los usamos)
+    scheduleName: cleanDisplayText(rawScheduleName, ""),
     startTime: pick(e, ["startTime", "StartTime"]),
     endTime: pick(e, ["endTime", "EndTime"]),
   } as any;
 };
 
-// Construye un EmployeeSchedule "virtual" usando lo que trae la vista
 const createEmployeeScheduleFromView = (
   employee: any
 ): EmployeeSchedule | null => {
-  const scheduleID = toNumber(pick(employee, ["scheduleID", "ScheduleID"]));
-  const scheduleName = pick(employee, ["schedule", "Schedule"]);
+  const scheduleID = toNumber(
+    pick(employee, ["scheduleID", "ScheduleID", "scheduleId", "ScheduleId"])
+  );
 
-  if (!scheduleID || !scheduleName) return null;
+  const scheduleName = pick(employee, [
+    "scheduleName",
+    "ScheduleName",
+    "schedule",
+    "Schedule",
+    "name",
+    "Name",
+  ]);
+
+  if (!scheduleID && !scheduleName) return null;
 
   return {
-    empScheduleId: 0, // no disponible en la vista
+    empScheduleId: 0,
     employeeId: toNumber(pick(employee, ["employeeID", "EmployeeID"]))!,
-    scheduleId: scheduleID,
-    validFrom: pick(employee, ["validFrom", "ValidFrom", "startDate", "StartDate"]),
+    scheduleId: scheduleID ?? 0,
+    validFrom: pick(employee, [
+      "validFrom",
+      "ValidFrom",
+      "startDate",
+      "StartDate",
+    ]),
     validTo: pick(employee, ["validTo", "ValidTo", "endDate", "EndDate"]),
     createdAt: pick(employee, ["createdAt", "CreatedAt"]),
     createdBy: toNumber(pick(employee, ["createdBy", "CreatedBy"])),
     updatedAt: pick(employee, ["updatedAt", "UpdatedAt"]),
     updatedBy: toNumber(pick(employee, ["updatedBy", "UpdatedBy"])),
     schedule: {
-      scheduleId: scheduleID,
-      name: scheduleName,
+      scheduleId: scheduleID ?? 0,
+      name: cleanDisplayText(scheduleName, "Horario asignado"),
       startTime: pick(employee, ["startTime", "StartTime"]),
       endTime: pick(employee, ["endTime", "EndTime"]),
-      description: scheduleName,
+      description: cleanDisplayText(scheduleName, "Horario asignado"),
       isActive: true,
     },
   };
 };
 
-/* -------------------- Página -------------------- */
 export default function EmployeeSchedules() {
   const { toast } = useToast();
-  const { employeeDetails } = useAuth();
+  useAuth(); // se mantiene por contexto de auth si el componente depende de él
   const queryClient = useQueryClient();
 
-  // Diálogos
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [selectedEmployeeSchedule, setSelectedEmployeeSchedule] =
     useState<EmployeeSchedule | null>(null);
 
-  // Filtros
   const [filters, setFilters] = useState({
-    q: "",
     department: "all",
     status: "all",
   });
 
-  // Consulta para empleados con paginación
   const {
-    items: employees,
+    items: rawEmployees,
     isLoading: loadingEmployees,
-    isError: employeesError,
+    isError: isEmployeesError,
+    errorMessage: employeesError,
     page,
     pageSize,
     totalCount,
@@ -226,33 +265,29 @@ export default function EmployeeSchedules() {
     goToPage,
     setPageSize,
     setSearch,
+    clearSearch,
     currentParams,
-  } = usePaged({
-    queryKey: 'employee-details',
+  } = usePaged<any>({
+    queryKey: "employee-details",
     queryFn: (params) => VistaDetallesEmpleadosAPI.listPaged(params),
     initialPageSize: 25,
   });
 
-  // NUEVA CONSULTA: Obtener todos los horarios disponibles
-  const {
-    data: schedulesRes,
-    isLoading: loadingSchedules,
-    error: schedulesError,
-  } = useQuery({
+  const employees: Employee[] = useMemo(() => {
+    return (rawEmployees || []).map(normalizeEmployee);
+  }, [rawEmployees]);
+
+  const { data: schedulesRes } = useQuery({
     queryKey: ["schedules"],
     queryFn: async () => await HorariosAPI.list(),
     retry: 2,
   });
 
-  // Nota: employees ya viene del backend paginado; se usa directamente en los useMemo siguientes.
-
-  // NUEVO: Normalización de todos los horarios disponibles
   const allSchedules: Schedule[] = useMemo(() => {
     const data = getArray<any>(schedulesRes);
     return data.map(normalizeSchedule).filter((s) => s.scheduleId != null);
   }, [schedulesRes]);
 
-  // Mapa de horario actual por empleado (derivado de la vista)
   const schedulesByEmployee = useMemo(() => {
     const map: Record<number, EmployeeSchedule> = {};
     const today = new Date().toISOString().split("T")[0];
@@ -265,25 +300,54 @@ export default function EmployeeSchedules() {
         (!es.validTo || today <= es.validTo) &&
         (!es.validFrom || today >= es.validFrom);
 
-      if (isActive) map[es.employeeId] = es;
+      if (isActive) {
+        map[es.employeeId] = es;
+      }
     });
 
     return map;
   }, [employees]);
 
-  // Lista de horarios únicos (para los formularios) - AHORA usa allSchedules
   const schedules: Schedule[] = useMemo(() => {
-    return allSchedules.filter(schedule => schedule.isActive !== false);
+    return allSchedules.filter((schedule) => schedule.isActive !== false);
   }, [allSchedules]);
 
-  // Conteo por horario (usando la vista + tiempos desde schedulesByEmployee)
+  const getEmployeeScheduleInfo = (employee: Employee) => {
+    const employeeSchedule = schedulesByEmployee[employee.employeeID];
+
+    const scheduleLabel = cleanDisplayText(
+      employee.scheduleName || employeeSchedule?.schedule?.name || "",
+      ""
+    );
+
+    const hasAssignedSchedule = Boolean(
+      employee.scheduleID || normalizeText(scheduleLabel)
+    );
+
+    const today = new Date().toISOString().split("T")[0];
+
+    const isActiveSchedule = employeeSchedule
+      ? (!employeeSchedule.validTo || today <= employeeSchedule.validTo) &&
+        (!employeeSchedule.validFrom || today >= employeeSchedule.validFrom)
+      : hasAssignedSchedule;
+
+    return {
+      employeeSchedule,
+      scheduleLabel,
+      hasAssignedSchedule,
+      isActiveSchedule,
+    };
+  };
+
   const scheduleCounts: ScheduleCount[] = useMemo(() => {
     const counts: Record<number, ScheduleCount> = {};
 
     employees.forEach((emp) => {
-      const es = schedulesByEmployee[emp.employeeID];
-      const scheduleId = es?.scheduleId ?? emp.scheduleID;
-      const scheduleName = es?.schedule?.name ?? (emp as any).scheduleName;
+      const scheduleInfo = getEmployeeScheduleInfo(emp);
+      const scheduleId =
+        scheduleInfo.employeeSchedule?.scheduleId ?? emp.scheduleID;
+      const scheduleName =
+        scheduleInfo.employeeSchedule?.schedule?.name || emp.scheduleName;
 
       if (!scheduleId || !scheduleName) return;
 
@@ -292,8 +356,14 @@ export default function EmployeeSchedules() {
           schedule: {
             scheduleId,
             name: scheduleName,
-            startTime: es?.schedule?.startTime || (emp as any).startTime || "",
-            endTime: es?.schedule?.endTime || (emp as any).endTime || "",
+            startTime:
+              scheduleInfo.employeeSchedule?.schedule?.startTime ||
+              (emp as any).startTime ||
+              "",
+            endTime:
+              scheduleInfo.employeeSchedule?.schedule?.endTime ||
+              (emp as any).endTime ||
+              "",
             description: scheduleName,
             isActive: true,
           },
@@ -301,6 +371,7 @@ export default function EmployeeSchedules() {
           employees: [],
         };
       }
+
       counts[scheduleId].count += 1;
       counts[scheduleId].employees.push(emp);
     });
@@ -308,37 +379,53 @@ export default function EmployeeSchedules() {
     return Object.values(counts).sort((a, b) => b.count - a.count);
   }, [employees, schedulesByEmployee]);
 
-  // Filtro local: solo departamento y estado (el texto se filtra en servidor via setSearch)
+  const departments = useMemo(() => {
+    const unique = new Map<string, string>();
+
+    employees.forEach((e) => {
+      const raw = cleanDisplayText(e.departmentName, "");
+      if (!raw || raw === "—") return;
+
+      const key = raw.toLowerCase();
+      if (!unique.has(key)) {
+        unique.set(key, raw);
+      }
+    });
+
+    return Array.from(unique.values()).sort((a, b) =>
+      a.localeCompare(b, "es", { sensitivity: "base" })
+    );
+  }, [employees]);
+
   const filteredEmployees = useMemo(() => {
     return employees.filter((emp) => {
+      const departmentValue = normalizeText(emp.departmentName);
+      const selectedDepartment = normalizeText(filters.department);
+
       const matchesDepartment =
-        filters.department === "all" || emp.departmentName === filters.department;
-      const hasActiveSchedule = schedulesByEmployee[emp.employeeID] != null;
+        filters.department === "all" ||
+        departmentValue === selectedDepartment;
+
+      const { hasAssignedSchedule } = getEmployeeScheduleInfo(emp);
+
       const matchesStatus =
         filters.status === "all" ||
-        (filters.status === "withSchedule" && hasActiveSchedule) ||
-        (filters.status === "withoutSchedule" && !hasActiveSchedule);
+        (filters.status === "withSchedule" && hasAssignedSchedule) ||
+        (filters.status === "withoutSchedule" && !hasAssignedSchedule);
+
       return matchesDepartment && matchesStatus;
     });
   }, [employees, filters, schedulesByEmployee]);
 
-  // Departamentos para filtro
-  const departments = useMemo(() => {
-    const depts = new Set(employees.map((e) => e.departmentName).filter(Boolean));
-    return Array.from(depts).sort();
-  }, [employees]);
-
-  // Estadísticas
   const stats = useMemo(() => {
     const total = employees.length;
     const withSchedule = employees.filter(
-      (e) => schedulesByEmployee[e.employeeID]
+      (e) => getEmployeeScheduleInfo(e).hasAssignedSchedule
     ).length;
     const withoutSchedule = total - withSchedule;
     return { total, withSchedule, withoutSchedule };
   }, [employees, schedulesByEmployee]);
 
-  /* -------------------- Acciones -------------------- */
   const handleAssignSchedule = (employee: Employee) => {
     setSelectedEmployee(employee);
     setAssignDialogOpen(true);
@@ -351,12 +438,11 @@ export default function EmployeeSchedules() {
     setEditDialogOpen(true);
   };
 
-  const handleDeleteSchedule = async (employeeId: number) => {
-    // Con la vista no tenemos empScheduleId real. Dejo aviso claro.
+  const handleDeleteSchedule = async (_employeeId: number) => {
     toast({
       title: "Función no disponible desde esta vista",
       description:
-        "Para desasignar/terminar un horario se requiere el ID de asignación (empScheduleId). Usa la pantalla de gestión directa de asignaciones o expón ese ID en la vista.",
+        "Para desasignar o terminar un horario se requiere el ID de asignación (empScheduleId). Usa la pantalla de gestión directa de asignaciones o expón ese ID en la vista.",
       variant: "destructive",
     });
   };
@@ -374,13 +460,12 @@ export default function EmployeeSchedules() {
     setSelectedEmployeeSchedule(null);
   };
 
-  /* -------------------- Loading / Error -------------------- */
   if (loadingEmployees) {
     return (
       <div className="container mx-auto p-6">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <div className="mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600" />
             <p className="mt-4 text-gray-600">Cargando datos de empleados...</p>
           </div>
         </div>
@@ -388,28 +473,28 @@ export default function EmployeeSchedules() {
     );
   }
 
-  if (employeesError) {
+  if (isEmployeesError) {
     return (
       <div className="container mx-auto p-6">
         <Card className="border-red-200 bg-red-50">
           <CardContent className="pt-6">
             <div className="text-center">
-              <h3 className="text-lg font-semibold text-red-800 mb-2">
+              <h3 className="mb-2 text-lg font-semibold text-red-800">
                 Error al cargar los datos
               </h3>
-              <p className="text-red-600 mb-4">
-                {(employeesError as Error)?.message ||
-                  handleApiError(
-                    (employeesError as any)?.error ?? {
-                      code: 0,
-                      message: "Error",
-                    }
-                  )}
+              <p className="mb-4 text-red-600">
+                {employeesError ||
+                  handleApiError({
+                    code: 0,
+                    message: "Error",
+                  })}
               </p>
               <Button
                 variant="outline"
                 onClick={() => {
-                  queryClient.invalidateQueries({ queryKey: ["employee-details"] });
+                  queryClient.invalidateQueries({
+                    queryKey: ["employee-details"],
+                  });
                 }}
               >
                 Reintentar
@@ -421,22 +506,22 @@ export default function EmployeeSchedules() {
     );
   }
 
-  /* -------------------- UI -------------------- */
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      {/* Header */}
+    <div className="container mx-auto space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Gestión de Horarios</h1>
-          <p className="text-gray-600 mt-1">
-            Asigne y administre horarios usando la vista consolidada de empleados
+          <h1 className="text-3xl font-bold text-gray-900">
+            Gestión de Horarios
+          </h1>
+          <p className="mt-1 text-gray-600">
+            Asigne y administre horarios usando la vista consolidada de
+            empleados
           </p>
         </div>
       </div>
 
-      {/* Estadísticas Generales */}
       <div className="grid gap-6 md:grid-cols-3">
-        <Card className="hover:shadow-md transition-shadow">
+        <Card className="transition-shadow hover:shadow-md">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5 text-blue-600" />
@@ -444,12 +529,16 @@ export default function EmployeeSchedules() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-600">{stats.total}</div>
-            <p className="text-sm text-gray-500 mt-1">Empleados en el sistema</p>
+            <div className="text-3xl font-bold text-blue-600">
+              {stats.total}
+            </div>
+            <p className="mt-1 text-sm text-gray-500">
+              Empleados en el sistema
+            </p>
           </CardContent>
         </Card>
 
-        <Card className="hover:shadow-md transition-shadow">
+        <Card className="transition-shadow hover:shadow-md">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2">
               <Clock className="h-5 w-5 text-green-600" />
@@ -460,13 +549,13 @@ export default function EmployeeSchedules() {
             <div className="text-3xl font-bold text-green-600">
               {stats.withSchedule}
             </div>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="mt-1 text-sm text-gray-500">
               Empleados con horario asignado
             </p>
           </CardContent>
         </Card>
 
-        <Card className="hover:shadow-md transition-shadow">
+        <Card className="transition-shadow hover:shadow-md">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5 text-orange-600" />
@@ -477,14 +566,13 @@ export default function EmployeeSchedules() {
             <div className="text-3xl font-bold text-orange-600">
               {stats.withoutSchedule}
             </div>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="mt-1 text-sm text-gray-500">
               Empleados sin horario asignado
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Conteo por Horario */}
       {scheduleCounts.length > 0 && (
         <Card>
           <CardHeader>
@@ -504,29 +592,31 @@ export default function EmployeeSchedules() {
                   className="border-l-4 border-l-purple-500"
                 >
                   <CardContent className="p-4">
-                    <div className="flex justify-between items-start mb-2">
+                    <div className="mb-2 flex items-start justify-between">
                       <div>
-                        <h3 className="font-semibold text-lg">{schedule.name}</h3>
+                        <h3 className="text-lg font-semibold">{schedule.name}</h3>
                         {(schedule.startTime || schedule.endTime) && (
                           <p className="text-sm text-gray-600">
-                            {fmtTime(schedule.startTime)} - {fmtTime(schedule.endTime)}
+                            {fmtTime(schedule.startTime)} -{" "}
+                            {fmtTime(schedule.endTime)}
                           </p>
                         )}
                       </div>
-                      <Badge className="bg-purple-100 text-purple-800 text-lg px-3 py-1">
+                      <Badge className="bg-purple-100 px-3 py-1 text-lg text-purple-800">
                         {count}
                       </Badge>
                     </div>
+
                     {employees.length > 0 && (
                       <div className="mt-2">
-                        <p className="text-xs font-medium text-gray-500 mb-1">
+                        <p className="mb-1 text-xs font-medium text-gray-500">
                           Empleados:
                         </p>
-                        <div className="space-y-1 max-h-20 overflow-y-auto">
+                        <div className="max-h-20 space-y-1 overflow-y-auto">
                           {employees.slice(0, 5).map((emp) => (
                             <div
                               key={emp.employeeID}
-                              className="text-xs text-gray-600 truncate"
+                              className="truncate text-xs text-gray-600"
                             >
                               {emp.fullName}
                             </div>
@@ -547,10 +637,9 @@ export default function EmployeeSchedules() {
         </Card>
       )}
 
-      {/* Filtros + Tabla */}
       <Card>
         <CardHeader>
-          <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-end">
+          <div className="flex flex-col items-stretch gap-4 lg:flex-row lg:items-end">
             <div className="flex-1">
               <Label className="text-xs text-gray-500">Buscar Empleado</Label>
               <div className="flex items-center gap-2">
@@ -577,7 +666,7 @@ export default function EmployeeSchedules() {
                 <SelectContent>
                   <SelectItem value="all">Todos los departamentos</SelectItem>
                   {departments.map((dept) => (
-                    <SelectItem key={dept} value={dept!}>
+                    <SelectItem key={dept} value={dept}>
                       {dept}
                     </SelectItem>
                   ))}
@@ -607,7 +696,10 @@ export default function EmployeeSchedules() {
             <div className="lg:self-end">
               <Button
                 variant="outline"
-                onClick={() => { setSearch(""); setFilters({ q: "", department: "all", status: "all" }); }}
+                onClick={() => {
+                  clearSearch();
+                  setFilters({ department: "all", status: "all" });
+                }}
               >
                 Limpiar
               </Button>
@@ -620,27 +712,28 @@ export default function EmployeeSchedules() {
             <div className="py-8 text-center text-gray-500">
               {employees.length === 0 ? (
                 <div>
-                  <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  <Users className="mx-auto mb-4 h-12 w-12 text-gray-400" />
+                  <h3 className="mb-2 text-lg font-semibold text-gray-900">
                     No hay empleados
                   </h3>
-                  <p className="text-gray-600 mb-4">
+                  <p className="mb-4 text-gray-600">
                     No se encontraron empleados en el sistema
                   </p>
                 </div>
               ) : (
                 <div>
-                  <Search className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  <Search className="mx-auto mb-4 h-12 w-12 text-gray-400" />
+                  <h3 className="mb-2 text-lg font-semibold text-gray-900">
                     No se encontraron empleados
                   </h3>
-                  <p className="text-gray-600 mb-4">
+                  <p className="mb-4 text-gray-600">
                     No hay empleados que coincidan con los filtros aplicados
                   </p>
                   <Button
                     variant="outline"
                     onClick={() => {
-                      setSearch(""); setFilters({ q: "", department: "all", status: "all" });
+                      clearSearch();
+                      setFilters({ department: "all", status: "all" });
                     }}
                   >
                     Limpiar filtros
@@ -662,15 +755,15 @@ export default function EmployeeSchedules() {
               </TableHeader>
               <TableBody>
                 {filteredEmployees.map((employee) => {
-                  const employeeSchedule = schedulesByEmployee[employee.employeeID];
-                  const hasSchedule = !!employeeSchedule;
-                  const today = new Date().toISOString().split("T")[0];
-                  const isActive =
-                    hasSchedule &&
-                    (!employeeSchedule.validTo ||
-                      today <= employeeSchedule.validTo) &&
-                    (!employeeSchedule.validFrom ||
-                      today >= employeeSchedule.validFrom);
+                  const {
+                    employeeSchedule,
+                    scheduleLabel,
+                    hasAssignedSchedule,
+                    isActiveSchedule,
+                  } = getEmployeeScheduleInfo(employee);
+
+                  const hasSchedule = hasAssignedSchedule;
+                  const isActive = isActiveSchedule;
 
                   return (
                     <TableRow key={employee.employeeID}>
@@ -678,36 +771,40 @@ export default function EmployeeSchedules() {
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4 text-gray-500" />
                           <div className="truncate">
-                            <div className="font-medium truncate">
+                            <div className="truncate font-medium">
                               {employee.fullName}
                             </div>
                             {employee.email && employee.email !== "—" && (
-                              <div className="text-xs text-gray-500 truncate">
+                              <div className="truncate text-xs text-gray-500">
                                 {employee.email}
                               </div>
                             )}
                           </div>
                         </div>
                       </TableCell>
+
                       <TableCell>
                         <div className="text-sm text-gray-600">
                           {employee.idCard || "—"}
                         </div>
                       </TableCell>
+
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Building className="h-4 w-4 text-gray-500" />
                           {employee.departmentName || "—"}
                         </div>
                       </TableCell>
+
                       <TableCell>
                         <Badge variant="outline">
                           {employee.contractType || "—"}
                         </Badge>
                       </TableCell>
+
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <span>{(employee as any).scheduleName || "—"}</span>
+                          <span>{scheduleLabel || "—"}</span>
                           {hasSchedule && (
                             <Badge
                               className={
@@ -723,7 +820,8 @@ export default function EmployeeSchedules() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="text-right space-x-2 whitespace-nowrap">
+
+                      <TableCell className="space-x-2 whitespace-nowrap text-right">
                         {hasSchedule ? (
                           <>
                             <Button
@@ -731,7 +829,7 @@ export default function EmployeeSchedules() {
                               variant="outline"
                               onClick={() => handleEditSchedule(employee)}
                             >
-                              <Edit className="h-4 w-4 mr-1" />
+                              <Edit className="mr-1 h-4 w-4" />
                               Editar
                             </Button>
                             <Button
@@ -741,7 +839,7 @@ export default function EmployeeSchedules() {
                                 handleDeleteSchedule(employee.employeeID)
                               }
                             >
-                              <Trash2 className="h-4 w-4 mr-1" />
+                              <Trash2 className="mr-1 h-4 w-4" />
                               Eliminar
                             </Button>
                           </>
@@ -750,7 +848,7 @@ export default function EmployeeSchedules() {
                             size="sm"
                             onClick={() => handleAssignSchedule(employee)}
                           >
-                            <Plus className="h-4 w-4 mr-1" />
+                            <Plus className="mr-1 h-4 w-4" />
                             Asignar
                           </Button>
                         )}
@@ -764,7 +862,6 @@ export default function EmployeeSchedules() {
         </CardContent>
       </Card>
 
-      {/* Diálogos */}
       <AssignScheduleForm
         open={assignDialogOpen}
         onOpenChange={setAssignDialogOpen}
@@ -782,7 +879,6 @@ export default function EmployeeSchedules() {
         onScheduleUpdated={handleScheduleUpdated}
       />
 
-      {/* Paginación */}
       <DataPagination
         page={page}
         totalPages={totalPages}

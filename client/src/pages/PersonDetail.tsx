@@ -1,7 +1,6 @@
-// client/src/pages/PersonDetail.tsx
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -13,8 +12,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { usePersonData, usePersonMutations } from "@/hooks/personDetails/usePersonData";
+import {
+  TiposReferenciaAPI,
+  PaisesAPI,
+  ProvinciasAPI,
+  CantonesAPI,
+} from "@/lib/api";
 
-// Componentes de tabs
 import { PersonalInfoTab } from "@/components/person-detail/tabs/PersonalInfoTab";
 import { PublicationsTab } from "@/components/person-detail/tabs/PublicationsTab";
 import { FamilyMembersTab } from "@/components/person-detail/tabs/FamilyMembersTab";
@@ -23,7 +27,6 @@ import { TrainingsTab } from "@/components/person-detail/tabs/TrainingsTab";
 import { BooksTab } from "@/components/person-detail/tabs/BooksTab";
 import { EmergencyContactsTab } from "@/components/person-detail/tabs/EmergencyContactsTab";
 
-// Componentes de apoyo
 import { StatsDashboard } from "@/components/person-detail/StatsDashboard";
 import { PersonFormDialog } from "@/components/person-detail/PersonFormDialog";
 import { DynamicFormDialog } from "@/components/person-detail/DynamicFormDialog";
@@ -42,7 +45,6 @@ import {
   Phone,
 } from "lucide-react";
 
-// Tipos para el estado del formulario dinámico
 type FormType =
   | "publication"
   | "familyMember"
@@ -55,6 +57,54 @@ type FormType =
 interface FormState {
   type: FormType;
   item: unknown | null;
+}
+
+interface ApiRefType {
+  typeId?: number;
+  typeID?: number;
+  category: string;
+  name: string;
+  description?: string | null;
+  isActive?: boolean;
+}
+
+interface RefType {
+  id: number;
+  category: string;
+  name: string;
+  description?: string | null;
+  isActive?: boolean;
+}
+
+const REF_CATEGORIES = [
+  "IDENTITY_TYPE",
+  "MARITAL_STATUS",
+  "ETHNICITY",
+  "BLOOD_TYPE",
+  "SPECIAL_NEEDS",
+  "GENDER_TYPE",
+  "SEX_TYPE",
+];
+
+function buildNameMap(items: any[], idKeys: string[], nameKeys: string[]) {
+  const map: Record<number, string> = {};
+
+  items.forEach((item) => {
+    const rawId = idKeys
+      .map((k) => item?.[k])
+      .find((v) => v !== undefined && v !== null);
+
+    const rawName = nameKeys
+      .map((k) => item?.[k])
+      .find((v) => typeof v === "string" && v.trim());
+
+    const id = Number(rawId);
+    if (!Number.isNaN(id) && rawName) {
+      map[id] = rawName;
+    }
+  });
+
+  return map;
 }
 
 export default function PersonDetail() {
@@ -74,7 +124,6 @@ export default function PersonDetail() {
 
   const mutations = usePersonMutations(personId);
 
-  // Estado local
   const [isEditFormOpen, setIsEditFormOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("personal");
   const [formState, setFormState] = useState<FormState>({
@@ -82,9 +131,99 @@ export default function PersonDetail() {
     item: null,
   });
 
-  // ==========
-  // HANDLERS
-  // ==========
+  const { data: refTypesResponse } = useQuery({
+    queryKey: ["person-detail-ref-types"],
+    queryFn: () => TiposReferenciaAPI.list(),
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const { data: countriesResponse } = useQuery({
+    queryKey: ["countries"],
+    queryFn: () => PaisesAPI.list(),
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const { data: provincesResponse } = useQuery({
+    queryKey: ["provinces"],
+    queryFn: () => ProvinciasAPI.list(),
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const { data: cantonsResponse } = useQuery({
+    queryKey: ["cantons"],
+    queryFn: () => CantonesAPI.list(),
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const refTypesByCategory = useMemo(() => {
+    if (
+      refTypesResponse?.status === "success" &&
+      Array.isArray(refTypesResponse.data)
+    ) {
+      return refTypesResponse.data.reduce(
+        (acc: Record<string, RefType[]>, ref: ApiRefType) => {
+          if (!REF_CATEGORIES.includes(ref.category)) {
+            return acc;
+          }
+
+          const normalized: RefType = {
+            id: Number(ref.typeId ?? ref.typeID ?? 0),
+            category: ref.category,
+            name: ref.name,
+            description: ref.description ?? undefined,
+            isActive: ref.isActive,
+          };
+
+          if (!acc[ref.category]) {
+            acc[ref.category] = [];
+          }
+
+          acc[ref.category].push(normalized);
+          return acc;
+        },
+        {}
+      );
+    }
+
+    return {} as Record<string, RefType[]>;
+  }, [refTypesResponse]);
+
+  const countryMap = useMemo(() => {
+    if (countriesResponse?.status === "success" && Array.isArray(countriesResponse.data)) {
+      return buildNameMap(
+        countriesResponse.data,
+        ["countryId", "id"],
+        ["name", "countryName"]
+      );
+    }
+    return {};
+  }, [countriesResponse]);
+
+  const provinceMap = useMemo(() => {
+    if (provincesResponse?.status === "success" && Array.isArray(provincesResponse.data)) {
+      return buildNameMap(
+        provincesResponse.data,
+        ["provinceId", "id"],
+        ["name", "provinceName"]
+      );
+    }
+    return {};
+  }, [provincesResponse]);
+
+  const cantonMap = useMemo(() => {
+    if (cantonsResponse?.status === "success" && Array.isArray(cantonsResponse.data)) {
+      return buildNameMap(
+        cantonsResponse.data,
+        ["cantonId", "id"],
+        ["name", "cantonName"]
+      );
+    }
+    return {};
+  }, [cantonsResponse]);
 
   const openForm = (type: FormType, item?: unknown) => {
     setFormState({ type, item: item ?? null });
@@ -111,11 +250,6 @@ export default function PersonDetail() {
     refetch();
   };
 
-  // ==========
-  // EFECTOS
-  // ==========
-
-  // Notificación de error NO bloqueante
   useEffect(() => {
     if (hasError) {
       toast({
@@ -127,11 +261,6 @@ export default function PersonDetail() {
     }
   }, [hasError, toast]);
 
-  // ==========
-  // RENDER CONDICIONAL
-  // ==========
-
-  // Loading mientras aún no tengo persona
   if (isLoading && !person) {
     return (
       <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
@@ -150,7 +279,6 @@ export default function PersonDetail() {
     );
   }
 
-  // Persona no encontrada (sólo si definitivamente no hay persona)
   if (!person && !isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
@@ -160,17 +288,11 @@ export default function PersonDetail() {
           <p className="text-gray-600 mb-4">
             La persona que buscas no existe o no tienes permisos para verla.
           </p>
-          <Button onClick={handleBack}>
-            Volver al listado
-          </Button>
+          <Button onClick={handleBack}>Volver al listado</Button>
         </div>
       </div>
     );
   }
-
-  // ==========
-  // DATOS SEGUROS PARA TABS
-  // ==========
 
   const safeData = {
     publications: data?.publications ?? [],
@@ -182,14 +304,9 @@ export default function PersonDetail() {
     stats: data?.stats ?? null,
   };
 
-  // ==========
-  // RENDER PRINCIPAL
-  // ==========
-
   return (
     <div className="min-h-screen bg-gray-50 p-3 sm:p-4 lg:p-6">
       <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
-        {/* Header Responsive */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 sm:gap-4">
           <div className="flex items-center space-x-3">
             <Button
@@ -241,46 +358,31 @@ export default function PersonDetail() {
           </div>
         </div>
 
-        {/* Stats Dashboard */}
         <StatsDashboard data={safeData} />
 
-        {/* Tabs Responsive */}
         <Tabs
           value={activeTab}
           onValueChange={setActiveTab}
           className="space-y-4 sm:space-y-6"
         >
           <TabsList className="w-full grid grid-cols-4 gap-1 h-auto p-1 bg-gray-100 rounded-lg">
-            <TabsTrigger
-              value="personal"
-              className="text-xs px-2 py-2 data-[state=active]:bg-white"
-            >
+            <TabsTrigger value="personal" className="text-xs px-2 py-2 data-[state=active]:bg-white">
               <User className="h-3 w-3 sm:mr-1" />
               <span className="hidden sm:inline">Personal</span>
             </TabsTrigger>
-            <TabsTrigger
-              value="publications"
-              className="text-xs px-2 py-2 data-[state=active]:bg-white"
-            >
+            <TabsTrigger value="publications" className="text-xs px-2 py-2 data-[state=active]:bg-white">
               <FileText className="h-3 w-3 sm:mr-1" />
               <span className="hidden sm:inline">Publicaciones</span>
             </TabsTrigger>
-            <TabsTrigger
-              value="family"
-              className="text-xs px-2 py-2 data-[state=active]:bg-white"
-            >
+            <TabsTrigger value="family" className="text-xs px-2 py-2 data-[state=active]:bg-white">
               <Users className="h-3 w-3 sm:mr-1" />
               <span className="hidden sm:inline">Familia</span>
             </TabsTrigger>
-            <TabsTrigger
-              value="experience"
-              className="text-xs px-2 py-2 data-[state=active]:bg-white"
-            >
+            <TabsTrigger value="experience" className="text-xs px-2 py-2 data-[state=active]:bg-white">
               <Briefcase className="h-3 w-3 sm:mr-1" />
               <span className="hidden sm:inline">Experiencia</span>
             </TabsTrigger>
 
-            {/* Más tabs en menú desplegable para móviles */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -309,11 +411,14 @@ export default function PersonDetail() {
             </DropdownMenu>
           </TabsList>
 
-          {/* Contenido de Tabs */}
           <TabsContent value="personal" className="space-y-4">
             <PersonalInfoTab
               person={person!}
               onEdit={() => setIsEditFormOpen(true)}
+              refTypesByCategory={refTypesByCategory}
+              countryMap={countryMap}
+              provinceMap={provinceMap}
+              cantonMap={cantonMap}
             />
           </TabsContent>
 
@@ -346,11 +451,7 @@ export default function PersonDetail() {
               workExperiences={safeData.workExperiences}
               onEdit={openForm}
               onDelete={(id) => {
-                if (
-                  confirm(
-                    "¿Está seguro de que desea eliminar esta experiencia laboral?"
-                  )
-                ) {
+                if (confirm("¿Está seguro de que desea eliminar esta experiencia laboral?")) {
                   mutations.workExperiences.delete.mutate(id);
                 }
               }}
@@ -362,9 +463,7 @@ export default function PersonDetail() {
               trainings={safeData.trainings}
               onEdit={openForm}
               onDelete={(id) => {
-                if (
-                  confirm("¿Está seguro de que desea eliminar esta capacitación?")
-                ) {
+                if (confirm("¿Está seguro de que desea eliminar esta capacitación?")) {
                   mutations.trainings.delete.mutate(id);
                 }
               }}
@@ -388,11 +487,7 @@ export default function PersonDetail() {
               emergencyContacts={safeData.emergencyContacts}
               onEdit={openForm}
               onDelete={(id) => {
-                if (
-                  confirm(
-                    "¿Está seguro de que desea eliminar este contacto de emergencia?"
-                  )
-                ) {
+                if (confirm("¿Está seguro de que desea eliminar este contacto de emergencia?")) {
                   mutations.emergencyContacts.delete.mutate(id);
                 }
               }}
@@ -400,7 +495,6 @@ export default function PersonDetail() {
           </TabsContent>
         </Tabs>
 
-        {/* Diálogos */}
         <PersonFormDialog
           open={isEditFormOpen}
           onOpenChange={setIsEditFormOpen}

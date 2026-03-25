@@ -23,13 +23,14 @@ export class ReportError extends Error {
     if (options?.status !== undefined) this.status = options.status;
     if (options?.url !== undefined) this.url = options.url;
     if (options?.details !== undefined) this.details = options.details;
-    // @ts-expect-error
+ 
     if (options?.cause) this.cause = options.cause;
   }
 }
 
 class ReportService {
   private baseUrl = '/api/v1/rh/reports';
+  // private baseUrl = '/reports';
 
   private buildEndpoint(type: ReportType, format: ReportFormat, action: 'preview' | 'download'): string {
     if (action === 'preview') return `${this.baseUrl}/${type}/preview`;

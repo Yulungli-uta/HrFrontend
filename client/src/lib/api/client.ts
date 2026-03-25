@@ -274,6 +274,7 @@ function resolveBaseUrl(path: string): string {
 
   // Reportes debe resolverse aparte (más específico que /api/v1/rh)
   if (path.startsWith('/api/v1/rh/reports')) return API_CONFIG.REPORTS_BASE_URL;
+  // if (path.startsWith('/reports')) return API_CONFIG.REPORTS_BASE_URL;
 
   if (path.startsWith('/api/v1/rh')) return API_CONFIG.RH_BASE_URL;
 

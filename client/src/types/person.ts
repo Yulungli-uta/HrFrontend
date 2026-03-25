@@ -7,11 +7,21 @@ export interface Person {
   email: string;
   phone?: string;
   birthDate?: string;
-  sex?: string;
-  gender?: string;
+  // Códigos / ids que vienen desde backend
+  sex?: string | number;
+  gender?: string | number;
+  maritalStatusTypeId?: number | null;
+  ethnicityTypeId?: number | null;
+  countryId?: number | string | null;
+  provinceId?: number | string | null;
+  cantonId?: number | string | null;
+
   address?: string;
   disability?: string;
   isActive: boolean;
+
+  motherName?: string;
+  fatherName?: string;
 }
 
 export interface Publication {
@@ -153,17 +163,25 @@ export interface EmergencyContact {
 // Helper functions para normalizar datos
 export const normalizePerson = (data: any): Person => ({
   id: data.id || data.personId || 0,
-  firstName: data.firstName || '',
-  lastName: data.lastName || '',
-  idCard: data.idCard || '',
-  email: data.email || '',
+  personId: data.personId || data.id || 0,
+  firstName: data.firstName || "",
+  lastName: data.lastName || "",
+  idCard: data.idCard || "",
+  email: data.email || "",
   phone: data.phone,
   birthDate: data.birthDate,
   sex: data.sex,
   gender: data.gender,
+  maritalStatusTypeId: data.maritalStatusTypeId ?? data.maritalStatusTypeID ?? null,
+  ethnicityTypeId: data.ethnicityTypeId ?? data.ethnicityTypeID ?? null,
+  countryId: data.countryId ?? null,
+  provinceId: data.provinceId ?? null,
+  cantonId: data.cantonId ?? null,
   address: data.address,
   disability: data.disability,
   isActive: data.isActive ?? true,
+  motherName: data.motherName,
+  fatherName: data.fatherName,
 });
 
 export const normalizePublication = (data: any): Publication => ({

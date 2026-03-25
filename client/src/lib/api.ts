@@ -34,6 +34,18 @@ export interface HolidayResponseDTO {
   createdAt: string;
 }
 
+export interface ContractTypeStatDto {
+  employeeType: number;
+  count: number;
+}
+
+export interface EmployeeCompleteStatsDto {
+  total: number;
+  active: number;
+  inactive: number;
+  byContractType: ContractTypeStatDto[];
+}
+
 // --------------------------------------------------------------------------
 // 🆕 NUEVAS INTERFACES PARA DTOs FALTANTES
 // --------------------------------------------------------------------------
@@ -540,6 +552,8 @@ export interface PagedRequest {
   sortBy?: string;
   /** Dirección del orden: 'asc' | 'desc' (opcional). */
   sortDirection?: 'asc' | 'desc';
+  /** Término de búsqueda enviado al backend (opcional). */
+  search?: string;
 }
 
 /**
@@ -587,7 +601,8 @@ export function createApiService<Resource, CreateDTO, UpdateDTO = Partial<Resour
         page: String(params.page),
         pageSize: String(params.pageSize),
         ...(params.sortBy ? { sortBy: params.sortBy } : {}),
-        ...(params.sortDirection ? { sortDirection: params.sortDirection } : {})
+        ...(params.sortDirection ? { sortDirection: params.sortDirection } : {}),
+        ...(params.search ? { search: params.search } : {}),
       });
       return apiFetch<PagedResult<Resource>>(`${endpoint}/paged?${qs.toString()}`);
     },
@@ -1200,7 +1215,13 @@ export const ConfigHorasExtrasAPI = {
 export const VistaEmpleadosAPI = {
   ...createApiService<any, any>("/api/v1/rh/vw/EmployeeComplete"),
   byDepartment: (department: string): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`/api/v1/rh/vw/EmployeeComplete/department/${department}`)
+    apiFetch<any[]>(`/api/v1/rh/vw/EmployeeComplete/department/${department}`),
+
+  stats: (): Promise<ApiResponse<EmployeeCompleteStatsDto>> =>
+    apiFetch<EmployeeCompleteStatsDto>("/api/v1/rh/vw/EmployeeComplete/stats"),
+
+  byContractTypeStats: (): Promise<ApiResponse<ContractTypeStatDto[]>> =>
+    apiFetch<ContractTypeStatDto[]>("/api/v1/rh/vw/EmployeeComplete/stats/by-contract-type"),
 };
 
 // Servicios para Time API

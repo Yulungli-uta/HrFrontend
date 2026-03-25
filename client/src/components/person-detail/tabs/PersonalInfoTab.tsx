@@ -1,23 +1,84 @@
-// client/src/components/person-detail/tabs/PersonalInfoTab.tsx
+import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { User, Edit, Mail, Phone, Calendar, MapPin, Heart } from "lucide-react";
 import { Person } from "@/types/person";
 
+interface RefType {
+  id: number;
+  category: string;
+  name: string;
+  description?: string | null;
+  isActive?: boolean;
+}
+
 interface PersonalInfoTabProps {
   person: Person;
   onEdit: () => void;
+  refTypesByCategory?: Record<string, RefType[]>;
+  countryMap?: Record<number, string>;
+  provinceMap?: Record<number, string>;
+  cantonMap?: Record<number, string>;
 }
 
-export function PersonalInfoTab({ person, onEdit }: PersonalInfoTabProps) {
+function buildRefMap(refs?: RefType[]) {
+  const map: Record<number, string> = {};
+  (refs ?? []).forEach((ref) => {
+    map[Number(ref.id)] = ref.name;
+  });
+  return map;
+}
+
+function resolveRefName(
+  value: string | number | null | undefined,
+  map: Record<number, string>
+) {
+  if (value === null || value === undefined || value === "") return "—";
+
+  const numericValue = Number(value);
+  if (!Number.isNaN(numericValue)) {
+    return map[numericValue] ?? String(value);
+  }
+
+  return String(value);
+}
+
+export function PersonalInfoTab({
+  person,
+  onEdit,
+  refTypesByCategory = {},
+  countryMap = {},
+  provinceMap = {},
+  cantonMap = {},
+}: PersonalInfoTabProps) {
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-EC', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+    return new Date(dateString).toLocaleDateString("es-EC", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   };
+
+  const sexMap = useMemo(
+    () => buildRefMap(refTypesByCategory["SEX_TYPE"]),
+    [refTypesByCategory]
+  );
+
+  const genderMap = useMemo(
+    () => buildRefMap(refTypesByCategory["GENDER_TYPE"]),
+    [refTypesByCategory]
+  );
+
+  const maritalStatusMap = useMemo(
+    () => buildRefMap(refTypesByCategory["MARITAL_STATUS"]),
+    [refTypesByCategory]
+  );
+
+  const ethnicityMap = useMemo(
+    () => buildRefMap(refTypesByCategory["ETHNICITY"]),
+    [refTypesByCategory]
+  );
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
@@ -33,6 +94,7 @@ export function PersonalInfoTab({ person, onEdit }: PersonalInfoTabProps) {
               Editar
             </Button>
           </CardHeader>
+
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-gray-500">Estado</span>
@@ -93,54 +155,75 @@ export function PersonalInfoTab({ person, onEdit }: PersonalInfoTabProps) {
           </CardContent>
         </Card>
       </div>
-      
-      {/* Información adicional */}
+
       <div className="lg:col-span-2 space-y-4 sm:space-y-6">
         <Card>
           <CardHeader>
             <CardTitle>Información Adicional</CardTitle>
           </CardHeader>
+
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {person.sex && (
+              {person.sex !== null && person.sex !== undefined && person.sex !== "" && (
                 <div>
                   <label className="text-sm font-medium text-gray-500">Sexo</label>
-                  <p className="mt-1 text-gray-900">{person.sex}</p>
+                  <p className="mt-1 text-gray-900">
+                    {resolveRefName(person.sex, sexMap)}
+                  </p>
                 </div>
               )}
 
-              {person.gender && (
+              {person.gender !== null && person.gender !== undefined && person.gender !== "" && (
                 <div>
                   <label className="text-sm font-medium text-gray-500">Género</label>
-                  <p className="mt-1 text-gray-900">{person.gender}</p>
+                  <p className="mt-1 text-gray-900">
+                    {resolveRefName(person.gender, genderMap)}
+                  </p>
                 </div>
               )}
 
               {person.maritalStatusTypeId && (
                 <div>
                   <label className="text-sm font-medium text-gray-500">Estado Civil</label>
-                  <p className="mt-1 text-gray-900">{person.maritalStatusTypeId}</p>
+                  <p className="mt-1 text-gray-900">
+                    {resolveRefName(person.maritalStatusTypeId, maritalStatusMap)}
+                  </p>
                 </div>
               )}
 
               {person.countryId && (
                 <div>
                   <label className="text-sm font-medium text-gray-500">País</label>
-                  <p className="mt-1 text-gray-900">{person.countryId}</p>
+                  <p className="mt-1 text-gray-900">
+                    {resolveRefName(person.countryId, countryMap)}
+                  </p>
                 </div>
               )}
 
               {person.provinceId && (
                 <div>
                   <label className="text-sm font-medium text-gray-500">Provincia</label>
-                  <p className="mt-1 text-gray-900">{person.provinceId}</p>
+                  <p className="mt-1 text-gray-900">
+                    {resolveRefName(person.provinceId, provinceMap)}
+                  </p>
+                </div>
+              )}
+
+              {person.cantonId && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Cantón</label>
+                  <p className="mt-1 text-gray-900">
+                    {resolveRefName(person.cantonId, cantonMap)}
+                  </p>
                 </div>
               )}
 
               {person.ethnicityTypeId && (
                 <div>
                   <label className="text-sm font-medium text-gray-500">Etnia</label>
-                  <p className="mt-1 text-gray-900">{person.ethnicityTypeId}</p>
+                  <p className="mt-1 text-gray-900">
+                    {resolveRefName(person.ethnicityTypeId, ethnicityMap)}
+                  </p>
                 </div>
               )}
             </div>
@@ -151,6 +234,7 @@ export function PersonalInfoTab({ person, onEdit }: PersonalInfoTabProps) {
           <CardHeader>
             <CardTitle>Información Familiar</CardTitle>
           </CardHeader>
+
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {person.motherName && (

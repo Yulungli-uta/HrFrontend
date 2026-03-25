@@ -1,5 +1,4 @@
-// src/pages/admin/Roles.tsx
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -35,7 +34,6 @@ import {
 
 import { Shield, Plus, Edit, Trash2, Search } from "lucide-react";
 import { RolesAPI } from "@/lib/api/auth";
-import type { ApiResponse } from "@/lib/api/client";
 import { usePaged } from "@/hooks/pagination/usePaged";
 import { DataPagination } from "@/components/ui/DataPagination";
 import type { Role } from "@/types/auth";
@@ -43,43 +41,14 @@ import { useToast } from "@/hooks/use-toast";
 import RoleForm from "@/components/forms/RoleForm";
 import { parseApiError } from "@/lib/error-handling";
 
-/** Normaliza cualquier payload común a arreglo de Role */
-function coerceToRoleArray(payload: unknown): Role[] {
-  if (Array.isArray(payload)) return payload as Role[];
-  if (payload && typeof payload === "object") {
-    // @ts-ignore
-    if (Array.isArray(payload.items)) return payload.items as Role[];
-    // @ts-ignore
-    if (Array.isArray(payload.results)) return payload.results as Role[];
-    // @ts-ignore
-    if (Array.isArray(payload.data)) return payload.data as Role[];
-    // Diccionario { [id]: Role }
-    // @ts-ignore
-    const values = Object.values(payload);
-    if (
-      values.length > 0 &&
-      values.every(
-        (v) =>
-          v &&
-          typeof v === "object" &&
-          ("name" in v || "description" in v)
-      )
-    ) {
-      return values as Role[];
-    }
-  }
-  return [];
-}
-
 export default function RolesPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [deleteRoleId, setDeleteRoleId] = useState<number | null>(null);
-  // searchTerm removed: búsqueda delegada al servidor via usePaged.setSearch
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Obtener roles paginados
   const {
     items: roles,
     isLoading,
@@ -93,15 +62,35 @@ export default function RolesPage() {
     goToPage,
     setPageSize,
     setSearch,
-    clearSearch,
     currentParams,
   } = usePaged<Role>({
-    queryKey: 'roles',
-    queryFn: (params) => RolesAPI.listPaged(params),
+    queryKey: "roles",
+    queryFn: async (params) => {
+      const res: any = await RolesAPI.listPaged(params);
+
+      if (res?.status === "success" && res?.data?.items) {
+        return res;
+      }
+
+      if (res?.status === "success" && res?.data?.success && res?.data?.data) {
+        return {
+          status: "success",
+          data: res.data.data,
+        };
+      }
+
+      if (res?.success && res?.data) {
+        return {
+          status: "success",
+          data: res.data,
+        };
+      }
+
+      return res;
+    },
     initialPageSize: 20,
   });
 
-  // Mutación para eliminar rol
   const deleteMutation = useMutation({
     mutationFn: (id: number) => RolesAPI.remove(id),
     onSuccess: () => {
@@ -121,10 +110,6 @@ export default function RolesPage() {
     },
   });
 
-  // Filtrar roles por búsqueda (campos opcionales)
-  // filteredRoles removed: el servidor ya filtra por search
-  const filteredRoles = roles;
-
   const handleEdit = (role: Role) => {
     setEditingRole(role);
     setIsFormOpen(true);
@@ -139,7 +124,6 @@ export default function RolesPage() {
     setDeleteRoleId(id);
   };
 
-  // Loading skeleton
   if (isLoading) {
     return (
       <div className="container mx-auto p-6">
@@ -160,7 +144,6 @@ export default function RolesPage() {
     );
   }
 
-  // Error de red/fetch
   if (isError) {
     return (
       <div className="container mx-auto p-6">
@@ -188,7 +171,6 @@ export default function RolesPage() {
           </p>
         </div>
 
-        {/* Modal Crear/Editar Rol — Accesible */}
         <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
           <DialogTrigger asChild>
             <Button
@@ -219,7 +201,6 @@ export default function RolesPage() {
         </Dialog>
       </div>
 
-      {/* Barra de búsqueda */}
       <Card className="mb-6">
         <CardContent className="pt-6">
           <div className="relative">
@@ -234,7 +215,6 @@ export default function RolesPage() {
         </CardContent>
       </Card>
 
-      {/* Tabla de roles */}
       <Card>
         <CardContent className="pt-6">
           <Table>
@@ -249,14 +229,14 @@ export default function RolesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredRoles.length === 0 ? (
+              {roles.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8 text-gray-500">
                     {currentParams.search ? "No se encontraron roles" : "No hay roles registrados"}
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredRoles.map((role) => (
+                roles.map((role) => (
                   <TableRow key={String(role.id)}>
                     <TableCell className="font-medium">{role.name}</TableCell>
                     <TableCell>{role.description || "-"}</TableCell>
@@ -298,8 +278,6 @@ export default function RolesPage() {
         </CardContent>
       </Card>
 
-      {/* Confirmación de eliminación */}
-      {/* Paginación */}
       <DataPagination
         page={page}
         totalPages={totalPages}
