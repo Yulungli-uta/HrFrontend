@@ -41,6 +41,7 @@ const ReportsPage = lazy(() => import("@/pages/Reports"));
 const JustificationPage = lazy(() => import("@/pages/Justifications"));
 const ContractTypePage = lazy(() => import("@/pages/ContractType"));
 const ContractRequestPage = lazy(() => import("@/pages/ContractRequest"));
+const ScheduleChangePlansPage  = lazy(() => import( "@/pages/ScheduleChangePlansPage"));
 const CertificationFinancePage = lazy(
   () => import("@/pages/CertificationFinance")
 );
@@ -48,6 +49,7 @@ const EmployeeSchedulesPage = lazy(
   () => import("@/pages/EmployeeSchedules")
 );
 const PermissionTypesPage = lazy(() => import("@/pages/PermissionTypes"));
+const ApprovalsMedicalPermissionsPage = lazy(() => import("@/pages/ApprovalsMedicalPermissions"));
 const ApprovalsPermissionsPage = lazy(
   () => import("@/pages/ApprovalsPermissions")
 );
@@ -274,6 +276,14 @@ function AppRouter() {
             )}
           </Route>
 
+          <Route path="/ApprovalsMedicalPermissions">
+            {() => (
+              <ProtectedRoute requiredPath="/ApprovalsMedicalPermissions">
+                <ApprovalsMedicalPermissionsPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
           <Route path="/ApprovalsPermissions">
             {() => (
               <ProtectedRoute requiredPath="/ApprovalsPermissions">
@@ -303,6 +313,14 @@ function AppRouter() {
             {() => (
               <ProtectedRoute requiredPath="/shedulerAssig">
                 <EmployeeSchedulesPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          <Route path="/shedulerChangePlans">
+            {() => (
+              <ProtectedRoute requiredPath="/shedulerChangePlans">
+                <ScheduleChangePlansPage />
               </ProtectedRoute>
             )}
           </Route>

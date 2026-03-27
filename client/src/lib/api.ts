@@ -23,6 +23,11 @@ import type {
 
 } from '@/types/documents'
 
+import type {
+  CreateScheduleChangePlanRequest,
+  ScheduleChangePlanResponse,
+} from "@/types/sheduleChangePlansType";
+
 import type { ContractDto, ContractsCreateDto } from "@/types/contract";
 
 export interface HolidayResponseDTO {
@@ -143,6 +148,45 @@ export interface RefType {
   createdAt?: string;
   updatedAt?: string | null;
 }
+
+export interface EmployeeDetailsDto {
+  employeeID: number;
+  firstName: string;
+  lastName: string;
+  idCard: string;
+  email: string;
+  employeeType: number;
+  ImmediateBossID: number;
+  scheduleID: number;
+  department: string;
+  faculty: string;
+  baseSalary: number;
+  hireDate: string;
+  fullName: string;
+  hasActiveSalary: boolean;
+}
+
+export interface ScheduleDto {
+  scheduleID: number;
+  code?: string;
+  name: string;
+  description?: string | null;
+  isActive?: boolean;
+  entryTime?: string | null;
+  exitTime?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  workingDays?: string | null;
+  hasLunchBreak?: boolean;
+  lunchStart?: string | null;
+  lunchEnd?: string | null;
+  isRotating?: boolean;
+  rotationPattern?: string | null;
+  requiredHoursPerDay?: number | string | null;
+  createdAt?: string;
+  updatedAt?: string | null;
+}
+
 
 type LogLevel = 'none' | 'error' | 'info' | 'debug';
 
@@ -1130,7 +1174,11 @@ export const PermisosAPI = {
   getByEmployee: (employeeId: number): Promise<ApiResponse<any>> =>
     apiFetch<any>(`/api/v1/rh/permissions/employee/${employeeId}`),
   getByBossId: (employeeId: number): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`/api/v1/rh/permissions/bossId/${employeeId}`)
+    apiFetch<any>(`/api/v1/rh/permissions/bossId/${employeeId}`),
+  getByBossIdNonMedical: (employeeId: number): Promise<ApiResponse<any>> =>
+    apiFetch<any>(`/api/v1/rh/permissions/bossId/${employeeId}/non-medical`),  
+  getPendingMedical: (): Promise<ApiResponse<any>> =>
+    apiFetch<any>("/api/v1/rh/permissions/medical/pending"),
 };
 
 export const AreaConocimientoAPI = {
@@ -1254,6 +1302,11 @@ export const VistaDetallesEmpleadosAPI = {
 
   byType: (employeeType: number): Promise<ApiResponse<any[]>> =>
     apiFetch<any[]>(`/api/v1/rh/vw/EmployeeDetails/type/${employeeType}`),
+
+  byImmediateBoss: (bossId: number): Promise<ApiResponse<EmployeeDetailsDto[]>> =>
+    apiFetch<EmployeeDetailsDto[]>(
+      `/api/v1/rh/vw/EmployeeDetails/boss/${bossId}/subordinates/details`
+    ),
 
   getAvailableTypes: (): Promise<ApiResponse<any[]>> =>
     apiFetch<any[]>("/api/v1/rh/vw/EmployeeDetails/available/types"),
@@ -1411,6 +1464,88 @@ export const DepartamentosAPI = {
   },
 };
 
+export const ScheduleChangePlansAPI = {
+  listPaged: (
+    params: PagedRequest
+  ): Promise<ApiResponse<PagedResult<ScheduleChangePlanResponse>>> => {
+    const qs = new URLSearchParams({
+      page: String(params.page),
+      pageSize: String(params.pageSize),
+    });
+
+    return apiFetch<PagedResult<ScheduleChangePlanResponse>>(
+      `/schedule-change-plans?${qs.toString()}`
+    );
+  },
+
+  getByBoss: (
+    bossId: number
+  ): Promise<ApiResponse<ScheduleChangePlanResponse[]>> =>
+    apiFetch<ScheduleChangePlanResponse[]>(`/schedule-change-plans/boss/${bossId}`),
+
+  getById: (
+    id: number
+  ): Promise<ApiResponse<ScheduleChangePlanResponse>> =>
+    apiFetch<ScheduleChangePlanResponse>(`/schedule-change-plans/${id}`),
+
+  create: async (
+    payload: CreateScheduleChangePlanRequest
+  ): Promise<ScheduleChangePlanResponse> => {
+    const response = await apiFetch<ScheduleChangePlanResponse>("/schedule-change-plans", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+
+    if (response.status === "error") {
+      throw new Error(
+        handleApiError(response.error, "No se pudo crear la planificación.")
+      );
+    }
+
+    return response.data;
+  },
+
+  approve: async (payload: {
+    planID: number;
+    approvedByID: number;
+    isApproved: boolean;
+    rejectionReason?: string | null;
+  }): Promise<void> => {
+    const response = await apiFetch<void>(
+      `/schedule-change-plans/${payload.planID}/approve`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      }
+    );
+
+    if (response.status === "error") {
+      throw new Error(
+        handleApiError(response.error, "No se pudo aprobar o rechazar el plan.")
+      );
+    }
+  },
+
+  cancel: async (payload: {
+    planID: number;
+    reason: string;
+  }): Promise<void> => {
+    const response = await apiFetch<void>(
+      `/schedule-change-plans/${payload.planID}/cancel`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      }
+    );
+
+    if (response.status === "error") {
+      throw new Error(
+        handleApiError(response.error, "No se pudo cancelar el plan.")
+      );
+    }
+  },
+};
+
 
 
 // --------------------------------------------------------------------------
@@ -1441,7 +1576,9 @@ export const MovimientosPersonalAPI = createApiService<any, any>("/api/v1/rh/per
 
 //export const JustificacionesMarcacionesAPI = createApiService<any, any>("/api/v1/rh/attendance/punch-justifications");
 export const HistorialSalarialAPI = createApiService<any, any>("/api/v1/rh/salary-history");
-export const HorariosAPI = createApiService<any, any>("/api/v1/rh/schedules");
+export const HorariosAPI = {
+  ...createApiService<ScheduleDto, any>("/api/v1/rh/schedules"),  
+};
 export const SubrogacionesAPI = createApiService<any, any>("/api/v1/rh/subrogations");
 export const RegistrosRecuperacionTiempoAPI = createApiService<any, any>("/api/v1/rh/time-recovery/logs");
 export const PlanesRecuperacionTiempoAPI = createApiService<any, any>("/api/v1/rh/time-recovery/plans");

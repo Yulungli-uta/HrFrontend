@@ -3,7 +3,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Filter, FileText, User, Building2, Calendar } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Filter,
+  FileText,
+  User,
+  Building2,
+  Calendar,
+  X,
+} from "lucide-react";
 
 import { ContractsRHAPI } from "@/lib/api";
 import { usePaged } from "@/hooks/pagination/usePaged";
@@ -17,13 +26,13 @@ export default function ContractsPage() {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"create" | "view" | "edit">("create");
   const [selected, setSelected] = useState<ContractDto | null>(null);
-  const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const {
     items: contracts,
     isLoading,
     isError,
+    errorMessage,
     page,
     pageSize,
     totalCount,
@@ -32,15 +41,17 @@ export default function ContractsPage() {
     hasNextPage,
     goToPage,
     setPageSize,
+    setSearch,
+    clearSearch,
+    currentParams,
   } = usePaged<ContractDto>({
-    queryKey: 'contracts-rh',
+    queryKey: "contracts-rh",
     queryFn: (params) => ContractsRHAPI.listPaged(params),
     initialPageSize: 20,
   });
 
   const lookups = useContractLookups({ enabled: true });
 
-  // Mapeos para mostrar etiquetas
   const peopleById = useMemo(() => {
     const m = new Map<number, string>();
     for (const x of lookups.people ?? []) {
@@ -68,42 +79,15 @@ export default function ContractsPage() {
     return m;
   }, [lookups.depts]);
 
-  // Estados únicos para el filtro
   const uniqueStatuses = useMemo(() => {
     const statuses = new Set(contracts.map((c) => c.status));
     return Array.from(statuses).sort((a, b) => a - b);
   }, [contracts]);
 
-  // Filtrado
-  const filtered = useMemo(() => {
-    let result = contracts;
-
-    // Filtro por estado
-    if (statusFilter !== "all") {
-      result = result.filter((c) => String(c.status) === statusFilter);
-    }
-
-    // Filtro por búsqueda
-    const t = q.trim().toLowerCase();
-    if (t) {
-      result = result.filter((c) => {
-        const personName = (peopleById.get(Number(c.personID)) ?? "").toLowerCase();
-        const typeName = (typeById.get(Number(c.contractTypeID)) ?? "").toLowerCase();
-        const deptName = (deptById.get(Number(c.departmentID)) ?? "").toLowerCase();
-
-        return (
-          String(c.contractID).includes(t) ||
-          (c.contractCode || "").toLowerCase().includes(t) ||
-          String(c.personID).includes(t) ||
-          personName.includes(t) ||
-          typeName.includes(t) ||
-          deptName.includes(t)
-        );
-      });
-    }
-
-    return result;
-  }, [contracts, q, statusFilter, peopleById, typeById, deptById]);
+  const filteredContracts = useMemo(() => {
+    if (statusFilter === "all") return contracts;
+    return contracts.filter((c) => String(c.status) === statusFilter);
+  }, [contracts, statusFilter]);
 
   function openCreate() {
     setSelected(null);
@@ -117,9 +101,9 @@ export default function ContractsPage() {
     setOpen(true);
   }
 
-  // Función para obtener el color del badge según el estado
-  function getStatusVariant(status: number): "default" | "secondary" | "destructive" | "outline" {
-    // Personaliza según tus estados
+  function getStatusVariant(
+    status: number
+  ): "default" | "secondary" | "destructive" | "outline" {
     if (status === 1) return "default";
     if (status === 2) return "secondary";
     if (status === 3) return "outline";
@@ -146,9 +130,11 @@ export default function ContractsPage() {
           <CardContent className="pt-6">
             <div className="flex items-start gap-3">
               <div className="flex-1">
-                <h3 className="font-semibold text-red-900 mb-1">Error al cargar contratos</h3>
+                <h3 className="font-semibold text-red-900 mb-1">
+                  Error al cargar contratos
+                </h3>
                 <p className="text-sm text-red-700">
-                  {String((error as any)?.message || data?.error?.detail || data?.error?.title)}
+                  {errorMessage || "Error desconocido"}
                 </p>
               </div>
             </div>
@@ -160,11 +146,12 @@ export default function ContractsPage() {
 
   return (
     <div className="container mx-auto p-4 md:p-6 space-y-6">
-      {/* Header */}
       <div className="flex flex-col gap-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
-            <h1 className="text-3xl font-bold tracking-tight">Gestión de Contratos</h1>
+            <h1 className="text-3xl font-bold tracking-tight">
+              Gestión de Contratos
+            </h1>
             <p className="text-sm text-muted-foreground">
               Administra contratos, addendums y documentación del personal
             </p>
@@ -176,7 +163,6 @@ export default function ContractsPage() {
           </Button>
         </div>
 
-        {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card>
             <CardContent className="pt-6">
@@ -186,7 +172,7 @@ export default function ContractsPage() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Total Contratos</p>
-                  <p className="text-2xl font-bold">{contracts.length}</p>
+                  <p className="text-2xl font-bold">{totalCount}</p>
                 </div>
               </div>
             </CardContent>
@@ -227,8 +213,8 @@ export default function ContractsPage() {
                   <Calendar className="h-5 w-5 text-purple-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Filtrados</p>
-                  <p className="text-2xl font-bold">{filtered.length}</p>
+                  <p className="text-sm text-muted-foreground">Mostrados</p>
+                  <p className="text-2xl font-bold">{filteredContracts.length}</p>
                 </div>
               </div>
             </CardContent>
@@ -236,18 +222,23 @@ export default function ContractsPage() {
         </div>
       </div>
 
-      {/* Filters */}
       <Card>
         <CardContent className="pt-6">
           <div className="flex flex-col md:flex-row gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
               <Input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Buscar por ID, código, persona, tipo o departamento..."
-                className="pl-10"
+                value={currentParams.search ?? ""}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar por código o descripción..."
+                className="pl-10 pr-10"
               />
+              {currentParams.search && (
+                <X
+                  className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground cursor-pointer"
+                  onClick={() => clearSearch()}
+                />
+              )}
             </div>
 
             <div className="flex items-center gap-2">
@@ -269,7 +260,6 @@ export default function ContractsPage() {
         </CardContent>
       </Card>
 
-      {/* Table - Desktop */}
       <Card className="hidden lg:block">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -300,14 +290,16 @@ export default function ContractsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filtered.length === 0 ? (
+                {filteredContracts.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="p-8 text-center text-sm text-muted-foreground">
-                      No se encontraron contratos con los filtros aplicados
+                      {currentParams.search || statusFilter !== "all"
+                        ? "No se encontraron contratos con ese criterio"
+                        : "No hay contratos registrados"}
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((c) => (
+                  filteredContracts.map((c) => (
                     <tr
                       key={c.contractID}
                       className="hover:bg-muted/50 transition-colors cursor-pointer"
@@ -316,7 +308,9 @@ export default function ContractsPage() {
                       <td className="p-4">
                         <div className="space-y-1">
                           <p className="font-medium">#{c.contractID}</p>
-                          <p className="text-xs text-muted-foreground">{c.contractCode}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {c.contractCode}
+                          </p>
                         </div>
                       </td>
                       <td className="p-4">
@@ -330,10 +324,14 @@ export default function ContractsPage() {
                         </div>
                       </td>
                       <td className="p-4">
-                        <span className="text-sm">{typeById.get(Number(c.contractTypeID)) ?? c.contractTypeID}</span>
+                        <span className="text-sm">
+                          {typeById.get(Number(c.contractTypeID)) ?? c.contractTypeID}
+                        </span>
                       </td>
                       <td className="p-4">
-                        <span className="text-sm">{deptById.get(Number(c.departmentID)) ?? c.departmentID}</span>
+                        <span className="text-sm">
+                          {deptById.get(Number(c.departmentID)) ?? c.departmentID}
+                        </span>
                       </td>
                       <td className="p-4">
                         <div className="text-sm">
@@ -348,7 +346,9 @@ export default function ContractsPage() {
                         </div>
                       </td>
                       <td className="p-4">
-                        <Badge variant={getStatusVariant(c.status)}>Estado {c.status}</Badge>
+                        <Badge variant={getStatusVariant(c.status)}>
+                          Estado {c.status}
+                        </Badge>
                       </td>
                       <td className="p-4 text-right">
                         <Button
@@ -371,16 +371,17 @@ export default function ContractsPage() {
         </CardContent>
       </Card>
 
-      {/* Cards - Mobile/Tablet */}
       <div className="lg:hidden space-y-3">
-        {filtered.length === 0 ? (
+        {filteredContracts.length === 0 ? (
           <Card>
             <CardContent className="pt-6 text-center text-sm text-muted-foreground">
-              No se encontraron contratos con los filtros aplicados
+              {currentParams.search || statusFilter !== "all"
+                ? "No se encontraron contratos con ese criterio"
+                : "No hay contratos registrados"}
             </CardContent>
           </Card>
         ) : (
-          filtered.map((c) => (
+          filteredContracts.map((c) => (
             <Card
               key={c.contractID}
               className="cursor-pointer hover:shadow-md transition-shadow"
@@ -395,7 +396,9 @@ export default function ContractsPage() {
                         Estado {c.status}
                       </Badge>
                     </div>
-                    <p className="text-sm text-muted-foreground">{c.contractCode}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {c.contractCode}
+                    </p>
                   </div>
                 </div>
 
@@ -408,11 +411,15 @@ export default function ContractsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <FileText className="h-4 w-4 text-muted-foreground" />
-                    <span>{typeById.get(Number(c.contractTypeID)) ?? c.contractTypeID}</span>
+                    <span>
+                      {typeById.get(Number(c.contractTypeID)) ?? c.contractTypeID}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Building2 className="h-4 w-4 text-muted-foreground" />
-                    <span>{deptById.get(Number(c.departmentID)) ?? c.departmentID}</span>
+                    <span>
+                      {deptById.get(Number(c.departmentID)) ?? c.departmentID}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -422,7 +429,15 @@ export default function ContractsPage() {
                   </div>
                 </div>
 
-                <Button variant="outline" size="sm" className="w-full" onClick={() => openView(c)}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openView(c);
+                  }}
+                >
                   Ver detalles
                 </Button>
               </CardContent>
@@ -431,7 +446,6 @@ export default function ContractsPage() {
         )}
       </div>
 
-      {/* Paginación */}
       <DataPagination
         page={page}
         totalPages={totalPages}

@@ -6,7 +6,14 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Pencil, Plus, Search, Sun, Wallet, RotateCcw, X } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Plus, Search, Sun, Wallet, RotateCcw, X, Filter } from "lucide-react";
 
 import PermissionForm, { type DocumentsConfig } from "@/components/forms/PermissionForm";
 import VacationForm from "@/components/forms/VacationForm";
@@ -24,13 +31,12 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
-import type { PermissionType } from "@/types/permission"
+import type { PermissionType } from "@/types/permission";
 
-import {   
-  PERMISSION_DIRECTORY_CODE, 
-  PERMISSION_ENTITY_TYPE
+import {
+  PERMISSION_DIRECTORY_CODE,
+  PERMISSION_ENTITY_TYPE,
 } from "@/features/constants";
-  
 
 // Turn on logs by setting VITE_DEBUG_AUTH=true in .env
 const DEBUG = import.meta.env.VITE_DEBUG_AUTH === "true";
@@ -46,13 +52,13 @@ const permStatusLabels: Record<string, string> = {
 };
 
 const permStatusColors: Record<string, string> = {
-  Pending: "bg-yellow-100 text-yellow-800",
-  Approved: "bg-green-100 text-green-800",
-  Rejected: "bg-red-100 text-red-800",
-  Canceled: "bg-gray-100 text-gray-800",
-  Cancelled: "bg-gray-100 text-gray-800",
-  Annulled: "bg-gray-100 text-gray-800",
-  Anulado: "bg-gray-100 text-gray-800",
+  Pending: "bg-yellow-100 text-yellow-800 hover:bg-yellow-100",
+  Approved: "bg-green-100 text-green-800 hover:bg-green-100",
+  Rejected: "bg-red-100 text-red-800 hover:bg-red-100",
+  Canceled: "bg-gray-100 text-gray-800 hover:bg-gray-100",
+  Cancelled: "bg-gray-100 text-gray-800 hover:bg-gray-100",
+  Annulled: "bg-gray-100 text-gray-800 hover:bg-gray-100",
+  Anulado: "bg-gray-100 text-gray-800 hover:bg-gray-100",
 };
 
 const vacStatusLabels: Record<string, string> = {
@@ -67,14 +73,14 @@ const vacStatusLabels: Record<string, string> = {
 };
 
 const vacStatusColors: Record<string, string> = {
-  Planned: "bg-indigo-100 text-indigo-800",
-  Approved: "bg-green-100 text-green-800",
-  InProgress: "bg-blue-100 text-blue-800",
-  Completed: "bg-green-100 text-green-800",
-  Canceled: "bg-gray-100 text-gray-800",
-  Cancelled: "bg-gray-100 text-gray-800",
-  Annulled: "bg-gray-100 text-gray-800",
-  Anulado: "bg-gray-100 text-gray-800",
+  Planned: "bg-indigo-100 text-indigo-800 hover:bg-indigo-100",
+  Approved: "bg-green-100 text-green-800 hover:bg-green-100",
+  InProgress: "bg-blue-100 text-blue-800 hover:bg-blue-100",
+  Completed: "bg-green-100 text-green-800 hover:bg-green-100",
+  Canceled: "bg-gray-100 text-gray-800 hover:bg-gray-100",
+  Cancelled: "bg-gray-100 text-gray-800 hover:bg-gray-100",
+  Annulled: "bg-gray-100 text-gray-800 hover:bg-gray-100",
+  Anulado: "bg-gray-100 text-gray-800 hover:bg-gray-100",
 };
 
 const fmtDate = (d?: string) => {
@@ -207,7 +213,9 @@ function MetricCard(props: {
           {subtitle ? <div className="mt-0.5 text-xs text-muted-foreground">{subtitle}</div> : null}
         </div>
 
-        <div className="rounded-lg border bg-background/60 px-2 py-1 text-sm">{fmtWorkTime(valueMinutes, workdayMinutes)}</div>
+        <div className="rounded-lg border bg-background/60 px-2 py-1 text-sm">
+          {fmtWorkTime(valueMinutes, workdayMinutes)}
+        </div>
       </div>
 
       <div className="mt-3 grid grid-cols-3 gap-2">
@@ -254,7 +262,6 @@ const resolvePermissionTypeName = (p: any, typeNameById: Map<number, string>) =>
     return typeNameById.get(idNum) ?? `Tipo #${idNum}`;
   }
 
-  // fallback final: a veces llega el nombre directo en el permiso
   const direct =
     p?.permissionTypeName ??
     p?.PermissionTypeName ??
@@ -335,7 +342,6 @@ export default function PermissionsPage() {
   }, [workdayParamResp]);
 
   // Directory parameters: HRPERMISSION
-  // const DIR_CODE = "HRPERMISSION";
   const DIR_CODE = PERMISSION_DIRECTORY_CODE;
   const { data: dirResp, isLoading: dirLoading, isError: dirIsError } = useQuery<ApiResponse<any>>({
     queryKey: ["directory-params", DIR_CODE],
@@ -349,7 +355,6 @@ export default function PermissionsPage() {
   const documentsConfig: DocumentsConfig = useMemo(() => {
     return {
       directoryCode: dirParam?.code ?? DIR_CODE,
-      // entityType: "PERMISSION",
       entityType: PERMISSION_ENTITY_TYPE,
       relativePath: dirParam?.relativePath ?? "/hr-permissions/",
       accept: dirParam?.accept ?? ".pdf",
@@ -393,7 +398,6 @@ export default function PermissionsPage() {
     return Array.isArray(data) ? data : [];
   }, [vacationsResp]);
 
-  // opciones para filtros: DESDE EL SERVICIO
   const permissionTypeOptions = useMemo(() => {
     return permissionTypes.map((t) => ({ value: String(t.typeId), label: t.name }));
   }, [permissionTypes]);
@@ -410,15 +414,15 @@ export default function PermissionsPage() {
   }, [permissions]);
 
   const vacationStatusOptions = useMemo(() => {
-  const set = new Set<string>();
-  vacations.forEach((v: any) => {
-    const s = String(v?.status ?? v?.Status ?? "").trim();
-    if (s) set.add(s);
-  });
-  const arr = Array.from(set);
-  arr.sort();
-  return arr;
-}, [vacations]);
+    const set = new Set<string>();
+    vacations.forEach((v: any) => {
+      const s = String(v?.status ?? v?.Status ?? "").trim();
+      if (s) set.add(s);
+    });
+    const arr = Array.from(set);
+    arr.sort();
+    return arr;
+  }, [vacations]);
 
   const inCurrentYear = (d?: string) => {
     if (!d) return false;
@@ -445,28 +449,23 @@ export default function PermissionsPage() {
       const start = p?.startDate ?? p?.StartDate;
       const end = p?.endDate ?? p?.EndDate ?? start;
 
-      // Año actual
       if (yearFilter === "CURRENT") {
         const ok = inCurrentYear(start) || inCurrentYear(end);
         if (!ok) return false;
       }
 
-      // type filter: SOLO POR ID (porque el select viene del servicio)
       if (typeFilter !== "ALL") {
         const pid = getPermissionTypeId(p);
         const byId = pid != null && String(pid) === typeFilter;
         if (!byId) return false;
       }
 
-      // status filter
       if (statusFilter !== "ALL") {
         if (String(p?.status ?? "") !== statusFilter) return false;
       }
 
-      // date range filter (por startDate)
       if ((dateFrom || dateTo) && !dateInRange(start, dateFrom, dateTo)) return false;
 
-      // search
       if (!q) return true;
       return id.includes(q) || typeName.includes(q) || status.includes(q);
     });
@@ -562,15 +561,14 @@ export default function PermissionsPage() {
             <div className="mt-1 text-sm text-muted-foreground">
               Visible en <span className="font-medium">días / horas / minutos</span>.{" "}
               <span>(1 día = {Math.round(workdayMinutes / 60)}h)</span>
-
             </div>
 
             <div className="mt-1 text-xs text-muted-foreground">
               {dirLoading
                 ? "Cargando parámetros HRPERMISSION..."
                 : dirIsError
-                  ? "No se pudo cargar HRPERMISSION (usando valores por defecto)."
-                  : `HRPERMISSION → ext: ${dirParam?.accept ?? ".pdf"}, máx: ${dirParam?.maxSizeMb ?? 25}MB`}
+                ? "No se pudo cargar HRPERMISSION (usando valores por defecto)."
+                : `HRPERMISSION → ext: ${dirParam?.accept ?? ".pdf"}, máx: ${dirParam?.maxSizeMb ?? 25}MB`}
             </div>
           </div>
         </div>
@@ -590,7 +588,7 @@ export default function PermissionsPage() {
               refetchBalance();
             }}
           >
-            <RotateCcw className="h-4 w-4 mr-2" />
+            <RotateCcw className="mr-2 h-4 w-4" />
             Refrescar
           </Button>
         </div>
@@ -618,101 +616,187 @@ export default function PermissionsPage() {
     </div>
   );
 
+  const resultCountText =
+    activeTab === "permissions"
+      ? `Mostrando ${filteredPermissions.length} de ${permissions.length} permisos`
+      : `Mostrando ${filteredVacations.length} de ${vacations.length} vacaciones`;
+
+  const hasActiveFilters =
+    !!search || yearFilter !== "CURRENT" || statusFilter !== "ALL" || typeFilter !== "ALL" || !!dateFrom || !!dateTo;
+
   const FiltersBar = (
-    <div className="rounded-2xl border bg-card p-4">
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
-        <div className="lg:col-span-4">
-          <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-8"
-              placeholder="Buscar por #, tipo o estado..."
-            />
-          </div>
-        </div>
-
-        <div className="lg:col-span-2">
-          <select
-            className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-            value={yearFilter}
-            onChange={(e) => setYearFilter(e.target.value as any)}
-          >
-            <option value="CURRENT">Año actual</option>
-            <option value="ALL">Todos</option>
-          </select>
-        </div>
-
-        <div className="lg:col-span-2">
-          <select
-            className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="ALL">Estado: Todos</option>
-            {/* {permissionStatusOptions.map((s) => (
-              <option key={s} value={s}>
-                {permStatusLabels[s] ?? s}
-              </option>
-            ))} */}
-            {(activeTab === "permissions" ? permissionStatusOptions : vacationStatusOptions).map((s) => (
-              <option key={s} value={s}>
-                {(activeTab === "permissions" ? permStatusLabels : vacStatusLabels)[s] ?? s}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="lg:col-span-2">
-          {activeTab === "permissions" ? (
-            <select
-              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-              disabled={typesLoading}
-            >
-              <option value="ALL">{typesLoading ? "Cargando tipos..." : "Tipo: Todos"}</option>
-              {permissionTypeOptions.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <div className="h-10 w-full rounded-md border bg-muted/10 px-3 text-sm flex items-center text-muted-foreground">
-              (Tipos aplica solo a permisos)
+    <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
+      <div className="border-b bg-muted/20 px-4 py-3">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="rounded-xl border bg-background/80 p-2">
+              <Filter className="h-4 w-4" />
             </div>
-          )}
-        </div>
-
-        <div className="lg:col-span-1">
-          <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-        </div>
-        <div className="lg:col-span-1">
-          <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-        </div>
-
-        <div className="lg:col-span-12 flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
-          <div className="text-xs text-muted-foreground">
-            {activeTab === "permissions"
-              ? `Mostrando ${filteredPermissions.length} de ${permissions.length} permisos`
-              : `Mostrando ${filteredVacations.length} de ${vacations.length} vacaciones`}
+            <div>
+              <div className="text-sm font-semibold">Filtros</div>
+              <div className="text-xs text-muted-foreground">
+                Busca y filtra {activeTab === "permissions" ? "permisos" : "vacaciones"} por estado, tipo y fechas
+              </div>
+            </div>
           </div>
 
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={clearFilters}>
-              <X className="h-4 w-4 mr-2" />
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="secondary" className="font-normal">
+              {resultCountText}
+            </Badge>
+
+            <Button variant="outline" size="sm" onClick={clearFilters} disabled={!hasActiveFilters}>
+              <X className="mr-2 h-4 w-4" />
               Limpiar
             </Button>
           </div>
         </div>
       </div>
+
+      <div className="space-y-4 p-4">
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-12">
+          <div className="xl:col-span-4">
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">Búsqueda</label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9"
+                placeholder={
+                  activeTab === "permissions"
+                    ? "Buscar por número, tipo o estado..."
+                    : "Buscar por número o estado..."
+                }
+              />
+            </div>
+          </div>
+
+          <div className="xl:col-span-2">
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">Período</label>
+            <Select value={yearFilter} onValueChange={(value: "CURRENT" | "ALL") => setYearFilter(value)}>
+              <SelectTrigger className="h-10">
+                <SelectValue placeholder="Período" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="CURRENT">Año actual</SelectItem>
+                <SelectItem value="ALL">Todos los años</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="xl:col-span-2">
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">Estado</label>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="h-10">
+                <SelectValue placeholder="Estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Todos los estados</SelectItem>
+                {(activeTab === "permissions" ? permissionStatusOptions : vacationStatusOptions).map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {(activeTab === "permissions" ? permStatusLabels : vacStatusLabels)[s] ?? s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="xl:col-span-2">
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">Tipo</label>
+            {activeTab === "permissions" ? (
+              <Select value={typeFilter} onValueChange={setTypeFilter} disabled={typesLoading}>
+                <SelectTrigger className="h-10">
+                  <SelectValue placeholder={typesLoading ? "Cargando tipos..." : "Todos los tipos"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Todos los tipos</SelectItem>
+                  {permissionTypeOptions.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>
+                      {t.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="flex h-10 items-center rounded-md border bg-muted/20 px-3 text-sm text-muted-foreground">
+                No aplica en vacaciones
+              </div>
+            )}
+          </div>
+
+          <div className="xl:col-span-2 flex items-end">
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                refetchPermissions();
+                refetchVacations();
+                refetchBalance();
+              }}
+            >
+              <RotateCcw className="mr-2 h-4 w-4" />
+              Refrescar
+            </Button>
+          </div>
+        </div>
+
+        <div className="rounded-xl border bg-muted/10 p-3">
+          <div className="mb-3 text-xs font-medium text-muted-foreground">Rango de fechas</div>
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Desde</label>
+              <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Hasta</label>
+              <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+            </div>
+
+            <div className="flex items-end">
+              <div className="w-full rounded-md border bg-background px-3 py-2 text-sm text-muted-foreground">
+                {dateFrom || dateTo
+                  ? `Filtrando ${
+                      dateFrom ? `desde ${dateFrom}` : ""
+                    } ${dateFrom && dateTo ? "hasta" : ""} ${dateTo ? dateTo : ""}`.trim()
+                  : "Sin rango de fechas aplicado"}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {hasActiveFilters && (
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <span>Filtros activos:</span>
+
+            {!!search && <Badge variant="secondary" className="font-normal">Búsqueda: {search}</Badge>}
+
+            {yearFilter !== "CURRENT" && <Badge variant="secondary" className="font-normal">Período: todos</Badge>}
+
+            {statusFilter !== "ALL" && (
+              <Badge variant="secondary" className="font-normal">
+                Estado: {(activeTab === "permissions" ? permStatusLabels : vacStatusLabels)[statusFilter] ?? statusFilter}
+              </Badge>
+            )}
+
+            {activeTab === "permissions" && typeFilter !== "ALL" && (
+              <Badge variant="secondary" className="font-normal">
+                Tipo: {permissionTypeOptions.find((t) => t.value === typeFilter)?.label ?? typeFilter}
+              </Badge>
+            )}
+
+            {!!dateFrom && <Badge variant="secondary" className="font-normal">Desde: {dateFrom}</Badge>}
+            {!!dateTo && <Badge variant="secondary" className="font-normal">Hasta: {dateTo}</Badge>}
+          </div>
+        )}
+      </div>
     </div>
   );
 
   return (
-    <div className="container mx-auto max-w-7xl p-4 md:p-6 space-y-6">
+    <div className="container mx-auto max-w-7xl space-y-6 p-4 md:p-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-semibold">Permisos y Vacaciones</h1>
@@ -732,8 +816,16 @@ export default function PermissionsPage() {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="space-y-4">
-        {/* Tabs en su propio “marco” */}
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => {
+          const next = v as "permissions" | "vacations";
+          setActiveTab(next);
+          setStatusFilter("ALL");
+          if (next !== "permissions") setTypeFilter("ALL");
+        }}
+        className="space-y-4"
+      >
         <div className="rounded-2xl border bg-card p-3 md:p-4">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="permissions">Permisos</TabsTrigger>
@@ -741,22 +833,22 @@ export default function PermissionsPage() {
           </TabsList>
         </div>
 
-        {/* Layout: izquierda (saldo+filtros) / derecha (listado) */}
         <div className="space-y-4">
           {BalanceCard}
           {FiltersBar}
 
           <div className="rounded-2xl border bg-card p-3 md:p-4">
-            {/* PERMISOS */}
             <TabsContent value="permissions" className="m-0">
               {permissionsLoading ? (
-                <div className="text-sm text-muted-foreground p-2">Cargando permisos...</div>
+                <div className="p-2 text-sm text-muted-foreground">Cargando permisos...</div>
               ) : (
                 <>
-                  {/* Mobile cards con scroll interno */}
-                  <div className="grid grid-cols-1 gap-3 md:hidden max-h-[calc(100vh-380px)] overflow-auto pr-1">
+                  <div className="grid max-h-[calc(100vh-380px)] grid-cols-1 gap-3 overflow-auto pr-1 md:hidden">
                     {filteredPermissions.map((p: any) => (
-                      <div key={String(getPermissionId(p) ?? Math.random())} className="rounded-lg border bg-background p-3">
+                      <div
+                        key={String(getPermissionId(p) ?? `${p?.startDate}-${p?.endDate}-${Math.random()}`)}
+                        className="rounded-xl border bg-background p-3 shadow-sm"
+                      >
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
                             <div className="truncate font-medium">{getTypeName(p) || "Permiso"}</div>
@@ -783,14 +875,15 @@ export default function PermissionsPage() {
                       </div>
                     ))}
                     {!filteredPermissions.length && (
-                      <div className="text-sm text-muted-foreground p-2">No existen permisos para los filtros actuales.</div>
+                      <div className="p-2 text-sm text-muted-foreground">
+                        No existen permisos para los filtros actuales.
+                      </div>
                     )}
                   </div>
 
-                  {/* Desktop table con scroll interno */}
-                  <div className="hidden md:block max-h-[calc(100vh-380px)] overflow-auto rounded-lg border">
+                  <div className="hidden max-h-[calc(100vh-380px)] overflow-auto rounded-lg border md:block">
                     <table className="w-full text-sm">
-                      <thead className="bg-muted/30 sticky top-0">
+                      <thead className="sticky top-0 bg-muted/30">
                         <tr className="text-left">
                           <th className="p-2">#</th>
                           <th className="p-2">Tipo</th>
@@ -802,7 +895,10 @@ export default function PermissionsPage() {
                       </thead>
                       <tbody>
                         {filteredPermissions.map((p: any) => (
-                          <tr key={String(getPermissionId(p) ?? Math.random())} className="border-t">
+                          <tr
+                            key={String(getPermissionId(p) ?? `${p?.startDate}-${p?.endDate}-${Math.random()}`)}
+                            className="border-t"
+                          >
                             <td className="p-2">#{getPermissionId(p) ?? "-"}</td>
                             <td className="p-2">{getTypeName(p) || "-"}</td>
                             <td className="p-2">{fmtDate(p.startDate)}</td>
@@ -837,15 +933,17 @@ export default function PermissionsPage() {
               )}
             </TabsContent>
 
-            {/* VACACIONES */}
             <TabsContent value="vacations" className="m-0">
               {vacationsLoading ? (
-                <div className="text-sm text-muted-foreground p-2">Cargando vacaciones...</div>
+                <div className="p-2 text-sm text-muted-foreground">Cargando vacaciones...</div>
               ) : (
                 <>
-                  <div className="grid grid-cols-1 gap-3 md:hidden max-h-[calc(100vh-380px)] overflow-auto pr-1">
+                  <div className="grid max-h-[calc(100vh-380px)] grid-cols-1 gap-3 overflow-auto pr-1 md:hidden">
                     {filteredVacations.map((v: any) => (
-                      <div key={String(v?.vacationId ?? v?.id ?? Math.random())} className="rounded-lg border bg-background p-3">
+                      <div
+                        key={String(v?.vacationId ?? v?.id ?? `${v?.startDate}-${v?.endDate}-${Math.random()}`)}
+                        className="rounded-xl border bg-background p-3 shadow-sm"
+                      >
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
                             <div className="truncate font-medium">Vacación</div>
@@ -872,13 +970,15 @@ export default function PermissionsPage() {
                       </div>
                     ))}
                     {!filteredVacations.length && (
-                      <div className="text-sm text-muted-foreground p-2">No existen vacaciones para los filtros actuales.</div>
+                      <div className="p-2 text-sm text-muted-foreground">
+                        No existen vacaciones para los filtros actuales.
+                      </div>
                     )}
                   </div>
 
-                  <div className="hidden md:block max-h-[calc(100vh-380px)] overflow-auto rounded-lg border">
+                  <div className="hidden max-h-[calc(100vh-380px)] overflow-auto rounded-lg border md:block">
                     <table className="w-full text-sm">
-                      <thead className="bg-muted/30 sticky top-0">
+                      <thead className="sticky top-0 bg-muted/30">
                         <tr className="text-left">
                           <th className="p-2">#</th>
                           <th className="p-2">Desde</th>
@@ -889,7 +989,10 @@ export default function PermissionsPage() {
                       </thead>
                       <tbody>
                         {filteredVacations.map((v: any) => (
-                          <tr key={String(v?.vacationId ?? v?.id ?? Math.random())} className="border-t">
+                          <tr
+                            key={String(v?.vacationId ?? v?.id ?? `${v?.startDate}-${v?.endDate}-${Math.random()}`)}
+                            className="border-t"
+                          >
                             <td className="p-2">#{v?.vacationId ?? v?.id ?? "-"}</td>
                             <td className="p-2">{fmtDate(v.startDate)}</td>
                             <td className="p-2">{fmtDate(v.endDate ?? v.startDate)}</td>
@@ -926,8 +1029,6 @@ export default function PermissionsPage() {
         </div>
       </Tabs>
 
-
-      {/* Permission dialog */}
       <Dialog
         open={isPermissionFormOpen}
         onOpenChange={(open) => {
@@ -936,14 +1037,16 @@ export default function PermissionsPage() {
         }}
       >
         <DialogContent
-          className="w-[95vw] max-w-3xl max-h-[85vh] overflow-y-auto"
+          className="max-h-[85vh] w-[95vw] max-w-3xl overflow-y-auto"
           onPointerDownOutside={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
         >
           <DialogHeader>
             <DialogTitle>{editingPermission ? "Editar permiso" : "Nuevo permiso"}</DialogTitle>
             <DialogDescription>
-              {editingPermission ? "Puedes editar mientras está pendiente." : "Completa los datos para registrar una nueva solicitud."}
+              {editingPermission
+                ? "Puedes editar mientras está pendiente."
+                : "Completa los datos para registrar una nueva solicitud."}
             </DialogDescription>
           </DialogHeader>
 
@@ -952,6 +1055,7 @@ export default function PermissionsPage() {
             initialPermission={editingPermission}
             timeBalance={timeBalance}
             documents={documentsConfig}
+            workMinutesPerDay={workdayMinutes}
             onSuccess={(edit) => onPermissionSaved(edit)}
             onCancel={() => {
               setIsPermissionFormOpen(false);
@@ -961,7 +1065,6 @@ export default function PermissionsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Vacation dialog */}
       <Dialog
         open={isVacationFormOpen}
         onOpenChange={(open) => {
@@ -969,11 +1072,16 @@ export default function PermissionsPage() {
           if (!open) setEditingVacation(null);
         }}
       >
-        <DialogContent className="w-[95vw] max-w-xl max-h-[85vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
+        <DialogContent
+          className="max-h-[85vh] w-[95vw] max-w-xl overflow-y-auto"
+          onInteractOutside={(e) => e.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle>{editingVacation ? "Editar vacación" : "Nueva vacación"}</DialogTitle>
             <DialogDescription>
-              {editingVacation ? "Puedes editar mientras está planificada." : "Completa los datos para registrar una nueva solicitud."}
+              {editingVacation
+                ? "Puedes editar mientras está planificada."
+                : "Completa los datos para registrar una nueva solicitud."}
             </DialogDescription>
           </DialogHeader>
 

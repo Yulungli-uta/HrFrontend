@@ -6,22 +6,41 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { SearchableSelect } from "@/components/contracts/SearchableSelect";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  SearchableSelect,
+  type SearchItem,
+} from "@/components/contracts/SearchableSelect";
 import {
   FileText,
   User,
   Building2,
   Briefcase,
-  BookmarkCheck,
   Workflow,
   Save,
   Edit3,
@@ -36,7 +55,11 @@ import {
   ArrowRight,
 } from "lucide-react";
 
-import { ReusableDocumentManager, type ReusableDocumentManagerHandle } from "@/components/ReusableDocumentManager";
+import {
+  ReusableDocumentManager,
+  type ReusableDocumentManagerHandle,
+} from "@/components/ReusableDocumentManager";
+
 import {
   FinancialCertificationAPI,
   ContractTypeAPI,
@@ -50,6 +73,7 @@ import { CONTRACT_DIRECTORY_CODE, CONTRACT_ENTITY_TYPE } from "@/features/consta
 import { getEntityId, getEntityLabel } from "@/utils/options";
 
 import { useContractWorkflow } from "@/hooks/contracts/useContractWorkflow";
+import { usePaged } from "@/hooks/pagination/usePaged";
 import { ContractHistory } from "@/components/contracts/ContractHistory";
 import { AddendumList } from "@/components/contracts/AddendumList";
 import { StatusChangeDialog } from "@/components/contracts/StatusChangeDialog";
@@ -93,12 +117,23 @@ type ContractLike = {
   contractDescription?: string | null;
 };
 
+type Person = {
+  personId: number;
+  firstName?: string;
+  lastName?: string;
+  idCard?: string;
+  email?: string;
+  isActive?: boolean;
+};
+
 function getContractId(x?: ContractLike | null): number | undefined {
   const v = x?.contractID ?? x?.ContractID ?? x?.id;
   return typeof v === "number" && Number.isFinite(v) ? v : undefined;
 }
 
-function buildEmptyForm(initial?: Partial<ContractsCreateDto>): ContractsCreateDto {
+function buildEmptyForm(
+  initial?: Partial<ContractsCreateDto>
+): ContractsCreateDto {
   return {
     contractCode: "",
     personID: 0,
@@ -115,7 +150,10 @@ function buildEmptyForm(initial?: Partial<ContractsCreateDto>): ContractsCreateD
   };
 }
 
-function buildFormFromSelected(selected?: ContractLike | null, initial?: Partial<ContractsCreateDto>): ContractsCreateDto {
+function buildFormFromSelected(
+  selected?: ContractLike | null,
+  initial?: Partial<ContractsCreateDto>
+): ContractsCreateDto {
   return {
     certificationID: selected?.certificationID ?? null,
     parentID: selected?.parentID ?? null,
@@ -141,13 +179,16 @@ function extractNumericId(obj: unknown): number | undefined {
   if (typeof raw === "string") {
     const s = raw.trim();
     if (!s) return undefined;
+
     const n = Number(s);
     if (Number.isFinite(n)) return n;
+
     const m = s.match(/\d+/);
     if (m) {
       const n2 = Number(m[0]);
       if (Number.isFinite(n2)) return n2;
     }
+
     return undefined;
   }
 
@@ -158,7 +199,6 @@ function extractNumericId(obj: unknown): number | undefined {
       raw.typeID,
       raw.TypeID,
 
-      // camelCase (API)
       raw.personId,
       raw.departmentId,
       raw.contractTypeId,
@@ -167,7 +207,6 @@ function extractNumericId(obj: unknown): number | undefined {
       raw.jobId,
       raw.contractId,
 
-      // PascalCase / legacy (front / otros endpoints)
       raw.personID,
       raw.PersonID,
       raw.departmentID,
@@ -183,6 +222,7 @@ function extractNumericId(obj: unknown): number | undefined {
       raw.contractID,
       raw.ContractID,
     ];
+
     for (const c of candidates) {
       const n = extractNumericId(c);
       if (typeof n === "number") return n;
@@ -192,20 +232,33 @@ function extractNumericId(obj: unknown): number | undefined {
   return undefined;
 }
 
-function toSearchItems(items: any[]) {
+function toSearchItems(items: any[]): SearchItem[] {
   const seen = new Set<number>();
-  const out: { value: string; label: string }[] = [];
+  const out: SearchItem[] = [];
 
   for (const x of items ?? []) {
-    // Si getEntityId no reconoce el shape (ej. camelCase), cae al objeto completo.
     const id = extractNumericId(getEntityId(x) ?? x);
     if (!id || !Number.isFinite(id)) continue;
     if (seen.has(id)) continue;
+
     seen.add(id);
-    out.push({ value: String(id), label: String(getEntityLabel(x) ?? id) });
+    out.push({
+      value: String(id),
+      label: String(getEntityLabel(x) ?? id),
+    });
   }
 
   return out;
+}
+
+function buildPersonLabel(p: Person): string {
+  const fullName = `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim();
+  const idCard = p.idCard?.trim();
+  const email = p.email?.trim();
+
+  const extra = [idCard, email].filter(Boolean).join(" · ");
+
+  return extra ? `${fullName} — ${extra}` : fullName || `ID ${p.personId}`;
 }
 
 export function ContractDialog(props: {
@@ -220,33 +273,51 @@ export function ContractDialog(props: {
 
   const isCreate = mode === "create";
   const isView = mode === "view";
-  const isEdit = mode === "edit";
 
   const qc = useQueryClient();
   const docManagerRef = useRef<ReusableDocumentManagerHandle>(null);
 
-  const [form, setForm] = useState<ContractsCreateDto>(() => buildEmptyForm(initial));
+  const [form, setForm] = useState<ContractsCreateDto>(() =>
+    buildEmptyForm(initial)
+  );
   const [activeTab, setActiveTab] = useState<string>("info");
   const [wizardStep, setWizardStep] = useState(1);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  
-  // Estado para el diálogo de cambio de estado
+
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [pendingStatusId, setPendingStatusId] = useState<number | null>(null);
+
+  // búsqueda remota personas
+  const [personSearchInput, setPersonSearchInput] = useState("");
+  const [personSearch, setPersonSearch] = useState("");
 
   const selectedId = useMemo(() => getContractId(selected), [selected]);
 
   useEffect(() => {
     if (!open) return;
 
-    setForm(isCreate ? buildEmptyForm(initial) : buildFormFromSelected(selected, initial));
+    setForm(
+      isCreate
+        ? buildEmptyForm(initial)
+        : buildFormFromSelected(selected, initial)
+    );
     setActiveTab(isCreate ? "info" : "overview");
     setWizardStep(1);
     setValidationErrors([]);
+    setPersonSearchInput("");
+    setPersonSearch("");
     docManagerRef.current?.clearSelected();
-  }, [open, isCreate, selectedId]);
+  }, [open, isCreate, selectedId, selected, initial]);
 
-  // Lookups
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      setPersonSearch(personSearchInput.trim());
+    }, 350);
+
+    return () => window.clearTimeout(t);
+  }, [personSearchInput]);
+
+  // Lookups normales
   const qCerts = useQuery({
     queryKey: ["financial-certifications"],
     queryFn: () => FinancialCertificationAPI.list(),
@@ -275,62 +346,107 @@ export function ContractDialog(props: {
     staleTime: 5 * 60 * 1000,
   });
 
-  const qPeople = useQuery({
-    queryKey: ["people"],
-    queryFn: () => PersonasAPI.list(),
-    enabled: open,
-    staleTime: 5 * 60 * 1000,
+  // Personas paginadas para CREATE
+  const {
+    items: pagedPeople,
+    isLoading: isLoadingPeoplePaged,
+    setSearch: setPeoplePagedSearch,
+  } = usePaged<Person>({
+    queryKey: "people-contract-select",
+    queryFn: (params) => PersonasAPI.listPaged(params),
+    initialPageSize: 20,
   });
 
-  const certs = qCerts.data?.status === "success" ? qCerts.data.data ?? [] : [];
-  const types = qTypes.data?.status === "success" ? qTypes.data.data ?? [] : [];
-  const depts = qDepts.data?.status === "success" ? qDepts.data.data ?? [] : [];
-  const jobs = qJobs.data?.status === "success" ? qJobs.data.data ?? [] : [];
-  const people = qPeople.data?.status === "success" ? qPeople.data.data ?? [] : [];
+  useEffect(() => {
+    if (!open || !isCreate) return;
+    setPeoplePagedSearch(personSearch);
+  }, [open, isCreate, personSearch, setPeoplePagedSearch]);
 
-  // Workflow
+  const certs =
+    qCerts.data?.status === "success" ? qCerts.data.data ?? [] : [];
+  const types =
+    qTypes.data?.status === "success" ? qTypes.data.data ?? [] : [];
+  const depts =
+    qDepts.data?.status === "success" ? qDepts.data.data ?? [] : [];
+  const jobs =
+    qJobs.data?.status === "success" ? qJobs.data.data ?? [] : [];
+
   const entityId = isCreate ? undefined : selectedId;
+
   const wf = useContractWorkflow({
     enabled: open && !isCreate,
     currentStatusTypeId: form.status,
   });
 
-  // Items seleccionados actuales
-  const selectedPerson = useMemo(
-    () => people.find((p) => extractNumericId(getEntityId(p) ?? p) === form.personID),
-    [people, form.personID]
-  );
   const selectedType = useMemo(
-    () => types.find((t) => extractNumericId(getEntityId(t) ?? t) === form.contractTypeID),
+    () =>
+      types.find(
+        (t) => extractNumericId(getEntityId(t) ?? t) === form.contractTypeID
+      ),
     [types, form.contractTypeID]
   );
+
   const selectedDept = useMemo(
-    () => depts.find((d) => extractNumericId(getEntityId(d) ?? d) === form.departmentID),
+    () =>
+      depts.find(
+        (d) => extractNumericId(getEntityId(d) ?? d) === form.departmentID
+      ),
     [depts, form.departmentID]
   );
+
   const selectedJob = useMemo(
-    () => jobs.find((j) => extractNumericId(getEntityId(j) ?? j) === (form.jobID ?? undefined)),
+    () =>
+      jobs.find(
+        (j) =>
+          extractNumericId(getEntityId(j) ?? j) ===
+          (form.jobID ?? undefined)
+      ),
     [jobs, form.jobID]
   );
+
   const selectedCert = useMemo(
-    () => certs.find((c) => extractNumericId(getEntityId(c) ?? c) === (form.certificationID ?? undefined)),
+    () =>
+      certs.find(
+        (c) =>
+          extractNumericId(getEntityId(c) ?? c) ===
+          (form.certificationID ?? undefined)
+      ),
     [certs, form.certificationID]
   );
+
+  const personItems = useMemo<SearchItem[]>(() => {
+    const items = (pagedPeople ?? []).map((p) => ({
+      value: String(p.personId),
+      label: buildPersonLabel(p),
+    }));
+
+    // si ya hay seleccionado y no vino en esta página, lo mostramos igual
+    if (
+      form.personID > 0 &&
+      !items.some((x) => x.value === String(form.personID))
+    ) {
+      items.unshift({
+        value: String(form.personID),
+        label: `Persona seleccionada (ID ${form.personID})`,
+      });
+    }
+
+    return items;
+  }, [pagedPeople, form.personID]);
 
   const statusPreview = useMemo(() => {
     const s = wf.statuses.find((x) => x.typeID === form.status);
     return s ? s.name : `Estado ${form.status}`;
   }, [wf.statuses, form.status]);
 
-  // Mutations
   const createMut = useMutation({
     mutationFn: (dto: ContractsCreateDto) => ContractsRHAPI.create(dto),
     onSuccess: async (res) => {
       await qc.invalidateQueries({ queryKey: ["contracts-rh"] });
-      
+
       if (res.status === "success" && res.data?.contractID) {
         const newId = res.data.contractID;
-        
+
         const selCount = docManagerRef.current?.getSelectedCount() ?? 0;
         if (selCount > 0) {
           try {
@@ -340,7 +456,7 @@ export function ContractDialog(props: {
           }
         }
 
-        setMode("view");
+        // setMode("view");
         qc.setQueryData(["contracts-rh"], (old: any) => {
           if (!old || old.status !== "success") return old;
           return { ...old, data: [...old.data, res.data] };
@@ -350,10 +466,11 @@ export function ContractDialog(props: {
   });
 
   const updateMut = useMutation({
-    mutationFn: (dto: ContractsUpdateDto) => ContractsRHAPI.update(dto.contractID, dto),
-    onSuccess: async (res) => {
+    mutationFn: (dto: ContractsUpdateDto) =>
+      ContractsRHAPI.update(dto.contractID, dto),
+    onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["contracts-rh"] });
-      
+
       const selCount = docManagerRef.current?.getSelectedCount() ?? 0;
       if (selCount > 0 && entityId) {
         try {
@@ -368,15 +485,21 @@ export function ContractDialog(props: {
   });
 
   const changeStatusMut = useMutation({
-    mutationFn: (vars: { contractId: number; newStatusTypeId: number; comment: string | null }) =>
+    mutationFn: (vars: {
+      contractId: number;
+      newStatusTypeId: number;
+      comment: string | null;
+    }) =>
       ContractsRHAPI.changeStatus(vars.contractId, {
         toStatusTypeID: vars.newStatusTypeId,
         comment: vars.comment,
       }),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["contracts-rh"] });
-      await qc.invalidateQueries({ queryKey: ["contracts", "history", entityId] });
-      
+      await qc.invalidateQueries({
+        queryKey: ["contracts", "history", entityId],
+      });
+
       const updatedContract = await ContractsRHAPI.getById(entityId!);
       if (updatedContract.status === "success" && updatedContract.data) {
         setForm(buildFormFromSelected(updatedContract.data));
@@ -384,22 +507,29 @@ export function ContractDialog(props: {
     },
   });
 
-  // Validación
   function validateForm(): string[] {
     const errors: string[] = [];
 
-    if (!form.contractCode?.trim()) errors.push("El código del contrato es obligatorio");
-    if (!form.personID || form.personID <= 0) errors.push("Debe seleccionar una persona");
-    if (!form.contractTypeID || form.contractTypeID <= 0) errors.push("Debe seleccionar un tipo de contrato");
-    if (!form.departmentID || form.departmentID <= 0) errors.push("Debe seleccionar un departamento");
-    if (!form.startDate) errors.push("La fecha de inicio es obligatoria");
-    if (!form.endDate) errors.push("La fecha de fin es obligatoria");
+    if (!form.contractCode?.trim())
+      errors.push("El código del contrato es obligatorio");
+    if (!form.personID || form.personID <= 0)
+      errors.push("Debe seleccionar una persona");
+    if (!form.contractTypeID || form.contractTypeID <= 0)
+      errors.push("Debe seleccionar un tipo de contrato");
+    if (!form.departmentID || form.departmentID <= 0)
+      errors.push("Debe seleccionar un departamento");
+    if (!form.startDate)
+      errors.push("La fecha de inicio es obligatoria");
+    if (!form.endDate)
+      errors.push("La fecha de fin es obligatoria");
 
     if (form.startDate && form.endDate) {
       const start = new Date(form.startDate);
       const end = new Date(form.endDate);
       if (start.getTime() > end.getTime()) {
-        errors.push("La fecha de inicio no puede ser posterior a la fecha de fin");
+        errors.push(
+          "La fecha de inicio no puede ser posterior a la fecha de fin"
+        );
       }
     }
 
@@ -445,7 +575,6 @@ export function ContractDialog(props: {
     setPendingStatusId(null);
   }
 
-  // Wizard steps validation
   function canProceedStep(step: number): boolean {
     if (step === 1) {
       return !!(form.personID && form.contractTypeID && form.departmentID);
@@ -463,18 +592,25 @@ export function ContractDialog(props: {
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogTitle className="sr-only">
-            {isCreate ? (isAddendum ? "Nuevo Addendum" : "Nuevo Contrato") : `Contrato #${selectedId ?? ""}`}
+            {isCreate
+              ? isAddendum
+                ? "Nuevo Addendum"
+                : "Nuevo Contrato"
+              : `Contrato #${selectedId ?? ""}`}
           </DialogTitle>
           <DialogDescription className="sr-only">
             Formulario de gestión de contratos
           </DialogDescription>
 
-          {/* Header */}
           <div className="space-y-2 pb-4 border-b">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <h2 className="text-2xl font-bold tracking-tight">
-                  {isCreate ? (isAddendum ? "Nuevo Addendum" : "Nuevo Contrato") : `Contrato #${selectedId}`}
+                  {isCreate
+                    ? isAddendum
+                      ? "Nuevo Addendum"
+                      : "Nuevo Contrato"
+                    : `Contrato #${selectedId}`}
                 </h2>
                 <p className="text-sm text-muted-foreground">
                   {isCreate
@@ -487,7 +623,10 @@ export function ContractDialog(props: {
 
               <div className="flex items-center gap-2">
                 {!isCreate && (
-                  <Badge variant={isView ? "secondary" : "default"} className="text-xs">
+                  <Badge
+                    variant={isView ? "secondary" : "default"}
+                    className="text-xs"
+                  >
                     {isView ? (
                       <>
                         <Eye className="h-3 w-3 mr-1" />
@@ -510,7 +649,6 @@ export function ContractDialog(props: {
               </div>
             </div>
 
-            {/* Wizard Progress - Solo en create */}
             {isCreate && (
               <div className="flex items-center gap-2 pt-4">
                 {[1, 2, 3].map((step) => (
@@ -525,11 +663,19 @@ export function ContractDialog(props: {
                             : "bg-muted text-muted-foreground"
                         }`}
                       >
-                        {wizardStep > step ? <CheckCircle2 className="h-4 w-4" /> : step}
+                        {wizardStep > step ? (
+                          <CheckCircle2 className="h-4 w-4" />
+                        ) : (
+                          step
+                        )}
                       </div>
                       <div className="flex-1">
                         <div className="text-xs font-medium">
-                          {step === 1 ? "Datos básicos" : step === 2 ? "Fechas y código" : "Documentos"}
+                          {step === 1
+                            ? "Datos básicos"
+                            : step === 2
+                            ? "Fechas y código"
+                            : "Documentos"}
                         </div>
                       </div>
                     </div>
@@ -540,7 +686,6 @@ export function ContractDialog(props: {
             )}
           </div>
 
-          {/* Validation Errors */}
           {validationErrors.length > 0 && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
@@ -554,9 +699,12 @@ export function ContractDialog(props: {
             </Alert>
           )}
 
-          {/* Tabs - Solo cuando no es create */}
           {!isCreate ? (
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <Tabs
+              value={activeTab}
+              onValueChange={setActiveTab}
+              className="w-full"
+            >
               <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="overview">
                   <Eye className="h-4 w-4 mr-2" />
@@ -576,32 +724,27 @@ export function ContractDialog(props: {
                 </TabsTrigger>
               </TabsList>
 
-              {/* Tab: Overview */}
               <TabsContent value="overview" className="space-y-4 mt-4">
                 <Card>
                   <CardHeader>
                     <CardTitle>Resumen del Contrato</CardTitle>
-                    <CardDescription>Vista rápida de la información principal</CardDescription>
+                    <CardDescription>
+                      Vista rápida de la información principal
+                    </CardDescription>
                   </CardHeader>
                   <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
-                      <div className="flex items-start gap-3">
-                        <div className="p-2 bg-primary/10 rounded-lg">
-                          <User className="h-5 w-5 text-primary" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm text-muted-foreground">Persona</p>
-                          <p className="font-medium">{selectedPerson ? getEntityLabel(selectedPerson) : "—"}</p>
-                        </div>
-                      </div>
-
                       <div className="flex items-start gap-3">
                         <div className="p-2 bg-blue-100 rounded-lg">
                           <FileText className="h-5 w-5 text-blue-600" />
                         </div>
                         <div className="flex-1">
-                          <p className="text-sm text-muted-foreground">Tipo de Contrato</p>
-                          <p className="font-medium">{selectedType ? getEntityLabel(selectedType) : "—"}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Tipo de Contrato
+                          </p>
+                          <p className="font-medium">
+                            {selectedType ? getEntityLabel(selectedType) : "—"}
+                          </p>
                         </div>
                       </div>
 
@@ -610,8 +753,12 @@ export function ContractDialog(props: {
                           <Building2 className="h-5 w-5 text-purple-600" />
                         </div>
                         <div className="flex-1">
-                          <p className="text-sm text-muted-foreground">Departamento</p>
-                          <p className="font-medium">{selectedDept ? getEntityLabel(selectedDept) : "—"}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Departamento
+                          </p>
+                          <p className="font-medium">
+                            {selectedDept ? getEntityLabel(selectedDept) : "—"}
+                          </p>
                         </div>
                       </div>
 
@@ -621,8 +768,12 @@ export function ContractDialog(props: {
                             <Briefcase className="h-5 w-5 text-green-600" />
                           </div>
                           <div className="flex-1">
-                            <p className="text-sm text-muted-foreground">Cargo</p>
-                            <p className="font-medium">{getEntityLabel(selectedJob)}</p>
+                            <p className="text-sm text-muted-foreground">
+                              Cargo
+                            </p>
+                            <p className="font-medium">
+                              {getEntityLabel(selectedJob)}
+                            </p>
                           </div>
                         </div>
                       )}
@@ -634,8 +785,12 @@ export function ContractDialog(props: {
                           <Clock className="h-5 w-5 text-orange-600" />
                         </div>
                         <div className="flex-1">
-                          <p className="text-sm text-muted-foreground">Código</p>
-                          <p className="font-medium font-mono">{form.contractCode || "—"}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Código
+                          </p>
+                          <p className="font-medium font-mono">
+                            {form.contractCode || "—"}
+                          </p>
                         </div>
                       </div>
 
@@ -644,7 +799,9 @@ export function ContractDialog(props: {
                           <Clock className="h-5 w-5 text-green-600" />
                         </div>
                         <div className="flex-1">
-                          <p className="text-sm text-muted-foreground">Fecha de Inicio</p>
+                          <p className="text-sm text-muted-foreground">
+                            Fecha de Inicio
+                          </p>
                           <p className="font-medium">{form.startDate || "—"}</p>
                         </div>
                       </div>
@@ -654,7 +811,9 @@ export function ContractDialog(props: {
                           <Clock className="h-5 w-5 text-red-600" />
                         </div>
                         <div className="flex-1">
-                          <p className="text-sm text-muted-foreground">Fecha de Fin</p>
+                          <p className="text-sm text-muted-foreground">
+                            Fecha de Fin
+                          </p>
                           <p className="font-medium">{form.endDate || "—"}</p>
                         </div>
                       </div>
@@ -664,7 +823,9 @@ export function ContractDialog(props: {
                           <Workflow className="h-5 w-5 text-indigo-600" />
                         </div>
                         <div className="flex-1">
-                          <p className="text-sm text-muted-foreground">Estado Actual</p>
+                          <p className="text-sm text-muted-foreground">
+                            Estado Actual
+                          </p>
                           <Badge className="mt-1">{statusPreview}</Badge>
                         </div>
                       </div>
@@ -675,20 +836,27 @@ export function ContractDialog(props: {
                 {form.contractDescription && (
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-base">Descripción</CardTitle>
+                      <CardTitle className="text-base">
+                        Descripción
+                      </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">{form.contractDescription}</p>
+                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                        {form.contractDescription}
+                      </p>
                     </CardContent>
                   </Card>
                 )}
 
-                {/* Workflow Actions */}
                 {entityId && !isView && wf.allowedNextStatuses.length > 0 && (
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-base">Acciones de Flujo</CardTitle>
-                      <CardDescription>Transiciones disponibles desde el estado actual</CardDescription>
+                      <CardTitle className="text-base">
+                        Acciones de Flujo
+                      </CardTitle>
+                      <CardDescription>
+                        Transiciones disponibles desde el estado actual
+                      </CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="flex flex-wrap gap-2">
@@ -709,30 +877,39 @@ export function ContractDialog(props: {
                 )}
               </TabsContent>
 
-              {/* Tab: Info */}
               <TabsContent value="info" className="space-y-4 mt-4">
                 <Card>
                   <CardHeader>
                     <CardTitle>Información del Contrato</CardTitle>
                     <CardDescription>
-                      {isView ? "Datos completos del contrato" : "Edite los campos necesarios"}
+                      {isView
+                        ? "Datos completos del contrato"
+                        : "Edite los campos necesarios"}
                     </CardDescription>
                   </CardHeader>
+
                   <CardContent className="space-y-6">
-                    {/* Sección: Identificación */}
                     <div>
                       <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
                         <FileText className="h-4 w-4" />
                         Identificación
                       </h3>
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="contractCode">Código de Contrato *</Label>
+                          <Label htmlFor="contractCode">
+                            Código de Contrato *
+                          </Label>
                           <Input
                             id="contractCode"
                             value={form.contractCode}
                             disabled={isView}
-                            onChange={(e) => setForm((f) => ({ ...f, contractCode: e.target.value }))}
+                            onChange={(e) =>
+                              setForm((f) => ({
+                                ...f,
+                                contractCode: e.target.value,
+                              }))
+                            }
                             placeholder="Ej: CONT-2024-001"
                           />
                         </div>
@@ -741,15 +918,29 @@ export function ContractDialog(props: {
                           <Label htmlFor="status">Estado</Label>
                           <Select
                             value={form.status ? String(form.status) : ""}
-                            onValueChange={(v) => setForm((f) => ({ ...f, status: Number(v) }))}
+                            onValueChange={(v) =>
+                              setForm((f) => ({
+                                ...f,
+                                status: Number(v),
+                              }))
+                            }
                             disabled={isView || wf.qStatuses.isLoading}
                           >
                             <SelectTrigger id="status">
-                              <SelectValue placeholder={wf.qStatuses.isLoading ? "Cargando..." : "Seleccione estado"} />
+                              <SelectValue
+                                placeholder={
+                                  wf.qStatuses.isLoading
+                                    ? "Cargando..."
+                                    : "Seleccione estado"
+                                }
+                              />
                             </SelectTrigger>
                             <SelectContent>
                               {wf.statuses.map((s) => (
-                                <SelectItem key={s.typeID} value={String(s.typeID)}>
+                                <SelectItem
+                                  key={s.typeID}
+                                  value={String(s.typeID)}
+                                >
                                   {s.name}
                                 </SelectItem>
                               ))}
@@ -758,80 +949,99 @@ export function ContractDialog(props: {
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="certification">Certificación Financiera</Label>
-                            <Select
-                              value={form.certificationID ? String(form.certificationID) : ""}
-                              onValueChange={(v) => setForm((f) => ({ ...f, certificationID: Number(v) }))}
-                              disabled={isView || qCerts.isLoading}
-                            >
-                              <SelectTrigger id="certification">
-                                <SelectValue placeholder={qCerts.isLoading ? "Cargando..." : "Seleccione"} />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {certs.map((c) => {
-                                  const id = extractNumericId(getEntityId(c) ?? c);
-                                  if (!id) return null;
-                                  return (
-                                    <SelectItem key={id} value={String(id)}>
-                                      {getEntityLabel(c)}
-                                    </SelectItem>
-                                  );
-                                })}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                      </div>
-                    </div>
+                          <Label htmlFor="certification">
+                            Certificación Financiera
+                          </Label>
+                          <Select
+                            value={
+                              form.certificationID
+                                ? String(form.certificationID)
+                                : ""
+                            }
+                            onValueChange={(v) =>
+                              setForm((f) => ({
+                                ...f,
+                                certificationID: Number(v),
+                              }))
+                            }
+                            disabled={isView || qCerts.isLoading}
+                          >
+                            <SelectTrigger id="certification">
+                              <SelectValue
+                                placeholder={
+                                  qCerts.isLoading
+                                    ? "Cargando..."
+                                    : "Seleccione"
+                                }
+                              />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {certs.map((c) => {
+                                const id = extractNumericId(
+                                  getEntityId(c) ?? c
+                                );
+                                if (!id) return null;
 
-                    {/* Sección: Personal */}
-                    <div>
-                      <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                        <User className="h-4 w-4" />
-                        Información Personal
-                      </h3>
-                      <div className="grid grid-cols-1 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="person">Persona *</Label>
-                          <SearchableSelect
-                            value={form.personID ? String(form.personID) : null}
-                            items={toSearchItems(people)}
-                            placeholder="Seleccione una persona"
-                            searchPlaceholder="Buscar persona..."
-                            disabled={isView || qPeople.isLoading}
-                            onChange={(v) => setForm((f) => ({ ...f, personID: Number(v) || 0 }))}
-                          />
+                                return (
+                                  <SelectItem key={id} value={String(id)}>
+                                    {getEntityLabel(c)}
+                                  </SelectItem>
+                                );
+                              })}
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
                     </div>
 
-                    {/* Sección: Contrato */}
                     <div>
                       <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
                         <Building2 className="h-4 w-4" />
                         Detalles del Contrato
                       </h3>
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="contractType">Tipo de Contrato *</Label>
+                          <Label htmlFor="contractType">
+                            Tipo de Contrato *
+                          </Label>
                           <SearchableSelect
-                            value={form.contractTypeID ? String(form.contractTypeID) : null}
+                            value={
+                              form.contractTypeID
+                                ? String(form.contractTypeID)
+                                : null
+                            }
                             items={toSearchItems(types)}
                             placeholder="Seleccione tipo"
                             searchPlaceholder="Buscar tipo..."
                             disabled={isView || qTypes.isLoading}
-                            onChange={(v) => setForm((f) => ({ ...f, contractTypeID: Number(v) || 0 }))}
+                            onChange={(v) =>
+                              setForm((f) => ({
+                                ...f,
+                                contractTypeID: Number(v) || 0,
+                              }))
+                            }
                           />
                         </div>
 
                         <div className="space-y-2">
                           <Label htmlFor="department">Departamento *</Label>
                           <SearchableSelect
-                            value={form.departmentID ? String(form.departmentID) : null}
+                            value={
+                              form.departmentID
+                                ? String(form.departmentID)
+                                : null
+                            }
                             items={toSearchItems(depts)}
                             placeholder="Seleccione departamento"
                             searchPlaceholder="Buscar departamento..."
                             disabled={isView || qDepts.isLoading}
-                            onChange={(v) => setForm((f) => ({ ...f, departmentID: Number(v) || 0 }))}
+                            onChange={(v) =>
+                              setForm((f) => ({
+                                ...f,
+                                departmentID: Number(v) || 0,
+                              }))
+                            }
                           />
                         </div>
 
@@ -843,18 +1053,23 @@ export function ContractDialog(props: {
                             placeholder="Seleccione cargo"
                             searchPlaceholder="Buscar cargo..."
                             disabled={isView || qJobs.isLoading}
-                            onChange={(v) => setForm((f) => ({ ...f, jobID: Number(v) || null }))}
+                            onChange={(v) =>
+                              setForm((f) => ({
+                                ...f,
+                                jobID: Number(v) || null,
+                              }))
+                            }
                           />
                         </div>
                       </div>
                     </div>
 
-                    {/* Sección: Fechas */}
                     <div>
                       <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
                         <Clock className="h-4 w-4" />
                         Vigencia
                       </h3>
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="startDate">Fecha de Inicio *</Label>
@@ -863,7 +1078,12 @@ export function ContractDialog(props: {
                             type="date"
                             value={form.startDate}
                             disabled={isView}
-                            onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))}
+                            onChange={(e) =>
+                              setForm((f) => ({
+                                ...f,
+                                startDate: e.target.value,
+                              }))
+                            }
                           />
                         </div>
 
@@ -874,21 +1094,32 @@ export function ContractDialog(props: {
                             type="date"
                             value={form.endDate}
                             disabled={isView}
-                            onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))}
+                            onChange={(e) =>
+                              setForm((f) => ({
+                                ...f,
+                                endDate: e.target.value,
+                              }))
+                            }
                           />
                         </div>
                       </div>
                     </div>
 
-                    {/* Sección: Descripción */}
                     <div>
-                      <h3 className="text-sm font-semibold mb-3">Descripción</h3>
+                      <h3 className="text-sm font-semibold mb-3">
+                        Descripción
+                      </h3>
                       <div className="space-y-2">
                         <Textarea
                           id="description"
                           value={form.contractDescription ?? ""}
                           disabled={isView}
-                          onChange={(e) => setForm((f) => ({ ...f, contractDescription: e.target.value }))}
+                          onChange={(e) =>
+                            setForm((f) => ({
+                              ...f,
+                              contractDescription: e.target.value,
+                            }))
+                          }
                           placeholder="Detalles adicionales del contrato..."
                           rows={4}
                         />
@@ -898,7 +1129,6 @@ export function ContractDialog(props: {
                 </Card>
               </TabsContent>
 
-              {/* Tab: Documents */}
               <TabsContent value="documents" className="space-y-4 mt-4">
                 <ReusableDocumentManager
                   ref={docManagerRef}
@@ -914,15 +1144,22 @@ export function ContractDialog(props: {
                   maxSizeMB={20}
                   maxFiles={10}
                   disabled={isView}
-                  roles={{ canUpload: !isView, canPreview: true, canDownload: true, canDelete: !isView }}
+                  roles={{
+                    canUpload: !isView,
+                    canPreview: true,
+                    canDownload: true,
+                    canDelete: !isView,
+                  }}
                   documentType={{ enabled: true, required: true }}
                 />
               </TabsContent>
 
-              {/* Tab: History */}
               <TabsContent value="history" className="space-y-4 mt-4">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <ContractHistory contractId={entityId ?? 0} enabled={!!entityId} />
+                  <ContractHistory
+                    contractId={entityId ?? 0}
+                    enabled={!!entityId}
+                  />
                   <AddendumList
                     contractId={entityId ?? 0}
                     enabled={!!entityId}
@@ -931,7 +1168,9 @@ export function ContractDialog(props: {
                       setForm((f) => ({
                         ...buildEmptyForm(initial),
                         parentID: entityId,
-                        contractCode: f.contractCode?.trim() ? `${f.contractCode}-ADD` : "ADD",
+                        contractCode: f.contractCode?.trim()
+                          ? `${f.contractCode}-ADD`
+                          : "ADD",
                       }));
                     }}
                     onOpenAddendum={(a) => {
@@ -945,50 +1184,83 @@ export function ContractDialog(props: {
               </TabsContent>
             </Tabs>
           ) : (
-            // Wizard mode para CREATE
             <div className="space-y-6">
-              {/* Step 1: Datos Básicos */}
               {wizardStep === 1 && (
                 <Card>
                   <CardHeader>
                     <CardTitle>Paso 1: Datos Básicos</CardTitle>
-                    <CardDescription>Seleccione la persona, tipo de contrato y departamento</CardDescription>
+                    <CardDescription>
+                      Seleccione la persona, tipo de contrato y departamento
+                    </CardDescription>
                   </CardHeader>
+
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="wizard-person">Persona *</Label>
                       <SearchableSelect
                         value={form.personID ? String(form.personID) : null}
-                        items={toSearchItems(people)}
+                        items={personItems}
                         placeholder="Seleccione una persona"
-                        searchPlaceholder="Buscar persona..."
-                        disabled={qPeople.isLoading}
-                        onChange={(v) => setForm((f) => ({ ...f, personID: Number(v) || 0 }))}
+                        searchPlaceholder="Buscar por nombre, cédula o email..."
+                        emptyText={
+                          personSearchInput.trim()
+                            ? "No se encontraron personas"
+                            : "Escriba para buscar personas"
+                        }
+                        disabled={false}
+                        isLoading={isLoadingPeoplePaged}
+                        onSearchChange={setPersonSearchInput}
+                        onChange={(v) =>
+                          setForm((f) => ({
+                            ...f,
+                            personID: Number(v) || 0,
+                          }))
+                        }
                       />
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="wizard-type">Tipo de Contrato *</Label>
+                        <Label htmlFor="wizard-type">
+                          Tipo de Contrato *
+                        </Label>
                         <SearchableSelect
-                          value={form.contractTypeID ? String(form.contractTypeID) : null}
+                          value={
+                            form.contractTypeID
+                              ? String(form.contractTypeID)
+                              : null
+                          }
                           items={toSearchItems(types)}
                           placeholder="Seleccione tipo"
                           searchPlaceholder="Buscar tipo..."
                           disabled={qTypes.isLoading}
-                          onChange={(v) => setForm((f) => ({ ...f, contractTypeID: Number(v) || 0 }))}
+                          onChange={(v) =>
+                            setForm((f) => ({
+                              ...f,
+                              contractTypeID: Number(v) || 0,
+                            }))
+                          }
                         />
                       </div>
 
                       <div className="space-y-2">
                         <Label htmlFor="wizard-dept">Departamento *</Label>
                         <SearchableSelect
-                          value={form.departmentID ? String(form.departmentID) : null}
+                          value={
+                            form.departmentID
+                              ? String(form.departmentID)
+                              : null
+                          }
                           items={toSearchItems(depts)}
                           placeholder="Seleccione departamento"
                           searchPlaceholder="Buscar departamento..."
                           disabled={qDepts.isLoading}
-                          onChange={(v) => setForm((f) => ({ ...f, departmentID: Number(v) || 0 }))}
+                          onChange={(v) =>
+                            setForm((f) => ({
+                              ...f,
+                              departmentID: Number(v) || 0,
+                            }))
+                          }
                         />
                       </div>
 
@@ -1000,7 +1272,12 @@ export function ContractDialog(props: {
                           placeholder="Seleccione cargo"
                           searchPlaceholder="Buscar cargo..."
                           disabled={qJobs.isLoading}
-                          onChange={(v) => setForm((f) => ({ ...f, jobID: Number(v) || null }))}
+                          onChange={(v) =>
+                            setForm((f) => ({
+                              ...f,
+                              jobID: Number(v) || null,
+                            }))
+                          }
                         />
                       </div>
                     </div>
@@ -1008,32 +1285,46 @@ export function ContractDialog(props: {
                 </Card>
               )}
 
-              {/* Step 2: Fechas y Código */}
               {wizardStep === 2 && (
                 <Card>
                   <CardHeader>
                     <CardTitle>Paso 2: Fechas y Código</CardTitle>
-                    <CardDescription>Defina el código, vigencia y estado del contrato</CardDescription>
+                    <CardDescription>
+                      Defina el código, vigencia y estado del contrato
+                    </CardDescription>
                   </CardHeader>
+
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="wizard-code">Código del Contrato *</Label>
                       <Input
                         id="wizard-code"
                         value={form.contractCode}
-                        onChange={(e) => setForm((f) => ({ ...f, contractCode: e.target.value }))}
+                        onChange={(e) =>
+                          setForm((f) => ({
+                            ...f,
+                            contractCode: e.target.value,
+                          }))
+                        }
                         placeholder="Ej: CONT-2024-001"
                       />
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="wizard-start">Fecha de Inicio *</Label>
+                        <Label htmlFor="wizard-start">
+                          Fecha de Inicio *
+                        </Label>
                         <Input
                           id="wizard-start"
                           type="date"
                           value={form.startDate}
-                          onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))}
+                          onChange={(e) =>
+                            setForm((f) => ({
+                              ...f,
+                              startDate: e.target.value,
+                            }))
+                          }
                         />
                       </div>
 
@@ -1043,7 +1334,12 @@ export function ContractDialog(props: {
                           id="wizard-end"
                           type="date"
                           value={form.endDate}
-                          onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))}
+                          onChange={(e) =>
+                            setForm((f) => ({
+                              ...f,
+                              endDate: e.target.value,
+                            }))
+                          }
                         />
                       </div>
                     </div>
@@ -1052,15 +1348,29 @@ export function ContractDialog(props: {
                       <Label htmlFor="wizard-status">Estado Inicial</Label>
                       <Select
                         value={form.status ? String(form.status) : ""}
-                        onValueChange={(v) => setForm((f) => ({ ...f, status: Number(v) }))}
+                        onValueChange={(v) =>
+                          setForm((f) => ({
+                            ...f,
+                            status: Number(v),
+                          }))
+                        }
                         disabled={wf.qStatuses.isLoading}
                       >
                         <SelectTrigger id="wizard-status">
-                          <SelectValue placeholder={wf.qStatuses.isLoading ? "Cargando..." : "Seleccione estado"} />
+                          <SelectValue
+                            placeholder={
+                              wf.qStatuses.isLoading
+                                ? "Cargando..."
+                                : "Seleccione estado"
+                            }
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           {wf.statuses.map((s) => (
-                            <SelectItem key={s.typeID} value={String(s.typeID)}>
+                            <SelectItem
+                              key={s.typeID}
+                              value={String(s.typeID)}
+                            >
                               {s.name}
                             </SelectItem>
                           ))}
@@ -1069,11 +1379,18 @@ export function ContractDialog(props: {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="wizard-desc">Descripción (Opcional)</Label>
+                      <Label htmlFor="wizard-desc">
+                        Descripción (Opcional)
+                      </Label>
                       <Textarea
                         id="wizard-desc"
                         value={form.contractDescription ?? ""}
-                        onChange={(e) => setForm((f) => ({ ...f, contractDescription: e.target.value }))}
+                        onChange={(e) =>
+                          setForm((f) => ({
+                            ...f,
+                            contractDescription: e.target.value,
+                          }))
+                        }
                         placeholder="Detalles adicionales..."
                         rows={3}
                       />
@@ -1082,13 +1399,13 @@ export function ContractDialog(props: {
                 </Card>
               )}
 
-              {/* Step 3: Documentos */}
               {wizardStep === 3 && (
                 <Card>
                   <CardHeader>
                     <CardTitle>Paso 3: Documentos (Opcional)</CardTitle>
                     <CardDescription>
-                      Puede adjuntar documentos ahora o después de crear el contrato
+                      Puede adjuntar documentos ahora o después de crear el
+                      contrato
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -1106,7 +1423,12 @@ export function ContractDialog(props: {
                       maxSizeMB={20}
                       maxFiles={10}
                       disabled={false}
-                      roles={{ canUpload: true, canPreview: true, canDownload: true, canDelete: true }}
+                      roles={{
+                        canUpload: true,
+                        canPreview: true,
+                        canDownload: true,
+                        canDelete: true,
+                      }}
                       documentType={{ enabled: true, required: true }}
                     />
                   </CardContent>
@@ -1115,13 +1437,15 @@ export function ContractDialog(props: {
             </div>
           )}
 
-          {/* Footer */}
           <div className="flex flex-col-reverse sm:flex-row justify-between gap-3 pt-4 border-t">
             {isCreate ? (
               <>
                 <div className="flex gap-2">
                   {wizardStep > 1 && (
-                    <Button variant="outline" onClick={() => setWizardStep((s) => s - 1)}>
+                    <Button
+                      variant="outline"
+                      onClick={() => setWizardStep((s) => s - 1)}
+                    >
                       <ArrowLeft className="h-4 w-4 mr-2" />
                       Anterior
                     </Button>
@@ -1130,12 +1454,18 @@ export function ContractDialog(props: {
 
                 <div className="flex gap-2">
                   {wizardStep < 3 ? (
-                    <Button onClick={() => setWizardStep((s) => s + 1)} disabled={!canProceedStep(wizardStep)}>
+                    <Button
+                      onClick={() => setWizardStep((s) => s + 1)}
+                      disabled={!canProceedStep(wizardStep)}
+                    >
                       Siguiente
                       <ArrowRight className="h-4 w-4 ml-2" />
                     </Button>
                   ) : (
-                    <Button onClick={handleSave} disabled={createMut.isPending}>
+                    <Button
+                      onClick={handleSave}
+                      disabled={createMut.isPending}
+                    >
                       {createMut.isPending ? (
                         <>Creando...</>
                       ) : (
@@ -1150,16 +1480,25 @@ export function ContractDialog(props: {
               </>
             ) : (
               <>
-                <Button variant="outline" onClick={() => onOpenChange(false)}>
+                <Button
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                >
                   Cerrar
                 </Button>
 
                 {!isView && (
                   <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => setMode("view")}>
+                    <Button
+                      variant="outline"
+                      onClick={() => setMode("view")}
+                    >
                       Cancelar edición
                     </Button>
-                    <Button onClick={handleSave} disabled={updateMut.isPending}>
+                    <Button
+                      onClick={handleSave}
+                      disabled={updateMut.isPending}
+                    >
                       {updateMut.isPending ? (
                         <>Guardando...</>
                       ) : (
@@ -1184,7 +1523,6 @@ export function ContractDialog(props: {
         </DialogContent>
       </Dialog>
 
-      {/* Status Change Dialog */}
       <StatusChangeDialog
         open={statusDialogOpen}
         onOpenChange={setStatusDialogOpen}

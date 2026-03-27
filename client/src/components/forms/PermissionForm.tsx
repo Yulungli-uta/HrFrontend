@@ -24,7 +24,7 @@ import {
   ReusableDocumentManager,
   type ReusableDocumentManagerHandle,
 } from "@/components/ReusableDocumentManager";
-import { parseApiError } from '@/lib/error-handling';
+import { parseApiError } from "@/lib/error-handling";
 
 // -----------------------
 // Utils
@@ -117,13 +117,18 @@ const safeMinutes = (v: any) => {
   return Math.max(0, Math.trunc(n));
 };
 
+const safeHours = (v: any) => {
+  const n = Number(v);
+  if (!Number.isFinite(n) || Number.isNaN(n)) return 0;
+  return Math.max(0, Math.trunc(n));
+};
+
 // Extrae "HH:mm" de un string ISO o "YYYY-MM-DDTHH:mm:ss"
 const timeHHmmFromISO = (s?: any) => {
   if (!s) return null;
   const str = String(s);
   const parts = str.split("T");
   if (parts.length < 2) return null;
-  // Puede venir "08:00:00" o "08:00:00.000Z"
   const timePart = parts[1];
   const hhmm = timePart.slice(0, 5);
   if (!/^\d{2}:\d{2}$/.test(hhmm)) return null;
@@ -137,6 +142,29 @@ const buildLocalDateTime = (date: string, timeHHmm: string) => {
   return `${d}T${t}:00`;
 };
 
+const addHours = (date: Date, hours: number) => {
+  const d = new Date(date);
+  d.setHours(d.getHours() + Math.max(0, Math.trunc(hours)));
+  return d;
+};
+
+const startOfDay = (dateStr: string) => {
+  return new Date(`${dateOnly(dateStr)}T00:00:00`);
+};
+
+const buildDateTime = (dateStr: string, timeHHmm = "00:00") => {
+  return new Date(`${dateOnly(dateStr)}T${timeHHmm}:00`);
+};
+
+const fmtDateTime = (date: Date) => {
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  const hh = String(date.getHours()).padStart(2, "0");
+  const mi = String(date.getMinutes()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
+};
+
 type RangeMode = "full-day" | "multi-day" | "hours";
 
 type PermissionType = {
@@ -145,6 +173,7 @@ type PermissionType = {
   deductsFromVacation: boolean;
   requiresApproval: boolean;
   maxDays?: number | null;
+  leadTimeHours?: number | null;
 
   // flag docs
   AttachedFile?: boolean | number | string;
@@ -174,7 +203,7 @@ interface PermissionFormProps {
   initialPermission?: any | null;
   timeBalance?: TimeBalance | null;
   documents: DocumentsConfig;
-  workMinutesPerDay: number; // viene desde la page (se mantiene)
+  workMinutesPerDay: number;
 }
 
 export default function PermissionForm({
@@ -234,7 +263,6 @@ export default function PermissionForm({
     return Math.trunc(n);
   }, [paramResp]);
 
-  // Prioridad: API -> prop -> 480
   const effectiveWorkMinutesPerDay = useMemo(() => {
     if (workMinutesPerDayFromApi && workMinutesPerDayFromApi > 0) return workMinutesPerDayFromApi;
 
@@ -254,10 +282,14 @@ export default function PermissionForm({
     refetchOnWindowFocus: false,
   });
 
-  const types = useMemo(() => (typesResp?.status === "success" ? typesResp.data || [] : []), [typesResp]);
+  const types = useMemo(
+    () => (typesResp?.status === "success" ? typesResp.data || [] : []),
+    [typesResp]
+  );
+
   const typeMap = useMemo(() => new Map(types.map((t) => [t.typeId, t])), [types]);
 
-  // Existing perms/vacs (para validación cruces)
+  // Existing perms/vacs
   const { data: permsResp } = useQuery<ApiResponse<any>>({
     queryKey: ["/api/v1/rh/permissions", "by-employee", employeeId],
     queryFn: () => PermisosAPI.getByEmployee(employeeId),
@@ -274,8 +306,15 @@ export default function PermissionForm({
     refetchOnWindowFocus: false,
   });
 
-  const existingPerms = useMemo(() => (permsResp?.status === "success" ? permsResp.data || [] : []), [permsResp]);
-  const existingVacs = useMemo(() => (vacsResp?.status === "success" ? vacsResp.data || [] : []), [vacsResp]);
+  const existingPerms = useMemo(
+    () => (permsResp?.status === "success" ? permsResp.data || [] : []),
+    [permsResp]
+  );
+
+  const existingVacs = useMemo(
+    () => (vacsResp?.status === "success" ? vacsResp.data || [] : []),
+    [vacsResp]
+  );
 
   // Defaults
   const defaults = useMemo<Omit<InsertPermiso, "id">>(() => {
@@ -298,10 +337,15 @@ export default function PermissionForm({
   const [formData, setFormData] = useState<Omit<InsertPermiso, "id">>(defaults);
 
   useEffect(() => {
-    if (employeeId) setFormData((p) => ({ ...p, employeeId }));
+    if (employeeId) {
+      setFormData((p) => {
+        if (p.employeeId === employeeId) return p;
+        return { ...p, employeeId };
+      });
+    }
   }, [employeeId]);
 
-  // Resolver tipo al editar (ID o nombre)
+  // Resolver tipo al editar
   const initialTypeIdFromRecord = useMemo(() => {
     if (!initialPermission) return 0;
     const typeId =
@@ -316,7 +360,10 @@ export default function PermissionForm({
   const initialTypeNameFromRecord = useMemo(() => {
     if (!initialPermission) return "";
     return String(
-      initialPermission?.permissionTypeName ?? initialPermission?.typeName ?? initialPermission?.permissionType ?? ""
+      initialPermission?.permissionTypeName ??
+        initialPermission?.typeName ??
+        initialPermission?.permissionType ??
+        ""
     ).trim();
   }, [initialPermission]);
 
@@ -325,7 +372,9 @@ export default function PermissionForm({
     if (initialTypeIdFromRecord) return initialTypeIdFromRecord;
 
     if (initialTypeNameFromRecord && types.length) {
-      const found = types.find((t) => String(t.name).trim().toLowerCase() === initialTypeNameFromRecord.toLowerCase());
+      const found = types.find(
+        (t) => String(t.name).trim().toLowerCase() === initialTypeNameFromRecord.toLowerCase()
+      );
       return found?.typeId ?? 0;
     }
 
@@ -352,14 +401,9 @@ export default function PermissionForm({
 
     const hourTaken = safeMinutes(initialPermission?.hourTaken ?? initialPermission?.HourTaken ?? 0);
 
-    // extraer horas si vienen en ISO
     const st = timeHHmmFromISO(rawS);
     const et = timeHHmmFromISO(rawE);
 
-    // Determinar modo con coherencia:
-    // - multi-day si sd != ed
-    // - hours si sd == ed y (tiene horas distintas o hourTaken < jornada)
-    // - full-day caso contrario
     if (sd !== ed) {
       setMode("multi-day");
     } else if ((st && et && st !== et) || (hourTaken > 0 && hourTaken < effectiveWorkMinutesPerDay)) {
@@ -378,7 +422,9 @@ export default function PermissionForm({
       startDate: sd,
       endDate: ed,
       justification: String(initialPermission?.justification ?? initialPermission?.Justification ?? ""),
-      chargedToVacation: Boolean(initialPermission?.chargedToVacation ?? initialPermission?.ChargedToVacation ?? false),
+      chargedToVacation: Boolean(
+        initialPermission?.chargedToVacation ?? initialPermission?.ChargedToVacation ?? false
+      ),
       status: String(initialPermission?.status ?? initialPermission?.Status ?? "Pending"),
       hourTaken,
     }));
@@ -395,24 +441,39 @@ export default function PermissionForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [types, initialPermission]);
 
-  const selectedType = useMemo(() => typeMap.get(formData.permissionTypeId || 0), [typeMap, formData.permissionTypeId]);
+  const selectedType = useMemo(
+    () => typeMap.get(formData.permissionTypeId || 0),
+    [typeMap, formData.permissionTypeId]
+  );
 
-  // chargedToVacation definido por tipo
   useEffect(() => {
     if (!selectedType) return;
-    setFormData((p) => ({ ...p, chargedToVacation: !!selectedType.deductsFromVacation }));
+    setFormData((p) => {
+      const next = !!selectedType.deductsFromVacation;
+      if (p.chargedToVacation === next) return p;
+      return { ...p, chargedToVacation: next };
+    });
   }, [selectedType]);
 
   const requiresDocs = useMemo(() => {
     if (!selectedType) return false;
-    return toBool(selectedType.AttachedFile ?? selectedType.attachedFile ?? selectedType.requiresDocumentation ?? false);
+    return toBool(
+      selectedType.AttachedFile ??
+        selectedType.attachedFile ??
+        selectedType.requiresDocumentation ??
+        false
+    );
+  }, [selectedType]);
+
+  const selectedLeadTimeHours = useMemo(() => {
+    if (!selectedType) return 0;
+    return safeHours(selectedType.leadTimeHours ?? 0);
   }, [selectedType]);
 
   useEffect(() => {
     if (!requiresDocs) docManagerRef.current?.clearSelected();
   }, [requiresDocs]);
 
-  // Si edit + requiere docs: refresh lista de docs al abrir
   useEffect(() => {
     if (!isEdit) return;
     if (!requiresDocs) return;
@@ -428,7 +489,7 @@ export default function PermissionForm({
   };
 
   // -----------------------
-  // hourTaken derivado (fuente de verdad)
+  // hourTaken derivado
   // -----------------------
   const computedHourTaken = useMemo(() => {
     if (mode === "hours") {
@@ -443,26 +504,30 @@ export default function PermissionForm({
       return safeMinutes(days * effectiveWorkMinutesPerDay);
     }
 
-    // full-day
     return safeMinutes(1 * effectiveWorkMinutesPerDay);
   }, [mode, startTime, endTime, formData.startDate, formData.endDate, effectiveWorkMinutesPerDay]);
 
-  // Mantener formData.hourTaken sincronizado para UI
   useEffect(() => {
     setFormData((p) => {
-      if (p.hourTaken === computedHourTaken) return p;
-      return { ...p, hourTaken: computedHourTaken, endDate: mode === "multi-day" ? p.endDate : p.startDate };
+      const nextEndDate = mode === "multi-day" ? p.endDate : p.startDate;
+      if (p.hourTaken === computedHourTaken && p.endDate === nextEndDate) return p;
+      return { ...p, hourTaken: computedHourTaken, endDate: nextEndDate };
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [computedHourTaken, mode]);
 
   const handleChange = (field: keyof InsertPermiso, value: any) => {
     setFormData((p) => ({ ...p, [field]: value }));
   };
 
-  // Saldo
-  const availableVacationMin = useMemo(() => Number(timeBalance?.vacationAvailableMin ?? 0), [timeBalance]);
-  const requestedMin = useMemo(() => safeMinutes(computedHourTaken), [computedHourTaken]);
+  const availableVacationMin = useMemo(
+    () => Number(timeBalance?.vacationAvailableMin ?? 0),
+    [timeBalance]
+  );
+
+  const requestedMin = useMemo(
+    () => safeMinutes(computedHourTaken),
+    [computedHourTaken]
+  );
 
   const insufficientBalance = useMemo(() => {
     if (!selectedType?.deductsFromVacation) return false;
@@ -470,21 +535,49 @@ export default function PermissionForm({
     return requestedMin > availableVacationMin;
   }, [selectedType?.deductsFromVacation, timeBalance, requestedMin, availableVacationMin]);
 
-  // Validaciones (cruces)
+  // Validaciones
   useEffect(() => {
     const reqStart = formData.startDate;
     const reqEnd = mode === "multi-day" ? formData.endDate : formData.startDate;
 
-    if (reqStart < today) return setErrorMsg("No se permiten fechas anteriores a hoy.");
-    if (mode === "multi-day" && reqEnd < reqStart) return setErrorMsg("La fecha fin no puede ser menor a la fecha inicio.");
+    if (reqStart < today) {
+      setErrorMsg("No se permiten fechas anteriores a hoy.");
+      return;
+    }
+
+    if (mode === "multi-day" && reqEnd < reqStart) {
+      setErrorMsg("La fecha fin no puede ser menor a la fecha inicio.");
+      return;
+    }
 
     if (mode === "hours") {
       const [sh, sm] = startTime.split(":").map((x) => safeInt(x, 0));
       const [eh, em] = endTime.split(":").map((x) => safeInt(x, 0));
-      if (eh * 60 + em <= sh * 60 + sm) return setErrorMsg("La hora fin debe ser mayor que la hora inicio.");
+      if (eh * 60 + em <= sh * 60 + sm) {
+        setErrorMsg("La hora fin debe ser mayor que la hora inicio.");
+        return;
+      }
     }
 
-    // NO CRUCE con permisos activos (cualquier tipo)
+    // leadTimeHours
+    if (selectedLeadTimeHours > 0) {
+      const now = new Date();
+      const minAllowedDateTime = addHours(now, selectedLeadTimeHours);
+
+      const requestedStart =
+        mode === "hours"
+          ? buildDateTime(formData.startDate, startTime)
+          : startOfDay(formData.startDate);
+
+      if (requestedStart < minAllowedDateTime) {
+        setErrorMsg(
+          `Este tipo de permiso requiere al menos ${selectedLeadTimeHours} hora(s) de anticipación. ` +
+            `Puedes solicitarlo desde ${fmtDateTime(minAllowedDateTime)} en adelante.`
+        );
+        return;
+      }
+    }
+
     const overlapsAnyPerm = (existingPerms || []).some((p: any) => {
       const otherId = p?.permissionId ?? p?.PermissionId ?? p?.id ?? p?.ID;
       if (editingId != null && String(otherId) === String(editingId)) return false;
@@ -496,14 +589,14 @@ export default function PermissionForm({
     });
 
     if (overlapsAnyPerm) {
-      return setErrorMsg(
+      setErrorMsg(
         mode === "hours"
           ? "Ya existe un permiso activo en ese día (no se permiten cruces)."
           : "El rango se traslapa con otro permiso activo (no se permiten cruces)."
       );
+      return;
     }
 
-    // NO CRUCE con vacaciones activas
     const overlapsVacs = (existingVacs || []).some((v: any) => {
       if (!isActiveVacation(v?.status)) return false;
       const os = dateOnly(v?.startDate);
@@ -511,20 +604,27 @@ export default function PermissionForm({
       return rangesOverlap(reqStart, reqEnd, os, oe);
     });
 
-    if (overlapsVacs) return setErrorMsg("El rango se traslapa con vacaciones activas (no se permiten cruces).");
-
-    // maxDays
-    if (selectedType?.maxDays && mode !== "hours") {
-      const daysCount = mode === "full-day" ? 1 : computeDays(formData.startDate, formData.endDate);
-      if (daysCount > selectedType.maxDays) return setErrorMsg("El rango excede el máximo de días permitido para este tipo.");
+    if (overlapsVacs) {
+      setErrorMsg("El rango se traslapa con vacaciones activas (no se permiten cruces).");
+      return;
     }
 
-    // saldo
+    if (selectedType?.maxDays && mode !== "hours") {
+      const daysCount = mode === "full-day" ? 1 : computeDays(formData.startDate, formData.endDate);
+      if (daysCount > selectedType.maxDays) {
+        setErrorMsg("El rango excede el máximo de días permitido para este tipo.");
+        return;
+      }
+    }
+
     if (selectedType?.deductsFromVacation && timeBalance) {
       const available = Number(timeBalance.vacationAvailableMin ?? 0);
       const requested = safeMinutes(computedHourTaken);
       if (requested > available) {
-        return setErrorMsg(`Saldo insuficiente. Disponible: ${fmtMinutes(available)}. Solicitado: ${fmtMinutes(requested)}.`);
+        setErrorMsg(
+          `Saldo insuficiente. Disponible: ${fmtMinutes(available)}. Solicitado: ${fmtMinutes(requested)}.`
+        );
+        return;
       }
     }
 
@@ -538,6 +638,7 @@ export default function PermissionForm({
     existingPerms,
     existingVacs,
     selectedType,
+    selectedLeadTimeHours,
     today,
     editingId,
     timeBalance,
@@ -550,11 +651,12 @@ export default function PermissionForm({
         const available = Number(timeBalance.vacationAvailableMin ?? 0);
         const requested = safeMinutes(computedHourTaken);
         if (requested > available) {
-          throw new Error(`Saldo insuficiente. Disponible: ${fmtMinutes(available)}. Solicitado: ${fmtMinutes(requested)}.`);
+          throw new Error(
+            `Saldo insuficiente. Disponible: ${fmtMinutes(available)}. Solicitado: ${fmtMinutes(requested)}.`
+          );
         }
       }
 
-      // Si requiere docs: en CREATE exigir al menos uno
       if (requiresDocs && !isEdit) {
         const selectedCount = docManagerRef.current?.getSelectedCount?.() ?? 0;
         if (selectedCount === 0) {
@@ -564,15 +666,14 @@ export default function PermissionForm({
 
       const minutesToSend = safeMinutes(computedHourTaken);
 
-      // Fechas a enviar:
-      // - hours: incluir hora en startDate / endDate
-      // - day modes: dateOnly como antes
       const payloadStartDate =
-        mode === "hours" ? buildLocalDateTime(formData.startDate, startTime) : dateOnly(formData.startDate);
+        mode === "hours"
+          ? buildLocalDateTime(formData.startDate, startTime)
+          : dateOnly(formData.startDate);
 
       const payloadEndDate =
         mode === "hours"
-          ? buildLocalDateTime(formData.startDate, endTime) // hours siempre mismo día (coherencia)
+          ? buildLocalDateTime(formData.startDate, endTime)
           : dateOnly(mode === "multi-day" ? formData.endDate : formData.startDate);
 
       const payloadBase: any = {
@@ -588,7 +689,6 @@ export default function PermissionForm({
 
       const payload = clean(payloadBase) as InsertPermiso;
 
-      // EDIT
       if (isEdit) {
         const upd = (PermisosAPI as any).update ?? (PermisosAPI as any).put;
         const resp =
@@ -601,7 +701,9 @@ export default function PermissionForm({
           if (selectedCount > 0) {
             const result = await docManagerRef.current?.uploadAll(String(editingId));
             await docManagerRef.current?.refresh(String(editingId));
-            if (!result?.success) throw new Error(result?.message ?? "Permiso actualizado, pero la carga de documentos falló.");
+            if (!result?.success) {
+              throw new Error(result?.message ?? "Permiso actualizado, pero la carga de documentos falló.");
+            }
             docManagerRef.current?.clearSelected();
           }
         }
@@ -609,17 +711,20 @@ export default function PermissionForm({
         return resp;
       }
 
-      // CREATE
       const createdResp = await PermisosAPI.create(payload);
 
       if (requiresDocs) {
         const createdId = extractPermissionId(createdResp);
-        if (!createdId) throw new Error("El backend no devolvió el ID del permiso creado (permissionId).");
+        if (!createdId) {
+          throw new Error("El backend no devolvió el ID del permiso creado (permissionId).");
+        }
 
         const result = await docManagerRef.current?.uploadAll(createdId);
         await docManagerRef.current?.refresh(createdId);
 
-        if (!result?.success) throw new Error(result?.message ?? "Permiso creado, pero la carga de documentos falló.");
+        if (!result?.success) {
+          throw new Error(result?.message ?? "Permiso creado, pero la carga de documentos falló.");
+        }
 
         docManagerRef.current?.clearSelected();
       }
@@ -649,16 +754,18 @@ export default function PermissionForm({
 
   const headerInfo = useMemo(() => {
     if (!selectedType) return null;
+
     return (
       <div className="mt-2 grid gap-1 text-xs text-muted-foreground">
         <div>• {selectedType.deductsFromVacation ? "Descuenta" : "No descuenta"} de vacaciones</div>
         {selectedType.maxDays ? <div>• Máx. días: {selectedType.maxDays}</div> : null}
         <div>• {selectedType.requiresApproval ? "Requiere aprobación" : "No requiere aprobación"}</div>
         <div>• {requiresDocs ? "Requiere documentación" : "No requiere documentación"}</div>
+        <div>• Anticipación mínima: {selectedLeadTimeHours} horas</div>
         <div>• Minutos laborables por día: {effectiveWorkMinutesPerDay}</div>
       </div>
     );
-  }, [selectedType, requiresDocs, effectiveWorkMinutesPerDay]);
+  }, [selectedType, requiresDocs, selectedLeadTimeHours, effectiveWorkMinutesPerDay]);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -677,7 +784,9 @@ export default function PermissionForm({
             </div>
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Solicitado (calculado)</span>
-              <span className={`font-medium ${insufficientBalance ? "text-red-600" : ""}`}>{fmtMinutes(computedHourTaken)}</span>
+              <span className={`font-medium ${insufficientBalance ? "text-red-600" : ""}`}>
+                {fmtMinutes(computedHourTaken)}
+              </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Recuperación pendiente</span>
@@ -758,7 +867,9 @@ export default function PermissionForm({
               id="chargedToVacation"
               disabled={!!selectedType}
             />
-            <Label htmlFor="chargedToVacation">Descontar de vacaciones {selectedType ? "(definido por el tipo)" : ""}</Label>
+            <Label htmlFor="chargedToVacation">
+              Descontar de vacaciones {selectedType ? "(definido por el tipo)" : ""}
+            </Label>
           </div>
         )}
       </div>
@@ -767,11 +878,21 @@ export default function PermissionForm({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div>
             <Label htmlFor="startTime">Hora desde</Label>
-            <Input id="startTime" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+            <Input
+              id="startTime"
+              type="time"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+            />
           </div>
           <div>
             <Label htmlFor="endTime">Hora hasta</Label>
-            <Input id="endTime" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+            <Input
+              id="endTime"
+              type="time"
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
+            />
           </div>
           <div>
             <Label>Minutos calculados</Label>
@@ -833,7 +954,11 @@ export default function PermissionForm({
         <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={onCancel}>
           Cancelar
         </Button>
-        <Button type="submit" disabled={!!errorMsg || insufficientBalance || mutation.isPending} className="w-full sm:w-auto">
+        <Button
+          type="submit"
+          disabled={!!errorMsg || insufficientBalance || mutation.isPending}
+          className="w-full sm:w-auto"
+        >
           {mutation.isPending ? "Guardando…" : isEdit ? "Guardar cambios" : "Solicitar Permiso"}
         </Button>
       </div>
