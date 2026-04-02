@@ -78,113 +78,122 @@ export function WorkExperiencesTab({ workExperiences, onEdit, onDelete }: WorkEx
         ) : (
           <ScrollArea className="h-[600px] pr-4">
             <div className="space-y-4">
-              {[...workExperiences] // ❗ evitar mutar props
+              {[...workExperiences]
                 .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
-                .map((experience, index) => (
-                  <Card
-                    key={experience.workExperienceId ?? `experience-${index}`} // 🔥 FIX: key segura
-                    className="hover:shadow-md transition-shadow"
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                        <div className="flex-1 space-y-3">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <h4 className="font-semibold text-gray-900 text-lg">
-                                {experience.position}
-                              </h4>
-                              <p className="text-gray-600 text-sm mt-1">
-                                {experience.company}
-                              </p>
+                .map((experience, index) => {
+                  const experienceId = (experience as any).workExpId ?? (experience as any).id ?? null;
+
+                  return (
+                    <Card
+                      key={experienceId ?? `experience-${index}`}
+                      className="hover:shadow-md transition-shadow"
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                          <div className="flex-1 space-y-3">
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <h4 className="font-semibold text-gray-900 text-lg">
+                                  {experience.position}
+                                </h4>
+                                <p className="text-gray-600 text-sm mt-1">
+                                  {experience.company}
+                                </p>
+                              </div>
+
+                              <div className="flex gap-2 ml-4 flex-shrink-0">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => onEdit("experience", experience)}
+                                  className="h-8 w-8 p-0"
+                                >
+                                  <Edit className="h-3.5 w-3.5" />
+                                </Button>
+
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    if (experienceId != null) {
+                                      onDelete(experienceId);
+                                    }
+                                  }}
+                                  className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                                  disabled={experienceId == null}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
                             </div>
 
-                            <div className="flex gap-2 ml-4 flex-shrink-0">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => onEdit("experience", experience)}
-                                className="h-8 w-8 p-0"
-                              >
-                                <Edit className="h-3.5 w-3.5" />
-                              </Button>
+                            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                              <div className="flex items-center gap-2">
+                                <Calendar className="h-4 w-4 text-gray-400" />
+                                <span>
+                                  {formatDate(experience.startDate)} -{" "}
+                                  {experience.isCurrent ? (
+                                    <Badge variant="default" className="ml-1">
+                                      Actual
+                                    </Badge>
+                                  ) : experience.endDate ? (
+                                    formatDate(experience.endDate)
+                                  ) : (
+                                    "No especificada"
+                                  )}
+                                </span>
+                              </div>
 
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => onDelete(experience.workExperienceId)}
-                                className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                            </div>
-                          </div>
-
-                          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
-                            <div className="flex items-center gap-2">
-                              <Calendar className="h-4 w-4 text-gray-400" />
-                              <span>
-                                {formatDate(experience.startDate)} -{" "}
-                                {experience.isCurrent ? (
-                                  <Badge variant="default" className="ml-1">
-                                    Actual
-                                  </Badge>
-                                ) : experience.endDate ? (
-                                  formatDate(experience.endDate)
-                                ) : (
-                                  "No especificada"
+                              <Badge variant="outline" className="text-xs">
+                                {calculateDuration(
+                                  experience.startDate,
+                                  experience.endDate || null,
+                                  experience.isCurrent
                                 )}
-                              </span>
+                              </Badge>
                             </div>
 
-                            <Badge variant="outline" className="text-xs">
-                              {calculateDuration(
-                                experience.startDate,
-                                experience.endDate || null,
-                                experience.isCurrent
-                              )}
-                            </Badge>
-                          </div>
+                            {experience.institutionAddress && (
+                              <div className="flex items-center gap-2 text-sm text-gray-600">
+                                <MapPin className="h-4 w-4 text-gray-400" />
+                                <span>{experience.institutionAddress}</span>
+                              </div>
+                            )}
 
-                          {experience.institutionAddress && (
-                            <div className="flex items-center gap-2 text-sm text-gray-600">
-                              <MapPin className="h-4 w-4 text-gray-400" />
-                              <span>{experience.institutionAddress}</span>
-                            </div>
-                          )}
+                            {experience.entryReason && (
+                              <div className="text-sm text-gray-600">
+                                <p className="font-medium mb-1">Razón de entrada:</p>
+                                <p className="text-gray-700 line-clamp-2">{experience.entryReason}</p>
+                              </div>
+                            )}
 
-                          {experience.entryReason && (
-                            <div className="text-sm text-gray-600">
-                              <p className="font-medium mb-1">Razón de entrada:</p>
-                              <p className="text-gray-700 line-clamp-2">{experience.entryReason}</p>
-                            </div>
-                          )}
+                            {experience.exitReason && (
+                              <div className="text-sm text-gray-600">
+                                <p className="font-medium mb-1">Razón de salida:</p>
+                                <p className="text-gray-700 line-clamp-2">{experience.exitReason}</p>
+                              </div>
+                            )}
 
-                          {experience.exitReason && (
-                            <div className="text-sm text-gray-600">
-                              <p className="font-medium mb-1">Razón de salida:</p>
-                              <p className="text-gray-700 line-clamp-2">{experience.exitReason}</p>
-                            </div>
-                          )}
-
-                          <div className="flex gap-4 text-xs">
-                            <div>
-                              <span className="font-medium text-gray-600">ID País: </span>
-                              <span className="text-gray-900">{experience.countryId}</span>
-                            </div>
-                            <div>
-                              <span className="font-medium text-gray-600">Tipo Institución: </span>
-                              <span className="text-gray-900">{experience.institutionTypeId}</span>
-                            </div>
-                            <div>
-                              <span className="font-medium text-gray-600">Tipo Experiencia: </span>
-                              <span className="text-gray-900">{experience.experienceTypeId}</span>
+                            <div className="flex gap-4 text-xs">
+                              <div>
+                                <span className="font-medium text-gray-600">ID País: </span>
+                                <span className="text-gray-900">{experience.countryId}</span>
+                              </div>
+                              <div>
+                                <span className="font-medium text-gray-600">Tipo Institución: </span>
+                                <span className="text-gray-900">{experience.institutionTypeId}</span>
+                              </div>
+                              <div>
+                                <span className="font-medium text-gray-600">Tipo Experiencia: </span>
+                                <span className="text-gray-900">{experience.experienceTypeId}</span>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
             </div>
           </ScrollArea>
         )}

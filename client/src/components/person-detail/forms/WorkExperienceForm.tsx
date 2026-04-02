@@ -192,7 +192,7 @@ export default function WorkExperienceForm({
   // useForm
   // =============================
   const form = useForm<WorkExperienceFormData>({
-    resolver: zodResolver(workExperienceFormSchema),
+    resolver: zodResolver(workExperienceFormSchema) as any,
     defaultValues: {
       position: workExperience?.position ?? "",
       company: workExperience?.company ?? "",
@@ -261,14 +261,14 @@ export default function WorkExperienceForm({
   return (
     <Form {...form}>
       <form
-        onSubmit={form.handleSubmit(handleSubmit)}
+        onSubmit={form.handleSubmit(handleSubmit as any)}
         className="space-y-4"
         data-testid="work-experience-form"
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Cargo */}
           <FormField
-            control={form.control}
+            control={form.control as any}
             name="position"
             render={({ field }) => (
               <FormItem>
@@ -283,7 +283,7 @@ export default function WorkExperienceForm({
 
           {/* Empresa */}
           <FormField
-            control={form.control}
+            control={form.control as any}
             name="company"
             render={({ field }) => (
               <FormItem>
@@ -298,7 +298,7 @@ export default function WorkExperienceForm({
 
           {/* Trabajo actual */}
           <FormField
-            control={form.control}
+            control={form.control as any}
             name="isCurrent"
             render={({ field }) => (
               <FormItem className="flex flex-row items-start space-x-3 space-y-0 md:col-span-2">
@@ -325,7 +325,7 @@ export default function WorkExperienceForm({
 
           {/* Fecha inicio */}
           <FormField
-            control={form.control}
+            control={form.control as any}
             name="startDate"
             render={({ field }) => (
               <FormItem>
@@ -345,7 +345,7 @@ export default function WorkExperienceForm({
           {/* Fecha fin */}
           {!isCurrent && (
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="endDate"
               render={({ field }) => (
                 <FormItem>
@@ -365,7 +365,7 @@ export default function WorkExperienceForm({
 
           {/* País (countryId = varchar) */}
           <FormField
-            control={form.control}
+            control={form.control as any}
             name="countryId"
             render={({ field }) => (
               <FormItem>
@@ -412,7 +412,7 @@ export default function WorkExperienceForm({
 
           {/* Tipo de institución */}
           <FormField
-            control={form.control}
+            control={form.control as any}
             name="institutionTypeId"
             render={({ field }) => (
               <FormItem>
@@ -459,7 +459,7 @@ export default function WorkExperienceForm({
 
           {/* Tipo de experiencia */}
           <FormField
-            control={form.control}
+            control={form.control as any}
             name="experienceTypeId"
             render={({ field }) => (
               <FormItem>
@@ -506,7 +506,7 @@ export default function WorkExperienceForm({
 
           {/* Dirección institución */}
           <FormField
-            control={form.control}
+            control={form.control as any}
             name="institutionAddress"
             render={({ field }) => (
               <FormItem className="md:col-span-2">
@@ -521,7 +521,7 @@ export default function WorkExperienceForm({
 
           {/* Razón de salida */}
           <FormField
-            control={form.control}
+            control={form.control as any}
             name="exitReason"
             render={({ field }) => (
               <FormItem className="md:col-span-2">
@@ -537,7 +537,7 @@ export default function WorkExperienceForm({
 
         {/* Razón de entrada */}
         <FormField
-          control={form.control}
+          control={form.control as any}
           name="entryReason"
           render={({ field }) => (
             <FormItem>

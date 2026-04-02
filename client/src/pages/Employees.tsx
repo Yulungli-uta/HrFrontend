@@ -294,31 +294,31 @@ const employeeStats = useMemo(() => {
       <div className="container mx-auto p-6">
         <div className="flex items-center justify-between mb-8">
           <div className="space-y-2">
-            <div className="h-10 w-64 bg-gray-200 rounded animate-pulse" />
-            <div className="h-5 w-80 bg-gray-200 rounded animate-pulse" />
+            <div className="h-10 w-64 bg-muted rounded animate-pulse" />
+            <div className="h-5 w-80 bg-muted rounded animate-pulse" />
           </div>
-          <div className="h-10 w-44 bg-gray-200 rounded animate-pulse" />
+          <div className="h-10 w-44 bg-muted rounded animate-pulse" />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
           {Array.from({ length: 3 }).map((_, i) => (
             <Card key={i} className="animate-pulse border-0 shadow-md">
               <CardHeader className="space-y-2 pb-3">
-                <div className="h-5 w-32 bg-gray-200 rounded" />
-                <div className="h-4 w-24 bg-gray-200 rounded" />
+                <div className="h-5 w-32 bg-muted rounded" />
+                <div className="h-4 w-24 bg-muted rounded" />
               </CardHeader>
               <CardContent>
-                <div className="h-8 w-16 bg-gray-200 rounded" />
+                <div className="h-8 w-16 bg-muted rounded" />
               </CardContent>
             </Card>
           ))}
         </div>
 
-        <div className="bg-white rounded-lg shadow-md p-4 animate-pulse">
-          <div className="h-10 w-full bg-gray-200 rounded mb-4" />
+        <div className="bg-card rounded-lg shadow-md p-4 animate-pulse">
+          <div className="h-10 w-full bg-muted rounded mb-4" />
           <div className="space-y-3">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-12 w-full bg-gray-200 rounded" />
+              <div key={i} className="h-12 w-full bg-muted rounded" />
             ))}
           </div>
         </div>
@@ -329,9 +329,9 @@ const employeeStats = useMemo(() => {
   if (isError) {
     return (
       <div className="container mx-auto p-6">
-        <Card className="border-red-200 bg-red-50 shadow-md">
+        <Card className="border-red-200 dark:border-red-800/40 bg-red-50 dark:bg-red-950/20 shadow-md">
           <CardContent className="pt-6">
-            <p className="text-red-600 font-medium">
+            <p className="text-red-600 dark:text-red-400 font-medium">
               Error al cargar los empleados: {errorMessage || "Error desconocido"}
             </p>
           </CardContent>
@@ -344,10 +344,10 @@ const employeeStats = useMemo(() => {
     <div className="container mx-auto p-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">
+          <h1 className="text-3xl font-bold text-foreground">
             Gestión de Empleados
           </h1>
-          <p className="text-gray-600 mt-2">
+          <p className="text-muted-foreground mt-2">
             Administre la información laboral del personal universitario
           </p>
         </div>
@@ -405,55 +405,55 @@ const employeeStats = useMemo(() => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
-        <Card className="border-0 shadow-md bg-gradient-to-r from-blue-50 to-blue-100">
+        <Card className="border-0 shadow-md bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-950/50 dark:to-blue-900/30">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-medium text-blue-800">
+            <CardTitle className="text-sm font-medium text-blue-800 dark:text-blue-300">
               Total Empleados
             </CardTitle>
-            <Users className="h-5 w-5 text-blue-600" />
+            <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-900">
+            <div className="text-3xl font-bold text-blue-900 dark:text-blue-200">
               {employeeStats.total}
             </div>
-            <p className="text-xs text-blue-600 mt-1">Total general</p>
+            <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">Total general</p>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-md bg-gradient-to-r from-green-50 to-green-100">
+        <Card className="border-0 shadow-md bg-gradient-to-r from-green-50 to-green-100 dark:from-green-950/50 dark:to-green-900/30">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-medium text-green-800">
+            <CardTitle className="text-sm font-medium text-green-800 dark:text-green-300">
               Activos
             </CardTitle>
-            <UserCheck className="h-5 w-5 text-green-600" />
+            <UserCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-green-900">
+            <div className="text-3xl font-bold text-green-900 dark:text-green-200">
               {employeeStats.active}
             </div>
-            <p className="text-xs text-green-600 mt-1">Total general</p>
+            <p className="text-xs text-green-600 dark:text-green-400 mt-1">Total general</p>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-md bg-gradient-to-r from-red-50 to-red-100">
+        <Card className="border-0 shadow-md bg-gradient-to-r from-red-50 to-red-100 dark:from-red-950/50 dark:to-red-900/30">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-medium text-red-800">
+            <CardTitle className="text-sm font-medium text-red-800 dark:text-red-300">
               Inactivos
             </CardTitle>
-            <UserX className="h-5 w-5 text-red-600" />
+            <UserX className="h-5 w-5 text-red-600 dark:text-red-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-red-900">
+            <div className="text-3xl font-bold text-red-900 dark:text-red-200">
               {employeeStats.inactive}
             </div>
-            <p className="text-xs text-red-600 mt-1">Total general</p>
+            <p className="text-xs text-red-600 dark:text-red-400 mt-1">Total general</p>
           </CardContent>
         </Card>
       </div>
 
       {Object.keys(employeeStats.byContractType).length > 0 && (
         <>
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">
+          <h2 className="text-xl font-semibold text-foreground mb-4">
             Distribución por Tipo de Contrato
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
@@ -464,11 +464,11 @@ const employeeStats = useMemo(() => {
                     <CardTitle className="text-sm font-medium">
                       {contractTypeMap[Number(typeId)] ?? `Tipo #${typeId}`}
                     </CardTitle>
-                    <Briefcase className="h-5 w-5 text-gray-500" />
+                    <Briefcase className="h-5 w-5 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">{count}</div>
-                    <p className="text-xs text-gray-500 mt-1">Empleados con este tipo de contrato</p>
+                    <p className="text-xs text-muted-foreground mt-1">Empleados con este tipo de contrato</p>
                   </CardContent>
                 </Card>
               )
@@ -478,13 +478,13 @@ const employeeStats = useMemo(() => {
       )}
 
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-4">
-        <h2 className="text-xl font-semibold text-gray-800">
+        <h2 className="text-xl font-semibold text-foreground">
           Lista de Empleados
         </h2>
 
         <div className="flex items-center gap-3 w-full md:w-auto">
           <div className="relative flex-1 md:flex-initial">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
               placeholder="Buscar por nombre, cédula o email..."
               value={currentParams.search ?? ""}
@@ -496,7 +496,7 @@ const employeeStats = useMemo(() => {
               <button
                 type="button"
                 onClick={() => clearSearch()}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                 aria-label="Limpiar búsqueda"
               >
                 <X className="h-4 w-4" />
@@ -526,55 +526,55 @@ const employeeStats = useMemo(() => {
       </div>
 
       {viewMode === "table" ? (
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="bg-card rounded-lg shadow-md overflow-hidden border border-border">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[980px]">
-              <thead className="bg-gray-50">
+              <thead className="bg-muted">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
                     Nombre Completo
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
                     Cédula
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
                     Email
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
                     Tipo de Empleado
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
                     Departamento
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
                     Estado
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
                     Acciones
                   </th>
                 </tr>
               </thead>
 
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="divide-y divide-border">
                 {employees.map((employee) => (
-                  <tr key={employee.employeeID} className="hover:bg-gray-50">
+                  <tr key={employee.employeeID} className="hover:bg-muted/50 transition-colors">
                     <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">
+                      <div className="text-sm font-medium text-foreground">
                         {employee.fullName}
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm text-gray-600">
+                      <div className="text-sm text-muted-foreground">
                         {employee.idCard || "N/A"}
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm text-gray-600">
+                      <div className="text-sm text-muted-foreground">
                         {employee.email || "N/A"}
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm text-gray-600">
+                      <div className="text-sm text-muted-foreground">
                         {employee.employeeTypeName ??
                           (employee.employeeType != null
                             ? `#${employee.employeeType}`
@@ -582,7 +582,7 @@ const employeeStats = useMemo(() => {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm text-gray-600">
+                      <div className="text-sm text-muted-foreground">
                         {employee.department || "N/A"}
                       </div>
                     </td>
@@ -590,8 +590,8 @@ const employeeStats = useMemo(() => {
                       <Badge
                         className={
                           employee.employeeIsActive
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
+                            ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                            : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
                         }
                       >
                         {employee.employeeIsActive ? "Activo" : "Inactivo"}
@@ -615,13 +615,13 @@ const employeeStats = useMemo(() => {
 
           {employees.length === 0 && (
             <div className="text-center py-12">
-              <UserCog className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <UserCog className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold text-foreground mb-2">
                 {hasSearch
                   ? "No se encontraron empleados"
                   : "No hay empleados registrados"}
               </h3>
-              <p className="text-gray-600 mb-4">
+              <p className="text-muted-foreground mb-4">
                 {hasSearch
                   ? "Intente con otro término de búsqueda"
                   : "Comience agregando el primer empleado al sistema"}
@@ -632,7 +632,7 @@ const employeeStats = useMemo(() => {
                     setEditSeed(null);
                     setIsFormOpen(true);
                   }}
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800"
                 >
                   <UserCog className="mr-2 h-4 w-4" />
                   Agregar Primer Empleado
@@ -654,8 +654,8 @@ const employeeStats = useMemo(() => {
                   <Badge
                     className={
                       employee.employeeIsActive
-                        ? "bg-green-100 text-green-800"
-                        : "bg-red-100 text-red-800"
+                        ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                        : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
                     }
                   >
                     {employee.employeeIsActive ? "Activo" : "Inactivo"}
@@ -675,13 +675,13 @@ const employeeStats = useMemo(() => {
 
               <CardContent className="space-y-3">
                 {employee.email && (
-                  <div className="text-sm text-gray-600 truncate">
+                  <div className="text-sm text-muted-foreground truncate">
                     Email: {employee.email}
                   </div>
                 )}
 
                 {employee.department && (
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Building2 className="h-4 w-4" />
                     <span className="truncate">
                       Departamento: {employee.department}
@@ -690,12 +690,12 @@ const employeeStats = useMemo(() => {
                 )}
 
                 {employee.faculty && (
-                  <div className="text-sm text-gray-600">
+                  <div className="text-sm text-muted-foreground">
                     Facultad: {employee.faculty}
                   </div>
                 )}
 
-                <div className="flex items-center gap-2 text-sm text-gray-600">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Calendar className="h-4 w-4" />
                   <span>Ingreso: {formatDate(employee.hireDate)}</span>
                 </div>
@@ -716,13 +716,13 @@ const employeeStats = useMemo(() => {
           {employees.length === 0 && (
             <Card className="text-center py-12 border-0 shadow-md col-span-full">
               <CardContent>
-                <UserCog className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                <UserCog className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold text-foreground mb-2">
                   {hasSearch
                     ? "No se encontraron empleados"
                     : "No hay empleados registrados"}
                 </h3>
-                <p className="text-gray-600 mb-4">
+                <p className="text-muted-foreground mb-4">
                   {hasSearch
                     ? "Intente con otro término de búsqueda"
                     : "Comience agregando el primer empleado al sistema"}
@@ -733,7 +733,7 @@ const employeeStats = useMemo(() => {
                       setEditSeed(null);
                       setIsFormOpen(true);
                     }}
-                    className="bg-blue-600 hover:bg-blue-700"
+                    className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800"
                   >
                     <UserCog className="mr-2 h-4 w-4" />
                     Agregar Primer Empleado
@@ -774,14 +774,14 @@ const employeeStats = useMemo(() => {
           {selectedEmployee && (
             <>
               <div className="flex items-center gap-4 mb-6">
-                <div className="bg-blue-100 p-3 rounded-full">
-                  <UserCog className="h-8 w-8 text-blue-600" />
+                <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-full">
+                  <UserCog className="h-8 w-8 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">
+                  <h2 className="text-2xl font-bold text-foreground">
                     {selectedEmployee.fullName}
                   </h2>
-                  <p className="text-gray-600">
+                  <p className="text-muted-foreground">
                     {selectedEmployee.idCard
                       ? `Cédula: ${selectedEmployee.idCard}`
                       : ""}
@@ -791,17 +791,17 @@ const employeeStats = useMemo(() => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-800 mb-3">
+                  <h3 className="text-lg font-semibold text-foreground mb-3">
                     Información Laboral
                   </h3>
                   <div className="space-y-3">
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Estado:</span>
+                      <span className="text-muted-foreground">Estado:</span>
                       <Badge
                         className={
                           selectedEmployee.employeeIsActive
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
+                            ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                            : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
                         }
                       >
                         {selectedEmployee.employeeIsActive
@@ -811,7 +811,7 @@ const employeeStats = useMemo(() => {
                     </div>
 
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Tipo de empleado:</span>
+                      <span className="text-muted-foreground">Tipo de empleado:</span>
                       <span className="font-medium">
                         {selectedEmployee.employeeTypeName ??
                           (selectedEmployee.employeeType != null
@@ -821,35 +821,35 @@ const employeeStats = useMemo(() => {
                     </div>
 
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Departamento:</span>
+                      <span className="text-muted-foreground">Departamento:</span>
                       <span className="font-medium">
                         {selectedEmployee.department || "—"}
                       </span>
                     </div>
 
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Facultad:</span>
+                      <span className="text-muted-foreground">Facultad:</span>
                       <span className="font-medium">
                         {selectedEmployee.faculty || "—"}
                       </span>
                     </div>
 
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Fecha de ingreso:</span>
+                      <span className="text-muted-foreground">Fecha de ingreso:</span>
                       <span className="font-medium">
                         {formatDate(selectedEmployee.hireDate)}
                       </span>
                     </div>
 
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Años de servicio:</span>
+                      <span className="text-muted-foreground">Años de servicio:</span>
                       <span className="font-medium">
                         {selectedEmployee.yearsOfService ?? 0}
                       </span>
                     </div>
 
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Jefe inmediato:</span>
+                      <span className="text-muted-foreground">Jefe inmediato:</span>
                       <span className="font-medium">
                         {selectedEmployee.immediateBoss || "—"}
                       </span>
@@ -858,61 +858,61 @@ const employeeStats = useMemo(() => {
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-800 mb-3">
+                  <h3 className="text-lg font-semibold text-foreground mb-3">
                     Información Personal
                   </h3>
                   <div className="space-y-3">
                     <div className="flex justify-between gap-4">
-                      <span className="text-gray-600">Email:</span>
+                      <span className="text-muted-foreground">Email:</span>
                       <span className="font-medium text-right break-all">
                         {selectedEmployee.email || "—"}
                       </span>
                     </div>
 
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Teléfono:</span>
+                      <span className="text-muted-foreground">Teléfono:</span>
                       <span className="font-medium">
                         {selectedEmployee.phone || "—"}
                       </span>
                     </div>
 
                     <div className="flex justify-between gap-4">
-                      <span className="text-gray-600">Dirección:</span>
+                      <span className="text-muted-foreground">Dirección:</span>
                       <span className="font-medium text-right max-w-xs">
                         {selectedEmployee.address || "—"}
                       </span>
                     </div>
 
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Fecha de nacimiento:</span>
+                      <span className="text-muted-foreground">Fecha de nacimiento:</span>
                       <span className="font-medium">
                         {formatDate(selectedEmployee.birthDate)}
                       </span>
                     </div>
 
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Sexo:</span>
+                      <span className="text-muted-foreground">Sexo:</span>
                       <span className="font-medium">
                         {resolveSexName(selectedEmployee.sex, sexTypeMap)}
                       </span>
                     </div>
 
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Estado civil:</span>
+                      <span className="text-muted-foreground">Estado civil:</span>
                       <span className="font-medium">
                         {selectedEmployee.maritalStatus || "—"}
                       </span>
                     </div>
 
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Etnia:</span>
+                      <span className="text-muted-foreground">Etnia:</span>
                       <span className="font-medium">
                         {selectedEmployee.ethnicity || "—"}
                       </span>
                     </div>
 
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Tipo de sangre:</span>
+                      <span className="text-muted-foreground">Tipo de sangre:</span>
                       <span className="font-medium">
                         {selectedEmployee.bloodType || "—"}
                       </span>

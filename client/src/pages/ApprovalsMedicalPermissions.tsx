@@ -351,7 +351,7 @@ export default function ApprovalsMedicalPermissionsPage() {
   const filteredPerms = useMemo(() => {
     return allPerms
       .filter((p) => {
-        const empName = (p.employeeId && employeesMap[p.employeeId]?.fullName?.toLowerCase()) ?? "";
+        const empName = String(p.employeeId ? employeesMap[p.employeeId]?.fullName ?? "" : "").toLowerCase();
         const just = (p.justification ?? "").toLowerCase();
         const typeName = getTypeName(p.permissionTypeId).toLowerCase();
         const q = filters.q.toLowerCase();

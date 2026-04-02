@@ -197,7 +197,7 @@ export default function DepartmentsPage() {
         }
       } catch (e: unknown) {
         setError(
-          e?.message ||
+          parseApiError(e).message ||
             `Error al ${
               modalState.mode === "create" ? "crear" : "actualizar"
             }`

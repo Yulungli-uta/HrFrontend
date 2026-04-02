@@ -13,47 +13,54 @@ interface StatsDashboardProps {
   };
 }
 
-const stats = [
-  { 
-    label: "Publicaciones", 
-    key: "publications" as const, 
-    icon: FileText, 
-    color: "blue" 
+type StatColor = "blue" | "green" | "orange" | "purple" | "red" | "yellow";
+
+const stats: Array<{
+  label: string;
+  key: keyof StatsDashboardProps["data"];
+  icon: typeof FileText;
+  color: StatColor;
+}> = [
+  {
+    label: "Publicaciones",
+    key: "publications",
+    icon: FileText,
+    color: "blue",
   },
-  { 
-    label: "Cargas Familiares", 
-    key: "familyMembers" as const, 
-    icon: Users, 
-    color: "green" 
+  {
+    label: "Cargas Familiares",
+    key: "familyMembers",
+    icon: Users,
+    color: "green",
   },
-  { 
-    label: "Experiencias", 
-    key: "workExperiences" as const, 
-    icon: Briefcase, 
-    color: "orange" 
+  {
+    label: "Experiencias",
+    key: "workExperiences",
+    icon: Briefcase,
+    color: "orange",
   },
-  { 
-    label: "Capacitaciones", 
-    key: "trainings" as const, 
-    icon: GraduationCap, 
-    color: "purple" 
+  {
+    label: "Capacitaciones",
+    key: "trainings",
+    icon: GraduationCap,
+    color: "purple",
   },
-  { 
-    label: "Libros", 
-    key: "books" as const, 
-    icon: BookOpen, 
-    color: "red" 
+  {
+    label: "Libros",
+    key: "books",
+    icon: BookOpen,
+    color: "red",
   },
-  { 
-    label: "Contactos", 
-    key: "emergencyContacts" as const, 
-    icon: Phone, 
-    color: "yellow" 
+  {
+    label: "Contactos",
+    key: "emergencyContacts",
+    icon: Phone,
+    color: "yellow",
   },
 ];
 
 export function StatsDashboard({ data }: StatsDashboardProps) {
-  const colorClasses = {
+  const colorClasses: Record<StatColor, string> = {
     blue: "border-l-blue-500 bg-blue-50",
     green: "border-l-green-500 bg-green-50",
     orange: "border-l-orange-500 bg-orange-50",
@@ -62,7 +69,7 @@ export function StatsDashboard({ data }: StatsDashboardProps) {
     yellow: "border-l-yellow-500 bg-yellow-50",
   };
 
-  const iconColors = {
+  const iconColors: Record<StatColor, string> = {
     blue: "text-blue-600",
     green: "text-green-600",
     orange: "text-orange-600",
@@ -74,12 +81,12 @@ export function StatsDashboard({ data }: StatsDashboardProps) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
       {stats.map((stat) => (
-        <Card 
-          key={stat.key} 
+        <Card
+          key={stat.key}
           className={`border-l-4 ${colorClasses[stat.color]} hover:shadow-sm transition-shadow duration-200`}
         >
           <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
-            <div className={`p-2 rounded-full bg-white`}>
+            <div className="p-2 rounded-full bg-white">
               <stat.icon className={`h-4 w-4 sm:h-5 sm:w-5 ${iconColors[stat.color]}`} />
             </div>
             <div className="min-w-0 flex-1">

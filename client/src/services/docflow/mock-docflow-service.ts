@@ -244,7 +244,7 @@ export class MockDocflowService implements IDocflowService {
     const newInstance: WorkflowInstance = {
       instanceId: this.instances.length + 1,
       processId: data.processId,
-      currentStatus: data.currentStatus || "Borrador",
+      currentStatus: (data as any).currentStatus || "Borrador",
       dynamicMetadata: data.dynamicMetadata || null,
       createdBy: 1,
       createdAt: new Date().toISOString(),

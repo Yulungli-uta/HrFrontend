@@ -318,8 +318,8 @@ export class ApiDocflowService implements IDocflowService {
   }
 
   private _findRuleProcessId(ruleId: number): number | undefined {
-    for (const [processId, rules] of this.cache.rules) {
-      if (rules.some((r) => r.ruleId === ruleId)) return processId;
+    for (const [processId, rules] of Array.from(this.cache.rules.entries())) {
+      if (rules.some((r: any) => r.ruleId === ruleId)) return processId;
     }
     return undefined;
   }
@@ -336,7 +336,7 @@ export class ApiDocflowService implements IDocflowService {
   const result = await DocflowAPI.instances.create({
     initialProcessId: data.processId,
     instanceName: data.instanceName,              // NUEVO
-    dynamicMetadata: data.dynamicMetadata ? JSON.stringify(data.dynamicMetadata) : null,
+    dynamicMetadataJson: data.dynamicMetadata? JSON.stringify(data.dynamicMetadata): undefined,
     assignedToUserId: data.assignedToUserId,
   });
 

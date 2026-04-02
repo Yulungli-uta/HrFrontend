@@ -1,51 +1,63 @@
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { insertDepartmentSchema, type InsertDepartment, type Department, type Faculty } from "@/shared/schema";
+import type { Department, Faculty } from "@/shared/schema";
 import { Building, Save, X, Building2 } from "lucide-react";
 import { useCrudMutation } from "@/hooks/useCrudMutation";
-import { DepartamentosAPI } from "@/lib/api";
+import { DepartamentosAPI, FacultadesAPI, type ApiResponse } from "@/lib/api";
 import type { BaseCrudFormProps } from "@/types/components";
 
-interface DepartmentFormProps extends BaseCrudFormProps<Department, InsertDepartment> {}
+interface DepartmentFormProps extends BaseCrudFormProps<Department, DepartmentFormData> {}
+
+type DepartmentFormData = {
+  name: string;
+  facultyId: number | null;
+  isActive: boolean;
+};
 
 export default function DepartmentForm({ entity: department, onSuccess, onCancel }: DepartmentFormProps) {
   const isEditing = !!department;
 
-  const { data: faculties } = useQuery<Faculty[]>({
-    queryKey: ['/api/faculties'],
+  const { data: facultiesResponse } = useQuery<ApiResponse<Faculty[]>>({
+    queryKey: ["/api/faculties"],
+    queryFn: () => FacultadesAPI.list(),
   });
 
-  const form = useForm<InsertDepartment>({
-    resolver: zodResolver(insertDepartmentSchema),
-    defaultValues: department || {
-      name: "",
-      facultyId: null,
-      isActive: true
-    }
+  const faculties = facultiesResponse?.status === "success" ? facultiesResponse.data : [];
+
+  const form = useForm<DepartmentFormData>({
+    defaultValues: {
+      name: department?.name ?? "",
+      facultyId: department?.facultyId ?? null,
+      isActive: department?.isActive ?? true,
+    },
   });
 
-  // Usar el hook useCrudMutation para eliminar código duplicado
-  const { create, update, isLoading } = useCrudMutation({
-    queryKey: ['/api/departments'],
+  const { create, update, isLoading } = useCrudMutation<Department, DepartmentFormData>({
+    queryKey: ["/api/departments"],
     createFn: DepartamentosAPI.create,
     updateFn: DepartamentosAPI.update,
     onSuccess,
-    createSuccessMessage: 'Departamento creado exitosamente',
-    updateSuccessMessage: 'Departamento actualizado exitosamente',
-    createErrorMessage: 'Error al crear departamento',
-    updateErrorMessage: 'Error al actualizar departamento'
+    createSuccessMessage: "Departamento creado exitosamente",
+    updateSuccessMessage: "Departamento actualizado exitosamente",
+    createErrorMessage: "Error al crear departamento",
+    updateErrorMessage: "Error al actualizar departamento",
   });
 
-  const onSubmit = (data: InsertDepartment) => {
+  const onSubmit = (data: DepartmentFormData) => {
     if (isEditing) {
-      update.mutate({ id: department.id, data });
+      update.mutate({ id: department.id as number, data });
     } else {
       create.mutate(data);
     }
@@ -63,7 +75,7 @@ export default function DepartmentForm({ entity: department, onSuccess, onCancel
     "Departamento de Marketing",
     "Departamento de Sistemas",
     "Departamento de Investigación",
-    "Departamento de Vinculación"
+    "Departamento de Vinculación",
   ];
 
   return (
@@ -74,7 +86,9 @@ export default function DepartmentForm({ entity: department, onSuccess, onCancel
           <span>{isEditing ? "Editar Departamento" : "Crear Nuevo Departamento"}</span>
         </CardTitle>
         <CardDescription>
-          {isEditing ? "Modifique la información del departamento" : "Complete los datos del nuevo departamento"}
+          {isEditing
+            ? "Modifique la información del departamento"
+            : "Complete los datos del nuevo departamento"}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -87,15 +101,15 @@ export default function DepartmentForm({ entity: department, onSuccess, onCancel
                 <FormItem>
                   <FormLabel>Nombre del Departamento *</FormLabel>
                   <FormControl>
-                    <Input 
+                    <Input
                       placeholder="Ingrese el nombre del departamento"
                       data-testid="input-name"
                       {...field}
+                      value={field.value ?? ""}
                     />
                   </FormControl>
                   <FormMessage />
-                  
-                  {/* Sugerencias de nombres comunes */}
+
                   <div className="mt-2">
                     <p className="text-xs text-gray-500 mb-2">Sugerencias:</p>
                     <div className="grid grid-cols-2 gap-1">
@@ -107,7 +121,7 @@ export default function DepartmentForm({ entity: department, onSuccess, onCancel
                           size="sm"
                           className="text-xs h-auto p-1 justify-start"
                           onClick={() => form.setValue("name", name)}
-                          data-testid={`suggestion-${name.replace(/\s+/g, '-').toLowerCase()}`}
+                          data-testid={`suggestion-${name.replace(/\s+/g, "-").toLowerCase()}`}
                         >
                           {name}
                         </Button>
@@ -124,9 +138,9 @@ export default function DepartmentForm({ entity: department, onSuccess, onCancel
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Facultad *</FormLabel>
-                  <Select 
-                    onValueChange={(value) => field.onChange(value ? parseInt(value) : null)} 
-                    value={field.value?.toString() || ""}
+                  <Select
+                    onValueChange={(value) => field.onChange(value ? parseInt(value, 10) : null)}
+                    value={field.value != null ? String(field.value) : ""}
                   >
                     <FormControl>
                       <SelectTrigger data-testid="select-faculty">
@@ -134,14 +148,17 @@ export default function DepartmentForm({ entity: department, onSuccess, onCancel
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {faculties?.map((faculty) => (
-                        <SelectItem key={faculty.id} value={faculty.id.toString()}>
-                          <div className="flex items-center space-x-2">
-                            <Building2 className="h-4 w-4" />
-                            <span>{faculty.name}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
+                      {faculties?.map((faculty) => {
+                        if (!faculty.id) return null;
+                        return (
+                          <SelectItem key={faculty.id} value={faculty.id.toString()}>
+                            <div className="flex items-center space-x-2">
+                              <Building2 className="h-4 w-4" />
+                              <span>{faculty.name}</span>
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -167,7 +184,7 @@ export default function DepartmentForm({ entity: department, onSuccess, onCancel
                   </div>
                   <FormControl>
                     <Switch
-                      checked={field.value}
+                      checked={Boolean(field.value)}
                       onCheckedChange={field.onChange}
                       data-testid="switch-isActive"
                     />
@@ -183,25 +200,25 @@ export default function DepartmentForm({ entity: department, onSuccess, onCancel
                   <span className="font-medium">Facultad seleccionada</span>
                 </div>
                 <p className="text-sm text-green-600 mt-1">
-                  {faculties?.find(f => f.id === form.watch("facultyId"))?.name}
+                  {faculties?.find((f) => f.id === form.watch("facultyId"))?.name}
                 </p>
               </div>
             )}
 
             <div className="flex flex-col sm:flex-row gap-3 pt-6">
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 disabled={isLoading}
                 className="flex-1"
                 data-testid="button-save-department"
               >
                 <Save className="mr-2 h-4 w-4" />
-                {isLoading ? "Guardando..." : (isEditing ? "Actualizar" : "Crear Departamento")}
+                {isLoading ? "Guardando..." : isEditing ? "Actualizar" : "Crear Departamento"}
               </Button>
               {onCancel && (
-                <Button 
-                  type="button" 
-                  variant="outline" 
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={onCancel}
                   className="flex-1"
                   data-testid="button-cancel"

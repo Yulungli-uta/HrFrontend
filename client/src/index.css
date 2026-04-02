@@ -134,28 +134,34 @@
   background-color: var(--surface);
 }
 
-/* Force UTA Colors */
+/* Force UTA Colors using CSS variables instead of hardcoded hex/hsl */
 .bg-primary {
-  background-color: hsl(210 88% 35%) !important;
+  background-color: hsl(var(--primary)) !important;
 }
 
 .text-primary {
-  color: hsl(210 88% 35%) !important;
+  color: hsl(var(--primary)) !important;
 }
 
 .bg-secondary {
-  background-color: hsl(45 100% 50%) !important;
+  background-color: hsl(var(--secondary)) !important;
 }
 
 .text-secondary {
-  color: hsl(45 100% 50%) !important;
+  color: hsl(var(--secondary)) !important;
 }
 
-/* Force UTA Branding - Override everything */
+/* Force UTA Branding - Support dark mode */
+.dark aside h1 {
+  color: hsl(var(--primary)) !important;
+}
 aside h1 {
   color: #265792 !important;
 }
 
+.dark aside .uta-logo {
+  background-color: hsl(var(--primary)) !important;
+}
 aside .uta-logo {
   background-color: #265792 !important;
   color: white !important;

@@ -1,10 +1,10 @@
 // src/pages/People.tsx
 
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useCrudMutation } from "@/hooks/useCrudMutation";
-import type { Person, InsertPerson, Employee } from "@/shared/schema";
+import type { Employee } from "@/shared/schema";
 import PersonForm from "@/components/forms/PersonForm";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,11 +44,10 @@ import {
   EmpleadosAPI,
   TiposReferenciaAPI,
 } from "@/lib/api";
-import type { ApiResponse } from "@/lib/api/client";
+import type { ApiResponse } from "@/lib/api";
 import { usePaged } from "@/hooks/pagination/usePaged";
 import { DataPagination } from "@/components/ui/DataPagination";
 
-// Tipo que viene de la API
 interface ApiRefType {
   typeId: number;
   category: string;
@@ -59,7 +58,6 @@ interface ApiRefType {
   updatedAt?: string;
 }
 
-// Tipo normalizado
 export interface RefType {
   id: number;
   category: string;
@@ -70,7 +68,69 @@ export interface RefType {
   updatedAt?: string;
 }
 
-// Categorías que nos interesan para el formulario de Persona
+type PersonDto = {
+  personId: number;
+  firstName: string;
+  lastName: string;
+  identType: number;
+  idCard: string;
+  email: string;
+  phone?: string | null;
+  birthDate?: string | null;
+  sex?: number | string | null;
+  gender?: number | string | null;
+  disability?: string | null;
+  address?: string | null;
+  isActive: boolean;
+  maritalStatusTypeId?: number | null;
+  militaryCard?: string | null;
+  motherName?: string | null;
+  fatherName?: string | null;
+  countryId?: number | string | null;
+  provinceId?: number | string | null;
+  cantonId?: number | string | null;
+  yearsOfResidence?: number | null;
+  ethnicityTypeId?: number | null;
+  bloodTypeTypeId?: number | null;
+  specialNeedsTypeId?: number | null;
+  disabilityPercentage?: number | null;
+  conadisCard?: string | null;
+};
+
+type PersonCreateDto = {
+  firstName: string;
+  lastName: string;
+  identType: number;
+  idCard: string;
+  email: string;
+  phone?: string | null;
+  birthDate?: string | null;
+  sex?: number | string | null;
+  gender?: number | string | null;
+  disability?: string | null;
+  address?: string | null;
+  isActive?: boolean | null;
+  maritalStatusTypeId?: number | null;
+  militaryCard?: string | null;
+  motherName?: string | null;
+  fatherName?: string | null;
+  countryId?: number | string | null;
+  provinceId?: number | string | null;
+  cantonId?: number | string | null;
+  yearsOfResidence?: number | null;
+  ethnicityTypeId?: number | null;
+  bloodTypeTypeId?: number | null;
+  specialNeedsTypeId?: number | null;
+  disabilityPercentage?: number | null;
+  conadisCard?: string | null;
+};
+
+type PersonFormValue = Partial<PersonCreateDto> & {
+  id?: number | null;
+  personId?: number | null;
+  identificationTypeId?: number | null;
+};
+
 const REF_CATEGORIES = [
   "IDENTITY_TYPE",
   "MARITAL_STATUS",
@@ -81,63 +141,104 @@ const REF_CATEGORIES = [
   "SEX_TYPE",
 ];
 
-// Componente para mostrar cards en móviles
+const personFullName = (person: Pick<PersonDto, "firstName" | "lastName">) =>
+  [person.firstName, person.lastName].filter(Boolean).join(" ").trim() || "Sin nombre";
+
+const normalizePersonCreatePayload = (data: PersonFormValue): PersonCreateDto => ({
+  firstName: data.firstName?.trim() ?? "",
+  lastName: data.lastName?.trim() ?? "",
+  identType: Number(data.identType ?? data.identificationTypeId ?? 0),
+  idCard: data.idCard?.trim() ?? "",
+  email: data.email?.trim() ?? "",
+  phone: data.phone?.trim() ?? null,
+  birthDate: data.birthDate ?? null,
+  sex: data.sex ?? null,
+  gender: data.gender ?? null,
+  disability: data.disability?.trim() ?? null,
+  address: data.address?.trim() ?? null,
+  isActive: data.isActive ?? true,
+  maritalStatusTypeId: data.maritalStatusTypeId ?? null,
+  militaryCard: data.militaryCard?.trim() ?? null,
+  motherName: data.motherName?.trim() ?? null,
+  fatherName: data.fatherName?.trim() ?? null,
+  countryId: data.countryId ?? null,
+  provinceId: data.provinceId ?? null,
+  cantonId: data.cantonId ?? null,
+  yearsOfResidence: data.yearsOfResidence ?? null,
+  ethnicityTypeId: data.ethnicityTypeId ?? null,
+  bloodTypeTypeId: data.bloodTypeTypeId ?? null,
+  specialNeedsTypeId: data.specialNeedsTypeId ?? null,
+  disabilityPercentage: data.disabilityPercentage ?? null,
+  conadisCard: data.conadisCard?.trim() ?? null,
+});
+
 const PersonCard = ({
   person,
   onView,
 }: {
-  person: Person;
+  person: PersonDto;
   onView: (id: number) => void;
-}) => (
-  <Card className="mb-4">
-    <CardContent className="p-4">
-      <div className="flex justify-between items-start mb-3">
-        <div>
-          <h3 className="font-semibold text-lg">
-            {person.firstName} {person.lastName}
-          </h3>
-          <p className="text-sm text-muted-foreground">{person.idCard}</p>
-        </div>
-        <Badge variant={person.isActive ? "default" : "secondary"}>
-          {person.isActive ? "Activo" : "Inactivo"}
-        </Badge>
-      </div>
+}) => {
+  const personId = person.personId;
 
-      <div className="space-y-2 text-sm">
-        <div className="flex items-center">
-          <User className="h-4 w-4 mr-2 text-muted-foreground" />
-          <span>{person.email}</span>
-        </div>
-        {person.phone && (
-          <div className="flex items-center">
-            <Smartphone className="h-4 w-4 mr-2 text-muted-foreground" />
-            <span>{person.phone}</span>
+  return (
+    <Card className="mb-4 border-border/60 bg-card/95 shadow-sm">
+      <CardContent className="p-4">
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="truncate text-lg font-semibold text-foreground">
+              {personFullName(person)}
+            </h3>
+            <p className="text-sm text-muted-foreground">{person.idCard || "Sin cédula"}</p>
           </div>
-        )}
-      </div>
 
-      <Button
-        variant="outline"
-        size="sm"
-        className="w-full mt-3"
-        onClick={() => onView(person.personId)}
-      >
-        <Eye className="h-4 w-4 mr-2" />
-        Ver Detalle
-      </Button>
-    </CardContent>
-  </Card>
-);
+          <Badge
+            variant="outline"
+            className={
+              person.isActive
+                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                : "border-slate-500/30 bg-slate-500/10 text-slate-700 dark:text-slate-300"
+            }
+          >
+            {person.isActive ? "Activo" : "Inactivo"}
+          </Badge>
+        </div>
+
+        <div className="space-y-2 text-sm">
+          <div className="flex items-center text-muted-foreground">
+            <User className="mr-2 h-4 w-4 shrink-0" />
+            <span className="truncate">{person.email || "Sin correo"}</span>
+          </div>
+
+          <div className="flex items-center text-muted-foreground">
+            <Smartphone className="mr-2 h-4 w-4 shrink-0" />
+            <span>{person.phone || "No registrado"}</span>
+          </div>
+        </div>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          className="mt-4 w-full rounded-full border border-border/60 hover:bg-primary/10 hover:text-primary"
+          onClick={() => onView(personId)}
+          disabled={!personId}
+        >
+          <Eye className="mr-2 h-4 w-4" />
+          Ver detalle
+        </Button>
+      </CardContent>
+    </Card>
+  );
+};
 
 export default function People() {
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingPerson, setEditingPerson] = useState<Person | undefined>();
+  const [editingPerson, setEditingPerson] = useState<PersonDto | undefined>();
   const [activeFilter, setActiveFilter] =
     useState<"all" | "active" | "inactive">("all");
 
-  const { toast } = useToast();
+  useToast();
 
-  // ── Personas paginadas ───────────────────────────────────────────────────
   const {
     items: people,
     isLoading: isLoadingPeople,
@@ -154,17 +255,13 @@ export default function People() {
     setSearch,
     clearSearch,
     currentParams,
-  } = usePaged<Person>({
+  } = usePaged<PersonDto>({
     queryKey: "people",
     queryFn: (params) => PersonasAPI.listPaged(params),
     initialPageSize: 20,
   });
 
-  // ── Empleados (para stats) ───────────────────────────────────────────────
-  const {
-    data: employeesResponse,
-    isLoading: isLoadingEmployees,
-  } = useQuery<ApiResponse<Employee[]>>({
+  const { data: employeesResponse } = useQuery<ApiResponse<Employee[]>>({
     queryKey: ["employees"],
     queryFn: () => EmpleadosAPI.list(),
     staleTime: 5 * 60_000,
@@ -177,7 +274,6 @@ export default function People() {
     return [];
   }, [employeesResponse]);
 
-  // ── RefTypes ──────────────────────────────────────────────────────────────
   const {
     data: refTypesResponse,
     isLoading: isLoadingRefTypes,
@@ -185,9 +281,9 @@ export default function People() {
   } = useQuery<ApiResponse<ApiRefType[]>>({
     queryKey: ["refTypes"],
     queryFn: () => TiposReferenciaAPI.list(),
+    staleTime: 5 * 60_000,
   });
 
-  // Agrupar por categoría y normalizar
   const refTypesByCategory = useMemo(() => {
     if (
       refTypesResponse?.status === "success" &&
@@ -215,10 +311,10 @@ export default function People() {
         return acc;
       }, {} as Record<string, RefType[]>);
     }
+
     return {};
   }, [refTypesResponse]);
 
-  // Tipos de contrato (CONTRACT_TYPE) para los cards
   const contractTypes = useMemo<RefType[]>(() => {
     if (
       refTypesResponse?.status === "success" &&
@@ -236,10 +332,11 @@ export default function People() {
           updatedAt: ref.updatedAt,
         }));
     }
+
     return [];
   }, [refTypesResponse]);
 
-  const { create: createPersonMutation } = useCrudMutation<Person, InsertPerson>({
+  const { create: createPersonMutation } = useCrudMutation<PersonDto, PersonCreateDto>({
     queryKey: ["people"],
     createFn: PersonasAPI.create,
     createSuccessMessage: "Persona creada exitosamente",
@@ -250,15 +347,15 @@ export default function People() {
     },
   });
 
-  const handleCreatePerson = (data: InsertPerson) => {
-    createPersonMutation.mutate(data);
+  const handleCreatePerson = (data: PersonFormValue) => {
+    const payload = normalizePersonCreatePayload(data);
+    createPersonMutation.mutate(payload);
   };
 
   const handleViewPerson = (id: number) => {
     window.location.href = `/people/${id}`;
   };
 
-  // === STATS ===
   const stats = useMemo(() => {
     const activeEmployees = employees.filter((emp: any) => emp.isActive);
 
@@ -280,7 +377,7 @@ export default function People() {
 
       const typeId = Number(employeeTypeId);
 
-      if (isNaN(typeId)) {
+      if (Number.isNaN(typeId)) {
         withoutType++;
         return;
       }
@@ -296,18 +393,12 @@ export default function People() {
     });
 
     return {
-      // Si quieres "Total Personal" como total real del endpoint paginado:
       totalPeople: totalCount,
-
-      // Si prefieres solo empleados activos, usa esta línea en lugar de la de arriba:
-      // totalPeople: activeEmployees.length,
-
       byContractTypeId,
       withoutType,
     };
   }, [employees, contractTypes, totalCount]);
 
-  // Filtro local por estado activo/inactivo
   const filteredPeople = useMemo(() => {
     if (activeFilter === "all") return people;
     return people.filter((p) =>
@@ -317,13 +408,12 @@ export default function People() {
 
   return (
     <div className="space-y-6 p-4 md:p-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
             Gestión de Personas
           </h1>
-          <p className="text-gray-600 mt-2">
+          <p className="mt-2 text-muted-foreground">
             Dashboard de personal y directorio completo
           </p>
         </div>
@@ -331,7 +421,7 @@ export default function People() {
         <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
           <DialogTrigger asChild>
             <Button
-              className="bg-uta-blue hover:bg-uta-blue/90"
+              className="rounded-full border border-primary/20 bg-primary px-5 text-primary-foreground shadow-md transition-all hover:bg-primary/90 hover:shadow-lg dark:border-primary/30"
               data-testid="button-add-person"
             >
               <Plus className="mr-2 h-4 w-4" />
@@ -339,7 +429,8 @@ export default function People() {
               <span className="sm:hidden">Agregar</span>
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto w-[95vw]">
+
+          <DialogContent className="max-h-[90vh] w-[95vw] max-w-6xl overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingPerson ? "Editar Persona" : "Agregar Nueva Persona"}
@@ -352,8 +443,8 @@ export default function People() {
             </DialogHeader>
 
             <PersonForm
-              person={editingPerson}
-              onSubmit={handleCreatePerson}
+              person={editingPerson as any}
+              onSubmit={handleCreatePerson as any}
               onCancel={() => {
                 setIsFormOpen(false);
                 setEditingPerson(undefined);
@@ -367,37 +458,26 @@ export default function People() {
         </Dialog>
       </div>
 
-      {/* Dashboard de estadísticas */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total personal */}
-        <Card>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card className="border-border/60 bg-card/95 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Personal
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Total Personal</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-uta-blue">
-              {stats.totalPeople}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Personas registradas
-            </p>
+            <div className="text-2xl font-bold text-primary">{stats.totalPeople}</div>
+            <p className="text-xs text-muted-foreground">Personas registradas</p>
           </CardContent>
         </Card>
 
-        {/* Cards dinámicos por tipo de contrato */}
         {contractTypes.map((ct) => (
-          <Card key={ct.id}>
+          <Card key={ct.id} className="border-border/60 bg-card/95 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                {ct.name}
-              </CardTitle>
+              <CardTitle className="text-sm font-medium">{ct.name}</CardTitle>
               <UserCheck className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-orange-600">
+              <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
                 {stats.byContractTypeId.get(ct.id) ?? 0}
               </div>
               <p className="text-xs text-muted-foreground">
@@ -408,56 +488,60 @@ export default function People() {
         ))}
       </div>
 
-      {/* Listado + filtros + búsqueda */}
-      <Card>
+      <Card className="border-border/60 bg-card/95 shadow-sm">
         <CardHeader>
-          <CardTitle className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <CardTitle className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
             <span>Directorio de Personal</span>
-            <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
-              {/* Filtros de estado */}
-              <div className="flex gap-2">
+
+            <div className="flex w-full flex-col gap-3 lg:w-auto lg:flex-row">
+              <div className="flex flex-wrap gap-2">
                 <Button
                   variant={activeFilter === "all" ? "default" : "outline"}
                   size="sm"
                   onClick={() => setActiveFilter("all")}
-                  className="h-9"
+                  className="h-9 rounded-full px-4"
                 >
-                  <Filter className="h-4 w-4 mr-1" />
+                  <Filter className="mr-1 h-4 w-4" />
                   Todos
                 </Button>
+
                 <Button
                   variant={activeFilter === "active" ? "default" : "outline"}
                   size="sm"
                   onClick={() => setActiveFilter("active")}
-                  className="h-9"
+                  className="h-9 rounded-full px-4"
                 >
                   Activos
                 </Button>
+
                 <Button
                   variant={activeFilter === "inactive" ? "default" : "outline"}
                   size="sm"
                   onClick={() => setActiveFilter("inactive")}
-                  className="h-9"
+                  className="h-9 rounded-full px-4"
                 >
                   Inactivos
                 </Button>
               </div>
 
-              {/* Búsqueda */}
-              <div className="relative flex-1 lg:w-72">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <div className="relative flex-1 lg:w-80">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Buscar por cédula, nombre o email..."
                   value={currentParams.search ?? ""}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="pl-8 pr-8"
+                  className="rounded-full bg-background/80 pl-9 pr-9"
                   data-testid="input-search-people"
                 />
                 {currentParams.search && (
-                  <X
-                    className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground cursor-pointer"
-                    onClick={() => clearSearch()}
-                  />
+                  <button
+                    type="button"
+                    onClick={clearSearch}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                    aria-label="Limpiar búsqueda"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
                 )}
               </div>
             </div>
@@ -465,36 +549,30 @@ export default function People() {
         </CardHeader>
 
         <CardContent>
-          {/* Loading */}
           {isLoadingPeople && (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-uta-blue mx-auto" />
-              <p className="text-muted-foreground mt-2">
-                Cargando personas...
-              </p>
+            <div className="py-8 text-center">
+              <div className="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
+              <p className="mt-2 text-muted-foreground">Cargando personas...</p>
             </div>
           )}
 
-          {/* Error */}
           {isErrorPeople && (
-            <div className="text-center py-8 text-destructive">
-              Error al cargar las personas:{" "}
-              {errorPeople || "Error desconocido"}
+            <div className="py-8 text-center text-destructive">
+              Error al cargar las personas: {errorPeople || "Error desconocido"}
             </div>
           )}
 
-          {/* Vista móvil */}
           <div className="block md:hidden">
             {!isLoadingPeople && filteredPeople.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
+              <div className="py-8 text-center text-muted-foreground">
                 {currentParams.search || activeFilter !== "all"
                   ? "No se encontraron personas con ese criterio"
                   : "No hay personas registradas"}
               </div>
             ) : (
-              filteredPeople.map((person) => (
+              filteredPeople.map((person, index) => (
                 <PersonCard
-                  key={person.personId}
+                  key={person.personId ?? index}
                   person={person}
                   onView={handleViewPerson}
                 />
@@ -502,68 +580,100 @@ export default function People() {
             )}
           </div>
 
-          {/* Vista desktop */}
           <div className="hidden md:block">
-            <div className="rounded-md border">
+            <div className="overflow-hidden rounded-xl border border-border/60 bg-card/70">
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Nombre Completo</TableHead>
-                      <TableHead>Cédula</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Teléfono</TableHead>
-                      <TableHead>Estado</TableHead>
-                      <TableHead className="text-right">Acciones</TableHead>
+                      <TableHead className="font-semibold text-muted-foreground">
+                        Nombre Completo
+                      </TableHead>
+                      <TableHead className="font-semibold text-muted-foreground">
+                        Cédula
+                      </TableHead>
+                      <TableHead className="font-semibold text-muted-foreground">
+                        Email
+                      </TableHead>
+                      <TableHead className="font-semibold text-muted-foreground">
+                        Teléfono
+                      </TableHead>
+                      <TableHead className="font-semibold text-muted-foreground">
+                        Estado
+                      </TableHead>
+                      <TableHead className="text-right font-semibold text-muted-foreground">
+                        Acciones
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
+
                   <TableBody>
                     {!isLoadingPeople && filteredPeople.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center">
+                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                           {currentParams.search || activeFilter !== "all"
                             ? "No se encontraron personas con ese criterio"
                             : "No hay personas registradas"}
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredPeople.map((person) => (
-                        <TableRow
-                          key={person.personId}
-                          data-testid={`person-row-${person.personId}`}
-                          className="hover:bg-muted/60 transition-colors"
-                        >
-                          <TableCell className="font-medium">
-                            {person.firstName} {person.lastName}
-                          </TableCell>
-                          <TableCell>{person.idCard}</TableCell>
-                          <TableCell>{person.email}</TableCell>
-                          <TableCell>
-                            {person.phone || "No registrado"}
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={
-                                person.isActive ? "default" : "secondary"
-                              }
-                            >
-                              {person.isActive ? "Activo" : "Inactivo"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Link href={`/people/${person.personId}`}>
-                              <Button
+                      filteredPeople.map((person, index) => {
+                        const personId = person.personId;
+
+                        return (
+                          <TableRow
+                            key={personId ?? index}
+                            data-testid={`person-row-${personId ?? index}`}
+                            className="transition-colors hover:bg-muted/50"
+                          >
+                            <TableCell className="font-medium text-foreground">
+                              {personFullName(person)}
+                            </TableCell>
+                            <TableCell>{person.idCard || "No registrado"}</TableCell>
+                            <TableCell className="max-w-[260px] truncate">
+                              {person.email || "No registrado"}
+                            </TableCell>
+                            <TableCell>{person.phone || "No registrado"}</TableCell>
+                            <TableCell>
+                              <Badge
                                 variant="outline"
-                                size="sm"
-                                data-testid={`button-view-person-${person.personId}`}
+                                className={
+                                  person.isActive
+                                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                                    : "border-slate-500/30 bg-slate-500/10 text-slate-700 dark:text-slate-300"
+                                }
                               >
-                                <Eye className="h-4 w-4 mr-2" />
-                                Ver Detalle
-                              </Button>
-                            </Link>
-                          </TableCell>
-                        </TableRow>
-                      ))
+                                {person.isActive ? "Activo" : "Inactivo"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {personId ? (
+                                <Link href={`/people/${personId}`}>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-9 rounded-full border border-border/60 px-3 hover:bg-primary/10 hover:text-primary"
+                                    data-testid={`button-view-person-${personId}`}
+                                  >
+                                    <Eye className="mr-2 h-4 w-4" />
+                                    Ver detalle
+                                  </Button>
+                                </Link>
+                              ) : (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled
+                                  className="h-9 rounded-full border border-border/40 px-3 opacity-60"
+                                >
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  Sin ID
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
                     )}
                   </TableBody>
                 </Table>
@@ -571,18 +681,19 @@ export default function People() {
             </div>
           </div>
 
-          {/* Paginación */}
-          <DataPagination
-            page={page}
-            totalPages={totalPages}
-            totalCount={totalCount}
-            pageSize={pageSize}
-            hasPreviousPage={hasPreviousPage}
-            hasNextPage={hasNextPage}
-            onPageChange={goToPage}
-            onPageSizeChange={setPageSize}
-            disabled={isLoadingPeople}
-          />
+          <div className="mt-4">
+            <DataPagination
+              page={page}
+              totalPages={totalPages}
+              totalCount={totalCount}
+              pageSize={pageSize}
+              hasPreviousPage={hasPreviousPage}
+              hasNextPage={hasNextPage}
+              onPageChange={goToPage}
+              onPageSizeChange={setPageSize}
+              disabled={isLoadingPeople}
+            />
+          </div>
         </CardContent>
       </Card>
     </div>

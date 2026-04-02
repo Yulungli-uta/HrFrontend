@@ -98,7 +98,11 @@ export default function FinancialCertificationPage() {
           });
         }
       } catch (e: unknown) {
-        toast({ title: "Error de red al descargar", description: e?.message, variant: "destructive" });
+        toast({
+          title: "Error de red al descargar",
+          description: parseApiError(e).message,
+          variant: "destructive",
+        });
       }
     },
     [toast]

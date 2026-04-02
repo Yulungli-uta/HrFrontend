@@ -24,16 +24,15 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RefreshCw } from "lucide-react";
 import type { FamilyMember } from "@/types/person";
 
-// Esquema simplificado - FOCALÍCEMOS en resolver el error primero
 const familyMemberFormSchema = z.object({
-   firstName: z.string().min(1, "El nombre es requerido"),
+  firstName: z.string().min(1, "El nombre es requerido"),
   lastName: z.string().min(1, "El apellido es requerido"),
-  identificationTypeId: z.string().min(1, "El tipo de identificación es requerido"), // Mantener como string en el formulario
+  identificationTypeId: z.string().min(1, "El tipo de identificación es requerido"),
   dependentId: z.string().min(1, "El número de identificación es requerido"),
   birthDate: z.string().min(1, "La fecha de nacimiento es requerida"),
   relationship: z.string().min(1, "La relación es requerida"),
   hasDisability: z.boolean().default(false),
-  disabilityType: z.string().optional(), // Mantener como string en el formulario
+  disabilityType: z.string().optional(),
   disabilityPercentage: z.coerce
     .number()
     .min(0, "El porcentaje no puede ser negativo")
@@ -62,18 +61,20 @@ export default function FamilyMemberForm({
   isLoading = false,
 }: FamilyMemberFormProps) {
   const form = useForm<FamilyMemberFormData>({
-    resolver: zodResolver(familyMemberFormSchema),
+    resolver: zodResolver(familyMemberFormSchema) as any,
     defaultValues: {
       firstName: familyMember?.firstName || "",
       lastName: familyMember?.lastName || "",
       identificationTypeId: familyMember?.identificationTypeId?.toString() || "",
       dependentId: familyMember?.dependentId || "",
-      birthDate: familyMember?.birthDate 
-        ? new Date(familyMember.birthDate).toISOString().split('T')[0]
+      birthDate: familyMember?.birthDate
+        ? new Date(familyMember.birthDate).toISOString().split("T")[0]
         : "",
       relationship: familyMember?.relationship || "",
       hasDisability: familyMember?.hasDisability || false,
-      disabilityType: familyMember?.disabilityType || "",
+      disabilityType: familyMember?.disabilityTypeId != null
+        ? String(familyMember.disabilityTypeId)
+        : "",
       disabilityPercentage: familyMember?.disabilityPercentage || 0,
       isStudying: familyMember?.isStudying || false,
       educationInstitution: familyMember?.educationInstitution || "",
@@ -83,7 +84,6 @@ export default function FamilyMemberForm({
   const hasDisability = form.watch("hasDisability");
   const isStudying = form.watch("isStudying");
 
-  // Resetear campos condicionales
   useEffect(() => {
     if (!hasDisability) {
       form.setValue("disabilityType", "");
@@ -110,11 +110,10 @@ export default function FamilyMemberForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(handleSubmit as any)} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Nombres - MOVIDO al inicio */}
           <FormField
-            control={form.control}
+            control={form.control as any}
             name="firstName"
             render={({ field }) => (
               <FormItem>
@@ -128,7 +127,7 @@ export default function FamilyMemberForm({
           />
 
           <FormField
-            control={form.control}
+            control={form.control as any}
             name="lastName"
             render={({ field }) => (
               <FormItem>
@@ -142,13 +141,13 @@ export default function FamilyMemberForm({
           />
 
           <FormField
-            control={form.control}
+            control={form.control as any}
             name="identificationTypeId"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Tipo de Identificación</FormLabel>
-                <Select 
-                  onValueChange={field.onChange} 
+                <Select
+                  onValueChange={field.onChange}
                   value={field.value}
                   defaultValue={field.value}
                 >
@@ -170,7 +169,7 @@ export default function FamilyMemberForm({
           />
 
           <FormField
-            control={form.control}
+            control={form.control as any}
             name="dependentId"
             render={({ field }) => (
               <FormItem>
@@ -184,17 +183,17 @@ export default function FamilyMemberForm({
           />
 
           <FormField
-            control={form.control}
+            control={form.control as any}
             name="birthDate"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Fecha de Nacimiento</FormLabel>
                 <FormControl>
-                  <Input 
-                    {...field} 
-                    type="date" 
-                    data-testid="input-birth-date" 
-                    max={new Date().toISOString().split('T')[0]}
+                  <Input
+                    {...field}
+                    type="date"
+                    data-testid="input-birth-date"
+                    max={new Date().toISOString().split("T")[0]}
                   />
                 </FormControl>
                 <FormMessage />
@@ -203,13 +202,13 @@ export default function FamilyMemberForm({
           />
 
           <FormField
-            control={form.control}
+            control={form.control as any}
             name="relationship"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Relación</FormLabel>
-                <Select 
-                  onValueChange={field.onChange} 
+                <Select
+                  onValueChange={field.onChange}
                   value={field.value}
                   defaultValue={field.value}
                 >
@@ -235,7 +234,7 @@ export default function FamilyMemberForm({
 
         <div className="space-y-4 border-t pt-4">
           <FormField
-            control={form.control}
+            control={form.control as any}
             name="hasDisability"
             render={({ field }) => (
               <FormItem className="flex flex-row items-start space-x-3 space-y-0">
@@ -256,7 +255,7 @@ export default function FamilyMemberForm({
           {hasDisability && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 ml-6">
               <FormField
-                control={form.control}
+                control={form.control as any}
                 name="disabilityType"
                 render={({ field }) => (
                   <FormItem>
@@ -270,7 +269,7 @@ export default function FamilyMemberForm({
               />
 
               <FormField
-                control={form.control}
+                control={form.control as any}
                 name="disabilityPercentage"
                 render={({ field }) => (
                   <FormItem>
@@ -297,7 +296,7 @@ export default function FamilyMemberForm({
           )}
 
           <FormField
-            control={form.control}
+            control={form.control as any}
             name="isStudying"
             render={({ field }) => (
               <FormItem className="flex flex-row items-start space-x-3 space-y-0">
@@ -318,7 +317,7 @@ export default function FamilyMemberForm({
           {isStudying && (
             <div className="ml-6">
               <FormField
-                control={form.control}
+                control={form.control as any}
                 name="educationInstitution"
                 render={({ field }) => (
                   <FormItem>
@@ -335,9 +334,9 @@ export default function FamilyMemberForm({
         </div>
 
         <div className="flex gap-2 pt-4">
-          <Button 
-            type="submit" 
-            disabled={isLoading} 
+          <Button
+            type="submit"
+            disabled={isLoading}
             data-testid="button-submit"
             className="relative min-w-[100px]"
           >
@@ -346,10 +345,10 @@ export default function FamilyMemberForm({
             )}
             {isLoading ? "Guardando..." : familyMember ? "Actualizar" : "Crear"}
           </Button>
-          <Button 
-            type="button" 
-            variant="outline" 
-            onClick={onCancel} 
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
             data-testid="button-cancel"
           >
             Cancelar

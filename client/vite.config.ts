@@ -40,15 +40,14 @@ function normalizeBase(base: string | undefined): string {
 }
 
 export default defineConfig(({ mode }) => {
-  // ✅ más seguro que process.cwd(): siempre carga env desde donde vive vite.config.ts
   const env = loadEnv(mode, __dirname, "");
-
   const base = normalizeBase(env.VITE_BASE_PATH);
 
   return {
     base,
 
     plugins: [react(), drizzleResolverPlugin()],
+
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
@@ -59,6 +58,7 @@ export default defineConfig(({ mode }) => {
 
     build: {
       chunkSizeWarningLimit: 1000,
+      minify: "terser",
       terserOptions: {
         compress: {
           drop_console: true,
@@ -67,65 +67,68 @@ export default defineConfig(({ mode }) => {
       },
       rollupOptions: {
         output: {
-          manualChunks: {
-            "react-vendor": ["react", "react-dom", "react/jsx-runtime"],
-            "router-vendor": ["wouter"],
-            "query-vendor": ["@tanstack/react-query"],
-            "radix-base": [
-              "@radix-ui/react-slot",
-              "@radix-ui/react-toast",
-              "@radix-ui/react-tooltip",
-              "@radix-ui/react-accordion",
-              "@radix-ui/react-tabs",
-            ],
-            "radix-forms": [
-              "@radix-ui/react-label",
-              "@radix-ui/react-checkbox",
-              "@radix-ui/react-radio-group",
-              "@radix-ui/react-select",
-              "@radix-ui/react-switch",
-              "@radix-ui/react-slider",
-            ],
-            "radix-dialogs": [
-              "@radix-ui/react-dialog",
-              "@radix-ui/react-alert-dialog",
-              "@radix-ui/react-popover",
-              "@radix-ui/react-dropdown-menu",
-              "@radix-ui/react-context-menu",
-            ],
-            "radix-misc": [
-              "@radix-ui/react-avatar",
-              "@radix-ui/react-scroll-area",
-              "@radix-ui/react-separator",
-              "@radix-ui/react-progress",
-              "@radix-ui/react-hover-card",
-              "@radix-ui/react-navigation-menu",
-              "@radix-ui/react-menubar",
-              "@radix-ui/react-collapsible",
-              "@radix-ui/react-aspect-ratio",
-              "@radix-ui/react-toggle",
-              "@radix-ui/react-toggle-group",
-            ],
-            "forms-vendor": ["react-hook-form", "@hookform/resolvers"],
-            "utils-vendor": [
-              "zod",
-              "date-fns",
-              "clsx",
-              "tailwind-merge",
-              "class-variance-authority",
-            ],
-            "icons-vendor": ["lucide-react", "react-icons"],
-            "misc-vendor": [
-              "framer-motion",
-              "sonner",
-              "react-error-boundary",
-              "react-day-picker",
-              "@microsoft/signalr",
-            ],
+          manualChunks(id) {
+            if (!id.includes("node_modules")) return;
+
+            if (
+              id.includes("/react/") ||
+              id.includes("\\react\\") ||
+              id.includes("react-dom") ||
+              id.includes("react/jsx-runtime")
+            ) {
+              return "framework";
+            }
+
+            if (id.includes("@tanstack/react-query")) {
+              return "query";
+            }
+
+            if (id.includes("wouter")) {
+              return "router";
+            }
+
+            if (id.includes("@radix-ui/")) {
+              return "radix-ui";
+            }
+
+            if (
+              id.includes("react-hook-form") ||
+              id.includes("@hookform/resolvers")
+            ) {
+              return "forms";
+            }
+
+            if (
+              id.includes("zod") ||
+              id.includes("date-fns") ||
+              id.includes("clsx") ||
+              id.includes("tailwind-merge") ||
+              id.includes("class-variance-authority")
+            ) {
+              return "utils";
+            }
+
+            if (
+              id.includes("lucide-react") ||
+              id.includes("react-icons")
+            ) {
+              return "icons";
+            }
+
+            if (
+              id.includes("framer-motion") ||
+              id.includes("sonner") ||
+              id.includes("react-error-boundary") ||
+              id.includes("react-day-picker") ||
+              id.includes("@microsoft/signalr")
+            ) {
+              return "misc";
+            }
+
+            return "vendor";
           },
         },
       },
-      minify: "terser",
     },
 
     optimizeDeps: {

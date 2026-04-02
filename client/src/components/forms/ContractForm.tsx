@@ -1,15 +1,21 @@
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { insertContractSchema, type InsertContract, type Contract, type Employee, type Person } from "@/shared/schema";
+import type { Contract, Employee } from "@/shared/schema";
 import { FileText, Save, X, Calendar, DollarSign } from "lucide-react";
-import { ContratosAPI, EmpleadosAPI, PersonasAPI, type ApiResponse } from "@/lib/api"; // Importamos los servicios de API
+import { ContratosAPI, EmpleadosAPI, PersonasAPI, type ApiResponse } from "@/lib/api";
+import type { PersonDto } from "@/lib/api/services/employees";
 
 interface ContractFormProps {
   contract?: Contract;
@@ -17,41 +23,46 @@ interface ContractFormProps {
   onCancel?: () => void;
 }
 
+type ContractFormData = {
+  employeeId: number;
+  contractType: string;
+  startDate: string;
+  endDate: string | null;
+  baseSalary: string;
+};
+
 export default function ContractForm({ contract, onSuccess, onCancel }: ContractFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const isEditing = !!contract;
 
-  // Usamos los servicios de API para obtener datos
   const { data: employeesResponse } = useQuery<ApiResponse<Employee[]>>({
-    queryKey: ['/api/v1/rh/employees'],
+    queryKey: ["/api/v1/rh/employees"],
     queryFn: () => EmpleadosAPI.list(),
   });
 
-  const { data: peopleResponse } = useQuery<ApiResponse<Person[]>>({
-    queryKey: ['/api/v1/rh/people'],
+  const { data: peopleResponse } = useQuery<ApiResponse<PersonDto[]>>({
+    queryKey: ["/api/v1/rh/people"],
     queryFn: () => PersonasAPI.list(),
   });
 
-  // Extraemos los datos de las respuestas
-  const employees = employeesResponse?.status === 'success' ? employeesResponse.data : [];
-  const people = peopleResponse?.status === 'success' ? peopleResponse.data : [];
-  
-  const form = useForm<InsertContract>({
-    resolver: zodResolver(insertContractSchema),
-    defaultValues: contract || {
-      employeeId: 0,
-      contractType: "Indefinido",
-      startDate: "",
-      endDate: null,
-      baseSalary: ""
-    }
+  const employees = employeesResponse?.status === "success" ? employeesResponse.data : [];
+  const people = peopleResponse?.status === "success" ? peopleResponse.data : [];
+
+  const form = useForm<ContractFormData>({
+    defaultValues: {
+      employeeId: contract?.employeeId ?? 0,
+      contractType: contract?.contractType ?? "Indefinido",
+      startDate: contract?.startDate ?? "",
+      endDate: contract?.endDate ?? null,
+      baseSalary: contract?.baseSalary != null ? String(contract.baseSalary) : "",
+    },
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: InsertContract) => {
-      const response = await ContratosAPI.create(data);
-      if (response.status === 'error') throw new Error(response.error.message);
+    mutationFn: async (data: ContractFormData) => {
+      const response = await ContratosAPI.create(data as any);
+      if (response.status === "error") throw new Error(response.error.message);
       return response.data;
     },
     onSuccess: () => {
@@ -60,14 +71,19 @@ export default function ContractForm({ contract, onSuccess, onCancel }: Contract
       onSuccess?.();
     },
     onError: (error: Error) => {
-      toast({ title: "Error al crear contrato", description: error.message, variant: "destructive" });
-    }
+      toast({
+        title: "Error al crear contrato",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (data: InsertContract) => {
-      const response = await ContratosAPI.update(contract!.id, data);
-      if (response.status === 'error') throw new Error(response.error.message);
+    mutationFn: async (data: ContractFormData) => {
+      if (!contract?.id) return;
+      const response = await ContratosAPI.update(contract.id, data as any);
+      if (response.status === "error") throw new Error(response.error.message);
       return response.data;
     },
     onSuccess: () => {
@@ -76,11 +92,15 @@ export default function ContractForm({ contract, onSuccess, onCancel }: Contract
       onSuccess?.();
     },
     onError: (error: Error) => {
-      toast({ title: "Error al actualizar contrato", description: error.message, variant: "destructive" });
-    }
+      toast({
+        title: "Error al actualizar contrato",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
-  const onSubmit = (data: InsertContract) => {
+  const onSubmit = (data: ContractFormData) => {
     if (isEditing) {
       updateMutation.mutate(data);
     } else {
@@ -95,10 +115,10 @@ export default function ContractForm({ contract, onSuccess, onCancel }: Contract
 
   const calculateEndDate = (type: string, start: string) => {
     if (!start) return "";
-    
+
     const startDateObj = new Date(start);
     let endDateObj: Date;
-    
+
     switch (type) {
       case "Ocasional":
         endDateObj = new Date(startDateObj);
@@ -115,21 +135,8 @@ export default function ContractForm({ contract, onSuccess, onCancel }: Contract
       default:
         return "";
     }
-    
-    return endDateObj.toISOString().split('T')[0];
-  };
 
-  const getSalaryRange = (type: string) => {
-    switch (type) {
-      case "Teacher_LOSE":
-        return { min: 1800, max: 3500 };
-      case "Administrative_LOSEP":
-        return { min: 1200, max: 2500 };
-      case "Employee_CT":
-        return { min: 800, max: 1500 };
-      default:
-        return { min: 450, max: 5000 };
-    }
+    return endDateObj.toISOString().split("T")[0];
   };
 
   return (
@@ -140,7 +147,9 @@ export default function ContractForm({ contract, onSuccess, onCancel }: Contract
           <span>{isEditing ? "Editar Contrato" : "Crear Nuevo Contrato"}</span>
         </CardTitle>
         <CardDescription>
-          {isEditing ? "Modifique los términos del contrato" : "Complete la información del nuevo contrato laboral"}
+          {isEditing
+            ? "Modifique los términos del contrato"
+            : "Complete la información del nuevo contrato laboral"}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -153,9 +162,9 @@ export default function ContractForm({ contract, onSuccess, onCancel }: Contract
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Empleado *</FormLabel>
-                    <Select 
-                      onValueChange={(value) => field.onChange(parseInt(value))} 
-                      value={field.value?.toString() || ""}
+                    <Select
+                      onValueChange={(value) => field.onChange(parseInt(value, 10))}
+                      value={field.value ? String(field.value) : ""}
                     >
                       <FormControl>
                         <SelectTrigger data-testid="select-employee">
@@ -163,15 +172,20 @@ export default function ContractForm({ contract, onSuccess, onCancel }: Contract
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {employees && employees.map((employee) => {
-                          const person = people?.find(p => p.id === employee.id);
+                        {employees.map((employee) => {
+                          const person = people.find(
+                            (p) => p.personId === employee.id || p.personId === (employee as any).personId
+                          );
+
+                          if (!employee?.id) return null;
+
                           return (
-                            employee && employee.id && (
-                              <SelectItem key={employee.id} value={employee.id.toString()}>
-                                {person ? `${person.firstName} ${person.lastName}` : `Empleado #${employee.id}`}
-                                <span className="text-xs text-gray-500 ml-2">({employee.type})</span>
-                              </SelectItem>
-                            )
+                            <SelectItem key={employee.id} value={employee.id.toString()}>
+                              {person
+                                ? `${person.firstName} ${person.lastName}`
+                                : `Empleado #${employee.id}`}
+                              <span className="text-xs text-gray-500 ml-2">({employee.type})</span>
+                            </SelectItem>
                           );
                         })}
                       </SelectContent>
@@ -187,16 +201,19 @@ export default function ContractForm({ contract, onSuccess, onCancel }: Contract
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Tipo de Contrato *</FormLabel>
-                    <Select onValueChange={(value) => {
-                      field.onChange(value);
-                      // Auto-calcular fecha de fin basada en el tipo
-                      if (startDate && value !== "Indefinido") {
-                        const endDate = calculateEndDate(value, startDate);
-                        form.setValue("endDate", endDate);
-                      } else if (value === "Indefinido") {
-                        form.setValue("endDate", null);
-                      }
-                    }} defaultValue={field.value}>
+                    <Select
+                      onValueChange={(value) => {
+                        field.onChange(value);
+
+                        if (startDate && value !== "Indefinido") {
+                          const endDate = calculateEndDate(value, startDate);
+                          form.setValue("endDate", endDate);
+                        } else if (value === "Indefinido") {
+                          form.setValue("endDate", null);
+                        }
+                      }}
+                      value={field.value ?? "Indefinido"}
+                    >
                       <FormControl>
                         <SelectTrigger data-testid="select-contract-type">
                           <SelectValue placeholder="Seleccione el tipo" />
@@ -221,13 +238,13 @@ export default function ContractForm({ contract, onSuccess, onCancel }: Contract
                   <FormItem>
                     <FormLabel>Fecha de Inicio *</FormLabel>
                     <FormControl>
-                      <Input 
+                      <Input
                         type="date"
                         data-testid="input-startDate"
                         {...field}
+                        value={field.value ?? ""}
                         onChange={(e) => {
-                          field.onChange(e);
-                          // Auto-calcular fecha de fin cuando cambia la fecha de inicio
+                          field.onChange(e.target.value);
                           if (contractType && contractType !== "Indefinido") {
                             const endDate = calculateEndDate(contractType, e.target.value);
                             form.setValue("endDate", endDate);
@@ -247,17 +264,19 @@ export default function ContractForm({ contract, onSuccess, onCancel }: Contract
                   <FormItem>
                     <FormLabel>Fecha de Fin</FormLabel>
                     <FormControl>
-                      <Input 
+                      <Input
                         type="date"
                         data-testid="input-endDate"
-                        {...field}
-                        value={field.value || ""}
+                        value={field.value ?? ""}
+                        onChange={(e) => field.onChange(e.target.value || null)}
                         disabled={contractType === "Indefinido"}
                       />
                     </FormControl>
                     <FormMessage />
                     {contractType === "Indefinido" && (
-                      <p className="text-xs text-gray-500">Los contratos indefinidos no tienen fecha de fin</p>
+                      <p className="text-xs text-gray-500">
+                        Los contratos indefinidos no tienen fecha de fin
+                      </p>
                     )}
                   </FormItem>
                 )}
@@ -273,7 +292,7 @@ export default function ContractForm({ contract, onSuccess, onCancel }: Contract
                   <FormControl>
                     <div className="relative">
                       <DollarSign className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                      <Input 
+                      <Input
                         type="number"
                         step="0.01"
                         min="450"
@@ -281,6 +300,7 @@ export default function ContractForm({ contract, onSuccess, onCancel }: Contract
                         className="pl-10"
                         data-testid="input-baseSalary"
                         {...field}
+                        value={field.value ?? ""}
                       />
                     </div>
                   </FormControl>
@@ -309,19 +329,19 @@ export default function ContractForm({ contract, onSuccess, onCancel }: Contract
             )}
 
             <div className="flex flex-col sm:flex-row gap-3 pt-6">
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 disabled={isLoading}
                 className="flex-1"
                 data-testid="button-save-contract"
               >
                 <Save className="mr-2 h-4 w-4" />
-                {isLoading ? "Guardando..." : (isEditing ? "Actualizar" : "Crear Contrato")}
+                {isLoading ? "Guardando..." : isEditing ? "Actualizar" : "Crear Contrato"}
               </Button>
               {onCancel && (
-                <Button 
-                  type="button" 
-                  variant="outline" 
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={onCancel}
                   className="flex-1"
                   data-testid="button-cancel"

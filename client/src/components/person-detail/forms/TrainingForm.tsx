@@ -186,7 +186,7 @@ export default function TrainingForm({
   // useForm
   // =============================
   const form = useForm<TrainingFormData>({
-    resolver: zodResolver(trainingFormSchema),
+    resolver: zodResolver(trainingFormSchema) as any,
     defaultValues: {
       title: training?.title ?? "",
       institution: training?.institution ?? "",
@@ -286,7 +286,7 @@ export default function TrainingForm({
   return (
     <Form {...form}>
       <form
-        onSubmit={form.handleSubmit(handleSubmit)}
+        onSubmit={form.handleSubmit(handleSubmit as any)}
         className="space-y-6"
         data-testid="training-form"
       >
@@ -299,7 +299,7 @@ export default function TrainingForm({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Título */}
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="title"
               render={({ field }) => (
                 <FormItem className="md:col-span-2">
@@ -314,7 +314,7 @@ export default function TrainingForm({
 
             {/* Institución */}
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="institution"
               render={({ field }) => (
                 <FormItem>
@@ -329,7 +329,7 @@ export default function TrainingForm({
 
             {/* Ubicación */}
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="location"
               render={({ field }) => (
                 <FormItem>
@@ -344,7 +344,7 @@ export default function TrainingForm({
 
             {/* Certificado emitido por */}
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="certifiedBy"
               render={({ field }) => (
                 <FormItem>
@@ -371,7 +371,7 @@ export default function TrainingForm({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Tipo de evento */}
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="eventTypeId"
               render={({ field }) => (
                 <FormItem>
@@ -410,7 +410,7 @@ export default function TrainingForm({
 
             {/* Tipo de certificación */}
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="certificateTypeId"
               render={({ field }) => (
                 <FormItem>
@@ -451,7 +451,7 @@ export default function TrainingForm({
 
             {/* Tipo de aprobación */}
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="approvalTypeId"
               render={({ field }) => (
                 <FormItem>
@@ -500,7 +500,7 @@ export default function TrainingForm({
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="startDate"
               render={({ field }) => (
                 <FormItem>
@@ -518,7 +518,7 @@ export default function TrainingForm({
             />
 
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="endDate"
               render={({ field }) => (
                 <FormItem>
@@ -536,7 +536,7 @@ export default function TrainingForm({
             />
 
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="hours"
               render={({ field }) => (
                 <FormItem>
@@ -570,7 +570,7 @@ export default function TrainingForm({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="knowledgeAreaTypeId"
               render={({ field }) => (
                 <FormItem>
@@ -610,7 +610,7 @@ export default function TrainingForm({
           <h3 className="text-base sm:text-lg font-semibold">Notas</h3>
 
           <FormField
-            control={form.control}
+            control={form.control as any}
             name="notes"
             render={({ field }) => (
               <FormItem>

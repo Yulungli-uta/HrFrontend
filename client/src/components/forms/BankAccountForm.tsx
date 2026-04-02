@@ -19,7 +19,7 @@ const bankAccountSchema = z.object({
   isPrimary: z.boolean().default(false),
 });
 
-export default function BankAccountForm({ personId, onSubmit, onCancel, isLoading }) {
+export default function BankAccountForm({ personId, onSubmit, onCancel, isLoading }: any) {
   const form = useForm({
     resolver: zodResolver(bankAccountSchema),
     defaultValues: {

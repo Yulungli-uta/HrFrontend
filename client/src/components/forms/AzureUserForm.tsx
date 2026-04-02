@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { AzureManagementAPI } from "@/lib/api/auth";
+import { AzureManagementAPI } from "@/lib/api/services/auth";
 import { parseApiError } from '@/lib/error-handling';
 
 const DEBUG_AUTH =

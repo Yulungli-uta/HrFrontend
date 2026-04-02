@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { useLocation } from "wouter";
+import { ThemeToggle } from "./ThemeToggle";
 
 const DEBUG = import.meta.env.VITE_DEBUG_AUTH === "true";
 
@@ -68,8 +69,9 @@ export default function Header({
           )}
         </div>
 
-        {/* MENU USUARIO */}
+        {/* MENU USUARIO & TEMA */}
         <div className="flex items-center space-x-2 sm:space-x-4">
+          <ThemeToggle />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button

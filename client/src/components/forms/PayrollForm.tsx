@@ -1,5 +1,4 @@
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { insertPayrollSchema, type InsertPayroll, type Employee, type Person, type Contract } from "@/shared/schema";
+import type { Employee, Person, Contract } from "@/shared/schema";
 import { DollarSign, Save, X, Calculator, Users } from "lucide-react";
 import { useState } from "react";
 
@@ -16,6 +15,15 @@ interface PayrollFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
 }
+
+type PayrollFormData = {
+  employeeId: number;
+  period: string;
+  baseSalary: string;
+  status: string;
+  paymentDate: string | null;
+  bankAccount: string | null;
+};
 
 export default function PayrollForm({ onSuccess, onCancel }: PayrollFormProps) {
   const { toast } = useToast();
@@ -35,8 +43,7 @@ export default function PayrollForm({ onSuccess, onCancel }: PayrollFormProps) {
     queryKey: ['/api/contracts'],
   });
 
-  const form = useForm<InsertPayroll>({
-    resolver: zodResolver(insertPayrollSchema),
+  const form = useForm<PayrollFormData>({
     defaultValues: {
       employeeId: 0,
       period: currentPeriod,
@@ -48,7 +55,7 @@ export default function PayrollForm({ onSuccess, onCancel }: PayrollFormProps) {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: InsertPayroll) => {
+    mutationFn: async (data: PayrollFormData) => {
       const response = await fetch("/api/payroll", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -71,7 +78,7 @@ export default function PayrollForm({ onSuccess, onCancel }: PayrollFormProps) {
     mutationFn: async (employeeIds: number[]) => {
       const promises = employeeIds.map(async (employeeId) => {
         const contract = contracts?.find(c => c.employeeId === employeeId);
-        const data: InsertPayroll = {
+        const data: PayrollFormData = {
           employeeId,
           period: currentPeriod,
           baseSalary: contract?.baseSalary || "0.00",
@@ -102,7 +109,7 @@ export default function PayrollForm({ onSuccess, onCancel }: PayrollFormProps) {
     }
   });
 
-  const onSubmit = (data: InsertPayroll) => {
+  const onSubmit = (data: PayrollFormData) => {
     createMutation.mutate(data);
   };
 
@@ -178,34 +185,36 @@ export default function PayrollForm({ onSuccess, onCancel }: PayrollFormProps) {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
               {employees?.map((employee) => {
-                const person = people?.find(p => p.id === employee.id);
-                const contract = contracts?.find(c => c.employeeId === employee.id);
-                const isSelected = selectedEmployees.includes(employee.id);
+                const employeeId = employee.id;
+                if (employeeId == null) return null;
+                const person = people?.find(p => p.id === employeeId);
+                const contract = contracts?.find(c => c.employeeId === employeeId);
+                const isSelected = selectedEmployees.includes(employeeId);
                 
                 return (
                   <Card 
-                    key={employee.id} 
+                    key={employeeId} 
                     className={`p-4 cursor-pointer transition-colors ${
                       isSelected ? 'ring-2 ring-blue-500 bg-blue-50' : 'hover:bg-gray-50'
                     }`}
-                    onClick={() => handleEmployeeSelection(employee.id, !isSelected)}
+                    onClick={() => handleEmployeeSelection(employeeId, !isSelected)}
                   >
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <h4 className="font-medium text-sm">
-                          {person ? `${person.firstName} ${person.lastName}` : `Empleado #${employee.id}`}
+                          {person ? `${person.firstName} ${person.lastName}` : `Empleado #${employeeId}`}
                         </h4>
                         <input
                           type="checkbox"
                           checked={isSelected}
-                          onChange={(e) => handleEmployeeSelection(employee.id, e.target.checked)}
+                          onChange={(e) => handleEmployeeSelection(employeeId, e.target.checked)}
                           className="rounded"
-                          data-testid={`checkbox-employee-${employee.id}`}
+                          data-testid={`checkbox-employee-${employeeId}`}
                         />
                       </div>
                       {contract && (
                         <div className="text-sm text-green-600 font-medium">
-                          ${parseFloat(contract.baseSalary).toLocaleString()}
+                          ${parseFloat(contract.baseSalary || "0").toLocaleString()}
                         </div>
                       )}
                       <div className="text-xs text-gray-500">
@@ -247,9 +256,9 @@ export default function PayrollForm({ onSuccess, onCancel }: PayrollFormProps) {
                         // Auto-llenar salario base del contrato
                         const contract = contracts?.find(c => c.employeeId === employeeId);
                         if (contract) {
-                          form.setValue("baseSalary", contract.baseSalary);
+                          form.setValue("baseSalary", contract.baseSalary || "0.00");
                         }
-                      }} value={field.value?.toString()}>
+                      }} value={field.value ? field.value.toString() : ""}>
                         <FormControl>
                           <SelectTrigger data-testid="select-employee">
                             <SelectValue placeholder="Seleccione un empleado" />
@@ -260,7 +269,7 @@ export default function PayrollForm({ onSuccess, onCancel }: PayrollFormProps) {
                             const person = people?.find(p => p.id === employee.id);
                             return (
                               <SelectItem key={employee.id} value={employee.id.toString()}>
-                                {person ? `${person.firstName} ${person.lastName}` : `Empleado #${employee.id}`}
+                                {person ? `${person.firstName} ${person.lastName}` : `Empleado #${employeeId}`}
                               </SelectItem>
                             );
                           })}
@@ -282,6 +291,7 @@ export default function PayrollForm({ onSuccess, onCancel }: PayrollFormProps) {
                           type="month"
                           data-testid="input-period-individual"
                           {...field}
+                          value={field.value ?? ""}
                         />
                       </FormControl>
                       <FormMessage />
@@ -302,6 +312,7 @@ export default function PayrollForm({ onSuccess, onCancel }: PayrollFormProps) {
                           placeholder="0.00"
                           data-testid="input-baseSalary"
                           {...field}
+                          value={field.value ?? ""}
                         />
                       </FormControl>
                       <FormMessage />
@@ -315,7 +326,7 @@ export default function PayrollForm({ onSuccess, onCancel }: PayrollFormProps) {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Estado</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value ?? "Pending"}>
                         <FormControl>
                           <SelectTrigger data-testid="select-status">
                             <SelectValue placeholder="Seleccione el estado" />

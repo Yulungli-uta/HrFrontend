@@ -207,15 +207,15 @@ export default function PublicationForm({
   const level1Areas: KnowledgeArea[] =
     level1Response?.status === "success"
       ? (level1Response.data as KnowledgeArea[]).filter(
-          (a) => a.isActive && (a.parentId === null || a.parentId === undefined)
-        )
+        (a) => a.isActive && (a.parentId === null || a.parentId === undefined)
+      )
       : [];
 
   // =============================
   // useForm
   // =============================
   const form = useForm<PublicationFormData>({
-    resolver: zodResolver(publicationFormSchema),
+    resolver: zodResolver(publicationFormSchema) as any,
     defaultValues: {
       title: "",
       journalName: "",
@@ -379,7 +379,7 @@ export default function PublicationForm({
   return (
     <Form {...form}>
       <form
-        onSubmit={form.handleSubmit(handleSubmit)}
+        onSubmit={form.handleSubmit(handleSubmit as any)}
         className="space-y-6"
         data-testid="publication-form"
       >
@@ -392,7 +392,7 @@ export default function PublicationForm({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Título */}
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="title"
               render={({ field }) => (
                 <FormItem className="md:col-span-2">
@@ -407,7 +407,7 @@ export default function PublicationForm({
 
             {/* Tipo publicación */}
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="publicationTypeId"
               render={({ field }) => (
                 <FormItem>
@@ -450,7 +450,7 @@ export default function PublicationForm({
 
             {/* isIndexed */}
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="isIndexed"
               render={({ field }) => (
                 <FormItem>
@@ -477,7 +477,7 @@ export default function PublicationForm({
 
             {/* utAffiliation */}
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="utAffiliation"
               render={({ field }) => (
                 <FormItem>
@@ -512,7 +512,7 @@ export default function PublicationForm({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="journalName"
               render={({ field }) => (
                 <FormItem>
@@ -527,7 +527,7 @@ export default function PublicationForm({
 
             {/* journalTypeId */}
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="journalTypeId"
               render={({ field }) => (
                 <FormItem>
@@ -577,7 +577,7 @@ export default function PublicationForm({
             />
 
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="journalNumber"
               render={({ field }) => (
                 <FormItem>
@@ -591,7 +591,7 @@ export default function PublicationForm({
             />
 
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="volume"
               render={({ field }) => (
                 <FormItem>
@@ -605,7 +605,7 @@ export default function PublicationForm({
             />
 
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="pages"
               render={({ field }) => (
                 <FormItem>
@@ -619,7 +619,7 @@ export default function PublicationForm({
             />
 
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="issn_Isbn"
               render={({ field }) => (
                 <FormItem>
@@ -642,7 +642,7 @@ export default function PublicationForm({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="organizedBy"
               render={({ field }) => (
                 <FormItem>
@@ -656,7 +656,7 @@ export default function PublicationForm({
             />
 
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="eventName"
               render={({ field }) => (
                 <FormItem>
@@ -670,7 +670,7 @@ export default function PublicationForm({
             />
 
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="eventEdition"
               render={({ field }) => (
                 <FormItem>
@@ -684,7 +684,7 @@ export default function PublicationForm({
             />
 
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="location"
               render={({ field }) => (
                 <FormItem>
@@ -698,7 +698,7 @@ export default function PublicationForm({
             />
 
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="publicationDate"
               render={({ field }) => (
                 <FormItem>
@@ -726,7 +726,7 @@ export default function PublicationForm({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Nivel 1 */}
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="knowledgeAreaTypeId"
               render={({ field }) => (
                 <FormItem>
@@ -769,7 +769,7 @@ export default function PublicationForm({
 
             {/* Nivel 2 */}
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="subAreaTypeId"
               render={({ field }) => (
                 <FormItem>
@@ -812,7 +812,7 @@ export default function PublicationForm({
 
             {/* Nivel 3 */}
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="areaTypeId"
               render={({ field }) => (
                 <FormItem>
@@ -857,7 +857,7 @@ export default function PublicationForm({
           <h3 className="text-base sm:text-lg font-semibold">Notas</h3>
 
           <FormField
-            control={form.control}
+            control={form.control as any}
             name="notes"
             render={({ field }) => (
               <FormItem>

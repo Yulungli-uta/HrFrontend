@@ -1,4 +1,4 @@
-// src/lib/api/auth.ts
+// src/lib/api/services/auth.ts
 /**
  * APIs relacionadas con autenticación y gestión de usuarios.
  *
@@ -9,8 +9,9 @@
  * - Evitar errores comunes: body sin JSON.stringify, comas faltantes, imports duplicados, etc.
  */
 
-import { apiFetch } from './client';
-import type { ApiResponse, PagedRequest, PagedResult } from './client';
+import { apiFetch } from '../core/fetch';
+import type { ApiResponse } from '../core/fetch';
+import { PagedRequest, PagedResult } from '../core/pagination';
 
 import type {
   User,
@@ -309,10 +310,15 @@ export const RolesAPI = {
       ...jsonBody(data),
     }),
 
-  update: (id: number, data: UpdateRoleDto): Promise<ApiResponse<Role>> =>
-    apiFetch<Role>(`/api/roles/${toInt(id)}`, {
+  // update: (id: number, data: UpdateRoleDto): Promise<ApiResponse<Role>> =>
+  //   apiFetch<Role>(`/api/roles/${toInt(id)}`, {
+  //     method: 'PUT',
+  //     ...jsonBody(data),
+  //   }),
+  update: (id: string | number, data: UpdateRoleDto) =>
+    apiFetch<Role>(`/api/roles/${id}`, {
       method: 'PUT',
-      ...jsonBody(data),
+      body: JSON.stringify(data),
     }),
 
   delete: (id: number): Promise<ApiResponse<void>> =>
@@ -572,7 +578,7 @@ export interface CreateAppParamDto {
   isEncrypted?: boolean | null;
   modifiedBy?: string | null;
 }
-export interface UpdateAppParamDto extends Omit<CreateAppParamDto, 'nemonic'> {}
+export interface UpdateAppParamDto extends Omit<CreateAppParamDto, 'nemonic'> { }
 
 export interface CreateAuditLogDto {
   userId?: string | null; // uuid
@@ -798,10 +804,10 @@ export interface CreateAzureSyncLogDto {
   details?: string | null;
   syncType?: string | null;
 }
-export interface UpdateAzureSyncLogDto extends Omit<CreateAzureSyncLogDto, 'syncDate'> {}
+export interface UpdateAzureSyncLogDto extends Omit<CreateAzureSyncLogDto, 'syncDate'> { }
 
-export interface CreateHRSyncLogDto extends CreateAzureSyncLogDto {}
-export interface UpdateHRSyncLogDto extends UpdateAzureSyncLogDto {}
+export interface CreateHRSyncLogDto extends CreateAzureSyncLogDto { }
+export interface UpdateHRSyncLogDto extends UpdateAzureSyncLogDto { }
 
 export interface CreateNotificationSubscriptionDto {
   applicationId: string; // uuid

@@ -65,7 +65,6 @@ export class CacheService {
       if (cached !== null && cached !== undefined) {
         return cached;
       }
-      // @ts-expect-error
       return {} as T;
     }
   }

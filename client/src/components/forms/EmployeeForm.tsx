@@ -1,21 +1,67 @@
-// src/components/forms/EmployeeForm.tsx
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
-import { insertEmployeeSchema, type InsertEmployee, type Employee, type Department, type Person } from "@/shared/schema";
-import { UserCog, Save, X, Mail } from "lucide-react";
-import { PersonasAPI, DepartamentosAPI, EmpleadosAPI, TiposReferenciaAPI, type ApiResponse } from "@/lib/api";
-import { parseApiError } from '@/lib/error-handling';
+import type { Employee } from "@/shared/schema";
+import {
+  UserCog,
+  Save,
+  X,
+  Mail,
+  ChevronsUpDown,
+  Check,
+  Loader2,
+} from "lucide-react";
+import {
+  PersonasAPI,
+  DepartamentosAPI,
+  EmpleadosAPI,
+  TiposReferenciaAPI,
+  VistaEmpleadosAPI,
+  type ApiResponse,
+  type PagedResult,
+} from "@/lib/api";
+import type { PersonDto } from "@/lib/api/services/employees";
+import { cn } from "@/lib/utils";
 
-// Semilla proveniente de la vista para hidratar edición
 type EmployeeViewSeed = {
   employeeID: number;
   firstName?: string;
@@ -52,249 +98,466 @@ interface RefType {
 }
 
 interface EmployeeFormProps {
-  employee?: Employee;            // opcional si ya tienes el modelo completo
-  viewSeed?: EmployeeViewSeed;    // semilla desde EmployeesPage (vista)
+  employee?: Employee;
+  viewSeed?: EmployeeViewSeed;
   onSuccess?: () => void;
   onCancel?: () => void;
 }
 
-const DEBUG = import.meta.env.VITE_DEBUG_AUTH === "true";
+type EmployeeFormData = {
+  personId: number;
+  email: string;
+  contractTypeId?: number;
+  departmentId: number | null;
+  immediateBossId: number | null;
+  hireDate: string;
+  isActive: boolean;
+};
 
-export default function EmployeeForm({ employee, viewSeed, onSuccess, onCancel }: EmployeeFormProps) {
+interface ComboboxOption {
+  value: number;
+  label: string;
+  detail?: string;
+}
+
+const DEBUG = import.meta.env.VITE_DEBUG_AUTH === "true";
+const COMBOBOX_PAGE_SIZE = 15;
+const DEBOUNCE_MS = 400;
+
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
+interface UsePagedComboboxOptions<T> {
+  queryKey: string;
+  queryFn: (params: {
+    page: number;
+    pageSize: number;
+    search?: string;
+  }) => Promise<ApiResponse<PagedResult<T>>>;
+  mapFn: (item: T) => ComboboxOption | null;
+  enabled?: boolean;
+}
+
+function usePagedCombobox<T>({
+  queryKey,
+  queryFn,
+  mapFn,
+  enabled = true,
+}: UsePagedComboboxOptions<T>) {
+  const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebounce(searchTerm, DEBOUNCE_MS);
+
+  const params = useMemo(
+    () => ({
+      page: 1,
+      pageSize: COMBOBOX_PAGE_SIZE,
+      ...(debouncedSearch.trim() ? { search: debouncedSearch.trim() } : {}),
+    }),
+    [debouncedSearch]
+  );
+
+  const { data, isLoading } = useQuery({
+    queryKey: [queryKey, "paged-combobox", params],
+    queryFn: () => queryFn(params),
+    enabled,
+    staleTime: 30_000,
+  });
+
+  const options = useMemo(() => {
+    if (data?.status !== "success" || !data.data?.items) return [];
+    return data.data.items.map(mapFn).filter(Boolean) as ComboboxOption[];
+  }, [data, mapFn]);
+
+  return { options, isLoading, searchTerm, setSearchTerm };
+}
+
+export default function EmployeeForm({
+  employee,
+  viewSeed,
+  onSuccess,
+  onCancel,
+}: EmployeeFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Tipos de referencia (para contrato)
-  const { data: refTypes, isLoading: loadingRefTypes } = useQuery<ApiResponse<RefType[]>>({
+  const [personOpen, setPersonOpen] = useState(false);
+  const [bossOpen, setBossOpen] = useState(false);
+  const [deptOpen, setDeptOpen] = useState(false);
+
+  const [personLabel, setPersonLabel] = useState<string | null>(null);
+  const [bossLabel, setBossLabel] = useState<string | null>(null);
+  const [deptLabel, setDeptLabel] = useState<string | null>(null);
+
+  const { data: refTypes, isLoading: loadingRefTypes } = useQuery<
+    ApiResponse<RefType[]>
+  >({
     queryKey: ["refTypes"],
     queryFn: TiposReferenciaAPI.list,
   });
 
-  // Departamentos
-  const { data: departmentsResponse, isLoading: loadingDepartments } = useQuery<ApiResponse<Department[]>>({
-    queryKey: ["/api/v1/rh/departments"],
-    queryFn: DepartamentosAPI.list,
-  });
-
-  // Personas (titulares)
-  const { data: peopleResponse, isLoading: loadingPeople } = useQuery<ApiResponse<Person[]>>({
-    queryKey: ["/api/v1/rh/people"],
-    queryFn: PersonasAPI.list,
-  });
-
-  // Empleados (para jefe inmediato y encontrar empId)
-  const { data: employeesResponse, isLoading: loadingEmployees } = useQuery<ApiResponse<Employee[]>>({
-    queryKey: ["/api/v1/rh/employees"],
-    queryFn: EmpleadosAPI.list,
-  });
-
-  const departments = (departmentsResponse?.status === "success" ? departmentsResponse.data : []) ?? [];
-  const people = (peopleResponse?.status === "success" ? peopleResponse.data : []) ?? [];
-  const employees = (employeesResponse?.status === "success" ? employeesResponse.data : []) ?? [];
-
   const contractOptions = useMemo(() => {
-    const arr = refTypes?.status === "success" ? (refTypes.data ?? []) : [];
-    return arr.filter((t) => t?.category === "CONTRACT_TYPE" && typeof t.typeId === "number");
+    const arr = refTypes?.status === "success" ? refTypes.data ?? [] : [];
+    return arr.filter(
+      (t) => t?.category === "CONTRACT_TYPE" && typeof t.typeId === "number"
+    );
   }, [refTypes]);
 
-  // Si viene un modelo completo de empleado (edición directa)
+  const mapPerson = useCallback((p: PersonDto): ComboboxOption | null => {
+    if (!p?.personId) return null;
+    return {
+      value: p.personId,
+      label: `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim(),
+      detail: p.idCard ?? undefined,
+    };
+  }, []);
+
+  const personCombobox = usePagedCombobox<PersonDto>({
+    queryKey: "people",
+    queryFn: (params) => PersonasAPI.listPaged(params),
+    mapFn: mapPerson,
+  });
+
+  const mapDepartment = useCallback((d: any): ComboboxOption | null => {
+    const did = Number(d?.departmentId ?? d?.id ?? d?.DepartmentId ?? 0);
+    if (!did || did <= 0) return null;
+
+    return {
+      value: did,
+      label: String(d?.name ?? d?.Name ?? `Departamento #${did}`),
+    };
+  }, []);
+
+  const deptCombobox = usePagedCombobox<any>({
+    queryKey: "departments",
+    queryFn: (params) => DepartamentosAPI.listPaged(params),
+    mapFn: mapDepartment,
+  });
+
+  const mapBoss = useCallback((e: any): ComboboxOption | null => {
+    const id = Number(e?.employeeID ?? e?.employeeId ?? e?.id ?? 0);
+    if (!id || id <= 0) return null;
+
+    const name = String(
+      e?.fullName ?? `${e?.firstName ?? ""} ${e?.lastName ?? ""}`.trim()
+    );
+
+    return {
+      value: id,
+      label: name || `Empleado #${id}`,
+      detail: e?.idCard ?? undefined,
+    };
+  }, []);
+
+  const bossCombobox = usePagedCombobox<any>({
+    queryKey: "employees-boss",
+    queryFn: (params) => VistaEmpleadosAPI.listPaged(params),
+    mapFn: mapBoss,
+  });
+
   const isEditingFromEmployee = !!employee?.id;
+  const [employeeIdForUpdate, setEmployeeIdForUpdate] = useState<number | null>(
+    employee?.id ?? null
+  );
 
-  // Estado interno para update cuando viene desde viewSeed
-  const [employeeIdForUpdate, setEmployeeIdForUpdate] = useState<number | null>(employee?.id ?? null);
-
-  const form = useForm<InsertEmployee>({
-    resolver: zodResolver(insertEmployeeSchema),
-    defaultValues: employee || {
-      id: 0, // personId
+  const form = useForm<EmployeeFormData>({
+    defaultValues: {
+      personId: 0,
       contractTypeId: undefined,
-      departmentId: null,
-      immediateBossId: null,
-      hireDate: "",
-      isActive: true,
-      type: "Administrative_LOSEP",
-      email: "", // Campo email agregado
+      departmentId: employee?.departmentId ?? null,
+      immediateBossId: employee?.immediateBossId ?? null,
+      hireDate: employee?.hireDate ?? "",
+      isActive: employee?.isActive ?? true,
+      email: "",
     },
     mode: "onChange",
   });
 
-  // VALIDACIÓN fecha no futura
-  const validateDate = (value: string) => {
+  const validateDate = (value?: string | null) => {
     if (!value) return "La fecha de contratación es obligatoria";
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const input = new Date(value); input.setHours(0, 0, 0, 0);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const input = new Date(value);
+    input.setHours(0, 0, 0, 0);
+
     if (input > today) return "La fecha de contratación no puede ser futura";
     return true;
   };
 
-  // VALIDACIÓN email
-  const validateEmail = (value: string) => {
+  const validateEmail = (value?: string | null) => {
     if (!value) return "El email es obligatorio";
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(value)) return "Formato de email inválido";
+
     return true;
   };
 
-  // Helpers de mapeo para viewSeed - MEJORADA
-  const findPersonIdFromSeed = (seed?: EmployeeViewSeed): number | null => {
-    if (!seed) return null;
-    
-    // Buscar por employeeID primero (más directo)
-    if (seed.employeeID) {
-      const byEmployeeId = (employees as any[]).find(
-        (e) => e?.id === seed.employeeID
-      );
-      if (byEmployeeId?.personId || byEmployeeId?.id) {
-        return byEmployeeId.personId ?? byEmployeeId.id ?? null;
-      }
-    }
-
-    // Buscar por email
-    if (seed.email) {
-      const byEmail = (people as any[]).find(
-        (p) => p?.email?.toLowerCase() === seed.email!.toLowerCase()
-      );
-      if (byEmail?.personId || byEmail?.id) return byEmail.personId ?? byEmail.id ?? null;
-    }
-
-    // Buscar por cédula
-    if (seed.idCard) {
-      const byIdCard = (people as any[]).find(
-        (p) => p?.idCard === seed.idCard
-      );
-      if (byIdCard?.personId || byIdCard?.id) return byIdCard.personId ?? byIdCard.id ?? null;
-    }
-
-    return null;
-  };
-
-  const findDepartmentIdFromName = (name?: string | null): number | null => {
-    if (!name) return null;
-    const d = (departments as any[]).find((x) => String(x?.name ?? "").toLowerCase() === name.toLowerCase());
-    if (!d) return null;
-    return d.departmentId ?? d.id ?? null;
-  };
-
-  const findContractTypeIdFromEmployeeType = (employeeType?: number | null) => {
+  const findContractTypeIdFromEmployeeType = (
+    employeeType?: number | null
+  ) => {
     if (employeeType == null) return undefined;
-    const rt = contractOptions.find((r) => Number(r.typeId) === Number(employeeType));
+    const rt = contractOptions.find(
+      (r) => Number(r.typeId) === Number(employeeType)
+    );
     return rt?.typeId ?? undefined;
   };
 
-  // Hidratación desde viewSeed cuando catálogos están listos - MEJORADA
   const hydratedRef = useRef(false);
+
   useEffect(() => {
-    // Resetear el estado de hidratación cuando viewSeed cambie
     hydratedRef.current = false;
-    
+
     if (!viewSeed) {
-      // Modo creación - resetear form
       form.reset({
-        id: 0,
+        personId: 0,
         contractTypeId: undefined,
         departmentId: null,
         immediateBossId: null,
         hireDate: "",
         isActive: true,
-        type: "Administrative_LOSEP",
-        email: "", // Reset email también
+        email: "",
       });
       setEmployeeIdForUpdate(null);
+      setPersonLabel(null);
+      setBossLabel(null);
+      setDeptLabel(null);
       return;
     }
 
-    // Esperar a que los catálogos estén cargados
-    if (loadingPeople || loadingEmployees || loadingRefTypes || loadingDepartments) {
-      return;
-    }
+    if (loadingRefTypes) return;
 
-    const personId = findPersonIdFromSeed(viewSeed);
-    const empRecord = (employees as any[]).find(
-      (e) => e?.id === viewSeed.employeeID || e?.personId === personId
+    const contractTypeId = findContractTypeIdFromEmployeeType(
+      viewSeed.employeeType ?? null
     );
 
-    const departmentId = findDepartmentIdFromName(viewSeed.department ?? null);
-    const contractTypeId = findContractTypeIdFromEmployeeType(viewSeed.employeeType ?? null);
+    const resolveEmployeeId = async () => {
+      try {
+        const empResp = await EmpleadosAPI.get(viewSeed.employeeID);
 
-    if (DEBUG) {
-      console.group("🔁 Hydrate EmployeeForm from viewSeed");
-      console.log("viewSeed:", viewSeed);
-      console.log("matched personId:", personId);
-      console.log("matched employee record:", empRecord);
-      console.log("departmentId:", departmentId);
-      console.log("contractTypeId:", contractTypeId);
-      console.log("email from seed:", viewSeed.email);
-      console.groupEnd();
-    }
+        if (empResp.status === "success" && empResp.data) {
+          const empData = empResp.data as any;
 
-    // Actualizar estado para edición
-    if (empRecord?.id) {
-      setEmployeeIdForUpdate(empRecord.id);
-    } else if (viewSeed.employeeID) {
-      setEmployeeIdForUpdate(viewSeed.employeeID);
-    }
+          const employeeId =
+            empData.employeeId ??
+            empData.EmployeeId ??
+            viewSeed.employeeID;
 
-    // Resetear formulario con los datos
-    form.reset({
-      id: personId ?? 0,
-      contractTypeId,
-      departmentId: departmentId ?? null,
-      immediateBossId: empRecord?.immediateBossId ?? null,
-      hireDate: viewSeed.hireDate ?? "",
-      isActive: viewSeed.employeeIsActive ?? true,
-      type: (empRecord?.type ?? "Administrative_LOSEP") as any,
-      email: viewSeed.email ?? "", // Incluir el email
-    });
+          const personId =
+            empData.personID ??
+            empData.personId ??
+            empData.PersonID ??
+            0;
 
-    hydratedRef.current = true;
-  }, [viewSeed, people, employees, contractOptions, departments, form, loadingPeople, loadingEmployees, loadingRefTypes, loadingDepartments]);
+          const departmentId =
+            empData.departmentId ??
+            empData.DepartmentId ??
+            null;
 
-  // Mutations
+          const immediateBossId =
+            empData.immediateBossId ??
+            empData.ImmediateBossId ??
+            null;
+
+          const employeeType =
+            empData.employeeType ??
+            empData.EmployeeType ??
+            contractTypeId;
+
+          const email =
+            empData.email ??
+            empData.Email ??
+            viewSeed.email ??
+            "";
+
+          setEmployeeIdForUpdate(employeeId);
+
+          form.reset({
+            personId,
+            contractTypeId: employeeType,
+            departmentId,
+            immediateBossId,
+            hireDate: viewSeed.hireDate ?? "",
+            isActive: viewSeed.employeeIsActive ?? true,
+            email,
+          });
+
+          const fullName =
+            viewSeed.fullName ??
+            `${viewSeed.firstName ?? ""} ${viewSeed.lastName ?? ""}`.trim();
+
+          setPersonLabel(
+            fullName
+              ? `${fullName}${viewSeed.idCard ? ` — ${viewSeed.idCard}` : ""}`
+              : null
+          );
+          setBossLabel(viewSeed.immediateBoss ?? null);
+          setDeptLabel(viewSeed.department ?? null);
+
+          if (DEBUG) {
+            console.group("Hydrate EmployeeForm from viewSeed");
+            console.log("viewSeed:", viewSeed);
+            console.log("employee record:", empData);
+            console.log("employeeId:", employeeId);
+            console.log("personId:", personId);
+            console.log("departmentId:", departmentId);
+            console.log("immediateBossId:", immediateBossId);
+            console.log("employeeType:", employeeType);
+            console.groupEnd();
+          }
+        }
+      } catch {
+        setEmployeeIdForUpdate(viewSeed.employeeID);
+
+        form.reset({
+          personId: 0,
+          contractTypeId,
+          departmentId: null,
+          immediateBossId: null,
+          hireDate: viewSeed.hireDate ?? "",
+          isActive: viewSeed.employeeIsActive ?? true,
+          email: viewSeed.email ?? "",
+        });
+
+        const fullName =
+          viewSeed.fullName ??
+          `${viewSeed.firstName ?? ""} ${viewSeed.lastName ?? ""}`.trim();
+
+        setPersonLabel(
+          fullName
+            ? `${fullName}${viewSeed.idCard ? ` — ${viewSeed.idCard}` : ""}`
+            : null
+        );
+        setBossLabel(viewSeed.immediateBoss ?? null);
+        setDeptLabel(viewSeed.department ?? null);
+      }
+
+      hydratedRef.current = true;
+    };
+
+    resolveEmployeeId();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewSeed, contractOptions, loadingRefTypes]);
+
   const createMutation = useMutation({
-    mutationFn: async (data: InsertEmployee) => {
-      const res = await EmpleadosAPI.create(data);
-      if (res.status === "error") throw new Error(res.error?.message ?? "Error desconocido");
+    mutationFn: async (data: EmployeeFormData) => {
+      const payload = {
+        employeeId: 0,
+        personID: data.personId,
+        employeeType: data.contractTypeId ?? 0,
+        departmentId: data.departmentId,
+        immediateBossId: data.immediateBossId,
+        hireDate: data.hireDate,
+        email: data.email,
+        isActive: data.isActive,
+        createdAt: new Date().toISOString(),
+      };
+
+      const res = await EmpleadosAPI.create(payload as any);
+      if (res.status === "error") {
+        throw new Error(res.error?.message ?? "Error desconocido");
+      }
+
       return res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/v1/rh/employees"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/v1/rh/vw/EmployeeComplete"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/v1/rh/vw/EmployeeComplete"],
+      });
+      queryClient.invalidateQueries({ queryKey: ["employees-complete"] });
       toast({ title: "Empleado creado exitosamente" });
       onSuccess?.();
     },
     onError: (e: unknown) => {
-      toast({ title: "Error al crear empleado", description: String(e?.message ?? e), variant: "destructive" });
+      const message = e instanceof Error ? e.message : String(e);
+      toast({
+        title: "Error al crear empleado",
+        description: message,
+        variant: "destructive",
+      });
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (data: InsertEmployee) => {
+    mutationFn: async (data: EmployeeFormData) => {
       const empId = employeeIdForUpdate ?? employee?.id;
-      if (!empId) throw new Error("ID de empleado no disponible para edición.");
-      const res = await EmpleadosAPI.update(empId, data);
-      if (res.status === "error") throw new Error(res.error?.message ?? "Error desconocido");
+      if (!empId) {
+        throw new Error("ID de empleado no disponible para edición.");
+      }
+
+      const payload = {
+        employeeId: empId,
+        personID: data.personId,
+        employeeType: data.contractTypeId ?? 0,
+        departmentId: data.departmentId,
+        immediateBossId: data.immediateBossId,
+        hireDate: data.hireDate,
+        email: data.email,
+        isActive: data.isActive,
+      };
+
+      const res = await EmpleadosAPI.update(empId, payload as any);
+      if (res.status === "error") {
+        throw new Error(res.error?.message ?? "Error desconocido");
+      }
+
       return res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/v1/rh/employees"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/v1/rh/vw/EmployeeComplete"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/v1/rh/vw/EmployeeComplete"],
+      });
+      queryClient.invalidateQueries({ queryKey: ["employees-complete"] });
       toast({ title: "Empleado actualizado exitosamente" });
       onSuccess?.();
     },
     onError: (e: unknown) => {
-      toast({ title: "Error al actualizar empleado", description: String(e?.message ?? e), variant: "destructive" });
+      const message = e instanceof Error ? e.message : String(e);
+      toast({
+        title: "Error al actualizar empleado",
+        description: message,
+        variant: "destructive",
+      });
     },
   });
 
-  const onSubmit = (data: InsertEmployee) => {
-    if (DEBUG) console.log("Submit Employee:", { data, employeeIdForUpdate, viewSeed, employee });
+  const onSubmit = (data: EmployeeFormData) => {
+    if (DEBUG) {
+      console.log("Submit Employee:", {
+        data,
+        employeeIdForUpdate,
+        viewSeed,
+        employee,
+      });
+    }
 
-    // validaciones básicas
-    if (!data.id || data.id <= 0) {
-      toast({ title: "Seleccione la Persona titular", variant: "destructive" });
+    if (!data.personId || data.personId <= 0) {
+      toast({
+        title: "Seleccione la Persona titular",
+        variant: "destructive",
+      });
       return;
     }
-    
+
+    if (!data.contractTypeId || data.contractTypeId <= 0) {
+      toast({
+        title: "Seleccione el tipo de contrato",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const dateCheck = validateDate(data.hireDate);
     if (dateCheck !== true) {
       toast({ title: String(dateCheck), variant: "destructive" });
@@ -317,18 +580,26 @@ export default function EmployeeForm({ employee, viewSeed, onSuccess, onCancel }
   };
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
-  const disabling = loadingRefTypes || loadingDepartments || loadingPeople || loadingEmployees || isSaving;
+  const disabling = loadingRefTypes || isSaving;
   const lockPersonSelect = !!(employeeIdForUpdate || isEditingFromEmployee);
+
+  const currentPersonId = form.watch("personId");
+  const currentBossId = form.watch("immediateBossId");
+  const currentDeptId = form.watch("departmentId");
 
   return (
     <Card className="w-full max-w-2xl mx-auto">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <UserCog className="h-5 w-5" />
-          <span>{(employeeIdForUpdate || isEditingFromEmployee) ? "Editar Empleado" : "Agregar Nuevo Empleado"}</span>
+          <span>
+            {employeeIdForUpdate || isEditingFromEmployee
+              ? "Editar Empleado"
+              : "Agregar Nuevo Empleado"}
+          </span>
         </CardTitle>
         <CardDescription>
-          {(employeeIdForUpdate || isEditingFromEmployee)
+          {employeeIdForUpdate || isEditingFromEmployee
             ? "Modifique la información del empleado"
             : "Complete los datos del nuevo empleado"}
         </CardDescription>
@@ -338,41 +609,105 @@ export default function EmployeeForm({ employee, viewSeed, onSuccess, onCancel }
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Persona titular */}
               <FormField
                 control={form.control}
-                name="id"
+                name="personId"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>ID de Persona *</FormLabel>
-                    <Select
-                      disabled={disabling || lockPersonSelect}
-                      onValueChange={(value) => field.onChange(parseInt(value))}
-                      value={field.value ? String(field.value) : ""}
-                    >
-                      <FormControl>
-                        <SelectTrigger data-testid="select-person">
-                          <SelectValue placeholder={loadingPeople ? "Cargando personas..." : "Seleccione una persona"} />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {people.map((p: any) => {
-                          const pid = p?.personId ?? p?.id;
-                          if (!pid) return null;
-                          return (
-                            <SelectItem key={pid} value={String(pid)}>
-                              {p.firstName} {p.lastName} — {p.idCard}
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Persona *</FormLabel>
+                    <Popover open={personOpen} onOpenChange={setPersonOpen}>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={personOpen}
+                            disabled={disabling || lockPersonSelect}
+                            data-testid="select-person"
+                            className={cn(
+                              "w-full justify-between font-normal",
+                              !currentPersonId && "text-muted-foreground"
+                            )}
+                          >
+                            <span className="truncate">
+                              {currentPersonId && personLabel
+                                ? personLabel
+                                : "Buscar persona..."}
+                            </span>
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        className="w-[--radix-popover-trigger-width] p-0"
+                        align="start"
+                      >
+                        <Command shouldFilter={false}>
+                          <CommandInput
+                            placeholder="Buscar por nombre o cédula..."
+                            value={personCombobox.searchTerm}
+                            onValueChange={personCombobox.setSearchTerm}
+                          />
+                          <CommandList>
+                            {personCombobox.isLoading ? (
+                              <div className="flex items-center justify-center py-6">
+                                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                                <span className="ml-2 text-sm text-muted-foreground">
+                                  Buscando...
+                                </span>
+                              </div>
+                            ) : (
+                              <>
+                                <CommandEmpty>
+                                  No se encontraron personas.
+                                </CommandEmpty>
+                                <CommandGroup>
+                                  {personCombobox.options.map((opt) => (
+                                    <CommandItem
+                                      key={opt.value}
+                                      value={String(opt.value)}
+                                      onSelect={() => {
+                                        field.onChange(opt.value);
+                                        setPersonLabel(
+                                          `${opt.label}${
+                                            opt.detail ? ` — ${opt.detail}` : ""
+                                          }`
+                                        );
+                                        setPersonOpen(false);
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          currentPersonId === opt.value
+                                            ? "opacity-100"
+                                            : "opacity-0"
+                                        )}
+                                      />
+                                      <div className="flex flex-col min-w-0">
+                                        <span className="text-sm font-medium truncate">
+                                          {opt.label}
+                                        </span>
+                                        {opt.detail && (
+                                          <span className="text-xs text-muted-foreground">
+                                            {opt.detail}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </>
+                            )}
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              {/* Email */}
               <FormField
                 control={form.control}
                 name="email"
@@ -381,13 +716,14 @@ export default function EmployeeForm({ employee, viewSeed, onSuccess, onCancel }
                     <FormLabel>Email *</FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                        <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                         <Input
                           type="email"
                           placeholder="correo@ejemplo.com"
                           className="pl-10"
                           disabled={disabling}
                           {...field}
+                          value={field.value ?? ""}
                         />
                       </div>
                     </FormControl>
@@ -396,7 +732,6 @@ export default function EmployeeForm({ employee, viewSeed, onSuccess, onCancel }
                 )}
               />
 
-              {/* Tipo de contrato */}
               <FormField
                 control={form.control}
                 name="contractTypeId"
@@ -405,18 +740,31 @@ export default function EmployeeForm({ employee, viewSeed, onSuccess, onCancel }
                     <FormLabel>Tipo de contrato *</FormLabel>
                     <Select
                       disabled={disabling}
-                      onValueChange={(value) => field.onChange(value === "empty" ? undefined : parseInt(value))}
+                      onValueChange={(value) =>
+                        field.onChange(
+                          value === "empty" ? undefined : parseInt(value, 10)
+                        )
+                      }
                       value={field.value ? String(field.value) : "empty"}
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder={loadingRefTypes ? "Cargando tipos..." : "Seleccione tipo de contrato"} />
+                          <SelectValue
+                            placeholder={
+                              loadingRefTypes
+                                ? "Cargando tipos..."
+                                : "Seleccione tipo de contrato"
+                            }
+                          />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="empty">Sin especificar</SelectItem>
                         {contractOptions.map((opt) => (
-                          <SelectItem key={`contr-${opt.typeId}`} value={String(opt.typeId)}>
+                          <SelectItem
+                            key={`contr-${opt.typeId}`}
+                            value={String(opt.typeId)}
+                          >
                             {opt.name}
                           </SelectItem>
                         ))}
@@ -427,86 +775,244 @@ export default function EmployeeForm({ employee, viewSeed, onSuccess, onCancel }
                 )}
               />
 
-              {/* Departamento */}
               <FormField
                 control={form.control}
                 name="departmentId"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="flex flex-col">
                     <FormLabel>Departamento</FormLabel>
-                    <Select
-                      disabled={disabling}
-                      onValueChange={(value) => field.onChange(value === "null" ? null : parseInt(value))}
-                      value={field.value === null ? "null" : field.value ? String(field.value) : "null"}
-                    >
-                      <FormControl>
-                        <SelectTrigger data-testid="select-department">
-                          <SelectValue placeholder={loadingDepartments ? "Cargando departamentos..." : "Seleccione un departamento"} />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="null">Sin departamento</SelectItem>
-                        {departments.map((d: any) => {
-                          const did = d?.departmentId ?? d?.id;
-                          if (!did) return null;
-                          return (
-                            <SelectItem key={did} value={String(did)}>
-                              {d?.name ?? `Departamento #${did}`}
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
+                    <Popover open={deptOpen} onOpenChange={setDeptOpen}>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={deptOpen}
+                            disabled={disabling}
+                            data-testid="select-department"
+                            className={cn(
+                              "w-full justify-between font-normal",
+                              !currentDeptId && "text-muted-foreground"
+                            )}
+                          >
+                            <span className="truncate">
+                              {currentDeptId && deptLabel
+                                ? deptLabel
+                                : currentDeptId
+                                ? `Departamento #${currentDeptId}`
+                                : "Buscar departamento..."}
+                            </span>
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        className="w-[--radix-popover-trigger-width] p-0"
+                        align="start"
+                      >
+                        <Command shouldFilter={false}>
+                          <CommandInput
+                            placeholder="Buscar departamento..."
+                            value={deptCombobox.searchTerm}
+                            onValueChange={deptCombobox.setSearchTerm}
+                          />
+                          <CommandList>
+                            {deptCombobox.isLoading ? (
+                              <div className="flex items-center justify-center py-6">
+                                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                                <span className="ml-2 text-sm text-muted-foreground">
+                                  Buscando...
+                                </span>
+                              </div>
+                            ) : (
+                              <>
+                                <CommandEmpty>
+                                  No se encontraron departamentos.
+                                </CommandEmpty>
+                                <CommandGroup>
+                                  <CommandItem
+                                    value="null"
+                                    onSelect={() => {
+                                      field.onChange(null);
+                                      setDeptLabel(null);
+                                      setDeptOpen(false);
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        currentDeptId === null
+                                          ? "opacity-100"
+                                          : "opacity-0"
+                                      )}
+                                    />
+                                    <span className="text-sm text-muted-foreground italic">
+                                      Sin departamento
+                                    </span>
+                                  </CommandItem>
+
+                                  {deptCombobox.options.map((opt) => (
+                                    <CommandItem
+                                      key={opt.value}
+                                      value={String(opt.value)}
+                                      onSelect={() => {
+                                        field.onChange(opt.value);
+                                        setDeptLabel(opt.label);
+                                        setDeptOpen(false);
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          currentDeptId === opt.value
+                                            ? "opacity-100"
+                                            : "opacity-0"
+                                        )}
+                                      />
+                                      <span className="text-sm font-medium truncate">
+                                        {opt.label}
+                                      </span>
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </>
+                            )}
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              {/* Jefe inmediato */}
               <FormField
                 control={form.control}
                 name="immediateBossId"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="flex flex-col">
                     <FormLabel>Jefe Inmediato</FormLabel>
-                    <Select
-                      disabled={disabling}
-                      onValueChange={(value) => field.onChange(value === "null" ? null : parseInt(value))}
-                      value={field.value === null ? "null" : field.value ? String(field.value) : "null"}
-                    >
-                      <FormControl>
-                        <SelectTrigger data-testid="select-boss">
-                          <SelectValue placeholder={loadingEmployees ? "Cargando empleados..." : "Seleccione un jefe"} />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="null">Sin jefe asignado</SelectItem>
-                        {employees
-                          .filter((e: any) => e && e.id && (!employee?.id || e.id !== employee.id))
-                          .map((e: any) => {
-                            const pid = e?.id;
-                            if (!pid) return null;
-                            // Busca nombre humano si tienes la persona enlazada
-                            const person = (people as any[]).find((p) => p?.id === e?.id || p?.personId === e?.personId);
-                            const name = person ? `${person.firstName} ${person.lastName}` : `Empleado #${pid}`;
-                            return (
-                              <SelectItem key={pid} value={String(pid)}>
-                                {name}
-                              </SelectItem>
-                            );
-                          })}
-                      </SelectContent>
-                    </Select>
+                    <Popover open={bossOpen} onOpenChange={setBossOpen}>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={bossOpen}
+                            disabled={disabling}
+                            data-testid="select-boss"
+                            className={cn(
+                              "w-full justify-between font-normal",
+                              !currentBossId && "text-muted-foreground"
+                            )}
+                          >
+                            <span className="truncate">
+                              {currentBossId && bossLabel
+                                ? bossLabel
+                                : currentBossId
+                                ? `Empleado #${currentBossId}`
+                                : "Buscar jefe..."}
+                            </span>
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        className="w-[--radix-popover-trigger-width] p-0"
+                        align="start"
+                      >
+                        <Command shouldFilter={false}>
+                          <CommandInput
+                            placeholder="Buscar por nombre..."
+                            value={bossCombobox.searchTerm}
+                            onValueChange={bossCombobox.setSearchTerm}
+                          />
+                          <CommandList>
+                            {bossCombobox.isLoading ? (
+                              <div className="flex items-center justify-center py-6">
+                                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                                <span className="ml-2 text-sm text-muted-foreground">
+                                  Buscando...
+                                </span>
+                              </div>
+                            ) : (
+                              <>
+                                <CommandEmpty>
+                                  No se encontraron empleados.
+                                </CommandEmpty>
+                                <CommandGroup>
+                                  <CommandItem
+                                    value="null"
+                                    onSelect={() => {
+                                      field.onChange(null);
+                                      setBossLabel(null);
+                                      setBossOpen(false);
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        currentBossId === null
+                                          ? "opacity-100"
+                                          : "opacity-0"
+                                      )}
+                                    />
+                                    <span className="text-sm text-muted-foreground italic">
+                                      Sin jefe asignado
+                                    </span>
+                                  </CommandItem>
+
+                                  {bossCombobox.options
+                                    .filter(
+                                      (opt) =>
+                                        !currentPersonId ||
+                                        opt.value !== currentPersonId
+                                    )
+                                    .map((opt) => (
+                                      <CommandItem
+                                        key={opt.value}
+                                        value={String(opt.value)}
+                                        onSelect={() => {
+                                          field.onChange(opt.value);
+                                          setBossLabel(opt.label);
+                                          setBossOpen(false);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            currentBossId === opt.value
+                                              ? "opacity-100"
+                                              : "opacity-0"
+                                          )}
+                                        />
+                                        <div className="flex flex-col min-w-0">
+                                          <span className="text-sm font-medium truncate">
+                                            {opt.label}
+                                          </span>
+                                          {opt.detail && (
+                                            <span className="text-xs text-muted-foreground">
+                                              {opt.detail}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                              </>
+                            )}
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              {/* Fecha de contratación */}
               <FormField
                 control={form.control}
                 name="hireDate"
-                rules={{ validate: validateDate }}
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Fecha de Contratación *</FormLabel>
@@ -517,6 +1023,7 @@ export default function EmployeeForm({ employee, viewSeed, onSuccess, onCancel }
                         max={new Date().toISOString().slice(0, 10)}
                         disabled={disabling}
                         {...field}
+                        value={field.value ?? ""}
                       />
                     </FormControl>
                     <FormMessage />
@@ -525,7 +1032,6 @@ export default function EmployeeForm({ employee, viewSeed, onSuccess, onCancel }
               />
             </div>
 
-            {/* Estado activo */}
             <FormField
               control={form.control}
               name="isActive"
@@ -533,22 +1039,45 @@ export default function EmployeeForm({ employee, viewSeed, onSuccess, onCancel }
                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                   <div className="space-y-0.5">
                     <FormLabel className="text-base">Estado Activo</FormLabel>
-                    <div className="text-sm text-muted-foreground">Indique si el empleado está activo en el sistema</div>
+                    <div className="text-sm text-muted-foreground">
+                      Indique si el empleado está activo en el sistema
+                    </div>
                   </div>
                   <FormControl>
-                    <Switch checked={field.value} onCheckedChange={field.onChange} data-testid="switch-isActive" disabled={disabling} />
+                    <Switch
+                      checked={Boolean(field.value)}
+                      onCheckedChange={field.onChange}
+                      data-testid="switch-isActive"
+                      disabled={disabling}
+                    />
                   </FormControl>
                 </FormItem>
               )}
             />
 
             <div className="flex flex-col sm:flex-row gap-3 pt-6">
-              <Button type="submit" disabled={isSaving} className="flex-1" data-testid="button-save-employee">
+              <Button
+                type="submit"
+                disabled={isSaving}
+                className="flex-1"
+                data-testid="button-save-employee"
+              >
                 <Save className="mr-2 h-4 w-4" />
-                {isSaving ? "Guardando..." : (employeeIdForUpdate || isEditingFromEmployee) ? "Actualizar" : "Crear Empleado"}
+                {isSaving
+                  ? "Guardando..."
+                  : employeeIdForUpdate || isEditingFromEmployee
+                  ? "Actualizar"
+                  : "Crear Empleado"}
               </Button>
+
               {onCancel && (
-                <Button type="button" variant="outline" onClick={onCancel} className="flex-1" data-testid="button-cancel">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onCancel}
+                  className="flex-1"
+                  data-testid="button-cancel"
+                >
                   <X className="mr-2 h-4 w-4" />
                   Cancelar
                 </Button>

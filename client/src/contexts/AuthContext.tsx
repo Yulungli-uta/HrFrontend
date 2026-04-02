@@ -16,6 +16,8 @@ import {
   useNotificationWebSocket,
   WebSocketMessage,
 } from "@/hooks/useNotificationWebSocket";
+
+import { PermissionService, CacheService } from "@/services/permissions";
 import { parseApiError } from '@/lib/error-handling';
 
 const AUTH_DEBUG = import.meta.env.VITE_DEBUG_AUTH === "true";
@@ -174,9 +176,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       try {
-        const { PermissionService, CacheService } =
-          await import("@/services/permissions");
-
         try {
           CacheService.clearAll();
         } catch (err) {
@@ -264,9 +263,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     // Limpiar caché de permisos
     try {
-      import("@/services/permissions").then(({ CacheService }) => {
+      // import("@/services/permissions").then(({ CacheService }) => {
         CacheService.clearAll();
-      });
+      // });
     } catch (error) {
       console.error("Error limpiando caché:", error);
     }

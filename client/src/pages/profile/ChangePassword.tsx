@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { KeyRound, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
-import { PasswordAPI } from "@/lib/api/auth";
+import { PasswordAPI } from "@/lib/api";
 import type { ChangePasswordDto } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
 import { parseApiError } from '@/lib/error-handling';
@@ -53,7 +53,7 @@ export default function ChangePasswordPage() {
       toast({
         title: "Error al cambiar contraseña",
         description:
-          error.message ||
+          (error as any).message ||
           "No se pudo cambiar la contraseña. Verifique que la contraseña actual sea correcta.",
         variant: "destructive",
       });

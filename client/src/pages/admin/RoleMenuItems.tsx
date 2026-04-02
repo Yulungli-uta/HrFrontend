@@ -14,8 +14,8 @@ import {
 } from "@/components/ui/select";
 
 import { Settings, Save, ChevronRight, ChevronDown } from "lucide-react";
-import { RolesAPI, MenuItemsAPI, RoleMenuItemsAPI } from "@/lib/api/auth";
-import type { ApiResponse } from "@/lib/api/client";
+import { RolesAPI, MenuItemsAPI, RoleMenuItemsAPI } from "@/lib/api";
+import type { ApiResponse } from "@/lib/api";
 import type { Role, MenuItem, RoleMenuItem, CreateRoleMenuItemDto } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
 import { parseApiError } from '@/lib/error-handling';

@@ -9,7 +9,7 @@
 
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
-import reportService, { downloadBlob } from '@/lib/api/reports';
+import reportService, { downloadBlob } from '@/lib/api/services/reports';
 import type {
   DownloadReportParams,
   UseReportState,

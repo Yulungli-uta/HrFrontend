@@ -1,19 +1,35 @@
+// src/lib/api/services/geo.ts
+
 /**
  * APIs de catálogos y datos de referencia
  */
 
-import { apiFetch, createCrudService } from './client';
-import type { ApiResponse } from './client';
+import { apiFetch } from '../core/fetch';
+import { createApiService as createCrudService } from '../core/pagination';
+import type { ApiResponse } from '../core/fetch';
 
 // =============================================================================
-// API de Tipos de Referencia
+// DTOs de Tipos de Referencia
 // =============================================================================
+
+export interface RefType {
+  id?: number;
+  typeID: number;
+  typeId?: number;
+  category?: string;
+  code?: string;
+  name: string;
+  description: string;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string | null;
+}
 
 export const TiposReferenciaAPI = {
   ...createCrudService<any, any>('/api/v1/rh/ref/types'),
-  
-  byCategory: (category: string): Promise<ApiResponse<any[]>> => 
-    apiFetch<any[]>(`/api/v1/rh/ref/types/category/${category}`)
+
+  byCategory: (category: string): Promise<ApiResponse<any[]>> =>
+    apiFetch<any[]>(`/api/v1/rh/ref/types/category/${category}`),
 };
 
 // =============================================================================
@@ -31,47 +47,39 @@ export const CargosEspecializadosAPI = {
     apiFetch<any>('/api/v1/rh/jobs/active'),
 
   searchJobs: (title: string): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`/api/v1/rh/jobs/search?title=${encodeURIComponent(title)}`)
+    apiFetch<any>(`/api/v1/rh/jobs/search?title=${encodeURIComponent(title)}`),
 };
 
 // =============================================================================
 // API de Instituciones
 // =============================================================================
 
-export const InstitucionesAPI = createCrudService<any, any>('/api/v1/rh/institutions');
-
-// =============================================================================
-// API de Niveles Educativos
-// =============================================================================
-
-export const NivelesEducativosAPI = createCrudService<any, any>('/api/v1/rh/education-levels');
-
-// =============================================================================
-// API de Capacitaciones
-// =============================================================================
-
-export const CapacitacionesAPI = createCrudService<any, any>('/api/v1/rh/trainings');
-
-// =============================================================================
-// API de Experiencias Laborales
-// =============================================================================
-
-export const ExperienciasLaboralesAPI = createCrudService<any, any>('/api/v1/rh/work-experiences');
+export const InstitucionesAPI = createCrudService<any, any>('/api/v1/rh/cv/institutions');
 
 // =============================================================================
 // API de Países
 // =============================================================================
 
-export const PaisesAPI = createCrudService<any, any>('/api/v1/rh/countries');
+export const PaisesAPI = createCrudService<any, any>('/api/v1/rh/geo/countries');
 
 // =============================================================================
 // API de Provincias
 // =============================================================================
 
-export const ProvinciasAPI = createCrudService<any, any>('/api/v1/rh/provinces');
+export const ProvinciasAPI = {
+  ...createCrudService<any, any>('/api/v1/rh/geo/provinces'),
+
+  getByCountry: (countryId: number): Promise<ApiResponse<any[]>> =>
+    apiFetch<any[]>(`/api/v1/rh/geo/provinces/country/${countryId}`),
+};
 
 // =============================================================================
 // API de Cantones
 // =============================================================================
 
-export const CantonesAPI = createCrudService<any, any>('/api/v1/rh/cantons');
+export const CantonesAPI = {
+  ...createCrudService<any, any>('/api/v1/rh/geo/cantons'),
+
+  getByProvince: (provinceId: number): Promise<ApiResponse<any[]>> =>
+    apiFetch<any[]>(`/api/v1/rh/geo/cantons/province/${provinceId}`),
+};

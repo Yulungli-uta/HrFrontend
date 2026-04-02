@@ -1,61 +1,74 @@
+// =============================================================================
+// Interfaz Person
+// =============================================================================
 
 export interface Person {
+  /** ID interno del registro (alias de personId en algunos contextos). */
   id: number;
+  /**
+   * ID real de la persona en el backend (PersonId en PeopleDto.cs).
+   * CORRECCIÓN: añadido para resolver TS2339 en People.tsx y ContractDialog.tsx.
+   */
+  personId: number;
   firstName: string;
   lastName: string;
+  /**
+   * Tipo de identificación (cédula, pasaporte, etc.).
+   * CORRECCIÓN: añadido para resolver TS2339 en PersonForm.tsx.
+   */
+  identType?: number;
   idCard: string;
   email: string;
-  phone?: string;
-  birthDate?: string;
-  // Códigos / ids que vienen desde backend
-  sex?: string | number;
-  gender?: string | number;
+  phone?: string | null;
+  birthDate?: string | null;
+  sex?: string | number | null;
+  gender?: string | number | null;
   maritalStatusTypeId?: number | null;
   ethnicityTypeId?: number | null;
   countryId?: number | string | null;
   provinceId?: number | string | null;
   cantonId?: number | string | null;
-
-  address?: string;
-  disability?: string;
+  address?: string | null;
+  disability?: string | null;
   isActive: boolean;
-
-  motherName?: string;
-  fatherName?: string;
+  motherName?: string | null;
+  fatherName?: string | null;
+  bloodTypeTypeId?: number | null;
+  specialNeedsTypeId?: number | null;
+  disabilityPercentage?: number | null;
+  conadisCard?: string | null;
+  yearsOfResidence?: number | null;
+  militaryCard?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
 }
+
+// =============================================================================
+// Interfaces de CV
+// =============================================================================
 
 export interface Publication {
   publicationId: number;
   personId: number;
-
   title: string;
-
   journalName?: string;
   journalNumber?: string;
   volume?: string;
   pages?: string;
   issn_Isbn?: string;
   location?: string;
-
   publicationTypeId?: number;
   journalTypeId?: number;
-
   isIndexed?: boolean;
-
   knowledgeAreaTypeId?: number;
   subAreaTypeId?: number;
   areaTypeId?: number;
-
   organizedBy?: string;
   eventName?: string;
   eventEdition?: string;
-
   publicationDate?: string;
   utAffiliation?: boolean;
-
   notes?: string;
-
-  // Si backend envía nombres
   publicationTypeName?: string;
   journalTypeName?: string;
 }
@@ -66,10 +79,10 @@ export interface FamilyMember {
   firstName: string;
   lastName: string;
   dependentId: string;
-  identificationTypeId: number;  // Ahora es number
+  identificationTypeId: number;
   birthDate: string;
   relationship: string;
-  disabilityTypeId?: number;  // Cambiado de disabilityType
+  disabilityTypeId?: number;
   disabilityPercentage?: number;
   hasDisability?: boolean;
   isStudying?: boolean;
@@ -86,8 +99,8 @@ export interface WorkExperience {
   exitReason?: string | null;
   position: string;
   institutionAddress?: string | null;
-  startDate: string;           // date
-  endDate?: string | null;     // date
+  startDate: string;
+  endDate?: string | null;
   experienceTypeId: number;
   isCurrent: boolean;
   createdAt?: string;
@@ -97,21 +110,16 @@ export interface WorkExperience {
 export interface Training {
   trainingId: number;
   personId: number;
-
   title: string;
   institution: string;
   location?: string;
-
-  // NUEVOS / AJUSTADOS
   knowledgeAreaTypeId?: number;
-  eventTypeId: number;        // ahora número, no string
+  eventTypeId: number;
   certifiedBy?: string;
   certificateTypeId?: number;
-
   startDate: string;
   endDate?: string;
   hours?: number;
-
   approvalTypeId?: number;
   createdAt?: string;
 }
@@ -124,31 +132,24 @@ export interface Book {
   isbn?: string;
   publicationDate?: string;
   peerReviewed?: boolean;
-
-  countryId?: string; // en el form lo manejamos como string, lo casteamos a number al enviar
+  countryId?: string;
   city?: string;
-
   knowledgeAreaTypeId?: number;
   subAreaTypeId?: number;
   areaTypeId?: number;
-
   volumeCount?: number;
-
   participationTypeId?: number;
   bookTypeId?: number;
-
   utAffiliation?: boolean;
   utaSponsorship?: boolean;
   createdAt?: string;
-
-  // Si usas estos campos en BooksTab:
   coAuthors?: string;
   category?: string;
   description?: string;
 }
 
 export interface EmergencyContact {
-  contactId: number;      // 0 si es nuevo
+  contactId: number;
   personId: number;
   identification: string;
   firstName: string;
@@ -157,61 +158,73 @@ export interface EmergencyContact {
   address: string | null;
   phone: string;
   mobile: string | null;
-  createdAt: string;      // ISO
+  createdAt: string;
 }
 
-// Helper functions para normalizar datos
-export const normalizePerson = (data: any): Person => ({
-  id: data.id || data.personId || 0,
-  personId: data.personId || data.id || 0,
-  firstName: data.firstName || "",
-  lastName: data.lastName || "",
-  idCard: data.idCard || "",
-  email: data.email || "",
-  phone: data.phone,
-  birthDate: data.birthDate,
-  sex: data.sex,
-  gender: data.gender,
-  maritalStatusTypeId: data.maritalStatusTypeId ?? data.maritalStatusTypeID ?? null,
-  ethnicityTypeId: data.ethnicityTypeId ?? data.ethnicityTypeID ?? null,
-  countryId: data.countryId ?? null,
-  provinceId: data.provinceId ?? null,
-  cantonId: data.cantonId ?? null,
-  address: data.address,
-  disability: data.disability,
-  isActive: data.isActive ?? true,
-  motherName: data.motherName,
-  fatherName: data.fatherName,
+// =============================================================================
+// Helpers de normalización
+// =============================================================================
+
+/**
+ * Normaliza datos crudos del backend a la interfaz `Person`.
+ * Maneja tanto `personId` (backend) como `id` (Drizzle) como clave primaria.
+ */
+export const normalizePerson = (data: Record<string, unknown>): Person => ({
+  id: (data.id as number) || (data.personId as number) || 0,
+  personId: (data.personId as number) || (data.id as number) || 0,
+  firstName: (data.firstName as string) || '',
+  lastName: (data.lastName as string) || '',
+  identType: data.identType as number | undefined,
+  idCard: (data.idCard as string) || '',
+  email: (data.email as string) || '',
+  phone: data.phone as string | null,
+  birthDate: data.birthDate as string | null,
+  sex: data.sex as string | number | null,
+  gender: data.gender as string | number | null,
+  maritalStatusTypeId:
+    (data.maritalStatusTypeId as number) ??
+    (data.maritalStatusTypeID as number) ??
+    null,
+  ethnicityTypeId:
+    (data.ethnicityTypeId as number) ?? (data.ethnicityTypeID as number) ?? null,
+  countryId: (data.countryId as number | string) ?? null,
+  provinceId: (data.provinceId as number | string) ?? null,
+  cantonId: (data.cantonId as number | string) ?? null,
+  address: data.address as string | null,
+  disability: data.disability as string | null,
+  isActive: (data.isActive as boolean) ?? true,
+  motherName: data.motherName as string | null,
+  fatherName: data.fatherName as string | null,
+  bloodTypeTypeId: data.bloodTypeTypeId as number | null,
+  specialNeedsTypeId: data.specialNeedsTypeId as number | null,
+  disabilityPercentage: data.disabilityPercentage as number | null,
+  conadisCard: data.conadisCard as string | null,
+  yearsOfResidence: data.yearsOfResidence as number | null,
+  militaryCard: data.militaryCard as string | null,
+  createdAt: data.createdAt as string | null,
+  updatedAt: data.updatedAt as string | null,
 });
 
-export const normalizePublication = (data: any): Publication => ({
-  publicationId: data.publicationId || data.id || 0,
-  personId: data.personId || 0,
-
-  title: data.title || '',
-
-  journalName: data.journalName,
-  journalNumber: data.journalNumber,
-  volume: data.volume,
-  pages: data.pages,
-  issn_Isbn: data.issn_Isbn,
-  location: data.location,
-
-  publicationTypeId: data.publicationTypeId,
-  journalTypeId: data.journalTypeId,
-
-  isIndexed: data.isIndexed,
-
-  knowledgeAreaTypeId: data.knowledgeAreaTypeId,
-  subAreaTypeId: data.subAreaTypeId,
-  areaTypeId: data.areaTypeId,
-
-  organizedBy: data.organizedBy,
-  eventName: data.eventName,
-  eventEdition: data.eventEdition,
-
-  publicationDate: data.publicationDate,
-  utAffiliation: data.utAffiliation,
-
-  notes: data.notes,
+export const normalizePublication = (data: Record<string, unknown>): Publication => ({
+  publicationId: (data.publicationId as number) || (data.id as number) || 0,
+  personId: (data.personId as number) || 0,
+  title: (data.title as string) || '',
+  journalName: data.journalName as string | undefined,
+  journalNumber: data.journalNumber as string | undefined,
+  volume: data.volume as string | undefined,
+  pages: data.pages as string | undefined,
+  issn_Isbn: data.issn_Isbn as string | undefined,
+  location: data.location as string | undefined,
+  publicationTypeId: data.publicationTypeId as number | undefined,
+  journalTypeId: data.journalTypeId as number | undefined,
+  isIndexed: data.isIndexed as boolean | undefined,
+  knowledgeAreaTypeId: data.knowledgeAreaTypeId as number | undefined,
+  subAreaTypeId: data.subAreaTypeId as number | undefined,
+  areaTypeId: data.areaTypeId as number | undefined,
+  organizedBy: data.organizedBy as string | undefined,
+  eventName: data.eventName as string | undefined,
+  eventEdition: data.eventEdition as string | undefined,
+  publicationDate: data.publicationDate as string | undefined,
+  utAffiliation: data.utAffiliation as boolean | undefined,
+  notes: data.notes as string | undefined,
 });

@@ -208,7 +208,7 @@ export default function BookForm({
   // useForm
   // =============================
   const form = useForm<BookFormData>({
-    resolver: zodResolver(bookFormSchema),
+    resolver: zodResolver(bookFormSchema) as any,
     defaultValues: {
       title: book?.title ?? "",
       publisher: book?.publisher ?? "",
@@ -365,7 +365,7 @@ export default function BookForm({
   return (
     <Form {...form}>
       <form
-        onSubmit={form.handleSubmit(handleSubmit)}
+        onSubmit={form.handleSubmit(handleSubmit as any)}
         className="space-y-6"
         data-testid="book-form"
       >
@@ -378,7 +378,7 @@ export default function BookForm({
           </h3>
 
           <FormField
-            control={form.control}
+            control={form.control as any}
             name="title"
             render={({ field }) => (
               <FormItem>
@@ -393,7 +393,7 @@ export default function BookForm({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="publisher"
               render={({ field }) => (
                 <FormItem>
@@ -407,7 +407,7 @@ export default function BookForm({
             />
 
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="isbn"
               render={({ field }) => (
                 <FormItem>
@@ -421,7 +421,7 @@ export default function BookForm({
             />
 
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="volumeCount"
               render={({ field }) => (
                 <FormItem>
@@ -441,7 +441,7 @@ export default function BookForm({
             />
 
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="publicationDate"
               render={({ field }) => (
                 <FormItem>
@@ -470,7 +470,7 @@ export default function BookForm({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="countryId"
               render={({ field }) => (
                 <FormItem>
@@ -516,7 +516,7 @@ export default function BookForm({
             />
 
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="city"
               render={({ field }) => (
                 <FormItem>
@@ -542,7 +542,7 @@ export default function BookForm({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Nivel 1 */}
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="knowledgeAreaTypeId"
               render={({ field }) => (
                 <FormItem>
@@ -581,7 +581,7 @@ export default function BookForm({
 
             {/* Nivel 2 */}
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="subAreaTypeId"
               render={({ field }) => (
                 <FormItem>
@@ -619,7 +619,7 @@ export default function BookForm({
 
             {/* Nivel 3 */}
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="areaTypeId"
               render={({ field }) => (
                 <FormItem>
@@ -665,7 +665,7 @@ export default function BookForm({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Tipo participación */}
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="participationTypeId"
               render={({ field }) => (
                 <FormItem>
@@ -716,7 +716,7 @@ export default function BookForm({
 
             {/* Tipo libro */}
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="bookTypeId"
               render={({ field }) => (
                 <FormItem>
@@ -763,7 +763,7 @@ export default function BookForm({
 
             {/* peerReviewed → Sí / No */}
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="peerReviewed"
               render={({ field }) => (
                 <FormItem>
@@ -792,7 +792,7 @@ export default function BookForm({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* utAffiliation */}
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="utAffiliation"
               render={({ field }) => (
                 <FormItem>
@@ -819,7 +819,7 @@ export default function BookForm({
 
             {/* utaSponsorship */}
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="utaSponsorship"
               render={({ field }) => (
                 <FormItem>

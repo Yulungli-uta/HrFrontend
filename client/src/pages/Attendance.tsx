@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Timer, Clock, MapPin, Filter, AlertCircle, CheckCircle, Calendar, Search, RefreshCw, Info } from "lucide-react";
-import type { AttendancePunch, InsertAttendancePunch } from "@/shared/schema";
+import type { AttendancePunch } from "@/shared/schema";
 import { MarcacionesAPI, MarcacionesEspecializadasAPI, handleApiError, TimeAPI } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { PunchTable } from "@/components/forms/PunchTable";
@@ -54,7 +54,11 @@ const buildLocalDateTime = (date: Date) => {
 };
 
 const sortPunchesDesc = (rows: AttendancePunch[]) =>
-  [...rows].sort((a, b) => +new Date(b.punchTime) - +new Date(a.punchTime));
+  [...rows].sort(
+    (a, b) =>
+      +(b.punchTime ? new Date(b.punchTime) : new Date(0)) -
+      +(a.punchTime ? new Date(a.punchTime) : new Date(0))
+  );
 
 // =========================
 // Modal de consulta por rango
@@ -166,8 +170,8 @@ function RangeQueryModal({ employeeId }: { employeeId: number }) {
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {queryResults.map((punch) => (
-                    <tr key={punch.punchId ?? `${punch.punchTime}-${punch.deviceId}`}>
-                      <td className="px-4 py-3">{format(new Date(punch.punchTime), "dd/MM/yyyy HH:mm:ss")}</td>
+                    <tr key={punch.id ?? `${punch.punchTime ?? "no-time"}-${punch.deviceId ?? "no-device"}`}>
+                      <td className="px-4 py-3">{format(punch.punchTime ? new Date(punch.punchTime) : new Date(0), "dd/MM/yyyy HH:mm:ss")}</td>
                       <td className="px-4 py-3">
                         <Badge className={`${PUNCH_TYPES[punch.punchType as PunchKind]?.className ?? "bg-gray-100 text-gray-800"} border`}>
                           {PUNCH_TYPES[punch.punchType as PunchKind]?.label ?? punch.punchType}
@@ -182,9 +186,9 @@ function RangeQueryModal({ employeeId }: { employeeId: number }) {
 
             <div className="md:hidden space-y-3">
               {queryResults.map((punch) => (
-                <div key={punch.punchId ?? `${punch.punchTime}-${punch.deviceId}`} className="border rounded-lg p-3 bg-white">
+                <div key={punch.id ?? `${punch.punchTime ?? "no-time"}-${punch.deviceId ?? "no-device"}`} className="border rounded-lg p-3 bg-white">
                   <div className="flex items-center justify-between gap-2">
-                    <div className="text-sm font-medium">{format(new Date(punch.punchTime), "dd/MM/yyyy HH:mm:ss")}</div>
+                    <div className="text-sm font-medium">{format(punch.punchTime ? new Date(punch.punchTime) : new Date(0), "dd/MM/yyyy HH:mm:ss")}</div>
                     <Badge className={`${PUNCH_TYPES[punch.punchType as PunchKind]?.className ?? "bg-gray-100 text-gray-800"} border`}>
                       {PUNCH_TYPES[punch.punchType as PunchKind]?.label ?? punch.punchType}
                     </Badge>
@@ -351,7 +355,7 @@ export default function AttendancePage() {
 
   const timeSinceLastPunch = useMemo(() => {
     if (!lastPunchToday) return 0;
-    return Math.floor((currentTime.getTime() - new Date(lastPunchToday.punchTime).getTime()) / 60000);
+    return Math.floor((currentTime.getTime() - new Date(lastPunchToday.punchTime ?? 0).getTime()) / 60000);
   }, [currentTime, lastPunchToday]);
 
   const nextPunchType = useMemo<PunchKind>(() => {
@@ -406,16 +410,16 @@ export default function AttendancePage() {
 
       const serverTime = new Date(timeResponse.data.dateTime);
 
-      const punchData: InsertAttendancePunch = {
+      const punchData = {
         employeeId: employeeId as number,
         punchTime: buildLocalDateTime(serverTime),
         punchType,
         deviceId: getDeviceType(),
         latitude: coords.latitude,
         longitude: coords.longitude,
-      } as InsertAttendancePunch;
+      };
 
-      const response = await MarcacionesAPI.create(punchData);
+      const response = await MarcacionesAPI.create(punchData as any);
       if (response.status === "error") throw response.error;
       return response.data;
     },
@@ -428,9 +432,9 @@ export default function AttendancePage() {
       const prev = queryClient.getQueryData<AttendancePunch[]>(queryKey) || [];
 
       const optimistic: AttendancePunch = {
-        punchId: `temp-${Date.now()}` as any,
+        id: Date.now(),
         employeeId: employeeId as number,
-        punchTime: buildLocalDateTime(new Date(Date.now() + serverDriftMs)),
+        punchTime: new Date(Date.now() + serverDriftMs),
         punchType: punchType as any,
         deviceId: getDeviceType(),
         latitude: coords.latitude,
@@ -727,7 +731,7 @@ export default function AttendancePage() {
 
                 {lastPunchToday && (
                   <div className="mt-2 p-2 bg-blue-50 rounded-md text-xs text-blue-700">
-                    Última: {format(new Date(lastPunchToday.punchTime), "HH:mm:ss")} (
+                    Última: {format(new Date(lastPunchToday.punchTime ?? 0), "HH:mm:ss")} (
                     {PUNCH_TYPES[lastPunchToday.punchType as PunchKind]?.label ?? lastPunchToday.punchType}) · Hace{" "}
                     {timeSinceLastPunch} min
                   </div>
@@ -792,7 +796,12 @@ export default function AttendancePage() {
               <p className="text-gray-600">Use el botón de arriba para registrar su marcación.</p>
             </div>
           ) : (
-            <PunchTable punches={filteredPunches} />
+            <PunchTable
+              punches={filteredPunches.map((p) => ({
+                ...p,
+                punchId: p.id ?? `${p.punchTime ?? "no-time"}-${p.deviceId ?? "no-device"}`,
+              })) as any}
+            />
           )}
         </CardContent>
       </Card>

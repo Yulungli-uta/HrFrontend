@@ -77,9 +77,9 @@ async function authFetch<T = any>(
       error: {
         code: 0,
         message:
-          err.name === "AbortError"
+          (err as any).name === "AbortError"
             ? "Request timed out"
-            : `Network error: ${err.message || "Unknown error"}`,
+            : `Network error: ${(err as any).message || "Unknown error"}`,
       },
     };
   }

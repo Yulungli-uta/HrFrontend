@@ -150,7 +150,7 @@ export default function ReferenceTypesPage() {
         setReferenceTypes(normalized);
 
         // Extraer categorías únicas (de datos normalizados)
-        const uniqueCategories = [...new Set(normalized.map(t => t.Category).filter(Boolean))];
+        const uniqueCategories = Array.from(new Set(normalized.map((t: any) => t.Category).filter(Boolean)));
         setCategories(uniqueCategories.sort());
       } else {
         console.error('Error loading reference types:', response.error);
@@ -578,7 +578,7 @@ export default function ReferenceTypesPage() {
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <Label>Tipos a crear ({batchTypes.filter(t => t.Name.trim()).length})</Label>
-                    <Button type="button" variant="outline" size="sm" onClick={addBatchRow}>
+                    <Button type="button" variant="outline" /* size="sm" */ onClick={addBatchRow}>
                       <Plus className="h-4 w-4 mr-1" />
                       Agregar Fila
                     </Button>
@@ -604,14 +604,14 @@ export default function ReferenceTypesPage() {
                             <Switch
                               checked={batchType.IsActive}
                               onCheckedChange={(checked) => updateBatchRow(index, 'IsActive', checked)}
-                              size="sm"
+                              /* size="sm" */
                             />
                           </div>
                           {batchTypes.length > 1 && (
                             <Button
                               type="button"
                               variant="ghost"
-                              size="sm"
+                              /* size="sm" */
                               onClick={() => removeBatchRow(index)}
                             >
                               <X className="h-4 w-4" />
@@ -849,7 +849,7 @@ export default function ReferenceTypesPage() {
                               <div className="flex gap-1">
                                 <Button
                                   variant="outline"
-                                  size="sm"
+                                  /* size="sm" */
                                   onClick={() => handleEditType(type)}
                                   className="h-8 w-8 p-0"
                                 >
@@ -857,7 +857,7 @@ export default function ReferenceTypesPage() {
                                 </Button>
                                 <Button
                                   variant="outline"
-                                  size="sm"
+                                  /* size="sm" */
                                   onClick={() => handleDeleteClick(type)}
                                   className="h-8 w-8 p-0"
                                 >
@@ -919,7 +919,7 @@ export default function ReferenceTypesPage() {
                             </Badge>
                             <Button
                               variant="ghost"
-                              size="sm"
+                              /* size="sm" */
                               onClick={() => handleEditType(type)}
                               className="h-6 w-6 p-0"
                             >

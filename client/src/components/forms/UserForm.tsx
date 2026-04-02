@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCrudMutation } from "@/hooks/useCrudMutation";
-import { AuthUsersAPI } from "@/lib/api/auth";
+import { AuthUsersAPI } from "@/lib/api";
 import type { User, CreateUserDto, UpdateUserDto } from "@/types/auth";
 import type { BaseCrudFormProps } from "@/types/components";
 
@@ -49,7 +49,7 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
   const { create, update, isLoading } = useCrudMutation<User, CreateUserDto, UpdateUserDto>({
     queryKey: ['auth-users'],
     createFn: AuthUsersAPI.create,
-    updateFn: AuthUsersAPI.update,
+    updateFn: AuthUsersAPI.update as any,
     onSuccess,
     createSuccessMessage: 'Usuario creado exitosamente',
     updateSuccessMessage: 'Usuario actualizado exitosamente',
@@ -186,8 +186,8 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
           {isLoading
             ? "Guardando..."
             : isEditing
-            ? "Actualizar Usuario"
-            : "Crear Usuario"}
+              ? "Actualizar Usuario"
+              : "Crear Usuario"}
         </Button>
       </div>
     </form>

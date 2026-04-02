@@ -220,19 +220,19 @@ export function usePersonMutations(personId: number) {
   return {
     publications: {
       create: createMutation({
-        queryKey: ["publications", personId],
+        queryKey: ["publications", String(personId)],
         apiCall: PublicacionesAPI.create,
         successMessage: "La publicación se ha creado correctamente",
         errorMessage: "No se pudo crear la publicación",
       }),
       update: updateMutation({
-        queryKey: ["publications", personId],
+        queryKey: ["publications", String(personId)],
         apiCall: PublicacionesAPI.update,
         successMessage: "La publicación se ha actualizado correctamente",
         errorMessage: "No se pudo actualizar la publicación",
       }),
       delete: deleteMutation({
-        queryKey: ["publications", personId],
+        queryKey: ["publications", String(personId)],
         apiCall: PublicacionesAPI.remove,
         successMessage: "La publicación se ha eliminado correctamente",
         errorMessage: "No se pudo eliminar la publicación",
@@ -240,19 +240,19 @@ export function usePersonMutations(personId: number) {
     },
     familyMembers: {
       create: createMutation({
-        queryKey: ["familyMembers", personId],
+        queryKey: ["familyMembers", String(personId)],
         apiCall: CargasFamiliaresAPI.create,
         successMessage: "La carga familiar se ha creado correctamente",
         errorMessage: "No se pudo crear la carga familiar",
       }),
       update: updateMutation({
-        queryKey: ["familyMembers", personId],
+        queryKey: ["familyMembers", String(personId)],
         apiCall: CargasFamiliaresAPI.update,
         successMessage: "La carga familiar se ha actualizado correctamente",
         errorMessage: "No se pudo actualizar la carga familiar",
       }),
       delete: deleteMutation({
-        queryKey: ["familyMembers", personId],
+        queryKey: ["familyMembers", String(personId)],
         apiCall: CargasFamiliaresAPI.remove,
         successMessage: "La carga familiar se ha eliminado correctamente",
         errorMessage: "No se pudo eliminar la carga familiar",
@@ -260,19 +260,19 @@ export function usePersonMutations(personId: number) {
     },
     workExperiences: {
       create: createMutation({
-        queryKey: ["workExperiences", personId],
+        queryKey: ["workExperiences", String(personId)],
         apiCall: ExperienciasLaboralesAPI.create,
         successMessage: "La experiencia laboral se ha creado correctamente",
         errorMessage: "No se pudo crear la experiencia laboral",
       }),
       update: updateMutation({
-        queryKey: ["workExperiences", personId],
+        queryKey: ["workExperiences", String(personId)],
         apiCall: ExperienciasLaboralesAPI.update,
         successMessage: "La experiencia laboral se ha actualizado correctamente",
         errorMessage: "No se pudo actualizar la experiencia laboral",
       }),
       delete: deleteMutation({
-        queryKey: ["workExperiences", personId],
+        queryKey: ["workExperiences", String(personId)],
         apiCall: ExperienciasLaboralesAPI.remove,
         successMessage: "La experiencia laboral se ha eliminado correctamente",
         errorMessage: "No se pudo eliminar la experiencia laboral",
@@ -280,19 +280,19 @@ export function usePersonMutations(personId: number) {
     },
     trainings: {
       create: createMutation({
-        queryKey: ["trainings", personId],
+        queryKey: ["trainings", String(personId)],
         apiCall: CapacitacionesAPI.create,
         successMessage: "La capacitación se ha creado correctamente",
         errorMessage: "No se pudo crear la capacitación",
       }),
       update: updateMutation({
-        queryKey: ["trainings", personId],
+        queryKey: ["trainings", String(personId)],
         apiCall: CapacitacionesAPI.update,
         successMessage: "La capacitación se ha actualizado correctamente",
         errorMessage: "No se pudo actualizar la capacitación",
       }),
       delete: deleteMutation({
-        queryKey: ["trainings", personId],
+        queryKey: ["trainings", String(personId)],
         apiCall: CapacitacionesAPI.remove,
         successMessage: "La capacitación se ha eliminado correctamente",
         errorMessage: "No se pudo eliminar la capacitación",
@@ -300,19 +300,19 @@ export function usePersonMutations(personId: number) {
     },
     books: {
       create: createMutation({
-        queryKey: ["books", personId],
+        queryKey: ["books", String(personId)],
         apiCall: LibrosAPI.create,
         successMessage: "El libro se ha creado correctamente",
         errorMessage: "No se pudo crear el libro",
       }),
       update: updateMutation({
-        queryKey: ["books", personId],
+        queryKey: ["books", String(personId)],
         apiCall: LibrosAPI.update,
         successMessage: "El libro se ha actualizado correctamente",
         errorMessage: "No se pudo actualizar el libro",
       }),
       delete: deleteMutation({
-        queryKey: ["books", personId],
+        queryKey: ["books", String(personId)],
         apiCall: LibrosAPI.remove,
         successMessage: "El libro se ha eliminado correctamente",
         errorMessage: "No se pudo eliminar el libro",
@@ -320,19 +320,19 @@ export function usePersonMutations(personId: number) {
     },
     emergencyContacts: {
       create: createMutation({
-        queryKey: ["emergencyContacts", personId],
+        queryKey: ["emergencyContacts", String(personId)],
         apiCall: ContactosEmergenciaAPI.create,
         successMessage: "El contacto de emergencia se ha creado correctamente",
         errorMessage: "No se pudo crear el contacto de emergencia",
       }),
       update: updateMutation({
-        queryKey: ["emergencyContacts", personId],
+        queryKey: ["emergencyContacts", String(personId)],
         apiCall: ContactosEmergenciaAPI.update,
         successMessage: "El contacto de emergencia se ha actualizado correctamente",
         errorMessage: "No se pudo actualizar el contacto de emergencia",
       }),
       delete: deleteMutation({
-        queryKey: ["emergencyContacts", personId],
+        queryKey: ["emergencyContacts", String(personId)],
         apiCall: ContactosEmergenciaAPI.remove,
         successMessage: "El contacto de emergencia se ha eliminado correctamente",
         errorMessage: "No se pudo eliminar el contacto de emergencia",

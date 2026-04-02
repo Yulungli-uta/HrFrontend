@@ -68,7 +68,7 @@ export function usePersonData(personId: number) {
     isLoading: isLoadingPerson,
     error: personError
   } = useQuery<ApiResponse<Person>>({
-    queryKey: ['person', personId],
+    queryKey: ['person', String(personId)],
     queryFn: () => {
       //console\.log("[usePersonData] fetching person", { personId });
       return PersonasAPI.get(personId);
@@ -95,7 +95,7 @@ export function usePersonData(personId: number) {
   const relatedQueries = useQueries({
     queries: [
       {
-        queryKey: ['publications', personId],
+        queryKey: ['publications', String(personId)],
         queryFn: () => {
           //console\.log("[usePersonData] fetching publications", { personId });
           return PublicacionesAPI.getByPersonId(personId);
@@ -120,7 +120,7 @@ export function usePersonData(personId: number) {
         },
       },
       {
-        queryKey: ['familyMembers', personId],
+        queryKey: ['familyMembers', String(personId)],
         queryFn: () => {
           //console\.log("[usePersonData] fetching familyMembers", { personId });
           return CargasFamiliaresAPI.getByPersonId(personId);
@@ -143,7 +143,7 @@ export function usePersonData(personId: number) {
         },
       },
       {
-        queryKey: ['workExperiences', personId],
+        queryKey: ['workExperiences', String(personId)],
         queryFn: () => {
           //console\.log("[usePersonData] fetching workExperiences", { personId });
           return ExperienciasLaboralesAPI.getByPersonId(personId);
@@ -166,7 +166,7 @@ export function usePersonData(personId: number) {
         },
       },
       {
-        queryKey: ['trainings', personId],
+        queryKey: ['trainings', String(personId)],
         queryFn: () => {
           //console\.log("[usePersonData] fetching trainings", { personId });
           return CapacitacionesAPI.getByPersonId(personId);
@@ -189,7 +189,7 @@ export function usePersonData(personId: number) {
         },
       },
       {
-        queryKey: ['books', personId],
+        queryKey: ['books', String(personId)],
         queryFn: () => {
           //console\.log("[usePersonData] fetching books", { personId });
           return LibrosAPI.getByPersonId(personId);
@@ -212,7 +212,7 @@ export function usePersonData(personId: number) {
         },
       },
       {
-        queryKey: ['emergencyContacts', personId],
+        queryKey: ['emergencyContacts', String(personId)],
         queryFn: () => {
           //console\.log("[usePersonData] fetching emergencyContacts", { personId });
           return ContactosEmergenciaAPI.getByPersonId(personId);
@@ -241,7 +241,7 @@ export function usePersonData(personId: number) {
   const hasError = personError || relatedQueries.some(q => q.error);
 
   // Datos normalizados
-  const person = personResponse?.status === 'success' ? personResponse.data : undefined;
+  const person = (personResponse as any)?.status === 'success' ? (personResponse as any).data : undefined;
 
   const labels = [
     "publications",
@@ -292,7 +292,7 @@ export function usePersonData(personId: number) {
   const refetchAll = () => {
     //console\.log("[usePersonData] refetchAll()", { personId });
 
-    queryClient.invalidateQueries({ queryKey: ['person', personId] });
+    queryClient.invalidateQueries({ queryKey: ['person', String(personId)] });
     relatedQueries.forEach((q, index) => {
       // console.log("[usePersonData] refetch related query", {
       //   index,
@@ -515,19 +515,19 @@ export function usePersonMutations(personId: number) {
   return {
     publications: {
       create: createMutation({
-        queryKey: ['publications', personId],
+        queryKey: ['publications', String(personId)],
         apiCall: PublicacionesAPI.create,
         successMessage: "La publicación se ha creado correctamente",
         errorMessage: "No se pudo crear la publicación"
       }),
       update: updateMutation({
-        queryKey: ['publications', personId],
+        queryKey: ['publications', String(personId)],
         apiCall: PublicacionesAPI.update,
         successMessage: "La publicación se ha actualizado correctamente",
         errorMessage: "No se pudo actualizar la publicación"
       }),
       delete: deleteMutation({
-        queryKey: ['publications', personId],
+        queryKey: ['publications', String(personId)],
         apiCall: PublicacionesAPI.remove,
         successMessage: "La publicación se ha eliminado correctamente",
         errorMessage: "No se pudo eliminar la publicación"
@@ -535,19 +535,19 @@ export function usePersonMutations(personId: number) {
     },
     familyMembers: {
       create: createMutation({
-        queryKey: ['familyMembers', personId],
+        queryKey: ['familyMembers', String(personId)],
         apiCall: CargasFamiliaresAPI.create,
         successMessage: "La carga familiar se ha creado correctamente",
         errorMessage: "No se pudo crear la carga familiar"
       }),
       update: updateMutation({
-        queryKey: ['familyMembers', personId],
+        queryKey: ['familyMembers', String(personId)],
         apiCall: CargasFamiliaresAPI.update,
         successMessage: "La carga familiar se ha actualizado correctamente",
         errorMessage: "No se pudo actualizar la carga familiar"
       }),
       delete: deleteMutation({
-        queryKey: ['familyMembers', personId],
+        queryKey: ['familyMembers', String(personId)],
         apiCall: CargasFamiliaresAPI.remove,
         successMessage: "La carga familiar se ha eliminado correctamente",
         errorMessage: "No se pudo eliminar la carga familiar"
@@ -555,21 +555,21 @@ export function usePersonMutations(personId: number) {
     },
     workExperiences: {
       create: createMutation({
-        queryKey: ['workExperiences', personId],
+        queryKey: ['workExperiences', String(personId)],
         apiCall: ExperienciasLaboralesAPI.create,
         successMessage: "La experiencia laboral se ha creado correctamente",
         errorMessage: "No se pudo crear la experiencia laboral",
         transformData: (data: any) => transformWorkExperienceFormData(data, personId, false)
       }),
       update: updateMutation({
-        queryKey: ['workExperiences', personId],
+        queryKey: ['workExperiences', String(personId)],
         apiCall: ExperienciasLaboralesAPI.update,
         successMessage: "La experiencia laboral se ha actualizado correctamente",
         errorMessage: "No se pudo actualizar la experiencia laboral",
         transformData: (data: any) => transformWorkExperienceFormData(data, personId, true)
       }),
       delete: deleteMutation({
-        queryKey: ['workExperiences', personId],
+        queryKey: ['workExperiences', String(personId)],
         apiCall: ExperienciasLaboralesAPI.remove,
         successMessage: "La experiencia laboral se ha eliminado correctamente",
         errorMessage: "No se pudo eliminar la experiencia laboral"
@@ -577,19 +577,19 @@ export function usePersonMutations(personId: number) {
     },
     trainings: {
       create: createMutation({
-        queryKey: ['trainings', personId],
+        queryKey: ['trainings', String(personId)],
         apiCall: CapacitacionesAPI.create,
         successMessage: "La capacitación se ha creado correctamente",
         errorMessage: "No se pudo crear la capacitación"
       }),
       update: updateMutation({
-        queryKey: ['trainings', personId],
+        queryKey: ['trainings', String(personId)],
         apiCall: CapacitacionesAPI.update,
         successMessage: "La capacitación se ha actualizado correctamente",
         errorMessage: "No se pudo actualizar la capacitación"
       }),
       delete: deleteMutation({
-        queryKey: ['trainings', personId],
+        queryKey: ['trainings', String(personId)],
         apiCall: CapacitacionesAPI.remove,
         successMessage: "La capacitación se ha eliminado correctamente",
         errorMessage: "No se pudo eliminar la capacitación"
@@ -597,19 +597,19 @@ export function usePersonMutations(personId: number) {
     },
     books: {
       create: createMutation({
-        queryKey: ['books', personId],
+        queryKey: ['books', String(personId)],
         apiCall: LibrosAPI.create,
         successMessage: "El libro se ha agregado correctamente",
         errorMessage: "No se pudo agregar el libro"
       }),
       update: updateMutation({
-        queryKey: ['books', personId],
+        queryKey: ['books', String(personId)],
         apiCall: LibrosAPI.update,
         successMessage: "El libro se ha actualizado correctamente",
         errorMessage: "No se pudo actualizar el libro"
       }),
       delete: deleteMutation({
-        queryKey: ['books', personId],
+        queryKey: ['books', String(personId)],
         apiCall: LibrosAPI.remove,
         successMessage: "El libro se ha eliminado correctamente",
         errorMessage: "No se pudo eliminar el libro"
@@ -617,19 +617,19 @@ export function usePersonMutations(personId: number) {
     },
     emergencyContacts: {
       create: createMutation({
-        queryKey: ['emergencyContacts', personId],
+        queryKey: ['emergencyContacts', String(personId)],
         apiCall: ContactosEmergenciaAPI.create,
         successMessage: "El contacto de emergencia se ha agregado correctamente",
         errorMessage: "No se pudo agregar el contacto de emergencia"
       }),
       update: updateMutation({
-        queryKey: ['emergencyContacts', personId],
+        queryKey: ['emergencyContacts', String(personId)],
         apiCall: ContactosEmergenciaAPI.update,
         successMessage: "El contacto de emergencia se ha actualizado correctamente",
         errorMessage: "No se pudo actualizar el contacto de emergencia"
       }),
       delete: deleteMutation({
-        queryKey: ['emergencyContacts', personId],
+        queryKey: ['emergencyContacts', String(personId)],
         apiCall: ContactosEmergenciaAPI.remove,
         successMessage: "El contacto de emergencia se ha eliminado correctamente",
         errorMessage: "No se pudo eliminar el contacto de emergencia"

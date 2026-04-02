@@ -381,7 +381,7 @@ export function ContractDialog(props: {
   const selectedType = useMemo(
     () =>
       types.find(
-        (t) => extractNumericId(getEntityId(t) ?? t) === form.contractTypeID
+        (t: any) => extractNumericId(getEntityId(t) ?? t) === form.contractTypeID
       ),
     [types, form.contractTypeID]
   );
@@ -397,8 +397,8 @@ export function ContractDialog(props: {
   const selectedJob = useMemo(
     () =>
       jobs.find(
-        (j) =>
-          extractNumericId(getEntityId(j) ?? j) ===
+        (j: any) =>
+              extractNumericId(getEntityId(j) ?? j) ===
           (form.jobID ?? undefined)
       ),
     [jobs, form.jobID]
@@ -407,8 +407,8 @@ export function ContractDialog(props: {
   const selectedCert = useMemo(
     () =>
       certs.find(
-        (c) =>
-          extractNumericId(getEntityId(c) ?? c) ===
+        (c: any) =>
+              extractNumericId(getEntityId(c) ?? c) ===
           (form.certificationID ?? undefined)
       ),
     [certs, form.certificationID]
@@ -435,7 +435,7 @@ export function ContractDialog(props: {
   }, [pagedPeople, form.personID]);
 
   const statusPreview = useMemo(() => {
-    const s = wf.statuses.find((x) => x.typeID === form.status);
+    const s = wf.statuses.find((x: any) => x.typeID === form.status);
     return s ? s.name : `Estado ${form.status}`;
   }, [wf.statuses, form.status]);
 
@@ -444,8 +444,8 @@ export function ContractDialog(props: {
     onSuccess: async (res) => {
       await qc.invalidateQueries({ queryKey: ["contracts-rh"] });
 
-      if (res.status === "success" && res.data?.contractID) {
-        const newId = res.data.contractID;
+      if ((res as any).status === "success" && (res as any).data?.contractID) {
+        const newId = (res as any).data.contractID;
 
         const selCount = docManagerRef.current?.getSelectedCount() ?? 0;
         if (selCount > 0) {
@@ -459,7 +459,7 @@ export function ContractDialog(props: {
         // setMode("view");
         qc.setQueryData(["contracts-rh"], (old: any) => {
           if (!old || old.status !== "success") return old;
-          return { ...old, data: [...old.data, res.data] };
+          return { ...old, data: [...old.data, (res as any).data] };
         });
       }
     },
@@ -860,7 +860,7 @@ export function ContractDialog(props: {
                     </CardHeader>
                     <CardContent>
                       <div className="flex flex-wrap gap-2">
-                        {wf.allowedNextStatuses.map((s) => (
+                        {wf.allowedNextStatuses.map((s: any) => (
                           <Button
                             key={`next-${s.typeID}`}
                             variant="outline"
@@ -936,7 +936,7 @@ export function ContractDialog(props: {
                               />
                             </SelectTrigger>
                             <SelectContent>
-                              {wf.statuses.map((s) => (
+                              {wf.statuses.map((s: any) => (
                                 <SelectItem
                                   key={s.typeID}
                                   value={String(s.typeID)}
@@ -976,7 +976,7 @@ export function ContractDialog(props: {
                               />
                             </SelectTrigger>
                             <SelectContent>
-                              {certs.map((c) => {
+                              {certs.map((c: any) => {
                                 const id = extractNumericId(
                                   getEntityId(c) ?? c
                                 );
@@ -1366,7 +1366,7 @@ export function ContractDialog(props: {
                           />
                         </SelectTrigger>
                         <SelectContent>
-                          {wf.statuses.map((s) => (
+                          {wf.statuses.map((s: any) => (
                             <SelectItem
                               key={s.typeID}
                               value={String(s.typeID)}

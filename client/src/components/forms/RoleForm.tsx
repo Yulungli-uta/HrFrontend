@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useCrudMutation } from "@/hooks/useCrudMutation";
-import { RolesAPI } from "@/lib/api/auth";
+import { RolesAPI } from "@/lib/api";
 import type { Role, CreateRoleDto, UpdateRoleDto } from "@/types/auth";
 import type { BaseCrudFormProps } from "@/types/components";
 
@@ -179,8 +179,8 @@ export default function RoleForm({ role, onSuccess, onCancel }: RoleFormProps) {
           {isLoading
             ? "Guardando..."
             : isEditing
-            ? "Actualizar Rol"
-            : "Crear Rol"}
+              ? "Actualizar Rol"
+              : "Crear Rol"}
         </Button>
       </div>
     </form>

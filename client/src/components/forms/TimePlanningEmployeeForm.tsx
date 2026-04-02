@@ -174,7 +174,7 @@ export default function TimePlanningEmployeeForm({
     };
 
     return (
-      <Badge variant={variantMap[status.name] || "outline"} className="text-xs">
+      <Badge variant={(variantMap[status.name] as any) || "outline"} className="text-xs">
         {status.name}
       </Badge>
     );
@@ -514,6 +514,7 @@ function ExecutionDialog({
   const updateEndTime = async (row: ExecutionRow, newEnd: string) => {
     try {
       const r = await TimePlanningExecutionsAPI.update(row.planEmployeeID, row.executionID, {
+        executionID: row.executionID,
         endTime: ensureTime(newEnd),
       });
       if (r.status === "success") {

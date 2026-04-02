@@ -24,8 +24,8 @@ import {
   Users, Shield, Calendar, Eye, EyeOff, ChevronDown, ChevronUp,
   Download, MoreHorizontal, CheckCircle, XCircle, Edit3,
 } from "lucide-react";
-import { AuthUsersAPI, RolesAPI, UserRolesAPI } from "@/lib/api/auth";
-import type { ApiResponse } from "@/lib/api/client";
+import { AuthUsersAPI, RolesAPI, UserRolesAPI } from "@/lib/api";
+import type { ApiResponse } from "@/lib/api";
 import type { User, Role, UserRole } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
 import AssignRoleForm from "@/components/forms/AssignRoleForm";
@@ -184,9 +184,18 @@ export default function UserRolesPage() {
   });
 
   // Datos robustos
-  const users: User[] = Array.isArray(usersResponse?.data) ? usersResponse!.data : [];
-  const roles: Role[] = Array.isArray(rolesResponse?.data) ? rolesResponse!.data : [];
-  const userRoles: UserRole[] = Array.isArray(userRolesResponse?.data) ? userRolesResponse!.data : [];
+  const users: User[] =
+    usersResponse?.status === "success" && Array.isArray(usersResponse.data)
+      ? usersResponse.data
+      : [];
+  const roles: Role[] =
+    rolesResponse?.status === "success" && Array.isArray(rolesResponse.data)
+      ? rolesResponse.data
+      : [];
+  const userRoles: UserRole[] =
+    userRolesResponse?.status === "success" && Array.isArray(userRolesResponse.data)
+      ? userRolesResponse.data
+      : [];
 
   const usersMap = useMemo(() => new Map(users.map((u) => [u.id, u])), [users]);
   const rolesMap = useMemo(() => new Map(roles.map((r) => [r.id, r])), [roles]);
@@ -896,24 +905,24 @@ function TableView({
                       {user.isActive ? "Activo" : "Inactivo"}
                     </Badge>
                   </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1 max-w-[260px]">
-                        {activeRoles.slice(0, 2).map((ur) => {
-                          const role = rolesMap.get(ur.roleId);
-                          return (
-                            <Badge key={`${ur.userId}-${ur.roleId}`} variant="outline" className="text-xs">
-                              {role?.name || `Rol ${ur.roleId}`}
-                            </Badge>
-                          );
-                        })}
-                        {activeRoles.length > 2 && (
-                          <Badge variant="secondary" className="text-xs">
-                            +{activeRoles.length - 2}
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1 max-w-[260px]">
+                      {activeRoles.slice(0, 2).map((ur) => {
+                        const role = rolesMap.get(ur.roleId);
+                        return (
+                          <Badge key={`${ur.userId}-${ur.roleId}`} variant="outline" className="text-xs">
+                            {role?.name || `Rol ${ur.roleId}`}
                           </Badge>
-                        )}
-                        {activeRoles.length === 0 && <span className="text-sm text-gray-400">Sin roles</span>}
-                      </div>
-                    </TableCell>
+                        );
+                      })}
+                      {activeRoles.length > 2 && (
+                        <Badge variant="secondary" className="text-xs">
+                          +{activeRoles.length - 2}
+                        </Badge>
+                      )}
+                      {activeRoles.length === 0 && <span className="text-sm text-gray-400">Sin roles</span>}
+                    </div>
+                  </TableCell>
                   <TableCell>
                     {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : <span className="text-gray-400">Nunca</span>}
                   </TableCell>
@@ -1008,8 +1017,11 @@ function EditUserRoleForm({
     queryKey: ["roles"],
     queryFn: () => RolesAPI.list(),
   });
-  const roles = Array.isArray(rolesResponse?.data) ? rolesResponse!.data : [];
-  const activeRoles = roles.filter(r => r.isActive && !r.isDeleted);
+  const rolesForDialog: Role[] =
+    rolesResponse?.status === "success" && Array.isArray(rolesResponse.data)
+      ? rolesResponse.data
+      : [];
+  const activeRoles = rolesForDialog.filter((r: Role) => r.isActive && !r.isDeleted);
 
   const [newRoleId, setNewRoleId] = useState<string>(String(oldRoleId));
   const [expiresAt, setExpiresAt] = useState<string>(defaultExpiresAt ?? "");
@@ -1047,7 +1059,7 @@ function EditUserRoleForm({
               {activeRoles.length === 0 ? (
                 <div className="p-2 text-sm text-gray-500">No hay roles disponibles</div>
               ) : (
-                activeRoles.map((role) => (
+                activeRoles.map((role: Role) => (
                   <SelectItem key={role.id} value={String(role.id)}>
                     {role.name} {role.description && `- ${role.description}`}
                   </SelectItem>

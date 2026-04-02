@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 import { Users as UsersIcon, Plus, Edit, Trash2, Search } from "lucide-react";
-import { AuthUsersAPI } from "@/lib/api/auth";
+import { AuthUsersAPI } from "@/lib/api";
 import { DataPagination } from "@/components/ui/DataPagination";
 import type { User } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";

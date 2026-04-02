@@ -783,7 +783,7 @@ export default function ScheduleChangePlansPage() {
   }, [items, statusFilter, currentParams.search, bossId, schedulesMap, statusCatalog]);
 
   const stats = useMemo(() => {
-    const approved = bossPlans.filter((plan) => {
+    const approved = bossPlans.filter((plan: any) => {
       const statusName =
         plan.statusName ||
         statusCatalog[plan.statusTypeID]?.label ||
@@ -791,7 +791,7 @@ export default function ScheduleChangePlansPage() {
       return statusName.toLowerCase().includes("aprobado");
     }).length;
 
-    const pendingExecution = bossPlans.filter((plan) => {
+    const pendingExecution = bossPlans.filter((plan: any) => {
       const statusName =
         plan.statusName ||
         statusCatalog[plan.statusTypeID]?.label ||
@@ -802,7 +802,7 @@ export default function ScheduleChangePlansPage() {
       );
     }).length;
 
-    const executed = bossPlans.filter((plan) => {
+    const executed = bossPlans.filter((plan: any) => {
       const statusName =
         plan.statusName ||
         statusCatalog[plan.statusTypeID]?.label ||

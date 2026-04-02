@@ -1,5 +1,6 @@
-// lib/api/reports.ts
-import { apiFetch, type ApiResponse } from './client';
+// src/lib/api/services/reports.ts
+
+import { apiFetch, type ApiResponse } from '../core/fetch';
 import type {
   ReportType,
   ReportFormat,
@@ -23,7 +24,7 @@ export class ReportError extends Error {
     if (options?.status !== undefined) this.status = options.status;
     if (options?.url !== undefined) this.url = options.url;
     if (options?.details !== undefined) this.details = options.details;
- 
+
     if (options?.cause) this.cause = options.cause;
   }
 }

@@ -1,22 +1,24 @@
+// src/lib/api/services/system.ts
+
 /**
  * APIs de sistema, salud y auditoría
  */
 
-import { apiFetch, createCrudService } from './client';
-import type { ApiResponse } from './client';
-import type { Publication, InsertPublication } from '@/shared/schema';
+import { apiFetch } from '../core/fetch';
+import { createApiService as createCrudService } from '../core/pagination';
+import type { ApiResponse } from '../core/fetch';
 
 // =============================================================================
 // API de Health Check
 // =============================================================================
 
 export const HealthAPI = {
-  check: (): Promise<ApiResponse<{ status: string }>> => 
-    apiFetch<{ status: string }>('/health')
+  check: (): Promise<ApiResponse<{ status: string }>> =>
+    apiFetch<{ status: string }>('/health'),
 };
 
 // =============================================================================
-// API de Sistema
+// DTOs de Sistema
 // =============================================================================
 
 export interface StatsResponse {
@@ -25,12 +27,16 @@ export interface StatsResponse {
   failedAttempts: number;
 }
 
-export const SistemaAPI = {
-  getStats: (): Promise<ApiResponse<StatsResponse>> =>
-    apiFetch<StatsResponse>('/api/system/stats'),
+// =============================================================================
+// API de Sistema
+// =============================================================================
 
-  health: (): Promise<ApiResponse<{ status: string }>> =>
-    apiFetch<{ status: string }>('/api/system/health')
+export const SistemaAPI = {
+  info: (): Promise<ApiResponse<any>> =>
+    apiFetch<any>('/api/v1/rh/'),
+
+  health: (): Promise<ApiResponse<any>> =>
+    apiFetch<any>('/api/v1/rh/health'),
 };
 
 // =============================================================================
@@ -38,9 +44,3 @@ export const SistemaAPI = {
 // =============================================================================
 
 export const AuditoriaAPI = createCrudService<any, any>('/api/v1/rh/audit');
-
-// =============================================================================
-// API de Publicaciones
-// =============================================================================
-
-export const PublicacionesAPI = createCrudService<Publication, InsertPublication>('/api/v1/rh/publications');

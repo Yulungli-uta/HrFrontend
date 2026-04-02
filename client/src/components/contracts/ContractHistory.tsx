@@ -61,7 +61,7 @@ export function ContractHistory(props: { contractId: number; enabled: boolean })
             {/* Timeline vertical */}
             <div className="absolute left-4 top-2 bottom-2 w-0.5 bg-border" />
 
-            {items.map((x, idx) => {
+            {items.map((x: any, idx: number) => {
               const isFirst = idx === 0;
               const isLast = idx === items.length - 1;
 

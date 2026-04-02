@@ -54,10 +54,10 @@ export default function SchedulesPage() {
   const openEdit = (s: Schedule) => {
     console.log("📝 Abriendo edición para:", s);
     console.log("🆔 ID del schedule:", s.id);   
-    console.log("🆔 scheduleId:", s.scheduleId);
+    console.log("🆔 scheduleId:", (s as any).scheduleId);
     console.log("🆔 id:", (s as any).id);
     
-    if (!s.scheduleId) {
+    if (!(s as any).scheduleId) {
       toast({
         title: "❌ Error",
         description: "El horario seleccionado no tiene un ID válido",

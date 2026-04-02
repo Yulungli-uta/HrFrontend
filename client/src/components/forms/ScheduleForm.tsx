@@ -26,7 +26,7 @@ interface ScheduleFormProps {
 }
 
 // 🔧 FUNCIÓN PARA NORMALIZAR TIEMPO (eliminar segundos si los tiene)
-const normalizeTime = (time: string | null): string | null => {
+const normalizeTime = (time: string | null | undefined): string | null => {
   if (!time) return null;
   // Si el tiempo tiene formato HH:MM:SS, convertir a HH:MM
   if (time.length === 8 && time.split(':').length === 3) {
@@ -79,7 +79,7 @@ const debugUpdateSchedule = async (id: number, data: any): Promise<ApiResponse<a
           code: response.status,
           message: `HTTP Error ${response.status}: ${response.statusText}`,
           details: parsedData,
-          responseText: responseText
+          /* responseText */
         }
       };
     }
@@ -96,7 +96,7 @@ const debugUpdateSchedule = async (id: number, data: any): Promise<ApiResponse<a
       status: "error",
       error: {
         code: 0,
-        message: error.message || "Network error"
+        message: (error as any).message || "Network error"
       }
     };
   }
@@ -147,7 +147,7 @@ export default function ScheduleForm({ schedule, onSuccess, onCancel }: Schedule
           exitTime: normalizeTime(schedule.exitTime) || "17:00", 
           workingDays: schedule.workingDays || "Lunes a Viernes",
           requiredHoursPerDay: typeof schedule.requiredHoursPerDay === 'number' 
-            ? schedule.requiredHoursPerDay.toString() 
+            ? String(schedule.requiredHoursPerDay) 
             : (schedule.requiredHoursPerDay || "8.0"),
           hasLunchBreak: schedule.hasLunchBreak ?? false,
           lunchStart: normalizeTime(schedule.lunchStart),
@@ -211,8 +211,8 @@ export default function ScheduleForm({ schedule, onSuccess, onCancel }: Schedule
         workingDays: data.workingDays,
         requiredHoursPerDay: parseFloat(data.requiredHoursPerDay), // Convertir a número
         hasLunchBreak: data.hasLunchBreak,
-        lunchStart: data.hasLunchBreak ? normalizeTime(data.lunchStart) : null,
-        lunchEnd: data.hasLunchBreak ? normalizeTime(data.lunchEnd) : null,
+        lunchStart: data.hasLunchBreak ? (normalizeTime(data.lunchStart) || null) : null,
+        lunchEnd: data.hasLunchBreak ? (normalizeTime(data.lunchEnd) || null) : null,
         isRotating: data.isRotating,
         rotationPattern: data.isRotating ? data.rotationPattern : null
       };
@@ -310,7 +310,7 @@ const updateMutation = useMutation({
       
       // 🔧 Manejar específicamente el error de concurrencia
       if (updateRes.error.message?.includes("concurrency") || 
-          updateRes.error.details?.title?.includes("validation errors")) {
+          ((updateRes.error.details as any)?.title?.includes("validation errors"))) {
         throw new Error("CONCURRENCY_ERROR: El horario fue modificado por otro usuario. Por favor, recargue la página y vuelva a intentar.");
       }
       

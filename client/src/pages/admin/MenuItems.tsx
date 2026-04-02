@@ -35,8 +35,8 @@ import {
 
 import { Menu, Plus, Edit, Trash2, Search, ChevronRight } from "lucide-react";
 
-import { MenuItemsAPI } from "@/lib/api/auth";
-import type { ApiResponse } from "@/lib/api/client";
+import { MenuItemsAPI } from "@/lib/api";
+import type { ApiResponse } from "@/lib/api";
 import type { MenuItem, MenuItemTree } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
 import MenuItemForm from "@/components/forms/MenuItemForm";

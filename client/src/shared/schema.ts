@@ -29,13 +29,12 @@ export const PayrollStatus = ["Pending", "Paid", "Reconciled"] as const;
 export const LineType = ["Earning", "Deduction", "Subsidy", "Overtime"] as const;
 
 // ===============================
-// TABLAS BÁSICAS (SOLO TIPOS, SIN METADATOS AVANZADOS)
+// TABLAS BÁSICAS
 // ===============================
 
 // 1. Personas
 export const people = pgTable("people", {
-  // id: integer("id"), // PK real está en SQL Server
-  id: integer("PersonID"), // PK real está en SQL Server
+  id: integer("PersonID"),
   firstName: varchar("first_name", { length: 100 }),
   lastName: varchar("last_name", { length: 100 }),
   idCard: varchar("id_card", { length: 20 }),
@@ -88,7 +87,7 @@ export const departments = pgTable("departments", {
   isActive: boolean("is_active"),
 });
 
-// 5. Horarios (la tabla que usa SchedulesPage)
+// 5. Horarios
 export const schedules = pgTable("schedules", {
   id: integer("id"),
   description: text("description"),
@@ -170,7 +169,7 @@ export const vacations = pgTable("vacations", {
   status: varchar("status", { length: 20 }),
 });
 
-// 12. Picadas (Asistencia)
+// 12. Picadas
 export const attendancePunches = pgTable("attendance_punches", {
   id: integer("id"),
   employeeId: integer("employee_id"),
@@ -310,144 +309,6 @@ export const audit = pgTable("audit", {
 });
 
 // ===============================
-// HOJA DE VIDA
-// ===============================
-
-// // Publicaciones
-// export const publications = pgTable("publications", {
-//   id: integer("id"),
-//   personId: integer("person_id"),
-//   title: varchar("title", { length: 255 }),
-//   journal: varchar("journal", { length: 255 }),
-//   publicationDate: date("publication_date"),
-//   issn: varchar("issn", { length: 50 }),
-//   doi: varchar("doi", { length: 100 }),
-//   url: varchar("url", { length: 500 }),
-//   type: varchar("type", { length: 100 }),
-//   description: text("description"),
-//   createdAt: timestamp("created_at"),
-//   updatedAt: timestamp("updated_at"),
-// });
-
-// // Cargas familiares
-// export const familyMembers = pgTable("family_members", {
-//   id: integer("id"),
-//   personId: integer("person_id"),
-//   firstName: varchar("first_name", { length: 255 }),
-//   lastName: varchar("last_name", { length: 255 }),
-//   idCard: varchar("id_card", { length: 20 }),
-//   birthDate: date("birth_date"),
-//   relationship: varchar("relationship", { length: 100 }),
-//   hasDisability: boolean("has_disability"),
-//   disabilityType: varchar("disability_type", { length: 255 }),
-//   disabilityPercentage: integer("disability_percentage"),
-//   isStudying: boolean("is_studying"),
-//   educationInstitution: varchar("education_institution", { length: 255 }),
-//   createdAt: timestamp("created_at"),
-//   updatedAt: timestamp("updated_at"),
-// });
-
-// // Experiencias laborales
-// export const workExperiences = pgTable("work_experiences", {
-//   id: integer("id"),
-//   personId: integer("person_id"),
-//   company: varchar("company", { length: 255 }),
-//   position: varchar("position", { length: 255 }),
-//   startDate: date("start_date"),
-//   endDate: date("end_date"),
-//   isCurrent: boolean("is_current"),
-//   duties: text("duties"),
-//   salary: decimal("salary", { precision: 10, scale: 2 }),
-//   reasonForLeaving: varchar("reason_for_leaving", { length: 255 }),
-//   referenceContact: varchar("reference_contact", { length: 255 }),
-//   referenceEmail: varchar("reference_email", { length: 255 }),
-//   referencePhone: varchar("reference_phone", { length: 20 }),
-//   createdAt: timestamp("created_at"),
-//   updatedAt: timestamp("updated_at"),
-// });
-
-// // Capacitaciones
-// export const trainings = pgTable("trainings", {
-//   id: integer("id"),
-//   personId: integer("person_id"),
-//   name: varchar("name", { length: 255 }),
-//   institution: varchar("institution", { length: 255 }),
-//   type: varchar("type", { length: 100 }),
-//   modality: varchar("modality", { length: 50 }),
-//   startDate: date("start_date"),
-//   endDate: date("end_date"),
-//   durationHours: integer("duration_hours"),
-//   hasCertificate: boolean("has_certificate"),
-//   certificateNumber: varchar("certificate_number", { length: 100 }),
-//   grade: varchar("grade", { length: 50 }),
-//   description: text("description"),
-//   fileUrl: varchar("file_url", { length: 500 }),
-//   createdAt: timestamp("created_at"),
-//   updatedAt: timestamp("updated_at"),
-// });
-
-// // Libros
-// export const books = pgTable("books", {
-//   id: integer("id"),
-//   personId: integer("person_id"),
-//   title: varchar("title", { length: 255 }),
-//   isbn: varchar("isbn", { length: 50 }),
-//   publisher: varchar("publisher", { length: 255 }),
-//   publicationDate: date("publication_date"),
-//   coAuthors: varchar("co_authors", { length: 500 }),
-//   category: varchar("category", { length: 100 }),
-//   description: text("description"),
-//   url: varchar("url", { length: 500 }),
-//   createdAt: timestamp("created_at"),
-//   updatedAt: timestamp("updated_at"),
-// });
-
-// // Contactos de emergencia
-// export const emergencyContacts = pgTable("emergency_contacts", {
-//   id: integer("id"),
-//   personId: integer("person_id"),
-//   firstName: varchar("first_name", { length: 255 }),
-//   lastName: varchar("last_name", { length: 255 }),
-//   relationship: varchar("relationship", { length: 100 }),
-//   phone: varchar("phone", { length: 20 }),
-//   email: varchar("email", { length: 255 }),
-//   address: text("address"),
-//   isPrimary: boolean("is_primary"),
-//   createdAt: timestamp("created_at"),
-//   updatedAt: timestamp("updated_at"),
-// });
-
-// // Enfermedades catastróficas
-// export const catastrophicIllnesses = pgTable("catastrophic_illnesses", {
-//   id: integer("id"),
-//   personId: integer("person_id"),
-//   illnessName: varchar("illness_name", { length: 255 }),
-//   diagnosisDate: date("diagnosis_date"),
-//   treatingDoctor: varchar("treating_doctor", { length: 255 }),
-//   medicalInstitution: varchar("medical_institution", { length: 255 }),
-//   currentStatus: varchar("current_status", { length: 100 }),
-//   treatment: text("treatment"),
-//   medications: text("medications"),
-//   notes: text("notes"),
-//   createdAt: timestamp("created_at"),
-//   updatedAt: timestamp("updated_at"),
-// });
-
-// // Cuentas bancarias
-// export const bankAccounts = pgTable("bank_accounts", {
-//   id: integer("id"),
-//   personId: integer("person_id"),
-//   bankName: varchar("bank_name", { length: 255 }),
-//   accountType: varchar("account_type", { length: 50 }),
-//   accountNumber: varchar("account_number", { length: 50 }),
-//   isActive: boolean("is_active"),
-//   isPrimary: boolean("is_primary"),
-//   notes: text("notes"),
-//   createdAt: timestamp("created_at"),
-//   updatedAt: timestamp("updated_at"),
-// });
-
-// ===============================
 // DIRECCIONES
 // ===============================
 export const addresses = pgTable("addresses", {
@@ -516,7 +377,7 @@ export const publications = pgTable("publications", {
   updatedAt: timestamp("updated_at"),
 });
 
-// CARGAS FAMILIARES (family_burden)
+// CARGAS FAMILIARES
 export const familyBurden = pgTable("family_burden", {
   burdenId: integer("burden_id"),
   personId: integer("person_id"),
@@ -641,7 +502,9 @@ export const institutions = pgTable("institutions", {
   updatedAt: timestamp("updated_at"),
 });
 
-// Esquema para RefType (tabla de tipos de referencia)
+// ===============================
+// SCHEMAS ZOD MANUALES
+// ===============================
 export const insertRefTypeSchema = z.object({
   name: z.string().min(1, "El nombre es requerido"),
   category: z.string().min(1, "La categoría es requerida"),
@@ -656,14 +519,13 @@ export const refTypeSchema = insertRefTypeSchema.extend({
 });
 
 // ===============================
-// ZOD INSERT SCHEMAS (se usan en el front)
+// ZOD INSERT SCHEMAS
 // ===============================
 export const insertPersonSchema = createInsertSchema(people);
 export const insertEmployeeSchema = createInsertSchema(employees);
 export const insertFacultySchema = createInsertSchema(faculties);
 export const insertDepartmentSchema = createInsertSchema(departments);
 
-// Para schedules, crear un schema personalizado si necesitas omitir campos
 export const insertScheduleSchema = z.object({
   description: z.string().min(1, "La descripción es requerida"),
   entryTime: z.string().regex(/^\d{2}:\d{2}$/, "Formato de hora inválido (HH:MM)"),
@@ -680,7 +542,6 @@ export const insertScheduleSchema = z.object({
   rotationPattern: z.string().nullable().optional(),
 });
 
-
 export const insertContractSchema = createInsertSchema(contracts);
 export const insertPermissionTypeSchema = createInsertSchema(permissionTypes);
 export const insertPermissionSchema = createInsertSchema(permissions);
@@ -689,7 +550,7 @@ export const insertAttendancePunchSchema = createInsertSchema(attendancePunches)
 export const insertPayrollSchema = createInsertSchema(payroll);
 export const insertPayrollLineSchema = createInsertSchema(payrollLines);
 
-// Hoja de vida schemas
+// Hoja de vida
 export const insertPublicationSchema = createInsertSchema(publications);
 export const insertFamilyBurdenSchema = createInsertSchema(familyBurden);
 export const insertWorkExperienceSchema = createInsertSchema(workExperiences);
@@ -700,44 +561,8 @@ export const insertCatastrophicIllnessSchema = createInsertSchema(catastrophicIl
 export const insertBankAccountSchema = createInsertSchema(bankAccounts);
 
 // ===============================
-// HOJA DE VIDA - INSERT SCHEMAS
+// TIPOS TS SELECT
 // ===============================
-
-// export const insertPublicationSchema = createInsertSchema(publications);
-// export const insertFamilyBurdenSchema = createInsertSchema(familyBurden);
-// export const insertWorkExperienceSchema = createInsertSchema(workExperiences);
-// export const insertTrainingSchema = createInsertSchema(trainings);
-// export const insertBookSchema = createInsertSchema(books);
-// export const insertEmergencyContactSchema = createInsertSchema(emergencyContacts);
-// export const insertCatastrophicIllnessSchema = createInsertSchema(catastrophicIllnesses);
-// export const insertBankAccountSchema = createInsertSchema(bankAccounts);
-
-// ===============================
-// HOJA DE VIDA - TIPOS TS
-// ===============================
-
-// export type Publication = typeof publications.$inferSelect;
-// export type FamilyBurden = typeof familyBurden.$inferSelect;
-// export type WorkExperience = typeof workExperiences.$inferSelect;
-// export type Training = typeof trainings.$inferSelect;
-// export type Book = typeof books.$inferSelect;
-// export type EmergencyContact = typeof emergencyContacts.$inferSelect;
-// export type CatastrophicIllness = typeof catastrophicIllnesses.$inferSelect;
-// export type BankAccount = typeof bankAccounts.$inferSelect;
-
-// export type InsertPublication = z.infer<typeof insertPublicationSchema>;
-// export type InsertFamilyBurden = z.infer<typeof insertFamilyBurdenSchema>;
-// export type InsertWorkExperience = z.infer<typeof insertWorkExperienceSchema>;
-// export type InsertTraining = z.infer<typeof insertTrainingSchema>;
-// export type InsertBook = z.infer<typeof insertBookSchema>;
-// export type InsertEmergencyContact = z.infer<typeof insertEmergencyContactSchema>;
-// export type InsertCatastrophicIllness = z.infer<typeof insertCatastrophicIllnessSchema>;
-// export type InsertBankAccount = z.infer<typeof insertBankAccountSchema>;
-
-// ===============================
-// TIPOS TS
-// ===============================
-
 export type Person = typeof people.$inferSelect;
 export type Employee = typeof employees.$inferSelect;
 export type Faculty = typeof faculties.$inferSelect;
@@ -746,24 +571,10 @@ export type Schedule = typeof schedules.$inferSelect;
 export type Contract = typeof contracts.$inferSelect;
 export type PermissionType = typeof permissionTypes.$inferSelect;
 export type Permission = typeof permissions.$inferSelect;
-export type InsertPermiso = typeof permissions.$inferSelect;
 export type Vacation = typeof vacations.$inferSelect;
 export type AttendancePunch = typeof attendancePunches.$inferSelect;
 export type Payroll = typeof payroll.$inferSelect;
 export type PayrollLine = typeof payrollLines.$inferSelect;
-
-export type InsertPerson = z.infer<typeof insertPersonSchema>;
-export type InsertEmployee = z.infer<typeof insertEmployeeSchema>;
-export type InsertFaculty = z.infer<typeof insertFacultySchema>;
-export type InsertDepartment = z.infer<typeof insertDepartmentSchema>;
-export type InsertSchedule = z.infer<typeof insertScheduleSchema>;
-export type InsertContract = z.infer<typeof insertContractSchema>;
-export type InsertPermissionType = z.infer<typeof insertPermissionTypeSchema>;
-export type InsertPermission = z.infer<typeof insertPermissionSchema>;
-export type InsertVacation = z.infer<typeof insertVacationSchema>;
-export type InsertAttendancePunch = z.infer<typeof insertAttendancePunchSchema>;
-export type InsertPayroll = z.infer<typeof insertPayrollSchema>;
-export type InsertPayrollLine = z.infer<typeof insertPayrollLineSchema>;
 
 export type Publication = typeof publications.$inferSelect;
 export type FamilyBurden = typeof familyBurden.$inferSelect;
@@ -774,20 +585,43 @@ export type EmergencyContact = typeof emergencyContacts.$inferSelect;
 export type CatastrophicIllness = typeof catastrophicIllnesses.$inferSelect;
 export type BankAccount = typeof bankAccounts.$inferSelect;
 
-export type InsertPublication = z.infer<typeof insertPublicationSchema>;
-export type InsertFamilyMember = z.infer<typeof insertFamilyBurdenSchema>;
-export type InsertWorkExperience = z.infer<typeof insertWorkExperienceSchema>;
-export type InsertTraining = z.infer<typeof insertTrainingSchema>;
-export type InsertBook = z.infer<typeof insertBookSchema>;
-export type InsertEmergencyContact = z.infer<typeof insertEmergencyContactSchema>;
-export type InsertCatastrophicIllness = z.infer<typeof insertCatastrophicIllnessSchema>;
-export type InsertBankAccount = z.infer<typeof insertBankAccountSchema>;
+// ===============================
+// TIPOS TS INSERT
+// ===============================
+export type InsertPerson = typeof people.$inferInsert;
+export type InsertEmployee = typeof employees.$inferInsert;
+export type InsertFaculty = typeof faculties.$inferInsert;
+export type InsertDepartment = typeof departments.$inferInsert;
+
+// Schema manual
+export type InsertSchedule = z.infer<typeof insertScheduleSchema>;
+
+// Tablas Drizzle
+export type InsertContract = typeof contracts.$inferInsert;
+export type InsertPermissionType = typeof permissionTypes.$inferInsert;
+export type InsertPermission = typeof permissions.$inferInsert;
+export type InsertPermiso = typeof permissions.$inferSelect;
+export type InsertVacation = typeof vacations.$inferInsert;
+export type InsertAttendancePunch = typeof attendancePunches.$inferInsert;
+export type InsertPayroll = typeof payroll.$inferInsert;
+export type InsertPayrollLine = typeof payrollLines.$inferInsert;
+
+export type InsertPublication = typeof publications.$inferInsert;
+export type InsertFamilyBurden = typeof familyBurden.$inferInsert;
+export type InsertWorkExperience = typeof workExperiences.$inferInsert;
+export type InsertTraining = typeof trainings.$inferInsert;
+export type InsertBook = typeof books.$inferInsert;
+export type InsertEmergencyContact = typeof emergencyContacts.$inferInsert;
+export type InsertCatastrophicIllness = typeof catastrophicIllnesses.$inferInsert;
+export type InsertBankAccount = typeof bankAccounts.$inferInsert;
+
+// Schemas manuales
 export type InsertRefType = z.infer<typeof insertRefTypeSchema>;
 export type RefType = z.infer<typeof refTypeSchema>;
+
 // ===============================
 // COMPATIBILIDAD FRONTEND SCHEDULE
 // ===============================
-
 export type FrontendSchedule = Schedule & {
   scheduleId?: number;
 };
@@ -800,6 +634,7 @@ export function normalizeSchedule(backendSchedule: any): FrontendSchedule {
       scheduleId: backendSchedule.scheduleId,
     };
   }
+
   return {
     ...backendSchedule,
     scheduleId: backendSchedule.id,

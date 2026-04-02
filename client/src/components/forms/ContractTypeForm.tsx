@@ -43,7 +43,7 @@ const contractTypeSchema = z.object({
   code: z.string().min(1, "El código es obligatorio"),
   description: z.string().optional(),
   contractText: z.string().optional(),
-  isActive: z.boolean().default(true),
+  isActive: z.boolean().optional(),
 
   personalContractTypeId: z
     .string({
@@ -143,7 +143,7 @@ export function ContractTypeForm({
       return ensureSuccess(res, "Error al crear el tipo de contrato");
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(["/api/v1/rh/contract-type"]);
+      queryClient.invalidateQueries({ queryKey: ["/api/v1/rh/contract-type"] });
       onSuccess();
     },
   });
@@ -167,7 +167,7 @@ export function ContractTypeForm({
       return ensureSuccess(res, "Error al actualizar el tipo de contrato");
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(["/api/v1/rh/contract-type"]);
+      queryClient.invalidateQueries({ queryKey: ["/api/v1/rh/contract-type"] });
       onSuccess();
     },
   });
@@ -374,8 +374,8 @@ export function ContractTypeForm({
             {isSubmitting
               ? "Guardando..."
               : mode === "create"
-              ? "Crear Tipo de Contrato"
-              : "Guardar Cambios"}
+                ? "Crear Tipo de Contrato"
+                : "Guardar Cambios"}
           </Button>
         </div>
       </form>

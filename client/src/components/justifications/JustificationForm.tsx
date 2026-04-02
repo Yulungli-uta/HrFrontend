@@ -106,7 +106,7 @@ export default function JustificationForm({ onCreated, onCancel }: Props) {
 
   // Obtener schedulerID del contexto
   const schedulerID = useMemo(() => {
-    return employeeDetails?.schedulerID || employeeDetails?.scheduleID;
+    return (employeeDetails as any)?.schedulerID || employeeDetails?.scheduleID;
   }, [employeeDetails]);
 
   // Cargar tipos desde la API

@@ -4,7 +4,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { VacacionesAPI, PermisosAPI, TimeBalanceAPI, ParametersAPI, apiFetch, type ApiResponse } from "@/lib/api";
-import type { InsertVacacion } from "@/shared/schema";
+import type { InsertVacation as InsertVacacion } from "@/shared/schema";
+
+type VacationFormData = {
+  employeeId: number;
+  startDate: string;
+  endDate: string;
+  daysGranted: number;
+  daysTaken: number;
+  status: string;
+};
 import { useAuth } from "@/contexts/AuthContext";
 import { parseApiError } from '@/lib/error-handling';
 
@@ -126,17 +135,13 @@ export default function VacationForm({
     balance?.vacationAvailableMin ?? balance?.vacationAvailable ?? balance?.vacationMin ?? 0
   );
 
-  const [formData, setFormData] = useState<Omit<InsertVacacion, "id">>({
+  const [formData, setFormData] = useState<VacationFormData>({
     employeeId,
     startDate: today,
     endDate: today,
     daysGranted: 1,
     daysTaken: 1,
-    approvedBy: null,
-    approvedAt: null,
     status: "Planned",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
   });
 
   useEffect(() => {
@@ -154,7 +159,6 @@ export default function VacationForm({
       startDate: s ? dateOnly(String(s)) : prev.startDate,
       endDate: e ? dateOnly(String(e)) : prev.endDate,
       status: initialVacation?.status ?? initialVacation?.Status ?? prev.status,
-      updatedAt: new Date().toISOString(),
     }));
   }, [initialVacation]);
 
@@ -170,7 +174,6 @@ export default function VacationForm({
       const days = calcDays(next.startDate, next.endDate);
       next.daysGranted = days;
       next.daysTaken = days;
-      next.updatedAt = new Date().toISOString();
       return next;
     });
   };
@@ -267,7 +270,7 @@ export default function VacationForm({
       if (isEdit && currentId != null) {
         const upd = (VacacionesAPI as any).update ?? (VacacionesAPI as any).put;
         if (typeof upd === "function") return upd(currentId, payload);
-        return apiFetch<any>(`/api/v1/rh/vacations/${currentId}`, { method: "PUT", body: payload });
+        return apiFetch<any>(`/api/v1/rh/vacations/${currentId}`, { method: "PUT", body: JSON.stringify(payload), headers: { "Content-Type": "application/json" } });
       }
 
       // CREATE
@@ -325,7 +328,7 @@ export default function VacationForm({
           <Input
             type="date"
             min={today}
-            value={formData.startDate}
+            value={formData.startDate ?? ""}
             onChange={(e) => handleDateChange("startDate", e.target.value)}
             required
           />
@@ -334,8 +337,8 @@ export default function VacationForm({
           <Label>Fecha Fin</Label>
           <Input
             type="date"
-            min={formData.startDate}
-            value={formData.endDate}
+            min={formData.startDate ?? today}
+            value={formData.endDate ?? ""}
             onChange={(e) => handleDateChange("endDate", e.target.value)}
             required
           />
@@ -345,11 +348,11 @@ export default function VacationForm({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <Label>Días Concedidos</Label>
-          <Input type="number" value={formData.daysGranted} readOnly />
+          <Input type="number" value={formData.daysGranted ?? 0} readOnly />
         </div>
         <div>
           <Label>Días Tomados</Label>
-          <Input type="number" value={formData.daysTaken} readOnly />
+          <Input type="number" value={formData.daysTaken ?? 0} readOnly />
         </div>
       </div>
 

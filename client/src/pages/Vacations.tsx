@@ -108,10 +108,10 @@ export default function VacationsPage() {
                   </span>
                 </div>
                 <Badge 
-                  className={statusColors[vacation.status] || "bg-gray-100 text-gray-800"}
+                  className={statusColors[vacation.status as keyof typeof statusColors] || "bg-gray-100 text-gray-800"}
                   data-testid={`status-${vacation.id}`}
                 >
-                  {statusLabels[vacation.status] || vacation.status}
+                  {statusLabels[vacation.status as keyof typeof statusLabels] || vacation.status}
                 </Badge>
               </CardTitle>
             </CardHeader>
@@ -126,14 +126,14 @@ export default function VacationsPage() {
               <div className="flex items-center space-x-2 text-sm text-gray-600">
                 <CalendarDays className="h-4 w-4" />
                 <span data-testid={`text-start-date-${vacation.id}`}>
-                  Desde: {new Date(vacation.startDate).toLocaleDateString()}
+                  Desde: {new Date(vacation.startDate as string).toLocaleDateString()}
                 </span>
               </div>
               
               <div className="flex items-center space-x-2 text-sm text-gray-600">
                 <CalendarDays className="h-4 w-4" />
                 <span data-testid={`text-end-date-${vacation.id}`}>
-                  Hasta: {new Date(vacation.endDate).toLocaleDateString()}
+                  Hasta: {new Date(vacation.endDate as string).toLocaleDateString()}
                 </span>
               </div>
               

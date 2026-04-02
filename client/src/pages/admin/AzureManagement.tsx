@@ -58,7 +58,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 
-import { AzureManagementAPI } from "@/lib/api/auth";
+import { AzureManagementAPI } from "@/lib/api/services/auth";
 import AzureUserForm, { type AzureUserFormMode } from "@/components/forms/AzureUserForm";
 import { parseApiError } from '@/lib/error-handling';
 
@@ -108,12 +108,21 @@ type DebugEvent = { at: string; action: string; detail?: any };
  *  HELPERS
  *  ========================================================= */
 function pickErrorMessage(err: unknown, fallback: string) {
-  return (
-    err?.response?.data?.message ||
-    err?.response?.data?.error ||
-    err?.message ||
-    fallback
-  );
+  if (err && typeof err === "object") {
+    const e = err as {
+      response?: { data?: { message?: string; error?: string } };
+      message?: string;
+    };
+
+    return (
+      e.response?.data?.message ||
+      e.response?.data?.error ||
+      e.message ||
+      fallback
+    );
+  }
+
+  return fallback;
 }
 
 function safeTrim(s: any) {
@@ -308,7 +317,11 @@ export default function AzureManagement() {
   /** =========================================================
    *  LIST USERS
    *  ========================================================= */
-  const usersQuery = useQuery({
+  const usersQuery = useQuery<{
+    users: AzureUser[];
+    meta: PagedMeta;
+    raw: any;
+  }, Error>({
     queryKey: ["azure-users", page, pageSize, serverFilter],
     queryFn: async () => {
       pushDebug("LIST_USERS:request", { page, pageSize, serverFilter });
@@ -334,16 +347,20 @@ export default function AzureManagement() {
     },
     staleTime: 30_000,
     retry: 1,
-    onError: (err: unknown) => {
-      const msg = pickErrorMessage(err, "No se pudo obtener usuarios de Azure");
-      pushDebug("LIST_USERS:error", { msg, err });
-      toast({ title: "Error", description: msg, variant: "destructive" });
-    },
+
   });
 
   const users = usersQuery.data?.users ?? [];
   const meta = usersQuery.data?.meta ?? {};
   const rawPayload = usersQuery.data?.raw;
+
+  useEffect(() => {
+    if (!usersQuery.error) return;
+
+    const msg = pickErrorMessage(usersQuery.error, "No se pudo obtener usuarios de Azure");
+    pushDebug("LIST_USERS:error", { msg, err: usersQuery.error });
+    toast({ title: "Error", description: msg, variant: "destructive" });
+  }, [usersQuery.error, toast]);
 
   /** =========================================================
    *  FRONT FILTER (searchTerm)
@@ -352,7 +369,7 @@ export default function AzureManagement() {
     const term = safeTrim(searchTerm).toLowerCase();
     if (!term) return users;
 
-    return users.filter((u) => {
+    return users.filter((u: AzureUser) => {
       const hay = [u.displayName, u.email, u.userPrincipalName, u.department, u.userType]
         .filter(Boolean)
         .join(" ")
@@ -742,7 +759,7 @@ export default function AzureManagement() {
                   </TableHeader>
 
                   <TableBody>
-                    {filteredUsers.map((u) => {
+                    {filteredUsers.map((u: AzureUser) => {
                       const enabled = u.accountEnabled !== false;
 
                       return (

@@ -301,7 +301,7 @@ export default function PersonDetail() {
     trainings: data?.trainings ?? [],
     books: data?.books ?? [],
     emergencyContacts: data?.emergencyContacts ?? [],
-    stats: data?.stats ?? null,
+    stats: (data as any)?.stats ?? null,
   };
 
   return (
@@ -425,7 +425,7 @@ export default function PersonDetail() {
           <TabsContent value="publications" className="space-y-4">
             <PublicationsTab
               publications={safeData.publications}
-              onEdit={openForm}
+              onEdit={openForm as any}
               onDelete={(id) => {
                 if (confirm("¿Está seguro de que desea eliminar esta publicación?")) {
                   mutations.publications.delete.mutate(id);
@@ -437,7 +437,7 @@ export default function PersonDetail() {
           <TabsContent value="family" className="space-y-4">
             <FamilyMembersTab
               familyMembers={safeData.familyMembers}
-              onEdit={openForm}
+              onEdit={openForm as any}
               onDelete={(id) => {
                 if (confirm("¿Está seguro de que desea eliminar esta carga familiar?")) {
                   mutations.familyMembers.delete.mutate(id);
@@ -449,7 +449,7 @@ export default function PersonDetail() {
           <TabsContent value="experience" className="space-y-4">
             <WorkExperiencesTab
               workExperiences={safeData.workExperiences}
-              onEdit={openForm}
+              onEdit={openForm as any}
               onDelete={(id) => {
                 if (confirm("¿Está seguro de que desea eliminar esta experiencia laboral?")) {
                   mutations.workExperiences.delete.mutate(id);
@@ -461,7 +461,7 @@ export default function PersonDetail() {
           <TabsContent value="trainings" className="space-y-4">
             <TrainingsTab
               trainings={safeData.trainings}
-              onEdit={openForm}
+              onEdit={openForm as any}
               onDelete={(id) => {
                 if (confirm("¿Está seguro de que desea eliminar esta capacitación?")) {
                   mutations.trainings.delete.mutate(id);
@@ -473,7 +473,7 @@ export default function PersonDetail() {
           <TabsContent value="books" className="space-y-4">
             <BooksTab
               books={safeData.books}
-              onEdit={openForm}
+              onEdit={openForm as any}
               onDelete={(id) => {
                 if (confirm("¿Está seguro de que desea eliminar este libro?")) {
                   mutations.books.delete.mutate(id);
@@ -485,7 +485,7 @@ export default function PersonDetail() {
           <TabsContent value="emergency" className="space-y-4">
             <EmergencyContactsTab
               emergencyContacts={safeData.emergencyContacts}
-              onEdit={openForm}
+              onEdit={openForm as any}
               onDelete={(id) => {
                 if (confirm("¿Está seguro de que desea eliminar este contacto de emergencia?")) {
                   mutations.emergencyContacts.delete.mutate(id);

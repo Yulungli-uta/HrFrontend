@@ -18,6 +18,21 @@ import {
 } from "@/lib/api";
 
 import type { InsertPermiso } from "@/shared/schema";
+
+type PermissionFormData = {
+  employeeId: number;
+  permissionTypeId: number;
+  startDate: string;
+  endDate: string;
+  requestDate: string;
+  justification: string;
+  status: string;
+  approvedBy: number | null;
+  approvedAt: string | null;
+  chargedToVacation: boolean;
+  hourTaken: number;
+  vacationId: number | null;
+};
 import { useAuth } from "@/contexts/AuthContext";
 
 import {
@@ -317,7 +332,7 @@ export default function PermissionForm({
   );
 
   // Defaults
-  const defaults = useMemo<Omit<InsertPermiso, "id">>(() => {
+  const defaults = useMemo<PermissionFormData>(() => {
     return {
       employeeId,
       permissionTypeId: 0,
@@ -334,7 +349,7 @@ export default function PermissionForm({
     };
   }, [employeeId, today]);
 
-  const [formData, setFormData] = useState<Omit<InsertPermiso, "id">>(defaults);
+  const [formData, setFormData] = useState<PermissionFormData>(defaults);
 
   useEffect(() => {
     if (employeeId) {
@@ -515,7 +530,7 @@ export default function PermissionForm({
     });
   }, [computedHourTaken, mode]);
 
-  const handleChange = (field: keyof InsertPermiso, value: any) => {
+  const handleChange = (field: keyof PermissionFormData, value: any) => {
     setFormData((p) => ({ ...p, [field]: value }));
   };
 
@@ -694,7 +709,7 @@ export default function PermissionForm({
         const resp =
           typeof upd === "function"
             ? await upd(editingId, payload)
-            : await apiFetch<any>(`/api/v1/rh/permissions/${editingId}`, { method: "PUT", body: payload });
+            : await apiFetch<any>(`/api/v1/rh/permissions/${editingId}`, { method: "PUT", body: JSON.stringify(payload), headers: { "Content-Type": "application/json" } });
 
         if (requiresDocs) {
           const selectedCount = docManagerRef.current?.getSelectedCount?.() ?? 0;
@@ -841,7 +856,7 @@ export default function PermissionForm({
             id="startDate"
             type="date"
             min={today}
-            value={formData.startDate}
+            value={formData.startDate ?? ""}
             onChange={(e) => handleChange("startDate", e.target.value)}
             required
           />
@@ -853,8 +868,8 @@ export default function PermissionForm({
             <Input
               id="endDate"
               type="date"
-              min={formData.startDate}
-              value={formData.endDate}
+              min={formData.startDate ?? today}
+              value={formData.endDate ?? ""}
               onChange={(e) => handleChange("endDate", e.target.value)}
               required
             />
@@ -913,7 +928,7 @@ export default function PermissionForm({
         <Label htmlFor="justification">Justificación</Label>
         <Textarea
           id="justification"
-          value={formData.justification}
+          value={formData.justification ?? ""}
           onChange={(e) => handleChange("justification", e.target.value)}
           placeholder="Describa el motivo del permiso…"
           rows={3}
