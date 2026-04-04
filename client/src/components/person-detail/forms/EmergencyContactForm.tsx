@@ -314,7 +314,7 @@ export default function EmergencyContactForm({
                 </Select>
                 <FormMessage />
                 {relationshipTypesError && (
-                  <p className="text-xs text-red-500 mt-1">
+                  <p className="text-xs text-destructive mt-1">
                     No se pudieron cargar las relaciones.
                   </p>
                 )}

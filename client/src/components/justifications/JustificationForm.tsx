@@ -489,12 +489,12 @@ export default function JustificationForm({ onCreated, onCancel }: Props) {
 
       {/* Cabecera: nombre del tipo */}
       {selectedTypeName && (
-        <div className="rounded-md border p-3 bg-gray-50">
-          <p className="text-sm text-gray-700">
+        <div className="rounded-md border p-3 bg-background">
+          <p className="text-sm text-foreground">
             <span className="font-medium">Tipo seleccionado:</span> {selectedTypeName}
           </p>
           {bossId && (
-            <p className="text-xs text-gray-600 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               <span className="font-medium">Jefe inmediato:</span> {bossName ? bossName : `ID ${bossId}`}
             </p>
           )}
@@ -533,34 +533,34 @@ export default function JustificationForm({ onCreated, onCancel }: Props) {
             </div>
           </div>
 
-          {loadingSchedule && <div className="text-sm text-blue-600">Cargando horario del empleado...</div>}
+          {loadingSchedule && <div className="text-sm text-primary">Cargando horario del empleado...</div>}
 
           {employeeSchedule && suggestedTime && (
-            <div className="rounded-md border p-3 bg-blue-50">
-              <p className="text-sm text-blue-700">
+            <div className="rounded-md border p-3 bg-primary/10">
+              <p className="text-sm text-primary">
                 <span className="font-medium">Horario asignado:</span>
                 {employeeSchedule.entryTime && ` Entrada: ${employeeSchedule.entryTime}`}
                 {employeeSchedule.lunchStart && ` | Almuerzo salida: ${employeeSchedule.lunchStart}`}
                 {employeeSchedule.lunchEnd && ` | Almuerzo regreso: ${employeeSchedule.lunchEnd}`}
                 {employeeSchedule.exitTime && ` | Salida: ${employeeSchedule.exitTime}`}
               </p>
-              <p className="text-sm text-blue-700 mt-1">
+              <p className="text-sm text-primary mt-1">
                 <span className="font-medium">Hora sugerida:</span> {suggestedTime}
               </p>
             </div>
           )}
 
           {!schedulerID && (
-            <div className="rounded-md border p-3 bg-yellow-50">
-              <p className="text-sm text-yellow-700">
+            <div className="rounded-md border p-3 bg-warning/10">
+              <p className="text-sm text-warning">
                 No se encontró schedulerID en su perfil. No se puede cargar el horario automáticamente.
               </p>
             </div>
           )}
 
           {employeeSchedule === null && startDateTime && schedulerID && (
-            <div className="rounded-md border p-3 bg-yellow-50">
-              <p className="text-sm text-yellow-700">
+            <div className="rounded-md border p-3 bg-warning/10">
+              <p className="text-sm text-warning">
                 No se encontró horario asignado. Por favor, ingrese la hora manualmente.
               </p>
             </div>

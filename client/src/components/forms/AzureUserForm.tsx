@@ -210,7 +210,7 @@ export default function AzureUserForm({ mode, user, onSuccess, onCancel }: Props
           <CardContent className="pt-6 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="text-sm text-gray-700">Email</label>
+                <label className="text-sm text-foreground">Email</label>
                 <Input
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -218,37 +218,37 @@ export default function AzureUserForm({ mode, user, onSuccess, onCancel }: Props
                   disabled={isEdit}
                 />
                 {isEdit && (
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     En edición se mantiene el email/UPN para evitar inconsistencias.
                   </p>
                 )}
               </div>
 
               <div>
-                <label className="text-sm text-gray-700">Nombre a mostrar</label>
+                <label className="text-sm text-foreground">Nombre a mostrar</label>
                 <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
               </div>
 
               {!isEdit && (
                 <>
                   <div>
-                    <label className="text-sm text-gray-700">Nombres</label>
+                    <label className="text-sm text-foreground">Nombres</label>
                     <Input value={givenName} onChange={(e) => setGivenName(e.target.value)} />
                   </div>
                   <div>
-                    <label className="text-sm text-gray-700">Apellidos</label>
+                    <label className="text-sm text-foreground">Apellidos</label>
                     <Input value={surname} onChange={(e) => setSurname(e.target.value)} />
                   </div>
                 </>
               )}
 
               <div>
-                <label className="text-sm text-gray-700">Departamento</label>
+                <label className="text-sm text-foreground">Departamento</label>
                 <Input value={department} onChange={(e) => setDepartment(e.target.value)} />
               </div>
 
               <div>
-                <label className="text-sm text-gray-700">Cargo</label>
+                <label className="text-sm text-foreground">Cargo</label>
                 <Input value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} />
               </div>
             </div>
@@ -256,7 +256,7 @@ export default function AzureUserForm({ mode, user, onSuccess, onCancel }: Props
             {!isEdit && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-sm text-gray-700">Contraseña (opcional)</label>
+                  <label className="text-sm text-foreground">Contraseña (opcional)</label>
                   <Input
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -272,7 +272,7 @@ export default function AzureUserForm({ mode, user, onSuccess, onCancel }: Props
                     checked={forceChangePasswordNextSignIn}
                     onChange={(e) => setForceChangePasswordNextSignIn(e.target.checked)}
                   />
-                  <label htmlFor="forceChange" className="text-sm text-gray-700">
+                  <label htmlFor="forceChange" className="text-sm text-foreground">
                     Forzar cambio de contraseña en próximo login
                   </label>
                 </div>
@@ -287,7 +287,7 @@ export default function AzureUserForm({ mode, user, onSuccess, onCancel }: Props
                 checked={accountEnabled}
                 onChange={(e) => setAccountEnabled(e.target.checked)}
               />
-              <label htmlFor="enabled" className="text-sm text-gray-700">
+              <label htmlFor="enabled" className="text-sm text-foreground">
                 Cuenta habilitada
               </label>
             </div>
@@ -298,7 +298,7 @@ export default function AzureUserForm({ mode, user, onSuccess, onCancel }: Props
           <Button type="button" variant="outline" onClick={onCancel} disabled={isPending}>
             Cancelar
           </Button>
-          <Button type="submit" className="bg-blue-600 hover:bg-blue-700" disabled={!canSubmit || isPending}>
+          <Button type="submit" className="bg-primary hover:bg-primary/90" disabled={!canSubmit || isPending}>
             {isEdit ? "Guardar cambios" : "Crear usuario"}
           </Button>
         </div>
@@ -311,11 +311,11 @@ export default function AzureUserForm({ mode, user, onSuccess, onCancel }: Props
             <div className="mt-2 space-y-2 max-h-[260px] overflow-y-auto">
               {debugEvents.map((e, idx) => (
                 <div key={idx} className="border rounded p-2">
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-muted-foreground">
                     {e.at} · {e.action}
                   </div>
                   {e.detail !== undefined ? (
-                    <pre className="mt-1 text-xs whitespace-pre-wrap break-words bg-gray-50 border rounded p-2">
+                    <pre className="mt-1 text-xs whitespace-pre-wrap break-words bg-background border rounded p-2">
                       {safeJson(e.detail, 6000)}
                     </pre>
                   ) : null}

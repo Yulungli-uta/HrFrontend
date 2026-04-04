@@ -19,34 +19,34 @@ function getCategoryConfig(cat: FileCategory) {
     case "pdf":
       return {
         Icon: FileText,
-        bg: "bg-red-50 dark:bg-red-950/40",
-        border: "border-red-200 dark:border-red-800/50",
-        iconColor: "text-red-500 dark:text-red-400",
+        bg: "bg-destructive/10 dark:bg-red-950/40",
+        border: "border-destructive/30 dark:border-red-800/50",
+        iconColor: "text-destructive dark:text-destructive/80",
         label: "PDF",
-        lineColor: "bg-red-200/60 dark:bg-red-800/40",
+        lineColor: "bg-destructive/20/60 dark:bg-red-800/40",
       };
     case "image":
       return {
         Icon: Image,
-        bg: "bg-blue-50 dark:bg-blue-950/40",
-        border: "border-blue-200 dark:border-blue-800/50",
-        iconColor: "text-blue-500 dark:text-blue-400",
+        bg: "bg-primary/10 dark:bg-blue-950/40",
+        border: "border-primary/30 dark:border-blue-800/50",
+        iconColor: "text-primary dark:text-primary/70",
         label: "IMG",
-        lineColor: "bg-blue-200/60 dark:bg-blue-800/40",
+        lineColor: "bg-blue-200/60 dark:bg-primary/80/40",
       };
     case "spreadsheet":
       return {
         Icon: FileSpreadsheet,
-        bg: "bg-green-50 dark:bg-green-950/40",
-        border: "border-green-200 dark:border-green-800/50",
-        iconColor: "text-green-600 dark:text-green-400",
+        bg: "bg-success/10 dark:bg-green-950/40",
+        border: "border-success/30 dark:border-green-800/50",
+        iconColor: "text-success dark:text-success/80",
         label: "XLS",
-        lineColor: "bg-green-200/60 dark:bg-green-800/40",
+        lineColor: "bg-success/20/60 dark:bg-green-800/40",
       };
     case "presentation":
       return {
         Icon: Presentation,
-        bg: "bg-orange-50 dark:bg-orange-950/40",
+        bg: "bg-secondary/10 dark:bg-orange-950/40",
         border: "border-orange-200 dark:border-orange-800/50",
         iconColor: "text-orange-500 dark:text-orange-400",
         label: "PPT",
@@ -55,7 +55,7 @@ function getCategoryConfig(cat: FileCategory) {
     case "code":
       return {
         Icon: FileCode,
-        bg: "bg-purple-50 dark:bg-purple-950/40",
+        bg: "bg-accent/50 dark:bg-purple-950/40",
         border: "border-purple-200 dark:border-purple-800/50",
         iconColor: "text-purple-500 dark:text-purple-400",
         label: "COD",
@@ -64,11 +64,11 @@ function getCategoryConfig(cat: FileCategory) {
     default:
       return {
         Icon: File,
-        bg: "bg-gray-50 dark:bg-gray-900/40",
-        border: "border-gray-200 dark:border-gray-700/50",
-        iconColor: "text-gray-500 dark:text-gray-400",
+        bg: "bg-background dark:bg-background/40",
+        border: "border-border dark:border-gray-700/50",
+        iconColor: "text-muted-foreground dark:text-muted-foreground/70",
         label: "DOC",
-        lineColor: "bg-gray-200/60 dark:bg-gray-700/40",
+        lineColor: "bg-muted/60 dark:bg-muted/40",
       };
   }
 }

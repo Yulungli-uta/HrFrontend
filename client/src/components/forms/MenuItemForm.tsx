@@ -263,7 +263,7 @@ export default function MenuItemForm({ menuItem, onSuccess, onCancel }: Props) {
             </Button>
             <Button
               type="submit"
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-primary hover:bg-primary/90"
               disabled={createMutation.isPending || updateMutation.isPending}
             >
               {menuItem?.id ? "Actualizar" : "Crear"}

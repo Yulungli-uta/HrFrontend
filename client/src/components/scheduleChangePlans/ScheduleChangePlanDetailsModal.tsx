@@ -66,7 +66,7 @@ export function ScheduleChangePlanDetailsModal({
             {/* Header Info */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted/30 rounded-lg border">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 text-blue-600 rounded-full">
+                <div className="p-2 bg-primary/15 text-primary rounded-full">
                   <Calendar className="h-5 w-5" />
                 </div>
                 <div>
@@ -76,7 +76,7 @@ export function ScheduleChangePlanDetailsModal({
               </div>
 
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-100 text-purple-600 rounded-full flex-shrink-0">
+                <div className="p-2 bg-accent text-purple-600 rounded-full flex-shrink-0">
                   <Users className="h-5 w-5" />
                 </div>
                 <div>
@@ -86,7 +86,7 @@ export function ScheduleChangePlanDetailsModal({
               </div>
 
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-100 text-green-600 rounded-full flex-shrink-0">
+                <div className="p-2 bg-success/15 text-success rounded-full flex-shrink-0">
                   <Clock className="h-5 w-5" />
                 </div>
                 <div>
@@ -140,7 +140,7 @@ export function ScheduleChangePlanDetailsModal({
                             </div>
                             
                             <div>
-                              <Badge variant="outline" className="bg-red-50 text-red-700 hover:bg-red-100 border-red-200">
+                              <Badge variant="outline" className="bg-destructive/10 text-destructive hover:bg-destructive/15 border-destructive/30">
                                 {getScheduleLabel(detail.previousScheduleID, schedulesMap)}
                               </Badge>
                               {previousScheduleStr !== "—" && (
@@ -149,7 +149,7 @@ export function ScheduleChangePlanDetailsModal({
                             </div>
                             
                             <div>
-                              <Badge className="bg-green-50 text-green-700 hover:bg-green-100 border-green-200" variant="outline">
+                              <Badge className="bg-success/10 text-success hover:bg-success/15 border-success/30" variant="outline">
                                 {getScheduleLabel(plan.newScheduleID, schedulesMap)}
                               </Badge>
                               {newScheduleStr !== "—" && (
@@ -168,7 +168,7 @@ export function ScheduleChangePlanDetailsModal({
                             <div className="grid grid-cols-2 gap-2 text-sm">
                               <div>
                                 <p className="text-xs text-muted-foreground mb-1 font-semibold uppercase tracking-wider">Anterior</p>
-                                <Badge variant="outline" className="text-[10px] sm:text-xs bg-red-50 text-red-700 border-red-200">
+                                <Badge variant="outline" className="text-[10px] sm:text-xs bg-destructive/10 text-destructive border-destructive/30">
                                   {getScheduleLabel(detail.previousScheduleID, schedulesMap)}
                                 </Badge>
                                 {previousScheduleStr !== "—" && (
@@ -177,7 +177,7 @@ export function ScheduleChangePlanDetailsModal({
                               </div>
                               <div>
                                 <p className="text-xs text-muted-foreground mb-1 font-semibold uppercase tracking-wider">Nuevo</p>
-                                <Badge className="text-[10px] sm:text-xs bg-green-50 text-green-700 border-green-200">
+                                <Badge className="text-[10px] sm:text-xs bg-success/10 text-success border-success/30">
                                   {getScheduleLabel(plan.newScheduleID, schedulesMap)}
                                 </Badge>
                                 {newScheduleStr !== "—" && (

@@ -116,10 +116,10 @@ export default function SchedulesPage() {
         {/* Header Skeleton */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div className="space-y-2">
-            <div className="h-8 w-48 bg-gray-200 rounded animate-pulse" />
-            <div className="h-4 w-64 bg-gray-200 rounded animate-pulse" />
+            <div className="h-8 w-48 bg-muted rounded animate-pulse" />
+            <div className="h-4 w-64 bg-muted rounded animate-pulse" />
           </div>
-          <div className="h-10 w-40 bg-gray-200 rounded animate-pulse" />
+          <div className="h-10 w-40 bg-muted rounded animate-pulse" />
         </div>
 
         {/* Grid Skeleton - Responsive */}
@@ -127,13 +127,13 @@ export default function SchedulesPage() {
           {Array.from({ length: 6 }).map((_, i) => (
             <Card key={`skeleton-${i}`} className="animate-pulse">
               <CardHeader className="space-y-2 pb-3">
-                <div className="h-5 w-3/4 bg-gray-200 rounded" />
-                <div className="h-3 w-1/2 bg-gray-200 rounded" />
+                <div className="h-5 w-3/4 bg-muted rounded" />
+                <div className="h-3 w-1/2 bg-muted rounded" />
               </CardHeader>
               <CardContent className="space-y-2 pt-0">
-                <div className="h-3 w-full bg-gray-200 rounded" />
-                <div className="h-3 w-2/3 bg-gray-200 rounded" />
-                <div className="h-3 w-1/2 bg-gray-200 rounded" />
+                <div className="h-3 w-full bg-muted rounded" />
+                <div className="h-3 w-2/3 bg-muted rounded" />
+                <div className="h-3 w-1/2 bg-muted rounded" />
               </CardContent>
             </Card>
           ))}
@@ -146,9 +146,9 @@ export default function SchedulesPage() {
   if (error) {
     return (
       <div className="container mx-auto p-4 sm:p-6">
-        <Card className="border-red-200 bg-red-50">
+        <Card className="border-destructive/30 bg-destructive/10">
           <CardContent className="pt-6">
-            <p className="text-red-600 text-center sm:text-left">
+            <p className="text-destructive text-center sm:text-left">
               Error al cargar los horarios. Intente nuevamente.
             </p>
             <Button onClick={() => refetch()} className="mt-4">
@@ -163,9 +163,9 @@ export default function SchedulesPage() {
   if (apiResponse?.status === "error") {
     return (
       <div className="container mx-auto p-4 sm:p-6">
-        <Card className="border-red-200 bg-red-50">
+        <Card className="border-destructive/30 bg-destructive/10">
           <CardContent className="pt-6">
-            <p className="text-red-600 text-center sm:text-left">
+            <p className="text-destructive text-center sm:text-left">
               Error al cargar los horarios: {apiResponse.error.message}
             </p>
             <Button onClick={() => refetch()} className="mt-4">
@@ -182,21 +182,21 @@ export default function SchedulesPage() {
       {/* Header Responsive */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div className="text-center sm:text-left">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
             Gestión de Horarios
           </h1>
-          <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">
+          <p className="text-muted-foreground mt-1 sm:mt-2 text-sm sm:text-base">
             Configure y administre los horarios de trabajo del personal
           </p>
         </div>
 
         {/* Device Indicator */}
         <div className="flex items-center justify-center sm:justify-end gap-4">
-          <div className="hidden sm:flex items-center gap-2 text-sm text-gray-500">
+          <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
             <Monitor className="h-4 w-4" />
             <span>Desktop</span>
           </div>
-          <div className="flex sm:hidden items-center gap-2 text-sm text-gray-500">
+          <div className="flex sm:hidden items-center gap-2 text-sm text-muted-foreground">
             <Smartphone className="h-4 w-4" />
             <span>Móvil</span>
           </div>
@@ -206,7 +206,7 @@ export default function SchedulesPage() {
             <DialogTrigger asChild>
               <Button
                 data-testid="button-add-schedule"
-                className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
+                className="bg-primary hover:bg-primary/90 w-full sm:w-auto"
                 onClick={openCreate}
                 size={isMobile ? "default" : "default"}
               >
@@ -243,26 +243,26 @@ export default function SchedulesPage() {
       {/* Stats Cards - Solo en desktop/tablet */}
       {!isMobile && schedules.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200">
+          <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-primary/30">
             <CardContent className="p-4 flex items-center gap-3">
-              <div className="bg-blue-500 p-2 rounded-full">
+              <div className="bg-primary p-2 rounded-full">
                 <Users className="h-5 w-5 text-white" />
               </div>
               <div>
-                <p className="text-sm font-medium text-blue-900">Total Horarios</p>
-                <p className="text-2xl font-bold text-blue-700">{schedules.length}</p>
+                <p className="text-sm font-medium text-primary">Total Horarios</p>
+                <p className="text-2xl font-bold text-primary">{schedules.length}</p>
               </div>
             </CardContent>
           </Card>
           
-          <Card className="bg-gradient-to-r from-green-50 to-green-100 border-green-200">
+          <Card className="bg-gradient-to-r from-green-50 to-green-100 border-success/30">
             <CardContent className="p-4 flex items-center gap-3">
-              <div className="bg-green-500 p-2 rounded-full">
+              <div className="bg-success p-2 rounded-full">
                 <Clock className="h-5 w-5 text-white" />
               </div>
               <div>
-                <p className="text-sm font-medium text-green-900">Horarios Fijos</p>
-                <p className="text-2xl font-bold text-green-700">
+                <p className="text-sm font-medium text-success">Horarios Fijos</p>
+                <p className="text-2xl font-bold text-success">
                   {schedules.filter(s => !s.isRotating).length}
                 </p>
               </div>
@@ -276,7 +276,7 @@ export default function SchedulesPage() {
               </div>
               <div>
                 <p className="text-sm font-medium text-purple-900">Rotativos</p>
-                <p className="text-2xl font-bold text-purple-700">
+                <p className="text-2xl font-bold text-accent-foreground">
                   {schedules.filter(s => s.isRotating).length}
                 </p>
               </div>
@@ -290,7 +290,7 @@ export default function SchedulesPage() {
               </div>
               <div>
                 <p className="text-sm font-medium text-orange-900">Con Almuerzo</p>
-                <p className="text-2xl font-bold text-orange-700">
+                <p className="text-2xl font-bold text-secondary-foreground">
                   {schedules.filter(s => s.hasLunchBreak).length}
                 </p>
               </div>
@@ -342,7 +342,7 @@ export default function SchedulesPage() {
                                 <div data-testid={`text-schedule-${uniqueKey}`} className="font-semibold">
                                   {s.description}
                                 </div>
-                                <div className="text-xs text-gray-500 md:hidden">
+                                <div className="text-xs text-muted-foreground md:hidden">
                                   {s.workingDays}
                                 </div>
                               </div>
@@ -365,11 +365,11 @@ export default function SchedulesPage() {
                             </TableCell>
                             <TableCell>
                               {s.isRotating ? (
-                                <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
+                                <Badge variant="outline" className="text-xs bg-accent/50 text-accent-foreground border-purple-200">
                                   Rotativo
                                 </Badge>
                               ) : (
-                                <Badge variant="outline" className="text-xs bg-gray-50 text-gray-600">
+                                <Badge variant="outline" className="text-xs bg-background text-muted-foreground">
                                   Fijo
                                 </Badge>
                               )}
@@ -400,7 +400,7 @@ export default function SchedulesPage() {
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem 
                                       onClick={() => handleDelete(s)}
-                                      className="text-red-600"
+                                      className="text-destructive"
                                     >
                                       <Trash2 className="h-4 w-4 mr-2" />
                                       Eliminar
@@ -453,7 +453,7 @@ export default function SchedulesPage() {
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
                               onClick={() => handleDelete(s)}
-                              className="text-red-600"
+                              className="text-destructive"
                             >
                               <Trash2 className="h-4 w-4 mr-2" />
                               Eliminar
@@ -466,7 +466,7 @@ export default function SchedulesPage() {
                       <div className="space-y-3">
                         {/* Horario */}
                         <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium text-gray-500">Horario:</span>
+                          <span className="text-sm font-medium text-muted-foreground">Horario:</span>
                           <Badge variant="outline" className="font-mono text-xs">
                             {s.entryTime} - {s.exitTime}
                           </Badge>
@@ -474,7 +474,7 @@ export default function SchedulesPage() {
                         
                         {/* Horas requeridas */}
                         <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium text-gray-500">Horas/día:</span>
+                          <span className="text-sm font-medium text-muted-foreground">Horas/día:</span>
                           <Badge variant="secondary" className="font-mono">
                             {s.requiredHoursPerDay}h
                           </Badge>
@@ -482,19 +482,19 @@ export default function SchedulesPage() {
                         
                         {/* Almuerzo */}
                         <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium text-gray-500">Almuerzo:</span>
+                          <span className="text-sm font-medium text-muted-foreground">Almuerzo:</span>
                           <span className="text-sm">{lunch}</span>
                         </div>
                         
                         {/* Tipo */}
                         <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium text-gray-500">Tipo:</span>
+                          <span className="text-sm font-medium text-muted-foreground">Tipo:</span>
                           {s.isRotating ? (
-                            <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
+                            <Badge variant="outline" className="text-xs bg-accent/50 text-accent-foreground border-purple-200">
                               Rotativo
                             </Badge>
                           ) : (
-                            <Badge variant="outline" className="text-xs bg-gray-50 text-gray-600">
+                            <Badge variant="outline" className="text-xs bg-background text-muted-foreground">
                               Fijo
                             </Badge>
                           )}
@@ -524,11 +524,11 @@ export default function SchedulesPage() {
         /* Estado Vacío */
         <Card className="text-center py-12">
           <CardContent>
-            <Clock className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <Clock className="mx-auto h-16 w-16 text-muted-foreground/70 mb-4" />
+            <h3 className="text-lg font-semibold text-foreground mb-2">
               No hay horarios configurados
             </h3>
-            <p className="text-gray-600 mb-6 max-w-sm mx-auto">
+            <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
               Comience creando el primer horario de trabajo para su personal
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">

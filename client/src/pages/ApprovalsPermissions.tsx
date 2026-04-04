@@ -120,18 +120,18 @@ const statusChip: Record<
   string,
   { label: string; color: string; icon: any }
 > = {
-  Pending: { label: "Pendiente", color: "bg-yellow-100 text-yellow-800", icon: Clock },
-  Approved: { label: "Aprobado", color: "bg-green-100 text-green-800", icon: CheckCircle },
-  Rejected: { label: "Rechazado", color: "bg-red-100 text-red-800", icon: XCircle },
+  Pending: { label: "Pendiente", color: "bg-warning/15 text-warning", icon: Clock },
+  Approved: { label: "Aprobado", color: "bg-success/15 text-success", icon: CheckCircle },
+  Rejected: { label: "Rechazado", color: "bg-destructive/15 text-destructive", icon: XCircle },
 
-  Planned: { label: "Planeado", color: "bg-yellow-100 text-yellow-800", icon: Clock },
-  InProgress: { label: "En Proceso", color: "bg-blue-100 text-blue-800", icon: AlertCircle },
-  Completed: { label: "Completado", color: "bg-green-100 text-green-800", icon: CheckCircle },
-  Canceled: { label: "Cancelado", color: "bg-red-100 text-red-800", icon: XCircle },
+  Planned: { label: "Planeado", color: "bg-warning/15 text-warning", icon: Clock },
+  InProgress: { label: "En Proceso", color: "bg-primary/15 text-primary", icon: AlertCircle },
+  Completed: { label: "Completado", color: "bg-success/15 text-success", icon: CheckCircle },
+  Canceled: { label: "Cancelado", color: "bg-destructive/15 text-destructive", icon: XCircle },
 
-  PENDING: { label: "Pendiente", color: "bg-yellow-100 text-yellow-800", icon: Clock },
-  APPROVED: { label: "Aprobada", color: "bg-green-100 text-green-800", icon: CheckCircle },
-  REJECTED: { label: "Rechazada", color: "bg-red-100 text-red-800", icon: XCircle },
+  PENDING: { label: "Pendiente", color: "bg-warning/15 text-warning", icon: Clock },
+  APPROVED: { label: "Aprobada", color: "bg-success/15 text-success", icon: CheckCircle },
+  REJECTED: { label: "Rechazada", color: "bg-destructive/15 text-destructive", icon: XCircle },
 };
 
 function parseDateSafe(s?: string): Date | null {
@@ -805,8 +805,8 @@ export default function ApprovalsPermissions() {
     <div className="container mx-auto p-4 md:p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Aprobaciones</h1>
-          <p className="text-gray-600 mt-1 text-sm md:text-base">
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground">Aprobaciones</h1>
+          <p className="text-muted-foreground mt-1 text-sm md:text-base">
             Revise y gestione permisos, vacaciones y justificaciones
           </p>
         </div>
@@ -817,7 +817,7 @@ export default function ApprovalsPermissions() {
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2">
-              <CalendarCheck className="h-5 w-5 text-blue-600" />
+              <CalendarCheck className="h-5 w-5 text-primary" />
               Permisos {currentYear}
             </CardTitle>
             <CardDescription>Total: {permsThisYear.length}</CardDescription>
@@ -829,8 +829,8 @@ export default function ApprovalsPermissions() {
                 { key: "Approved", label: "Aprobado" },
                 { key: "Rejected", label: "Rechazado" },
               ].map((s) => (
-                <div key={s.key} className="p-3 rounded-lg bg-gray-50 text-center">
-                  <div className="text-xs md:text-sm text-gray-500">{s.label}</div>
+                <div key={s.key} className="p-3 rounded-lg bg-background text-center">
+                  <div className="text-xs md:text-sm text-muted-foreground">{s.label}</div>
                   <div className="text-xl md:text-2xl font-semibold">{permsCountBy(s.key as any)}</div>
                 </div>
               ))}
@@ -841,7 +841,7 @@ export default function ApprovalsPermissions() {
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2">
-              <Sun className="h-5 w-5 text-green-600" />
+              <Sun className="h-5 w-5 text-success" />
               Vacaciones {currentYear}
             </CardTitle>
             <CardDescription>Total: {vacsThisYear.length}</CardDescription>
@@ -855,8 +855,8 @@ export default function ApprovalsPermissions() {
                 { key: "Completed", label: "Completado" },
                 { key: "Canceled", label: "Cancelado" },
               ].map((s: any) => (
-                <div key={s.key} className="p-3 rounded-lg bg-gray-50 text-center">
-                  <div className="text-xs md:text-sm text-gray-500">{s.label}</div>
+                <div key={s.key} className="p-3 rounded-lg bg-background text-center">
+                  <div className="text-xs md:text-sm text-muted-foreground">{s.label}</div>
                   <div className="text-xl md:text-2xl font-semibold">{vacsCountBy(s.key)}</div>
                 </div>
               ))}
@@ -879,8 +879,8 @@ export default function ApprovalsPermissions() {
                 { key: "APPROVED", label: "Aprobada" },
                 { key: "REJECTED", label: "Rechazada" },
               ].map((s: any) => (
-                <div key={s.key} className="p-3 rounded-lg bg-gray-50 text-center">
-                  <div className="text-xs md:text-sm text-gray-500">{s.label}</div>
+                <div key={s.key} className="p-3 rounded-lg bg-background text-center">
+                  <div className="text-xs md:text-sm text-muted-foreground">{s.label}</div>
                   <div className="text-xl md:text-2xl font-semibold">{justCountBy(s.key)}</div>
                 </div>
               ))}
@@ -891,7 +891,7 @@ export default function ApprovalsPermissions() {
 
       {/* Tabs con header sticky en móvil */}
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="space-y-6">
-        <div className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b">
+        <div className="sticky top-0 z-30 bg-card/90 backdrop-blur border-b">
           <div className="container mx-auto px-0 py-3">
             <TabsList className="grid w-full grid-cols-3 overflow-x-auto rounded-lg">
               <TabsTrigger value="permisos" className="flex items-center gap-2 text-xs sm:text-sm">
@@ -910,12 +910,12 @@ export default function ApprovalsPermissions() {
         {/* ======================= Permisos ======================= */}
         <TabsContent value="permisos" className="space-y-4">
           <Card>
-            <CardHeader className="pb-0 sticky top-[64px] z-20 bg-white/90 backdrop-blur border-b md:static md:bg-transparent md:backdrop-blur-0 md:border-0">
+            <CardHeader className="pb-0 sticky top-[64px] z-20 bg-card/90 backdrop-blur border-b md:static md:bg-transparent md:backdrop-blur-0 md:border-0">
               <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-end">
                 <div className="flex-1">
-                  <Label className="text-xs text-gray-500">Buscar</Label>
+                  <Label className="text-xs text-muted-foreground">Buscar</Label>
                   <div className="flex items-center gap-2">
-                    <Search className="h-4 w-4 text-gray-500" />
+                    <Search className="h-4 w-4 text-muted-foreground" />
                     <Input
                       placeholder="Empleado, tipo o motivo…"
                       value={permFilters.q}
@@ -925,7 +925,7 @@ export default function ApprovalsPermissions() {
                 </div>
 
                 <div className="min-w-[160px]">
-                  <Label className="text-xs text-gray-500">Año</Label>
+                  <Label className="text-xs text-muted-foreground">Año</Label>
                   <Select
                     value={permFilters.year}
                     onValueChange={(v: any) => setPermFilters((f) => ({ ...f, year: v }))}
@@ -941,7 +941,7 @@ export default function ApprovalsPermissions() {
                 </div>
 
                 <div className="min-w-[160px]">
-                  <Label className="text-xs text-gray-500">Estado</Label>
+                  <Label className="text-xs text-muted-foreground">Estado</Label>
                   <Select
                     value={permFilters.status}
                     onValueChange={(v: any) => setPermFilters((f) => ({ ...f, status: v }))}
@@ -960,7 +960,7 @@ export default function ApprovalsPermissions() {
 
                 <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
                   <div>
-                    <Label className="text-xs text-gray-500">Desde</Label>
+                    <Label className="text-xs text-muted-foreground">Desde</Label>
                     <Input
                       type="date"
                       value={permFilters.from ?? ""}
@@ -968,7 +968,7 @@ export default function ApprovalsPermissions() {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs text-gray-500">Hasta</Label>
+                    <Label className="text-xs text-muted-foreground">Hasta</Label>
                     <Input
                       type="date"
                       value={permFilters.to ?? ""}
@@ -992,9 +992,9 @@ export default function ApprovalsPermissions() {
               {/* Mobile cards */}
               <div className="md:hidden space-y-3">
                 {loadingPerms ? (
-                  <div className="py-6 text-center text-gray-500">Cargando permisos…</div>
+                  <div className="py-6 text-center text-muted-foreground">Cargando permisos…</div>
                 ) : filteredPerms.length === 0 ? (
-                  <div className="py-6 text-center text-gray-500">Sin resultados</div>
+                  <div className="py-6 text-center text-muted-foreground">Sin resultados</div>
                 ) : (
                   filteredPerms.map((p, i) => {
                     const emp = p.employeeId ? employeesMap[p.employeeId] : undefined;
@@ -1007,13 +1007,13 @@ export default function ApprovalsPermissions() {
                       <Card key={getPermissionKey(p, i)} className="p-3">
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-2 min-w-0">
-                            <User className="h-4 w-4 text-gray-500 shrink-0" />
+                            <User className="h-4 w-4 text-muted-foreground shrink-0" />
                             <div className="truncate">
                               <div className="font-medium truncate">
                                 {emp?.fullName ?? (p.employeeId ? `#${p.employeeId}` : "—")}
                               </div>
                               {emp?.departmentName && (
-                                <div className="text-xs text-gray-500 truncate">{emp.departmentName}</div>
+                                <div className="text-xs text-muted-foreground truncate">{emp.departmentName}</div>
                               )}
                             </div>
                           </div>
@@ -1023,27 +1023,27 @@ export default function ApprovalsPermissions() {
                           </Badge>
                         </div>
 
-                        <div className="mt-2 text-xs text-gray-500">Creado: {fmtDate(created)}</div>
+                        <div className="mt-2 text-xs text-muted-foreground">Creado: {fmtDate(created)}</div>
 
                         <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
                           <div>
-                            <span className="text-gray-500">Tipo: </span>
+                            <span className="text-muted-foreground">Tipo: </span>
                             {getTypeName(p.permissionTypeId)}
                           </div>
                           <div>
-                            <span className="text-gray-500">Horas: </span>
+                            <span className="text-muted-foreground">Horas: </span>
                             {p.hourTaken ?? 0}
                           </div>
                           <div>
-                            <span className="text-gray-500">Desde: </span>
+                            <span className="text-muted-foreground">Desde: </span>
                             {fmtDate(p.startDate)}
                           </div>
                           <div>
-                            <span className="text-gray-500">Hasta: </span>
+                            <span className="text-muted-foreground">Hasta: </span>
                             {fmtDate(p.endDate)}
                           </div>
                           <div className="col-span-2">
-                            <span className="text-gray-500">Motivo: </span>
+                            <span className="text-muted-foreground">Motivo: </span>
                             {p.justification || "—"}
                           </div>
                         </div>
@@ -1077,13 +1077,13 @@ export default function ApprovalsPermissions() {
               {/* Desktop table */}
               <div className="hidden md:block">
                 {loadingPerms ? (
-                  <div className="py-8 text-center text-gray-500">Cargando permisos…</div>
+                  <div className="py-8 text-center text-muted-foreground">Cargando permisos…</div>
                 ) : filteredPerms.length === 0 ? (
-                  <div className="py-8 text-center text-gray-500">Sin resultados</div>
+                  <div className="py-8 text-center text-muted-foreground">Sin resultados</div>
                 ) : (
                   <div className="overflow-x-auto rounded-lg border">
                     <Table>
-                      <TableHeader className="sticky top-0 bg-white z-10">
+                      <TableHeader className="sticky top-0 bg-card z-10">
                         <TableRow>
                           <TableHead>ID</TableHead>
                           <TableHead>Empleado</TableHead>
@@ -1110,13 +1110,13 @@ export default function ApprovalsPermissions() {
                               <TableCell>{p.id ?? "—"}</TableCell>
                               <TableCell className="max-w-[240px]">
                                 <div className="flex items-center gap-2">
-                                  <User className="h-4 w-4 text-gray-500" />
+                                  <User className="h-4 w-4 text-muted-foreground" />
                                   <div className="truncate">
                                     <div className="font-medium truncate">
                                       {emp?.fullName ?? (p.employeeId ? `#${p.employeeId}` : "—")}
                                     </div>
                                     {emp?.departmentName && (
-                                      <div className="text-xs text-gray-500 truncate">{emp.departmentName}</div>
+                                      <div className="text-xs text-muted-foreground truncate">{emp.departmentName}</div>
                                     )}
                                   </div>
                                 </div>
@@ -1170,12 +1170,12 @@ export default function ApprovalsPermissions() {
         {/* ======================= Vacaciones ======================= */}
         <TabsContent value="vacaciones" className="space-y-4">
           <Card>
-            <CardHeader className="pb-0 sticky top-[64px] z-20 bg-white/90 backdrop-blur border-b md:static md:bg-transparent md:backdrop-blur-0 md:border-0">
+            <CardHeader className="pb-0 sticky top-[64px] z-20 bg-card/90 backdrop-blur border-b md:static md:bg-transparent md:backdrop-blur-0 md:border-0">
               <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-end">
                 <div className="flex-1">
-                  <Label className="text-xs text-gray-500">Buscar</Label>
+                  <Label className="text-xs text-muted-foreground">Buscar</Label>
                   <div className="flex items-center gap-2">
-                    <Search className="h-4 w-4 text-gray-500" />
+                    <Search className="h-4 w-4 text-muted-foreground" />
                     <Input
                       placeholder="Empleado o motivo…"
                       value={vacFilters.q}
@@ -1185,7 +1185,7 @@ export default function ApprovalsPermissions() {
                 </div>
 
                 <div className="min-w-[160px]">
-                  <Label className="text-xs text-gray-500">Año</Label>
+                  <Label className="text-xs text-muted-foreground">Año</Label>
                   <Select
                     value={vacFilters.year}
                     onValueChange={(v: any) => setVacFilters((f) => ({ ...f, year: v }))}
@@ -1201,7 +1201,7 @@ export default function ApprovalsPermissions() {
                 </div>
 
                 <div className="min-w-[180px]">
-                  <Label className="text-xs text-gray-500">Estado</Label>
+                  <Label className="text-xs text-muted-foreground">Estado</Label>
                   <Select
                     value={vacFilters.status}
                     onValueChange={(v: any) => setVacFilters((f) => ({ ...f, status: v }))}
@@ -1222,7 +1222,7 @@ export default function ApprovalsPermissions() {
 
                 <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
                   <div>
-                    <Label className="text-xs text-gray-500">Desde</Label>
+                    <Label className="text-xs text-muted-foreground">Desde</Label>
                     <Input
                       type="date"
                       value={vacFilters.from ?? ""}
@@ -1230,7 +1230,7 @@ export default function ApprovalsPermissions() {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs text-gray-500">Hasta</Label>
+                    <Label className="text-xs text-muted-foreground">Hasta</Label>
                     <Input
                       type="date"
                       value={vacFilters.to ?? ""}
@@ -1254,9 +1254,9 @@ export default function ApprovalsPermissions() {
               {/* Mobile cards */}
               <div className="md:hidden space-y-3">
                 {loadingVacs ? (
-                  <div className="py-6 text-center text-gray-500">Cargando vacaciones…</div>
+                  <div className="py-6 text-center text-muted-foreground">Cargando vacaciones…</div>
                 ) : filteredVacs.length === 0 ? (
-                  <div className="py-6 text-center text-gray-500">Sin resultados</div>
+                  <div className="py-6 text-center text-muted-foreground">Sin resultados</div>
                 ) : (
                   filteredVacs.map((v, i) => {
                     const emp = v.EmployeeID ? employeesMap[v.EmployeeID] : undefined;
@@ -1269,13 +1269,13 @@ export default function ApprovalsPermissions() {
                       <Card key={getVacationKey(v, i)} className="p-3">
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-2 min-w-0">
-                            <User className="h-4 w-4 text-gray-500 shrink-0" />
+                            <User className="h-4 w-4 text-muted-foreground shrink-0" />
                             <div className="truncate">
                               <div className="font-medium truncate">
                                 {emp?.fullName ?? (v.EmployeeID ? `#${v.EmployeeID}` : "—")}
                               </div>
                               {emp?.departmentName && (
-                                <div className="text-xs text-gray-500 truncate">{emp.departmentName}</div>
+                                <div className="text-xs text-muted-foreground truncate">{emp.departmentName}</div>
                               )}
                             </div>
                           </div>
@@ -1285,23 +1285,23 @@ export default function ApprovalsPermissions() {
                           </Badge>
                         </div>
 
-                        <div className="mt-2 text-xs text-gray-500">Creado: {fmtDate(created)}</div>
+                        <div className="mt-2 text-xs text-muted-foreground">Creado: {fmtDate(created)}</div>
 
                         <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
                           <div>
-                            <span className="text-gray-500">Desde: </span>
+                            <span className="text-muted-foreground">Desde: </span>
                             {fmtDate(v.StartDate)}
                           </div>
                           <div>
-                            <span className="text-gray-500">Hasta: </span>
+                            <span className="text-muted-foreground">Hasta: </span>
                             {fmtDate(v.EndDate)}
                           </div>
                           <div>
-                            <span className="text-gray-500">Días: </span>
+                            <span className="text-muted-foreground">Días: </span>
                             {v.DaysGranted ?? 0}
                           </div>
                           <div className="col-span-2">
-                            <span className="text-gray-500">Motivo: </span>
+                            <span className="text-muted-foreground">Motivo: </span>
                             {v.Reason || "—"}
                           </div>
                         </div>
@@ -1335,13 +1335,13 @@ export default function ApprovalsPermissions() {
               {/* Desktop table */}
               <div className="hidden md:block">
                 {loadingVacs ? (
-                  <div className="py-8 text-center text-gray-500">Cargando vacaciones…</div>
+                  <div className="py-8 text-center text-muted-foreground">Cargando vacaciones…</div>
                 ) : filteredVacs.length === 0 ? (
-                  <div className="py-8 text-center text-gray-500">Sin resultados</div>
+                  <div className="py-8 text-center text-muted-foreground">Sin resultados</div>
                 ) : (
                   <div className="overflow-x-auto rounded-lg border">
                     <Table>
-                      <TableHeader className="sticky top-0 bg-white z-10">
+                      <TableHeader className="sticky top-0 bg-card z-10">
                         <TableRow>
                           <TableHead>ID</TableHead>
                           <TableHead>Empleado</TableHead>
@@ -1370,13 +1370,13 @@ export default function ApprovalsPermissions() {
                               <TableCell>{v.VacationID ?? "—"}</TableCell>
                               <TableCell className="max-w-[240px]">
                                 <div className="flex items-center gap-2">
-                                  <User className="h-4 w-4 text-gray-500" />
+                                  <User className="h-4 w-4 text-muted-foreground" />
                                   <div className="truncate">
                                     <div className="font-medium truncate">
                                       {emp?.fullName ?? (v.EmployeeID ? `#${v.EmployeeID}` : "—")}
                                     </div>
                                     {emp?.departmentName && (
-                                      <div className="text-xs text-gray-500 truncate">{emp.departmentName}</div>
+                                      <div className="text-xs text-muted-foreground truncate">{emp.departmentName}</div>
                                     )}
                                   </div>
                                 </div>
@@ -1431,12 +1431,12 @@ export default function ApprovalsPermissions() {
         {/* ======================= Justificaciones ======================= */}
         <TabsContent value="justificaciones" className="space-y-4">
           <Card>
-            <CardHeader className="pb-0 sticky top-[64px] z-20 bg-white/90 backdrop-blur border-b md:static md:bg-transparent md:backdrop-blur-0 md:border-0">
+            <CardHeader className="pb-0 sticky top-[64px] z-20 bg-card/90 backdrop-blur border-b md:static md:bg-transparent md:backdrop-blur-0 md:border-0">
               <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-end">
                 <div className="flex-1">
-                  <Label className="text-xs text-gray-500">Buscar</Label>
+                  <Label className="text-xs text-muted-foreground">Buscar</Label>
                   <div className="flex items-center gap-2">
-                    <Search className="h-4 w-4 text-gray-500" />
+                    <Search className="h-4 w-4 text-muted-foreground" />
                     <Input
                       placeholder="Empleado o motivo…"
                       value={justFilters.q}
@@ -1446,7 +1446,7 @@ export default function ApprovalsPermissions() {
                 </div>
 
                 <div className="min-w-[160px]">
-                  <Label className="text-xs text-gray-500">Año</Label>
+                  <Label className="text-xs text-muted-foreground">Año</Label>
                   <Select
                     value={justFilters.year}
                     onValueChange={(v: any) => setJustFilters((f) => ({ ...f, year: v }))}
@@ -1462,7 +1462,7 @@ export default function ApprovalsPermissions() {
                 </div>
 
                 <div className="min-w-[180px]">
-                  <Label className="text-xs text-gray-500">Estado</Label>
+                  <Label className="text-xs text-muted-foreground">Estado</Label>
                   <Select
                     value={justFilters.status}
                     onValueChange={(v: any) => setJustFilters((f) => ({ ...f, status: v }))}
@@ -1481,7 +1481,7 @@ export default function ApprovalsPermissions() {
 
                 <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
                   <div>
-                    <Label className="text-xs text-gray-500">Desde</Label>
+                    <Label className="text-xs text-muted-foreground">Desde</Label>
                     <Input
                       type="date"
                       value={justFilters.from ?? ""}
@@ -1489,7 +1489,7 @@ export default function ApprovalsPermissions() {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs text-gray-500">Hasta</Label>
+                    <Label className="text-xs text-muted-foreground">Hasta</Label>
                     <Input
                       type="date"
                       value={justFilters.to ?? ""}
@@ -1513,9 +1513,9 @@ export default function ApprovalsPermissions() {
               {/* Mobile cards */}
               <div className="md:hidden space-y-3">
                 {loadingJusts ? (
-                  <div className="py-6 text-center text-gray-500">Cargando justificaciones…</div>
+                  <div className="py-6 text-center text-muted-foreground">Cargando justificaciones…</div>
                 ) : filteredJusts.length === 0 ? (
-                  <div className="py-6 text-center text-gray-500">Sin resultados</div>
+                  <div className="py-6 text-center text-muted-foreground">Sin resultados</div>
                 ) : (
                   filteredJusts.map((j, i) => {
                     const emp = j.employeeId ? employeesMap[j.employeeId] : undefined;
@@ -1529,13 +1529,13 @@ export default function ApprovalsPermissions() {
                       <Card key={getJustKey(j, i)} className="p-3">
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-2 min-w-0">
-                            <User className="h-4 w-4 text-gray-500 shrink-0" />
+                            <User className="h-4 w-4 text-muted-foreground shrink-0" />
                             <div className="truncate">
                               <div className="font-medium truncate">
                                 {emp?.fullName ?? (j.employeeId ? `#${j.employeeId}` : "—")}
                               </div>
                               {emp?.departmentName && (
-                                <div className="text-xs text-gray-500 truncate">{emp.departmentName}</div>
+                                <div className="text-xs text-muted-foreground truncate">{emp.departmentName}</div>
                               )}
                             </div>
                           </div>
@@ -1545,23 +1545,23 @@ export default function ApprovalsPermissions() {
                           </Badge>
                         </div>
 
-                        <div className="mt-2 text-xs text-gray-500">Creado: {fmtDate(created)}</div>
+                        <div className="mt-2 text-xs text-muted-foreground">Creado: {fmtDate(created)}</div>
 
                         <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
                           <div>
-                            <span className="text-gray-500">Fecha/Desde: </span>
+                            <span className="text-muted-foreground">Fecha/Desde: </span>
                             {fmtDate(j.justificationDate ?? j.startDate)}
                           </div>
                           <div>
-                            <span className="text-gray-500">Hasta: </span>
+                            <span className="text-muted-foreground">Hasta: </span>
                             {fmtDate(j.endDate)}
                           </div>
                           <div>
-                            <span className="text-gray-500">Horas: </span>
+                            <span className="text-muted-foreground">Horas: </span>
                             {j.hoursRequested ?? 0}
                           </div>
                           <div className="col-span-2">
-                            <span className="text-gray-500">Motivo: </span>
+                            <span className="text-muted-foreground">Motivo: </span>
                             {j.reason || "—"}
                           </div>
                         </div>
@@ -1595,13 +1595,13 @@ export default function ApprovalsPermissions() {
               {/* Desktop table */}
               <div className="hidden md:block">
                 {loadingJusts ? (
-                  <div className="py-8 text-center text-gray-500">Cargando justificaciones…</div>
+                  <div className="py-8 text-center text-muted-foreground">Cargando justificaciones…</div>
                 ) : filteredJusts.length === 0 ? (
-                  <div className="py-8 text-center text-gray-500">Sin resultados</div>
+                  <div className="py-8 text-center text-muted-foreground">Sin resultados</div>
                 ) : (
                   <div className="overflow-x-auto rounded-lg border">
                     <Table>
-                      <TableHeader className="sticky top-0 bg-white z-10">
+                      <TableHeader className="sticky top-0 bg-card z-10">
                         <TableRow>
                           <TableHead>ID</TableHead>
                           <TableHead>Empleado</TableHead>
@@ -1628,13 +1628,13 @@ export default function ApprovalsPermissions() {
                               <TableCell>{j.punchJustId ?? "—"}</TableCell>
                               <TableCell className="max-w-[240px]">
                                 <div className="flex items-center gap-2">
-                                  <User className="h-4 w-4 text-gray-500" />
+                                  <User className="h-4 w-4 text-muted-foreground" />
                                   <div className="truncate">
                                     <div className="font-medium truncate">
                                       {emp?.fullName ?? (j.employeeId ? `#${j.employeeId}` : "—")}
                                     </div>
                                     {emp?.departmentName && (
-                                      <div className="text-xs text-gray-500 truncate">{emp.departmentName}</div>
+                                      <div className="text-xs text-muted-foreground truncate">{emp.departmentName}</div>
                                     )}
                                   </div>
                                 </div>

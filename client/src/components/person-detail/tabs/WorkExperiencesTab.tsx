@@ -68,7 +68,7 @@ export function WorkExperiencesTab({ workExperiences, onEdit, onDelete }: WorkEx
 
       <CardContent>
         {workExperiences.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
+          <div className="text-center py-8 text-muted-foreground">
             <Briefcase className="mx-auto h-12 w-12 mb-3 opacity-50" />
             <p className="text-base mb-1">No hay experiencias laborales registradas</p>
             <p className="text-sm">
@@ -93,10 +93,10 @@ export function WorkExperiencesTab({ workExperiences, onEdit, onDelete }: WorkEx
                           <div className="flex-1 space-y-3">
                             <div className="flex items-start justify-between">
                               <div>
-                                <h4 className="font-semibold text-gray-900 text-lg">
+                                <h4 className="font-semibold text-foreground text-lg">
                                   {experience.position}
                                 </h4>
-                                <p className="text-gray-600 text-sm mt-1">
+                                <p className="text-muted-foreground text-sm mt-1">
                                   {experience.company}
                                 </p>
                               </div>
@@ -119,7 +119,7 @@ export function WorkExperiencesTab({ workExperiences, onEdit, onDelete }: WorkEx
                                       onDelete(experienceId);
                                     }
                                   }}
-                                  className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                                  className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                                   disabled={experienceId == null}
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
@@ -127,9 +127,9 @@ export function WorkExperiencesTab({ workExperiences, onEdit, onDelete }: WorkEx
                               </div>
                             </div>
 
-                            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                            <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
                               <div className="flex items-center gap-2">
-                                <Calendar className="h-4 w-4 text-gray-400" />
+                                <Calendar className="h-4 w-4 text-muted-foreground/70" />
                                 <span>
                                   {formatDate(experience.startDate)} -{" "}
                                   {experience.isCurrent ? (
@@ -154,38 +154,38 @@ export function WorkExperiencesTab({ workExperiences, onEdit, onDelete }: WorkEx
                             </div>
 
                             {experience.institutionAddress && (
-                              <div className="flex items-center gap-2 text-sm text-gray-600">
-                                <MapPin className="h-4 w-4 text-gray-400" />
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <MapPin className="h-4 w-4 text-muted-foreground/70" />
                                 <span>{experience.institutionAddress}</span>
                               </div>
                             )}
 
                             {experience.entryReason && (
-                              <div className="text-sm text-gray-600">
+                              <div className="text-sm text-muted-foreground">
                                 <p className="font-medium mb-1">Razón de entrada:</p>
-                                <p className="text-gray-700 line-clamp-2">{experience.entryReason}</p>
+                                <p className="text-foreground line-clamp-2">{experience.entryReason}</p>
                               </div>
                             )}
 
                             {experience.exitReason && (
-                              <div className="text-sm text-gray-600">
+                              <div className="text-sm text-muted-foreground">
                                 <p className="font-medium mb-1">Razón de salida:</p>
-                                <p className="text-gray-700 line-clamp-2">{experience.exitReason}</p>
+                                <p className="text-foreground line-clamp-2">{experience.exitReason}</p>
                               </div>
                             )}
 
                             <div className="flex gap-4 text-xs">
                               <div>
-                                <span className="font-medium text-gray-600">ID País: </span>
-                                <span className="text-gray-900">{experience.countryId}</span>
+                                <span className="font-medium text-muted-foreground">ID País: </span>
+                                <span className="text-foreground">{experience.countryId}</span>
                               </div>
                               <div>
-                                <span className="font-medium text-gray-600">Tipo Institución: </span>
-                                <span className="text-gray-900">{experience.institutionTypeId}</span>
+                                <span className="font-medium text-muted-foreground">Tipo Institución: </span>
+                                <span className="text-foreground">{experience.institutionTypeId}</span>
                               </div>
                               <div>
-                                <span className="font-medium text-gray-600">Tipo Experiencia: </span>
-                                <span className="text-gray-900">{experience.experienceTypeId}</span>
+                                <span className="font-medium text-muted-foreground">Tipo Experiencia: </span>
+                                <span className="text-foreground">{experience.experienceTypeId}</span>
                               </div>
                             </div>
                           </div>

@@ -476,15 +476,15 @@ export default function ReferenceTypesPage() {
       {/* Header */}
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <div className="flex-1 min-w-0">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 truncate">Gestión de Tipos de Referencia</h1>
-          <p className="text-gray-600 mt-2 text-sm sm:text-base">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground truncate">Gestión de Tipos de Referencia</h1>
+          <p className="text-muted-foreground mt-2 text-sm sm:text-base">
             Administre los tipos de referencia y categorías del sistema de recursos humanos
           </p>
         </div>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto">
+            <Button className="bg-primary hover:bg-primary/90 w-full sm:w-auto">
               <Plus className="mr-2 h-4 w-4" />
               Nuevo Tipo
             </Button>
@@ -655,9 +655,9 @@ export default function ReferenceTypesPage() {
                   </div>
 
                   {editingType && !newType.IsActive && (
-                    <div className="bg-yellow-50 p-3 rounded-md flex items-center space-x-2">
-                      <AlertCircle className="h-4 w-4 text-yellow-600" />
-                      <span className="text-sm text-yellow-600">
+                    <div className="bg-warning/10 p-3 rounded-md flex items-center space-x-2">
+                      <AlertCircle className="h-4 w-4 text-warning" />
+                      <span className="text-sm text-warning">
                         Desactivar este tipo puede afectar funcionalidades que lo utilicen.
                       </span>
                     </div>
@@ -695,26 +695,26 @@ export default function ReferenceTypesPage() {
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm sm:text-lg flex items-center">
-              <Tag className="mr-2 h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+              <Tag className="mr-2 h-4 w-4 sm:h-5 sm:w-5 text-primary" />
               Total Tipos
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-xl sm:text-2xl font-bold text-blue-600">{stats.totalTypes}</div>
-            <p className="text-xs sm:text-sm text-gray-500">tipos registrados</p>
+            <div className="text-xl sm:text-2xl font-bold text-primary">{stats.totalTypes}</div>
+            <p className="text-xs sm:text-sm text-muted-foreground">tipos registrados</p>
           </CardContent>
         </Card>
 
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm sm:text-lg flex items-center">
-              <Tag className="mr-2 h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
+              <Tag className="mr-2 h-4 w-4 sm:h-5 sm:w-5 text-success" />
               Activos
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-xl sm:text-2xl font-bold text-green-600">{stats.activeTypes}</div>
-            <p className="text-xs sm:text-sm text-gray-500">tipos en uso</p>
+            <div className="text-xl sm:text-2xl font-bold text-success">{stats.activeTypes}</div>
+            <p className="text-xs sm:text-sm text-muted-foreground">tipos en uso</p>
           </CardContent>
         </Card>
 
@@ -727,20 +727,20 @@ export default function ReferenceTypesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-xl sm:text-2xl font-bold text-purple-600">{stats.totalCategories}</div>
-            <p className="text-xs sm:text-sm text-gray-500">categorías diferentes</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">categorías diferentes</p>
           </CardContent>
         </Card>
 
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm sm:text-lg flex items-center">
-              <Tag className="mr-2 h-4 w-4 sm:h-5 sm:w-5 text-gray-600" />
+              <Tag className="mr-2 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
               Inactivos
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-xl sm:text-2xl font-bold text-gray-600">{stats.inactiveTypes}</div>
-            <p className="text-xs sm:text-sm text-gray-500">tipos deshabilitados</p>
+            <div className="text-xl sm:text-2xl font-bold text-muted-foreground">{stats.inactiveTypes}</div>
+            <p className="text-xs sm:text-sm text-muted-foreground">tipos deshabilitados</p>
           </CardContent>
         </Card>
       </div>
@@ -842,7 +842,7 @@ export default function ReferenceTypesPage() {
                                 {type.IsActive ? 'Activo' : 'Inactivo'}
                               </Badge>
                             </TableCell>
-                            <TableCell className="hidden lg:table-cell text-sm text-gray-500">
+                            <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
                               {formatDate(type.CreatedAt)}
                             </TableCell>
                             <TableCell>
@@ -872,7 +872,7 @@ export default function ReferenceTypesPage() {
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-8 text-gray-500">
+                <div className="text-center py-8 text-muted-foreground">
                   <Tag className="mx-auto h-12 w-12 mb-4 opacity-50" />
                   <p className="text-base sm:text-lg mb-2">No hay tipos de referencia registrados</p>
                   <p className="text-sm">Los tipos aparecerán aquí una vez que se creen</p>
@@ -903,11 +903,11 @@ export default function ReferenceTypesPage() {
                   <CardContent>
                     <div className="space-y-2 max-h-48 overflow-y-auto">
                       {categoryTypes.map(type => (
-                        <div key={type.TypeID ?? `${type.Name}-${type.CreatedAt}`} className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm">
+                        <div key={type.TypeID ?? `${type.Name}-${type.CreatedAt}`} className="flex items-center justify-between p-2 bg-background rounded text-sm">
                           <div className="flex-1 min-w-0">
                             <p className="font-medium truncate">{type.Name || '—'}</p>
                             {type.Description && (
-                              <p className="text-xs text-gray-500 truncate">{type.Description}</p>
+                              <p className="text-xs text-muted-foreground truncate">{type.Description}</p>
                             )}
                           </div>
                           <div className="flex items-center gap-2 shrink-0">

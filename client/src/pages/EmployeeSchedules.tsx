@@ -58,8 +58,8 @@ import type {
 
 /* -------------------- Helpers -------------------- */
 const statusChip = {
-  active: { label: "Activo", color: "bg-green-100 text-green-800" },
-  expired: { label: "Expirado", color: "bg-red-100 text-red-800" },
+  active: { label: "Activo", color: "bg-success/15 text-success" },
+  expired: { label: "Expirado", color: "bg-destructive/15 text-destructive" },
 };
 
 function getArray<T>(resp: any): T[] {
@@ -466,7 +466,7 @@ export default function EmployeeSchedules() {
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600" />
-            <p className="mt-4 text-gray-600">Cargando datos de empleados...</p>
+            <p className="mt-4 text-muted-foreground">Cargando datos de empleados...</p>
           </div>
         </div>
       </div>
@@ -476,13 +476,13 @@ export default function EmployeeSchedules() {
   if (isEmployeesError) {
     return (
       <div className="container mx-auto p-6">
-        <Card className="border-red-200 bg-red-50">
+        <Card className="border-destructive/30 bg-destructive/10">
           <CardContent className="pt-6">
             <div className="text-center">
-              <h3 className="mb-2 text-lg font-semibold text-red-800">
+              <h3 className="mb-2 text-lg font-semibold text-destructive">
                 Error al cargar los datos
               </h3>
-              <p className="mb-4 text-red-600">
+              <p className="mb-4 text-destructive">
                 {employeesError ||
                   handleApiError({
                     code: 0,
@@ -510,10 +510,10 @@ export default function EmployeeSchedules() {
     <div className="container mx-auto space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">
+          <h1 className="text-3xl font-bold text-foreground">
             Gestión de Horarios
           </h1>
-          <p className="mt-1 text-gray-600">
+          <p className="mt-1 text-muted-foreground">
             Asigne y administre horarios usando la vista consolidada de
             empleados
           </p>
@@ -524,15 +524,15 @@ export default function EmployeeSchedules() {
         <Card className="transition-shadow hover:shadow-md">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-blue-600" />
+              <Users className="h-5 w-5 text-primary" />
               Total Empleados
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-600">
+            <div className="text-3xl font-bold text-primary">
               {stats.total}
             </div>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-muted-foreground">
               Empleados en el sistema
             </p>
           </CardContent>
@@ -541,15 +541,15 @@ export default function EmployeeSchedules() {
         <Card className="transition-shadow hover:shadow-md">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-green-600" />
+              <Clock className="h-5 w-5 text-success" />
               Con Horario
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-green-600">
+            <div className="text-3xl font-bold text-success">
               {stats.withSchedule}
             </div>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-muted-foreground">
               Empleados con horario asignado
             </p>
           </CardContent>
@@ -558,15 +558,15 @@ export default function EmployeeSchedules() {
         <Card className="transition-shadow hover:shadow-md">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-orange-600" />
+              <Calendar className="h-5 w-5 text-secondary-foreground" />
               Sin Horario
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-orange-600">
+            <div className="text-3xl font-bold text-secondary-foreground">
               {stats.withoutSchedule}
             </div>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-muted-foreground">
               Empleados sin horario asignado
             </p>
           </CardContent>
@@ -596,33 +596,33 @@ export default function EmployeeSchedules() {
                       <div>
                         <h3 className="text-lg font-semibold">{schedule.name}</h3>
                         {(schedule.startTime || schedule.endTime) && (
-                          <p className="text-sm text-gray-600">
+                          <p className="text-sm text-muted-foreground">
                             {fmtTime(schedule.startTime)} -{" "}
                             {fmtTime(schedule.endTime)}
                           </p>
                         )}
                       </div>
-                      <Badge className="bg-purple-100 px-3 py-1 text-lg text-purple-800">
+                      <Badge className="bg-accent px-3 py-1 text-lg text-accent-foreground">
                         {count}
                       </Badge>
                     </div>
 
                     {employees.length > 0 && (
                       <div className="mt-2">
-                        <p className="mb-1 text-xs font-medium text-gray-500">
+                        <p className="mb-1 text-xs font-medium text-muted-foreground">
                           Empleados:
                         </p>
                         <div className="max-h-20 space-y-1 overflow-y-auto">
                           {employees.slice(0, 5).map((emp) => (
                             <div
                               key={emp.employeeID}
-                              className="truncate text-xs text-gray-600"
+                              className="truncate text-xs text-muted-foreground"
                             >
                               {emp.fullName}
                             </div>
                           ))}
                           {employees.length > 5 && (
-                            <div className="text-xs text-gray-500">
+                            <div className="text-xs text-muted-foreground">
                               +{employees.length - 5} más...
                             </div>
                           )}
@@ -641,9 +641,9 @@ export default function EmployeeSchedules() {
         <CardHeader>
           <div className="flex flex-col items-stretch gap-4 lg:flex-row lg:items-end">
             <div className="flex-1">
-              <Label className="text-xs text-gray-500">Buscar Empleado</Label>
+              <Label className="text-xs text-muted-foreground">Buscar Empleado</Label>
               <div className="flex items-center gap-2">
-                <Search className="h-4 w-4 text-gray-500" />
+                <Search className="h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Nombre, email, cédula, horario o contrato..."
                   value={currentParams.search ?? ""}
@@ -653,7 +653,7 @@ export default function EmployeeSchedules() {
             </div>
 
             <div className="min-w-[200px]">
-              <Label className="text-xs text-gray-500">Departamento</Label>
+              <Label className="text-xs text-muted-foreground">Departamento</Label>
               <Select
                 value={filters.department}
                 onValueChange={(value) =>
@@ -675,7 +675,7 @@ export default function EmployeeSchedules() {
             </div>
 
             <div className="min-w-[200px]">
-              <Label className="text-xs text-gray-500">Estado de Horario</Label>
+              <Label className="text-xs text-muted-foreground">Estado de Horario</Label>
               <Select
                 value={filters.status}
                 onValueChange={(value) =>
@@ -709,24 +709,24 @@ export default function EmployeeSchedules() {
 
         <CardContent className="p-0">
           {filteredEmployees.length === 0 ? (
-            <div className="py-8 text-center text-gray-500">
+            <div className="py-8 text-center text-muted-foreground">
               {employees.length === 0 ? (
                 <div>
-                  <Users className="mx-auto mb-4 h-12 w-12 text-gray-400" />
-                  <h3 className="mb-2 text-lg font-semibold text-gray-900">
+                  <Users className="mx-auto mb-4 h-12 w-12 text-muted-foreground/70" />
+                  <h3 className="mb-2 text-lg font-semibold text-foreground">
                     No hay empleados
                   </h3>
-                  <p className="mb-4 text-gray-600">
+                  <p className="mb-4 text-muted-foreground">
                     No se encontraron empleados en el sistema
                   </p>
                 </div>
               ) : (
                 <div>
-                  <Search className="mx-auto mb-4 h-12 w-12 text-gray-400" />
-                  <h3 className="mb-2 text-lg font-semibold text-gray-900">
+                  <Search className="mx-auto mb-4 h-12 w-12 text-muted-foreground/70" />
+                  <h3 className="mb-2 text-lg font-semibold text-foreground">
                     No se encontraron empleados
                   </h3>
-                  <p className="mb-4 text-gray-600">
+                  <p className="mb-4 text-muted-foreground">
                     No hay empleados que coincidan con los filtros aplicados
                   </p>
                   <Button
@@ -769,13 +769,13 @@ export default function EmployeeSchedules() {
                     <TableRow key={employee.employeeID}>
                       <TableCell className="max-w-[240px]">
                         <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-gray-500" />
+                          <User className="h-4 w-4 text-muted-foreground" />
                           <div className="truncate">
                             <div className="truncate font-medium">
                               {employee.fullName}
                             </div>
                             {employee.email && employee.email !== "—" && (
-                              <div className="truncate text-xs text-gray-500">
+                              <div className="truncate text-xs text-muted-foreground">
                                 {employee.email}
                               </div>
                             )}
@@ -784,14 +784,14 @@ export default function EmployeeSchedules() {
                       </TableCell>
 
                       <TableCell>
-                        <div className="text-sm text-gray-600">
+                        <div className="text-sm text-muted-foreground">
                           {employee.idCard || "—"}
                         </div>
                       </TableCell>
 
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <Building className="h-4 w-4 text-gray-500" />
+                          <Building className="h-4 w-4 text-muted-foreground" />
                           {employee.departmentName || "—"}
                         </div>
                       </TableCell>

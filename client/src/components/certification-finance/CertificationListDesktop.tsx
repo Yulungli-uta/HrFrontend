@@ -31,15 +31,15 @@ function getStatusClass(rt: RefTypeItem): string {
   const text = `${code} ${name}`;
 
   if (text.includes("APROB") || text.includes("APPROV") || code.includes("APR")) {
-    return "bg-green-100 text-green-800 hover:bg-green-100 border-green-200";
+    return "bg-success/15 text-success hover:bg-success/15 border-success/30";
   }
   if (text.includes("PEND") || code.includes("PEN") || text.includes("EN PROCESO")) {
-    return "bg-orange-100 text-orange-800 hover:bg-orange-100 border-orange-200";
+    return "bg-secondary/15 text-secondary-foreground hover:bg-secondary/15 border-orange-200";
   }
   if (text.includes("RECH") || code.includes("REC") || text.includes("ANUL")) {
-    return "bg-red-100 text-red-800 hover:bg-red-100 border-red-200";
+    return "bg-destructive/15 text-destructive hover:bg-destructive/15 border-destructive/30";
   }
-  return "bg-gray-100 text-gray-800 hover:bg-gray-100 border-gray-200";
+  return "bg-muted text-foreground hover:bg-muted border-border";
 }
 
 export function CertificationListDesktop(props: {
@@ -99,32 +99,32 @@ export function CertificationListDesktop(props: {
 
                   {/* <TableCell>
                     <div className="flex items-center gap-1">
-                      <DollarSign className="h-3 w-3 text-gray-500" />$
+                      <DollarSign className="h-3 w-3 text-muted-foreground" />$
                       {Number(c.rmuHour ?? 0).toLocaleString()}
                     </div>
                   </TableCell>
 
                   <TableCell>
                     <div className="flex items-center gap-1">
-                      <DollarSign className="h-3 w-3 text-gray-500" />$
+                      <DollarSign className="h-3 w-3 text-muted-foreground" />$
                       {Number(c.rmuCon ?? 0).toLocaleString()}
                     </div>
                   </TableCell>
 
                   <TableCell>
                     <div className="flex items-center gap-1 font-medium">
-                      <DollarSign className="h-3 w-3 text-gray-500" />$
+                      <DollarSign className="h-3 w-3 text-muted-foreground" />$
                       {c.totalAmount.toLocaleString()}
                     </div>
                   </TableCell> */}
 
                   <TableCell>
                     <div className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3 text-gray-500" />
+                      <Calendar className="h-3 w-3 text-muted-foreground" />
                       {formatECDate(c.certBudgetDate)}
                     </div>
                     {c.daysUntilExpiry && c.daysUntilExpiry < 30 && (
-                      <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs mt-1">
+                      <Badge variant="outline" className="bg-warning/10 text-warning border-warning/30 text-xs mt-1">
                         {c.daysUntilExpiry}d
                       </Badge>
                     )}

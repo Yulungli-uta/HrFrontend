@@ -168,7 +168,7 @@ export default function PayrollForm({ onSuccess, onCancel }: PayrollFormProps) {
                   <Badge variant="outline" className="text-sm">
                     {selectedEmployees.length} empleados seleccionados
                   </Badge>
-                  <div className="text-lg font-bold text-green-600">
+                  <div className="text-lg font-bold text-success">
                     Total: ${calculateTotal().toLocaleString()}
                   </div>
                   <Button 
@@ -195,7 +195,7 @@ export default function PayrollForm({ onSuccess, onCancel }: PayrollFormProps) {
                   <Card 
                     key={employeeId} 
                     className={`p-4 cursor-pointer transition-colors ${
-                      isSelected ? 'ring-2 ring-blue-500 bg-blue-50' : 'hover:bg-gray-50'
+                      isSelected ? 'ring-2 ring-blue-500 bg-primary/10' : 'hover:bg-background'
                     }`}
                     onClick={() => handleEmployeeSelection(employeeId, !isSelected)}
                   >
@@ -213,11 +213,11 @@ export default function PayrollForm({ onSuccess, onCancel }: PayrollFormProps) {
                         />
                       </div>
                       {contract && (
-                        <div className="text-sm text-green-600 font-medium">
+                        <div className="text-sm text-success font-medium">
                           ${parseFloat(contract.baseSalary || "0").toLocaleString()}
                         </div>
                       )}
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-muted-foreground">
                         {employee.type}
                       </div>
                     </div>

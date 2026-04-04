@@ -174,18 +174,18 @@ export const DepartmentModal = ({
           {/* Nombre - Full width */}
           <div className="sm:col-span-2">
             <Label htmlFor="name" className="flex items-center gap-1 mb-2">
-              Nombre <span className="text-red-500">*</span>
+              Nombre <span className="text-destructive">*</span>
             </Label>
             <Input
               id="name"
               value={formData.name}
               onChange={(e) => updateField('name', e.target.value)}
               placeholder="Ingrese el nombre del departamento"
-              className={`w-full ${!formData.name && localError ? 'border-red-300' : ''}`}
+              className={`w-full ${!formData.name && localError ? 'border-destructive/40' : ''}`}
               disabled={loading || isSubmitting}
             />
             {!formData.name && (
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Ej: Departamento de Ingeniería de Sistemas
               </p>
             )}
@@ -201,7 +201,7 @@ export const DepartmentModal = ({
               placeholder="Código único"
               disabled={loading || isSubmitting}
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Ej: DEP-SIS
             </p>
           </div>
@@ -216,7 +216,7 @@ export const DepartmentModal = ({
               placeholder="Nombre abreviado"
               disabled={loading || isSubmitting}
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Ej: Sistemas
             </p>
           </div>
@@ -241,7 +241,7 @@ export const DepartmentModal = ({
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Categoría del departamento
             </p>
           </div>
@@ -265,14 +265,14 @@ export const DepartmentModal = ({
                       <Building2 className="h-3 w-3" />
                       <span className="truncate">{dept.name}</span>
                       {dept.code && (
-                        <span className="text-xs text-gray-500 ml-1">({dept.code})</span>
+                        <span className="text-xs text-muted-foreground ml-1">({dept.code})</span>
                       )}
                     </div>
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Jerarquía organizacional
             </p>
           </div>
@@ -282,13 +282,13 @@ export const DepartmentModal = ({
             <input
               id="active"
               type="checkbox"
-              className="h-4 w-4 rounded border-gray-300 focus:ring-blue-500 text-blue-600"
+              className="h-4 w-4 rounded border-border focus:ring-blue-500 text-primary"
               checked={formData.isActive}
               onChange={(e) => updateField('isActive', e.target.checked)}
               disabled={loading || isSubmitting}
             />
             <Label htmlFor="active" className="text-sm font-medium flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${formData.isActive ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+              <div className={`w-2 h-2 rounded-full ${formData.isActive ? 'bg-success' : 'bg-gray-400'}`}></div>
               Departamento Activo
             </Label>
           </div>
@@ -298,31 +298,31 @@ export const DepartmentModal = ({
         {(localError || error) && (
           <div className={`p-4 rounded-lg border ${
             isConcurrencyError 
-              ? "bg-blue-50 border-blue-200" 
+              ? "bg-primary/10 border-primary/30" 
               : isValidationError
               ? "bg-amber-50 border-amber-200"
-              : "bg-red-50 border-red-200"
+              : "bg-destructive/10 border-destructive/30"
           }`}>
             <div className="flex items-start gap-3">
               <AlertCircle className={`h-5 w-5 mt-0.5 ${
-                isConcurrencyError ? "text-blue-600" : 
+                isConcurrencyError ? "text-primary" : 
                 isValidationError ? "text-amber-600" : 
-                "text-red-600"
+                "text-destructive"
               }`} />
               <div className="flex-1">
                 <p className={`text-sm font-medium ${
-                  isConcurrencyError ? "text-blue-800" : 
+                  isConcurrencyError ? "text-primary" : 
                   isValidationError ? "text-amber-800" : 
-                  "text-red-800"
+                  "text-destructive"
                 }`}>
                   {isConcurrencyError ? "Conflicto de simultaneidad" : 
                    isValidationError ? "Error de validación" : 
                    "Error"}
                 </p>
                 <p className={`text-sm mt-1 ${
-                  isConcurrencyError ? "text-blue-700" : 
+                  isConcurrencyError ? "text-primary" : 
                   isValidationError ? "text-amber-700" : 
-                  "text-red-700"
+                  "text-destructive"
                 }`}>
                   {localError || error}
                 </p>
@@ -337,8 +337,8 @@ export const DepartmentModal = ({
 
                 {isConcurrencyError && (
                   <div className="mt-3 flex items-center gap-2">
-                    <RefreshCw className="h-4 w-4 animate-spin text-blue-600" />
-                    <span className="text-xs text-blue-600">
+                    <RefreshCw className="h-4 w-4 animate-spin text-primary" />
+                    <span className="text-xs text-primary">
                       Recargando datos automáticamente...
                     </span>
                   </div>
@@ -350,8 +350,8 @@ export const DepartmentModal = ({
 
         {/* Información del Departamento (solo en edición) */}
         {mode === 'edit' && department && (
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-            <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
+          <div className="bg-background border border-border rounded-lg p-3">
+            <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
               <div>
                 <span className="font-medium">ID:</span> {department.departmentId}
               </div>
@@ -383,7 +383,7 @@ export const DepartmentModal = ({
             type="button"
             onClick={handleSave}
             disabled={loading || isSubmitting || !isValid}
-            className="order-1 sm:order-2 w-full sm:w-auto bg-blue-600 hover:bg-blue-700"
+            className="order-1 sm:order-2 w-full sm:w-auto bg-primary hover:bg-primary/90"
           >
             {loading || isSubmitting ? (
               <>
@@ -401,10 +401,10 @@ export const DepartmentModal = ({
 
         {/* Indicador de carga global */}
         {(loading || isSubmitting) && (
-          <div className="absolute inset-0 bg-white bg-opacity-50 flex items-center justify-center rounded-lg">
-            <div className="flex items-center gap-2 bg-white p-4 rounded-lg shadow-lg border">
-              <RefreshCw className="h-5 w-5 animate-spin text-blue-600" />
-              <span className="text-sm font-medium text-gray-700">
+          <div className="absolute inset-0 bg-card bg-opacity-50 flex items-center justify-center rounded-lg">
+            <div className="flex items-center gap-2 bg-card p-4 rounded-lg shadow-lg border">
+              <RefreshCw className="h-5 w-5 animate-spin text-primary" />
+              <span className="text-sm font-medium text-foreground">
                 {mode === 'create' ? 'Creando departamento...' : 'Guardando cambios...'}
               </span>
             </div>

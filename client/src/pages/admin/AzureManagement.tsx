@@ -566,11 +566,11 @@ export default function AzureManagement() {
         {/* Header */}
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-6">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-2">
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground flex items-center gap-2">
               <UsersIcon className="h-7 w-7 md:h-8 md:w-8" />
               Usuarios (Azure AD)
             </h1>
-            <p className="text-gray-600 mt-1 md:mt-2">
+            <p className="text-muted-foreground mt-1 md:mt-2">
               Lista desde Graph (backend) + acciones + roles por usuario.
             </p>
           </div>
@@ -581,7 +581,7 @@ export default function AzureManagement() {
               Actualizar
             </Button>
 
-            <Button className="bg-blue-600 hover:bg-blue-700" onClick={openCreate}>
+            <Button className="bg-primary hover:bg-primary/90" onClick={openCreate}>
               <Plus className="mr-2 h-4 w-4" />
               Crear usuario
             </Button>
@@ -593,7 +593,7 @@ export default function AzureManagement() {
           <Card>
             <CardContent className="pt-6">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
                 <Input
                   placeholder="Buscar (cliente): nombre, email, UPN, depto..."
                   value={searchTerm}
@@ -641,7 +641,7 @@ export default function AzureManagement() {
             <CardContent className="pt-6">
               <div className="flex flex-col sm:flex-row gap-2">
                 <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
                   <Input
                     placeholder="Buscar por correo (backend): ejemplo@uta.edu.ec"
                     value={emailLookup}
@@ -676,7 +676,7 @@ export default function AzureManagement() {
         <Card className="mb-4">
           <CardContent className="pt-6">
             <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
-              <div className="text-sm text-gray-700">
+              <div className="text-sm text-foreground">
                 <span className="font-medium">Meta:</span>{" "}
                 Página <b>{uiCurrentPage}</b>
                 {typeof uiTotalPages === "number" ? (
@@ -706,7 +706,7 @@ export default function AzureManagement() {
                 </div>
 
                 <div className="flex items-center gap-2 text-sm">
-                  <span className="text-gray-600">Page size:</span>
+                  <span className="text-muted-foreground">Page size:</span>
                   <Input
                     className="w-24"
                     type="number"
@@ -717,7 +717,7 @@ export default function AzureManagement() {
                 </div>
 
                 <div className="flex items-center gap-2 text-sm">
-                  <span className="text-gray-600">Ir a página:</span>
+                  <span className="text-muted-foreground">Ir a página:</span>
                   <Input
                     className="w-24"
                     value={goToPageInput}
@@ -739,12 +739,12 @@ export default function AzureManagement() {
         <Card>
           <CardContent className="pt-6">
             {usersQuery.isLoading ? (
-              <div className="flex items-center gap-2 text-gray-700">
+              <div className="flex items-center gap-2 text-foreground">
                 <RefreshCw className="h-4 w-4 animate-spin" />
                 Cargando usuarios...
               </div>
             ) : usersQuery.isError ? (
-              <div className="text-sm text-red-600">Ocurrió un error cargando usuarios.</div>
+              <div className="text-sm text-destructive">Ocurrió un error cargando usuarios.</div>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
@@ -769,7 +769,7 @@ export default function AzureManagement() {
                           <TableCell>{u.userType || "-"}</TableCell>
                           <TableCell>
                             {enabled ? (
-                              <Badge className="bg-green-600 hover:bg-green-600">Habilitado</Badge>
+                              <Badge className="bg-success hover:bg-success">Habilitado</Badge>
                             ) : (
                               <Badge variant="secondary">Deshabilitado</Badge>
                             )}
@@ -860,24 +860,24 @@ export default function AzureManagement() {
               <div className="space-y-4">
                 <Card>
                   <CardContent className="pt-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-800">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-foreground">
                       <div>
-                        <div className="text-gray-500">Nombre</div>
+                        <div className="text-muted-foreground">Nombre</div>
                         <div className="font-medium">{foundUser.displayName || "-"}</div>
                       </div>
                       <div>
-                        <div className="text-gray-500">Correo</div>
+                        <div className="text-muted-foreground">Correo</div>
                         <div className="font-medium">{foundUser.email || "-"}</div>
                       </div>
                       <div>
-                        <div className="text-gray-500">Tipo</div>
+                        <div className="text-muted-foreground">Tipo</div>
                         <div className="font-medium">{foundUser.userType || "-"}</div>
                       </div>
                       <div>
-                        <div className="text-gray-500">Estado</div>
+                        <div className="text-muted-foreground">Estado</div>
                         <div className="font-medium">
                           {foundUser.accountEnabled !== false ? (
-                            <Badge className="bg-green-600 hover:bg-green-600">Habilitado</Badge>
+                            <Badge className="bg-success hover:bg-success">Habilitado</Badge>
                           ) : (
                             <Badge variant="secondary">Deshabilitado</Badge>
                           )}
@@ -923,7 +923,7 @@ export default function AzureManagement() {
                 </div>
               </div>
             ) : (
-              <div className="text-sm text-gray-600">No hay datos para mostrar.</div>
+              <div className="text-sm text-muted-foreground">No hay datos para mostrar.</div>
             )}
           </DialogContent>
         </Dialog>
@@ -1040,22 +1040,22 @@ export default function AzureManagement() {
             </DialogHeader>
 
             {rolesLoading ? (
-              <div className="flex items-center gap-2 text-gray-700">
+              <div className="flex items-center gap-2 text-foreground">
                 <RefreshCw className="h-4 w-4 animate-spin" />
                 Cargando roles...
               </div>
             ) : rolesError ? (
-              <div className="text-sm text-red-600">{rolesError}</div>
+              <div className="text-sm text-destructive">{rolesError}</div>
             ) : roles.length === 0 ? (
-              <div className="text-sm text-gray-600">No se encontraron roles para este usuario.</div>
+              <div className="text-sm text-muted-foreground">No se encontraron roles para este usuario.</div>
             ) : (
               <div className="space-y-2">
                 {roles.map((r, idx) => (
                   <div key={`${r.id ?? "role"}-${idx}`} className="border rounded-md p-3 text-sm">
                     <div className="font-medium">{r.displayName || "-"}</div>
-                    {r.description ? <div className="text-gray-600 mt-1">{r.description}</div> : null}
+                    {r.description ? <div className="text-muted-foreground mt-1">{r.description}</div> : null}
                     {r.roleTemplateId ? (
-                      <div className="text-gray-500 mt-1">
+                      <div className="text-muted-foreground mt-1">
                         Template: <code>{r.roleTemplateId}</code>
                       </div>
                     ) : null}
@@ -1075,15 +1075,15 @@ export default function AzureManagement() {
                 <div className="font-semibold">Debug</div>
               </div>
 
-              <div className="text-xs text-gray-600 mb-2">Últimos {debugEvents.length} eventos.</div>
+              <div className="text-xs text-muted-foreground mb-2">Últimos {debugEvents.length} eventos.</div>
 
               <div className="space-y-2 max-h-[260px] overflow-auto">
                 {debugEvents.map((e, idx) => (
                   <div key={`${e.at}-${idx}`} className="border rounded-md p-2">
-                    <div className="text-gray-500">{e.at}</div>
+                    <div className="text-muted-foreground">{e.at}</div>
                     <div className="font-medium">{e.action}</div>
                     {typeof e.detail !== "undefined" ? (
-                      <pre className="mt-1 text-[11px] whitespace-pre-wrap break-words text-gray-700">
+                      <pre className="mt-1 text-[11px] whitespace-pre-wrap break-words text-foreground">
                         {JSON.stringify(e.detail, null, 2)}
                       </pre>
                     ) : null}
@@ -1097,7 +1097,7 @@ export default function AzureManagement() {
                     <Shield className="h-4 w-4" />
                     Raw payload
                   </summary>
-                  <pre className="mt-2 text-[11px] whitespace-pre-wrap break-words text-gray-700 border rounded-md p-2 max-h-[240px] overflow-auto">
+                  <pre className="mt-2 text-[11px] whitespace-pre-wrap break-words text-foreground border rounded-md p-2 max-h-[240px] overflow-auto">
                     {JSON.stringify(rawPayload, null, 2)}
                   </pre>
                 </details>
@@ -1109,11 +1109,11 @@ export default function AzureManagement() {
         {/* Overlay bloqueo */}
         {isBlocking && (
           <div className="fixed inset-0 z-[9999] bg-black/20 backdrop-blur-[1px] flex items-center justify-center">
-            <div className="bg-white rounded-lg shadow-lg px-5 py-4 flex items-center gap-3">
+            <div className="bg-card rounded-lg shadow-lg px-5 py-4 flex items-center gap-3">
               <RefreshCw className="h-5 w-5 animate-spin" />
               <div className="text-sm">
-                <div className="font-medium text-gray-900">Cargando…</div>
-                <div className="text-gray-600">Procesando datos, por favor espera.</div>
+                <div className="font-medium text-foreground">Cargando…</div>
+                <div className="text-muted-foreground">Procesando datos, por favor espera.</div>
               </div>
             </div>
           </div>

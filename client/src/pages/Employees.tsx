@@ -329,9 +329,9 @@ const employeeStats = useMemo(() => {
   if (isError) {
     return (
       <div className="container mx-auto p-6">
-        <Card className="border-red-200 dark:border-red-800/40 bg-red-50 dark:bg-red-950/20 shadow-md">
+        <Card className="border-destructive/30 dark:border-red-800/40 bg-destructive/10 shadow-md">
           <CardContent className="pt-6">
-            <p className="text-red-600 dark:text-red-400 font-medium">
+            <p className="text-destructive dark:text-destructive/80 font-medium">
               Error al cargar los empleados: {errorMessage || "Error desconocido"}
             </p>
           </CardContent>
@@ -362,7 +362,7 @@ const employeeStats = useMemo(() => {
           <DialogTrigger asChild>
             <Button
               data-testid="button-add-employee"
-              className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg flex items-center gap-2"
+              className="bg-primary hover:bg-primary/90 px-4 py-2 rounded-lg flex items-center gap-2"
               onClick={() => setEditSeed(null)}
             >
               <UserCog className="h-5 w-5" />
@@ -407,46 +407,46 @@ const employeeStats = useMemo(() => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
         <Card className="border-0 shadow-md bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-950/50 dark:to-blue-900/30">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-medium text-blue-800 dark:text-blue-300">
+            <CardTitle className="text-sm font-medium text-primary dark:text-primary/70">
               Total Empleados
             </CardTitle>
-            <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <Users className="h-5 w-5 text-primary dark:text-primary/70" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-900 dark:text-blue-200">
+            <div className="text-3xl font-bold text-primary dark:text-blue-200">
               {employeeStats.total}
             </div>
-            <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">Total general</p>
+            <p className="text-xs text-primary dark:text-primary/70 mt-1">Total general</p>
           </CardContent>
         </Card>
 
         <Card className="border-0 shadow-md bg-gradient-to-r from-green-50 to-green-100 dark:from-green-950/50 dark:to-green-900/30">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-medium text-green-800 dark:text-green-300">
+            <CardTitle className="text-sm font-medium text-success">
               Activos
             </CardTitle>
-            <UserCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
+            <UserCheck className="h-5 w-5 text-success dark:text-success/80" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-green-900 dark:text-green-200">
+            <div className="text-3xl font-bold text-success dark:text-green-200">
               {employeeStats.active}
             </div>
-            <p className="text-xs text-green-600 dark:text-green-400 mt-1">Total general</p>
+            <p className="text-xs text-success dark:text-success/80 mt-1">Total general</p>
           </CardContent>
         </Card>
 
         <Card className="border-0 shadow-md bg-gradient-to-r from-red-50 to-red-100 dark:from-red-950/50 dark:to-red-900/30">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-medium text-red-800 dark:text-red-300">
+            <CardTitle className="text-sm font-medium text-destructive dark:text-red-300">
               Inactivos
             </CardTitle>
-            <UserX className="h-5 w-5 text-red-600 dark:text-red-400" />
+            <UserX className="h-5 w-5 text-destructive dark:text-destructive/80" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-red-900 dark:text-red-200">
+            <div className="text-3xl font-bold text-destructive dark:text-red-200">
               {employeeStats.inactive}
             </div>
-            <p className="text-xs text-red-600 dark:text-red-400 mt-1">Total general</p>
+            <p className="text-xs text-destructive dark:text-destructive/80 mt-1">Total general</p>
           </CardContent>
         </Card>
       </div>
@@ -590,8 +590,8 @@ const employeeStats = useMemo(() => {
                       <Badge
                         className={
                           employee.employeeIsActive
-                            ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
-                            : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+                            ? "bg-success/15 text-success"
+                            : "bg-destructive/15 text-destructive dark:text-red-300"
                         }
                       >
                         {employee.employeeIsActive ? "Activo" : "Inactivo"}
@@ -632,7 +632,7 @@ const employeeStats = useMemo(() => {
                     setEditSeed(null);
                     setIsFormOpen(true);
                   }}
-                  className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800"
+                  className="bg-primary hover:bg-primary/90 dark:bg-primary/90 dark:hover:bg-primary/80"
                 >
                   <UserCog className="mr-2 h-4 w-4" />
                   Agregar Primer Empleado
@@ -654,8 +654,8 @@ const employeeStats = useMemo(() => {
                   <Badge
                     className={
                       employee.employeeIsActive
-                        ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
-                        : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+                        ? "bg-success/15 text-success"
+                        : "bg-destructive/15 text-destructive dark:text-red-300"
                     }
                   >
                     {employee.employeeIsActive ? "Activo" : "Inactivo"}
@@ -733,7 +733,7 @@ const employeeStats = useMemo(() => {
                       setEditSeed(null);
                       setIsFormOpen(true);
                     }}
-                    className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800"
+                    className="bg-primary hover:bg-primary/90 dark:bg-primary/90 dark:hover:bg-primary/80"
                   >
                     <UserCog className="mr-2 h-4 w-4" />
                     Agregar Primer Empleado
@@ -774,8 +774,8 @@ const employeeStats = useMemo(() => {
           {selectedEmployee && (
             <>
               <div className="flex items-center gap-4 mb-6">
-                <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-full">
-                  <UserCog className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+                <div className="bg-primary/15 dark:bg-blue-900/30 p-3 rounded-full">
+                  <UserCog className="h-8 w-8 text-primary dark:text-primary/70" />
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold text-foreground">
@@ -800,8 +800,8 @@ const employeeStats = useMemo(() => {
                       <Badge
                         className={
                           selectedEmployee.employeeIsActive
-                            ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
-                            : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+                            ? "bg-success/15 text-success"
+                            : "bg-destructive/15 text-destructive dark:text-red-300"
                         }
                       >
                         {selectedEmployee.employeeIsActive

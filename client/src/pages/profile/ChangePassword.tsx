@@ -90,11 +90,11 @@ export default function ChangePasswordPage() {
   return (
     <div className="container mx-auto p-6 max-w-2xl">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
+        <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
           <KeyRound className="h-8 w-8" />
           Cambiar Contraseña
         </h1>
-        <p className="text-gray-600 mt-2">
+        <p className="text-muted-foreground mt-2">
           Actualice su contraseña para mantener su cuenta segura
         </p>
       </div>
@@ -108,7 +108,7 @@ export default function ChangePasswordPage() {
             {/* Contraseña actual */}
             <div className="space-y-2">
               <Label htmlFor="currentPassword">
-                Contraseña Actual <span className="text-red-500">*</span>
+                Contraseña Actual <span className="text-destructive">*</span>
               </Label>
               <div className="relative">
                 <Input
@@ -122,7 +122,7 @@ export default function ChangePasswordPage() {
                 <button
                   type="button"
                   onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
                   {showCurrentPassword ? (
                     <EyeOff className="h-4 w-4" />
@@ -132,7 +132,7 @@ export default function ChangePasswordPage() {
                 </button>
               </div>
               {errors.currentPassword && (
-                <p className="text-sm text-red-600">
+                <p className="text-sm text-destructive">
                   {errors.currentPassword.message}
                 </p>
               )}
@@ -141,7 +141,7 @@ export default function ChangePasswordPage() {
             {/* Nueva contraseña */}
             <div className="space-y-2">
               <Label htmlFor="newPassword">
-                Nueva Contraseña <span className="text-red-500">*</span>
+                Nueva Contraseña <span className="text-destructive">*</span>
               </Label>
               <div className="relative">
                 <Input
@@ -156,7 +156,7 @@ export default function ChangePasswordPage() {
                 <button
                   type="button"
                   onClick={() => setShowNewPassword(!showNewPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
                   {showNewPassword ? (
                     <EyeOff className="h-4 w-4" />
@@ -166,7 +166,7 @@ export default function ChangePasswordPage() {
                 </button>
               </div>
               {errors.newPassword && (
-                <p className="text-sm text-red-600">
+                <p className="text-sm text-destructive">
                   {errors.newPassword.message}
                 </p>
               )}
@@ -175,7 +175,7 @@ export default function ChangePasswordPage() {
             {/* Confirmar contraseña */}
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">
-                Confirmar Nueva Contraseña <span className="text-red-500">*</span>
+                Confirmar Nueva Contraseña <span className="text-destructive">*</span>
               </Label>
               <div className="relative">
                 <Input
@@ -191,7 +191,7 @@ export default function ChangePasswordPage() {
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
                   {showConfirmPassword ? (
                     <EyeOff className="h-4 w-4" />
@@ -201,18 +201,18 @@ export default function ChangePasswordPage() {
                 </button>
               </div>
               {errors.confirmPassword && (
-                <p className="text-sm text-red-600">
+                <p className="text-sm text-destructive">
                   {errors.confirmPassword.message}
                 </p>
               )}
             </div>
 
             {/* Requisitos de contraseña */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm font-semibold text-blue-900 mb-2">
+            <div className="bg-primary/10 border border-primary/30 rounded-lg p-4">
+              <p className="text-sm font-semibold text-primary mb-2">
                 Requisitos de contraseña:
               </p>
-              <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+              <ul className="text-sm text-primary space-y-1 list-disc list-inside">
                 <li>Mínimo 8 caracteres</li>
                 <li>Al menos una letra mayúscula</li>
                 <li>Al menos una letra minúscula</li>
@@ -234,7 +234,7 @@ export default function ChangePasswordPage() {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-primary hover:bg-primary/90"
               >
                 {isLoading ? "Cambiando..." : "Cambiar Contraseña"}
               </Button>
@@ -246,8 +246,8 @@ export default function ChangePasswordPage() {
       {/* Información de seguridad adicional */}
       <Card className="mt-6">
         <CardContent className="pt-6">
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <p className="text-sm text-yellow-800">
+          <div className="bg-warning/10 border border-warning/30 rounded-lg p-4">
+            <p className="text-sm text-warning">
               <strong>Importante:</strong> Después de cambiar su contraseña, todas
               las sesiones activas en otros dispositivos serán cerradas por
               seguridad. Deberá iniciar sesión nuevamente con su nueva contraseña.

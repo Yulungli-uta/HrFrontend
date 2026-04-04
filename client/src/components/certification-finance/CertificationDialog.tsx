@@ -673,7 +673,7 @@ export function CertificationDialog(props: {
                   </Select>
 
                   {cr.listQ.isError && (
-                    <p className="text-xs text-red-600">
+                    <p className="text-xs text-destructive">
                       No se pudo cargar la lista de solicitudes.
                     </p>
                   )}
@@ -868,10 +868,10 @@ export function CertificationDialog(props: {
             </Select>
 
             {isLoadingRefTypes && (
-              <p className="text-xs text-gray-500 mt-1">Cargando estados...</p>
+              <p className="text-xs text-muted-foreground mt-1">Cargando estados...</p>
             )}
             {refTypesError && (
-              <p className="text-xs text-red-600 mt-1">Error al cargar estados.</p>
+              <p className="text-xs text-destructive mt-1">Error al cargar estados.</p>
             )}
           </div>
         </div>

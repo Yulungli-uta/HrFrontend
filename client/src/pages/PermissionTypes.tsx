@@ -375,13 +375,13 @@ export default function PermissionTypesPage() {
     <div className="container mx-auto p-4 md:p-6 space-y-6 max-w-7xl">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Gestión de Tipos de Permisos</h1>
-          <p className="text-gray-600 mt-2">
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground">Gestión de Tipos de Permisos</h1>
+          <p className="text-muted-foreground mt-2">
             Administre los tipos de permisos disponibles
           </p>
         </div>
 
-        <Button className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto" onClick={handleCreateNew}>
+        <Button className="bg-primary hover:bg-primary/90 w-full sm:w-auto" onClick={handleCreateNew}>
           <Plus className="mr-2 h-4 w-4" />
           Nuevo Tipo
         </Button>
@@ -456,7 +456,7 @@ export default function PermissionTypesPage() {
                   }
                   placeholder="0 = sin anticipación mínima"
                 />
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-muted-foreground">
                   Define cuántas horas antes debe solicitarse este permiso.
                 </p>
               </div>
@@ -470,7 +470,7 @@ export default function PermissionTypesPage() {
                 />
                 <div>
                   <Label className="cursor-pointer">Requiere aprobación</Label>
-                  <p className="text-xs text-gray-500">Necesita autorización del supervisor</p>
+                  <p className="text-xs text-muted-foreground">Necesita autorización del supervisor</p>
                 </div>
               </div>
 
@@ -481,7 +481,7 @@ export default function PermissionTypesPage() {
                 />
                 <div>
                   <Label className="cursor-pointer">Descuenta vacaciones</Label>
-                  <p className="text-xs text-gray-500">Se resta del saldo de vacaciones</p>
+                  <p className="text-xs text-muted-foreground">Se resta del saldo de vacaciones</p>
                 </div>
               </div>
 
@@ -492,7 +492,7 @@ export default function PermissionTypesPage() {
                 />
                 <div>
                   <Label className="cursor-pointer">Requiere documentación</Label>
-                  <p className="text-xs text-gray-500">Obliga a subir archivos de soporte</p>
+                  <p className="text-xs text-muted-foreground">Obliga a subir archivos de soporte</p>
                 </div>
               </div>
 
@@ -503,7 +503,7 @@ export default function PermissionTypesPage() {
                 />
                 <div>
                   <Label className="cursor-pointer">Es médico</Label>
-                  <p className="text-xs text-gray-500">Identifica permisos médicos</p>
+                  <p className="text-xs text-muted-foreground">Identifica permisos médicos</p>
                 </div>
               </div>
 
@@ -514,15 +514,15 @@ export default function PermissionTypesPage() {
                 />
                 <div>
                   <Label className="cursor-pointer">Activo</Label>
-                  <p className="text-xs text-gray-500">Controla si el tipo está habilitado para su uso</p>
+                  <p className="text-xs text-muted-foreground">Controla si el tipo está habilitado para su uso</p>
                 </div>
               </div>
             </div>
 
             {editingType && (
-              <div className="bg-blue-50 p-3 rounded-md flex items-center space-x-2">
-                <AlertCircle className="h-4 w-4 text-blue-600" />
-                <span className="text-sm text-blue-700">
+              <div className="bg-primary/10 p-3 rounded-md flex items-center space-x-2">
+                <AlertCircle className="h-4 w-4 text-primary" />
+                <span className="text-sm text-primary">
                   Estás editando un tipo existente (ID {editingType.TypeId ?? '—'}).
                 </span>
               </div>
@@ -544,26 +544,26 @@ export default function PermissionTypesPage() {
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="pb-3">
             <CardTitle className="text-base md:text-lg flex items-center">
-              <Shield className="mr-2 h-5 w-5 text-blue-600" />
+              <Shield className="mr-2 h-5 w-5 text-primary" />
               Total Tipos
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
-            <p className="text-sm text-gray-500">tipos de permisos</p>
+            <div className="text-2xl font-bold text-primary">{stats.total}</div>
+            <p className="text-sm text-muted-foreground">tipos de permisos</p>
           </CardContent>
         </Card>
 
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="pb-3">
             <CardTitle className="text-base md:text-lg flex items-center">
-              <Shield className="mr-2 h-5 w-5 text-orange-600" />
+              <Shield className="mr-2 h-5 w-5 text-secondary-foreground" />
               Requieren Aprobación
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{stats.approvalYes}</div>
-            <p className="text-sm text-gray-500">necesitan autorización</p>
+            <div className="text-2xl font-bold text-secondary-foreground">{stats.approvalYes}</div>
+            <p className="text-sm text-muted-foreground">necesitan autorización</p>
           </CardContent>
         </Card>
 
@@ -576,7 +576,7 @@ export default function PermissionTypesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-slate-700">{stats.docsYes}</div>
-            <p className="text-sm text-gray-500">requieren adjuntos</p>
+            <p className="text-sm text-muted-foreground">requieren adjuntos</p>
           </CardContent>
         </Card>
 
@@ -589,7 +589,7 @@ export default function PermissionTypesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-rose-700">{stats.medicalYes}</div>
-            <p className="text-sm text-gray-500">tipos médicos</p>
+            <p className="text-sm text-muted-foreground">tipos médicos</p>
           </CardContent>
         </Card>
 
@@ -602,7 +602,7 @@ export default function PermissionTypesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-emerald-700">{stats.activeYes}</div>
-            <p className="text-sm text-gray-500">habilitados</p>
+            <p className="text-sm text-muted-foreground">habilitados</p>
           </CardContent>
         </Card>
       </div>
@@ -762,7 +762,7 @@ export default function PermissionTypesPage() {
 
                     <div className="mt-4 flex flex-wrap gap-2">
                       {type.RequiresApproval ? (
-                        <Badge variant="default" className="bg-orange-100 text-orange-800 hover:bg-orange-200">
+                        <Badge variant="default" className="bg-secondary/15 text-secondary-foreground hover:bg-orange-200">
                           <CheckCircle className="h-3 w-3 mr-1" />
                           Aprobación
                         </Badge>
@@ -771,7 +771,7 @@ export default function PermissionTypesPage() {
                       )}
 
                       {type.DeductsFromVacation ? (
-                        <Badge variant="default" className="bg-purple-100 text-purple-800 hover:bg-purple-200">
+                        <Badge variant="default" className="bg-accent text-accent-foreground hover:bg-purple-200">
                           <CheckCircle className="h-3 w-3 mr-1" />
                           Vacaciones
                         </Badge>
@@ -866,7 +866,7 @@ export default function PermissionTypesPage() {
 
                         <TableCell>
                           {type.RequiresApproval ? (
-                            <Badge variant="default" className="bg-orange-100 text-orange-800 hover:bg-orange-200">
+                            <Badge variant="default" className="bg-secondary/15 text-secondary-foreground hover:bg-orange-200">
                               <CheckCircle className="h-3 w-3 mr-1" />
                               Requerida
                             </Badge>
@@ -880,7 +880,7 @@ export default function PermissionTypesPage() {
 
                         <TableCell>
                           {type.DeductsFromVacation ? (
-                            <Badge variant="default" className="bg-purple-100 text-purple-800 hover:bg-purple-200">
+                            <Badge variant="default" className="bg-accent text-accent-foreground hover:bg-purple-200">
                               <CheckCircle className="h-3 w-3 mr-1" />
                               Sí
                             </Badge>
@@ -927,7 +927,7 @@ export default function PermissionTypesPage() {
                               Activo
                             </Badge>
                           ) : (
-                            <Badge variant="outline" className="text-gray-600">
+                            <Badge variant="outline" className="text-muted-foreground">
                               <XCircle className="h-3 w-3 mr-1" />
                               Inactivo
                             </Badge>
@@ -940,7 +940,7 @@ export default function PermissionTypesPage() {
                               {type.LeadTimeHours} h
                             </Badge>
                           ) : (
-                            <span className="text-gray-500">Sin restricción</span>
+                            <span className="text-muted-foreground">Sin restricción</span>
                           )}
                         </TableCell>
 
@@ -948,7 +948,7 @@ export default function PermissionTypesPage() {
                           {type.MaxDays && type.MaxDays > 0 ? (
                             <Badge variant="outline">{type.MaxDays} días</Badge>
                           ) : (
-                            <span className="text-gray-500">Ilimitado</span>
+                            <span className="text-muted-foreground">Ilimitado</span>
                           )}
                         </TableCell>
 
@@ -982,7 +982,7 @@ export default function PermissionTypesPage() {
               </div>
             </>
           ) : (
-            <div className="text-center py-12 px-4 text-gray-500">
+            <div className="text-center py-12 px-4 text-muted-foreground">
               <Shield className="mx-auto h-12 w-12 mb-4 opacity-50" />
               <p className="text-lg mb-2">No hay tipos de permisos registrados</p>
               <p className="text-sm">Crea un nuevo tipo para verlo aquí</p>

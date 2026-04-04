@@ -107,9 +107,9 @@ const statusChip: Record<
   string,
   { label: string; color: string; icon: any }
 > = {
-  Pending: { label: "Pendiente", color: "bg-yellow-100 text-yellow-800", icon: Clock },
-  Approved: { label: "Aprobado", color: "bg-green-100 text-green-800", icon: CheckCircle },
-  Rejected: { label: "Rechazado", color: "bg-red-100 text-red-800", icon: XCircle },
+  Pending: { label: "Pendiente", color: "bg-warning/15 text-warning", icon: Clock },
+  Approved: { label: "Aprobado", color: "bg-success/15 text-success", icon: CheckCircle },
+  Rejected: { label: "Rechazado", color: "bg-destructive/15 text-destructive", icon: XCircle },
 };
 
 function parseDateSafe(s?: string): Date | null {
@@ -560,10 +560,10 @@ export default function ApprovalsMedicalPermissionsPage() {
     <div className="container mx-auto p-4 md:p-6 space-y-6 max-w-7xl">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground">
             Aprobación de Permisos Médicos
           </h1>
-          <p className="text-gray-600 mt-1 text-sm md:text-base">
+          <p className="text-muted-foreground mt-1 text-sm md:text-base">
             Gestión de permisos médicos para revisión y aprobación por doctores
           </p>
         </div>
@@ -597,8 +597,8 @@ export default function ApprovalsMedicalPermissionsPage() {
                 { key: "Approved", label: "Aprobado" },
                 { key: "Rejected", label: "Rechazado" },
               ].map((s) => (
-                <div key={s.key} className="p-3 rounded-lg bg-gray-50 text-center">
-                  <div className="text-xs md:text-sm text-gray-500">{s.label}</div>
+                <div key={s.key} className="p-3 rounded-lg bg-background text-center">
+                  <div className="text-xs md:text-sm text-muted-foreground">{s.label}</div>
                   <div className="text-xl md:text-2xl font-semibold">{permsCountBy(s.key as any)}</div>
                 </div>
               ))}
@@ -609,7 +609,7 @@ export default function ApprovalsMedicalPermissionsPage() {
         <Card className="hover:shadow-md transition-shadow sm:col-span-1 lg:col-span-3">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-              <CalendarRange className="h-5 w-5 text-blue-600" />
+              <CalendarRange className="h-5 w-5 text-primary" />
               Filtros
             </CardTitle>
             <CardDescription>Busque y filtre solicitudes médicas</CardDescription>
@@ -617,9 +617,9 @@ export default function ApprovalsMedicalPermissionsPage() {
           <CardContent>
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
               <div className="xl:col-span-2">
-                <Label className="text-xs text-gray-500">Buscar</Label>
+                <Label className="text-xs text-muted-foreground">Buscar</Label>
                 <div className="flex items-center gap-2">
-                  <Search className="h-4 w-4 text-gray-500 shrink-0" />
+                  <Search className="h-4 w-4 text-muted-foreground shrink-0" />
                   <Input
                     placeholder="Empleado, tipo o motivo…"
                     value={filters.q}
@@ -629,7 +629,7 @@ export default function ApprovalsMedicalPermissionsPage() {
               </div>
 
               <div>
-                <Label className="text-xs text-gray-500">Año</Label>
+                <Label className="text-xs text-muted-foreground">Año</Label>
                 <Select
                   value={filters.year}
                   onValueChange={(v: "current" | "all") => setFilters((f) => ({ ...f, year: v }))}
@@ -645,7 +645,7 @@ export default function ApprovalsMedicalPermissionsPage() {
               </div>
 
               <div>
-                <Label className="text-xs text-gray-500">Estado</Label>
+                <Label className="text-xs text-muted-foreground">Estado</Label>
                 <Select
                   value={filters.status}
                   onValueChange={(v: "all" | "Pending" | "Approved" | "Rejected") =>
@@ -666,7 +666,7 @@ export default function ApprovalsMedicalPermissionsPage() {
 
               <div className="grid grid-cols-2 gap-2 md:col-span-2 xl:col-span-1">
                 <div>
-                  <Label className="text-xs text-gray-500">Desde</Label>
+                  <Label className="text-xs text-muted-foreground">Desde</Label>
                   <Input
                     type="date"
                     value={filters.from ?? ""}
@@ -674,7 +674,7 @@ export default function ApprovalsMedicalPermissionsPage() {
                   />
                 </div>
                 <div>
-                  <Label className="text-xs text-gray-500">Hasta</Label>
+                  <Label className="text-xs text-muted-foreground">Hasta</Label>
                   <Input
                     type="date"
                     value={filters.to ?? ""}
@@ -685,7 +685,7 @@ export default function ApprovalsMedicalPermissionsPage() {
             </div>
 
             <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div className="text-sm text-gray-500">
+              <div className="text-sm text-muted-foreground">
                 Mostrando <span className="font-medium">{filteredPerms.length}</span> solicitudes
               </div>
 
@@ -717,9 +717,9 @@ export default function ApprovalsMedicalPermissionsPage() {
         <CardContent className="space-y-4">
           <div className="md:hidden space-y-3">
             {loadingPerms ? (
-              <div className="py-6 text-center text-gray-500">Cargando permisos médicos…</div>
+              <div className="py-6 text-center text-muted-foreground">Cargando permisos médicos…</div>
             ) : filteredPerms.length === 0 ? (
-              <div className="py-6 text-center text-gray-500">Sin resultados</div>
+              <div className="py-6 text-center text-muted-foreground">Sin resultados</div>
             ) : (
               filteredPerms.map((p, i) => {
                 const emp = p.employeeId ? employeesMap[p.employeeId] : undefined;
@@ -733,13 +733,13 @@ export default function ApprovalsMedicalPermissionsPage() {
                   <Card key={getPermissionKey(p, i)} className="p-3">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2 min-w-0">
-                        <User className="h-4 w-4 text-gray-500 shrink-0" />
+                        <User className="h-4 w-4 text-muted-foreground shrink-0" />
                         <div className="truncate">
                           <div className="font-medium truncate">
                             {emp?.fullName ?? (p.employeeId ? `#${p.employeeId}` : "—")}
                           </div>
                           {emp?.departmentName && (
-                            <div className="text-xs text-gray-500 truncate">{emp.departmentName}</div>
+                            <div className="text-xs text-muted-foreground truncate">{emp.departmentName}</div>
                           )}
                         </div>
                       </div>
@@ -750,29 +750,29 @@ export default function ApprovalsMedicalPermissionsPage() {
                       </Badge>
                     </div>
 
-                    <div className="mt-2 text-xs text-gray-500">
+                    <div className="mt-2 text-xs text-muted-foreground">
                       Creado: {fmtDateTime(created)}
                     </div>
 
                     <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
                       <div>
-                        <span className="text-gray-500">Tipo: </span>
+                        <span className="text-muted-foreground">Tipo: </span>
                         {getTypeName(p.permissionTypeId)}
                       </div>
                       <div>
-                        <span className="text-gray-500">Horas: </span>
+                        <span className="text-muted-foreground">Horas: </span>
                         {p.hourTaken ?? 0}
                       </div>
                       <div>
-                        <span className="text-gray-500">Desde: </span>
+                        <span className="text-muted-foreground">Desde: </span>
                         {fmtDate(p.startDate)}
                       </div>
                       <div>
-                        <span className="text-gray-500">Hasta: </span>
+                        <span className="text-muted-foreground">Hasta: </span>
                         {fmtDate(p.endDate)}
                       </div>
                       <div className="col-span-2">
-                        <span className="text-gray-500">Motivo: </span>
+                        <span className="text-muted-foreground">Motivo: </span>
                         {p.justification || "—"}
                       </div>
                     </div>
@@ -821,13 +821,13 @@ export default function ApprovalsMedicalPermissionsPage() {
 
           <div className="hidden md:block">
             {loadingPerms ? (
-              <div className="py-8 text-center text-gray-500">Cargando permisos médicos…</div>
+              <div className="py-8 text-center text-muted-foreground">Cargando permisos médicos…</div>
             ) : filteredPerms.length === 0 ? (
-              <div className="py-8 text-center text-gray-500">Sin resultados</div>
+              <div className="py-8 text-center text-muted-foreground">Sin resultados</div>
             ) : (
               <div className="overflow-x-auto rounded-lg border">
                 <Table>
-                  <TableHeader className="sticky top-0 bg-white z-10">
+                  <TableHeader className="sticky top-0 bg-card z-10">
                     <TableRow>
                       <TableHead>ID</TableHead>
                       <TableHead>Empleado</TableHead>
@@ -857,13 +857,13 @@ export default function ApprovalsMedicalPermissionsPage() {
 
                           <TableCell className="max-w-[240px]">
                             <div className="flex items-center gap-2">
-                              <User className="h-4 w-4 text-gray-500" />
+                              <User className="h-4 w-4 text-muted-foreground" />
                               <div className="truncate">
                                 <div className="font-medium truncate">
                                   {emp?.fullName ?? (p.employeeId ? `#${p.employeeId}` : "—")}
                                 </div>
                                 {emp?.departmentName && (
-                                  <div className="text-xs text-gray-500 truncate">{emp.departmentName}</div>
+                                  <div className="text-xs text-muted-foreground truncate">{emp.departmentName}</div>
                                 )}
                               </div>
                             </div>
@@ -949,9 +949,9 @@ export default function ApprovalsMedicalPermissionsPage() {
             )}
 
             {loadingDocs ? (
-              <div className="py-6 text-center text-gray-500">Cargando adjuntos…</div>
+              <div className="py-6 text-center text-muted-foreground">Cargando adjuntos…</div>
             ) : selectedDocs.length === 0 ? (
-              <div className="py-6 text-center text-gray-500">
+              <div className="py-6 text-center text-muted-foreground">
                 No hay documentos adjuntos para este permiso.
               </div>
             ) : (
@@ -963,13 +963,13 @@ export default function ApprovalsMedicalPermissionsPage() {
                   >
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 font-medium truncate">
-                        <FileText className="h-4 w-4 shrink-0 text-gray-500" />
+                        <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
                         <span className="truncate">
                           {doc.originalFileName || doc.fileName || "Documento"}
                         </span>
                       </div>
 
-                      <div className="mt-1 text-xs text-gray-500 space-y-1">
+                      <div className="mt-1 text-xs text-muted-foreground space-y-1">
                         {doc.documentTypeName ? <div>Tipo: {doc.documentTypeName}</div> : null}
                         {doc.uploadedAt ? <div>Subido: {fmtDateTime(doc.uploadedAt)}</div> : null}
                         {doc.relativePath ? <div className="truncate">Ruta: {doc.relativePath}</div> : null}

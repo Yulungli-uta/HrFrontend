@@ -263,16 +263,16 @@ export default function PersonDetail() {
 
   if (isLoading && !person) {
     return (
-      <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
+      <div className="min-h-screen bg-background p-4 sm:p-6">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col space-y-4">
-            <div className="h-8 bg-gray-200 rounded w-1/3 animate-pulse" />
+            <div className="h-8 bg-muted rounded w-1/3 animate-pulse" />
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="h-20 bg-gray-200 rounded animate-pulse" />
+                <div key={i} className="h-20 bg-muted rounded animate-pulse" />
               ))}
             </div>
-            <div className="h-64 bg-gray-200 rounded animate-pulse" />
+            <div className="h-64 bg-muted rounded animate-pulse" />
           </div>
         </div>
       </div>
@@ -281,11 +281,11 @@ export default function PersonDetail() {
 
   if (!person && !isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+      <div className="min-h-screen bg-background p-6 flex items-center justify-center">
         <div className="text-center max-w-md">
-          <User className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Persona no encontrada</h2>
-          <p className="text-gray-600 mb-4">
+          <User className="mx-auto h-16 w-16 text-muted-foreground/70 mb-4" />
+          <h2 className="text-xl font-bold text-foreground mb-2">Persona no encontrada</h2>
+          <p className="text-muted-foreground mb-4">
             La persona que buscas no existe o no tienes permisos para verla.
           </p>
           <Button onClick={handleBack}>Volver al listado</Button>
@@ -305,7 +305,7 @@ export default function PersonDetail() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 lg:p-6">
+    <div className="min-h-screen bg-background p-3 sm:p-4 lg:p-6">
       <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 sm:gap-4">
           <div className="flex items-center space-x-3">
@@ -327,10 +327,10 @@ export default function PersonDetail() {
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div className="min-w-0 flex-1">
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 truncate">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground truncate">
                 {person?.firstName} {person?.lastName}
               </h1>
-              <p className="text-gray-600 text-sm sm:text-base truncate">
+              <p className="text-muted-foreground text-sm sm:text-base truncate">
                 CI: {person?.idCard}
               </p>
             </div>
@@ -365,20 +365,20 @@ export default function PersonDetail() {
           onValueChange={setActiveTab}
           className="space-y-4 sm:space-y-6"
         >
-          <TabsList className="w-full grid grid-cols-4 gap-1 h-auto p-1 bg-gray-100 rounded-lg">
-            <TabsTrigger value="personal" className="text-xs px-2 py-2 data-[state=active]:bg-white">
+          <TabsList className="w-full grid grid-cols-4 gap-1 h-auto p-1 bg-muted rounded-lg">
+            <TabsTrigger value="personal" className="text-xs px-2 py-2 data-[state=active]:bg-card">
               <User className="h-3 w-3 sm:mr-1" />
               <span className="hidden sm:inline">Personal</span>
             </TabsTrigger>
-            <TabsTrigger value="publications" className="text-xs px-2 py-2 data-[state=active]:bg-white">
+            <TabsTrigger value="publications" className="text-xs px-2 py-2 data-[state=active]:bg-card">
               <FileText className="h-3 w-3 sm:mr-1" />
               <span className="hidden sm:inline">Publicaciones</span>
             </TabsTrigger>
-            <TabsTrigger value="family" className="text-xs px-2 py-2 data-[state=active]:bg-white">
+            <TabsTrigger value="family" className="text-xs px-2 py-2 data-[state=active]:bg-card">
               <Users className="h-3 w-3 sm:mr-1" />
               <span className="hidden sm:inline">Familia</span>
             </TabsTrigger>
-            <TabsTrigger value="experience" className="text-xs px-2 py-2 data-[state=active]:bg-white">
+            <TabsTrigger value="experience" className="text-xs px-2 py-2 data-[state=active]:bg-card">
               <Briefcase className="h-3 w-3 sm:mr-1" />
               <span className="hidden sm:inline">Experiencia</span>
             </TabsTrigger>

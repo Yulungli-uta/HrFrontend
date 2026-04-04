@@ -200,7 +200,7 @@ const FilesUploadPage: React.FC = () => {
           {msg && (
             <div className={`p-3 rounded-md text-sm ${
               msg.includes("Éxito") || msg.includes("correctamente") 
-                ? "bg-green-50 text-green-800 border border-green-200" 
+                ? "bg-success/10 text-success border border-success/30" 
                 : "bg-destructive/10 text-destructive border border-destructive/20"
             }`}>
               {msg}
@@ -282,7 +282,7 @@ const FilesUploadPage: React.FC = () => {
                 </div>
 
                 {existsResult && (
-                  <div className="p-3 rounded-md bg-blue-50 text-blue-800 border border-blue-200 text-sm">
+                  <div className="p-3 rounded-md bg-primary/10 text-primary border border-primary/30 text-sm">
                     {existsResult}
                   </div>
                 )}
@@ -348,7 +348,7 @@ const FilesUploadPage: React.FC = () => {
                             </span>
                           </div>
                           
-                          <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                          <span className="text-xs bg-success/15 text-success px-2 py-1 rounded">
                             Subido correctamente
                           </span>
                         </div>
@@ -370,13 +370,13 @@ const FilesUploadPage: React.FC = () => {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
             <div className="space-y-2">
-              <div className="text-2xl font-bold text-blue-600">
+              <div className="text-2xl font-bold text-primary">
                 {lastUpload ? 1 : 0}
               </div>
               <div className="text-sm text-muted-foreground">Archivos individuales</div>
             </div>
             <div className="space-y-2">
-              <div className="text-2xl font-bold text-green-600">
+              <div className="text-2xl font-bold text-success">
                 {multipleUploads.reduce((total, group) => total + group.files.length, 0)}
               </div>
               <div className="text-sm text-muted-foreground">Archivos múltiples</div>

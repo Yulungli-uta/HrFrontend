@@ -85,7 +85,7 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
         {/* Email */}
         <div className="space-y-2">
           <Label htmlFor="email">
-            Email <span className="text-red-500">*</span>
+            Email <span className="text-destructive">*</span>
           </Label>
           <Input
             id="email"
@@ -101,10 +101,10 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
             placeholder="usuario@ejemplo.com"
           />
           {errors.email && (
-            <p className="text-sm text-red-600">{errors.email.message}</p>
+            <p className="text-sm text-destructive">{errors.email.message}</p>
           )}
           {isEditing && (
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-muted-foreground">
               El email no puede ser modificado
             </p>
           )}
@@ -123,7 +123,7 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
         {/* Tipo de usuario */}
         <div className="space-y-2">
           <Label htmlFor="userType">
-            Tipo de Usuario <span className="text-red-500">*</span>
+            Tipo de Usuario <span className="text-destructive">*</span>
           </Label>
           <Select
             value={userType}
@@ -137,7 +137,7 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
               <SelectItem value="AzureAD">Azure AD</SelectItem>
             </SelectContent>
           </Select>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted-foreground">
             {userType === "Local"
               ? "Usuario con credenciales locales (email y contraseña)"
               : "Usuario autenticado mediante Azure Active Directory"}
@@ -151,7 +151,7 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
               type="checkbox"
               id="isActive"
               {...register("isActive")}
-              className="h-4 w-4 rounded border-gray-300"
+              className="h-4 w-4 rounded border-border"
             />
             <Label htmlFor="isActive" className="cursor-pointer">
               Usuario activo
@@ -160,8 +160,8 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
         )}
 
         {/* Información adicional */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-sm text-blue-800">
+        <div className="bg-primary/10 border border-primary/30 rounded-lg p-4">
+          <p className="text-sm text-primary">
             <strong>Nota:</strong> Después de crear el usuario, podrá asignarle
             roles desde la página de gestión de usuarios.
           </p>
@@ -181,7 +181,7 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
         <Button
           type="submit"
           disabled={isLoading}
-          className="bg-blue-600 hover:bg-blue-700"
+          className="bg-primary hover:bg-primary/90"
         >
           {isLoading
             ? "Guardando..."

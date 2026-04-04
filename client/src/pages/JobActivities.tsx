@@ -736,17 +736,17 @@ export default function JobActivitiesPage() {
     return (
       <div className="container mx-auto p-4 lg:p-6">
         <div className="space-y-4">
-          <div className="h-8 w-64 bg-gray-200 rounded animate-pulse" />
+          <div className="h-8 w-64 bg-muted rounded animate-pulse" />
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {Array.from({ length: 6 }).map((_, i) => (
               <Card key={i} className="animate-pulse">
                 <CardHeader>
-                  <div className="h-4 w-1/2 bg-gray-200 rounded" />
+                  <div className="h-4 w-1/2 bg-muted rounded" />
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    <div className="h-3 w-full bg-gray-200 rounded" />
-                    <div className="h-3 w-2/3 bg-gray-200 rounded" />
+                    <div className="h-3 w-full bg-muted rounded" />
+                    <div className="h-3 w-2/3 bg-muted rounded" />
                   </div>
                 </CardContent>
               </Card>
@@ -768,9 +768,9 @@ export default function JobActivitiesPage() {
   if (globalError) {
     return (
       <div className="container mx-auto p-4 lg:p-6">
-        <Card className="border-red-200 bg-red-50">
+        <Card className="border-destructive/30 bg-destructive/10">
           <CardContent className="pt-6">
-            <p className="text-red-600">
+            <p className="text-destructive">
               Error al cargar información de cargos/actividades. Revise la
               conexión o intente nuevamente.
             </p>
@@ -789,11 +789,11 @@ export default function JobActivitiesPage() {
       {/* HEADER */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 flex items-center gap-2">
-            <Briefcase className="h-7 w-7 text-blue-600" />
+          <h1 className="text-2xl lg:text-3xl font-bold text-foreground flex items-center gap-2">
+            <Briefcase className="h-7 w-7 text-primary" />
             Gestión de Cargos y Actividades
           </h1>
-          <p className="text-gray-600 mt-2 text-sm lg:text-base max-w-2xl">
+          <p className="text-muted-foreground mt-2 text-sm lg:text-base max-w-2xl">
             Administre los grados, grupos ocupacionales, cargos y actividades
             laborales en una sola pantalla, asegurando consistencia e integridad
             de la información.
@@ -833,14 +833,14 @@ export default function JobActivitiesPage() {
 
       {/* STATS */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200">
+        <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-primary/30">
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="bg-blue-500 p-2 rounded-full">
+            <div className="bg-primary p-2 rounded-full">
               <Briefcase className="h-5 w-5 text-white" />
             </div>
             <div>
-              <p className="text-xs font-medium text-blue-900">Cargos</p>
-              <p className="text-2xl font-bold text-blue-700">
+              <p className="text-xs font-medium text-primary">Cargos</p>
+              <p className="text-2xl font-bold text-primary">
                 {jobs.length}
               </p>
             </div>
@@ -854,7 +854,7 @@ export default function JobActivitiesPage() {
             </div>
             <div>
               <p className="text-xs font-medium text-indigo-900">Grados</p>
-              <p className="text-2xl font-bold text-indigo-700">
+              <p className="text-2xl font-bold text-primary">
                 {degrees.length}
               </p>
             </div>
@@ -886,7 +886,7 @@ export default function JobActivitiesPage() {
               <p className="text-xs font-medium text-orange-900">
                 Actividades totales
               </p>
-              <p className="text-2xl font-bold text-orange-700">
+              <p className="text-2xl font-bold text-secondary-foreground">
                 {allActivities.length}
               </p>
             </div>
@@ -912,7 +912,7 @@ export default function JobActivitiesPage() {
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center justify-between">
                   <span className="flex items-center gap-2">
-                    <Briefcase className="h-5 w-5 text-blue-600" />
+                    <Briefcase className="h-5 w-5 text-primary" />
                     Cargos
                   </span>
                   <Button
@@ -930,7 +930,7 @@ export default function JobActivitiesPage() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="relative">
-                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     value={searchJob}
                     onChange={(e) => setSearchJob(e.target.value)}
@@ -949,8 +949,8 @@ export default function JobActivitiesPage() {
                         return (
                           <TableRow
                             key={job.jobID || `job-${job.description}`}
-                            className={`cursor-pointer hover:bg-blue-50 ${
-                              isSelected ? "bg-blue-50/60" : ""
+                            className={`cursor-pointer hover:bg-primary/10 ${
+                              isSelected ? "bg-primary/10/60" : ""
                             }`}
                             onClick={() => handleSelectJob(job)}
                           >
@@ -960,7 +960,7 @@ export default function JobActivitiesPage() {
                                   {job.description || "(Sin descripción)"}
                                 </span>
                                 {group && (
-                                  <span className="text-xs text-gray-500">
+                                  <span className="text-xs text-muted-foreground">
                                     Grupo: {group.description}
                                   </span>
                                 )}
@@ -973,8 +973,8 @@ export default function JobActivitiesPage() {
                                 }
                                 className={
                                   job.isActive
-                                    ? "bg-green-100 text-green-800"
-                                    : "bg-gray-100 text-gray-700"
+                                    ? "bg-success/15 text-success"
+                                    : "bg-muted text-foreground"
                                 }
                               >
                                 {job.isActive ? "Activo" : "Inactivo"}
@@ -997,7 +997,7 @@ export default function JobActivitiesPage() {
                       {filteredJobs.length === 0 && (
                         <TableRow>
                           <TableCell colSpan={2} className="py-6 text-center">
-                            <p className="text-sm text-gray-600">
+                            <p className="text-sm text-muted-foreground">
                               No hay cargos que coincidan con la búsqueda.
                             </p>
                           </TableCell>
@@ -1015,7 +1015,7 @@ export default function JobActivitiesPage() {
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2">
-                    <Wrench className="h-5 w-5 text-blue-600" />
+                    <Wrench className="h-5 w-5 text-primary" />
                     Detalle del cargo
                   </CardTitle>
                   <CardDescription>
@@ -1033,7 +1033,7 @@ export default function JobActivitiesPage() {
                       saving={jobMutation.isPending}
                     />
                   ) : (
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-muted-foreground">
                       Seleccione un cargo en el panel izquierdo para ver su
                       detalle.
                     </p>
@@ -1045,7 +1045,7 @@ export default function JobActivitiesPage() {
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2">
-                    <LinkIcon className="h-5 w-5 text-orange-600" />
+                    <LinkIcon className="h-5 w-5 text-secondary-foreground" />
                     Actividades asociadas al cargo
                   </CardTitle>
                   <CardDescription>
@@ -1064,7 +1064,7 @@ export default function JobActivitiesPage() {
                           {selectedJob.description || "(Sin descripción)"}
                         </div>
                         <div className="relative md:w-64">
-                          <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                           <Input
                             value={searchActivity}
                             onChange={(e) =>
@@ -1111,8 +1111,8 @@ export default function JobActivitiesPage() {
                                       variant="outline"
                                       className={
                                         act.activitiesType === "LABORAL"
-                                          ? "bg-blue-50 text-blue-700 border-blue-200"
-                                          : "bg-orange-50 text-orange-700 border-orange-200"
+                                          ? "bg-primary/10 text-primary border-primary/30"
+                                          : "bg-secondary/10 text-secondary-foreground border-orange-200"
                                       }
                                     >
                                       {act.activitiesType === "LABORAL"
@@ -1122,13 +1122,13 @@ export default function JobActivitiesPage() {
                                   </TableCell>
                                   <TableCell className="text-center">
                                     {isAssigned ? (
-                                      <Badge className="bg-green-100 text-green-800">
+                                      <Badge className="bg-success/15 text-success">
                                         Asignada
                                       </Badge>
                                     ) : (
                                       <Badge
                                         variant="outline"
-                                        className="text-gray-600"
+                                        className="text-muted-foreground"
                                       >
                                         No asignada
                                       </Badge>
@@ -1163,7 +1163,7 @@ export default function JobActivitiesPage() {
                               <TableRow>
                                 <TableCell
                                   colSpan={4}
-                                  className="text-center py-6 text-sm text-gray-600"
+                                  className="text-center py-6 text-sm text-muted-foreground"
                                 >
                                   No hay actividades que coincidan con el filtro.
                                 </TableCell>
@@ -1174,7 +1174,7 @@ export default function JobActivitiesPage() {
                       </ScrollArea>
                     </>
                   ) : (
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-muted-foreground">
                       Seleccione primero un cargo para gestionar sus actividades
                       asociadas.
                     </p>
@@ -1221,7 +1221,7 @@ export default function JobActivitiesPage() {
                       {degrees.map((deg) => (
                         <TableRow
                           key={deg.degreeId}
-                          className="cursor-pointer hover:bg-indigo-50"
+                          className="cursor-pointer hover:bg-primary/10"
                           onClick={() => handleOpenEditDegree(deg)}
                         >
                           <TableCell>
@@ -1236,8 +1236,8 @@ export default function JobActivitiesPage() {
                               }
                               className={
                                 deg.isActive
-                                  ? "bg-green-100 text-green-800"
-                                  : "bg-gray-100 text-gray-800"
+                                  ? "bg-success/15 text-success"
+                                  : "bg-muted text-foreground"
                               }
                             >
                               {deg.isActive ? "Activo" : "Inactivo"}
@@ -1249,7 +1249,7 @@ export default function JobActivitiesPage() {
                         <TableRow>
                           <TableCell
                             colSpan={2}
-                            className="text-center py-6 text-sm text-gray-600"
+                            className="text-center py-6 text-sm text-muted-foreground"
                           >
                             No hay grados registrados.
                           </TableCell>
@@ -1304,7 +1304,7 @@ export default function JobActivitiesPage() {
                                 <span className="text-sm font-medium">
                                   {g.description}
                                 </span>
-                                <span className="text-xs text-gray-500">
+                                <span className="text-xs text-muted-foreground">
                                   ID: {g.groupId}
                                 </span>
                               </div>
@@ -1326,7 +1326,7 @@ export default function JobActivitiesPage() {
                         <TableRow>
                           <TableCell
                             colSpan={3}
-                            className="text-center py-6 text-sm text-gray-600"
+                            className="text-center py-6 text-sm text-muted-foreground"
                           >
                             No hay grupos ocupacionales registrados.
                           </TableCell>
@@ -1348,7 +1348,7 @@ export default function JobActivitiesPage() {
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center justify-between">
                   <span className="flex items-center gap-2">
-                    <ListChecks className="h-5 w-5 text-blue-600" />
+                    <ListChecks className="h-5 w-5 text-primary" />
                     Actividades laborales
                   </span>
                   <Button
@@ -1379,7 +1379,7 @@ export default function JobActivitiesPage() {
                       {laboralActivities.map((act) => (
                         <TableRow
                           key={act.activitiesID}
-                          className="cursor-pointer hover:bg-blue-50"
+                          className="cursor-pointer hover:bg-primary/10"
                           onClick={() => handleOpenEditActivity(act)}
                         >
                           <TableCell>
@@ -1394,8 +1394,8 @@ export default function JobActivitiesPage() {
                               }
                               className={
                                 act.isActive
-                                  ? "bg-green-100 text-green-800"
-                                  : "bg-gray-100 text-gray-800"
+                                  ? "bg-success/15 text-success"
+                                  : "bg-muted text-foreground"
                               }
                             >
                               {act.isActive ? "Activa" : "Inactiva"}
@@ -1407,7 +1407,7 @@ export default function JobActivitiesPage() {
                         <TableRow>
                           <TableCell
                             colSpan={2}
-                            className="text-center py-6 text-sm text-gray-600"
+                            className="text-center py-6 text-sm text-muted-foreground"
                           >
                             No hay actividades laborales registradas.
                           </TableCell>
@@ -1424,7 +1424,7 @@ export default function JobActivitiesPage() {
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center justify-between">
                   <span className="flex items-center gap-2">
-                    <ListChecks className="h-5 w-5 text-orange-600" />
+                    <ListChecks className="h-5 w-5 text-secondary-foreground" />
                     Actividades adicionales
                   </span>
                   <Button
@@ -1455,7 +1455,7 @@ export default function JobActivitiesPage() {
                       {additionalActivities.map((act) => (
                         <TableRow
                           key={act.activitiesID}
-                          className="cursor-pointer hover:bg-orange-50"
+                          className="cursor-pointer hover:bg-secondary/10"
                           onClick={() => handleOpenEditActivity(act)}
                         >
                           <TableCell>
@@ -1470,8 +1470,8 @@ export default function JobActivitiesPage() {
                               }
                               className={
                                 act.isActive
-                                  ? "bg-green-100 text-green-800"
-                                  : "bg-gray-100 text-gray-800"
+                                  ? "bg-success/15 text-success"
+                                  : "bg-muted text-foreground"
                               }
                             >
                               {act.isActive ? "Activa" : "Inactiva"}
@@ -1483,7 +1483,7 @@ export default function JobActivitiesPage() {
                         <TableRow>
                           <TableCell
                             colSpan={2}
-                            className="text-center py-6 text-sm text-gray-600"
+                            className="text-center py-6 text-sm text-muted-foreground"
                           >
                             No hay actividades adicionales registradas.
                           </TableCell>
@@ -1505,7 +1505,7 @@ export default function JobActivitiesPage() {
         <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Briefcase className="h-5 w-5 text-blue-600" />
+              <Briefcase className="h-5 w-5 text-primary" />
               {editingJob && editingJob.jobID
                 ? "Editar cargo"
                 : "Nuevo cargo"}
@@ -1601,7 +1601,7 @@ export default function JobActivitiesPage() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <ListChecks className="h-5 w-5 text-orange-600" />
+              <ListChecks className="h-5 w-5 text-secondary-foreground" />
               {editingActivity && editingActivity.activitiesID
                 ? "Editar actividad"
                 : "Nueva actividad"}

@@ -52,8 +52,8 @@ export function ActivityForm({
             variant="outline"
             className={
               activity.activitiesType === "LABORAL"
-                ? "bg-blue-50 text-blue-700 border-blue-200"
-                : "bg-orange-50 text-orange-700 border-orange-200"
+                ? "bg-primary/10 text-primary border-primary/30"
+                : "bg-secondary/10 text-secondary-foreground border-orange-200"
             }
           >
             {activity.activitiesType === "LABORAL" ? "Laboral" : "Adicional"}

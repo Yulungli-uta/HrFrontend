@@ -13,11 +13,11 @@ export function EmptyState() {
   return (
     <Card>
       <CardContent className="text-center p-8">
-        <svg className="h-12 w-12 text-gray-400 mx-auto mb-4" viewBox="0 0 24 24" fill="none">
+        <svg className="h-12 w-12 text-muted-foreground/70 mx-auto mb-4" viewBox="0 0 24 24" fill="none">
           <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
         </svg>
-        <h3 className="text-lg font-medium text-gray-900 mb-2">No hay justificaciones registradas</h3>
-        <p className="text-gray-600">Utilice el botón "Nueva Justificación" para crear su primera solicitud</p>
+        <h3 className="text-lg font-medium text-foreground mb-2">No hay justificaciones registradas</h3>
+        <p className="text-muted-foreground">Utilice el botón "Nueva Justificación" para crear su primera solicitud</p>
       </CardContent>
     </Card>
   );
@@ -36,10 +36,10 @@ export function JustificationList({
 
   return (
     <Card>
-      <CardHeader className="bg-gray-50 py-4">
+      <CardHeader className="bg-background py-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg">Lista de Justificaciones</CardTitle>
-          <Badge variant="outline" className="bg-blue-50 text-blue-700 w-fit">
+          <Badge variant="outline" className="bg-primary/10 text-primary w-fit">
             Mostrando: {items.length} justificaciones
           </Badge>
         </div>
@@ -69,7 +69,7 @@ function Row({
 }: any) {
   const [expanded, setExpanded] = useState(false);
   return (
-    <div className="p-4 hover:bg-gray-50 transition-colors">
+    <div className="p-4 hover:bg-background transition-colors">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4 flex-1 min-w-0">
           <Button variant="ghost" size="sm" onClick={() => setExpanded(v => !v)} className="h-8 w-8 p-0">
@@ -78,10 +78,10 @@ function Row({
 
           <div className="flex-1 min-w-0">
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
-              <p className="font-medium text-gray-900 truncate">{getTypeName(item.justificationTypeID)}</p>
+              <p className="font-medium text-foreground truncate">{getTypeName(item.justificationTypeID)}</p>
               <StatusBadge status={item.status} />
             </div>
-            <p className="text-sm text-gray-600 truncate">{item.reason}</p>
+            <p className="text-sm text-muted-foreground truncate">{item.reason}</p>
           </div>
         </div>
 
@@ -100,7 +100,7 @@ function Row({
                     variant="ghost"
                     size="sm"
                     onClick={onDelete}
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

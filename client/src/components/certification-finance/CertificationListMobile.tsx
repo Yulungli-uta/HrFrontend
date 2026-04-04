@@ -30,15 +30,15 @@ function getStatusClass(rt: RefTypeItem): string {
   const text = `${code} ${name}`;
 
   if (text.includes("APROB") || text.includes("APPROV") || code.includes("APR")) {
-    return "bg-green-100 text-green-800 hover:bg-green-100 border-green-200";
+    return "bg-success/15 text-success hover:bg-success/15 border-success/30";
   }
   if (text.includes("PEND") || code.includes("PEN") || text.includes("EN PROCESO")) {
-    return "bg-orange-100 text-orange-800 hover:bg-orange-100 border-orange-200";
+    return "bg-secondary/15 text-secondary-foreground hover:bg-secondary/15 border-orange-200";
   }
   if (text.includes("RECH") || code.includes("REC") || text.includes("ANUL")) {
-    return "bg-red-100 text-red-800 hover:bg-red-100 border-red-200";
+    return "bg-destructive/15 text-destructive hover:bg-destructive/15 border-destructive/30";
   }
-  return "bg-gray-100 text-gray-800 hover:bg-gray-100 border-gray-200";
+  return "bg-muted text-foreground hover:bg-muted border-border";
 }
 
 export function CertificationListMobile(props: {
@@ -67,7 +67,7 @@ export function CertificationListMobile(props: {
             <div className="flex items-start justify-between gap-2">
               <div>
                 <div className="font-mono text-sm font-semibold">{c.certCode}</div>
-                <div className="text-xs text-gray-600">Nro: {c.certNumber ?? "-"}</div>
+                <div className="text-xs text-muted-foreground">Nro: {c.certNumber ?? "-"}</div>
               </div>
 
               {(() => {
@@ -84,12 +84,12 @@ export function CertificationListMobile(props: {
             </div>
 
             <div className="text-sm">
-              <div className="text-gray-700">{c.budget ?? "-"}</div>
-              <div className="flex items-center gap-2 text-xs text-gray-600 mt-1">
+              <div className="text-foreground">{c.budget ?? "-"}</div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
                 <Calendar className="h-3 w-3" />
                 {formatECDate(c.certBudgetDate)}
                 {c.daysUntilExpiry && c.daysUntilExpiry < 30 && (
-                  <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 text-[10px]">
+                  <Badge variant="outline" className="bg-warning/10 text-warning border-warning/30 text-[10px]">
                     {c.daysUntilExpiry}d
                   </Badge>
                 )}
@@ -98,7 +98,7 @@ export function CertificationListMobile(props: {
 
             <div className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-1 font-medium">
-                <DollarSign className="h-3 w-3 text-gray-500" />${c.totalAmount.toLocaleString()}
+                <DollarSign className="h-3 w-3 text-muted-foreground" />${c.totalAmount.toLocaleString()}
               </div>
             </div>
 

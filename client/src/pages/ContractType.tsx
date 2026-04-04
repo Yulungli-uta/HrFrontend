@@ -206,17 +206,17 @@ export default function ContractTypesPage() {
     return (
       <div className="container mx-auto p-4 lg:p-6">
         <div className="flex items-center space-x-2 mb-6">
-          <div className="h-8 w-8 rounded bg-gray-200 animate-pulse" />
-          <div className="h-6 w-32 bg-gray-200 rounded animate-pulse" />
+          <div className="h-8 w-8 rounded bg-muted animate-pulse" />
+          <div className="h-6 w-32 bg-muted rounded animate-pulse" />
         </div>
         <div className="space-y-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="flex space-x-4 animate-pulse">
-              <div className="h-12 flex-1 bg-gray-200 rounded" />
-              <div className="h-12 flex-1 bg-gray-200 rounded" />
-              <div className="h-12 flex-1 bg-gray-200 rounded" />
-              <div className="h-12 flex-1 bg-gray-200 rounded" />
-              <div className="h-12 w-24 bg-gray-200 rounded" />
+              <div className="h-12 flex-1 bg-muted rounded" />
+              <div className="h-12 flex-1 bg-muted rounded" />
+              <div className="h-12 flex-1 bg-muted rounded" />
+              <div className="h-12 flex-1 bg-muted rounded" />
+              <div className="h-12 w-24 bg-muted rounded" />
             </div>
           ))}
         </div>
@@ -227,9 +227,9 @@ export default function ContractTypesPage() {
   if (error) {
     return (
       <div className="container mx-auto p-4 lg:p-6">
-        <Card className="border-red-200 bg-red-50">
+        <Card className="border-destructive/30 bg-destructive/10">
           <CardContent className="pt-6">
-            <p className="text-red-600">
+            <p className="text-destructive">
               Error al cargar los tipos de contrato. Intente nuevamente.
             </p>
           </CardContent>
@@ -241,9 +241,9 @@ export default function ContractTypesPage() {
   if (apiResponse?.status === "error") {
     return (
       <div className="container mx-auto p-4 lg:p-6">
-        <Card className="border-red-200 bg-red-50">
+        <Card className="border-destructive/30 bg-destructive/10">
           <CardContent className="pt-6">
-            <p className="text-red-600">
+            <p className="text-destructive">
               Error al cargar los tipos de contrato:{" "}
               {apiResponse.error.message}
             </p>
@@ -260,11 +260,11 @@ export default function ContractTypesPage() {
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 flex items-center gap-2">
-            <FileText className="h-6 w-6 lg:h-8 lg:w-8 text-blue-600" />
+          <h1 className="text-2xl lg:text-3xl font-bold text-foreground flex items-center gap-2">
+            <FileText className="h-6 w-6 lg:h-8 lg:w-8 text-primary" />
             Gestión de Tipos de Contrato
           </h1>
-          <p className="text-gray-600 mt-2 text-sm lg:text-base">
+          <p className="text-muted-foreground mt-2 text-sm lg:text-base">
             Administre los diferentes tipos de contrato laboral del sistema
           </p>
         </div>
@@ -273,7 +273,7 @@ export default function ContractTypesPage() {
         <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
           <DialogTrigger asChild>
             <Button
-              className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
+              className="bg-primary hover:bg-primary/90 w-full sm:w-auto"
               data-testid="button-add-contract-type"
               onClick={() => {
                 setFormMode("create");
@@ -331,16 +331,16 @@ export default function ContractTypesPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm lg:text-lg flex items-center justify-between">
               <span className="flex items-center">
-                <FileText className="h-4 w-4 lg:h-5 lg:w-5 text-blue-600 mr-2" />
+                <FileText className="h-4 w-4 lg:h-5 lg:w-5 text-primary mr-2" />
                 Total
               </span>
-              <Badge className="bg-blue-200 text-blue-800 text-xs lg:text-sm">
+              <Badge className="bg-blue-200 text-primary text-xs lg:text-sm">
                 {totalContractTypes}
               </Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-xs lg:text-sm text-gray-600">
+            <div className="text-xs lg:text-sm text-muted-foreground">
               Tipos registrados
             </div>
           </CardContent>
@@ -350,18 +350,18 @@ export default function ContractTypesPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm lg:text-lg flex items-center justify-between">
               <span className="flex items-center">
-                <div className="h-4 w-4 lg:h-5 lg:w-5 bg-green-100 rounded-full flex items-center justify-center mr-2">
-                  <div className="h-2 w-2 bg-green-600 rounded-full" />
+                <div className="h-4 w-4 lg:h-5 lg:w-5 bg-success/15 rounded-full flex items-center justify-center mr-2">
+                  <div className="h-2 w-2 bg-success rounded-full" />
                 </div>
                 Activos
               </span>
-              <Badge className="bg-green-200 text-green-800 text-xs lg:text-sm">
+              <Badge className="bg-success/20 text-success text-xs lg:text-sm">
                 {activeContractTypes}
               </Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-xs lg:text-sm text-gray-600">
+            <div className="text-xs lg:text-sm text-muted-foreground">
               {totalContractTypes > 0
                 ? ((activeContractTypes / totalContractTypes) * 100).toFixed(1)
                 : 0}
@@ -374,16 +374,16 @@ export default function ContractTypesPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm lg:text-lg flex items-center justify-between">
               <span className="flex items-center">
-                <Clock className="h-4 w-4 lg:h-5 lg:w-5 text-orange-600 mr-2" />
+                <Clock className="h-4 w-4 lg:h-5 lg:w-5 text-secondary-foreground mr-2" />
                 Renovables
               </span>
-              <Badge className="bg-orange-200 text-orange-800 text-xs lg:text-sm">
+              <Badge className="bg-orange-200 text-secondary-foreground text-xs lg:text-sm">
                 {renewableContractTypes}
               </Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-xs lg:text-sm text-gray-600">
+            <div className="text-xs lg:text-sm text-muted-foreground">
               {totalContractTypes > 0
                 ? ((renewableContractTypes / totalContractTypes) * 100).toFixed(
                     1
@@ -401,13 +401,13 @@ export default function ContractTypesPage() {
                 <Calendar className="h-4 w-4 lg:h-5 lg:w-5 text-purple-600 mr-2" />
                 Con Período Prueba
               </span>
-              <Badge className="bg-purple-200 text-purple-800 text-xs lg:text-sm">
+              <Badge className="bg-purple-200 text-accent-foreground text-xs lg:text-sm">
                 {probationContractTypes}
               </Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-xs lg:text-sm text-gray-600">
+            <div className="text-xs lg:text-sm text-muted-foreground">
               Duración avg: {avgDuration} días
             </div>
           </CardContent>
@@ -417,16 +417,16 @@ export default function ContractTypesPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm lg:text-lg flex items-center justify-between">
               <span className="flex items-center">
-                <BookOpen className="h-4 w-4 lg:h-5 lg:w-5 text-red-600 mr-2" />
+                <BookOpen className="h-4 w-4 lg:h-5 lg:w-5 text-destructive mr-2" />
                 Legales
               </span>
-              <Badge className="bg-red-200 text-red-800 text-xs lg:text-sm">
+              <Badge className="bg-destructive/20 text-destructive text-xs lg:text-sm">
                 {contractTypes.filter((ct) => ct.legalRequirements).length}
               </Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-xs lg:text-sm text-gray-600">
+            <div className="text-xs lg:text-sm text-muted-foreground">
               Con requisitos legales
             </div>
           </CardContent>
@@ -436,7 +436,7 @@ export default function ContractTypesPage() {
       {/* Búsqueda */}
       <div className="mb-6">
         <div className="relative">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
+          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Buscar tipo de contrato por nombre, código, descripción o categoría..."
             aria-label="Buscar tipo de contrato"
@@ -496,7 +496,7 @@ export default function ContractTypesPage() {
                           {contractType.name}
                         </div>
                         {contractType.description && (
-                          <div className="text-sm text-gray-500 truncate max-w-[300px]">
+                          <div className="text-sm text-muted-foreground truncate max-w-[300px]">
                             {contractType.description}
                           </div>
                         )}
@@ -512,7 +512,7 @@ export default function ContractTypesPage() {
 
                     <TableCell className="hidden md:table-cell">
                       {contractType.category ? (
-                        <Badge variant="outline" className="bg-gray-50">
+                        <Badge variant="outline" className="bg-background">
                           {contractType.category}
                         </Badge>
                       ) : (
@@ -522,7 +522,7 @@ export default function ContractTypesPage() {
 
                     <TableCell className="hidden md:table-cell">
                       <div className="flex items-center gap-1">
-                        <Clock className="h-3 w-3 text-gray-500" />
+                        <Clock className="h-3 w-3 text-muted-foreground" />
                         <span>
                           {contractType.durationDays
                             ? `${contractType.durationDays} días`
@@ -536,8 +536,8 @@ export default function ContractTypesPage() {
                         variant="outline"
                         className={
                           contractType.isRenewable
-                            ? "bg-green-50 text-green-700 border-green-200"
-                            : "bg-gray-50 text-gray-700 border-gray-200"
+                            ? "bg-success/10 text-success border-success/30"
+                            : "bg-background text-foreground border-border"
                         }
                       >
                         {contractType.isRenewable ? "Sí" : "No"}
@@ -549,8 +549,8 @@ export default function ContractTypesPage() {
                         variant={contractType.isActive ? "default" : "secondary"}
                         className={
                           contractType.isActive
-                            ? "bg-green-100 text-green-800 hover:bg-green-100"
-                            : "bg-gray-100 text-gray-800 hover:bg-gray-100"
+                            ? "bg-success/15 text-success hover:bg-success/15"
+                            : "bg-muted text-foreground hover:bg-muted"
                         }
                         data-testid={`status-active-${contractType.contractTypeId}`}
                       >
@@ -579,13 +579,13 @@ export default function ContractTypesPage() {
 
           {filteredContractTypes.length === 0 && (
             <div className="text-center py-12">
-              <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <FileText className="mx-auto h-12 w-12 text-muted-foreground/70 mb-4" />
+              <h3 className="text-lg font-semibold text-foreground mb-2">
                 {searchTerm
                   ? "No se encontraron tipos de contrato"
                   : "No hay tipos de contrato registrados"}
               </h3>
-              <p className="text-gray-600 mb-4">
+              <p className="text-muted-foreground mb-4">
                 {searchTerm
                   ? "Intente con otros términos de búsqueda"
                   : "Comience agregando el primer tipo de contrato al sistema"}
@@ -621,14 +621,14 @@ export default function ContractTypesPage() {
           {selectedContractType && (
             <div className="space-y-6 mt-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <FileText className="h-6 w-6 text-blue-600" />
+                <div className="p-2 bg-primary/15 rounded-lg">
+                  <FileText className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <h2 className="text-xl lg:text-2xl font-bold text-gray-900">
+                  <h2 className="text-xl lg:text-2xl font-bold text-foreground">
                     {selectedContractType.name}
                   </h2>
-                  <p className="text-gray-600">
+                  <p className="text-muted-foreground">
                     Detalles del tipo de contrato
                   </p>
                 </div>
@@ -643,7 +643,7 @@ export default function ContractTypesPage() {
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div>
-                      <label className="text-sm font-medium text-gray-500">
+                      <label className="text-sm font-medium text-muted-foreground">
                         Código
                       </label>
                       <p className="font-mono font-medium">
@@ -651,7 +651,7 @@ export default function ContractTypesPage() {
                       </p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-500">
+                      <label className="text-sm font-medium text-muted-foreground">
                         Categoría
                       </label>
                       <p className="font-medium">
@@ -659,7 +659,7 @@ export default function ContractTypesPage() {
                       </p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-500">
+                      <label className="text-sm font-medium text-muted-foreground">
                         Descripción
                       </label>
                       <p className="font-medium">
@@ -667,7 +667,7 @@ export default function ContractTypesPage() {
                       </p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-500">
+                      <label className="text-sm font-medium text-muted-foreground">
                         ID Original
                       </label>
                       <p className="font-medium">
@@ -685,7 +685,7 @@ export default function ContractTypesPage() {
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div>
-                      <label className="text-sm font-medium text-gray-500">
+                      <label className="text-sm font-medium text-muted-foreground">
                         Duración
                       </label>
                       <p className="font-medium flex items-center gap-1">
@@ -696,21 +696,21 @@ export default function ContractTypesPage() {
                       </p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-500">
+                      <label className="text-sm font-medium text-muted-foreground">
                         Renovable
                       </label>
                       <Badge
                         className={
                           selectedContractType.isRenewable
-                            ? "bg-green-100 text-green-800"
-                            : "bg-gray-100 text-gray-800"
+                            ? "bg-success/15 text-success"
+                            : "bg-muted text-foreground"
                         }
                       >
                         {selectedContractType.isRenewable ? "Sí" : "No"}
                       </Badge>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-500">
+                      <label className="text-sm font-medium text-muted-foreground">
                         Período de Prueba
                       </label>
                       <p className="font-medium">
@@ -722,14 +722,14 @@ export default function ContractTypesPage() {
                       </p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-500">
+                      <label className="text-sm font-medium text-muted-foreground">
                         Estado
                       </label>
                       <Badge
                         className={
                           selectedContractType.isActive
-                            ? "bg-green-100 text-green-800"
-                            : "bg-gray-100 text-gray-800"
+                            ? "bg-success/15 text-success"
+                            : "bg-muted text-foreground"
                         }
                       >
                         {selectedContractType.isActive ? "Activo" : "Inactivo"}
@@ -750,7 +750,7 @@ export default function ContractTypesPage() {
                     <CardContent>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="text-sm font-medium text-gray-500">
+                          <label className="text-sm font-medium text-muted-foreground">
                             Salario Mínimo
                           </label>
                           <p className="font-medium">
@@ -760,7 +760,7 @@ export default function ContractTypesPage() {
                           </p>
                         </div>
                         <div>
-                          <label className="text-sm font-medium text-gray-500">
+                          <label className="text-sm font-medium text-muted-foreground">
                             Salario Máximo
                           </label>
                           <p className="font-medium">
@@ -783,7 +783,7 @@ export default function ContractTypesPage() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-sm text-gray-700">
+                      <p className="text-sm text-foreground">
                         {selectedContractType.legalRequirements}
                       </p>
                     </CardContent>
@@ -799,13 +799,13 @@ export default function ContractTypesPage() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="max-h-60 overflow-y-auto p-3 bg-gray-50 rounded-md">
-                        <pre className="text-sm text-gray-700 whitespace-pre-wrap">
+                      <div className="max-h-60 overflow-y-auto p-3 bg-background rounded-md">
+                        <pre className="text-sm text-foreground whitespace-pre-wrap">
                           {selectedContractType.contractText.substring(0, 500)}
                           ...
                         </pre>
                       </div>
-                      <p className="text-xs text-gray-500 mt-2">
+                      <p className="text-xs text-muted-foreground mt-2">
                         Mostrando primeros 500 caracteres de{" "}
                         {selectedContractType.contractText.length} totales
                       </p>

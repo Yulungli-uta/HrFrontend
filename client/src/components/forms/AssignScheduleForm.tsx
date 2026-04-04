@@ -236,47 +236,47 @@ export default function AssignScheduleForm({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Información del empleado */}
-          <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+          <div className="grid grid-cols-2 gap-4 p-4 bg-background rounded-lg">
             <div>
               <Label className="text-sm font-medium">Empleado</Label>
-              <div className="text-sm text-gray-600 mt-1">{employee?.fullName}</div>
+              <div className="text-sm text-muted-foreground mt-1">{employee?.fullName}</div>
             </div>
             <div>
               <Label className="text-sm font-medium">Departamento</Label>
-              <div className="text-sm text-gray-600 mt-1">{employee?.departmentName || "—"}</div>
+              <div className="text-sm text-muted-foreground mt-1">{employee?.departmentName || "—"}</div>
             </div>
             <div>
               <Label className="text-sm font-medium">Email</Label>
-              <div className="text-sm text-gray-600 mt-1">{employee?.email || "—"}</div>
+              <div className="text-sm text-muted-foreground mt-1">{employee?.email || "—"}</div>
             </div>
             <div>
               <Label className="text-sm font-medium">Tipo</Label>
-              <div className="text-sm text-gray-600 mt-1">{employee?.employeeType || "—"}</div>
+              <div className="text-sm text-muted-foreground mt-1">{employee?.employeeType || "—"}</div>
             </div>
           </div>
 
           {/* Información del horario actual (si existe) */}
           {hasExistingSchedule && (
-            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <h4 className="font-medium text-sm mb-2 text-yellow-800">Horario Actual</h4>
+            <div className="p-3 bg-warning/10 border border-warning/30 rounded-lg">
+              <h4 className="font-medium text-sm mb-2 text-warning">Horario Actual</h4>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>
-                  <span className="text-yellow-600">Horario:</span>
+                  <span className="text-warning">Horario:</span>
                   <div className="font-medium">{existingEmployeeSchedule.schedule?.name || "—"}</div>
                 </div>
                 <div>
-                  <span className="text-yellow-600">Horas:</span>
+                  <span className="text-warning">Horas:</span>
                   <div className="font-medium">
                     {fmtTime(existingEmployeeSchedule.schedule?.startTime)} - {fmtTime(existingEmployeeSchedule.schedule?.endTime)}
                   </div>
                 </div>
                 <div>
-                  <span className="text-yellow-600">Válido desde:</span>
+                  <span className="text-warning">Válido desde:</span>
                   <div className="font-medium">{existingEmployeeSchedule.validFrom || "—"}</div>
                 </div>
                 <div>
-                  <span className="text-yellow-600">Válido hasta:</span>
-                  <div className="font-medium text-red-600">Hoy (se vencerá)</div>
+                  <span className="text-warning">Válido hasta:</span>
+                  <div className="font-medium text-destructive">Hoy (se vencerá)</div>
                 </div>
               </div>
             </div>
@@ -309,24 +309,24 @@ export default function AssignScheduleForm({
 
           {/* Detalles del horario seleccionado */}
           {selectedSchedule && (
-            <div className="p-3 bg-blue-50 rounded-lg">
+            <div className="p-3 bg-primary/10 rounded-lg">
               <h4 className="font-medium text-sm mb-2">
                 {hasExistingSchedule ? "Detalles del Nuevo Horario:" : "Detalles del Horario:"}
               </h4>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>
-                  <span className="text-gray-600">Nombre:</span>
+                  <span className="text-muted-foreground">Nombre:</span>
                   <div className="font-medium">{selectedSchedule.name}</div>
                 </div>
                 <div>
-                  <span className="text-gray-600">Horario:</span>
+                  <span className="text-muted-foreground">Horario:</span>
                   <div className="font-medium">
                     {fmtTime(selectedSchedule.startTime)} - {fmtTime(selectedSchedule.endTime)}
                   </div>
                 </div>
                 {selectedSchedule.description && (
                   <div className="col-span-2">
-                    <span className="text-gray-600">Descripción:</span>
+                    <span className="text-muted-foreground">Descripción:</span>
                     <div className="font-medium">{selectedSchedule.description}</div>
                   </div>
                 )}
@@ -348,7 +348,7 @@ export default function AssignScheduleForm({
                 min={hasExistingSchedule ? getTomorrow() : getToday()}
               />
               {hasExistingSchedule && (
-                <p className="text-xs text-gray-500">Mínimo: mañana (para reemplazar horario actual)</p>
+                <p className="text-xs text-muted-foreground">Mínimo: mañana (para reemplazar horario actual)</p>
               )}
             </div>
             <div className="space-y-2">
@@ -361,15 +361,15 @@ export default function AssignScheduleForm({
                 min={formData.validFrom}
                 disabled={assignScheduleMutation.isPending}
               />
-              <p className="text-xs text-gray-500">Deje en 31/12/9999 para horario permanente</p>
+              <p className="text-xs text-muted-foreground">Deje en 31/12/9999 para horario permanente</p>
             </div>
           </div>
 
           {/* Resumen de cambios */}
           {hasExistingSchedule && (
-            <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-              <h4 className="font-medium text-sm mb-2 text-green-800">Resumen de Cambios</h4>
-              <ul className="text-sm text-green-700 space-y-1">
+            <div className="p-3 bg-success/10 border border-success/30 rounded-lg">
+              <h4 className="font-medium text-sm mb-2 text-success">Resumen de Cambios</h4>
+              <ul className="text-sm text-success space-y-1">
                 <li>• El horario actual vencerá hoy</li>
                 <li>• El nuevo horario comenzará el {formData.validFrom}</li>
                 <li>• El empleado tendrá un historial completo de horarios</li>

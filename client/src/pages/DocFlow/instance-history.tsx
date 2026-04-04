@@ -198,8 +198,8 @@ export default function InstanceHistory() {
         </Card>
         <Card>
           <CardContent className="p-3 flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/30">
-              <ArrowRightLeft className="h-4 w-4 text-green-600 dark:text-green-400" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-success/15">
+              <ArrowRightLeft className="h-4 w-4 text-success dark:text-success/80" />
             </div>
             <div>
               <p className="text-lg font-bold" data-testid="stat-advances">{stats.advances}</p>
@@ -209,8 +209,8 @@ export default function InstanceHistory() {
         </Card>
         <Card>
           <CardContent className="p-3 flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/30">
-              <RotateCcw className="h-4 w-4 text-red-600 dark:text-red-400" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-destructive/15">
+              <RotateCcw className="h-4 w-4 text-destructive dark:text-destructive/80" />
             </div>
             <div>
               <p className="text-lg font-bold" data-testid="stat-returns">{stats.returns}</p>
@@ -220,8 +220,8 @@ export default function InstanceHistory() {
         </Card>
         <Card>
           <CardContent className="p-3 flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
-              <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15 dark:bg-blue-900/30">
+              <User className="h-4 w-4 text-primary dark:text-primary/70" />
             </div>
             <div>
               <p className="text-lg font-bold" data-testid="stat-users">{stats.uniqueUsers}</p>
@@ -336,13 +336,13 @@ export default function InstanceHistory() {
                     >
                       <div className={`relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 ${
                         isReturn
-                          ? "border-red-300 bg-red-100 dark:border-red-700 dark:bg-red-900/30"
+                          ? "border-destructive/40 bg-destructive/15 dark:border-destructive/60"
                           : isLast
                             ? "border-primary bg-primary/10"
                             : "border-border bg-card"
                       }`}>
                         {isReturn ? (
-                          <RotateCcw className="h-4 w-4 text-red-600 dark:text-red-400" />
+                          <RotateCcw className="h-4 w-4 text-destructive dark:text-destructive/80" />
                         ) : (
                           <ArrowRightLeft className="h-4 w-4 text-primary" />
                         )}
@@ -351,7 +351,7 @@ export default function InstanceHistory() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className={`text-sm font-semibold ${isReturn ? "text-red-600 dark:text-red-400" : ""}`}>
+                            <span className={`text-sm font-semibold ${isReturn ? "text-destructive dark:text-destructive/80" : ""}`}>
                               {isReturn ? "Retorno" : "Avance"}
                             </span>
                             <Badge variant="outline" className="text-xs">

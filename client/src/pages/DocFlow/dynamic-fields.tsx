@@ -553,7 +553,7 @@ function getFieldErrorMessage(field: EditableField): string | null {
             {fields.length} campo{fields.length !== 1 ? "s" : ""}
           </span>
           {requiredCount > 0 && (
-            <span className="flex items-center gap-1 text-red-600 dark:text-red-400">
+            <span className="flex items-center gap-1 text-destructive dark:text-destructive/80">
               <AlertCircle className="h-3 w-3" />
               {requiredCount} obligatorio{requiredCount !== 1 ? "s" : ""}
             </span>
@@ -735,12 +735,12 @@ function getFieldErrorMessage(field: EditableField): string | null {
                       <GripVertical className="h-4 w-4 text-muted-foreground/40 shrink-0" />
                       <div className={`flex h-8 w-8 items-center justify-center rounded-md shrink-0 ${
                         field.required
-                          ? "bg-red-100 dark:bg-red-900/30"
+                          ? "bg-destructive/15"
                           : "bg-muted"
                       }`}>
                         <Icon className={`h-4 w-4 ${
                           field.required
-                            ? "text-red-600 dark:text-red-400"
+                            ? "text-destructive dark:text-destructive/80"
                             : "text-muted-foreground"
                         }`} />
                       </div>
@@ -756,7 +756,7 @@ function getFieldErrorMessage(field: EditableField): string | null {
                           {field.required && (
                             <Badge
                               variant="outline"
-                              className="text-[10px] px-1.5 py-0 h-4 shrink-0 border-red-300 text-red-700 dark:border-red-700 dark:text-red-400"
+                              className="text-[10px] px-1.5 py-0 h-4 shrink-0 border-destructive/40 text-destructive dark:border-destructive/60 dark:text-destructive/80"
                             >
                               Obligatorio
                             </Badge>

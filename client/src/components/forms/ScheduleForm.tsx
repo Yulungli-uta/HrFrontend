@@ -502,7 +502,7 @@ const updateMutation = useMutation({
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className={`p-2 rounded-lg ${
-              isEditing ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'
+              isEditing ? 'bg-primary/15 text-primary' : 'bg-success/15 text-success'
             }`}>
               <Clock className="h-5 w-5" />
             </div>
@@ -533,9 +533,9 @@ const updateMutation = useMutation({
         {/* Plantillas de Horario */}
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border">
           <div className="flex items-center gap-2 mb-3">
-            <Zap className="h-4 w-4 text-blue-600" />
-            <h4 className="text-sm font-medium text-blue-900">Plantillas Rápidas</h4>
-            <Badge variant="outline" className="text-xs bg-white">
+            <Zap className="h-4 w-4 text-primary" />
+            <h4 className="text-sm font-medium text-primary">Plantillas Rápidas</h4>
+            <Badge variant="outline" className="text-xs bg-card">
               {isMobile ? "Toque" : "Click"} para aplicar
             </Badge>
           </div>
@@ -550,7 +550,7 @@ const updateMutation = useMutation({
                 size="sm"
                 className={`h-auto p-3 text-xs border-2 hover:scale-105 transition-transform ${
                   t.color === 'blue' ? 'hover:border-blue-300' :
-                  t.color === 'green' ? 'hover:border-green-300' :
+                  t.color === 'green' ? 'hover:border-success/40' :
                   t.color === 'orange' ? 'hover:border-orange-300' :
                   'hover:border-purple-300'
                 }`}
@@ -562,7 +562,7 @@ const updateMutation = useMutation({
                     {t.name}
                   </Badge>
                   <div className="font-mono text-xs">{t.entry} - {t.exit}</div>
-                  <div className="text-gray-500 text-xs">{t.hours}h</div>
+                  <div className="text-muted-foreground text-xs">{t.hours}h</div>
                 </div>
               </Button>
             ))}
@@ -684,12 +684,12 @@ const updateMutation = useMutation({
             />
 
             {/* Switch Almuerzo */}
-            <div className={`space-y-4 ${isMobile ? 'bg-gray-50 p-4 rounded-lg' : ''}`}>
+            <div className={`space-y-4 ${isMobile ? 'bg-background p-4 rounded-lg' : ''}`}>
               <FormField
                 control={form.control}
                 name="hasLunchBreak"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 bg-white">
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 bg-card">
                     <div className="space-y-0.5 flex-1">
                       <FormLabel className="text-base font-semibold">Incluye Almuerzo</FormLabel>
                       <div className="text-sm text-muted-foreground">
@@ -701,7 +701,7 @@ const updateMutation = useMutation({
                         checked={field.value}
                         onCheckedChange={(v) => { field.onChange(v); ensureLunchCoherence(v); }}
                         data-testid="switch-hasLunchBreak"
-                        className="data-[state=checked]:bg-green-600"
+                        className="data-[state=checked]:bg-success"
                       />
                     </FormControl>
                   </FormItem>
@@ -711,7 +711,7 @@ const updateMutation = useMutation({
               {form.watch("hasLunchBreak") && (
                 <div className={`grid gap-4 ${
                   isMobile ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2"
-                } bg-blue-50 p-4 rounded-lg border border-blue-200`}>
+                } bg-primary/10 p-4 rounded-lg border border-primary/30`}>
                   <FormField
                     control={form.control}
                     name="lunchStart"
@@ -762,12 +762,12 @@ const updateMutation = useMutation({
             </div>
 
             {/* Horario Rotativo */}
-            <div className={`space-y-4 ${isMobile ? 'bg-gray-50 p-4 rounded-lg' : ''}`}>
+            <div className={`space-y-4 ${isMobile ? 'bg-background p-4 rounded-lg' : ''}`}>
               <FormField
                 control={form.control}
                 name="isRotating"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 bg-white">
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 bg-card">
                     <div className="space-y-0.5 flex-1">
                       <FormLabel className="text-base font-semibold">Horario Rotativo</FormLabel>
                       <div className="text-sm text-muted-foreground">
@@ -791,7 +791,7 @@ const updateMutation = useMutation({
                   control={form.control}
                   name="rotationPattern"
                   render={({ field }) => (
-                    <FormItem className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                    <FormItem className="bg-accent/50 p-4 rounded-lg border border-purple-200">
                       <FormLabel className="text-sm font-semibold">Patrón de Rotación</FormLabel>
                       <FormControl>
                         <Textarea
@@ -810,15 +810,15 @@ const updateMutation = useMutation({
             </div>
 
             {/* Vista previa del horario */}
-            <div className="bg-gradient-to-r from-green-50 to-emerald-100 p-4 rounded-lg border border-green-200">
-              <div className="flex items-center space-x-2 text-green-700 mb-3">
+            <div className="bg-gradient-to-r from-green-50 to-emerald-100 p-4 rounded-lg border border-success/30">
+              <div className="flex items-center space-x-2 text-success mb-3">
                 <Calendar className="h-4 w-4" />
                 <span className="font-semibold text-sm">Vista Previa del Horario</span>
               </div>
-              <div className="text-sm text-green-800 space-y-2">
+              <div className="text-sm text-success space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="font-medium">Horario:</span>
-                  <span className="font-mono bg-white px-2 py-1 rounded text-xs">
+                  <span className="font-mono bg-card px-2 py-1 rounded text-xs">
                     {form.watch("entryTime")} - {form.watch("exitTime")}
                   </span>
                 </div>
@@ -835,7 +835,7 @@ const updateMutation = useMutation({
                 {form.watch("hasLunchBreak") && form.watch("lunchStart") && form.watch("lunchEnd") && (
                   <div className="flex justify-between items-center">
                     <span className="font-medium">Almuerzo:</span>
-                    <span className="font-mono bg-white px-2 py-1 rounded text-xs">
+                    <span className="font-mono bg-card px-2 py-1 rounded text-xs">
                       {form.watch("lunchStart")} - {form.watch("lunchEnd")}
                     </span>
                   </div>
@@ -851,8 +851,8 @@ const updateMutation = useMutation({
 
             {/* 🔧 SECCIÓN DEBUG (Solo desarrollo y modo edición) */}
             {/* {process.env.NODE_ENV === 'development' && isEditing && (
-              <div className="mt-6 p-4 border border-orange-300 bg-orange-50 rounded-lg">
-                <p className="text-sm font-medium text-orange-800 mb-3">
+              <div className="mt-6 p-4 border border-orange-300 bg-secondary/10 rounded-lg">
+                <p className="text-sm font-medium text-secondary-foreground mb-3">
                   🐛 Debug Update (Solo Desarrollo)
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -880,12 +880,12 @@ const updateMutation = useMutation({
 
             {/* Botones de acción */}
             <div className={`flex flex-col sm:flex-row gap-3 pt-6 border-t ${
-              isMobile ? 'sticky bottom-0 bg-white pb-2' : ''
+              isMobile ? 'sticky bottom-0 bg-card pb-2' : ''
             }`}>
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="flex-1 h-12 sm:h-10 bg-green-600 hover:bg-green-700"
+                className="flex-1 h-12 sm:h-10 bg-success hover:bg-green-700"
                 data-testid="button-save-schedule"
                 size={isMobile ? "default" : "default"}
               >

@@ -2,204 +2,418 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Colores oficiales Universidad Técnica de Ambato */
+/* =============================================================================
+ * SISTEMA DE TEMAS - Universidad Técnica de Ambato
+ * Principio: NUNCA usar colores hardcodeados en componentes.
+ * Usar SIEMPRE las variables semánticas definidas aquí.
+ * Referencia de uso:
+ *   - Texto principal    → text-foreground
+ *   - Texto secundario   → text-muted-foreground
+ *   - Fondo página       → bg-background
+ *   - Fondo tarjeta      → bg-card
+ *   - Fondo sidebar      → bg-sidebar
+ *   - Borde              → border-border
+ *   - Input              → bg-input
+ *   - Acción primaria    → bg-primary text-primary-foreground
+ *   - Acción destructiva → bg-destructive text-destructive-foreground
+ * ============================================================================= */
+
+/* Colores de marca UTA (solo para referencias de branding, no usar en componentes) */
 :root {
-  --uta-blue: #1e40af;
-  --uta-blue-light: #3b82f6;
-  --uta-blue-dark: #1e3a8a;
-  --uta-orange: #f97316;
-  --uta-orange-light: #fb923c;
-  --uta-orange-dark: #ea580c;
+  --uta-blue:        #265792;
+  --uta-blue-light:  #3b82f6;
+  --uta-blue-dark:   #1e3a8a;
+  --uta-gold:        #ffc107;
+  --uta-gold-light:  #ffd54f;
 }
 
+/* ─── MODO CLARO ──────────────────────────────────────────────────────────── */
 :root {
-  /* UTA Brand Colors */
-  --background: hsl(0 0% 100%);
-  --foreground: hsl(218 54% 20%);
-  --card: hsl(210 15% 97%);
-  --card-foreground: hsl(218 54% 20%);
-  --popover: hsl(0 0% 100%);
-  --popover-foreground: hsl(218 54% 20%);
-  --primary: hsl(210 88% 35%) !important; /* UTA Blue */
-  --primary-foreground: hsl(0 0% 100%);
-  --secondary: hsl(45 100% 50%) !important; /* UTA Gold */
-  --secondary-foreground: hsl(218 54% 20%);
-  --muted: hsl(210 15% 95%);
-  --muted-foreground: hsl(218 30% 45%);
-  --accent: hsl(210 60% 92%);
-  --accent-foreground: hsl(210 88% 35%);
-  --destructive: hsl(358 75% 59%);
-  --destructive-foreground: hsl(0 0% 100%);
-  --border: hsl(210 15% 88%);
-  --input: hsl(210 15% 96%);
-  --ring: hsl(210 88% 35%);
-  --chart-1: hsl(210 88% 35%); /* UTA Blue */
-  --chart-2: hsl(45 100% 50%); /* UTA Gold */
-  --chart-3: hsl(195 100% 40%); /* Light Blue */
-  --chart-4: hsl(135 60% 40%); /* Green */
-  --chart-5: hsl(285 85% 60%); /* Purple */
-  --sidebar: hsl(210 15% 97%);
-  --sidebar-foreground: hsl(218 54% 20%);
-  --sidebar-primary: hsl(210 88% 35%);
-  --sidebar-primary-foreground: hsl(0 0% 100%);
-  --sidebar-accent: hsl(210 60% 92%);
-  --sidebar-accent-foreground: hsl(210 88% 35%);
-  --sidebar-border: hsl(210 15% 88%);
-  --sidebar-ring: hsl(210 88% 35%);
-  --surface: hsl(0 0% 100%);
-  --success: hsl(135 60% 40%);
-  --warning: hsl(45 100% 50%); /* UTA Gold for warnings */
-  --error: hsl(358 75% 59%);
-  --font-sans: 'Inter', sans-serif;
+  --background:                hsl(0 0% 100%);
+  --foreground:                hsl(218 54% 15%);
+
+  --card:                      hsl(210 15% 98%);
+  --card-foreground:           hsl(218 54% 15%);
+
+  --popover:                   hsl(0 0% 100%);
+  --popover-foreground:        hsl(218 54% 15%);
+
+  --primary:                   hsl(210 88% 35%);   /* UTA Blue */
+  --primary-foreground:        hsl(0 0% 100%);
+
+  --secondary:                 hsl(45 100% 50%);   /* UTA Gold */
+  --secondary-foreground:      hsl(218 54% 15%);
+
+  --muted:                     hsl(210 15% 94%);
+  --muted-foreground:          hsl(218 20% 45%);
+
+  --accent:                    hsl(210 60% 92%);
+  --accent-foreground:         hsl(210 88% 30%);
+
+  --destructive:               hsl(358 75% 55%);
+  --destructive-foreground:    hsl(0 0% 100%);
+
+  --border:                    hsl(210 15% 85%);
+  --input:                     hsl(210 15% 96%);
+  --ring:                      hsl(210 88% 35%);
+
+  /* Sidebar */
+  --sidebar:                   hsl(210 20% 97%);
+  --sidebar-foreground:        hsl(218 54% 18%);
+  --sidebar-primary:           hsl(210 88% 35%);
+  --sidebar-primary-foreground:hsl(0 0% 100%);
+  --sidebar-accent:            hsl(210 60% 90%);
+  --sidebar-accent-foreground: hsl(210 88% 30%);
+  --sidebar-border:            hsl(210 15% 85%);
+  --sidebar-ring:              hsl(210 88% 35%);
+
+  /* Semánticos extra */
+  --surface:                   hsl(0 0% 100%);
+  --success:                   hsl(142 71% 35%);
+  --warning:                   hsl(45 100% 45%);
+  --error:                     hsl(358 75% 55%);
+
+  /* Tipografía */
+  --font-sans:  'Inter', sans-serif;
   --font-serif: Georgia, serif;
-  --font-mono: Menlo, monospace;
-  --radius: 1.3rem;
-  --shadow-2xs: 0px 2px 0px 0px hsl(208.2 90.9% 45.3% / 0.00);
-  --shadow-xs: 0px 2px 0px 0px hsl(208.2 90.9% 45.3% / 0.00);
-  --shadow-sm: 0px 2px 0px 0px hsl(208.2 90.9% 45.3% / 0.00), 0px 1px 2px -1px hsl(208.2 90.9% 45.3% / 0.00);
-  --shadow: 0px 2px 0px 0px hsl(208.2 90.9% 45.3% / 0.00), 0px 1px 2px -1px hsl(208.2 90.9% 45.3% / 0.00);
-  --shadow-md: 0px 2px 0px 0px hsl(208.2 90.9% 45.3% / 0.00), 0px 2px 4px -1px hsl(208.2 90.9% 45.3% / 0.00);
-  --shadow-lg: 0px 2px 0px 0px hsl(208.2 90.9% 45.3% / 0.00), 0px 4px 6px -1px hsl(208.2 90.9% 45.3% / 0.00);
-  --shadow-xl: 0px 2px 0px 0px hsl(208.2 90.9% 45.3% / 0.00), 0px 8px 10px -1px hsl(208.2 90.9% 45.3% / 0.00);
-  --shadow-2xl: 0px 2px 0px 0px hsl(208.2 90.9% 45.3% / 0.00);
+  --font-mono:  Menlo, monospace;
+  --radius:     0.75rem;
   --tracking-normal: 0em;
-  --spacing: 0.25rem;
+  --spacing:    0.25rem;
+
+  /* Charts */
+  --chart-1: hsl(210 88% 35%);
+  --chart-2: hsl(45 100% 50%);
+  --chart-3: hsl(195 100% 40%);
+  --chart-4: hsl(142 71% 35%);
+  --chart-5: hsl(285 85% 60%);
 }
 
+/* ─── MODO OSCURO ─────────────────────────────────────────────────────────── */
 .dark {
-  /* UTA Dark Mode Colors */
-  --background: hsl(218 54% 8%);
-  --foreground: hsl(210 15% 92%);
-  --card: hsl(218 50% 12%);
-  --card-foreground: hsl(210 15% 88%);
-  --popover: hsl(218 54% 8%);
-  --popover-foreground: hsl(210 15% 92%);
-  --primary: hsl(210 88% 45%); /* Lighter UTA Blue for dark mode */
-  --primary-foreground: hsl(0 0% 100%);
-  --secondary: hsl(45 100% 60%); /* Brighter UTA Gold for dark mode */
-  --secondary-foreground: hsl(218 54% 8%);
-  --muted: hsl(218 50% 15%);
-  --muted-foreground: hsl(210 15% 60%);
-  --accent: hsl(218 50% 20%);
-  --accent-foreground: hsl(210 88% 45%);
-  --destructive: hsl(358 75% 65%);
-  --destructive-foreground: hsl(0 0% 100%);
-  --border: hsl(218 50% 20%);
-  --input: hsl(218 50% 18%);
-  --ring: hsl(210 88% 45%);
-  --chart-1: hsl(210 88% 45%); /* UTA Blue */
-  --chart-2: hsl(45 100% 60%); /* UTA Gold */
-  --chart-3: hsl(195 100% 50%); /* Light Blue */
-  --chart-4: hsl(135 60% 50%); /* Green */
-  --chart-5: hsl(285 85% 70%); /* Purple */
-  --sidebar: hsl(218 50% 12%);
-  --sidebar-foreground: hsl(210 15% 88%);
-  --sidebar-primary: hsl(210 88% 45%);
-  --sidebar-primary-foreground: hsl(0 0% 100%);
-  --sidebar-accent: hsl(218 50% 20%);
-  --sidebar-accent-foreground: hsl(210 88% 45%);
-  --sidebar-border: hsl(218 50% 20%);
-  --sidebar-ring: hsl(210 88% 45%);
-  --surface: hsl(218 50% 12%);
-  --success: hsl(135 60% 50%);
-  --warning: hsl(45 100% 60%); /* UTA Gold for warnings */
-  --error: hsl(358 75% 65%);
-  --font-sans: 'Inter', sans-serif;
-  --font-serif: Georgia, serif;
-  --font-mono: Menlo, monospace;
-  --radius: 1.3rem;
-  --shadow-2xs: 0px 2px 0px 0px hsl(208.2 90.9% 45.3% / 0.00);
-  --shadow-xs: 0px 2px 0px 0px hsl(208.2 90.9% 45.3% / 0.00);
-  --shadow-sm: 0px 2px 0px 0px hsl(208.2 90.9% 45.3% / 0.00), 0px 1px 2px -1px hsl(208.2 90.9% 45.3% / 0.00);
-  --shadow: 0px 2px 0px 0px hsl(208.2 90.9% 45.3% / 0.00), 0px 1px 2px -1px hsl(208.2 90.9% 45.3% / 0.00);
-  --shadow-md: 0px 2px 0px 0px hsl(208.2 90.9% 45.3% / 0.00), 0px 2px 4px -1px hsl(208.2 90.9% 45.3% / 0.00);
-  --shadow-lg: 0px 2px 0px 0px hsl(208.2 90.9% 45.3% / 0.00), 0px 4px 6px -1px hsl(208.2 90.9% 45.3% / 0.00);
-  --shadow-xl: 0px 2px 0px 0px hsl(208.2 90.9% 45.3% / 0.00), 0px 8px 10px -1px hsl(208.2 90.9% 45.3% / 0.00);
-  --shadow-2xl: 0px 2px 0px 0px hsl(208.2 90.9% 45.3% / 0.00);
+  --background:                hsl(222 47% 8%);
+  --foreground:                hsl(210 20% 92%);
+
+  --card:                      hsl(222 44% 12%);
+  --card-foreground:           hsl(210 20% 90%);
+
+  --popover:                   hsl(222 47% 10%);
+  --popover-foreground:        hsl(210 20% 92%);
+
+  --primary:                   hsl(210 88% 55%);   /* UTA Blue más claro */
+  --primary-foreground:        hsl(0 0% 100%);
+
+  --secondary:                 hsl(45 100% 60%);   /* UTA Gold más brillante */
+  --secondary-foreground:      hsl(222 47% 8%);
+
+  --muted:                     hsl(222 40% 16%);
+  --muted-foreground:          hsl(210 15% 62%);
+
+  --accent:                    hsl(222 40% 20%);
+  --accent-foreground:         hsl(210 88% 65%);
+
+  --destructive:               hsl(358 75% 65%);
+  --destructive-foreground:    hsl(0 0% 100%);
+
+  --border:                    hsl(222 40% 22%);
+  --input:                     hsl(222 40% 18%);
+  --ring:                      hsl(210 88% 55%);
+
+  /* Sidebar */
+  --sidebar:                   hsl(222 44% 11%);
+  --sidebar-foreground:        hsl(210 20% 88%);
+  --sidebar-primary:           hsl(210 88% 55%);
+  --sidebar-primary-foreground:hsl(0 0% 100%);
+  --sidebar-accent:            hsl(222 40% 20%);
+  --sidebar-accent-foreground: hsl(210 88% 65%);
+  --sidebar-border:            hsl(222 40% 22%);
+  --sidebar-ring:              hsl(210 88% 55%);
+
+  /* Semánticos extra */
+  --surface:                   hsl(222 44% 12%);
+  --success:                   hsl(142 71% 48%);
+  --warning:                   hsl(45 100% 60%);
+  --error:                     hsl(358 75% 65%);
+
+  /* Charts */
+  --chart-1: hsl(210 88% 55%);
+  --chart-2: hsl(45 100% 60%);
+  --chart-3: hsl(195 100% 55%);
+  --chart-4: hsl(142 71% 48%);
+  --chart-5: hsl(285 85% 70%);
 }
 
+/* =============================================================================
+ * BASE LAYER
+ * ============================================================================= */
 @layer base {
   * {
     @apply border-border;
   }
 
+  html {
+    @apply scroll-smooth;
+  }
+
   body {
-    @apply font-sans antialiased bg-background text-foreground;
-    font-family: 'Inter', sans-serif;
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: var(--font-sans);
+  }
+
+  /* Scrollbar temática */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-muted;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground;
   }
 }
 
-/* Custom utility classes for the design system */
-.surface {
-  background-color: var(--surface);
+/* =============================================================================
+ * CAPA DE COMPONENTES REUTILIZABLES
+ * Estas clases encapsulan patrones comunes de dark/light mode.
+ * Usar en componentes en lugar de clases Tailwind hardcodeadas.
+ * ============================================================================= */
+@layer components {
+
+  /* ── Página / Contenedor ── */
+  .page-container {
+    @apply container mx-auto p-6 bg-background text-foreground;
+  }
+
+  .page-title {
+    @apply text-2xl font-bold text-foreground flex items-center gap-2;
+  }
+
+  .page-subtitle {
+    @apply text-sm text-muted-foreground mt-1;
+  }
+
+  /* ── Tarjetas ── */
+  .card-base {
+    @apply bg-card text-card-foreground border border-border rounded-lg shadow-sm;
+  }
+
+  .card-header-base {
+    @apply border-b border-border px-6 py-4;
+  }
+
+  /* ── Formularios ── */
+  .form-label {
+    @apply text-sm font-medium text-foreground;
+  }
+
+  .form-hint {
+    @apply text-xs text-muted-foreground mt-1;
+  }
+
+  .form-error {
+    @apply text-xs text-destructive mt-1;
+  }
+
+  .input-base {
+    @apply bg-input border border-border text-foreground placeholder:text-muted-foreground
+           rounded-md px-3 py-2 text-sm
+           focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring
+           disabled:opacity-50 disabled:cursor-not-allowed
+           transition-colors;
+  }
+
+  /* ── Tablas ── */
+  .table-header-cell {
+    @apply text-xs font-semibold text-muted-foreground uppercase tracking-wide bg-muted;
+  }
+
+  .table-row-base {
+    @apply border-b border-border hover:bg-muted/50 transition-colors;
+  }
+
+  .table-cell-base {
+    @apply text-sm text-foreground py-3 px-4;
+  }
+
+  /* ── Badges de estado ── */
+  .badge-active {
+    @apply bg-success/15 text-success border border-success/30 text-xs font-medium px-2 py-0.5 rounded-full;
+  }
+
+  .badge-inactive {
+    @apply bg-destructive/15 text-destructive border border-destructive/30 text-xs font-medium px-2 py-0.5 rounded-full;
+  }
+
+  .badge-info {
+    @apply bg-primary/15 text-primary border border-primary/30 text-xs font-medium px-2 py-0.5 rounded-full;
+  }
+
+  /* ── Alertas / Banners ── */
+  .alert-info {
+    @apply bg-accent border border-accent-foreground/20 text-accent-foreground rounded-lg p-4;
+  }
+
+  .alert-error {
+    @apply bg-destructive/10 border border-destructive/30 text-destructive rounded-lg p-4;
+  }
+
+  .alert-success {
+    @apply bg-success/10 border border-success/30 text-success rounded-lg p-4;
+  }
+
+  .alert-warning {
+    @apply bg-warning/10 border border-warning/30 text-warning rounded-lg p-4;
+  }
+
+  /* ── Skeleton / Loading ── */
+  .skeleton-base {
+    @apply bg-muted animate-pulse rounded;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar-base {
+    @apply bg-sidebar text-sidebar-foreground border-r border-sidebar-border;
+  }
+
+  .sidebar-item {
+    @apply flex items-center px-2 py-1.5 rounded-lg text-xs transition-colors
+           text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground;
+  }
+
+  .sidebar-item-active {
+    @apply bg-sidebar-primary text-sidebar-primary-foreground;
+  }
+
+  .sidebar-group-header {
+    @apply w-full flex items-center justify-between px-2 py-1.5 rounded-lg
+           text-xs font-semibold transition-colors
+           text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground;
+  }
+
+  .sidebar-group-header-open {
+    @apply bg-sidebar-accent text-sidebar-accent-foreground;
+  }
+
+  /* ── Header ── */
+  .header-base {
+    @apply bg-card border-b border-border text-card-foreground;
+  }
+
+  /* ── Búsqueda ── */
+  .search-wrapper {
+    @apply relative;
+  }
+
+  .search-icon {
+    @apply absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none;
+  }
+
+  .search-input {
+    @apply input-base w-full pl-10;
+  }
+
+  /* ── Botones de acción en tabla ── */
+  .btn-table-action {
+    @apply inline-flex items-center justify-center h-8 w-8 rounded-md
+           border border-border bg-background text-foreground
+           hover:bg-accent hover:text-accent-foreground
+           transition-colors text-sm;
+  }
+
+  .btn-table-danger {
+    @apply btn-table-action text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/30;
+  }
+
+  /* ── Empty state ── */
+  .empty-state {
+    @apply flex flex-col items-center justify-center py-12 text-center;
+  }
+
+  .empty-state-icon {
+    @apply h-12 w-12 text-muted-foreground mb-3;
+  }
+
+  .empty-state-title {
+    @apply text-base font-medium text-foreground;
+  }
+
+  .empty-state-desc {
+    @apply text-sm text-muted-foreground mt-1;
+  }
+
+  /* ── Separador de sección ── */
+  .section-divider {
+    @apply border-t border-border my-4;
+  }
+
+  /* ── Footer del sidebar ── */
+  .sidebar-footer {
+    @apply border-t border-sidebar-border bg-sidebar text-sidebar-foreground
+           px-2 py-2 text-xs flex items-center justify-between;
+  }
 }
 
-/* Force UTA Colors using CSS variables instead of hardcoded hex/hsl */
-.bg-primary {
-  background-color: hsl(var(--primary)) !important;
+/* =============================================================================
+ * UTILIDADES SEMÁNTICAS
+ * Reemplazo de clases hardcodeadas de Tailwind para dark mode correcto.
+ * ============================================================================= */
+@layer utilities {
+
+  /* Superficies */
+  .surface {
+    background-color: var(--surface);
+    color: var(--foreground);
+  }
+
+  /* Textos semánticos */
+  .text-subtle {
+    color: var(--muted-foreground);
+  }
+
+  /* Éxito / Warning / Error */
+  .text-success  { color: var(--success); }
+  .text-warning  { color: var(--warning); }
+  .text-error    { color: var(--error); }
+
+  .bg-success    { background-color: var(--success); }
+  .bg-warning    { background-color: var(--warning); }
+  .bg-error      { background-color: var(--error); }
+
+  .border-success { border-color: var(--success); }
+  .border-warning { border-color: var(--warning); }
+  .border-error   { border-color: var(--error); }
+
+  /* Fondos semitransparentes para badges/alertas */
+  .bg-success-subtle  { background-color: color-mix(in srgb, var(--success) 12%, transparent); }
+  .bg-warning-subtle  { background-color: color-mix(in srgb, var(--warning) 12%, transparent); }
+  .bg-error-subtle    { background-color: color-mix(in srgb, var(--error) 12%, transparent); }
+  .bg-primary-subtle  { background-color: color-mix(in srgb, var(--primary) 12%, transparent); }
 }
 
-.text-primary {
-  color: hsl(var(--primary)) !important;
-}
-
-.bg-secondary {
-  background-color: hsl(var(--secondary)) !important;
-}
-
-.text-secondary {
-  color: hsl(var(--secondary)) !important;
-}
-
-/* Force UTA Branding - Support dark mode */
-.dark aside h1 {
-  color: hsl(var(--primary)) !important;
-}
+/* =============================================================================
+ * BRANDING UTA - Soporte dark/light
+ * ============================================================================= */
 aside h1 {
-  color: #265792 !important;
+  color: var(--sidebar-primary) !important;
 }
 
-.dark aside .uta-logo {
-  background-color: hsl(var(--primary)) !important;
-}
 aside .uta-logo {
-  background-color: #265792 !important;
-  color: white !important;
+  background-color: var(--sidebar-primary) !important;
+  color: var(--sidebar-primary-foreground) !important;
 }
 
-.text-success {
-  color: var(--success);
+/* =============================================================================
+ * ANIMACIONES
+ * ============================================================================= */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-.text-warning {
-  color: var(--warning);
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
 }
-
-.text-error {
-  color: var(--error);
-}
-
-.bg-success {
-  background-color: var(--success);
-}
-
-.bg-warning {
-  background-color: var(--warning);
-}
-
-.bg-error {
-  background-color: var(--error);
-}
-
-.border-success {
-  border-color: var(--success);
-}
-
-.border-warning {
-  border-color: var(--warning);
-}
-
-.border-error {
-  border-color: var(--error);
-}
-/* Cache buster 1755189798 */

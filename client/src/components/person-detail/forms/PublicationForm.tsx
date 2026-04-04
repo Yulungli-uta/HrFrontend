@@ -440,7 +440,7 @@ export default function PublicationForm({
                   </Select>
                   <FormMessage />
                   {publicationTypesError && (
-                    <p className="text-xs text-red-500 mt-1">
+                    <p className="text-xs text-destructive mt-1">
                       No se pudieron cargar los tipos de publicación.
                     </p>
                   )}
@@ -568,7 +568,7 @@ export default function PublicationForm({
                   </Select>
                   <FormMessage />
                   {journalTypesError && (
-                    <p className="text-xs text-red-500 mt-1">
+                    <p className="text-xs text-destructive mt-1">
                       No se pudieron cargar los tipos de revista.
                     </p>
                   )}
@@ -759,7 +759,7 @@ export default function PublicationForm({
                   </Select>
                   <FormMessage />
                   {errorLevel1 && (
-                    <p className="text-xs text-red-500 mt-1">
+                    <p className="text-xs text-destructive mt-1">
                       No se pudieron cargar las áreas de conocimiento.
                     </p>
                   )}
@@ -802,7 +802,7 @@ export default function PublicationForm({
                   </Select>
                   <FormMessage />
                   {errorLevel2 && (
-                    <p className="text-xs text-red-500 mt-1">
+                    <p className="text-xs text-destructive mt-1">
                       No se pudieron cargar las subáreas.
                     </p>
                   )}
@@ -842,7 +842,7 @@ export default function PublicationForm({
                   </Select>
                   <FormMessage />
                   {errorLevel3 && (
-                    <p className="text-xs text-red-500 mt-1">
+                    <p className="text-xs text-destructive mt-1">
                       No se pudieron cargar las áreas específicas.
                     </p>
                   )}

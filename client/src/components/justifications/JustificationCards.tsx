@@ -39,7 +39,7 @@ export function JustificationCards({
                     Ver detalles
                   </DropdownMenuItem>
                   {j.status === "PENDING" && (
-                    <DropdownMenuItem onClick={() => onDelete(j)} className="text-red-600">
+                    <DropdownMenuItem onClick={() => onDelete(j)} className="text-destructive">
                       <Trash2 className="h-4 w-4 mr-2" />
                       Eliminar
                     </DropdownMenuItem>

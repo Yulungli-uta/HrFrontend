@@ -339,18 +339,18 @@ export default function UserRolesPage() {
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="flex-1">
-          <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
             <span>Administración</span>
             <ChevronDown className="h-4 w-4 rotate-[-90deg]" />
-            <span className="text-gray-900 font-medium">Gestión de Roles</span>
+            <span className="text-foreground font-medium">Gestión de Roles</span>
           </div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <UserCog className="h-6 w-6 lg:h-8 lg:w-8 text-blue-600" />
+          <h1 className="text-2xl lg:text-3xl font-bold text-foreground flex items-center gap-3">
+            <div className="p-2 bg-primary/15 rounded-lg">
+              <UserCog className="h-6 w-6 lg:h-8 lg:w-8 text-primary" />
             </div>
             Asignación de Roles
           </h1>
-          <p className="text-gray-600 mt-2 text-sm lg:text-base">
+          <p className="text-muted-foreground mt-2 text-sm lg:text-base">
             Gestione y asigne roles a los usuarios del sistema de manera intuitiva
           </p>
         </div>
@@ -401,7 +401,7 @@ export default function UserRolesPage() {
         <CardContent className="p-6">
           <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
             <div className="relative flex-1 w-full lg:max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
               <Input
                 placeholder="Buscar usuarios, emails, IDs..."
                 value={filters.searchTerm}
@@ -412,10 +412,10 @@ export default function UserRolesPage() {
 
             <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
               <div className="flex items-center gap-2">
-                <Label htmlFor="view-mode" className="text-sm text-gray-600">
+                <Label htmlFor="view-mode" className="text-sm text-muted-foreground">
                   Vista:
                 </Label>
-                <div className="flex bg-gray-100 rounded-lg p-1">
+                <div className="flex bg-muted rounded-lg p-1">
                   <Button size="sm" variant={viewMode === "cards" ? "default" : "ghost"} onClick={() => setViewMode("cards")} className="h-8 px-3">
                     Tarjetas
                   </Button>
@@ -434,7 +434,7 @@ export default function UserRolesPage() {
           </div>
 
           {showFilters && (
-            <div className="mt-6 p-4 bg-gray-50 rounded-lg border animate-in fade-in">
+            <div className="mt-6 p-4 bg-background rounded-lg border animate-in fade-in">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <Label className="text-sm font-medium mb-2 block">Estado</Label>
@@ -543,13 +543,13 @@ export default function UserRolesPage() {
       {filteredUsers.length === 0 && (
         <Card className="text-center py-12">
           <CardContent>
-            <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-              <Users className="h-10 w-10 text-gray-400" />
+            <div className="mx-auto w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-4">
+              <Users className="h-10 w-10 text-muted-foreground/70" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <h3 className="text-lg font-semibold text-foreground mb-2">
               {filters.searchTerm || showFilters ? "No se encontraron usuarios" : "No hay usuarios registrados"}
             </h3>
-            <p className="text-gray-500 mb-4">
+            <p className="text-muted-foreground mb-4">
               {filters.searchTerm || showFilters
                 ? "Intente ajustar los filtros de búsqueda"
                 : "Comience agregando usuarios al sistema"}
@@ -579,7 +579,7 @@ export default function UserRolesPage() {
           </AlertDialogHeader>
           <div className="px-6">
             {deleteAssignment && (
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-muted-foreground">
                 Usuario: <span className="font-medium">{usersMap.get(deleteAssignment.userId)?.email}</span>
               </p>
             )}
@@ -600,7 +600,7 @@ export default function UserRolesPage() {
                   });
                 }
               }}
-              className="bg-red-600 hover:bg-red-700 flex items-center gap-2"
+              className="bg-destructive hover:bg-red-700 flex items-center gap-2"
               disabled={deleteMutation.isPending}
             >
               {deleteMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -622,8 +622,8 @@ export default function UserRolesPage() {
 
           {selectedUserId && (
             <>
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-3">
-                <p className="text-sm text-gray-600">
+              <div className="bg-background border border-border rounded-lg p-3 mb-3">
+                <p className="text-sm text-muted-foreground">
                   Usuario: <span className="font-medium">{usersMap.get(selectedUserId)?.email}</span>
                 </p>
               </div>
@@ -650,8 +650,8 @@ export default function UserRolesPage() {
 
           {editAssignment && (
             <>
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-3">
-                <p className="text-sm text-gray-600">
+              <div className="bg-background border border-border rounded-lg p-3 mb-3">
+                <p className="text-sm text-muted-foreground">
                   Usuario: <span className="font-medium">{editAssignment.userEmail}</span>
                 </p>
               </div>
@@ -686,10 +686,10 @@ export default function UserRolesPage() {
 
 function StatCard({ title, value, icon, color, onClick }: any) {
   const colorClasses = {
-    blue: "bg-blue-50 text-blue-600 border-blue-200",
-    green: "bg-green-50 text-green-600 border-green-200",
-    purple: "bg-purple-50 text-purple-600 border-purple-200",
-    orange: "bg-orange-50 text-orange-600 border-orange-200",
+    blue: "bg-primary/10 text-primary border-primary/30",
+    green: "bg-success/10 text-success border-success/30",
+    purple: "bg-accent/50 text-purple-600 border-purple-200",
+    orange: "bg-secondary/10 text-secondary-foreground border-orange-200",
   };
 
   return (
@@ -700,7 +700,7 @@ function StatCard({ title, value, icon, color, onClick }: any) {
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-gray-600">{title}</p>
+            <p className="text-sm font-medium text-muted-foreground">{title}</p>
             <p className="text-2xl font-bold mt-1">{value}</p>
           </div>
           <div className={`p-3 rounded-full ${colorClasses[color as keyof typeof colorClasses].split(" ")[0]}`}>
@@ -735,7 +735,7 @@ function CardView({
         return (
           <Card
             key={user.id}
-            className={`relative transition-all hover:shadow-lg border-2 ${isSelected ? "border-blue-500 bg-blue-50" : "border-gray-200"}`}
+            className={`relative transition-all hover:shadow-lg border-2 ${isSelected ? "border-blue-500 bg-primary/10" : "border-border"}`}
           >
             <div className="absolute top-3 right-3">
               <Switch checked={isSelected} onCheckedChange={() => onToggleSelect(user.id)} />
@@ -747,12 +747,12 @@ function CardView({
                   <CardTitle className="text-lg truncate flex items-center gap-2">
                     {user.email}
                     {user.isActive ? (
-                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <CheckCircle className="h-4 w-4 text-success" />
                     ) : (
-                      <XCircle className="h-4 w-4 text-red-500" />
+                      <XCircle className="h-4 w-4 text-destructive" />
                     )}
                   </CardTitle>
-                  <p className="text-sm text-gray-600 truncate">{user.displayName || "Sin nombre"}</p>
+                  <p className="text-sm text-muted-foreground truncate">{user.displayName || "Sin nombre"}</p>
                   <div className="flex flex-wrap gap-1 mt-2">
                     <Badge variant={user.isActive ? "default" : "destructive"}>
                       {user.isActive ? "Activo" : "Inactivo"}
@@ -791,7 +791,7 @@ function CardView({
                   {isExpanded ? "Ocultar" : "Detalles"}
                 </Button>
 
-                <Button size="sm" onClick={() => onAssignRole(user.id)} className="bg-blue-600 hover:bg-blue-700 flex items-center gap-1">
+                <Button size="sm" onClick={() => onAssignRole(user.id)} className="bg-primary hover:bg-primary/90 flex items-center gap-1">
                   <Plus className="h-4 w-4" />
                   Asignar Rol
                 </Button>
@@ -836,7 +836,7 @@ function CardView({
                                 variant="outline"
                                 size="sm"
                                 onClick={() => onDeleteAssignment(ur.userId, ur.roleId, ur.assignedAt)}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50 h-8 w-8 p-0"
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8 p-0"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -890,14 +890,14 @@ function TableView({
               const isSelected = selectedUsers.has(user.id);
 
               return (
-                <TableRow key={user.id} className={isSelected ? "bg-blue-50" : ""}>
+                <TableRow key={user.id} className={isSelected ? "bg-primary/10" : ""}>
                   <TableCell>
                     <Switch checked={isSelected} onCheckedChange={() => onToggleSelect(user.id)} />
                   </TableCell>
                   <TableCell>
                     <div>
                       <div className="font-medium">{user.email}</div>
-                      <div className="text-sm text-gray-500">{user.displayName || "Sin nombre"}</div>
+                      <div className="text-sm text-muted-foreground">{user.displayName || "Sin nombre"}</div>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -920,15 +920,15 @@ function TableView({
                           +{activeRoles.length - 2}
                         </Badge>
                       )}
-                      {activeRoles.length === 0 && <span className="text-sm text-gray-400">Sin roles</span>}
+                      {activeRoles.length === 0 && <span className="text-sm text-muted-foreground/70">Sin roles</span>}
                     </div>
                   </TableCell>
                   <TableCell>
-                    {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : <span className="text-gray-400">Nunca</span>}
+                    {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : <span className="text-muted-foreground/70">Nunca</span>}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <Button size="sm" onClick={() => onAssignRole(user.id)} className="bg-blue-600 hover:bg-blue-700">
+                      <Button size="sm" onClick={() => onAssignRole(user.id)} className="bg-primary hover:bg-primary/90">
                         <Plus className="h-4 w-4" />
                       </Button>
                       <DropdownMenu>
@@ -945,7 +945,7 @@ function TableView({
                           <DropdownMenuSeparator />
                           <DropdownMenuLabel className="text-xs">Asignaciones</DropdownMenuLabel>
                           {activeRoles.length === 0 && (
-                            <DropdownMenuItem disabled className="text-gray-400">
+                            <DropdownMenuItem disabled className="text-muted-foreground/70">
                               No hay roles
                             </DropdownMenuItem>
                           )}
@@ -973,7 +973,7 @@ function TableView({
                                   variant="outline"
                                   size="sm"
                                   onClick={() => onDeleteAssignment(ur.userId, ur.roleId, ur.assignedAt)}
-                                  className="h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  className="h-7 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </Button>
@@ -1057,7 +1057,7 @@ function EditUserRoleForm({
             </SelectTrigger>
             <SelectContent>
               {activeRoles.length === 0 ? (
-                <div className="p-2 text-sm text-gray-500">No hay roles disponibles</div>
+                <div className="p-2 text-sm text-muted-foreground">No hay roles disponibles</div>
               ) : (
                 activeRoles.map((role: Role) => (
                   <SelectItem key={role.id} value={String(role.id)}>
@@ -1077,7 +1077,7 @@ function EditUserRoleForm({
             onChange={(e) => setExpiresAt(e.target.value)}
             min={new Date().toISOString().split("T")[0]}
           />
-          <p className="text-sm text-gray-500">Si no se especifica, el rol no expirará.</p>
+          <p className="text-sm text-muted-foreground">Si no se especifica, el rol no expirará.</p>
         </div>
 
         <div className="space-y-2">
@@ -1095,7 +1095,7 @@ function EditUserRoleForm({
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancelar
         </Button>
-        <Button type="submit" disabled={!isDirty} className="bg-blue-600 hover:bg-blue-700">
+        <Button type="submit" disabled={!isDirty} className="bg-primary hover:bg-primary/90">
           Guardar cambios
         </Button>
       </div>

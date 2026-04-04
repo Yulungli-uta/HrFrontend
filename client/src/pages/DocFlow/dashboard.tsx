@@ -35,10 +35,10 @@ const statusIconMap: Record<string, typeof TrendingUp> = {
 
 const statusBarColors: Record<string, string> = {
   "Borrador": "bg-muted-foreground/60",
-  "Pendiente": "bg-yellow-500 dark:bg-yellow-400",
-  "En Revision": "bg-blue-500 dark:bg-blue-400",
-  "Aprobado": "bg-green-500 dark:bg-green-400",
-  "Retornado": "bg-red-500 dark:bg-red-400",
+  "Pendiente": "bg-warning dark:bg-warning/80",
+  "En Revision": "bg-primary dark:bg-primary/80",
+  "Aprobado": "bg-success",
+  "Retornado": "bg-destructive",
   "Finalizado": "bg-purple-500 dark:bg-purple-400",
 };
 
@@ -351,13 +351,13 @@ export default function Dashboard() {
               >
                 <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
                   mov.movementType === "RETURN"
-                    ? "bg-red-100 dark:bg-red-900/30"
-                    : "bg-green-100 dark:bg-green-900/30"
+                    ? "bg-destructive/15"
+                    : "bg-success/15"
                 }`}>
                   {mov.movementType === "RETURN" ? (
-                    <RotateCcw className="h-4 w-4 text-red-600 dark:text-red-400" />
+                    <RotateCcw className="h-4 w-4 text-destructive dark:text-destructive/80" />
                   ) : (
-                    <ArrowRightLeft className="h-4 w-4 text-green-600 dark:text-green-400" />
+                    <ArrowRightLeft className="h-4 w-4 text-success dark:text-success/80" />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">

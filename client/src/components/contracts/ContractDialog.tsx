@@ -657,7 +657,7 @@ export function ContractDialog(props: {
                       <div
                         className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
                           wizardStep > step
-                            ? "bg-green-500 text-white"
+                            ? "bg-success text-white"
                             : wizardStep === step
                             ? "bg-primary text-primary-foreground"
                             : "bg-muted text-muted-foreground"
@@ -735,8 +735,8 @@ export function ContractDialog(props: {
                   <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
                       <div className="flex items-start gap-3">
-                        <div className="p-2 bg-blue-100 rounded-lg">
-                          <FileText className="h-5 w-5 text-blue-600" />
+                        <div className="p-2 bg-primary/15 rounded-lg">
+                          <FileText className="h-5 w-5 text-primary" />
                         </div>
                         <div className="flex-1">
                           <p className="text-sm text-muted-foreground">
@@ -749,7 +749,7 @@ export function ContractDialog(props: {
                       </div>
 
                       <div className="flex items-start gap-3">
-                        <div className="p-2 bg-purple-100 rounded-lg">
+                        <div className="p-2 bg-accent rounded-lg">
                           <Building2 className="h-5 w-5 text-purple-600" />
                         </div>
                         <div className="flex-1">
@@ -764,8 +764,8 @@ export function ContractDialog(props: {
 
                       {selectedJob && (
                         <div className="flex items-start gap-3">
-                          <div className="p-2 bg-green-100 rounded-lg">
-                            <Briefcase className="h-5 w-5 text-green-600" />
+                          <div className="p-2 bg-success/15 rounded-lg">
+                            <Briefcase className="h-5 w-5 text-success" />
                           </div>
                           <div className="flex-1">
                             <p className="text-sm text-muted-foreground">
@@ -781,8 +781,8 @@ export function ContractDialog(props: {
 
                     <div className="space-y-4">
                       <div className="flex items-start gap-3">
-                        <div className="p-2 bg-orange-100 rounded-lg">
-                          <Clock className="h-5 w-5 text-orange-600" />
+                        <div className="p-2 bg-secondary/15 rounded-lg">
+                          <Clock className="h-5 w-5 text-secondary-foreground" />
                         </div>
                         <div className="flex-1">
                           <p className="text-sm text-muted-foreground">
@@ -795,8 +795,8 @@ export function ContractDialog(props: {
                       </div>
 
                       <div className="flex items-start gap-3">
-                        <div className="p-2 bg-green-100 rounded-lg">
-                          <Clock className="h-5 w-5 text-green-600" />
+                        <div className="p-2 bg-success/15 rounded-lg">
+                          <Clock className="h-5 w-5 text-success" />
                         </div>
                         <div className="flex-1">
                           <p className="text-sm text-muted-foreground">
@@ -807,8 +807,8 @@ export function ContractDialog(props: {
                       </div>
 
                       <div className="flex items-start gap-3">
-                        <div className="p-2 bg-red-100 rounded-lg">
-                          <Clock className="h-5 w-5 text-red-600" />
+                        <div className="p-2 bg-destructive/15 rounded-lg">
+                          <Clock className="h-5 w-5 text-destructive" />
                         </div>
                         <div className="flex-1">
                           <p className="text-sm text-muted-foreground">
@@ -819,7 +819,7 @@ export function ContractDialog(props: {
                       </div>
 
                       <div className="flex items-start gap-3">
-                        <div className="p-2 bg-indigo-100 rounded-lg">
+                        <div className="p-2 bg-primary/15 rounded-lg">
                           <Workflow className="h-5 w-5 text-indigo-600" />
                         </div>
                         <div className="flex-1">

@@ -111,7 +111,7 @@ export default function DepartmentForm({ entity: department, onSuccess, onCancel
                   <FormMessage />
 
                   <div className="mt-2">
-                    <p className="text-xs text-gray-500 mb-2">Sugerencias:</p>
+                    <p className="text-xs text-muted-foreground mb-2">Sugerencias:</p>
                     <div className="grid grid-cols-2 gap-1">
                       {commonDepartments.slice(0, 6).map((name) => (
                         <Button
@@ -194,12 +194,12 @@ export default function DepartmentForm({ entity: department, onSuccess, onCancel
             />
 
             {form.watch("facultyId") && (
-              <div className="bg-green-50 p-4 rounded-lg">
-                <div className="flex items-center space-x-2 text-green-700">
+              <div className="bg-success/10 p-4 rounded-lg">
+                <div className="flex items-center space-x-2 text-success">
                   <Building2 className="h-4 w-4" />
                   <span className="font-medium">Facultad seleccionada</span>
                 </div>
-                <p className="text-sm text-green-600 mt-1">
+                <p className="text-sm text-success mt-1">
                   {faculties?.find((f) => f.id === form.watch("facultyId"))?.name}
                 </p>
               </div>

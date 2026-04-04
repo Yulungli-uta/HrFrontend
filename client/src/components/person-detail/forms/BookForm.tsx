@@ -507,7 +507,7 @@ export default function BookForm({
                   </FormControl>
                   <FormMessage />
                   {countriesError && (
-                    <p className="text-xs text-red-500 mt-1">
+                    <p className="text-xs text-destructive mt-1">
                       No se pudieron cargar los países.
                     </p>
                   )}
@@ -571,7 +571,7 @@ export default function BookForm({
                   </Select>
                   <FormMessage />
                   {errorLevel1 && (
-                    <p className="text-xs text-red-500 mt-1">
+                    <p className="text-xs text-destructive mt-1">
                       No se pudieron cargar las áreas de conocimiento.
                     </p>
                   )}
@@ -609,7 +609,7 @@ export default function BookForm({
                   </Select>
                   <FormMessage />
                   {errorLevel2 && (
-                    <p className="text-xs text-red-500 mt-1">
+                    <p className="text-xs text-destructive mt-1">
                       No se pudieron cargar las subáreas.
                     </p>
                   )}
@@ -644,7 +644,7 @@ export default function BookForm({
                   </Select>
                   <FormMessage />
                   {errorLevel3 && (
-                    <p className="text-xs text-red-500 mt-1">
+                    <p className="text-xs text-destructive mt-1">
                       No se pudieron cargar las áreas específicas.
                     </p>
                   )}
@@ -706,7 +706,7 @@ export default function BookForm({
                   </Select>
                   <FormMessage />
                   {participationTypesError && (
-                    <p className="text-xs text-red-500 mt-1">
+                    <p className="text-xs text-destructive mt-1">
                       No se pudieron cargar los tipos de participación.
                     </p>
                   )}
@@ -753,7 +753,7 @@ export default function BookForm({
                   </Select>
                   <FormMessage />
                   {bookTypesError && (
-                    <p className="text-xs text-red-500 mt-1">
+                    <p className="text-xs text-destructive mt-1">
                       No se pudieron cargar los tipos de libro.
                     </p>
                   )}

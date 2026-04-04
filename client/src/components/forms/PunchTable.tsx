@@ -7,8 +7,8 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
 const PUNCH_TYPES = {
-  In: { label: "Entrada", className: "bg-green-100 text-green-800 border-green-200" },
-  Out: { label: "Salida", className: "bg-red-100 text-red-800 border-red-200" },
+  In: { label: "Entrada", className: "bg-success/15 text-success border-success/30" },
+  Out: { label: "Salida", className: "bg-destructive/15 text-destructive border-destructive/30" },
 } as const;
 
 interface Punch {

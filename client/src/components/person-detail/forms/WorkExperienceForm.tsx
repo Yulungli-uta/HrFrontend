@@ -402,7 +402,7 @@ export default function WorkExperienceForm({
                 </FormControl>
                 <FormMessage />
                 {countriesError && (
-                  <p className="text-xs text-red-500 mt-1">
+                  <p className="text-xs text-destructive mt-1">
                     No se pudieron cargar los países.
                   </p>
                 )}
@@ -449,7 +449,7 @@ export default function WorkExperienceForm({
                 </FormControl>
                 <FormMessage />
                 {instTypesError && (
-                  <p className="text-xs text-red-500 mt-1">
+                  <p className="text-xs text-destructive mt-1">
                     No se pudieron cargar los tipos de institución.
                   </p>
                 )}
@@ -496,7 +496,7 @@ export default function WorkExperienceForm({
                 </FormControl>
                 <FormMessage />
                 {expTypesError && (
-                  <p className="text-xs text-red-500 mt-1">
+                  <p className="text-xs text-destructive mt-1">
                     No se pudieron cargar los tipos de experiencia.
                   </p>
                 )}

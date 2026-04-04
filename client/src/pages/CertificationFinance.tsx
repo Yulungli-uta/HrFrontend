@@ -125,8 +125,8 @@ export default function FinancialCertificationPage() {
     return (
       <div className="container mx-auto p-4 md:p-6">
         <div className="flex items-center space-x-2 mb-4 md:mb-6">
-          <div className="h-8 w-8 rounded bg-gray-200 animate-pulse" />
-          <div className="h-6 w-32 bg-gray-200 rounded animate-pulse" />
+          <div className="h-8 w-8 rounded bg-muted animate-pulse" />
+          <div className="h-6 w-32 bg-muted rounded animate-pulse" />
         </div>
       </div>
     );
@@ -135,9 +135,9 @@ export default function FinancialCertificationPage() {
   if (error || apiResponse?.status === "error") {
     return (
       <div className="container mx-auto p-4 md:p-6">
-        <Card className="border-red-200 bg-red-50">
+        <Card className="border-destructive/30 bg-destructive/10">
           <CardContent className="pt-6">
-            <p className="text-red-600">
+            <p className="text-destructive">
               Error al cargar las certificaciones financieras.{" "}
               {apiResponse?.status === "error" ? apiResponse.error.message : "Intente nuevamente."}
             </p>

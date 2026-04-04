@@ -126,14 +126,14 @@ export default function ContractsPage() {
   if (isError) {
     return (
       <div className="container mx-auto p-4 md:p-6">
-        <Card className="border-red-200 bg-red-50">
+        <Card className="border-destructive/30 bg-destructive/10">
           <CardContent className="pt-6">
             <div className="flex items-start gap-3">
               <div className="flex-1">
-                <h3 className="font-semibold text-red-900 mb-1">
+                <h3 className="font-semibold text-destructive mb-1">
                   Error al cargar contratos
                 </h3>
-                <p className="text-sm text-red-700">
+                <p className="text-sm text-destructive">
                   {errorMessage || "Error desconocido"}
                 </p>
               </div>
@@ -181,8 +181,8 @@ export default function ContractsPage() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <User className="h-5 w-5 text-green-600" />
+                <div className="p-2 bg-success/15 rounded-lg">
+                  <User className="h-5 w-5 text-success" />
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Personas</p>
@@ -195,8 +195,8 @@ export default function ContractsPage() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Building2 className="h-5 w-5 text-blue-600" />
+                <div className="p-2 bg-primary/15 rounded-lg">
+                  <Building2 className="h-5 w-5 text-primary" />
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Departamentos</p>
@@ -209,7 +209,7 @@ export default function ContractsPage() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-100 rounded-lg">
+                <div className="p-2 bg-accent rounded-lg">
                   <Calendar className="h-5 w-5 text-purple-600" />
                 </div>
                 <div>

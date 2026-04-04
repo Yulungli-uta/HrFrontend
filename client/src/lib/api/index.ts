@@ -269,3 +269,9 @@ export type { StatsResponse } from './services/system';
 // =============================================================================
 
 export { reportService, downloadBlob, ReportError } from './services/reports';
+
+// =============================================================================
+// Gestión de UserEmployees (vinculación usuario-empleado)
+// =============================================================================
+export { UserEmployeesAPI } from './services/auth';
+export type { CreateUserEmployeeDto, UpdateUserEmployeeDto } from './services/auth';

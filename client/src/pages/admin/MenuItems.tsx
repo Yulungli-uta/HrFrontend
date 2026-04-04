@@ -254,7 +254,7 @@ export default function MenuItemsPage() {
         <TableRow key={`${rowKey}-row`}>
           <TableCell>
             <div style={{ paddingLeft: `${level * 24}px` }} className="flex items-center gap-2">
-              {level > 0 && <ChevronRight className="h-4 w-4 text-gray-400" />}
+              {level > 0 && <ChevronRight className="h-4 w-4 text-muted-foreground/70" />}
               <span className="font-medium">{item.name}</span>
             </div>
           </TableCell>
@@ -278,7 +278,7 @@ export default function MenuItemsPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => handleDelete(Number(item.id))}
-                className="text-red-600 hover:text-red-700"
+                className="text-destructive hover:text-destructive"
                 disabled={deleteMutation.isPending}
               >
                 <Trash2 className="h-4 w-4" />
@@ -300,14 +300,14 @@ export default function MenuItemsPage() {
     return (
       <div className="container mx-auto p-6">
         <div className="flex items-center space-x-2 mb-6">
-          <div className="h-8 w-8 rounded bg-gray-200 animate-pulse" />
-          <div className="h-6 w-32 bg-gray-200 rounded animate-pulse" />
+          <div className="h-8 w-8 rounded bg-muted animate-pulse" />
+          <div className="h-6 w-32 bg-muted rounded animate-pulse" />
         </div>
         <Card>
           <CardContent className="pt-6">
             <div className="space-y-3">
               {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="h-12 bg-gray-200 rounded animate-pulse" />
+                <div key={i} className="h-12 bg-muted rounded animate-pulse" />
               ))}
             </div>
           </CardContent>
@@ -320,9 +320,9 @@ export default function MenuItemsPage() {
   if (error) {
     return (
       <div className="container mx-auto p-6">
-        <Card className="border-red-200 bg-red-50">
+        <Card className="border-destructive/30 bg-destructive/10">
           <CardContent className="pt-6">
-            <p className="text-red-600">
+            <p className="text-destructive">
               Error al cargar los items de menú. Intente nuevamente.
             </p>
           </CardContent>
@@ -335,11 +335,11 @@ export default function MenuItemsPage() {
     <div className="container mx-auto p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
+          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
             <Menu className="h-8 w-8" />
             Gestión de Items de Menú
           </h1>
-          <p className="text-gray-600 mt-2">
+          <p className="text-muted-foreground mt-2">
             Administre los items de menú y su estructura jerárquica
           </p>
         </div>
@@ -348,7 +348,7 @@ export default function MenuItemsPage() {
         <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
           <DialogTrigger asChild>
             <Button
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-primary hover:bg-primary/90"
               onClick={() => setEditingMenuItem(null)}
             >
               <Plus className="mr-2 h-4 w-4" />
@@ -380,7 +380,7 @@ export default function MenuItemsPage() {
       <Card className="mb-6">
         <CardContent className="pt-6">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
             <Input
               placeholder="Buscar por nombre, URL o módulo..."
               value={searchTerm}
@@ -413,7 +413,7 @@ export default function MenuItemsPage() {
                 // Vista plana cuando hay búsqueda
                 filteredMenuItems.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                       No se encontraron items de menú
                     </TableCell>
                   </TableRow>
@@ -441,7 +441,7 @@ export default function MenuItemsPage() {
                             variant="outline"
                             size="sm"
                             onClick={() => handleDelete(Number(item.id))}
-                            className="text-red-600 hover:text-red-700"
+                            className="text-destructive hover:text-destructive"
                             disabled={deleteMutation.isPending}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -453,7 +453,7 @@ export default function MenuItemsPage() {
                 )
               ) : menuTree.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     No hay items de menú registrados
                   </TableCell>
                 </TableRow>
@@ -482,7 +482,7 @@ export default function MenuItemsPage() {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-destructive hover:bg-red-700"
               disabled={deleteMutation.isPending}
             >
               Eliminar

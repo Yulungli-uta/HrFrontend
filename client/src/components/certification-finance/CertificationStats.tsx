@@ -63,16 +63,16 @@ export function CertificationStats(props: {
         <CardHeader className="pb-2">
           <CardTitle className="text-sm lg:text-lg flex items-center justify-between">
             <span className="flex items-center">
-              <FileText className="h-4 w-4 lg:h-5 lg:w-5 text-blue-600 mr-2" />
+              <FileText className="h-4 w-4 lg:h-5 lg:w-5 text-primary mr-2" />
               Total
             </span>
-            <Badge variant="secondary" className="bg-blue-200 text-blue-800 text-xs lg:text-sm">
+            <Badge variant="secondary" className="bg-blue-200 text-primary text-xs lg:text-sm">
               {total}
             </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-xs lg:text-sm text-gray-600">Certificaciones registradas</div>
+          <div className="text-xs lg:text-sm text-muted-foreground">Certificaciones registradas</div>
         </CardContent>
       </Card>
 
@@ -80,16 +80,16 @@ export function CertificationStats(props: {
         <CardHeader className="pb-2">
           <CardTitle className="text-sm lg:text-lg flex items-center justify-between">
             <span className="flex items-center">
-              <CheckCircle className="h-4 w-4 lg:h-5 lg:w-5 text-green-600 mr-2" />
+              <CheckCircle className="h-4 w-4 lg:h-5 lg:w-5 text-success mr-2" />
               Aprobadas
             </span>
-            <Badge variant="secondary" className="bg-green-200 text-green-800 text-xs lg:text-sm">
+            <Badge variant="secondary" className="bg-success/20 text-success text-xs lg:text-sm">
               {approved}
             </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-xs lg:text-sm text-gray-600">
+          <div className="text-xs lg:text-sm text-muted-foreground">
             {total > 0 ? ((approved / total) * 100).toFixed(1) : 0}% del total
           </div>
         </CardContent>
@@ -99,16 +99,16 @@ export function CertificationStats(props: {
         <CardHeader className="pb-2">
           <CardTitle className="text-sm lg:text-lg flex items-center justify-between">
             <span className="flex items-center">
-              <Clock className="h-4 w-4 lg:h-5 lg:w-5 text-orange-600 mr-2" />
+              <Clock className="h-4 w-4 lg:h-5 lg:w-5 text-secondary-foreground mr-2" />
               Pendientes
             </span>
-            <Badge variant="secondary" className="bg-orange-200 text-orange-800 text-xs lg:text-sm">
+            <Badge variant="secondary" className="bg-orange-200 text-secondary-foreground text-xs lg:text-sm">
               {pending}
             </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-xs lg:text-sm text-gray-600">
+          <div className="text-xs lg:text-sm text-muted-foreground">
             {total > 0 ? ((pending / total) * 100).toFixed(1) : 0}% del total
           </div>
         </CardContent>
@@ -121,27 +121,27 @@ export function CertificationStats(props: {
               <DollarSign className="h-4 w-4 lg:h-5 lg:w-5 text-purple-600 mr-2" />
               Presupuesto Total
             </span>
-            <Badge variant="secondary" className="bg-purple-200 text-purple-800 text-xs lg:text-sm">
+            <Badge variant="secondary" className="bg-purple-200 text-accent-foreground text-xs lg:text-sm">
               ${totalBudget.toLocaleString()}
             </Badge>
           </CardTitle>
         </CardHeader>
-        <CardContent><div className="text-xs lg:text-sm text-gray-600">Monto total certificado</div></CardContent>
+        <CardContent><div className="text-xs lg:text-sm text-muted-foreground">Monto total certificado</div></CardContent>
       </Card> */}
 
       {/* <Card className="bg-gradient-to-r from-red-50 to-red-100">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm lg:text-lg flex items-center justify-between">
             <span className="flex items-center">
-              <Calendar className="h-4 w-4 lg:h-5 lg:w-5 text-red-600 mr-2" />
+              <Calendar className="h-4 w-4 lg:h-5 lg:w-5 text-destructive mr-2" />
               Por Vencer
             </span>
-            <Badge variant="secondary" className="bg-red-200 text-red-800 text-xs lg:text-sm">
+            <Badge variant="secondary" className="bg-destructive/20 text-destructive text-xs lg:text-sm">
               {expiringSoon}
             </Badge>
           </CardTitle>
         </CardHeader>
-        <CardContent><div className="text-xs lg:text-sm text-gray-600">En los próximos 30 días</div></CardContent>
+        <CardContent><div className="text-xs lg:text-sm text-muted-foreground">En los próximos 30 días</div></CardContent>
       </Card> */}
     </div>
   );

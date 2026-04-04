@@ -268,12 +268,12 @@ export function ContractTypeForm({
                     </Select>
                   </FormControl>
                   {isLoadingRefTypes && (
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       Cargando tipos de contrato...
                     </p>
                   )}
                   {refTypesError && (
-                    <p className="text-xs text-red-600 mt-1">
+                    <p className="text-xs text-destructive mt-1">
                       Error al cargar tipos de contrato.
                     </p>
                   )}
@@ -349,7 +349,7 @@ export function ContractTypeForm({
 
             {/* Mensaje de error API */}
             {apiError && (
-              <p className="text-sm text-red-600">
+              <p className="text-sm text-destructive">
                 Error al guardar: {apiError}
               </p>
             )}

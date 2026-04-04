@@ -212,7 +212,7 @@ function ProcessTree({
                           {rules.length > 0 && (
                             <div className="flex items-center gap-2 mt-0.5">
                               {mandatoryCount > 0 && (
-                                <span className="text-[10px] text-red-600 dark:text-red-400">
+                                <span className="text-[10px] text-destructive dark:text-destructive/80">
                                   {mandatoryCount} oblig.
                                 </span>
                               )}
@@ -263,7 +263,7 @@ function InstanceCompletionBadge({
 
   if (completion.allComplete) {
     return (
-      <Badge className="bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700 gap-1 text-xs">
+      <Badge className="bg-success/15 text-success border-success/40 dark:text-success/80 dark:border-success/60 gap-1 text-xs">
         <CheckCircle2 className="h-3 w-3" />
         Completo
       </Badge>
@@ -306,13 +306,13 @@ function ProcessRulesOverview({
               key={rule.ruleId}
               className={`flex items-center gap-2 p-2 rounded-md border text-sm ${
                 rule.isMandatory
-                  ? "border-red-200 bg-red-50/50 dark:border-red-800/40 dark:bg-red-950/20"
+                  ? "border-destructive/30 bg-destructive/10/50 dark:border-red-800/40"
                   : "border-muted bg-muted/30"
               }`}
               data-testid={`rule-overview-${rule.ruleId}`}
             >
               {rule.isMandatory ? (
-                <AlertCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-400 shrink-0" />
+                <AlertCircle className="h-3.5 w-3.5 text-destructive dark:text-destructive/80 shrink-0" />
               ) : (
                 <Circle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
               )}
@@ -321,7 +321,7 @@ function ProcessRulesOverview({
                 variant="outline"
                 className={`text-[10px] px-1.5 py-0 h-4 shrink-0 ${
                   rule.isMandatory
-                    ? "border-red-300 text-red-700 dark:border-red-700 dark:text-red-400"
+                    ? "border-destructive/40 text-destructive dark:border-destructive/60 dark:text-destructive/80"
                     : "text-muted-foreground"
                 }`}
               >
@@ -332,7 +332,7 @@ function ProcessRulesOverview({
         </div>
         <div className="flex items-center gap-4 mt-3 pt-3 border-t text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
-            <AlertCircle className="h-3 w-3 text-red-500" />
+            <AlertCircle className="h-3 w-3 text-destructive" />
             {mandatory.length} obligatorio{mandatory.length !== 1 ? "s" : ""}
           </span>
           <span className="flex items-center gap-1">

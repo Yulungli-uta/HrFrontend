@@ -104,7 +104,7 @@ export default function FacultyForm({ entity: faculty, onSuccess, onCancel }: Fa
                   
                   {/* Sugerencias de nombres comunes */}
                   <div className="mt-2">
-                    <p className="text-xs text-gray-500 mb-2">Sugerencias de la UTA:</p>
+                    <p className="text-xs text-muted-foreground mb-2">Sugerencias de la UTA:</p>
                     <div className="grid grid-cols-1 gap-1">
                       {utaFaculties.slice(0, 4).map((name) => (
                         <Button
@@ -189,12 +189,12 @@ export default function FacultyForm({ entity: faculty, onSuccess, onCancel }: Fa
             />
 
             {form.watch("deanEmployeeId") && (
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <div className="flex items-center space-x-2 text-blue-700">
+              <div className="bg-primary/10 p-4 rounded-lg">
+                <div className="flex items-center space-x-2 text-primary">
                   <User className="h-4 w-4" />
                   <span className="font-medium">Decano seleccionado</span>
                 </div>
-                <p className="text-sm text-blue-600 mt-1">
+                <p className="text-sm text-primary mt-1">
                   {(() => {
                     const employee = employees.find(e => e.id === form.watch("deanEmployeeId"));
                     const person = people.find(p => p.id === employee?.id);

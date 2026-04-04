@@ -3,9 +3,9 @@ import { Clock, CheckCircle, AlertCircle } from "lucide-react";
 import type { JustificationStatus } from "@/types/justifications";
 
 const MAP = {
-  PENDING: { label: "Pendiente", className: "bg-yellow-100 text-yellow-800 border-yellow-200", Icon: Clock },
-  APPROVED: { label: "Aprobada", className: "bg-green-100 text-green-800 border-green-200", Icon: CheckCircle },
-  REJECTED: { label: "Rechazada", className: "bg-red-100 text-red-800 border-red-200", Icon: AlertCircle },
+  PENDING: { label: "Pendiente", className: "bg-warning/15 text-warning border-warning/30", Icon: Clock },
+  APPROVED: { label: "Aprobada", className: "bg-success/15 text-success border-success/30", Icon: CheckCircle },
+  REJECTED: { label: "Rechazada", className: "bg-destructive/15 text-destructive border-destructive/30", Icon: AlertCircle },
 };
 
 export function StatusBadge({ status }: { status: JustificationStatus }) {

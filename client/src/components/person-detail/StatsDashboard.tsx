@@ -61,21 +61,21 @@ const stats: Array<{
 
 export function StatsDashboard({ data }: StatsDashboardProps) {
   const colorClasses: Record<StatColor, string> = {
-    blue: "border-l-blue-500 bg-blue-50",
-    green: "border-l-green-500 bg-green-50",
-    orange: "border-l-orange-500 bg-orange-50",
-    purple: "border-l-purple-500 bg-purple-50",
-    red: "border-l-red-500 bg-red-50",
-    yellow: "border-l-yellow-500 bg-yellow-50",
+    blue: "border-l-blue-500 bg-primary/10",
+    green: "border-l-green-500 bg-success/10",
+    orange: "border-l-orange-500 bg-secondary/10",
+    purple: "border-l-purple-500 bg-accent/50",
+    red: "border-l-red-500 bg-destructive/10",
+    yellow: "border-l-yellow-500 bg-warning/10",
   };
 
   const iconColors: Record<StatColor, string> = {
-    blue: "text-blue-600",
-    green: "text-green-600",
-    orange: "text-orange-600",
+    blue: "text-primary",
+    green: "text-success",
+    orange: "text-secondary-foreground",
     purple: "text-purple-600",
-    red: "text-red-600",
-    yellow: "text-yellow-600",
+    red: "text-destructive",
+    yellow: "text-warning",
   };
 
   return (
@@ -86,12 +86,12 @@ export function StatsDashboard({ data }: StatsDashboardProps) {
           className={`border-l-4 ${colorClasses[stat.color]} hover:shadow-sm transition-shadow duration-200`}
         >
           <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
-            <div className="p-2 rounded-full bg-white">
+            <div className="p-2 rounded-full bg-card">
               <stat.icon className={`h-4 w-4 sm:h-5 sm:w-5 ${iconColors[stat.color]}`} />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-medium text-gray-600 truncate">{stat.label}</p>
-              <p className="text-lg sm:text-xl font-bold text-gray-900 truncate">
+              <p className="text-xs font-medium text-muted-foreground truncate">{stat.label}</p>
+              <p className="text-lg sm:text-xl font-bold text-foreground truncate">
                 {data[stat.key].length}
               </p>
             </div>

@@ -265,7 +265,7 @@ export default function ContractRequestPage() {
   if (listQ.error || listQ.data?.status === "error") {
     return (
       <div className="container mx-auto p-4 lg:p-6">
-        <Card className="border-red-200 bg-red-50">
+        <Card className="border-destructive/30 bg-destructive/10">
           <CardContent className="pt-6">
             Error al cargar. {listQ.data?.status === "error" ? listQ.data.error.message : "Intente nuevamente."}
           </CardContent>
@@ -280,11 +280,11 @@ export default function ContractRequestPage() {
     <div className="container mx-auto p-4 lg:p-6">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 flex items-center gap-2">
-            <FileText className="h-6 w-6 lg:h-8 lg:w-8 text-blue-600" />
+          <h1 className="text-2xl lg:text-3xl font-bold text-foreground flex items-center gap-2">
+            <FileText className="h-6 w-6 lg:h-8 lg:w-8 text-primary" />
             Solicitud de Contrato
           </h1>
-          <p className="text-gray-600 mt-1 text-sm lg:text-base">Gestión de solicitudes</p>
+          <p className="text-muted-foreground mt-1 text-sm lg:text-base">Gestión de solicitudes</p>
         </div>
 
         <Dialog
@@ -295,7 +295,7 @@ export default function ContractRequestPage() {
           }}
         >
           <DialogTrigger asChild>
-            <Button className="bg-blue-600 hover:bg-blue-700 w-full lg:w-auto">
+            <Button className="bg-primary hover:bg-primary/90 w-full lg:w-auto">
               <Plus className="mr-2 h-4 w-4" />
               Nueva Solicitud
             </Button>
@@ -337,7 +337,7 @@ export default function ContractRequestPage() {
               <Button variant="outline" onClick={() => setIsFormOpen(false)} disabled={formDisabled}>
                 Cancelar
               </Button>
-              <Button onClick={handleCreate} disabled={formDisabled} className="bg-blue-600 hover:bg-blue-700">
+              <Button onClick={handleCreate} disabled={formDisabled} className="bg-primary hover:bg-primary/90">
                 {formDisabled ? "Guardando..." : "Guardar Solicitud"}
               </Button>
             </div>
@@ -347,7 +347,7 @@ export default function ContractRequestPage() {
 
       <div className="mb-6">
         <div className="relative">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
+          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Buscar por ID, modalidad, departamento, observación o estado..."
             className="pl-10"
@@ -400,7 +400,7 @@ export default function ContractRequestPage() {
                       <TableCell>{c.totalPeopleHired}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3 text-gray-500" />
+                          <Calendar className="h-3 w-3 text-muted-foreground" />
                           {c.createdAt ? new Date(c.createdAt).toLocaleString() : "—"}
                         </div>
                       </TableCell>

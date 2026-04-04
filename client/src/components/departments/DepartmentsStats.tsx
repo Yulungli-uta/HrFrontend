@@ -56,20 +56,20 @@ export function DepartmentsStats({
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
       {/* Tarjeta de totales */}
-      <Card className="bg-white">
+      <Card className="bg-card">
         <CardHeader className="pb-2">
           <CardDescription className="text-sm font-medium">Total de Departamentos</CardDescription>
           <CardTitle className="text-2xl">{total}</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-xs text-gray-600">
+          <div className="text-xs text-muted-foreground">
             {activeCount} activos / {total - activeCount} inactivos
           </div>
         </CardContent>
       </Card>
 
       {/* Tarjeta de filtro aplicado */}
-      <Card className="bg-white">
+      <Card className="bg-card">
         <CardHeader className="pb-2">
           <CardDescription className="text-sm font-medium">Filtro Aplicado</CardDescription>
           <CardTitle className="text-lg font-semibold">
@@ -77,14 +77,14 @@ export function DepartmentsStats({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-xs text-gray-600">
+          <div className="text-xs text-muted-foreground">
             {search ? `Con búsqueda: "${search}"` : "Sin búsqueda"}
           </div>
         </CardContent>
       </Card>
 
       {/* Tarjeta de conteo por tipo */}
-      <Card className="bg-white">
+      <Card className="bg-card">
         <CardHeader className="pb-2">
           <CardDescription className="text-sm font-medium">Conteo por Tipo</CardDescription>
         </CardHeader>

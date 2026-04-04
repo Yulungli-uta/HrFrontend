@@ -20,10 +20,10 @@ import JustificationForm from "@/components/justifications/JustificationForm";
 type Status = "PENDING" | "APPROVED" | "REJECTED" | "APPLIED";
 
 const STATUS_META: Record<Status, { label: string; icon: any; klass: string }> = {
-  PENDING: { label: "Pendiente", icon: Clock, klass: "bg-yellow-100 text-yellow-800 border-yellow-200" },
-  APPROVED: { label: "Aprobada", icon: CheckCircle, klass: "bg-green-100 text-green-800 border-green-200" },
-  REJECTED: { label: "Rechazada", icon: AlertCircle, klass: "bg-red-100 text-red-800 border-red-200" },
-  APPLIED: { label: "Aplicada", icon: CheckCircle, klass: "bg-indigo-100 text-indigo-800 border-indigo-200" },
+  PENDING: { label: "Pendiente", icon: Clock, klass: "bg-warning/15 text-warning border-warning/30" },
+  APPROVED: { label: "Aprobada", icon: CheckCircle, klass: "bg-success/15 text-success border-success/30" },
+  REJECTED: { label: "Rechazada", icon: AlertCircle, klass: "bg-destructive/15 text-destructive border-destructive/30" },
+  APPLIED: { label: "Aplicada", icon: CheckCircle, klass: "bg-primary/15 text-primary border-indigo-200" },
 };
 
 interface Justif {
@@ -199,10 +199,10 @@ export default function JustificationsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Justificación de Marcaciones</h1>
-          <p className="text-gray-600 mt-1">Gestione sus solicitudes de justificación</p>
+          <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Justificación de Marcaciones</h1>
+          <p className="text-muted-foreground mt-1">Gestione sus solicitudes de justificación</p>
         </div>
-        <Button className="gap-2 bg-blue-600 hover:bg-blue-700 w-full sm:w-auto" onClick={() => setOpenCreate(true)}>
+        <Button className="gap-2 bg-primary hover:bg-primary/90 w-full sm:w-auto" onClick={() => setOpenCreate(true)}>
           <Plus className="h-4 w-4" />
           Nueva Justificación
         </Button>
@@ -210,11 +210,11 @@ export default function JustificationsPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-        <Stat title="Total" value={stats.total} icon={FileText} klass="border-blue-200 bg-blue-50" />
-        <Stat title="Pendientes" value={stats.pending} icon={Clock} klass="border-yellow-200 bg-yellow-50" />
-        <Stat title="Aprobadas" value={stats.approved} icon={CheckCircle} klass="border-green-200 bg-green-50" />
-        <Stat title="Rechazadas" value={stats.rejected} icon={AlertCircle} klass="border-red-200 bg-red-50" />
-        <Stat title="Aplicadas" value={stats.applied} icon={CheckCircle} klass="border-indigo-200 bg-indigo-50" />
+        <Stat title="Total" value={stats.total} icon={FileText} klass="border-primary/30 bg-primary/10" />
+        <Stat title="Pendientes" value={stats.pending} icon={Clock} klass="border-warning/30 bg-warning/10" />
+        <Stat title="Aprobadas" value={stats.approved} icon={CheckCircle} klass="border-success/30 bg-success/10" />
+        <Stat title="Rechazadas" value={stats.rejected} icon={AlertCircle} klass="border-destructive/30 bg-destructive/10" />
+        <Stat title="Aplicadas" value={stats.applied} icon={CheckCircle} klass="border-indigo-200 bg-primary/10" />
       </div>
 
       <Tabs defaultValue="list" className="space-y-4">
@@ -322,7 +322,7 @@ export default function JustificationsPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm text-gray-500">Tipo</p>
+                  <p className="text-sm text-muted-foreground">Tipo</p>
                   <p className="font-medium truncate">{getTypeLabel(openDetail.justificationTypeId)}</p>
                 </div>
 
@@ -393,7 +393,7 @@ function FiltersBar({
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div>
-          <p className="text-sm text-gray-600 mb-1">Año</p>
+          <p className="text-sm text-muted-foreground mb-1">Año</p>
           <Select value={String(yearFilter)} onValueChange={(v) => setYearFilter(Number(v))}>
             <SelectTrigger>
               <SelectValue placeholder="Año" />
@@ -409,7 +409,7 @@ function FiltersBar({
         </div>
 
         <div>
-          <p className="text-sm text-gray-600 mb-1">Estado</p>
+          <p className="text-sm text-muted-foreground mb-1">Estado</p>
           <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
             <SelectTrigger>
               <SelectValue placeholder="Todos" />
@@ -425,7 +425,7 @@ function FiltersBar({
         </div>
 
         <div>
-          <p className="text-sm text-gray-600 mb-1">Tipo</p>
+          <p className="text-sm text-muted-foreground mb-1">Tipo</p>
           <Select value={typeFilter === "ALL" ? "ALL" : String(typeFilter)} onValueChange={(v) => setTypeFilter(v === "ALL" ? "ALL" : Number(v))}>
             <SelectTrigger>
               <SelectValue placeholder="Todos" />
@@ -447,16 +447,16 @@ function FiltersBar({
         </div>
 
         <div>
-          <p className="text-sm text-gray-600 mb-1">Buscar</p>
+          <p className="text-sm text-muted-foreground mb-1">Buscar</p>
           <div className="relative">
-            <Search className="h-4 w-4 text-gray-400 absolute left-3 top-3" />
+            <Search className="h-4 w-4 text-muted-foreground/70 absolute left-3 top-3" />
             <Input className="pl-9" value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="Motivo..." />
           </div>
         </div>
       </div>
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <Badge variant="outline" className="bg-gray-50 w-fit">
+        <Badge variant="outline" className="bg-background w-fit">
           Mostrando {shown} de {total}
         </Badge>
 
@@ -477,10 +477,10 @@ function Stat({ title, value, icon: Icon, klass }: { title: string; value: numbe
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs text-gray-600">{title}</p>
-            <p className="text-xl font-bold text-gray-900">{value}</p>
+            <p className="text-xs text-muted-foreground">{title}</p>
+            <p className="text-xl font-bold text-foreground">{value}</p>
           </div>
-          <Icon className="h-6 w-6 text-gray-700" />
+          <Icon className="h-6 w-6 text-foreground" />
         </div>
       </CardContent>
     </Card>
@@ -490,8 +490,8 @@ function Stat({ title, value, icon: Icon, klass }: { title: string; value: numbe
 function Info({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-sm text-gray-500">{label}</p>
-      <p className="text-sm font-medium text-gray-900 break-words">{value}</p>
+      <p className="text-sm text-muted-foreground">{label}</p>
+      <p className="text-sm font-medium text-foreground break-words">{value}</p>
     </div>
   );
 }
@@ -534,11 +534,11 @@ function ListView({
   return (
     <Card>
       {/* Header de tabla + filtros pegados (estándar) */}
-      <CardHeader className="bg-gray-50">
+      <CardHeader className="bg-background">
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">Lista de justificaciones</CardTitle>
-            <Badge variant="outline" className="bg-blue-50 text-blue-700">
+            <Badge variant="outline" className="bg-primary/10 text-primary">
               Mostrando: {items.length} de {allCount}
             </Badge>
           </div>
@@ -551,8 +551,8 @@ function ListView({
           <div className="p-6">Cargando...</div>
         ) : !items.length ? (
           <div className="p-8 text-center">
-            <FileText className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-            <p className="text-gray-600">No hay justificaciones registradas</p>
+            <FileText className="h-12 w-12 text-muted-foreground/70 mx-auto mb-3" />
+            <p className="text-muted-foreground">No hay justificaciones registradas</p>
           </div>
         ) : (
           <ScrollArea className="h-[580px]">
@@ -583,7 +583,7 @@ function Row({
   const Icon = Meta.icon;
 
   return (
-    <div className="p-4 hover:bg-gray-50 transition-colors">
+    <div className="p-4 hover:bg-background transition-colors">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
@@ -593,7 +593,7 @@ function Row({
               {Meta.label}
             </Badge>
           </div>
-          <p className="text-sm text-gray-600 line-clamp-1">{j.reason}</p>
+          <p className="text-sm text-muted-foreground line-clamp-1">{j.reason}</p>
         </div>
 
         <div className="flex items-center gap-1">
@@ -610,7 +610,7 @@ function Row({
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="ghost" size="sm" onClick={() => onDelete(j)}>
-                  <Trash2 className="h-4 w-4 text-red-600" />
+                  <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Eliminar</TooltipContent>
@@ -637,8 +637,8 @@ function CardView({
     return (
       <Card>
         <CardContent className="p-8 text-center">
-          <FileText className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-          <p className="text-gray-600">No hay justificaciones registradas</p>
+          <FileText className="h-12 w-12 text-muted-foreground/70 mx-auto mb-3" />
+          <p className="text-muted-foreground">No hay justificaciones registradas</p>
         </CardContent>
       </Card>
     );
@@ -683,7 +683,7 @@ function CardItem({
       </CardHeader>
 
       <CardContent className="pt-0">
-        <p className="text-sm text-gray-700 line-clamp-2">{j.reason}</p>
+        <p className="text-sm text-foreground line-clamp-2">{j.reason}</p>
 
         <div className="mt-4 flex items-center justify-end gap-2">
           <Button variant="outline" size="sm" className="gap-2" onClick={() => onView(j)}>
@@ -693,7 +693,7 @@ function CardItem({
 
           {j.status === "PENDING" && (
             <Button variant="outline" size="sm" className="gap-2" onClick={() => onDelete(j)}>
-              <Trash2 className="h-4 w-4 text-red-600" />
+              <Trash2 className="h-4 w-4 text-destructive" />
               Eliminar
             </Button>
           )}

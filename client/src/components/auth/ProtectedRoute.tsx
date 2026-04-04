@@ -190,7 +190,7 @@ function LoadingScreen() {
     <div className="flex items-center justify-center min-h-[400px]">
       <div className="text-center">
         <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-        <p className="text-gray-600 dark:text-gray-300">Verificando permisos...</p>
+        <p className="text-muted-foreground dark:text-muted-foreground">Verificando permisos...</p>
       </div>
     </div>
   );
@@ -222,32 +222,32 @@ function UnauthorizedPage({ reason, requiredPath, requiredRoles, noPermissions }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[600px] p-8 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-      <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8 text-center">
+      <div className="max-w-md w-full bg-card dark:bg-card rounded-lg shadow-xl p-8 text-center">
         {/* Icono */}
         <div className="mb-6 flex justify-center">
           <div className="relative">
-            <div className="absolute inset-0 bg-red-500 opacity-20 rounded-full blur-xl"></div>
-            <div className="relative bg-red-100 dark:bg-red-900/30 p-6 rounded-full">
-              <Lock className="w-16 h-16 text-red-600 dark:text-red-400" />
+            <div className="absolute inset-0 bg-destructive opacity-20 rounded-full blur-xl"></div>
+            <div className="relative bg-destructive/15 p-6 rounded-full">
+              <Lock className="w-16 h-16 text-destructive dark:text-destructive/80" />
             </div>
           </div>
         </div>
 
         {/* Título */}
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
+        <h1 className="text-3xl font-bold text-foreground dark:text-white mb-3">
           Acceso Denegado
         </h1>
 
         {/* Mensaje */}
-        <p className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+        <p className="text-muted-foreground dark:text-muted-foreground mb-6 leading-relaxed">
           {getMessage()}
         </p>
 
         {/* Información adicional */}
-        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-6">
+        <div className="bg-warning/10 dark:bg-yellow-900/20 border border-warning/30 dark:border-yellow-800 rounded-lg p-4 mb-6">
           <div className="flex items-start gap-3">
-            <Shield className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-yellow-800 dark:text-yellow-200 text-left">
+            <Shield className="w-5 h-5 text-warning dark:text-warning/80 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-warning dark:text-yellow-200 text-left">
               Si crees que deberías tener acceso a esta página, contacta con el administrador del sistema.
             </p>
           </div>
@@ -277,12 +277,12 @@ function UnauthorizedPage({ reason, requiredPath, requiredRoles, noPermissions }
 
         {/* Debug info (solo en desarrollo) */}
         {import.meta.env.DEV && (
-          <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+          <div className="mt-6 pt-6 border-t border-border dark:border-gray-700">
             <details className="text-left">
-              <summary className="text-sm text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-700 dark:hover:text-gray-300">
+              <summary className="text-sm text-muted-foreground dark:text-muted-foreground/70 cursor-pointer hover:text-foreground dark:hover:text-muted-foreground">
                 Debug Info (solo en desarrollo)
               </summary>
-              <div className="mt-2 text-xs font-mono bg-gray-100 dark:bg-gray-900 p-3 rounded">
+              <div className="mt-2 text-xs font-mono bg-muted dark:bg-background p-3 rounded">
                 <div><strong>Reason:</strong> {reason}</div>
                 {requiredPath && <div><strong>Required Path:</strong> {requiredPath}</div>}
                 {requiredRoles && <div><strong>Required Roles:</strong> {requiredRoles.join(', ')}</div>}

@@ -115,12 +115,12 @@ export default function LoginPage() {
   // Pantalla de carga si ya está autenticado pero todavía resolviendo cosas
   if (loading && isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <Card className="w-full max-w-md shadow-lg">
           <CardContent className="pt-6">
             <div className="flex flex-col items-center space-y-4">
-              <Loader2 className="w-12 h-12 animate-spin text-blue-600" />
-              <p className="text-gray-600 dark:text-gray-300">
+              <Loader2 className="w-12 h-12 animate-spin text-primary" />
+              <p className="text-muted-foreground dark:text-muted-foreground">
                 Cargando información del usuario...
               </p>
             </div>
@@ -132,7 +132,7 @@ export default function LoginPage() {
 
   // Pantalla de login normal
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="space-y-4 text-center">
           <div className="flex justify-center">
@@ -143,10 +143,10 @@ export default function LoginPage() {
             />
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold text-blue-900 dark:text-blue-100">
+            <CardTitle className="text-2xl font-bold text-primary">
               WsUtaSystem
             </CardTitle>
-            <CardDescription className="text-gray-600 dark:text-gray-300">
+            <CardDescription className="text-muted-foreground dark:text-muted-foreground">
               Sistema de Gestión de Talento Humano
             </CardDescription>
           </div>
@@ -156,7 +156,7 @@ export default function LoginPage() {
           {/* Estado WebSocket */}
           <div
             className={`mb-4 text-sm text-center ${
-              isWebSocketConnected ? "text-green-600" : "text-amber-600"
+              isWebSocketConnected ? "text-success" : "text-amber-600"
             }`}
           >
             WebSocket: {isWebSocketConnected ? "✓ Conectado" : "○ Desconectado"}
@@ -199,7 +199,7 @@ export default function LoginPage() {
                 </div>
                 <Button
                   type="submit"
-                  className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800"
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
                   disabled={loading}
                   data-testid="button-login"
                 >
@@ -218,11 +218,11 @@ export default function LoginPage() {
             {/* LOGIN OFFICE 365 */}
             <TabsContent value="office365">
               <div className="space-y-4">
-                <p className="text-sm text-gray-600 dark:text-gray-300 text-center">
+                <p className="text-sm text-muted-foreground dark:text-muted-foreground text-center">
                   Autentíquese usando su cuenta institucional de Office 365
                 </p>
                 <Button
-                  className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800"
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
                   onClick={handleOffice365Login}
                   disabled={loading}
                 >

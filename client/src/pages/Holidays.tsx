@@ -323,15 +323,15 @@ export default function HolidaysPage() {
       {/* Header */}
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Gestión de Días Feriados</h1>
-          <p className="text-gray-600 mt-2">
+          <h1 className="text-3xl font-bold text-foreground">Gestión de Días Feriados</h1>
+          <p className="text-muted-foreground mt-2">
             Administre los días feriados y festivos de la organización
           </p>
         </div>
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-blue-600 hover:bg-blue-700">
+            <Button className="bg-primary hover:bg-primary/90">
               <Plus className="mr-2 h-4 w-4" />
               Nuevo Feriado
             </Button>
@@ -392,9 +392,9 @@ export default function HolidaysPage() {
               </div>
 
               {isPastDate(newHoliday.holidayDate) && (
-                <div className="bg-yellow-50 p-3 rounded-md flex items-center space-x-2">
-                  <AlertCircle className="h-4 w-4 text-yellow-600" />
-                  <span className="text-sm text-yellow-600">
+                <div className="bg-warning/10 p-3 rounded-md flex items-center space-x-2">
+                  <AlertCircle className="h-4 w-4 text-warning" />
+                  <span className="text-sm text-warning">
                     Esta fecha está en el pasado. Los cambios pueden afectar cálculos históricos.
                   </span>
                 </div>
@@ -418,39 +418,39 @@ export default function HolidaysPage() {
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center">
-              <Calendar className="mr-2 h-5 w-5 text-blue-600" />
+              <Calendar className="mr-2 h-5 w-5 text-primary" />
               Total Feriados
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.totalHolidays}</div>
-            <p className="text-sm text-gray-500">este año</p>
+            <div className="text-2xl font-bold text-primary">{stats.totalHolidays}</div>
+            <p className="text-sm text-muted-foreground">este año</p>
           </CardContent>
         </Card>
 
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center">
-              <Calendar className="mr-2 h-5 w-5 text-green-600" />
+              <Calendar className="mr-2 h-5 w-5 text-success" />
               Activos
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.activeHolidays}</div>
-            <p className="text-sm text-gray-500">feriados vigentes</p>
+            <div className="text-2xl font-bold text-success">{stats.activeHolidays}</div>
+            <p className="text-sm text-muted-foreground">feriados vigentes</p>
           </CardContent>
         </Card>
 
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center">
-              <Calendar className="mr-2 h-5 w-5 text-orange-600" />
+              <Calendar className="mr-2 h-5 w-5 text-secondary-foreground" />
               Próximos
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{stats.upcomingHolidays}</div>
-            <p className="text-sm text-gray-500">feriados por venir</p>
+            <div className="text-2xl font-bold text-secondary-foreground">{stats.upcomingHolidays}</div>
+            <p className="text-sm text-muted-foreground">feriados por venir</p>
           </CardContent>
         </Card>
       </div>
@@ -529,7 +529,7 @@ export default function HolidaysPage() {
                     <TableCell>
                       <div className="flex flex-col">
                         <span className="font-medium">{formatDate(holiday.holidayDate)}</span>
-                        <span className="text-sm text-gray-500">
+                        <span className="text-sm text-muted-foreground">
                           {new Date(holiday.holidayDate).toLocaleDateString()}
                         </span>
                       </div>
@@ -565,7 +565,7 @@ export default function HolidaysPage() {
               </TableBody>
             </Table>
           ) : (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-muted-foreground">
               <Calendar className="mx-auto h-12 w-12 mb-4 opacity-50" />
               <p className="text-lg mb-2">No hay días feriados registrados</p>
               <p className="text-sm">Los días feriados aparecerán aquí una vez que se creen</p>

@@ -93,7 +93,7 @@ export default function BankAccountForm({ personId, onSubmit, onCancel, isLoadin
                 <FormControl>
                   <Input {...field} placeholder="Ej: 2200123456" autoComplete="off" />
                 </FormControl>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-muted-foreground">
                    Asegúrese de copiar exactamente el número de su libreta o estado de cuenta.
                 </p>
                 <FormMessage />

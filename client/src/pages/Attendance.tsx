@@ -21,8 +21,8 @@ import { parseApiError } from "@/lib/error-handling";
 // Utilidades y constantes
 // =========================
 const PUNCH_TYPES = {
-  In: { label: "Entrada", className: "bg-green-100 text-green-800 border-green-200" },
-  Out: { label: "Salida", className: "bg-red-100 text-red-800 border-red-200" },
+  In: { label: "Entrada", className: "bg-success/15 text-success border-success/30" },
+  Out: { label: "Salida", className: "bg-destructive/15 text-destructive border-destructive/30" },
 } as const;
 
 type PunchKind = keyof typeof PUNCH_TYPES;
@@ -161,11 +161,11 @@ function RangeQueryModal({ employeeId }: { employeeId: number }) {
 
             <div className="hidden md:block border rounded-lg overflow-hidden">
               <table className="w-full">
-                <thead className="bg-gray-50">
+                <thead className="bg-background">
                   <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Fecha y Hora</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Dispositivo</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Fecha y Hora</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Tipo</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Dispositivo</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -173,7 +173,7 @@ function RangeQueryModal({ employeeId }: { employeeId: number }) {
                     <tr key={punch.id ?? `${punch.punchTime ?? "no-time"}-${punch.deviceId ?? "no-device"}`}>
                       <td className="px-4 py-3">{format(punch.punchTime ? new Date(punch.punchTime) : new Date(0), "dd/MM/yyyy HH:mm:ss")}</td>
                       <td className="px-4 py-3">
-                        <Badge className={`${PUNCH_TYPES[punch.punchType as PunchKind]?.className ?? "bg-gray-100 text-gray-800"} border`}>
+                        <Badge className={`${PUNCH_TYPES[punch.punchType as PunchKind]?.className ?? "bg-muted text-foreground"} border`}>
                           {PUNCH_TYPES[punch.punchType as PunchKind]?.label ?? punch.punchType}
                         </Badge>
                       </td>
@@ -186,10 +186,10 @@ function RangeQueryModal({ employeeId }: { employeeId: number }) {
 
             <div className="md:hidden space-y-3">
               {queryResults.map((punch) => (
-                <div key={punch.id ?? `${punch.punchTime ?? "no-time"}-${punch.deviceId ?? "no-device"}`} className="border rounded-lg p-3 bg-white">
+                <div key={punch.id ?? `${punch.punchTime ?? "no-time"}-${punch.deviceId ?? "no-device"}`} className="border rounded-lg p-3 bg-card">
                   <div className="flex items-center justify-between gap-2">
                     <div className="text-sm font-medium">{format(punch.punchTime ? new Date(punch.punchTime) : new Date(0), "dd/MM/yyyy HH:mm:ss")}</div>
-                    <Badge className={`${PUNCH_TYPES[punch.punchType as PunchKind]?.className ?? "bg-gray-100 text-gray-800"} border`}>
+                    <Badge className={`${PUNCH_TYPES[punch.punchType as PunchKind]?.className ?? "bg-muted text-foreground"} border`}>
                       {PUNCH_TYPES[punch.punchType as PunchKind]?.label ?? punch.punchType}
                     </Badge>
                   </div>
@@ -201,7 +201,7 @@ function RangeQueryModal({ employeeId }: { employeeId: number }) {
         )}
 
         {queryResults.length === 0 && startDate && endDate && !isQuerying && (
-          <div className="text-center py-8 text-gray-500">
+          <div className="text-center py-8 text-muted-foreground">
             <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
             <p>No se encontraron marcaciones en el rango seleccionado.</p>
           </div>
@@ -234,10 +234,10 @@ function ConnectionStatus({
 
   return (
     <div
-      className={`flex items-center ${isOnline ? "text-green-600" : "text-red-600"}`}
+      className={`flex items-center ${isOnline ? "text-success" : "text-destructive"}`}
       title={lastSync ? `Última sync: ${format(lastSync, "HH:mm:ss")}` : undefined}
     >
-      <div className={`h-2 w-2 rounded-full mr-1 ${isOnline ? "bg-green-500" : "bg-red-500"}`} />
+      <div className={`h-2 w-2 rounded-full mr-1 ${isOnline ? "bg-success" : "bg-destructive"}`} />
       <span className="text-xs">{isOnline ? "Conectado" : "Sin conexión"}</span>
     </div>
   );
@@ -470,7 +470,7 @@ export default function AttendancePage() {
       toast({
         title: "Marcación registrada",
         description: `Su ${nextPunchType === "In" ? "entrada" : "salida"} ha sido registrada correctamente.`,
-        action: <CheckCircle className="h-5 w-5 text-green-500" />,
+        action: <CheckCircle className="h-5 w-5 text-success" />,
       });
     },
   });
@@ -598,7 +598,7 @@ export default function AttendancePage() {
         </Card>
 
         <Card>
-          <CardHeader className="bg-gray-50 py-3">
+          <CardHeader className="bg-background py-3">
             <div className="flex justify-between items-center">
               <Skeleton className="h-6 w-52" />
               <Skeleton className="h-6 w-24" />
@@ -620,9 +620,9 @@ export default function AttendancePage() {
 
     return (
       <div className="container mx-auto p-4 sm:p-6 max-w-3xl">
-        <Card className="border-red-200 bg-red-50">
+        <Card className="border-destructive/30 bg-destructive/10">
           <CardHeader>
-            <CardTitle className="text-red-800 flex items-center gap-2">
+            <CardTitle className="text-destructive flex items-center gap-2">
               <AlertCircle className="h-5 w-5" />
               Error de conexión
             </CardTitle>
@@ -630,10 +630,10 @@ export default function AttendancePage() {
           </CardHeader>
 
           <CardContent className="space-y-4">
-            <p className="text-red-700 text-sm">{errorMessage}</p>
+            <p className="text-destructive text-sm">{errorMessage}</p>
 
             <div className="flex flex-wrap gap-2">
-              <Button onClick={handleRetry} className="bg-red-600 hover:bg-red-700">
+              <Button onClick={handleRetry} className="bg-destructive hover:bg-red-700">
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Reintentar
               </Button>
@@ -642,7 +642,7 @@ export default function AttendancePage() {
               </Button>
             </div>
 
-            <div className="text-sm text-gray-700">
+            <div className="text-sm text-foreground">
               <p>Si el problema persiste, verifique:</p>
               <ul className="list-disc pl-5 mt-2 space-y-1">
                 <li>Su conexión a internet</li>
@@ -661,14 +661,14 @@ export default function AttendancePage() {
   // =========================
   const formattedDate = format(currentTime, "EEEE, d 'de' MMMM 'de' yyyy", { locale: es });
   const nextPunchLabel = nextPunchType === "In" ? "Registrar Entrada" : "Registrar Salida";
-  const nextPunchColor = nextPunchType === "In" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700";
+  const nextPunchColor = nextPunchType === "In" ? "bg-success hover:bg-green-700" : "bg-destructive hover:bg-red-700";
 
   return (
     <div className="container mx-auto p-4 sm:p-6 max-w-5xl">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-5 gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Mi Control de Asistencia</h1>
-          <div className="flex items-center text-gray-600 mt-1 sm:mt-2">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Mi Control de Asistencia</h1>
+          <div className="flex items-center text-muted-foreground mt-1 sm:mt-2">
             <span className="text-sm sm:text-base">{formattedDate}</span>
           </div>
         </div>
@@ -677,11 +677,11 @@ export default function AttendancePage() {
           <ConnectionStatus isOnline={apiStatus === "online"} isLoading={apiStatus === "checking"} lastSync={lastSync} />
 
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-gray-500" />
+            <Filter className="h-4 w-4 text-muted-foreground" />
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              className="rounded-md border border-gray-300 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="rounded-md border border-border py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               aria-label="Filtrar por tipo de marcación"
             >
               <option value="all">Todas</option>
@@ -710,27 +710,27 @@ export default function AttendancePage() {
         </CardHeader>
 
         <CardContent>
-          <div className="bg-gray-50 p-4 rounded-lg mb-4">
+          <div className="bg-background p-4 rounded-lg mb-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
               <div>
-                <p className="text-xs sm:text-sm text-gray-600">Hora actual del servidor</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Hora actual del servidor</p>
                 <p className="text-xl sm:text-2xl font-semibold">{format(currentTime, "HH:mm:ss")}</p>
               </div>
 
               <div className="text-left sm:text-right">
                 {isGettingLocation ? (
-                  <p className="text-xs text-gray-500">Obteniendo ubicación...</p>
+                  <p className="text-xs text-muted-foreground">Obteniendo ubicación...</p>
                 ) : currentLocation ? (
-                  <p className="text-xs text-gray-500 flex items-center justify-start sm:justify-end">
+                  <p className="text-xs text-muted-foreground flex items-center justify-start sm:justify-end">
                     <MapPin className="h-3 w-3 mr-1" />
                     Ubicación detectada
                   </p>
                 ) : (
-                  <p className="text-xs text-yellow-600">Ubicación no disponible (se solicitará al registrar)</p>
+                  <p className="text-xs text-warning">Ubicación no disponible (se solicitará al registrar)</p>
                 )}
 
                 {lastPunchToday && (
-                  <div className="mt-2 p-2 bg-blue-50 rounded-md text-xs text-blue-700">
+                  <div className="mt-2 p-2 bg-primary/10 rounded-md text-xs text-primary">
                     Última: {format(new Date(lastPunchToday.punchTime ?? 0), "HH:mm:ss")} (
                     {PUNCH_TYPES[lastPunchToday.punchType as PunchKind]?.label ?? lastPunchToday.punchType}) · Hace{" "}
                     {timeSinceLastPunch} min
@@ -738,7 +738,7 @@ export default function AttendancePage() {
                 )}
 
                 {apiStatus === "offline" && (
-                  <div className="mt-2 p-2 bg-red-100 border border-red-300 rounded-md flex items-start text-xs text-red-800">
+                  <div className="mt-2 p-2 bg-destructive/15 border border-destructive/40 rounded-md flex items-start text-xs text-destructive">
                     <AlertCircle className="h-4 w-4 mr-2 mt-0.5" />
                     Sin conexión con el servidor.
                   </div>
@@ -779,10 +779,10 @@ export default function AttendancePage() {
       </Card>
 
       <Card>
-        <CardHeader className="bg-gray-50 py-3">
+        <CardHeader className="bg-background py-3">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <CardTitle className="text-base sm:text-lg">Mis Marcaciones de Hoy</CardTitle>
-            <Badge variant="outline" className="bg-blue-50 text-blue-700 w-fit">
+            <Badge variant="outline" className="bg-primary/10 text-primary w-fit">
               Total: {filteredPunches.length}
             </Badge>
           </div>
@@ -791,9 +791,9 @@ export default function AttendancePage() {
         <CardContent className="p-0">
           {filteredPunches.length === 0 ? (
             <div className="text-center p-10">
-              <Timer className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Sin marcaciones hoy</h3>
-              <p className="text-gray-600">Use el botón de arriba para registrar su marcación.</p>
+              <Timer className="h-12 w-12 text-muted-foreground/70 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-foreground mb-2">Sin marcaciones hoy</h3>
+              <p className="text-muted-foreground">Use el botón de arriba para registrar su marcación.</p>
             </div>
           ) : (
             <PunchTable

@@ -150,7 +150,7 @@ export function JobDetailForm({
           <Label className="text-sm font-medium">Tipo de cargo</Label>
 
           {contractTypesError && (
-            <p className="text-xs text-red-600 mb-1">
+            <p className="text-xs text-destructive mb-1">
               Error al cargar tipos de cargo. Intente refrescar la página.
             </p>
           )}

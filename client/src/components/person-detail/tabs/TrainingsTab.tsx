@@ -56,7 +56,7 @@ export function TrainingsTab({ trainings, onEdit, onDelete }: TrainingsTabProps)
 
       <CardContent>
         {trainings.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
+          <div className="text-center py-8 text-muted-foreground">
             <GraduationCap className="mx-auto h-12 w-12 mb-3 opacity-50" />
             <p className="text-base mb-1">No hay capacitaciones registradas</p>
             <p className="text-sm">
@@ -78,10 +78,10 @@ export function TrainingsTab({ trainings, onEdit, onDelete }: TrainingsTabProps)
                       <div className="flex flex-col h-full">
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex-1">
-                            <h4 className="font-semibold text-gray-900 text-lg leading-tight mb-2">
+                            <h4 className="font-semibold text-foreground text-lg leading-tight mb-2">
                               {training.title}
                             </h4>
-                            <p className="text-gray-600 text-sm">
+                            <p className="text-muted-foreground text-sm">
                               {training.institution}
                             </p>
                           </div>
@@ -99,14 +99,14 @@ export function TrainingsTab({ trainings, onEdit, onDelete }: TrainingsTabProps)
                               size="sm"
                               variant="outline"
                               onClick={() => onDelete(training.trainingId)}
-                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </div>
                         </div>
 
-                        <div className="space-y-2 text-sm text-gray-600 flex-1">
+                        <div className="space-y-2 text-sm text-muted-foreground flex-1">
                           <div className="flex flex-wrap gap-2">
                             {training.certificateTypeId && (
                               <Badge variant="secondary" className="text-xs">
@@ -126,14 +126,14 @@ export function TrainingsTab({ trainings, onEdit, onDelete }: TrainingsTabProps)
 
                           <div className="grid grid-cols-2 gap-4">
                             <div className="flex items-center gap-2">
-                              <Calendar className="h-4 w-4 text-gray-400" />
+                              <Calendar className="h-4 w-4 text-muted-foreground/70" />
                               <span>
                                 <strong>Inicio:</strong> {formatDate(training.startDate)}
                               </span>
                             </div>
 
                             <div className="flex items-center gap-2">
-                              <Calendar className="h-4 w-4 text-gray-400" />
+                              <Calendar className="h-4 w-4 text-muted-foreground/70" />
                               <span>
                                 <strong>Fin:</strong>{" "}
                                 {training.endDate ? formatDate(training.endDate) : "No especificado"}
@@ -143,7 +143,7 @@ export function TrainingsTab({ trainings, onEdit, onDelete }: TrainingsTabProps)
 
                           {training.hours && (
                             <div className="flex items-center gap-2">
-                              <Clock className="h-4 w-4 text-gray-400" />
+                              <Clock className="h-4 w-4 text-muted-foreground/70" />
                               <span>
                                 <strong>Duración:</strong> {training.hours} horas
                               </span>

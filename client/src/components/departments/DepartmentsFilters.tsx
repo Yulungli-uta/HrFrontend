@@ -73,7 +73,7 @@ export function DepartmentsFilters({
         </div>
         
         {search.trim() && (
-          <p className="text-sm text-gray-600 mt-3">
+          <p className="text-sm text-muted-foreground mt-3">
             {visibleCount} departamento(s) encontrado(s) para "{search}"
           </p>
         )}

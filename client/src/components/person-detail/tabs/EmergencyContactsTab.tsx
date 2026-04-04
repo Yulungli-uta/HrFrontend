@@ -48,7 +48,7 @@ export function EmergencyContactsTab({
 
       <CardContent>
         {emergencyContacts.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
+          <div className="text-center py-8 text-muted-foreground">
             <User className="mx-auto h-10 w-10 mb-3 opacity-50" />
             <p className="text-base mb-1">No hay contactos registrados</p>
             <p className="text-sm">
@@ -77,7 +77,7 @@ export function EmergencyContactsTab({
                           </span>
                         </div>
                         { (contact as any).identification && (
-                          <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                             <IdCard className="h-3 w-3" />
                             <span>
                               {(contact as any).identification}
@@ -98,7 +98,7 @@ export function EmergencyContactsTab({
                         <Button
                           size="icon"
                           variant="outline"
-                          className="h-8 w-8 text-red-600 hover:text-red-700"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
                           onClick={() => handleDelete(contact)}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -107,7 +107,7 @@ export function EmergencyContactsTab({
                     </div>
 
                     {/* Datos de contacto */}
-                    <div className="space-y-1 text-xs sm:text-sm text-gray-600">
+                    <div className="space-y-1 text-xs sm:text-sm text-muted-foreground">
                       <div className="flex items-center gap-2">
                         <Phone className="h-3.5 w-3.5" />
                         <span>Teléfono: {contact.phone}</span>

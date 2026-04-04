@@ -170,7 +170,7 @@ const JobExecution: React.FC = () => {
   const ExecutionStatus: React.FC<{ state: ExecutionState }> = ({ state }) => {
     if (state.loading) {
       return (
-        <div className="text-sm text-blue-600 mt-1 flex items-center gap-2">
+        <div className="text-sm text-primary mt-1 flex items-center gap-2">
           <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
@@ -182,7 +182,7 @@ const JobExecution: React.FC = () => {
 
     if (state.success === true) {
       return (
-        <div className="text-sm text-green-600 mt-1 flex items-center gap-2">
+        <div className="text-sm text-success mt-1 flex items-center gap-2">
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
@@ -193,7 +193,7 @@ const JobExecution: React.FC = () => {
 
     if (state.success === false && state.error) {
       return (
-        <div className="text-sm text-red-600 mt-1 flex items-center gap-2">
+        <div className="text-sm text-destructive mt-1 flex items-center gap-2">
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
@@ -207,19 +207,19 @@ const JobExecution: React.FC = () => {
 
   return (
     <div className="container mx-auto p-6 max-w-4xl">
-      <div className="bg-white shadow-md rounded-lg p-6">
-        <h1 className="text-3xl font-bold text-gray-800 mb-6 border-b pb-3">
+      <div className="bg-card shadow-md rounded-lg p-6">
+        <h1 className="text-3xl font-bold text-foreground mb-6 border-b pb-3">
           Ejecución de Jobs de Asistencia
         </h1>
 
         {/* Formulario de Parámetros */}
-        <div className="mb-8 bg-gray-50 p-6 rounded-lg">
-          <h2 className="text-xl font-semibold text-gray-700 mb-4">Parámetros de Ejecución</h2>
+        <div className="mb-8 bg-background p-6 rounded-lg">
+          <h2 className="text-xl font-semibold text-foreground mb-4">Parámetros de Ejecución</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Fecha Desde */}
             <div>
-              <label htmlFor="fromDate" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="fromDate" className="block text-sm font-medium text-foreground mb-2">
                 Fecha Desde *
               </label>
               <input
@@ -227,14 +227,14 @@ const JobExecution: React.FC = () => {
                 id="fromDate"
                 value={fromDate}
                 onChange={(e) => setFromDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />
             </div>
 
             {/* Fecha Hasta */}
             <div>
-              <label htmlFor="toDate" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="toDate" className="block text-sm font-medium text-foreground mb-2">
                 Fecha Hasta *
               </label>
               <input
@@ -242,14 +242,14 @@ const JobExecution: React.FC = () => {
                 id="toDate"
                 value={toDate}
                 onChange={(e) => setToDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />
             </div>
 
             {/* ID de Empleado (Opcional) */}
             <div>
-              <label htmlFor="employeeId" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="employeeId" className="block text-sm font-medium text-foreground mb-2">
                 ID Empleado (Opcional)
               </label>
               <input
@@ -258,33 +258,33 @@ const JobExecution: React.FC = () => {
                 value={employeeId}
                 onChange={(e) => setEmployeeId(e.target.value)}
                 placeholder="Dejar vacío para todos"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
 
-          <p className="text-sm text-gray-500 mt-3">
+          <p className="text-sm text-muted-foreground mt-3">
             * Campos obligatorios. Si no se especifica ID de empleado, se procesarán todos los empleados.
           </p>
         </div>
 
         {/* Botones de Ejecución */}
         <div className="space-y-4">
-          <h2 className="text-xl font-semibold text-gray-700 mb-4">Procesos Disponibles</h2>
+          <h2 className="text-xl font-semibold text-foreground mb-4">Procesos Disponibles</h2>
 
           {/* 1. Calcular Rango de Asistencia */}
-          <div className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
+          <div className="border border-border rounded-lg p-4 hover:border-blue-300 transition-colors">
             <div className="flex items-center justify-between">
               <div className="flex-1">
-                <h3 className="text-lg font-medium text-gray-800">Calcular Rango de Asistencia</h3>
-                <p className="text-sm text-gray-600 mt-1">
+                <h3 className="text-lg font-medium text-foreground">Calcular Rango de Asistencia</h3>
+                <p className="text-sm text-muted-foreground mt-1">
                   Ejecuta el cálculo masivo de asistencia para el rango de fechas especificado
                 </p>
               </div>
               <button
                 onClick={handleCalculateRange}
                 disabled={calculateRangeState.loading || !fromDate || !toDate}
-                className="ml-4 px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium"
+                className="ml-4 px-6 py-2 bg-primary text-white rounded-md hover:bg-primary/90 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium"
               >
                 Ejecutar
               </button>
@@ -293,11 +293,11 @@ const JobExecution: React.FC = () => {
           </div>
 
           {/* 2. Calcular Minutos Nocturnos */}
-          <div className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
+          <div className="border border-border rounded-lg p-4 hover:border-blue-300 transition-colors">
             <div className="flex items-center justify-between">
               <div className="flex-1">
-                <h3 className="text-lg font-medium text-gray-800">Calcular Minutos Nocturnos</h3>
-                <p className="text-sm text-gray-600 mt-1">
+                <h3 className="text-lg font-medium text-foreground">Calcular Minutos Nocturnos</h3>
+                <p className="text-sm text-muted-foreground mt-1">
                   Calcula los minutos trabajados en horario nocturno para el rango especificado
                 </p>
               </div>
@@ -313,11 +313,11 @@ const JobExecution: React.FC = () => {
           </div>
 
           {/* 3. Procesar Rango de Asistencia */}
-          <div className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
+          <div className="border border-border rounded-lg p-4 hover:border-blue-300 transition-colors">
             <div className="flex items-center justify-between">
               <div className="flex-1">
-                <h3 className="text-lg font-medium text-gray-800">Procesar Rango de Asistencia</h3>
-                <p className="text-sm text-gray-600 mt-1">
+                <h3 className="text-lg font-medium text-foreground">Procesar Rango de Asistencia</h3>
+                <p className="text-sm text-muted-foreground mt-1">
                   Orquestador principal que procesa todo el rango de asistencia
                 </p>
               </div>
@@ -333,18 +333,18 @@ const JobExecution: React.FC = () => {
           </div>
 
           {/* 4. Aplicar Justificaciones */}
-          <div className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
+          <div className="border border-border rounded-lg p-4 hover:border-blue-300 transition-colors">
             <div className="flex items-center justify-between">
               <div className="flex-1">
-                <h3 className="text-lg font-medium text-gray-800">Aplicar Justificaciones</h3>
-                <p className="text-sm text-gray-600 mt-1">
+                <h3 className="text-lg font-medium text-foreground">Aplicar Justificaciones</h3>
+                <p className="text-sm text-muted-foreground mt-1">
                   Aplica justificaciones aprobadas para anular atrasos o ausencias
                 </p>
               </div>
               <button
                 onClick={handleApplyJustifications}
                 disabled={applyJustificationsState.loading || !fromDate || !toDate}
-                className="ml-4 px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium"
+                className="ml-4 px-6 py-2 bg-success text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium"
               >
                 Ejecutar
               </button>
@@ -353,11 +353,11 @@ const JobExecution: React.FC = () => {
           </div>
 
           {/* 5. Aplicar Recuperación de Horas Extra */}
-          <div className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
+          <div className="border border-border rounded-lg p-4 hover:border-blue-300 transition-colors">
             <div className="flex items-center justify-between">
               <div className="flex-1">
-                <h3 className="text-lg font-medium text-gray-800">Aplicar Recuperación de Horas Extra</h3>
-                <p className="text-sm text-gray-600 mt-1">
+                <h3 className="text-lg font-medium text-foreground">Aplicar Recuperación de Horas Extra</h3>
+                <p className="text-sm text-muted-foreground mt-1">
                   Procesa el cálculo y aplicación de recuperación de horas extra
                 </p>
               </div>
@@ -374,9 +374,9 @@ const JobExecution: React.FC = () => {
         </div>
 
         {/* Información Adicional */}
-        <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h3 className="text-sm font-semibold text-blue-800 mb-2">ℹ️ Información Importante</h3>
-          <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
+        <div className="mt-8 bg-primary/10 border border-primary/30 rounded-lg p-4">
+          <h3 className="text-sm font-semibold text-primary mb-2">ℹ️ Información Importante</h3>
+          <ul className="text-sm text-primary space-y-1 list-disc list-inside">
             <li>Los procesos pueden tardar varios minutos dependiendo del rango de fechas</li>
             <li>Se recomienda ejecutar los procesos en orden secuencial</li>
             <li>Los resultados se guardan automáticamente en la base de datos</li>

@@ -36,10 +36,10 @@ export function DetailDialog({
         </DialogHeader>
 
         <div className="space-y-6">
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+          <div className="flex items-center justify-between p-4 bg-background rounded-lg">
             <div>
               <h3 className="font-semibold text-lg">{typeName}</h3>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-muted-foreground">
                 Creado el {format(parseISO(justification.createdAt), "dd/MM/yyyy 'a las' HH:mm", { locale: es })}
               </p>
             </div>
@@ -99,13 +99,13 @@ export function DetailDialog({
           <div className="space-y-4">
             <div>
               <Label className="text-sm font-medium">Motivo detallado</Label>
-              <p className="mt-2 p-3 bg-gray-50 rounded-md text-sm">{justification.reason}</p>
+              <p className="mt-2 p-3 bg-background rounded-md text-sm">{justification.reason}</p>
             </div>
 
             {justification.comments && (
               <div>
                 <Label className="text-sm font-medium">Comentarios del jefe</Label>
-                <p className="mt-2 p-3 bg-blue-50 rounded-md text-sm">{justification.comments}</p>
+                <p className="mt-2 p-3 bg-primary/10 rounded-md text-sm">{justification.comments}</p>
               </div>
             )}
           </div>
@@ -129,7 +129,7 @@ export function DeleteDialog({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancelar</AlertDialogCancel>
-          <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={onConfirm}>
+          <AlertDialogAction className="bg-destructive hover:bg-red-700" onClick={onConfirm}>
             {isDeleting ? "Eliminando..." : "Eliminar"}
           </AlertDialogAction>
         </AlertDialogFooter>

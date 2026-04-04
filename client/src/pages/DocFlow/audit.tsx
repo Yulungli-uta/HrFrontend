@@ -115,7 +115,7 @@ export default function Audit() {
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Expedientes Afectados
             </CardTitle>
-            <AlertTriangle className="h-4 w-4 text-yellow-500" />
+            <AlertTriangle className="h-4 w-4 text-warning" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold" data-testid="text-affected-instances">
@@ -168,7 +168,7 @@ export default function Audit() {
                         </span>
                         <Badge
                           variant="outline"
-                          className="text-xs bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border-transparent"
+                          className="text-xs bg-destructive/15 text-destructive dark:text-destructive/80 border-transparent"
                         >
                           Retorno
                         </Badge>

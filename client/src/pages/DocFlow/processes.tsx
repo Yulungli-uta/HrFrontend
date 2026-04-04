@@ -665,7 +665,7 @@ function RulesSection({
                   </TableCell>
                   <TableCell className="text-center">
                     {rule.isMandatory ? (
-                      <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400 mx-auto" />
+                      <CheckCircle2 className="h-4 w-4 text-success dark:text-success/80 mx-auto" />
                     ) : (
                       <Circle className="h-4 w-4 text-muted-foreground mx-auto" />
                     )}
@@ -991,8 +991,8 @@ export default function Processes() {
         </Card>
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-blue-500/10">
-              <FolderTree className="h-5 w-5 text-blue-500" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10">
+              <FolderTree className="h-5 w-5 text-primary" />
             </div>
             <div>
               <p className="text-2xl font-bold" data-testid="text-macro-count">
@@ -1004,8 +1004,8 @@ export default function Processes() {
         </Card>
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-green-500/10">
-              <FileText className="h-5 w-5 text-green-500" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-success/10">
+              <FileText className="h-5 w-5 text-success" />
             </div>
             <div>
               <p className="text-2xl font-bold" data-testid="text-sub-count">

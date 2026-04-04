@@ -96,7 +96,7 @@ function TriStateCheckbox({
       ref={ref}
       type="checkbox"
       id={id}
-      className="h-4 w-4 rounded border-gray-300 cursor-pointer"
+      className="h-4 w-4 rounded border-border cursor-pointer"
       checked={checked}
       onChange={(e) => {
         e.stopPropagation(); // evita el doble toggle
@@ -382,7 +382,7 @@ export default function RoleMenuItemsPage() {
                 toggleExpand(node.id);
               }}
               onPointerDown={(e) => e.stopPropagation()}
-              className="inline-flex items-center justify-center h-6 w-6 shrink-0 rounded hover:bg-gray-100"
+              className="inline-flex items-center justify-center h-6 w-6 shrink-0 rounded hover:bg-muted"
               aria-label={isOpen ? "Contraer" : "Expandir"}
               title={isOpen ? "Contraer" : "Expandir"}
             >
@@ -428,12 +428,12 @@ export default function RoleMenuItemsPage() {
     return (
       <div className="container mx-auto p-6">
         <div className="flex items-center space-x-2 mb-6">
-          <div className="h-8 w-8 rounded bg-gray-200 animate-pulse" />
-          <div className="h-6 w-32 bg-gray-200 rounded animate-pulse" />
+          <div className="h-8 w-8 rounded bg-muted animate-pulse" />
+          <div className="h-6 w-32 bg-muted rounded animate-pulse" />
         </div>
         <Card>
           <CardContent className="pt-6">
-            <div className="h-64 bg-gray-200 rounded animate-pulse" />
+            <div className="h-64 bg-muted rounded animate-pulse" />
           </CardContent>
         </Card>
       </div>
@@ -444,11 +444,11 @@ export default function RoleMenuItemsPage() {
     <div className="container mx-auto p-6">
       <div className="flex items-center justify-between mb-6">
         <div className="min-w-0">
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2 truncate">
+          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2 truncate">
             <Settings className="h-8 w-8 shrink-0" />
             <span className="truncate">Asignación de Menús a Roles</span>
           </h1>
-          <p className="text-gray-600 mt-2 truncate">
+          <p className="text-muted-foreground mt-2 truncate">
             Configure qué items de menú son visibles para cada rol
           </p>
         </div>
@@ -483,7 +483,7 @@ export default function RoleMenuItemsPage() {
                 </SelectContent>
               </Select>
               {selectedRoleId && (
-                <p className="text-xs text-gray-600 mt-2 line-clamp-2">
+                <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
                   <strong>Descripción:</strong>{" "}
                   {roles.find((r) => r.id === Number(selectedRoleId))?.description ||
                     "Sin descripción"}
@@ -556,7 +556,7 @@ export default function RoleMenuItemsPage() {
                       assignMutation.isPending ||
                       removeMutation.isPending
                     }
-                    className="bg-blue-600 hover:bg-blue-700 h-8 px-3 text-xs whitespace-nowrap"
+                    className="bg-primary hover:bg-primary/90 h-8 px-3 text-xs whitespace-nowrap"
                   >
                     <Save className="mr-2 h-4 w-4" />
                     <span className="hidden md:inline">Guardar Cambios</span>
@@ -578,11 +578,11 @@ export default function RoleMenuItemsPage() {
           </CardHeader>
           <CardContent>
             {!selectedRoleId ? (
-              <p className="text-center text-gray-500 py-8">
+              <p className="text-center text-muted-foreground py-8">
                 Seleccione un rol para configurar sus menús
               </p>
             ) : !tree.length ? (
-              <p className="text-center text-gray-500 py-8">
+              <p className="text-center text-muted-foreground py-8">
                 No hay items de menú disponibles
               </p>
             ) : (
@@ -597,8 +597,8 @@ export default function RoleMenuItemsPage() {
       {/* Nota */}
       <Card className="mt-6">
         <CardContent className="pt-6">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-sm text-blue-800">
+          <div className="bg-primary/10 border border-primary/30 rounded-lg p-4">
+            <p className="text-sm text-primary">
               <strong>Nota:</strong> Los items seleccionados serán visibles para los usuarios con el
               rol elegido cuando presione “Guardar Cambios”.
             </p>

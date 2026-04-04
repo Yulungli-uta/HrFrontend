@@ -310,9 +310,9 @@ export default function AttendanceForm({ onSuccess, onCancel }: AttendanceFormPr
         </CardHeader>
         <CardContent>
           <div className="text-center space-y-4">
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-600 mb-2">Usuario: Admin Usuario</p>
-              <p className="text-xs text-gray-500">
+            <div className="bg-background p-4 rounded-lg">
+              <p className="text-sm text-muted-foreground mb-2">Usuario: Admin Usuario</p>
+              <p className="text-xs text-muted-foreground">
                 {currentTime.toLocaleString("es-EC", {
                   weekday: "long",
                   year: "numeric",
@@ -322,27 +322,27 @@ export default function AttendanceForm({ onSuccess, onCancel }: AttendanceFormPr
                   minute: "2-digit",
                   second: "2-digit",
                 })}
-                <span className="ml-2 text-green-600">(Hora del servidor)</span>
+                <span className="ml-2 text-success">(Hora del servidor)</span>
               </p>
 
               {isGettingLocation ? (
-                <p className="text-xs text-gray-500 mt-2">Obteniendo ubicación...</p>
+                <p className="text-xs text-muted-foreground mt-2">Obteniendo ubicación...</p>
               ) : currentLocation ? (
-                <p className="text-xs text-gray-500 mt-2">
+                <p className="text-xs text-muted-foreground mt-2">
                   <MapPin className="h-3 w-3 inline mr-1" />
                   Ubicación detectada
                 </p>
               ) : (
-                <p className="text-xs text-yellow-500 mt-2">Ubicación no disponible</p>
+                <p className="text-xs text-warning mt-2">Ubicación no disponible</p>
               )}
 
               {lastPunch && (
-                <div className="mt-3 p-2 bg-blue-50 rounded-md">
-                  <p className="text-xs text-blue-700">
+                <div className="mt-3 p-2 bg-primary/10 rounded-md">
+                  <p className="text-xs text-primary">
                     Última marcación: {new Date(lastPunch.punchTime).toLocaleString("es-EC")} (
                     {lastPunch.punchType === "In" ? "Entrada" : "Salida"})
                   </p>
-                  <p className="text-xs text-blue-700">Hace {timeSinceLastPunch} minutos</p>
+                  <p className="text-xs text-primary">Hace {timeSinceLastPunch} minutos</p>
                 </div>
               )}
             </div>
@@ -360,7 +360,7 @@ export default function AttendanceForm({ onSuccess, onCancel }: AttendanceFormPr
             <div className="flex gap-4 justify-center">
               <Button
                 size="lg"
-                className="flex-1 max-w-32 bg-green-600 hover:bg-green-700 h-16 flex flex-col"
+                className="flex-1 max-w-32 bg-success hover:bg-green-700 h-16 flex flex-col"
                 onClick={() => handleQuickPunch("In")}
                 disabled={isLoading || isGettingLocation || Boolean(isWithinCooldown)}
                 data-testid="button-quick-in"
@@ -370,7 +370,7 @@ export default function AttendanceForm({ onSuccess, onCancel }: AttendanceFormPr
               </Button>
               <Button
                 size="lg"
-                className="flex-1 max-w-32 bg-red-600 hover:bg-red-700 h-16 flex flex-col"
+                className="flex-1 max-w-32 bg-destructive hover:bg-red-700 h-16 flex flex-col"
                 onClick={() => handleQuickPunch("Out")}
                 disabled={isLoading || isGettingLocation || Boolean(isWithinCooldown)}
                 data-testid="button-quick-out"
@@ -397,9 +397,9 @@ export default function AttendanceForm({ onSuccess, onCancel }: AttendanceFormPr
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2 bg-gray-50 p-3 rounded">
-                  <p className="text-sm font-medium text-gray-700">Usuario: Admin Usuario</p>
-                  <p className="text-xs text-gray-500">Solo puede registrar sus propias marcaciones</p>
+                <div className="md:col-span-2 bg-background p-3 rounded">
+                  <p className="text-sm font-medium text-foreground">Usuario: Admin Usuario</p>
+                  <p className="text-xs text-muted-foreground">Solo puede registrar sus propias marcaciones</p>
                 </div>
 
                 <FormField
@@ -426,8 +426,8 @@ export default function AttendanceForm({ onSuccess, onCancel }: AttendanceFormPr
 
                 <FormItem>
                   <FormLabel>Fecha y Hora *</FormLabel>
-                  <div className="flex items-center p-2 border rounded-md bg-gray-50">
-                    <Calendar className="h-4 w-4 mr-2 text-gray-500" />
+                  <div className="flex items-center p-2 border rounded-md bg-background">
+                    <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
                     <span className="text-sm">
                       {currentTime.toLocaleString("es-EC", {
                         year: "numeric",
@@ -439,7 +439,7 @@ export default function AttendanceForm({ onSuccess, onCancel }: AttendanceFormPr
                       })}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     La fecha y hora se registran automáticamente
                   </p>
                 </FormItem>
@@ -460,12 +460,12 @@ export default function AttendanceForm({ onSuccess, onCancel }: AttendanceFormPr
               </div>
 
               {currentLocation && (
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <div className="flex items-center space-x-2 text-blue-700">
+                <div className="bg-primary/10 p-4 rounded-lg">
+                  <div className="flex items-center space-x-2 text-primary">
                     <MapPin className="h-4 w-4" />
                     <span className="font-medium">Ubicación detectada</span>
                   </div>
-                  <p className="text-sm text-blue-600 mt-1">
+                  <p className="text-sm text-primary mt-1">
                     Lat: {currentLocation.latitude.toFixed(6)}, Lng: {currentLocation.longitude.toFixed(6)}
                   </p>
                 </div>

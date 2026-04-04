@@ -42,7 +42,7 @@ export function BooksTab({ books, onEdit, onDelete }: BooksTabProps) {
       </CardHeader>
       <CardContent>
         {books.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
+          <div className="text-center py-8 text-muted-foreground">
             <BookOpen className="mx-auto h-12 w-12 mb-3 opacity-50" />
             <p className="text-base mb-1">No hay libros registrados</p>
             <p className="text-sm">Agrega el primer libro haciendo clic en el botón "Nuevo Libro"</p>
@@ -56,7 +56,7 @@ export function BooksTab({ books, onEdit, onDelete }: BooksTabProps) {
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                       <div className="flex-1 space-y-3">
                         <div className="flex items-start justify-between">
-                          <h4 className="font-semibold text-gray-900 text-lg leading-tight">
+                          <h4 className="font-semibold text-foreground text-lg leading-tight">
                             {book.title}
                           </h4>
                           <div className="flex gap-2 ml-4 flex-shrink-0">
@@ -72,17 +72,17 @@ export function BooksTab({ books, onEdit, onDelete }: BooksTabProps) {
                               size="sm"
                               variant="outline"
                               onClick={() => onDelete(book.bookId)}
-                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-muted-foreground">
                           {book.publisher && (
                             <div className="flex items-center gap-2">
-                              <Book className="h-4 w-4 text-gray-400" />
+                              <Book className="h-4 w-4 text-muted-foreground/70" />
                               <span>
                                 <strong>Editorial:</strong> {book.publisher}
                               </span>
@@ -91,7 +91,7 @@ export function BooksTab({ books, onEdit, onDelete }: BooksTabProps) {
 
                           {book.publicationDate && (
                             <div className="flex items-center gap-2">
-                              <Calendar className="h-4 w-4 text-gray-400" />
+                              <Calendar className="h-4 w-4 text-muted-foreground/70" />
                               <span>
                                 <strong>Fecha de publicación:</strong> {formatDate(book.publicationDate)}
                               </span>
@@ -100,7 +100,7 @@ export function BooksTab({ books, onEdit, onDelete }: BooksTabProps) {
 
                           {book.isbn && (
                             <div className="flex items-center gap-2">
-                              <BookOpen className="h-4 w-4 text-gray-400" />
+                              <BookOpen className="h-4 w-4 text-muted-foreground/70" />
                               <span>
                                 <strong>ISBN:</strong> {book.isbn}
                               </span>
@@ -117,8 +117,8 @@ export function BooksTab({ books, onEdit, onDelete }: BooksTabProps) {
                         </div>
 
                         {book.coAuthors && (
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <User className="h-4 w-4 text-gray-400" />
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <User className="h-4 w-4 text-muted-foreground/70" />
                             <span>
                               <strong>Coautores:</strong> {book.coAuthors}
                             </span>
@@ -134,7 +134,7 @@ export function BooksTab({ books, onEdit, onDelete }: BooksTabProps) {
                         )}
 
                         {book.description && (
-                          <div className="text-sm text-gray-600">
+                          <div className="text-sm text-muted-foreground">
                             <p className="line-clamp-2">{book.description}</p>
                           </div>
                         )}

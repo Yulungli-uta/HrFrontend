@@ -97,7 +97,7 @@ export function PersonalInfoTab({
 
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-500">Estado</span>
+              <span className="text-sm font-medium text-muted-foreground">Estado</span>
               <Badge variant={person.isActive ? "default" : "secondary"}>
                 {person.isActive ? "Activo" : "Inactivo"}
               </Badge>
@@ -105,49 +105,49 @@ export function PersonalInfoTab({
 
             <div className="space-y-2">
               <div className="flex items-center gap-3">
-                <Mail className="h-4 w-4 text-gray-400" />
+                <Mail className="h-4 w-4 text-muted-foreground/70" />
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Correo Electrónico</p>
-                  <p className="text-gray-900">{person.email}</p>
+                  <p className="text-sm font-medium text-muted-foreground">Correo Electrónico</p>
+                  <p className="text-foreground">{person.email}</p>
                 </div>
               </div>
 
               {person.phone && (
                 <div className="flex items-center gap-3">
-                  <Phone className="h-4 w-4 text-gray-400" />
+                  <Phone className="h-4 w-4 text-muted-foreground/70" />
                   <div>
-                    <p className="text-sm font-medium text-gray-500">Teléfono</p>
-                    <p className="text-gray-900">{person.phone}</p>
+                    <p className="text-sm font-medium text-muted-foreground">Teléfono</p>
+                    <p className="text-foreground">{person.phone}</p>
                   </div>
                 </div>
               )}
 
               {person.birthDate && (
                 <div className="flex items-center gap-3">
-                  <Calendar className="h-4 w-4 text-gray-400" />
+                  <Calendar className="h-4 w-4 text-muted-foreground/70" />
                   <div>
-                    <p className="text-sm font-medium text-gray-500">Fecha de Nacimiento</p>
-                    <p className="text-gray-900">{formatDate(person.birthDate)}</p>
+                    <p className="text-sm font-medium text-muted-foreground">Fecha de Nacimiento</p>
+                    <p className="text-foreground">{formatDate(person.birthDate)}</p>
                   </div>
                 </div>
               )}
 
               {person.address && (
                 <div className="flex items-center gap-3">
-                  <MapPin className="h-4 w-4 text-gray-400" />
+                  <MapPin className="h-4 w-4 text-muted-foreground/70" />
                   <div>
-                    <p className="text-sm font-medium text-gray-500">Dirección</p>
-                    <p className="text-gray-900">{person.address}</p>
+                    <p className="text-sm font-medium text-muted-foreground">Dirección</p>
+                    <p className="text-foreground">{person.address}</p>
                   </div>
                 </div>
               )}
 
               {person.disability && (
                 <div className="flex items-center gap-3">
-                  <Heart className="h-4 w-4 text-gray-400" />
+                  <Heart className="h-4 w-4 text-muted-foreground/70" />
                   <div>
-                    <p className="text-sm font-medium text-gray-500">Discapacidad</p>
-                    <p className="text-gray-900">{person.disability}</p>
+                    <p className="text-sm font-medium text-muted-foreground">Discapacidad</p>
+                    <p className="text-foreground">{person.disability}</p>
                   </div>
                 </div>
               )}
@@ -166,8 +166,8 @@ export function PersonalInfoTab({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {person.sex !== null && person.sex !== undefined && person.sex !== "" && (
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Sexo</label>
-                  <p className="mt-1 text-gray-900">
+                  <label className="text-sm font-medium text-muted-foreground">Sexo</label>
+                  <p className="mt-1 text-foreground">
                     {resolveRefName(person.sex, sexMap)}
                   </p>
                 </div>
@@ -175,8 +175,8 @@ export function PersonalInfoTab({
 
               {person.gender !== null && person.gender !== undefined && person.gender !== "" && (
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Género</label>
-                  <p className="mt-1 text-gray-900">
+                  <label className="text-sm font-medium text-muted-foreground">Género</label>
+                  <p className="mt-1 text-foreground">
                     {resolveRefName(person.gender, genderMap)}
                   </p>
                 </div>
@@ -184,8 +184,8 @@ export function PersonalInfoTab({
 
               {person.maritalStatusTypeId && (
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Estado Civil</label>
-                  <p className="mt-1 text-gray-900">
+                  <label className="text-sm font-medium text-muted-foreground">Estado Civil</label>
+                  <p className="mt-1 text-foreground">
                     {resolveRefName(person.maritalStatusTypeId, maritalStatusMap)}
                   </p>
                 </div>
@@ -193,8 +193,8 @@ export function PersonalInfoTab({
 
               {person.countryId && (
                 <div>
-                  <label className="text-sm font-medium text-gray-500">País</label>
-                  <p className="mt-1 text-gray-900">
+                  <label className="text-sm font-medium text-muted-foreground">País</label>
+                  <p className="mt-1 text-foreground">
                     {resolveRefName(person.countryId, countryMap)}
                   </p>
                 </div>
@@ -202,8 +202,8 @@ export function PersonalInfoTab({
 
               {person.provinceId && (
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Provincia</label>
-                  <p className="mt-1 text-gray-900">
+                  <label className="text-sm font-medium text-muted-foreground">Provincia</label>
+                  <p className="mt-1 text-foreground">
                     {resolveRefName(person.provinceId, provinceMap)}
                   </p>
                 </div>
@@ -211,8 +211,8 @@ export function PersonalInfoTab({
 
               {person.cantonId && (
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Cantón</label>
-                  <p className="mt-1 text-gray-900">
+                  <label className="text-sm font-medium text-muted-foreground">Cantón</label>
+                  <p className="mt-1 text-foreground">
                     {resolveRefName(person.cantonId, cantonMap)}
                   </p>
                 </div>
@@ -220,8 +220,8 @@ export function PersonalInfoTab({
 
               {person.ethnicityTypeId && (
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Etnia</label>
-                  <p className="mt-1 text-gray-900">
+                  <label className="text-sm font-medium text-muted-foreground">Etnia</label>
+                  <p className="mt-1 text-foreground">
                     {resolveRefName(person.ethnicityTypeId, ethnicityMap)}
                   </p>
                 </div>
@@ -239,15 +239,15 @@ export function PersonalInfoTab({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {person.motherName && (
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Nombre de la Madre</label>
-                  <p className="mt-1 text-gray-900">{person.motherName}</p>
+                  <label className="text-sm font-medium text-muted-foreground">Nombre de la Madre</label>
+                  <p className="mt-1 text-foreground">{person.motherName}</p>
                 </div>
               )}
 
               {person.fatherName && (
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Nombre del Padre</label>
-                  <p className="mt-1 text-gray-900">{person.fatherName}</p>
+                  <label className="text-sm font-medium text-muted-foreground">Nombre del Padre</label>
+                  <p className="mt-1 text-foreground">{person.fatherName}</p>
                 </div>
               )}
             </div>

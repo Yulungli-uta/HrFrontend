@@ -377,7 +377,7 @@ export default function TimePlanningEmployeeForm({
                                   onClick={() =>
                                     handleUpdateStatus(employee.planEmployeeID!, "Cancelado")
                                   }
-                                  className="text-xs text-red-600"
+                                  className="text-xs text-destructive"
                                 >
                                   <Trash2 className="h-3.5 w-3.5 mr-2" />
                                   Cancelar

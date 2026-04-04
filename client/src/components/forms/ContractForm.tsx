@@ -184,7 +184,7 @@ export default function ContractForm({ contract, onSuccess, onCancel }: Contract
                               {person
                                 ? `${person.firstName} ${person.lastName}`
                                 : `Empleado #${employee.id}`}
-                              <span className="text-xs text-gray-500 ml-2">({employee.type})</span>
+                              <span className="text-xs text-muted-foreground ml-2">({employee.type})</span>
                             </SelectItem>
                           );
                         })}
@@ -274,7 +274,7 @@ export default function ContractForm({ contract, onSuccess, onCancel }: Contract
                     </FormControl>
                     <FormMessage />
                     {contractType === "Indefinido" && (
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-muted-foreground">
                         Los contratos indefinidos no tienen fecha de fin
                       </p>
                     )}
@@ -291,7 +291,7 @@ export default function ContractForm({ contract, onSuccess, onCancel }: Contract
                   <FormLabel>Salario Base *</FormLabel>
                   <FormControl>
                     <div className="relative">
-                      <DollarSign className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground/70" />
                       <Input
                         type="number"
                         step="0.01"
@@ -305,7 +305,7 @@ export default function ContractForm({ contract, onSuccess, onCancel }: Contract
                     </div>
                   </FormControl>
                   <FormMessage />
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-muted-foreground">
                     Salario mínimo en Ecuador: $450.00
                   </p>
                 </FormItem>
@@ -313,12 +313,12 @@ export default function ContractForm({ contract, onSuccess, onCancel }: Contract
             />
 
             {startDate && contractType !== "Indefinido" && (
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <div className="flex items-center space-x-2 text-blue-700 mb-2">
+              <div className="bg-primary/10 p-4 rounded-lg">
+                <div className="flex items-center space-x-2 text-primary mb-2">
                   <Calendar className="h-4 w-4" />
                   <span className="font-medium">Información del Contrato</span>
                 </div>
-                <div className="text-sm text-blue-600 space-y-1">
+                <div className="text-sm text-primary space-y-1">
                   <p>Duración: {contractType}</p>
                   <p>Inicio: {new Date(startDate).toLocaleDateString()}</p>
                   {form.watch("endDate") && (

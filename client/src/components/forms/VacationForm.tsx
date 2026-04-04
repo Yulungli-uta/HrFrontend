@@ -297,7 +297,7 @@ export default function VacationForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {(errorMsg || insufficientBalance) && (
-        <div className="p-3 text-sm rounded-md bg-red-50 text-red-700 border border-red-200">
+        <div className="p-3 text-sm rounded-md bg-destructive/10 text-destructive border border-destructive/30">
           {errorMsg || "Saldo insuficiente para el rango seleccionado."}
         </div>
       )}
@@ -311,7 +311,7 @@ export default function VacationForm({
           </div>
           <div className="mt-1 flex items-center justify-between">
             <span className="text-muted-foreground">Solicitado (calculado)</span>
-            <span className={`font-medium ${insufficientBalance ? "text-red-600" : ""}`}>{fmtMinutes(requestedMinutes)}</span>
+            <span className={`font-medium ${insufficientBalance ? "text-destructive" : ""}`}>{fmtMinutes(requestedMinutes)}</span>
           </div>
           {isEdit && (
             <div className="mt-1 flex items-center justify-between">

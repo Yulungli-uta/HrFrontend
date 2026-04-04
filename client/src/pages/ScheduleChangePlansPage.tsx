@@ -849,10 +849,10 @@ export default function ScheduleChangePlansPage() {
     <div className="space-y-6 p-4 md:p-6">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground">
             Planificación de cambios de horario
           </h1>
-          <p className="text-gray-600 mt-2">
+          <p className="text-muted-foreground mt-2">
             Gestión de planificaciones y ejecución de cambios de horario por jefatura.
           </p>
         </div>
@@ -868,19 +868,19 @@ export default function ScheduleChangePlansPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="bg-gradient-to-br from-blue-500 to-blue-700 text-white border-none shadow-md overflow-hidden relative">
-          <div className="absolute right-0 top-0 opacity-10 bg-white w-24 h-24 rounded-full -mr-8 -mt-8 translate-x-4"></div>
+          <div className="absolute right-0 top-0 opacity-10 bg-card w-24 h-24 rounded-full -mr-8 -mt-8 translate-x-4"></div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-            <CardTitle className="text-sm font-medium text-blue-100">Planes Creados</CardTitle>
-            <CalendarDays className="h-5 w-5 text-blue-100" />
+            <CardTitle className="text-sm font-medium text-primary-foreground">Planes Creados</CardTitle>
+            <CalendarDays className="h-5 w-5 text-primary-foreground" />
           </CardHeader>
           <CardContent className="relative z-10">
             <div className="text-4xl font-extrabold">{stats.total}</div>
-            <p className="text-xs text-blue-100 mt-1 opacity-80">Total registrados por la jefatura</p>
+            <p className="text-xs text-primary-foreground mt-1 opacity-80">Total registrados por la jefatura</p>
           </CardContent>
         </Card>
 
         <Card className="bg-gradient-to-br from-teal-500 to-emerald-600 text-white border-none shadow-md overflow-hidden relative">
-          <div className="absolute right-0 top-0 opacity-10 bg-white w-24 h-24 rounded-full -mr-8 -mt-8 translate-x-4"></div>
+          <div className="absolute right-0 top-0 opacity-10 bg-card w-24 h-24 rounded-full -mr-8 -mt-8 translate-x-4"></div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
             <CardTitle className="text-sm font-medium text-teal-100">Planes Aprobados</CardTitle>
             <CheckCircle2 className="h-5 w-5 text-teal-100" />
@@ -892,7 +892,7 @@ export default function ScheduleChangePlansPage() {
         </Card>
 
         <Card className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white border-none shadow-md overflow-hidden relative">
-          <div className="absolute right-0 top-0 opacity-10 bg-white w-24 h-24 rounded-full -mr-8 -mt-8 translate-x-4"></div>
+          <div className="absolute right-0 top-0 opacity-10 bg-card w-24 h-24 rounded-full -mr-8 -mt-8 translate-x-4"></div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
             <CardTitle className="text-sm font-medium text-indigo-100">Planes Ejecutados</CardTitle>
             <Clock3 className="h-5 w-5 text-indigo-100" />

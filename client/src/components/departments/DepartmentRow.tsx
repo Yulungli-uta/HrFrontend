@@ -35,7 +35,7 @@ export const DepartmentRow = ({
 
   return (
     <>
-      <TableRow className="hover:bg-gray-50">
+      <TableRow className="hover:bg-background">
         <TableCell className="py-3">
           <div style={{ marginLeft: depth * 18 }} className="flex items-center min-h-[44px]">
             {hasChildren && (
@@ -51,7 +51,7 @@ export const DepartmentRow = ({
               </Button>
             )}
             {!hasChildren && <div className="w-6 mr-1" />}
-            <Building2 className="h-4 w-4 mr-2 text-gray-600" />
+            <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
             <span className="font-medium text-sm">{node.name}</span>
           </div>
         </TableCell>

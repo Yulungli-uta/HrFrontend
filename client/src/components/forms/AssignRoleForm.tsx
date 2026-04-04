@@ -101,8 +101,8 @@ export default function AssignRoleForm({
         <h2 className="text-2xl font-bold">Asignar Rol a Usuario</h2>
 
         {/* Información del usuario */}
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-          <p className="text-sm text-gray-600">
+        <div className="bg-background border border-border rounded-lg p-4">
+          <p className="text-sm text-muted-foreground">
             <strong>Usuario:</strong> {userEmail}
           </p>
         </div>
@@ -110,7 +110,7 @@ export default function AssignRoleForm({
         {/* Selección de rol */}
         <div className="space-y-2">
           <Label htmlFor="roleId">
-            Rol <span className="text-red-500">*</span>
+            Rol <span className="text-destructive">*</span>
           </Label>
           <Select
             value={roleId}
@@ -122,7 +122,7 @@ export default function AssignRoleForm({
             </SelectTrigger>
             <SelectContent>
               {activeRoles.length === 0 ? (
-                <div className="p-2 text-sm text-gray-500">No hay roles disponibles</div>
+                <div className="p-2 text-sm text-muted-foreground">No hay roles disponibles</div>
               ) : (
                 activeRoles.map((role) => (
                   <SelectItem key={role.id} value={role.id.toString()}>
@@ -133,7 +133,7 @@ export default function AssignRoleForm({
             </SelectContent>
           </Select>
           {errors.roleId && (
-            <p className="text-sm text-red-600">{errors.roleId.message}</p>
+            <p className="text-sm text-destructive">{errors.roleId.message}</p>
           )}
         </div>
 
@@ -146,7 +146,7 @@ export default function AssignRoleForm({
             {...register("expiresAt")}
             min={new Date().toISOString().split("T")[0]}
           />
-          <p className="text-sm text-gray-500">Si no se especifica, el rol no expirará.</p>
+          <p className="text-sm text-muted-foreground">Si no se especifica, el rol no expirará.</p>
         </div>
 
         {/* Razón (opcional) */}
@@ -160,8 +160,8 @@ export default function AssignRoleForm({
           />
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-sm text-blue-800">
+        <div className="bg-primary/10 border border-primary/30 rounded-lg p-4">
+          <p className="text-sm text-primary">
             <strong>Nota:</strong> El usuario puede tener múltiples roles simultáneamente. Los
             permisos se acumulan.
           </p>
@@ -173,7 +173,7 @@ export default function AssignRoleForm({
         <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
           Cancelar
         </Button>
-        <Button type="submit" disabled={isLoading || !roleId} className="bg-blue-600 hover:bg-blue-700">
+        <Button type="submit" disabled={isLoading || !roleId} className="bg-primary hover:bg-primary/90">
           {isLoading ? "Asignando..." : "Asignar Rol"}
         </Button>
       </div>

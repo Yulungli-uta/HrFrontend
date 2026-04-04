@@ -41,8 +41,8 @@ export const DepartmentsTable = ({
   if (error) {
     return (
       <div className="text-center py-8">
-        <p className="text-red-600 font-medium mb-2">Error al cargar los departamentos</p>
-        <p className="text-gray-600 text-sm mb-4">{error}</p>
+        <p className="text-destructive font-medium mb-2">Error al cargar los departamentos</p>
+        <p className="text-muted-foreground text-sm mb-4">{error}</p>
         <Button onClick={onRefetch} variant="outline">
           Reintentar
         </Button>
@@ -52,7 +52,7 @@ export const DepartmentsTable = ({
 
   if (tree.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-500">
+      <div className="text-center py-8 text-muted-foreground">
         No hay departamentos registrados
       </div>
     );

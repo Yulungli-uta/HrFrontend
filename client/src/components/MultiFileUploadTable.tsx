@@ -448,11 +448,11 @@ export const ReusableMultipleFileUpload: React.FC<ReusableMultipleFileUploadProp
   const getStatusIcon = (status: FileWithMeta['status']) => {
     switch (status) {
       case 'success':
-        return <CheckCircle2 className="h-4 w-4 text-green-500" />;
+        return <CheckCircle2 className="h-4 w-4 text-success" />;
       case 'error':
         return <AlertCircle className="h-4 w-4 text-destructive" />;
       case 'uploading':
-        return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
+        return <Loader2 className="h-4 w-4 animate-spin text-primary" />;
       default:
         return <FileIcon className="h-4 w-4 text-muted-foreground" />;
     }

@@ -52,13 +52,13 @@ const permStatusLabels: Record<string, string> = {
 };
 
 const permStatusColors: Record<string, string> = {
-  Pending: "bg-yellow-100 text-yellow-800 hover:bg-yellow-100",
-  Approved: "bg-green-100 text-green-800 hover:bg-green-100",
-  Rejected: "bg-red-100 text-red-800 hover:bg-red-100",
-  Canceled: "bg-gray-100 text-gray-800 hover:bg-gray-100",
-  Cancelled: "bg-gray-100 text-gray-800 hover:bg-gray-100",
-  Annulled: "bg-gray-100 text-gray-800 hover:bg-gray-100",
-  Anulado: "bg-gray-100 text-gray-800 hover:bg-gray-100",
+  Pending: "bg-warning/15 text-warning hover:bg-warning/15",
+  Approved: "bg-success/15 text-success hover:bg-success/15",
+  Rejected: "bg-destructive/15 text-destructive hover:bg-destructive/15",
+  Canceled: "bg-muted text-foreground hover:bg-muted",
+  Cancelled: "bg-muted text-foreground hover:bg-muted",
+  Annulled: "bg-muted text-foreground hover:bg-muted",
+  Anulado: "bg-muted text-foreground hover:bg-muted",
 };
 
 const vacStatusLabels: Record<string, string> = {
@@ -73,14 +73,14 @@ const vacStatusLabels: Record<string, string> = {
 };
 
 const vacStatusColors: Record<string, string> = {
-  Planned: "bg-indigo-100 text-indigo-800 hover:bg-indigo-100",
-  Approved: "bg-green-100 text-green-800 hover:bg-green-100",
-  InProgress: "bg-blue-100 text-blue-800 hover:bg-blue-100",
-  Completed: "bg-green-100 text-green-800 hover:bg-green-100",
-  Canceled: "bg-gray-100 text-gray-800 hover:bg-gray-100",
-  Cancelled: "bg-gray-100 text-gray-800 hover:bg-gray-100",
-  Annulled: "bg-gray-100 text-gray-800 hover:bg-gray-100",
-  Anulado: "bg-gray-100 text-gray-800 hover:bg-gray-100",
+  Planned: "bg-primary/15 text-primary hover:bg-primary/15",
+  Approved: "bg-success/15 text-success hover:bg-success/15",
+  InProgress: "bg-primary/15 text-primary hover:bg-primary/15",
+  Completed: "bg-success/15 text-success hover:bg-success/15",
+  Canceled: "bg-muted text-foreground hover:bg-muted",
+  Cancelled: "bg-muted text-foreground hover:bg-muted",
+  Annulled: "bg-muted text-foreground hover:bg-muted",
+  Anulado: "bg-muted text-foreground hover:bg-muted",
 };
 
 const fmtDate = (d?: string) => {

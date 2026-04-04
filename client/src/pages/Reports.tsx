@@ -10,7 +10,7 @@ export default function ReportsPage() {
       description: "Listado completo de empleados y su información",
       icon: Users,
       category: "Personal",
-      color: "text-blue-600"
+      color: "text-primary"
     },
     {
       id: "attendance-report", 
@@ -18,7 +18,7 @@ export default function ReportsPage() {
       description: "Control de marcaciones y horas trabajadas",
       icon: Clock,
       category: "Asistencia",
-      color: "text-green-600"
+      color: "text-success"
     },
     {
       id: "permissions-report",
@@ -26,7 +26,7 @@ export default function ReportsPage() {
       description: "Solicitudes de permisos por período",
       icon: CalendarCheck,
       category: "Permisos",
-      color: "text-orange-600"
+      color: "text-secondary-foreground"
     },
     {
       id: "payroll-report",
@@ -42,7 +42,7 @@ export default function ReportsPage() {
       description: "Estado de contratos activos y vencimientos",
       icon: FileText,
       category: "Contratos",
-      color: "text-red-600"
+      color: "text-destructive"
     },
     {
       id: "analytics-report",
@@ -58,13 +58,13 @@ export default function ReportsPage() {
     <div className="container mx-auto p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Centro de Reportes</h1>
-          <p className="text-gray-600 mt-2">Genere y descargue reportes del sistema de recursos humanos</p>
+          <h1 className="text-3xl font-bold text-foreground">Centro de Reportes</h1>
+          <p className="text-muted-foreground mt-2">Genere y descargue reportes del sistema de recursos humanos</p>
         </div>
         <Button 
           data-testid="button-schedule-report"
           variant="outline"
-          className="border-blue-600 text-blue-600 hover:bg-blue-50"
+          className="border-blue-600 text-primary hover:bg-primary/10"
         >
           <Calendar className="mr-2 h-4 w-4" />
           Programar Reporte
@@ -82,7 +82,7 @@ export default function ReportsPage() {
                 </span>
               </CardTitle>
               <CardDescription>
-                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                   {report.category}
                 </span>
                 <p className="mt-1" data-testid={`text-report-description-${report.id}`}>
@@ -109,7 +109,7 @@ export default function ReportsPage() {
                 </Button>
               </div>
               
-              <div className="pt-2 border-t text-xs text-gray-500">
+              <div className="pt-2 border-t text-xs text-muted-foreground">
                 <p>Formatos disponibles: PDF, Excel, CSV</p>
               </div>
             </CardContent>
@@ -121,7 +121,7 @@ export default function ReportsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
-              <BarChart3 className="h-5 w-5 text-blue-600" />
+              <BarChart3 className="h-5 w-5 text-primary" />
               <span>Reportes Recientes</span>
             </CardTitle>
             <CardDescription>
@@ -129,8 +129,8 @@ export default function ReportsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-8 text-gray-500">
-              <FileText className="mx-auto h-12 w-12 text-gray-300 mb-4" />
+            <div className="text-center py-8 text-muted-foreground">
+              <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
               <p>No hay reportes recientes</p>
               <p className="text-sm">Los reportes que genere aparecerán aquí</p>
             </div>

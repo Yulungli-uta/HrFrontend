@@ -17,10 +17,10 @@ const employeeTypeLabels: Record<string, string> = {
 };
 
 const employeeTypeColors: Record<string, string> = {
-  "Teacher_LOSE": "bg-green-100 text-green-800",
-  "Administrative_LOSEP": "bg-blue-100 text-blue-800",
-  "Employee_CT": "bg-orange-100 text-orange-800", 
-  "Coordinator": "bg-purple-100 text-purple-800"
+  "Teacher_LOSE": "bg-success/15 text-success",
+  "Administrative_LOSEP": "bg-primary/15 text-primary",
+  "Employee_CT": "bg-secondary/15 text-secondary-foreground", 
+  "Coordinator": "bg-accent text-accent-foreground"
 };
 
 // Función para extraer el array de empleados
@@ -45,19 +45,19 @@ export default function EmployeesPage() {
     return (
       <div className="container mx-auto p-6">
         <div className="flex items-center space-x-2 mb-6">
-          <div className="h-8 w-8 rounded bg-gray-200 animate-pulse" />
-          <div className="h-6 w-32 bg-gray-200 rounded animate-pulse" />
+          <div className="h-8 w-8 rounded bg-muted animate-pulse" />
+          <div className="h-6 w-32 bg-muted rounded animate-pulse" />
         </div>
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <Card key={i} className="animate-pulse">
               <CardHeader className="space-y-2">
-                <div className="h-6 w-3/4 bg-gray-200 rounded" />
-                <div className="h-4 w-1/2 bg-gray-200 rounded" />
+                <div className="h-6 w-3/4 bg-muted rounded" />
+                <div className="h-4 w-1/2 bg-muted rounded" />
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="h-4 w-full bg-gray-200 rounded" />
-                <div className="h-4 w-2/3 bg-gray-200 rounded" />
+                <div className="h-4 w-full bg-muted rounded" />
+                <div className="h-4 w-2/3 bg-muted rounded" />
               </CardContent>
             </Card>
           ))}
@@ -69,9 +69,9 @@ export default function EmployeesPage() {
   if (error) {
     return (
       <div className="container mx-auto p-6">
-        <Card className="border-red-200 bg-red-50">
+        <Card className="border-destructive/30 bg-destructive/10">
           <CardContent className="pt-6">
-            <p className="text-red-600">Error al cargar los empleados. Intente nuevamente.</p>
+            <p className="text-destructive">Error al cargar los empleados. Intente nuevamente.</p>
           </CardContent>
         </Card>
       </div>
@@ -82,14 +82,14 @@ export default function EmployeesPage() {
     <div className="container mx-auto p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Gestión de Empleados</h1>
-          <p className="text-gray-600 mt-2">Administre la información laboral del personal universitario</p>
+          <h1 className="text-3xl font-bold text-foreground">Gestión de Empleados</h1>
+          <p className="text-muted-foreground mt-2">Administre la información laboral del personal universitario</p>
         </div>
         <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
           <DialogTrigger asChild>
             <Button 
               data-testid="button-add-employee"
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-primary hover:bg-primary/90"
             >
               <UserCog className="mr-2 h-4 w-4" />
               Agregar Empleado
@@ -121,7 +121,7 @@ export default function EmployeesPage() {
               </CardTitle>
               <CardDescription>
                 <Badge 
-                  className={employeeTypeColors[employee.type] || "bg-gray-100 text-gray-800"}
+                  className={employeeTypeColors[employee.type] || "bg-muted text-foreground"}
                   data-testid={`text-type-${employee.id}`}
                 >
                   {employeeTypeLabels[employee.type] || employee.type}
@@ -130,7 +130,7 @@ export default function EmployeesPage() {
             </CardHeader>
             <CardContent className="space-y-3">
               {employee.departmentId && (
-                <div className="flex items-center space-x-2 text-sm text-gray-600">
+                <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                   <Building2 className="h-4 w-4" />
                   <span data-testid={`text-department-${employee.id}`}>
                     Departamento: {employee.departmentId}
@@ -138,14 +138,14 @@ export default function EmployeesPage() {
                 </div>
               )}
               {employee.immediateBossId && (
-                <div className="flex items-center space-x-2 text-sm text-gray-600">
+                <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                   <Users className="h-4 w-4" />
                   <span data-testid={`text-boss-${employee.id}`}>
                     Jefe: #{employee.immediateBossId}
                   </span>
                 </div>
               )}
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
+              <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                 <Calendar className="h-4 w-4" />
                 <span data-testid={`text-hire-date-${employee.id}`}>
                   Ingreso: {new Date(employee.hireDate).toLocaleDateString()}
@@ -159,9 +159,9 @@ export default function EmployeesPage() {
       {employees.length === 0 && (
         <Card className="text-center py-12">
           <CardContent>
-            <UserCog className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No hay empleados registrados</h3>
-            <p className="text-gray-600 mb-4">Comience agregando el primer empleado al sistema</p>
+            <UserCog className="mx-auto h-12 w-12 text-muted-foreground/70 mb-4" />
+            <h3 className="text-lg font-semibold text-foreground mb-2">No hay empleados registrados</h3>
+            <p className="text-muted-foreground mb-4">Comience agregando el primer empleado al sistema</p>
             <Button 
               data-testid="button-add-first-employee"
               onClick={() => setIsFormOpen(true)}

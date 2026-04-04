@@ -82,7 +82,7 @@ export function FamilyMembersTab({ familyMembers, onEdit, onDelete }: FamilyMemb
       </CardHeader>
       <CardContent>
         {familyMembers.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
+          <div className="text-center py-8 text-muted-foreground">
             <Users className="mx-auto h-12 w-12 mb-3 opacity-50" />
             <p className="text-base mb-1">No hay cargas familiares registradas</p>
             <p className="text-sm">Agrega la primera carga familiar haciendo clic en el botón "Nueva Carga Familiar"</p>
@@ -98,7 +98,7 @@ export function FamilyMembersTab({ familyMembers, onEdit, onDelete }: FamilyMemb
                   <div className="flex flex-col h-full">
                     <div className="flex items-start justify-between mb-3">
                       <div>
-                        <h4 className="font-semibold text-gray-900 text-lg">
+                        <h4 className="font-semibold text-foreground text-lg">
                           {member.firstName} {member.lastName}
                         </h4>
                         {member.relationship && (
@@ -120,17 +120,17 @@ export function FamilyMembersTab({ familyMembers, onEdit, onDelete }: FamilyMemb
                           size="sm"
                           variant="outline"
                           onClick={() => onDelete(member.burdenId)} // ✅ Cambiado a burdenId
-                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     </div>
 
-                    <div className="space-y-2 text-sm text-gray-600 flex-1">
+                    <div className="space-y-2 text-sm text-muted-foreground flex-1">
                       {member.identificationTypeId && member.dependentId && (
                         <div className="flex items-center gap-2">
-                          <IdCard className="h-4 w-4 text-gray-400" />
+                          <IdCard className="h-4 w-4 text-muted-foreground/70" />
                           <span>
                             <strong>{getIdentificationTypeLabel(member.identificationTypeId)}:</strong> {member.dependentId}
                           </span>
@@ -139,10 +139,10 @@ export function FamilyMembersTab({ familyMembers, onEdit, onDelete }: FamilyMemb
 
                       {member.birthDate && (
                         <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-gray-400" />
+                          <Calendar className="h-4 w-4 text-muted-foreground/70" />
                           <span>
                             <strong>Nacimiento:</strong> {formatDate(member.birthDate)} 
-                            <span className="text-gray-500 ml-1">
+                            <span className="text-muted-foreground ml-1">
                               ({calculateAge(member.birthDate)} años)
                             </span>
                           </span>
@@ -155,7 +155,7 @@ export function FamilyMembersTab({ familyMembers, onEdit, onDelete }: FamilyMemb
                             Discapacidad
                           </Badge>
                           {member.disabilityTypeId && (
-                            <span className="text-xs text-gray-500">
+                            <span className="text-xs text-muted-foreground">
                               {getDisabilityTypeLabel(member.disabilityTypeId)}
                               {member.disabilityPercentage && ` (${member.disabilityPercentage}%)`}
                             </span>
@@ -169,7 +169,7 @@ export function FamilyMembersTab({ familyMembers, onEdit, onDelete }: FamilyMemb
                             Estudiante
                           </Badge>
                           {member.educationInstitution && (
-                            <span className="text-xs text-gray-500 truncate">
+                            <span className="text-xs text-muted-foreground truncate">
                               {member.educationInstitution}
                             </span>
                           )}

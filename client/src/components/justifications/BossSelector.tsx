@@ -32,11 +32,11 @@ export default function BossSelector({ employees, isLoading, query, onQuery, sel
       <Label>Seleccionar Jefe Inmediato *</Label>
       <div className="border rounded-md p-3">
         {selected ? (
-          <div className="flex items-center justify-between p-2 bg-blue-50 rounded">
+          <div className="flex items-center justify-between p-2 bg-primary/10 rounded">
             <div>
               <p className="font-medium">{selected.firstName} {selected.lastName}</p>
-              <p className="text-sm text-gray-600">{selected.department}</p>
-              <p className="text-xs text-gray-500">ID: {selected.employeeId}</p>
+              <p className="text-sm text-muted-foreground">{selected.department}</p>
+              <p className="text-xs text-muted-foreground">ID: {selected.employeeId}</p>
             </div>
             <Button type="button" variant="ghost" size="sm" onClick={() => onSelect(null)}>
               Cambiar
@@ -45,7 +45,7 @@ export default function BossSelector({ employees, isLoading, query, onQuery, sel
         ) : (
           <>
             <div className="relative mb-3">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar por nombre o departamento..."
                 className="pl-8"
@@ -60,13 +60,13 @@ export default function BossSelector({ employees, isLoading, query, onQuery, sel
                 filtered.map((employee) => (
                   <div
                     key={employee.employeeId}
-                    className="flex items-center justify-between p-2 hover:bg-gray-100 rounded cursor-pointer"
+                    className="flex items-center justify-between p-2 hover:bg-muted rounded cursor-pointer"
                     onClick={() => onSelect(employee)}
                   >
                     <div>
                       <p className="font-medium">{employee.firstName} {employee.lastName}</p>
-                      <p className="text-sm text-gray-600">{employee.department}</p>
-                      <p className="text-xs text-gray-500">ID: {employee.employeeId}</p>
+                      <p className="text-sm text-muted-foreground">{employee.department}</p>
+                      <p className="text-xs text-muted-foreground">ID: {employee.employeeId}</p>
                     </div>
                     <Button variant="ghost" size="sm">Seleccionar</Button>
                   </div>

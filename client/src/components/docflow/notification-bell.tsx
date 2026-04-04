@@ -12,14 +12,14 @@ import type { DocflowNotification } from "@/types/docflow/docflow.types";
 function NotificationIcon({ type }: { type: DocflowNotification["type"] }) {
   if (type === "RETURN") {
     return (
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-red-100 dark:bg-red-900/30">
-        <RotateCcw className="h-4 w-4 text-red-600 dark:text-red-400" />
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-destructive/15">
+        <RotateCcw className="h-4 w-4 text-destructive dark:text-destructive/80" />
       </div>
     );
   }
   return (
-    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-yellow-100 dark:bg-yellow-900/30">
-      <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-warning/15 dark:bg-yellow-900/30">
+      <AlertTriangle className="h-4 w-4 text-warning dark:text-warning/80" />
     </div>
   );
 }

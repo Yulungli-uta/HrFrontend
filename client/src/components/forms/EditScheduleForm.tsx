@@ -150,22 +150,22 @@ export default function AssignScheduleForm({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Información del empleado */}
-          <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+          <div className="grid grid-cols-2 gap-4 p-4 bg-background rounded-lg">
             <div>
               <Label className="text-sm font-medium">Empleado</Label>
-              <div className="text-sm text-gray-600 mt-1">{employee?.fullName}</div>
+              <div className="text-sm text-muted-foreground mt-1">{employee?.fullName}</div>
             </div>
             <div>
               <Label className="text-sm font-medium">Departamento</Label>
-              <div className="text-sm text-gray-600 mt-1">{employee?.departmentName || "—"}</div>
+              <div className="text-sm text-muted-foreground mt-1">{employee?.departmentName || "—"}</div>
             </div>
             <div>
               <Label className="text-sm font-medium">Email</Label>
-              <div className="text-sm text-gray-600 mt-1">{employee?.email || "—"}</div>
+              <div className="text-sm text-muted-foreground mt-1">{employee?.email || "—"}</div>
             </div>
             <div>
               <Label className="text-sm font-medium">Tipo</Label>
-              <div className="text-sm text-gray-600 mt-1">{employee?.employeeType || "—"}</div>
+              <div className="text-sm text-muted-foreground mt-1">{employee?.employeeType || "—"}</div>
             </div>
           </div>
 
@@ -193,22 +193,22 @@ export default function AssignScheduleForm({
 
           {/* Detalles del horario seleccionado */}
           {selectedSchedule && (
-            <div className="p-3 bg-blue-50 rounded-lg">
+            <div className="p-3 bg-primary/10 rounded-lg">
               <h4 className="font-medium text-sm mb-2">Detalles del Horario:</h4>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>
-                  <span className="text-gray-600">Nombre:</span>
+                  <span className="text-muted-foreground">Nombre:</span>
                   <div className="font-medium">{selectedSchedule.name}</div>
                 </div>
                 <div>
-                  <span className="text-gray-600">Horario:</span>
+                  <span className="text-muted-foreground">Horario:</span>
                   <div className="font-medium">
                     {fmtTime(selectedSchedule.startTime)} - {fmtTime(selectedSchedule.endTime)}
                   </div>
                 </div>
                 {selectedSchedule.description && (
                   <div className="col-span-2">
-                    <span className="text-gray-600">Descripción:</span>
+                    <span className="text-muted-foreground">Descripción:</span>
                     <div className="font-medium">{selectedSchedule.description}</div>
                   </div>
                 )}
@@ -237,18 +237,18 @@ export default function AssignScheduleForm({
                 onChange={(e) => setFormData(f => ({ ...f, validTo: e.target.value }))}
                 min={formData.validFrom}
               />
-              <p className="text-xs text-gray-500">Deje en 31/12/9999 para horario permanente</p>
+              <p className="text-xs text-muted-foreground">Deje en 31/12/9999 para horario permanente</p>
             </div>
           </div>
 
           {/* Campos de auditoría (solo lectura) */}
-          <div className="grid grid-cols-2 gap-4 p-3 bg-gray-50 rounded-lg">
+          <div className="grid grid-cols-2 gap-4 p-3 bg-background rounded-lg">
             <div>
-              <Label className="text-xs text-gray-500">Creado Por</Label>
+              <Label className="text-xs text-muted-foreground">Creado Por</Label>
               <div className="text-sm">{employeeDetails?.fullName || "—"}</div>
             </div>
             <div>
-              <Label className="text-xs text-gray-500">Fecha de Creación</Label>
+              <Label className="text-xs text-muted-foreground">Fecha de Creación</Label>
               <div className="text-sm">{new Date().toLocaleDateString('es-ES')}</div>
             </div>
           </div>

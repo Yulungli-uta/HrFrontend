@@ -400,7 +400,7 @@ export default function TrainingForm({
                   </Select>
                   <FormMessage />
                   {eventTypesError && (
-                    <p className="text-xs text-red-500 mt-1">
+                    <p className="text-xs text-destructive mt-1">
                       No se pudieron cargar los tipos de evento.
                     </p>
                   )}
@@ -441,7 +441,7 @@ export default function TrainingForm({
                   </Select>
                   <FormMessage />
                   {certTypesError && (
-                    <p className="text-xs text-red-500 mt-1">
+                    <p className="text-xs text-destructive mt-1">
                       No se pudieron cargar los tipos de certificación.
                     </p>
                   )}
@@ -482,7 +482,7 @@ export default function TrainingForm({
                   </Select>
                   <FormMessage />
                   {approvalTypesError && (
-                    <p className="text-xs text-red-500 mt-1">
+                    <p className="text-xs text-destructive mt-1">
                       No se pudieron cargar los tipos de aprobación.
                     </p>
                   )}
@@ -595,7 +595,7 @@ export default function TrainingForm({
                   </Select>
                   <FormMessage />
                   {knowledgeAreasError && (
-                    <p className="text-xs text-red-500 mt-1">
+                    <p className="text-xs text-destructive mt-1">
                       No se pudieron cargar las áreas de conocimiento.
                     </p>
                   )}

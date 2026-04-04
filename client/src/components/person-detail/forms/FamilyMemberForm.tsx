@@ -285,7 +285,7 @@ export default function FamilyMemberForm({
                           onChange={(e) => field.onChange(Number(e.target.value))}
                           data-testid="input-disability-percentage"
                         />
-                        <span className="text-sm text-gray-500">%</span>
+                        <span className="text-sm text-muted-foreground">%</span>
                       </div>
                     </FormControl>
                     <FormMessage />

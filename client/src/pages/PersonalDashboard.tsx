@@ -84,16 +84,16 @@ const normalizeJustStatus = (s: any): JustStatus => {
 };
 
 const statusChip: Record<string, { label: string; className: string; Icon: any }> = {
-  Pending: { label: "Pendiente", className: "bg-yellow-100 text-yellow-800", Icon: Clock },
-  Approved: { label: "Aprobado", className: "bg-green-100 text-green-800", Icon: CheckCircle },
-  Rejected: { label: "Rechazado", className: "bg-red-100 text-red-800", Icon: XCircle },
-  Planned: { label: "Planeado", className: "bg-yellow-100 text-yellow-800", Icon: Clock },
-  InProgress: { label: "En Proceso", className: "bg-blue-100 text-blue-800", Icon: AlertCircle },
-  Completed: { label: "Completado", className: "bg-green-100 text-green-800", Icon: CheckCircle },
-  Canceled: { label: "Cancelado", className: "bg-red-100 text-red-800", Icon: XCircle },
-  PENDING: { label: "Pendiente", className: "bg-yellow-100 text-yellow-800", Icon: Clock },
-  APPROVED: { label: "Aprobada", className: "bg-green-100 text-green-800", Icon: CheckCircle },
-  REJECTED: { label: "Rechazada", className: "bg-red-100 text-red-800", Icon: XCircle },
+  Pending: { label: "Pendiente", className: "bg-warning/15 text-warning", Icon: Clock },
+  Approved: { label: "Aprobado", className: "bg-success/15 text-success", Icon: CheckCircle },
+  Rejected: { label: "Rechazado", className: "bg-destructive/15 text-destructive", Icon: XCircle },
+  Planned: { label: "Planeado", className: "bg-warning/15 text-warning", Icon: Clock },
+  InProgress: { label: "En Proceso", className: "bg-primary/15 text-primary", Icon: AlertCircle },
+  Completed: { label: "Completado", className: "bg-success/15 text-success", Icon: CheckCircle },
+  Canceled: { label: "Cancelado", className: "bg-destructive/15 text-destructive", Icon: XCircle },
+  PENDING: { label: "Pendiente", className: "bg-warning/15 text-warning", Icon: Clock },
+  APPROVED: { label: "Aprobada", className: "bg-success/15 text-success", Icon: CheckCircle },
+  REJECTED: { label: "Rechazada", className: "bg-destructive/15 text-destructive", Icon: XCircle },
 };
 
 /* ----------------- tipos minimales ----------------- */
@@ -343,12 +343,12 @@ export default function PersonalDashboard() {
       </header>
 
       {errorMsg && (
-        <Card className="border-red-200 bg-red-50">
+        <Card className="border-destructive/30 bg-destructive/10">
           <CardHeader>
-            <CardTitle className="text-red-800 flex items-center gap-2">
+            <CardTitle className="text-destructive flex items-center gap-2">
               <AlertCircle className="h-5 w-5" /> Problema al cargar datos
             </CardTitle>
-            <CardDescription className="text-red-700">{errorMsg}</CardDescription>
+            <CardDescription className="text-destructive">{errorMsg}</CardDescription>
           </CardHeader>
         </Card>
       )}
@@ -362,8 +362,8 @@ export default function PersonalDashboard() {
                 <p className="text-xs text-muted-foreground">Permisos pendientes</p>
                 <p className="text-3xl font-semibold mt-1">{kpiPermPending}</p>
               </div>
-              <div className="w-12 h-12 rounded-lg bg-yellow-100 flex items-center justify-center">
-                <CalendarCheck className="text-yellow-700" />
+              <div className="w-12 h-12 rounded-lg bg-warning/15 flex items-center justify-center">
+                <CalendarCheck className="text-warning" />
               </div>
             </div>
           </CardContent>
@@ -376,8 +376,8 @@ export default function PersonalDashboard() {
                 <p className="text-xs text-muted-foreground">Vacaciones en proceso</p>
                 <p className="text-3xl font-semibold mt-1">{kpiVacInProgress}</p>
               </div>
-              <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center">
-                <Sun className="text-blue-700" />
+              <div className="w-12 h-12 rounded-lg bg-primary/15 flex items-center justify-center">
+                <Sun className="text-primary" />
               </div>
             </div>
           </CardContent>
@@ -390,8 +390,8 @@ export default function PersonalDashboard() {
                 <p className="text-xs text-muted-foreground">Justificaciones pendientes</p>
                 <p className="text-3xl font-semibold mt-1">{kpiJustPending}</p>
               </div>
-              <div className="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center">
-                <ClipboardCheck className="text-purple-700" />
+              <div className="w-12 h-12 rounded-lg bg-accent flex items-center justify-center">
+                <ClipboardCheck className="text-accent-foreground" />
               </div>
             </div>
           </CardContent>
@@ -404,8 +404,8 @@ export default function PersonalDashboard() {
                 <p className="text-xs text-muted-foreground">Marcaciones de hoy</p>
                 <p className="text-3xl font-semibold mt-1">{kpiTodayPunches}</p>
               </div>
-              <div className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center">
-                <Timer className="text-green-700" />
+              <div className="w-12 h-12 rounded-lg bg-success/15 flex items-center justify-center">
+                <Timer className="text-success" />
               </div>
             </div>
           </CardContent>

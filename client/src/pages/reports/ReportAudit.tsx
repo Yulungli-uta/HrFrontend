@@ -154,7 +154,7 @@ export function ReportAudit() {
             <CardTitle className="text-sm font-medium">Reportes Exitosos</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
+            <div className="text-2xl font-bold text-success">
               {audits.filter(a => a.success).length}
             </div>
           </CardContent>
@@ -165,7 +165,7 @@ export function ReportAudit() {
             <CardTitle className="text-sm font-medium">Reportes con Error</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">
+            <div className="text-2xl font-bold text-destructive">
               {audits.filter(a => !a.success).length}
             </div>
           </CardContent>

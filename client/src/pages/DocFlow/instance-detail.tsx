@@ -117,7 +117,7 @@ function VisibilityBadge({ visibility, deptName }: { visibility: import("@/types
           variant="outline"
           className={`text-xs gap-1 ${
             isPublic
-              ? "border-green-300 text-green-700 dark:border-green-700 dark:text-green-400"
+              ? "border-success/40 text-success dark:border-success/60 dark:text-success/80"
               : "border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400"
           }`}
           data-testid={`badge-visibility-${isPublic ? "public" : "private"}`}
@@ -256,7 +256,7 @@ function DocumentsTab({ instanceId, processId, service, permissions }: { instanc
             </CardTitle>
             <div className="flex items-center gap-2">
               {allMandatoryDone ? (
-                <Badge className="bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700" data-testid="badge-mandatory-status">
+                <Badge className="bg-success/15 text-success border-success/40 dark:text-success/80 dark:border-success/60" data-testid="badge-mandatory-status">
                   <CheckCircle2 className="h-3 w-3 mr-1" />
                   Obligatorios completos
                 </Badge>
@@ -278,10 +278,10 @@ function DocumentsTab({ instanceId, processId, service, permissions }: { instanc
                 <div
                   className={`h-full rounded-full transition-all duration-500 ${
                     progressPercent === 100
-                      ? "bg-green-500 dark:bg-green-400"
+                      ? "bg-success"
                       : progressPercent >= 50
                         ? "bg-amber-500 dark:bg-amber-400"
-                        : "bg-red-500 dark:bg-red-400"
+                        : "bg-destructive"
                   }`}
                   style={{ width: `${progressPercent}%` }}
                 />
@@ -331,8 +331,8 @@ function DocumentsTab({ instanceId, processId, service, permissions }: { instanc
                           {groupComplete}/{groupTotal}
                           {groupMandatory.length > 0 && (
                             <span className={groupMandatoryDone === groupMandatory.length
-                              ? " text-green-600 dark:text-green-400"
-                              : " text-red-600 dark:text-red-400"
+                              ? " text-success dark:text-success/80"
+                              : " text-destructive dark:text-destructive/80"
                             }>
                               {" "}({groupMandatoryDone}/{groupMandatory.length} oblig.)
                             </span>
@@ -349,9 +349,9 @@ function DocumentsTab({ instanceId, processId, service, permissions }: { instanc
                             key={rule.ruleId}
                             className={`group/rule relative rounded-lg border transition-colors ${
                               isComplete
-                                ? "border-green-200 bg-green-50/50 dark:border-green-800/40 dark:bg-green-950/20"
+                                ? "border-success/30 bg-success/10/50"
                                 : rule.isMandatory
-                                  ? "border-red-200 bg-red-50/50 dark:border-red-800/40 dark:bg-red-950/20"
+                                  ? "border-destructive/30 bg-destructive/10/50 dark:border-red-800/40"
                                   : "border-amber-200 bg-amber-50/50 dark:border-amber-800/40 dark:bg-amber-950/20"
                             }`}
                             data-testid={`rule-completion-${rule.ruleId}`}
@@ -359,15 +359,15 @@ function DocumentsTab({ instanceId, processId, service, permissions }: { instanc
                             <div className="flex items-start gap-3 p-3">
                               <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full mt-0.5 ${
                                 isComplete
-                                  ? "bg-green-500 dark:bg-green-500"
+                                  ? "bg-success dark:bg-success"
                                   : rule.isMandatory
-                                    ? "bg-red-100 dark:bg-red-900/40 border-2 border-red-300 dark:border-red-600"
+                                    ? "bg-destructive/15 dark:bg-red-900/40 border-2 border-destructive/40"
                                     : "bg-amber-100 dark:bg-amber-900/40 border-2 border-amber-300 dark:border-amber-600"
                               }`}>
                                 {isComplete ? (
                                   <CheckCircle2 className="h-4 w-4 text-white" />
                                 ) : rule.isMandatory ? (
-                                  <AlertCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
+                                  <AlertCircle className="h-3.5 w-3.5 text-destructive dark:text-destructive/80" />
                                 ) : (
                                   <Circle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
                                 )}
@@ -375,15 +375,15 @@ function DocumentsTab({ instanceId, processId, service, permissions }: { instanc
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <span className={`text-sm font-medium ${
-                                    isComplete ? "text-green-800 dark:text-green-300" : ""
+                                    isComplete ? "text-success" : ""
                                   }`}>
                                     {rule.docTypeName}
                                   </span>
                                   {rule.isMandatory ? (
                                     <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-4 font-semibold ${
                                       isComplete
-                                        ? "border-green-300 text-green-700 dark:border-green-700 dark:text-green-400"
-                                        : "border-red-300 text-red-700 dark:border-red-700 dark:text-red-400"
+                                        ? "border-success/40 text-success dark:border-success/60 dark:text-success/80"
+                                        : "border-destructive/40 text-destructive dark:border-destructive/60 dark:text-destructive/80"
                                     }`}>
                                       Obligatorio
                                     </Badge>
@@ -393,7 +393,7 @@ function DocumentsTab({ instanceId, processId, service, permissions }: { instanc
                                     </Badge>
                                   )}
                                   {!group.isCurrentProcess && isComplete && (
-                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-blue-300 text-blue-600 dark:border-blue-700 dark:text-blue-400">
+                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-blue-300 text-primary dark:border-blue-700 dark:text-primary/70">
                                       Otro subproceso
                                     </Badge>
                                   )}
@@ -437,7 +437,7 @@ function DocumentsTab({ instanceId, processId, service, permissions }: { instanc
                                   return (
                                   <div
                                     key={doc.documentId}
-                                    className="group/doc flex items-start gap-3 p-2 rounded-md hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                                    className="group/doc flex items-start gap-3 p-2 rounded-md hover:bg-black/5 dark:hover:bg-card/5 transition-colors"
                                     data-testid={`card-document-${doc.documentId}`}
                                   >
                                     <DocumentThumbnail
@@ -527,7 +527,7 @@ function DocumentsTab({ instanceId, processId, service, permissions }: { instanc
                             {!isComplete && uploaded === 0 && (
                               <div className="px-3 pb-3 ml-10">
                                 <p className={`text-xs flex items-center gap-1 ${
-                                  rule.isMandatory ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400"
+                                  rule.isMandatory ? "text-destructive dark:text-destructive/80" : "text-amber-600 dark:text-amber-400"
                                 }`}>
                                   <Upload className="h-3 w-3" />
                                   Pendiente de carga
@@ -656,13 +656,13 @@ function TimelineTab({ instanceId, service }: { instanceId: string | number; ser
           >
             <div className={`relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 ${
               mov.movementType === "RETURN"
-                ? "border-red-300 bg-red-100 dark:border-red-700 dark:bg-red-900/30"
+                ? "border-destructive/40 bg-destructive/15 dark:border-destructive/60"
                 : idx === movements.length - 1
                 ? "border-primary bg-primary/10"
                 : "border-border bg-card"
             }`}>
               {mov.movementType === "RETURN" ? (
-                <RotateCcw className="h-4 w-4 text-red-600 dark:text-red-400" />
+                <RotateCcw className="h-4 w-4 text-destructive dark:text-destructive/80" />
               ) : (
                 <ArrowRightLeft className="h-4 w-4 text-primary" />
               )}
@@ -732,14 +732,14 @@ function MandatoryBlockingAlert({ instance, service }: { instance: WorkflowInsta
   if (pendingMandatory.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-2 p-4 rounded-md bg-red-50 border border-red-200 dark:bg-red-900/20 dark:border-red-800" data-testid="alert-mandatory-blocking">
+    <div className="flex flex-col gap-2 p-4 rounded-md bg-destructive/10 border border-destructive/30 dark:bg-red-900/20 dark:border-red-800" data-testid="alert-mandatory-blocking">
       <div className="flex items-center gap-2">
-        <ShieldAlert className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0" />
-        <p className="text-sm font-medium text-red-700 dark:text-red-300">
+        <ShieldAlert className="h-5 w-5 text-destructive dark:text-destructive/80 shrink-0" />
+        <p className="text-sm font-medium text-destructive dark:text-red-300">
           No es posible avanzar el expediente
         </p>
       </div>
-      <p className="text-xs text-red-600 dark:text-red-400 ml-7">
+      <p className="text-xs text-destructive dark:text-destructive/80 ml-7">
         Los siguientes documentos obligatorios estan pendientes de carga:
       </p>
       <ul className="ml-7 flex flex-col gap-1.5 mt-1">
@@ -747,14 +747,14 @@ function MandatoryBlockingAlert({ instance, service }: { instance: WorkflowInsta
           const group = groupedCompletion.find(g => g.rules.some(r => r.rule.ruleId === rule.ruleId));
           return (
             <li key={rule.ruleId} className="flex items-center gap-2 text-xs" data-testid={`pending-mandatory-${rule.ruleId}`}>
-              <AlertCircle className="h-3.5 w-3.5 text-red-500 dark:text-red-400 shrink-0" />
-              <span className="text-red-700 dark:text-red-300 font-medium">{rule.docTypeName}</span>
+              <AlertCircle className="h-3.5 w-3.5 text-destructive dark:text-destructive/80 shrink-0" />
+              <span className="text-destructive dark:text-red-300 font-medium">{rule.docTypeName}</span>
               {group && !group.isCurrentProcess && (
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-red-300 text-red-600 dark:border-red-700 dark:text-red-400">
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-destructive/40 text-destructive dark:border-destructive/60 dark:text-destructive/80">
                   {group.processName}
                 </Badge>
               )}
-              <span className="text-red-500 dark:text-red-400">
+              <span className="text-destructive dark:text-destructive/80">
                 ({uploaded}/{rule.minFiles} archivos)
               </span>
             </li>

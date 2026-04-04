@@ -9,7 +9,7 @@ export function CertificationSearch(props: {
   return (
     <div className="mb-6">
       <div className="relative">
-        <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
+        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="Buscar certificación por código, número, presupuesto o estado..."
           className="pl-10"

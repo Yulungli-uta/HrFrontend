@@ -75,7 +75,7 @@ export default function RoleForm({ role, onSuccess, onCancel }: RoleFormProps) {
         {/* Nombre */}
         <div className="space-y-2">
           <Label htmlFor="name">
-            Nombre <span className="text-red-500">*</span>
+            Nombre <span className="text-destructive">*</span>
           </Label>
           <Input
             id="name"
@@ -90,10 +90,10 @@ export default function RoleForm({ role, onSuccess, onCancel }: RoleFormProps) {
             placeholder="Administrador, Usuario, etc."
           />
           {errors.name && (
-            <p className="text-sm text-red-600">{errors.name.message}</p>
+            <p className="text-sm text-destructive">{errors.name.message}</p>
           )}
           {isEditing && (
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-muted-foreground">
               El nombre del rol no puede ser modificado
             </p>
           )}
@@ -113,7 +113,7 @@ export default function RoleForm({ role, onSuccess, onCancel }: RoleFormProps) {
         {/* Prioridad */}
         <div className="space-y-2">
           <Label htmlFor="priority">
-            Prioridad <span className="text-red-500">*</span>
+            Prioridad <span className="text-destructive">*</span>
           </Label>
           <Input
             id="priority"
@@ -129,9 +129,9 @@ export default function RoleForm({ role, onSuccess, onCancel }: RoleFormProps) {
             placeholder="100"
           />
           {errors.priority && (
-            <p className="text-sm text-red-600">{errors.priority.message}</p>
+            <p className="text-sm text-destructive">{errors.priority.message}</p>
           )}
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted-foreground">
             Los roles con menor número tienen mayor prioridad (1 es la más alta)
           </p>
         </div>
@@ -143,7 +143,7 @@ export default function RoleForm({ role, onSuccess, onCancel }: RoleFormProps) {
               type="checkbox"
               id="isActive"
               {...register("isActive")}
-              className="h-4 w-4 rounded border-gray-300"
+              className="h-4 w-4 rounded border-border"
             />
             <Label htmlFor="isActive" className="cursor-pointer">
               Rol activo
@@ -152,8 +152,8 @@ export default function RoleForm({ role, onSuccess, onCancel }: RoleFormProps) {
         )}
 
         {/* Información adicional */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-sm text-blue-800">
+        <div className="bg-primary/10 border border-primary/30 rounded-lg p-4">
+          <p className="text-sm text-primary">
             <strong>Nota:</strong> Los roles se utilizan para agrupar permisos y
             asignarlos a usuarios. Un usuario puede tener múltiples roles
             simultáneamente.
@@ -174,7 +174,7 @@ export default function RoleForm({ role, onSuccess, onCancel }: RoleFormProps) {
         <Button
           type="submit"
           disabled={isLoading}
-          className="bg-blue-600 hover:bg-blue-700"
+          className="bg-primary hover:bg-primary/90"
         >
           {isLoading
             ? "Guardando..."

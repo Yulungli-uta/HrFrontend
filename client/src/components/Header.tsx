@@ -1,12 +1,15 @@
+// components/Header.tsx
+// Diseño UX profesional con soporte completo dark/light mode.
+// Principio: NUNCA usar colores hardcodeados. Usar siempre variables semánticas del tema.
 import { Button } from "@/components/ui/button";
-import { LogOut, User, Menu, UserCog } from "lucide-react";
+import { LogOut, User, Menu, UserCog, ChevronDown } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
 import { useLocation } from "wouter";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -48,68 +51,110 @@ export default function Header({
   const displayName =
     currentUserName && currentUserName.trim() !== ""
       ? currentUserName
-      : "Cargando...";
+      : "Mi cuenta";
+
+  /* Iniciales para el avatar */
+  const initials = displayName
+    .split(" ")
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("");
 
   return (
-    <header className="border-b bg-white dark:bg-gray-800 px-4 sm:px-6 py-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
+    <header className="header-base sticky top-0 z-30 px-4 sm:px-6 h-14 flex items-center">
+      <div className="flex items-center justify-between w-full gap-4">
+
+        {/* ── Izquierda: toggle sidebar ── */}
+        <div className="flex items-center gap-2">
           {onToggleSidebar && (
             <Button
               variant="ghost"
-              size="sm"
+              size="icon"
               onClick={onToggleSidebar}
-              className="text-gray-600 hover:text-gray-900"
+              className="h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-accent
+                         transition-all duration-200 rounded-lg"
               data-testid="sidebar-toggle-button"
-              aria-label={sidebarCollapsed ? "Abrir menú" : "Colapsar menú"}
-              title={sidebarCollapsed ? "Abrir menú" : "Colapsar menú"}
+              aria-label={sidebarCollapsed ? "Expandir menú" : "Colapsar menú"}
+              title={sidebarCollapsed ? "Expandir menú" : "Colapsar menú"}
             >
               <Menu className="h-5 w-5" />
             </Button>
           )}
         </div>
 
-        {/* MENU USUARIO & TEMA */}
-        <div className="flex items-center space-x-2 sm:space-x-4">
+        {/* ── Derecha: tema + usuario ── */}
+        <div className="flex items-center gap-1 sm:gap-2">
+
+          {/* Toggle de tema */}
           <ThemeToggle />
+
+          {/* Separador visual */}
+          <div className="hidden sm:block w-px h-5 bg-border mx-1" />
+
+          {/* Menú de usuario */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                size="sm"
-                className="flex items-center space-x-2"
+                className="flex items-center gap-2 h-9 px-2 rounded-lg
+                           text-foreground hover:bg-accent hover:text-accent-foreground
+                           transition-all duration-200 focus-visible:ring-2 focus-visible:ring-ring"
                 data-testid="user-menu-trigger"
+                aria-label="Menú de usuario"
               >
+                {/* Avatar con iniciales */}
                 <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center"
-                  style={{ backgroundColor: "#265792" }}
+                  className="w-7 h-7 rounded-full bg-primary flex items-center justify-center
+                              text-primary-foreground text-[10px] font-bold shrink-0 select-none"
                 >
-                  <User className="h-4 w-4 text-white" />
+                  {initials || <User className="h-3.5 w-3.5" />}
                 </div>
 
-                <span className="text-sm font-medium truncate max-w-[140px]">
+                {/* Nombre (oculto en móvil) */}
+                <span className="hidden sm:block text-sm font-medium truncate max-w-[130px]">
                   {displayName}
                 </span>
+
+                <ChevronDown className="hidden sm:block h-3.5 w-3.5 text-muted-foreground shrink-0" />
               </Button>
             </DropdownMenuTrigger>
 
-            <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuContent
+              align="end"
+              sideOffset={8}
+              className="w-52 bg-popover text-popover-foreground border border-border
+                         shadow-lg rounded-xl p-1 animate-fade-in"
+            >
+              {/* Info del usuario */}
+              <div className="px-3 py-2 border-b border-border mb-1">
+                <p className="text-xs font-semibold text-foreground truncate">{displayName}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Cuenta activa</p>
+              </div>
+
               <DropdownMenuItem
                 onClick={handleUpdateData}
-                className="text-gray-700 cursor-pointer"
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm
+                           text-foreground cursor-pointer
+                           hover:bg-accent hover:text-accent-foreground
+                           transition-colors duration-150"
                 data-testid="update-data-menu-item"
               >
-                <UserCog className="mr-2 h-4 w-4" />
-                Actualizar Datos
+                <UserCog className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span>Actualizar datos</span>
               </DropdownMenuItem>
+
+              <DropdownMenuSeparator className="bg-border my-1" />
 
               <DropdownMenuItem
                 onClick={onLogout}
-                className="text-red-600 cursor-pointer"
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm
+                           text-destructive cursor-pointer
+                           hover:bg-destructive/10 hover:text-destructive
+                           transition-colors duration-150"
                 data-testid="logout-menu-item"
               >
-                <LogOut className="mr-2 h-4 w-4" />
-                Cerrar Sesión
+                <LogOut className="h-4 w-4 shrink-0" />
+                <span>Cerrar sesión</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

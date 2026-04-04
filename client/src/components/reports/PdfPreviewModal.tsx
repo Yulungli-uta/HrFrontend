@@ -76,9 +76,9 @@ export function PdfPreviewModal({ isOpen, onClose, base64Data, reportName, onDow
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-auto bg-gray-100 rounded-md">
+        <div className="flex-1 overflow-auto bg-muted rounded-md">
           <div className="p-4 flex justify-center">
-            <div style={{ width: `${zoom}%`, transition: 'width 0.2s ease' }} className="bg-white rounded shadow-lg">
+            <div style={{ width: `${zoom}%`, transition: 'width 0.2s ease' }} className="bg-card rounded shadow-lg">
               {objectUrl ? (
                 <iframe
                   src={objectUrl}
