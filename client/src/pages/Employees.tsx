@@ -405,7 +405,7 @@ const employeeStats = useMemo(() => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
-        <Card className="border-0 shadow-md bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-950/50 dark:to-blue-900/30">
+        <Card className="border-0 shadow-md bg-primary/10 dark:bg-primary/15 dark:from-blue-950/50 dark:to-blue-900/30">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
             <CardTitle className="text-sm font-medium text-primary dark:text-primary/70">
               Total Empleados
@@ -420,7 +420,7 @@ const employeeStats = useMemo(() => {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-md bg-gradient-to-r from-green-50 to-green-100 dark:from-green-950/50 dark:to-green-900/30">
+        <Card className="border-0 shadow-md bg-success/10 dark:bg-success/15 dark:from-green-950/50 dark:to-green-900/30">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
             <CardTitle className="text-sm font-medium text-success">
               Activos
@@ -435,7 +435,7 @@ const employeeStats = useMemo(() => {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-md bg-gradient-to-r from-red-50 to-red-100 dark:from-red-950/50 dark:to-red-900/30">
+        <Card className="border-0 shadow-md bg-destructive/10 dark:bg-destructive/15 dark:from-red-950/50 dark:to-red-900/30">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
             <CardTitle className="text-sm font-medium text-destructive dark:text-red-300">
               Inactivos

@@ -294,7 +294,7 @@ export default function NewInstance() {
                 id="process"
                 value={selectedMacroProcess}
                 onChange={(e) => handleProcessChange(e.target.value)}
-                className={`flex h-9 w-full rounded-md border px-3 py-1 text-sm bg-background transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${
+                className={`flex h-9 w-full rounded-md border px-3 py-1 text-sm bg-background text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${
                   errors.process ? "border-destructive" : "border-input"
                 }`}
                 data-testid="select-process"

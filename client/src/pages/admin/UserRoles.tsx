@@ -441,7 +441,7 @@ export default function UserRolesPage() {
                   <select
                     value={filters.status}
                     onChange={(e) => setFilters((p) => ({ ...p, status: e.target.value as any }))}
-                    className="w-full border rounded-md px-3 py-2 text-sm"
+                    className="w-full border border-input rounded-md px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   >
                     <option value="all">Todos los estados</option>
                     <option value="active">Activos</option>
@@ -454,7 +454,7 @@ export default function UserRolesPage() {
                   <select
                     value={filters.userType}
                     onChange={(e) => setFilters((p) => ({ ...p, userType: e.target.value }))}
-                    className="w-full border rounded-md px-3 py-2 text-sm"
+                    className="w-full border border-input rounded-md px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   >
                     <option value="all">Todos los tipos</option>
                     <option value="Local">Local</option>
@@ -468,7 +468,7 @@ export default function UserRolesPage() {
                   <select
                     value={filters.hasRoles}
                     onChange={(e) => setFilters((p) => ({ ...p, hasRoles: e.target.value as any }))}
-                    className="w-full border rounded-md px-3 py-2 text-sm"
+                    className="w-full border border-input rounded-md px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   >
                     <option value="all">Todos los usuarios</option>
                     <option value="with-roles">Con roles asignados</option>
@@ -688,8 +688,8 @@ function StatCard({ title, value, icon, color, onClick }: any) {
   const colorClasses = {
     blue: "bg-primary/10 text-primary border-primary/30",
     green: "bg-success/10 text-success border-success/30",
-    purple: "bg-accent/50 text-purple-600 border-purple-200",
-    orange: "bg-secondary/10 text-secondary-foreground border-orange-200",
+    purple: "bg-accent/50 text-secondary-foreground border-secondary/30",
+    orange: "bg-secondary/10 text-secondary-foreground border-warning/30",
   };
 
   return (

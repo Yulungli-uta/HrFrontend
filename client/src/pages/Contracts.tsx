@@ -210,7 +210,7 @@ export default function ContractsPage() {
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-accent rounded-lg">
-                  <Calendar className="h-5 w-5 text-purple-600" />
+                  <Calendar className="h-5 w-5 text-secondary-foreground" />
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Mostrados</p>

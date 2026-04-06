@@ -118,7 +118,7 @@ function VisibilityBadge({ visibility, deptName }: { visibility: import("@/types
           className={`text-xs gap-1 ${
             isPublic
               ? "border-success/40 text-success dark:border-success/60 dark:text-success/80"
-              : "border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400"
+              : "border-amber-300 text-warning dark:border-amber-700 dark:text-amber-400"
           }`}
           data-testid={`badge-visibility-${isPublic ? "public" : "private"}`}
         >
@@ -352,7 +352,7 @@ function DocumentsTab({ instanceId, processId, service, permissions }: { instanc
                                 ? "border-success/30 bg-success/10/50"
                                 : rule.isMandatory
                                   ? "border-destructive/30 bg-destructive/10/50 dark:border-red-800/40"
-                                  : "border-amber-200 bg-amber-50/50 dark:border-amber-800/40 dark:bg-amber-950/20"
+                                  : "border-warning/30 bg-amber-50/50 dark:border-amber-800/40 dark:bg-amber-950/20"
                             }`}
                             data-testid={`rule-completion-${rule.ruleId}`}
                           >
@@ -369,7 +369,7 @@ function DocumentsTab({ instanceId, processId, service, permissions }: { instanc
                                 ) : rule.isMandatory ? (
                                   <AlertCircle className="h-3.5 w-3.5 text-destructive dark:text-destructive/80" />
                                 ) : (
-                                  <Circle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                                  <Circle className="h-3.5 w-3.5 text-warning dark:text-amber-400" />
                                 )}
                               </div>
                               <div className="flex-1 min-w-0">
@@ -462,7 +462,7 @@ function DocumentsTab({ instanceId, processId, service, permissions }: { instanc
                                           </Badge>
                                         )}
                                         {doc.visibility === "PRIVATE_TO_UPLOADER_DEPT" && doc.uploaderDeptName && (
-                                          <span className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0 rounded bg-amber-100/80 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" data-testid={`text-dept-doc-${doc.documentId}`}>
+                                          <span className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0 rounded bg-amber-100/80 text-warning dark:bg-amber-900/30 dark:text-amber-400" data-testid={`text-dept-doc-${doc.documentId}`}>
                                             <Building2 className="h-2.5 w-2.5" />
                                             Solo {doc.uploaderDeptName}
                                           </span>
@@ -527,7 +527,7 @@ function DocumentsTab({ instanceId, processId, service, permissions }: { instanc
                             {!isComplete && uploaded === 0 && (
                               <div className="px-3 pb-3 ml-10">
                                 <p className={`text-xs flex items-center gap-1 ${
-                                  rule.isMandatory ? "text-destructive dark:text-destructive/80" : "text-amber-600 dark:text-amber-400"
+                                  rule.isMandatory ? "text-destructive dark:text-destructive/80" : "text-warning dark:text-amber-400"
                                 }`}>
                                   <Upload className="h-3 w-3" />
                                   Pendiente de carga
@@ -539,7 +539,7 @@ function DocumentsTab({ instanceId, processId, service, permissions }: { instanc
                             )}
                             {!isComplete && uploaded > 0 && (
                               <div className="px-3 pb-3 ml-10">
-                                <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                                <p className="text-xs text-warning dark:text-amber-400 flex items-center gap-1">
                                   <Upload className="h-3 w-3" />
                                   Faltan {rule.minFiles - uploaded} archivo{(rule.minFiles - uploaded) !== 1 ? "s" : ""}
                                 </p>
@@ -824,9 +824,9 @@ function ActionsTab({ instance, service, permissions }: { instance: WorkflowInst
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {!hasAnyPermission && permissions.reason && (
-            <div className="flex items-center gap-2 p-3 rounded-md bg-amber-50 border border-amber-200 dark:bg-amber-900/20 dark:border-amber-800" role="status" data-testid="warning-no-permissions">
-              <ShieldAlert className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
-              <p className="text-sm text-amber-700 dark:text-amber-300">{permissions.reason}</p>
+            <div className="flex items-center gap-2 p-3 rounded-md bg-amber-50 border border-warning/30 dark:bg-amber-900/20 dark:border-amber-800" role="status" data-testid="warning-no-permissions">
+              <ShieldAlert className="h-4 w-4 text-warning dark:text-amber-400 shrink-0" />
+              <p className="text-sm text-warning dark:text-amber-300">{permissions.reason}</p>
             </div>
           )}
 

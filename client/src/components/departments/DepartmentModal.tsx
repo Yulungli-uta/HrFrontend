@@ -300,13 +300,13 @@ export const DepartmentModal = ({
             isConcurrencyError 
               ? "bg-primary/10 border-primary/30" 
               : isValidationError
-              ? "bg-amber-50 border-amber-200"
+              ? "bg-amber-50 border-warning/30"
               : "bg-destructive/10 border-destructive/30"
           }`}>
             <div className="flex items-start gap-3">
               <AlertCircle className={`h-5 w-5 mt-0.5 ${
                 isConcurrencyError ? "text-primary" : 
-                isValidationError ? "text-amber-600" : 
+                isValidationError ? "text-warning" : 
                 "text-destructive"
               }`} />
               <div className="flex-1">
@@ -321,7 +321,7 @@ export const DepartmentModal = ({
                 </p>
                 <p className={`text-sm mt-1 ${
                   isConcurrencyError ? "text-primary" : 
-                  isValidationError ? "text-amber-700" : 
+                  isValidationError ? "text-warning" : 
                   "text-destructive"
                 }`}>
                   {localError || error}
@@ -329,7 +329,7 @@ export const DepartmentModal = ({
                 
                 {isValidationError && (
                   <div className="mt-2">
-                    <p className="text-xs text-amber-600">
+                    <p className="text-xs text-warning">
                       Verifique que todos los campos estén completos y en el formato correcto.
                     </p>
                   </div>

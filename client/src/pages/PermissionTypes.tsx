@@ -583,12 +583,12 @@ export default function PermissionTypesPage() {
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="pb-3">
             <CardTitle className="text-base md:text-lg flex items-center">
-              <HeartPulse className="mr-2 h-5 w-5 text-rose-600" />
+              <HeartPulse className="mr-2 h-5 w-5 text-destructive" />
               Médicos
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-rose-700">{stats.medicalYes}</div>
+            <div className="text-2xl font-bold text-destructive">{stats.medicalYes}</div>
             <p className="text-sm text-muted-foreground">tipos médicos</p>
           </CardContent>
         </Card>
@@ -596,12 +596,12 @@ export default function PermissionTypesPage() {
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="pb-3">
             <CardTitle className="text-base md:text-lg flex items-center">
-              <Power className="mr-2 h-5 w-5 text-emerald-600" />
+              <Power className="mr-2 h-5 w-5 text-success" />
               Activos
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-emerald-700">{stats.activeYes}</div>
+            <div className="text-2xl font-bold text-success">{stats.activeYes}</div>
             <p className="text-sm text-muted-foreground">habilitados</p>
           </CardContent>
         </Card>

@@ -47,7 +47,7 @@ function getCategoryConfig(cat: FileCategory) {
       return {
         Icon: Presentation,
         bg: "bg-secondary/10 dark:bg-orange-950/40",
-        border: "border-orange-200 dark:border-orange-800/50",
+        border: "border-warning/30 dark:border-orange-800/50",
         iconColor: "text-orange-500 dark:text-orange-400",
         label: "PPT",
         lineColor: "bg-orange-200/60 dark:bg-orange-800/40",
@@ -56,7 +56,7 @@ function getCategoryConfig(cat: FileCategory) {
       return {
         Icon: FileCode,
         bg: "bg-accent/50 dark:bg-purple-950/40",
-        border: "border-purple-200 dark:border-purple-800/50",
+        border: "border-secondary/30 dark:border-purple-800/50",
         iconColor: "text-purple-500 dark:text-purple-400",
         label: "COD",
         lineColor: "bg-purple-200/60 dark:bg-purple-800/40",

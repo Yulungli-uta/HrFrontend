@@ -577,7 +577,7 @@ export default function EmployeeSchedules() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-purple-600" />
+              <BarChart3 className="h-5 w-5 text-secondary-foreground" />
               Distribución por Horario
             </CardTitle>
             <CardDescription>

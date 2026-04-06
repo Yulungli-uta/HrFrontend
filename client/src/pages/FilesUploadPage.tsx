@@ -382,7 +382,7 @@ const FilesUploadPage: React.FC = () => {
               <div className="text-sm text-muted-foreground">Archivos múltiples</div>
             </div>
             <div className="space-y-2">
-              <div className="text-2xl font-bold text-purple-600">
+              <div className="text-2xl font-bold text-secondary-foreground">
                 {multipleUploads.length}
               </div>
               <div className="text-sm text-muted-foreground">Lotes subidos</div>

@@ -196,7 +196,7 @@ const PersonCard = ({
             variant="outline"
             className={
               person.isActive
-                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                ? "border-emerald-500/30 bg-emerald-500/10 text-success dark:text-emerald-300"
                 : "border-slate-500/30 bg-slate-500/10 text-slate-700 dark:text-slate-300"
             }
           >
@@ -639,7 +639,7 @@ export default function People() {
                                 variant="outline"
                                 className={
                                   person.isActive
-                                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                                    ? "border-emerald-500/30 bg-emerald-500/10 text-success dark:text-emerald-300"
                                     : "border-slate-500/30 bg-slate-500/10 text-slate-700 dark:text-slate-300"
                                 }
                               >

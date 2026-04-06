@@ -53,7 +53,7 @@ export function ActivityForm({
             className={
               activity.activitiesType === "LABORAL"
                 ? "bg-primary/10 text-primary border-primary/30"
-                : "bg-secondary/10 text-secondary-foreground border-orange-200"
+                : "bg-secondary/10 text-secondary-foreground border-warning/30"
             }
           >
             {activity.activitiesType === "LABORAL" ? "Laboral" : "Adicional"}

@@ -76,7 +76,7 @@ export function ScheduleChangePlanDetailsModal({
               </div>
 
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-accent text-purple-600 rounded-full flex-shrink-0">
+                <div className="p-2 bg-accent text-secondary-foreground rounded-full flex-shrink-0">
                   <Users className="h-5 w-5" />
                 </div>
                 <div>

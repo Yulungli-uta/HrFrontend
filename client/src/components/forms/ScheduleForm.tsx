@@ -531,7 +531,7 @@ const updateMutation = useMutation({
       
       <CardContent className="space-y-6 px-0 sm:px-6">
         {/* Plantillas de Horario */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border">
+        <div className="bg-primary/10 dark:bg-primary/15 p-4 rounded-lg border">
           <div className="flex items-center gap-2 mb-3">
             <Zap className="h-4 w-4 text-primary" />
             <h4 className="text-sm font-medium text-primary">Plantillas Rápidas</h4>
@@ -791,7 +791,7 @@ const updateMutation = useMutation({
                   control={form.control}
                   name="rotationPattern"
                   render={({ field }) => (
-                    <FormItem className="bg-accent/50 p-4 rounded-lg border border-purple-200">
+                    <FormItem className="bg-accent/50 p-4 rounded-lg border border-secondary/30">
                       <FormLabel className="text-sm font-semibold">Patrón de Rotación</FormLabel>
                       <FormControl>
                         <Textarea
@@ -810,7 +810,7 @@ const updateMutation = useMutation({
             </div>
 
             {/* Vista previa del horario */}
-            <div className="bg-gradient-to-r from-green-50 to-emerald-100 p-4 rounded-lg border border-success/30">
+            <div className="bg-success/10 dark:bg-success/15 p-4 rounded-lg border border-success/30">
               <div className="flex items-center space-x-2 text-success mb-3">
                 <Calendar className="h-4 w-4" />
                 <span className="font-semibold text-sm">Vista Previa del Horario</span>

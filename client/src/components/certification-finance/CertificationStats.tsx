@@ -59,7 +59,7 @@ export function CertificationStats(props: {
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
-      <Card className="bg-gradient-to-r from-blue-50 to-blue-100">
+      <Card className="bg-primary/10 dark:bg-primary/15">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm lg:text-lg flex items-center justify-between">
             <span className="flex items-center">
@@ -76,7 +76,7 @@ export function CertificationStats(props: {
         </CardContent>
       </Card>
 
-      <Card className="bg-gradient-to-r from-green-50 to-green-100">
+      <Card className="bg-success/10 dark:bg-success/15">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm lg:text-lg flex items-center justify-between">
             <span className="flex items-center">
@@ -95,7 +95,7 @@ export function CertificationStats(props: {
         </CardContent>
       </Card>
 
-      <Card className="bg-gradient-to-r from-orange-50 to-orange-100">
+      <Card className="bg-warning/10 dark:bg-warning/15">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm lg:text-lg flex items-center justify-between">
             <span className="flex items-center">
@@ -114,11 +114,11 @@ export function CertificationStats(props: {
         </CardContent>
       </Card>
 
-      {/* <Card className="bg-gradient-to-r from-purple-50 to-purple-100">
+      {/* <Card className="bg-secondary/20 dark:bg-secondary/25">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm lg:text-lg flex items-center justify-between">
             <span className="flex items-center">
-              <DollarSign className="h-4 w-4 lg:h-5 lg:w-5 text-purple-600 mr-2" />
+              <DollarSign className="h-4 w-4 lg:h-5 lg:w-5 text-secondary-foreground mr-2" />
               Presupuesto Total
             </span>
             <Badge variant="secondary" className="bg-purple-200 text-accent-foreground text-xs lg:text-sm">
@@ -129,7 +129,7 @@ export function CertificationStats(props: {
         <CardContent><div className="text-xs lg:text-sm text-muted-foreground">Monto total certificado</div></CardContent>
       </Card> */}
 
-      {/* <Card className="bg-gradient-to-r from-red-50 to-red-100">
+      {/* <Card className="bg-destructive/10 dark:bg-destructive/15">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm lg:text-lg flex items-center justify-between">
             <span className="flex items-center">

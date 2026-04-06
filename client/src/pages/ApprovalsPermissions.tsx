@@ -867,7 +867,7 @@ export default function ApprovalsPermissions() {
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2">
-              <ClipboardCheck className="h-5 w-5 text-purple-600" />
+              <ClipboardCheck className="h-5 w-5 text-secondary-foreground" />
               Justificaciones {currentYear}
             </CardTitle>
             <CardDescription>Total: {justThisYear.length}</CardDescription>

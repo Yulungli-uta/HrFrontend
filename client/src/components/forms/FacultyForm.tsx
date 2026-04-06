@@ -158,7 +158,7 @@ export default function FacultyForm({ entity: faculty, onSuccess, onCancel }: Fa
                   </Select>
                   <FormMessage />
                   {employees.length === 0 && (
-                    <p className="text-xs text-amber-600">
+                    <p className="text-xs text-warning">
                       No hay empleados disponibles. Cree un empleado primero.
                     </p>
                   )}

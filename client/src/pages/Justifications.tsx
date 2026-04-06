@@ -23,7 +23,7 @@ const STATUS_META: Record<Status, { label: string; icon: any; klass: string }> =
   PENDING: { label: "Pendiente", icon: Clock, klass: "bg-warning/15 text-warning border-warning/30" },
   APPROVED: { label: "Aprobada", icon: CheckCircle, klass: "bg-success/15 text-success border-success/30" },
   REJECTED: { label: "Rechazada", icon: AlertCircle, klass: "bg-destructive/15 text-destructive border-destructive/30" },
-  APPLIED: { label: "Aplicada", icon: CheckCircle, klass: "bg-primary/15 text-primary border-indigo-200" },
+  APPLIED: { label: "Aplicada", icon: CheckCircle, klass: "bg-primary/15 text-primary border-primary/30" },
 };
 
 interface Justif {
@@ -214,7 +214,7 @@ export default function JustificationsPage() {
         <Stat title="Pendientes" value={stats.pending} icon={Clock} klass="border-warning/30 bg-warning/10" />
         <Stat title="Aprobadas" value={stats.approved} icon={CheckCircle} klass="border-success/30 bg-success/10" />
         <Stat title="Rechazadas" value={stats.rejected} icon={AlertCircle} klass="border-destructive/30 bg-destructive/10" />
-        <Stat title="Aplicadas" value={stats.applied} icon={CheckCircle} klass="border-indigo-200 bg-primary/10" />
+        <Stat title="Aplicadas" value={stats.applied} icon={CheckCircle} klass="border-primary/30 bg-primary/10" />
       </div>
 
       <Tabs defaultValue="list" className="space-y-4">

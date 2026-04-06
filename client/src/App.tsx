@@ -132,7 +132,7 @@ function LoadingFallback() {
   return (
     <div className="min-h-[400px] flex items-center justify-center">
       <div className="text-center">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-2" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-2" />
         <p className="text-gray-600 dark:text-gray-400 text-sm">Cargando...</p>
       </div>
     </div>
@@ -144,7 +144,7 @@ function InitialLoadingScreen() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
       <div className="text-center">
-        <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
+        <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
         <p className="text-gray-600 dark:text-gray-300">
           Cargando aplicación...
         </p>

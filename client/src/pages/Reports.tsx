@@ -34,7 +34,7 @@ export default function ReportsPage() {
       description: "Resumen de pagos y salarios mensuales",
       icon: DollarSign,
       category: "Nómina",
-      color: "text-purple-600"
+      color: "text-secondary-foreground"
     },
     {
       id: "contracts-report",
@@ -50,7 +50,7 @@ export default function ReportsPage() {
       description: "Métricas y tendencias de recursos humanos",
       icon: BarChart3,
       category: "Análisis",
-      color: "text-indigo-600"
+      color: "text-primary"
     }
   ];
 

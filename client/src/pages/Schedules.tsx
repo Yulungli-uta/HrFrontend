@@ -243,7 +243,7 @@ export default function SchedulesPage() {
       {/* Stats Cards - Solo en desktop/tablet */}
       {!isMobile && schedules.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-primary/30">
+          <Card className="bg-primary/10 dark:bg-primary/15 border-primary/30">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="bg-primary p-2 rounded-full">
                 <Users className="h-5 w-5 text-white" />
@@ -255,7 +255,7 @@ export default function SchedulesPage() {
             </CardContent>
           </Card>
           
-          <Card className="bg-gradient-to-r from-green-50 to-green-100 border-success/30">
+          <Card className="bg-success/10 dark:bg-success/15 border-success/30">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="bg-success p-2 rounded-full">
                 <Clock className="h-5 w-5 text-white" />
@@ -269,7 +269,7 @@ export default function SchedulesPage() {
             </CardContent>
           </Card>
           
-          <Card className="bg-gradient-to-r from-purple-50 to-purple-100 border-purple-200">
+          <Card className="bg-secondary/20 dark:bg-secondary/25 border-secondary/30">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="bg-purple-500 p-2 rounded-full">
                 <Settings className="h-5 w-5 text-white" />
@@ -283,7 +283,7 @@ export default function SchedulesPage() {
             </CardContent>
           </Card>
           
-          <Card className="bg-gradient-to-r from-orange-50 to-orange-100 border-orange-200">
+          <Card className="bg-warning/10 dark:bg-warning/15 border-warning/30">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="bg-orange-500 p-2 rounded-full">
                 <Calendar className="h-5 w-5 text-white" />
@@ -365,7 +365,7 @@ export default function SchedulesPage() {
                             </TableCell>
                             <TableCell>
                               {s.isRotating ? (
-                                <Badge variant="outline" className="text-xs bg-accent/50 text-accent-foreground border-purple-200">
+                                <Badge variant="outline" className="text-xs bg-accent/50 text-accent-foreground border-secondary/30">
                                   Rotativo
                                 </Badge>
                               ) : (
@@ -490,7 +490,7 @@ export default function SchedulesPage() {
                         <div className="flex justify-between items-center">
                           <span className="text-sm font-medium text-muted-foreground">Tipo:</span>
                           {s.isRotating ? (
-                            <Badge variant="outline" className="text-xs bg-accent/50 text-accent-foreground border-purple-200">
+                            <Badge variant="outline" className="text-xs bg-accent/50 text-accent-foreground border-secondary/30">
                               Rotativo
                             </Badge>
                           ) : (

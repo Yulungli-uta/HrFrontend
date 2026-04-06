@@ -34,7 +34,7 @@ function getStatusClass(rt: RefTypeItem): string {
     return "bg-success/15 text-success hover:bg-success/15 border-success/30";
   }
   if (text.includes("PEND") || code.includes("PEN") || text.includes("EN PROCESO")) {
-    return "bg-secondary/15 text-secondary-foreground hover:bg-secondary/15 border-orange-200";
+    return "bg-secondary/15 text-secondary-foreground hover:bg-secondary/15 border-warning/30";
   }
   if (text.includes("RECH") || code.includes("REC") || text.includes("ANUL")) {
     return "bg-destructive/15 text-destructive hover:bg-destructive/15 border-destructive/30";

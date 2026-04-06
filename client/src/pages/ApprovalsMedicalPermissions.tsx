@@ -585,7 +585,7 @@ export default function ApprovalsMedicalPermissionsPage() {
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-              <HeartPulse className="h-5 w-5 text-rose-600" />
+              <HeartPulse className="h-5 w-5 text-destructive" />
               Médicos {currentYear}
             </CardTitle>
             <CardDescription>Total: {permsThisYear.length}</CardDescription>
@@ -943,7 +943,7 @@ export default function ApprovalsMedicalPermissionsPage() {
 
           <div className="space-y-4">
             {selectedPermissionType?.requiresDocumentation === false && (
-              <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
+              <div className="rounded-md border border-warning/30 bg-amber-50 p-3 text-sm text-warning">
                 Este tipo no está configurado para requerir documentación, pero igual pueden existir archivos adjuntos.
               </div>
             )}

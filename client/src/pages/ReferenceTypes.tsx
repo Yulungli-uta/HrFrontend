@@ -721,12 +721,12 @@ export default function ReferenceTypesPage() {
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm sm:text-lg flex items-center">
-              <Tag className="mr-2 h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
+              <Tag className="mr-2 h-4 w-4 sm:h-5 sm:w-5 text-secondary-foreground" />
               Categorías
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-xl sm:text-2xl font-bold text-purple-600">{stats.totalCategories}</div>
+            <div className="text-xl sm:text-2xl font-bold text-secondary-foreground">{stats.totalCategories}</div>
             <p className="text-xs sm:text-sm text-muted-foreground">categorías diferentes</p>
           </CardContent>
         </Card>

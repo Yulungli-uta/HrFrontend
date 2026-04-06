@@ -156,7 +156,7 @@ export default function LoginPage() {
           {/* Estado WebSocket */}
           <div
             className={`mb-4 text-sm text-center ${
-              isWebSocketConnected ? "text-success" : "text-amber-600"
+              isWebSocketConnected ? "text-success" : "text-warning"
             }`}
           >
             WebSocket: {isWebSocketConnected ? "✓ Conectado" : "○ Desconectado"}

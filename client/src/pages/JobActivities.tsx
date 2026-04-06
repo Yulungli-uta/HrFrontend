@@ -833,7 +833,7 @@ export default function JobActivitiesPage() {
 
       {/* STATS */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-primary/30">
+        <Card className="bg-primary/10 dark:bg-primary/15 border-primary/30">
           <CardContent className="p-4 flex items-center gap-3">
             <div className="bg-primary p-2 rounded-full">
               <Briefcase className="h-5 w-5 text-white" />
@@ -847,7 +847,7 @@ export default function JobActivitiesPage() {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-r from-indigo-50 to-indigo-100 border-indigo-200">
+        <Card className="bg-primary/10 dark:bg-primary/15 border-primary/30">
           <CardContent className="p-4 flex items-center gap-3">
             <div className="bg-indigo-500 p-2 rounded-full">
               <GraduationCap className="h-5 w-5 text-white" />
@@ -861,7 +861,7 @@ export default function JobActivitiesPage() {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-r from-emerald-50 to-emerald-100 border-emerald-200">
+        <Card className="bg-success/10 dark:bg-success/15 border-success/30">
           <CardContent className="p-4 flex items-center gap-3">
             <div className="bg-emerald-500 p-2 rounded-full">
               <Building2 className="h-5 w-5 text-white" />
@@ -870,14 +870,14 @@ export default function JobActivitiesPage() {
               <p className="text-xs font-medium text-emerald-900">
                 Grupos Ocupacionales
               </p>
-              <p className="text-2xl font-bold text-emerald-700">
+              <p className="text-2xl font-bold text-success">
                 {groups.length}
               </p>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-r from-orange-50 to-orange-100 border-orange-200">
+        <Card className="bg-warning/10 dark:bg-warning/15 border-warning/30">
           <CardContent className="p-4 flex items-center gap-3">
             <div className="bg-orange-500 p-2 rounded-full">
               <ListChecks className="h-5 w-5 text-white" />
@@ -1112,7 +1112,7 @@ export default function JobActivitiesPage() {
                                       className={
                                         act.activitiesType === "LABORAL"
                                           ? "bg-primary/10 text-primary border-primary/30"
-                                          : "bg-secondary/10 text-secondary-foreground border-orange-200"
+                                          : "bg-secondary/10 text-secondary-foreground border-warning/30"
                                       }
                                     >
                                       {act.activitiesType === "LABORAL"
@@ -1193,7 +1193,7 @@ export default function JobActivitiesPage() {
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center justify-between">
                   <span className="flex items-center gap-2">
-                    <GraduationCap className="h-5 w-5 text-indigo-600" />
+                    <GraduationCap className="h-5 w-5 text-primary" />
                     Grados
                   </span>
                   <Button size="sm" onClick={handleOpenNewDegree}>
@@ -1266,7 +1266,7 @@ export default function JobActivitiesPage() {
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center justify-between">
                   <span className="flex items-center gap-2">
-                    <Building2 className="h-5 w-5 text-emerald-600" />
+                    <Building2 className="h-5 w-5 text-success" />
                     Grupos Ocupacionales
                   </span>
                   <Button size="sm" onClick={handleOpenNewGroup}>
@@ -1537,7 +1537,7 @@ export default function JobActivitiesPage() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <GraduationCap className="h-5 w-5 text-indigo-600" />
+              <GraduationCap className="h-5 w-5 text-primary" />
               {editingDegree && editingDegree.degreeId
                 ? "Editar grado"
                 : "Nuevo grado"}
@@ -1567,7 +1567,7 @@ export default function JobActivitiesPage() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5 text-emerald-600" />
+              <Building2 className="h-5 w-5 text-success" />
               {editingGroup && editingGroup.groupId
                 ? "Editar grupo ocupacional"
                 : "Nuevo grupo ocupacional"}

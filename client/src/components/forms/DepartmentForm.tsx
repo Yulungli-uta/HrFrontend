@@ -163,7 +163,7 @@ export default function DepartmentForm({ entity: department, onSuccess, onCancel
                   </Select>
                   <FormMessage />
                   {faculties && faculties.length === 0 && (
-                    <p className="text-xs text-amber-600">
+                    <p className="text-xs text-warning">
                       No hay facultades disponibles. Cree una facultad primero.
                     </p>
                   )}

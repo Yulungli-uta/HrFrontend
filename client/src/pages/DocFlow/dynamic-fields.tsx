@@ -564,7 +564,7 @@ function getFieldErrorMessage(field: EditableField): string | null {
             </span>
           )}
           {hasChanges && (
-            <Badge variant="outline" className="text-amber-600 border-amber-300 dark:text-amber-400 dark:border-amber-700">
+            <Badge variant="outline" className="text-warning border-amber-300 dark:text-amber-400 dark:border-amber-700">
               Sin guardar
             </Badge>
           )}

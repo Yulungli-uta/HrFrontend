@@ -42,16 +42,16 @@ export function DepartmentsFilters({
           
           <div className="w-full sm:w-[180px]">
             <Label htmlFor="active-filter" className="sr-only">Filtrar por estado</Label>
-            <select
-              id="active-filter"
-              value={onlyActive}
-              onChange={(e) => onOnlyActiveChange(e.target.value as ActiveFilter)}
-              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">Todos los estados</option>
-              <option value="active">Solo activos</option>
-              <option value="inactive">Solo inactivos</option>
-            </select>
+            <Select value={onlyActive} onValueChange={(v) => onOnlyActiveChange(v as ActiveFilter)}>
+              <SelectTrigger id="active-filter">
+                <SelectValue placeholder="Todos los estados" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los estados</SelectItem>
+                <SelectItem value="active">Solo activos</SelectItem>
+                <SelectItem value="inactive">Solo inactivos</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           
           <div className="w-full sm:w-[200px]">

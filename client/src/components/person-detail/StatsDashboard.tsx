@@ -73,7 +73,7 @@ export function StatsDashboard({ data }: StatsDashboardProps) {
     blue: "text-primary",
     green: "text-success",
     orange: "text-secondary-foreground",
-    purple: "text-purple-600",
+    purple: "text-secondary-foreground",
     red: "text-destructive",
     yellow: "text-warning",
   };

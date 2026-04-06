@@ -225,7 +225,7 @@ function ConnectionStatus({
 }) {
   if (isLoading) {
     return (
-      <div className="flex items-center text-amber-600" aria-live="polite">
+      <div className="flex items-center text-warning" aria-live="polite">
         <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
         <span className="text-xs">Verificando...</span>
       </div>
@@ -546,7 +546,7 @@ export default function AttendancePage() {
   if (!isAuthenticated || !employeeId) {
     return (
       <div className="container mx-auto p-6 max-w-2xl">
-        <Card className="border-amber-200 bg-amber-50">
+        <Card className="border-warning/30 bg-amber-50">
           <CardHeader>
             <CardTitle className="text-amber-800 flex items-center gap-2">
               <Info className="h-5 w-5" />
@@ -681,7 +681,7 @@ export default function AttendancePage() {
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              className="rounded-md border border-border py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="rounded-md border border-input py-2 px-3 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               aria-label="Filtrar por tipo de marcación"
             >
               <option value="all">Todas</option>

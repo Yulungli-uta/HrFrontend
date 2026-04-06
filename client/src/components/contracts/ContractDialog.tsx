@@ -750,7 +750,7 @@ export function ContractDialog(props: {
 
                       <div className="flex items-start gap-3">
                         <div className="p-2 bg-accent rounded-lg">
-                          <Building2 className="h-5 w-5 text-purple-600" />
+                          <Building2 className="h-5 w-5 text-secondary-foreground" />
                         </div>
                         <div className="flex-1">
                           <p className="text-sm text-muted-foreground">
@@ -820,7 +820,7 @@ export function ContractDialog(props: {
 
                       <div className="flex items-start gap-3">
                         <div className="p-2 bg-primary/15 rounded-lg">
-                          <Workflow className="h-5 w-5 text-indigo-600" />
+                          <Workflow className="h-5 w-5 text-primary" />
                         </div>
                         <div className="flex-1">
                           <p className="text-sm text-muted-foreground">

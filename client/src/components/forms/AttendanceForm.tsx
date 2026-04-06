@@ -349,7 +349,7 @@ export default function AttendanceForm({ onSuccess, onCancel }: AttendanceFormPr
 
             {isWithinCooldown && (
               <div className="p-3 bg-amber-100 border border-amber-300 rounded-md flex items-start">
-                <AlertCircle className="h-5 w-5 text-amber-600 mr-2 flex-shrink-0 mt-0.5" />
+                <AlertCircle className="h-5 w-5 text-warning mr-2 flex-shrink-0 mt-0.5" />
                 <p className="text-sm text-amber-800">
                   Debe esperar al menos 5 minutos entre marcaciones. Podrá registrar nuevamente en{" "}
                   {5 - timeSinceLastPunch} minutos.
@@ -473,7 +473,7 @@ export default function AttendanceForm({ onSuccess, onCancel }: AttendanceFormPr
 
               {isWithinCooldown && (
                 <div className="p-3 bg-amber-100 border border-amber-300 rounded-md flex items-start">
-                  <AlertCircle className="h-5 w-5 text-amber-600 mr-2 flex-shrink-0 mt-0.5" />
+                  <AlertCircle className="h-5 w-5 text-warning mr-2 flex-shrink-0 mt-0.5" />
                   <p className="text-sm text-amber-800">
                     Debe esperar al menos 5 minutos entre marcaciones. Podrá registrar nuevamente en{" "}
                     {5 - timeSinceLastPunch} minutos.
