@@ -1,30 +1,13 @@
-/**
- * components/forms/UserForm.tsx
- *
- * Formulario de creación/edición de usuarios del sistema.
- *
- * FLUJO DE CREACIÓN (2 pasos):
- *   1. Crear usuario en auth.tbl_Users  → POST /api/users
- *   2. Registrar UserEmployee           → POST /api/user-employees
- *      (vincula el userId recién creado con el email del empleado seleccionado)
- *
- * SELECTOR DE EMPLEADOS:
- *   - Combobox (Command + Popover) con búsqueda en tiempo real.
- *   - Al seleccionar un empleado: email y displayName se autocompletan.
- *   - displayName es de solo lectura al crear (proviene del empleado).
- *   - En edición: los campos se comportan de forma normal (sin selector).
- *
- * Principios aplicados: SOLID, separación de responsabilidades, clases semánticas.
- */
+// src/components/forms/UserForm.tsx
 import { useState, useCallback, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronsUpDown, Loader2, User2, AlertCircle } from "lucide-react";
 
-import { Button }   from "@/components/ui/button";
-import { Input }    from "@/components/ui/input";
-import { Label }    from "@/components/ui/label";
-import { Badge }    from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -46,9 +29,12 @@ import {
   CommandList,
 } from "@/components/ui/command";
 
-import { AuthUsersAPI, UserEmployeesAPI, VistaDetallesEmpleadosAPI } from "@/lib/api";
-import { useToast }      from "@/hooks/use-toast";
-import { cn }            from "@/lib/utils";
+import {
+  AuthUsersAPI, //UserEmployeesAPI, 
+  VistaDetallesEmpleadosAPI
+} from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import type { User, CreateUserDto, UpdateUserDto } from "@/types/auth";
 import type { BaseCrudFormProps } from "@/types/components";
 
@@ -59,18 +45,29 @@ interface UserFormProps extends Omit<BaseCrudFormProps<User, CreateUserDto>, "en
 }
 
 interface FormData {
-  email:       string;
+  email: string;
   displayName: string;
-  userType:    string;
-  isActive:    boolean;
+  userType: string;
+  isActive: boolean;
 }
 
 /** Estructura mínima que necesitamos de VistaDetallesEmpleadosAPI */
 interface EmployeeOption {
-  email:       string;
+  email: string;
   displayName: string;
   department?: string;
 }
+
+type CreateUserWithEmployeePayload = {
+  success: boolean;
+  data: {
+    user: User;
+    userEmployee: unknown;
+  };
+  message: string | null;
+  errors: string[] | null;
+  timestamp: string;
+};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -96,7 +93,7 @@ function normalizeEmployees(raw: unknown): EmployeeOption[] {
   return items
     .filter((e) => e?.email)
     .map((e) => ({
-      email:       String(e.email ?? ""),
+      email: String(e.email ?? ""),
       displayName: String(
         e.displayName ??
         e.fullName ??
@@ -113,12 +110,12 @@ function normalizeEmployees(raw: unknown): EmployeeOption[] {
 
 export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
   const isEditing = !!user;
-  const { toast }      = useToast();
-  const queryClient    = useQueryClient();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // ── Estado del Combobox ──────────────────────────────────────────────────
-  const [comboOpen,        setComboOpen]        = useState(false);
-  const [searchQuery,      setSearchQuery]      = useState("");
+  const [comboOpen, setComboOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeOption | null>(null);
 
   // ── Formulario ───────────────────────────────────────────────────────────
@@ -131,24 +128,24 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
     reset,
   } = useForm<FormData>({
     defaultValues: {
-      email:       user?.email       ?? "",
+      email: user?.email ?? "",
       displayName: user?.displayName ?? "",
-      userType:    user?.userType    ?? "Local",
-      isActive:    user?.isActive    ?? true,
+      userType: user?.userType ?? "Local",
+      isActive: user?.isActive ?? true,
     },
   });
 
-  const userType    = watch("userType");
+  const userType = watch("userType");
   const displayName = watch("displayName");
 
   // ── Carga de empleados (solo en modo creación) ───────────────────────────
   const {
-    data:      employeesRaw,
+    data: employeesRaw,
     isLoading: isLoadingEmployees,
   } = useQuery({
     queryKey: ["employee-details-for-user-form"],
-    queryFn:  () => VistaDetallesEmpleadosAPI.list(),
-    enabled:  !isEditing,
+    queryFn: () => VistaDetallesEmpleadosAPI.list(),
+    enabled: !isEditing,
     staleTime: 5 * 60 * 1000, // 5 min — la lista de empleados no cambia frecuentemente
   });
 
@@ -169,7 +166,7 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
   const handleSelectEmployee = useCallback(
     (emp: EmployeeOption) => {
       setSelectedEmployee(emp);
-      setValue("email",       emp.email,       { shouldValidate: true });
+      setValue("email", emp.email, { shouldValidate: true });
       setValue("displayName", emp.displayName, { shouldValidate: true });
       setComboOpen(false);
     },
@@ -186,52 +183,57 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
   });
 
   // ── Mutation: crear UserEmployee (Paso 2) ────────────────────────────────
-  const createUserEmployeeMutation = useMutation({
-    mutationFn: (payload: { userId: string; employeeEmail: string }) =>
-      UserEmployeesAPI.create({
-        userId:        payload.userId,
-        employeeEmail: payload.employeeEmail,
-        isActive:      true,
-        syncDate:      new Date().toISOString(),
-        notes:         "Creado manualmente desde el panel de administración",
-      }),
-    onError: (error: unknown) => {
-      const msg = (error as any)?.message ?? "Error al vincular empleado";
-      // El usuario ya fue creado; notificamos pero no revertimos (idempotente).
-      toast({
-        title:       "Advertencia: usuario creado pero sin vínculo de empleado",
-        description: msg,
-        variant:     "destructive",
-      });
-    },
-  });
+  // const createUserEmployeeMutation = useMutation({
+  //   mutationFn: (payload: { userId: string; employeeEmail: string }) =>
+  //     UserEmployeesAPI.create({
+  //       userId:        payload.userId,
+  //       employeeEmail: payload.employeeEmail,
+  //       isActive:      true,
+  //       syncDate:      new Date().toISOString(),
+  //       notes:         "Creado manualmente desde el panel de administración",
+  //     }),
+  //   onError: (error: unknown) => {
+  //     const msg = (error as any)?.message ?? "Error al vincular empleado";
+  //     // El usuario ya fue creado; notificamos pero no revertimos (idempotente).
+  //     toast({
+  //       title:       "Advertencia: usuario creado pero sin vínculo de empleado",
+  //       description: msg,
+  //       variant:     "destructive",
+  //     });
+  //   },
+  // });
 
   // ── Mutation: actualizar usuario ─────────────────────────────────────────
   const updateUserMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateUserDto }) =>
-      AuthUsersAPI.update(id, data),
-    onSuccess: (response) => {
-      if (response.status === "success") {
-        queryClient.invalidateQueries({ queryKey: ["auth-users"] });
-        toast({ title: "Usuario actualizado exitosamente" });
-        onSuccess?.();
-      } else {
-        toast({
-          title:       "Error al actualizar usuario",
-          description: (response as any).error?.message,
-          variant:     "destructive",
-        });
-      }
-    },
-    onError: (error: unknown) => {
-      const msg = (error as any)?.message ?? "Error desconocido";
-      toast({ title: "Error al actualizar usuario", description: msg, variant: "destructive" });
-    },
-  });
+  mutationFn: ({ id, data }: { id: string; data: UpdateUserDto }) =>
+    AuthUsersAPI.update(id, data),
+  onSuccess: (response) => {
+    if (response.status === "error") {
+      toast({
+        title: "Error al actualizar usuario",
+        description: response.error?.message ?? "Error desconocido",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    queryClient.invalidateQueries({ queryKey: ["auth-users"] });
+    toast({ title: "Usuario actualizado exitosamente" });
+    onSuccess?.();
+  },
+  onError: (error: unknown) => {
+    const msg = (error as any)?.message ?? "Error desconocido";
+    toast({
+      title: "Error al actualizar usuario",
+      description: msg,
+      variant: "destructive",
+    });
+  },
+});
 
   const isLoading =
     createUserMutation.isPending ||
-    createUserEmployeeMutation.isPending ||
+    // createUserEmployeeMutation.isPending ||
     updateUserMutation.isPending;
 
   // ── Submit ───────────────────────────────────────────────────────────────
@@ -239,11 +241,11 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
     // ── EDICIÓN ──────────────────────────────────────────────────────────
     if (isEditing && user) {
       updateUserMutation.mutate({
-        id:   user.id,
+        id: user.id,
         data: {
           displayName: data.displayName || undefined,
-          isActive:    data.isActive,
-          userType:    data.userType,
+          isActive: data.isActive,
+          userType: data.userType,
         },
       });
       return;
@@ -252,29 +254,43 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
     // ── CREACIÓN (2 pasos) ────────────────────────────────────────────────
     // Paso 1: Crear usuario en auth.tbl_Users
     const createResponse = await createUserMutation.mutateAsync({
-      email:       data.email,
-      displayName: data.displayName || undefined,
-      userType:    data.userType,
-    });
+  email: data.email,
+  displayName: data.displayName || undefined,
+  userType: data.userType,
+});
 
-    if (createResponse.status !== "success" || !createResponse.data?.id) {
-      toast({
-        title:       "Error al crear usuario",
-        description: (createResponse as any).error?.message ?? "Respuesta inesperada del servidor",
-        variant:     "destructive",
-      });
-      return;
-    }
+console.log("Respuesta de creación de usuario:", createResponse);
 
-    const newUserId = createResponse.data.id;
+if (createResponse.status === "error") {
+  toast({
+    title: "Error al crear usuario",
+    description: createResponse.error?.message ?? "Error inesperado",
+    variant: "destructive",
+  });
+  return;
+}
+
+const payload = createResponse.data as unknown as CreateUserWithEmployeePayload;
+const createdUser = payload?.data?.user;
+
+if (!payload?.success || !createdUser?.id) {
+  toast({
+    title: "Error al crear usuario",
+    description: payload?.message ?? "Respuesta inesperada del servidor",
+    variant: "destructive",
+  });
+  return;
+}
+
+    // const newUserId = createResponse.data.id;
 
     // Paso 2: Registrar UserEmployee si hay un empleado seleccionado
-    if (selectedEmployee?.email) {
-      await createUserEmployeeMutation.mutateAsync({
-        userId:        newUserId,
-        employeeEmail: selectedEmployee.email,
-      });
-    }
+    // if (selectedEmployee?.email) {
+    //   await createUserEmployeeMutation.mutateAsync({
+    //     userId:        newUserId,
+    //     employeeEmail: selectedEmployee.email,
+    //   });
+    // }
 
     // Invalidar y notificar éxito
     queryClient.invalidateQueries({ queryKey: ["auth-users"] });
@@ -417,7 +433,7 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
           {...register("email", {
             required: "El email es requerido",
             pattern: {
-              value:   /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+              value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
               message: "Formato de email inválido",
             },
           })}
@@ -509,35 +525,36 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
       )}
 
       {/* ── Resumen del flujo (solo en creación) ── */}
-      {!isEditing && (
-        <div className="rounded-lg border border-primary/30 bg-primary/10 p-4 space-y-2">
-          <p className="text-sm font-medium text-primary">Flujo de creación (2 pasos)</p>
-          <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
-            <li
-              className={cn(
-                "transition-colors",
-                selectedEmployee ? "text-success font-medium" : ""
-              )}
-            >
-              Crear usuario en <code className="font-mono">auth.tbl_Users</code>
-            </li>
-            <li
-              className={cn(
-                "transition-colors",
-                selectedEmployee ? "text-success font-medium" : "text-muted-foreground/60"
-              )}
-            >
-              Registrar vínculo en{" "}
-              <code className="font-mono">auth.tbl_UserEmployees</code>
-              {selectedEmployee && (
-                <span className="ml-1">
-                  → <span className="text-foreground">{selectedEmployee.email}</span>
-                </span>
-              )}
-            </li>
-          </ol>
-        </div>
-      )}
+      {!isEditing //&& (
+        // <div className="rounded-lg border border-primary/30 bg-primary/10 p-4 space-y-2">
+        //   <p className="text-sm font-medium text-primary">Flujo de creación (2 pasos)</p>
+        //   <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
+        //     <li
+        //       className={cn(
+        //         "transition-colors",
+        //         selectedEmployee ? "text-success font-medium" : ""
+        //       )}
+        //     >
+        //       Crear usuario en <code className="font-mono">auth.tbl_Users</code>
+        //     </li>
+        //     <li
+        //       className={cn(
+        //         "transition-colors",
+        //         selectedEmployee ? "text-success font-medium" : "text-muted-foreground/60"
+        //       )}
+        //     >
+        //       Registrar vínculo en{" "}
+        //       <code className="font-mono">auth.tbl_UserEmployees</code>
+        //       {selectedEmployee && (
+        //         <span className="ml-1">
+        //           → <span className="text-foreground">{selectedEmployee.email}</span>
+        //         </span>
+        //       )}
+        //     </li>
+        //   </ol>
+        // </div>
+        //)
+      }
 
       {/* ── Botones de acción ── */}
       <div className="flex justify-end gap-3 pt-2">
@@ -559,9 +576,9 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
               <Loader2 className="h-4 w-4 animate-spin" />
               {createUserMutation.isPending
                 ? "Creando usuario..."
-                : createUserEmployeeMutation.isPending
-                  ? "Vinculando empleado..."
-                  : "Guardando..."}
+                // : createUserEmployeeMutation.isPending
+                //   ? "Vinculando empleado..."
+                : "Guardando..."}
             </span>
           ) : isEditing ? (
             "Actualizar Usuario"
