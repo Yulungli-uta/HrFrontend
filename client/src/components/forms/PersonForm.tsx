@@ -204,6 +204,14 @@ const getSafeOptions = (
     .filter((x): x is RefOption => x !== null);
 };
 
+const fieldClassName =
+  "border-border bg-background text-foreground placeholder:text-muted-foreground " +
+  "transition-colors focus-visible:ring-2 focus-visible:ring-primary/20 " +
+  "dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-400";
+
+const disabledFieldClassName =
+  "border-border bg-muted text-muted-foreground dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-400";
+
 const SectionCard = ({
   title,
   children,
@@ -211,9 +219,11 @@ const SectionCard = ({
   title: string;
   children: React.ReactNode;
 }) => (
-  <Card className="border-border/60 bg-card/95 shadow-sm">
+  <Card className="border-border/70 bg-card shadow-sm dark:border-slate-800 dark:bg-slate-950/60">
     <CardHeader className="pb-4">
-      <CardTitle className="text-lg text-foreground">{title}</CardTitle>
+      <CardTitle className="text-lg font-semibold text-foreground">
+        {title}
+      </CardTitle>
     </CardHeader>
     <CardContent className="space-y-4">{children}</CardContent>
   </Card>
@@ -255,7 +265,7 @@ const SafeSelect = ({
         <Input
           value="Campo requerido - No hay opciones disponibles"
           disabled
-          className="border-destructive bg-destructive/10 text-destructive"
+          className="border-destructive bg-destructive/10 text-destructive dark:bg-destructive/15"
         />
         <p className="text-sm text-destructive">
           Este campo es requerido pero no hay opciones disponibles. Contacte al
@@ -271,7 +281,7 @@ const SafeSelect = ({
         <Input
           value="No hay opciones disponibles"
           disabled
-          className="text-muted-foreground"
+          className="border-border bg-muted text-muted-foreground dark:border-slate-800 dark:bg-slate-900"
         />
         <p className="text-sm text-muted-foreground">
           Este campo no está disponible actualmente
@@ -288,13 +298,21 @@ const SafeSelect = ({
     >
       <SelectTrigger
         id={id}
-        className={`bg-background/80 transition-colors ${
-          required && !value ? "border-destructive" : ""
-        }`}
+        className={[
+          "bg-background text-foreground border-border",
+          "transition-colors",
+          "hover:bg-muted/50",
+          "focus:ring-2 focus:ring-primary/20",
+          "dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800/80",
+          required && !value
+            ? "border-destructive focus:ring-destructive/20"
+            : "",
+        ].join(" ")}
       >
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
-      <SelectContent>
+
+      <SelectContent className="border-border bg-popover text-popover-foreground dark:border-slate-800 dark:bg-slate-950">
         {safeOptions.map((option) => (
           <SelectItem key={option.id} value={option.id.toString()}>
             {option.name}
@@ -640,7 +658,6 @@ export default function PersonForm({
 
   const hasIdentityTypes = identityTypes.length > 0;
 
-  // Orden secuencial de tabs
   const TAB_ORDER = ["basic", "personal", "family", "health"] as const;
 
   const goPreviousTab = () => {
@@ -658,9 +675,12 @@ export default function PersonForm({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-foreground">
       {isRefTypesError && (
-        <Alert variant="destructive" className="border-destructive/40">
+        <Alert
+          variant="destructive"
+          className="border-destructive/40 bg-destructive/5 dark:bg-destructive/10"
+        >
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
             Error al cargar los tipos de referencia. Algunos campos pueden no
@@ -670,35 +690,35 @@ export default function PersonForm({
       )}
 
       {isRefTypesLoading && (
-        <Alert className="border-border/60 bg-muted/40">
+        <Alert className="border-border bg-muted/50 dark:border-slate-800 dark:bg-slate-900/70">
           <Loader2 className="h-4 w-4 animate-spin" />
           <AlertDescription>Cargando tipos de referencia...</AlertDescription>
         </Alert>
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="mb-6 grid h-auto w-full grid-cols-4 rounded-2xl border border-border/60 bg-muted/50 p-1">
+        <TabsList className="mb-6 grid h-auto w-full grid-cols-4 rounded-2xl border border-border bg-muted/60 p-1 dark:border-slate-800 dark:bg-slate-900/80">
           <TabsTrigger
             value="basic"
-            className="rounded-xl text-xs data-[state=active]:shadow-sm sm:text-sm"
+            className="rounded-xl text-xs text-muted-foreground transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm dark:data-[state=active]:bg-slate-950 dark:data-[state=active]:text-slate-100 sm:text-sm"
           >
             Básico
           </TabsTrigger>
           <TabsTrigger
             value="personal"
-            className="rounded-xl text-xs data-[state=active]:shadow-sm sm:text-sm"
+            className="rounded-xl text-xs text-muted-foreground transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm dark:data-[state=active]:bg-slate-950 dark:data-[state=active]:text-slate-100 sm:text-sm"
           >
             Personal
           </TabsTrigger>
           <TabsTrigger
             value="family"
-            className="rounded-xl text-xs data-[state=active]:shadow-sm sm:text-sm"
+            className="rounded-xl text-xs text-muted-foreground transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm dark:data-[state=active]:bg-slate-950 dark:data-[state=active]:text-slate-100 sm:text-sm"
           >
             Familia
           </TabsTrigger>
           <TabsTrigger
             value="health"
-            className="rounded-xl text-xs data-[state=active]:shadow-sm sm:text-sm"
+            className="rounded-xl text-xs text-muted-foreground transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm dark:data-[state=active]:bg-slate-950 dark:data-[state=active]:text-slate-100 sm:text-sm"
           >
             Salud
           </TabsTrigger>
@@ -749,8 +769,10 @@ export default function PersonForm({
                     }
                     disabled={isEditing}
                     data-testid="input-idCard"
-                    className={`bg-background/80 ${
-                      errors.idCard ? "border-destructive" : ""
+                    className={`${fieldClassName} ${
+                      errors.idCard
+                        ? "border-destructive focus-visible:ring-destructive/20"
+                        : ""
                     }`}
                   />
                   {errors.idCard && (
@@ -771,8 +793,10 @@ export default function PersonForm({
                     {...register("firstName")}
                     placeholder="Juan Carlos"
                     data-testid="input-firstName"
-                    className={`bg-background/80 ${
-                      errors.firstName ? "border-destructive" : ""
+                    className={`${fieldClassName} ${
+                      errors.firstName
+                        ? "border-destructive focus-visible:ring-destructive/20"
+                        : ""
                     }`}
                   />
                   {errors.firstName && (
@@ -791,8 +815,10 @@ export default function PersonForm({
                     {...register("lastName")}
                     placeholder="Pérez González"
                     data-testid="input-lastName"
-                    className={`bg-background/80 ${
-                      errors.lastName ? "border-destructive" : ""
+                    className={`${fieldClassName} ${
+                      errors.lastName
+                        ? "border-destructive focus-visible:ring-destructive/20"
+                        : ""
                     }`}
                   />
                   {errors.lastName && (
@@ -815,8 +841,10 @@ export default function PersonForm({
                     {...register("email")}
                     placeholder="usuario@universidad.edu.ec"
                     data-testid="input-email"
-                    className={`bg-background/80 ${
-                      errors.email ? "border-destructive" : ""
+                    className={`${fieldClassName} ${
+                      errors.email
+                        ? "border-destructive focus-visible:ring-destructive/20"
+                        : ""
                     }`}
                   />
                   {errors.email && (
@@ -833,8 +861,10 @@ export default function PersonForm({
                     {...register("phone")}
                     placeholder="+593 99 123 4567"
                     data-testid="input-phone"
-                    className={`bg-background/80 ${
-                      errors.phone ? "border-destructive" : ""
+                    className={`${fieldClassName} ${
+                      errors.phone
+                        ? "border-destructive focus-visible:ring-destructive/20"
+                        : ""
                     }`}
                   />
                   {errors.phone && (
@@ -857,7 +887,7 @@ export default function PersonForm({
                     type="date"
                     {...register("birthDate")}
                     data-testid="input-birthDate"
-                    className="bg-background/80"
+                    className={fieldClassName}
                   />
                 </div>
 
@@ -917,7 +947,7 @@ export default function PersonForm({
                     {...register("address")}
                     placeholder="Dirección completa"
                     rows={3}
-                    className="bg-background/80"
+                    className={fieldClassName}
                   />
                 </div>
               </div>
@@ -929,7 +959,7 @@ export default function PersonForm({
                     <Input
                       value="No hay países disponibles"
                       disabled
-                      className="text-muted-foreground"
+                      className={disabledFieldClassName}
                     />
                   ) : (
                     <Select
@@ -940,10 +970,10 @@ export default function PersonForm({
                         })
                       }
                     >
-                      <SelectTrigger id="countryId" className="bg-background/80">
+                      <SelectTrigger id="countryId" className={fieldClassName}>
                         <SelectValue placeholder="Seleccione país" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="border-border bg-popover text-popover-foreground dark:border-slate-800 dark:bg-slate-950">
                         {countries.map((country) => (
                           <SelectItem
                             key={country.countryId}
@@ -967,7 +997,7 @@ export default function PersonForm({
                           : "Seleccione un país primero"
                       }
                       disabled
-                      className="text-muted-foreground"
+                      className={disabledFieldClassName}
                     />
                   ) : (
                     <Select
@@ -980,11 +1010,11 @@ export default function PersonForm({
                     >
                       <SelectTrigger
                         id="provinceId"
-                        className="bg-background/80"
+                        className={fieldClassName}
                       >
                         <SelectValue placeholder="Seleccione provincia" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="border-border bg-popover text-popover-foreground dark:border-slate-800 dark:bg-slate-950">
                         {filteredProvinces.map((province) => (
                           <SelectItem
                             key={province.provinceId}
@@ -1008,7 +1038,7 @@ export default function PersonForm({
                           : "Seleccione una provincia primero"
                       }
                       disabled
-                      className="text-muted-foreground"
+                      className={disabledFieldClassName}
                     />
                   ) : (
                     <Select
@@ -1019,10 +1049,10 @@ export default function PersonForm({
                         })
                       }
                     >
-                      <SelectTrigger id="cantonId" className="bg-background/80">
+                      <SelectTrigger id="cantonId" className={fieldClassName}>
                         <SelectValue placeholder="Seleccione cantón" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="border-border bg-popover text-popover-foreground dark:border-slate-800 dark:bg-slate-950">
                         {filteredCantons.map((canton) => (
                           <SelectItem
                             key={canton.cantonId}
@@ -1050,7 +1080,7 @@ export default function PersonForm({
                     placeholder="0"
                     min="0"
                     max="100"
-                    className="bg-background/80"
+                    className={fieldClassName}
                   />
                 </div>
 
@@ -1060,7 +1090,7 @@ export default function PersonForm({
                     id="militaryCard"
                     {...register("militaryCard")}
                     placeholder="Número de cartilla militar"
-                    className="bg-background/80"
+                    className={fieldClassName}
                   />
                 </div>
               </div>
@@ -1076,7 +1106,7 @@ export default function PersonForm({
                     id="motherName"
                     {...register("motherName")}
                     placeholder="Nombre completo de la madre"
-                    className="bg-background/80"
+                    className={fieldClassName}
                   />
                 </div>
 
@@ -1086,7 +1116,7 @@ export default function PersonForm({
                     id="fatherName"
                     {...register("fatherName")}
                     placeholder="Nombre completo del padre"
-                    className="bg-background/80"
+                    className={fieldClassName}
                   />
                 </div>
               </div>
@@ -1112,7 +1142,7 @@ export default function PersonForm({
 
           <TabsContent value="health" className="space-y-6">
             <SectionCard title="Información de Salud">
-              <div className="rounded-xl border border-border/60 bg-muted/30 p-4">
+              <div className="rounded-xl border border-border bg-muted/40 p-4 dark:border-slate-800 dark:bg-slate-900/70">
                 <Controller
                   control={control}
                   name="hasDisability"
@@ -1177,7 +1207,7 @@ export default function PersonForm({
                     max="100"
                     step="0.01"
                     disabled={!disabilityEnabled}
-                    className="bg-background/80"
+                    className={fieldClassName}
                   />
                 </div>
               </div>
@@ -1189,7 +1219,7 @@ export default function PersonForm({
                     <Input
                       value="No hay tipos de discapacidad configurados"
                       disabled
-                      className="text-muted-foreground"
+                      className={disabledFieldClassName}
                     />
                   ) : (
                     <Select
@@ -1202,13 +1232,10 @@ export default function PersonForm({
                       }
                       disabled={!disabilityEnabled}
                     >
-                      <SelectTrigger
-                        id="disability"
-                        className="bg-background/80"
-                      >
+                      <SelectTrigger id="disability" className={fieldClassName}>
                         <SelectValue placeholder="Seleccione tipo de discapacidad" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="border-border bg-popover text-popover-foreground dark:border-slate-800 dark:bg-slate-950">
                         {disabilityTypes.map((option) => (
                           <SelectItem key={option.id} value={option.name}>
                             {option.name}
@@ -1226,7 +1253,7 @@ export default function PersonForm({
                     {...register("conadisCard")}
                     placeholder="Número de carnet CONADIS"
                     disabled={!disabilityEnabled}
-                    className="bg-background/80"
+                    className={fieldClassName}
                   />
                 </div>
               </div>
@@ -1240,7 +1267,7 @@ export default function PersonForm({
                     <Input
                       value="No hay necesidades especiales configuradas"
                       disabled
-                      className="text-muted-foreground"
+                      className={disabledFieldClassName}
                     />
                   ) : (
                     <Select
@@ -1270,11 +1297,11 @@ export default function PersonForm({
                     >
                       <SelectTrigger
                         id="specialNeedsTypeId"
-                        className="bg-background/80"
+                        className={fieldClassName}
                       >
                         <SelectValue placeholder="Seleccione necesidades especiales" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="border-border bg-popover text-popover-foreground dark:border-slate-800 dark:bg-slate-950">
                         <SelectItem value="none">Ninguna</SelectItem>
                         {specialNeedsTypes.map((option) => (
                           <SelectItem
@@ -1292,7 +1319,7 @@ export default function PersonForm({
             </SectionCard>
           </TabsContent>
 
-          <div className="flex flex-col-reverse justify-between gap-3 border-t border-border/60 pt-6 sm:flex-row sm:justify-end">
+          <div className="flex flex-col-reverse justify-between gap-3 border-t border-border pt-6 dark:border-slate-800 sm:flex-row sm:justify-end">
             <div className="flex gap-2">
               <Button
                 type="button"
@@ -1328,8 +1355,10 @@ export default function PersonForm({
 
               <Button
                 type="submit"
-                disabled={isLoading || isSubmitting || !isValid || !hasIdentityTypes}
-                className="w-full rounded-full border border-primary/20 bg-primary text-primary-foreground shadow-sm transition-all hover:bg-primary/90 hover:shadow-md sm:w-auto"
+                disabled={
+                  isLoading || isSubmitting || !isValid || !hasIdentityTypes
+                }
+                className="w-full rounded-full border border-primary/20 bg-primary text-primary-foreground shadow-sm transition-all hover:bg-primary/90 hover:shadow-md disabled:opacity-60 sm:w-auto"
                 data-testid="button-submit-person"
               >
                 {isLoading ? (
@@ -1348,7 +1377,7 @@ export default function PersonForm({
         </form>
       </Tabs>
 
-      <Card className="border-border/60 bg-muted/40 shadow-sm">
+      <Card className="border-border bg-muted/50 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
         <CardContent className="pt-6">
           <h4 className="mb-2 text-sm font-medium text-foreground">
             Información de validación:

@@ -525,12 +525,12 @@ export default function People() {
               </div>
 
               <div className="relative flex-1 lg:w-80">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4"  />
                 <Input
                   placeholder="Buscar por cédula, nombre o email..."
                   value={currentParams.search ?? ""}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="rounded-full bg-background/80 pl-9 pr-9"
+                  className="pl-10 pr-10 py-2 w-full md:w-64"
                   data-testid="input-search-people"
                 />
                 {currentParams.search && (

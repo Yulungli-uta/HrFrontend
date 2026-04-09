@@ -45,7 +45,6 @@ export default defineConfig(({ mode }) => {
 
   return {
     base,
-
     plugins: [react(), drizzleResolverPlugin()],
 
     resolve: {
@@ -63,70 +62,6 @@ export default defineConfig(({ mode }) => {
         compress: {
           drop_console: true,
           drop_debugger: true,
-        },
-      },
-      rollupOptions: {
-        output: {
-          manualChunks(id) {
-            if (!id.includes("node_modules")) return;
-
-            if (
-              id.includes("/react/") ||
-              id.includes("\\react\\") ||
-              id.includes("react-dom") ||
-              id.includes("react/jsx-runtime")
-            ) {
-              return "framework";
-            }
-
-            if (id.includes("@tanstack/react-query")) {
-              return "query";
-            }
-
-            if (id.includes("wouter")) {
-              return "router";
-            }
-
-            if (id.includes("@radix-ui/")) {
-              return "radix-ui";
-            }
-
-            if (
-              id.includes("react-hook-form") ||
-              id.includes("@hookform/resolvers")
-            ) {
-              return "forms";
-            }
-
-            if (
-              id.includes("zod") ||
-              id.includes("date-fns") ||
-              id.includes("clsx") ||
-              id.includes("tailwind-merge") ||
-              id.includes("class-variance-authority")
-            ) {
-              return "utils";
-            }
-
-            if (
-              id.includes("lucide-react") ||
-              id.includes("react-icons")
-            ) {
-              return "icons";
-            }
-
-            if (
-              id.includes("framer-motion") ||
-              id.includes("sonner") ||
-              id.includes("react-error-boundary") ||
-              id.includes("react-day-picker") ||
-              id.includes("@microsoft/signalr")
-            ) {
-              return "misc";
-            }
-
-            return "vendor";
-          },
         },
       },
     },

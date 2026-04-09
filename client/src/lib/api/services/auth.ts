@@ -247,11 +247,17 @@ export const AuthUsersAPI = {
 
   /**
    * Obtiene usuarios paginados, compatible con el hook usePaged.
-   * Mapea PagedRequest al formato que ya acepta el endpoint /api/users.
+   * Mapea PagedRequest al formato que ya acepta el endpoint /api/users/paged.
    */
   listPaged: async (params: PagedRequest): Promise<ApiResponse<PagedResult<User>>> => {
     const raw = await apiFetch<PagedResult<User>>(
-      `/api/users/paged${serializeQuery({ page: params.page, pageSize: params.pageSize, sortBy: params.sortBy, sortDirection: params.sortDirection })}`,
+      `/api/users/paged${serializeQuery({
+        page: params.page,
+        pageSize: params.pageSize,
+        search: params.search,
+        sortBy: params.sortBy,
+        sortDirection: params.sortDirection,
+      })}`,
       { method: 'GET' }
     );
     return ensureApiResponse<PagedResult<User>>(raw);
@@ -329,7 +335,13 @@ export const RolesAPI = {
    */
   listPaged: async (params: PagedRequest): Promise<ApiResponse<PagedResult<Role>>> => {
     const raw = await apiFetch<PagedResult<Role>>(
-      `/api/roles/paged${serializeQuery({ page: params.page, pageSize: params.pageSize, sortBy: params.sortBy, sortDirection: params.sortDirection })}`,
+      `/api/roles/paged${serializeQuery({
+        page: params.page,
+        pageSize: params.pageSize,
+        search: params.search?.trim() || undefined,
+        sortBy: params.sortBy,
+        sortDirection: params.sortDirection,
+      })}`,
       { method: 'GET' }
     );
     return ensureApiResponse<PagedResult<Role>>(raw);

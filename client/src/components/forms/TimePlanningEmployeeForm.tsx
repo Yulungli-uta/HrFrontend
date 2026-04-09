@@ -1,13 +1,27 @@
-// client/src/components/person-detail/TimePlanningEmployeeForm.tsx
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,16 +30,43 @@ import {
   TimePlanningEmployeesAPI,
   TimePlanningExecutionsAPI,
   TiposReferenciaAPI,
-  type ApiResponse
+  VistaEmpleadosAPI,
 } from "@/lib/api";
 import {
-  RefreshCw, Download, Edit, Play, Trash2, User, Mail, Building, Timer, List, PlusCircle
+  RefreshCw,
+  Download,
+  Edit,
+  Play,
+  Trash2,
+  User,
+  Mail,
+  Building,
+  Timer,
+  List,
+  PlusCircle,
+  Check,
+  ChevronsUpDown,
+  Loader2,
+  Search,
+  ClipboardList,
 } from "lucide-react";
-import { parseApiError } from '@/lib/error-handling';
+import { parseApiError } from "@/lib/error-handling";
+import { cn } from "@/lib/utils";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { usePagedCombobox } from "@/hooks/usePagedCombobox";
 
-/* ============================
- * Tipos locales
- * ============================*/
 interface TimePlanningEmployee {
   planEmployeeID?: number;
   planID: number;
@@ -58,8 +99,8 @@ interface ExecutionRow {
   executionID: number;
   planEmployeeID: number;
   workDate: string;
-  startTime: string | null; // ISO datetime string
-  endTime: string | null;   // ISO datetime string
+  startTime: string | null;
+  endTime: string | null;
   totalMinutes: number;
   regularMinutes: number;
   overtimeMinutes: number;
@@ -74,13 +115,9 @@ interface ExecutionRow {
 interface TimePlanningEmployeeFormProps {
   planningId: number;
   planningTitle: string;
-  isOpen: boolean;
   onClose: () => void;
 }
 
-/* ============================
- * Utilidades
- * ============================*/
 const formatHM = (hours?: number, minutes?: number) => {
   if (typeof hours === "number") return `${hours}h`;
   if (typeof minutes === "number") {
@@ -91,33 +128,50 @@ const formatHM = (hours?: number, minutes?: number) => {
   return "0h";
 };
 
-const toLocaleMoney = (n?: number) => (typeof n === "number" ? `$${n.toLocaleString()}` : "N/A");
+const toLocaleMoney = (n?: number) =>
+  typeof n === "number" ? `$${n.toLocaleString()}` : "N/A";
 
-const ensureTime = (hhmmOrHms: string) => (hhmmOrHms.length === 5 ? `${hhmmOrHms}:00` : hhmmOrHms);
+const ensureTime = (hhmmOrHms: string) =>
+  hhmmOrHms.length === 5 ? `${hhmmOrHms}:00` : hhmmOrHms;
 
-/* ============================
- * Componente principal
- * ============================*/
+function quote(v?: string) {
+  if (!v && v !== "") return "";
+  const s = String(v);
+  if (s.includes(",") || s.includes('"') || s.includes("\n")) {
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+  return s;
+}
+
 export default function TimePlanningEmployeeForm({
   planningId,
   planningTitle,
-  isOpen,
   onClose,
 }: TimePlanningEmployeeFormProps) {
   const { toast } = useToast();
+
   const [employees, setEmployees] = useState<TimePlanningEmployee[]>([]);
   const [employeeStatusTypes, setEmployeeStatusTypes] = useState<RefType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Controls: ejecución por empleado
   const [execDialogOpen, setExecDialogOpen] = useState(false);
-  const [execForEmployee, setExecForEmployee] = useState<TimePlanningEmployee | null>(null);
+  const [execForEmployee, setExecForEmployee] =
+    useState<TimePlanningEmployee | null>(null);
+
+  const [employeeSearchOpen, setEmployeeSearchOpen] = useState(false);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<number | null>(null);
+  const [selectedEmployeeLabel, setSelectedEmployeeLabel] = useState<string | null>(
+    null
+  );
+  const [isAssigning, setIsAssigning] = useState(false);
 
   const loadEmployees = async () => {
     if (!planningId) return;
+
     try {
       setIsLoading(true);
       const response = await TimePlanningEmployeesAPI.getByPlan(planningId);
+
       if (response.status === "success") {
         setEmployees(response.data || []);
       } else {
@@ -128,7 +182,7 @@ export default function TimePlanningEmployeeForm({
           variant: "destructive",
         });
       }
-    } catch (error) {
+    } catch {
       setEmployees([]);
       toast({
         title: "Error",
@@ -146,24 +200,68 @@ export default function TimePlanningEmployeeForm({
       if (response.status === "success") {
         setEmployeeStatusTypes(response.data || []);
       }
-    } catch (error) {
-      // silencioso: no bloquea el resto
+    } catch {
+      // silencioso
     }
   };
 
   useEffect(() => {
-    if (isOpen && planningId) {
+    if (planningId) {
       loadEmployees();
       loadEmployeeStatusTypes();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, planningId]);
+  }, [planningId]);
+
+  const assignedIds = useMemo(
+    () => new Set(employees.map((e) => Number(e.employeeID))),
+    [employees]
+  );
+
+  const mapEmployee = useCallback((e: any) => {
+    const id = Number(e?.employeeID ?? e?.employeeId ?? e?.id ?? 0);
+    if (!id || id <= 0) return null;
+
+    const fullName = String(
+      e?.fullName ?? `${e?.firstName ?? ""} ${e?.lastName ?? ""}`.trim()
+    ).trim();
+
+    return {
+      value: id,
+      label: fullName || `Empleado #${id}`,
+      detail: e?.idCard ?? undefined,
+      extra: e?.department ?? e?.email ?? undefined,
+      raw: e,
+    };
+  }, []);
+
+  const employeeCombobox = usePagedCombobox<any>({
+    queryKey: "planning-employees-selector",
+    queryFn: (params) => VistaEmpleadosAPI.listPaged(params),
+    mapFn: mapEmployee,
+    enabled: Boolean(planningId),
+    initialPageSize: 10,
+    debounceMs: 400,
+  });
+
+  const availableEmployeeOptions = useMemo(() => {
+    return employeeCombobox.options.filter((opt) => !assignedIds.has(Number(opt.value)));
+  }, [employeeCombobox.options, assignedIds]);
+
+  const assignedStatusTypeId = useMemo(() => {
+    return (
+      employeeStatusTypes.find((x) => x.name.toLowerCase() === "asignado")?.typeId ??
+      0
+    );
+  }, [employeeStatusTypes]);
 
   const getEmployeeStatusBadge = (statusTypeID: number) => {
     const status = employeeStatusTypes.find((s) => s.typeId === statusTypeID);
     if (!status) return <Badge variant="outline">Desconocido</Badge>;
 
-    const variantMap: Record<string, "default" | "secondary" | "destructive" | "outline" | "success"> = {
+    const variantMap: Record<
+      string,
+      "default" | "secondary" | "destructive" | "outline" | "success"
+    > = {
       Asignado: "secondary",
       "En Progreso": "default",
       Completado: "success",
@@ -174,25 +272,38 @@ export default function TimePlanningEmployeeForm({
     };
 
     return (
-      <Badge variant={(variantMap[status.name] as any) || "outline"} className="text-xs">
+      <Badge variant={variantMap[status.name] || "outline"} className="text-xs">
         {status.name}
       </Badge>
     );
   };
 
-  const handleUpdateStatus = async (planEmployeeID: number, newStatusName: string) => {
+  const handleUpdateStatus = async (
+    planEmployeeID: number,
+    newStatusName: string
+  ) => {
     try {
       const statusType = employeeStatusTypes.find((s) => s.name === newStatusName);
+
       if (!statusType) {
-        toast({ title: "Estado inválido", description: "No se reconoce el estado", variant: "destructive" });
+        toast({
+          title: "Estado inválido",
+          description: "No se reconoce el estado",
+          variant: "destructive",
+        });
         return;
       }
+
       const resp = await TimePlanningEmployeesAPI.update(planningId, planEmployeeID, {
         planEmployeeID,
         employeeStatusTypeID: statusType.typeId,
       });
+
       if (resp.status === "success") {
-        toast({ title: "Actualizado", description: `Estado cambiado a "${newStatusName}"` });
+        toast({
+          title: "Actualizado",
+          description: `Estado cambiado a "${newStatusName}"`,
+        });
         await loadEmployees();
       } else {
         toast({
@@ -201,13 +312,80 @@ export default function TimePlanningEmployeeForm({
           variant: "destructive",
         });
       }
-    } catch (err) {
-      toast({ title: "Error", description: "No se pudo actualizar el estado", variant: "destructive" });
+    } catch {
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar el estado",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAssignEmployee = async () => {
+    try {
+      if (!selectedEmployeeId) {
+        toast({
+          title: "Seleccione un empleado",
+          description: "Debe elegir un empleado para asignar.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!assignedStatusTypeId) {
+        toast({
+          title: "Error de configuración",
+          description: "No se encontró el estado 'Asignado'.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setIsAssigning(true);
+
+      const payload = {
+        planID: planningId,
+        employeeID: selectedEmployeeId,
+        employeeStatusTypeID: assignedStatusTypeId,
+        isEligible: true,
+      };
+
+      const resp = await (TimePlanningEmployeesAPI as any).addEmployee(
+        planningId,
+        payload
+      );
+
+      if (resp?.status === "success") {
+        toast({
+          title: "Empleado asignado",
+          description: "El empleado fue agregado a la planificación.",
+        });
+
+        setSelectedEmployeeId(null);
+        setSelectedEmployeeLabel(null);
+        setEmployeeSearchOpen(false);
+        employeeCombobox.reset();
+
+        await loadEmployees();
+      } else {
+        toast({
+          title: "Error",
+          description: resp?.error?.message || "No se pudo asignar el empleado.",
+          variant: "destructive",
+        });
+      }
+    } catch (e: unknown) {
+      toast({
+        title: "Error",
+        description: parseApiError(e).message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsAssigning(false);
     }
   };
 
   const handleExport = () => {
-    // Exportar CSV
     const headers = [
       "PlanEmployeeID",
       "PlanID",
@@ -251,9 +429,11 @@ export default function TimePlanningEmployeeForm({
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
+
     const safeTitle = planningTitle?.replace(/[^\w\-]+/g, "_") || "plan";
     a.download = `planning_employees_${safeTitle}.csv`;
     a.click();
+
     URL.revokeObjectURL(url);
   };
 
@@ -263,32 +443,183 @@ export default function TimePlanningEmployeeForm({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl lg:max-w-6xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl">
-            <User className="h-5 w-5" />
-            Empleados — {planningTitle}
-          </DialogTitle>
-          <DialogDescription className="text-sm sm:text-base">
-            Gestión de empleados asignados a esta planificación
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <div className="space-y-4">
+        <div className="border rounded-lg p-4 bg-card space-y-4">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-lg border bg-background">
+                <ClipboardList className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold">Empleados asignados</h3>
+                <p className="text-xs text-muted-foreground">
+                  Gestiona los empleados relacionados con la planificación y su
+                  ejecución.
+                </p>
+              </div>
+            </div>
+
+            <div className="text-xs text-muted-foreground">
+              Planificación: <span className="font-medium">{planningTitle}</span>
+            </div>
+          </div>
+
+          <div className="flex flex-col md:flex-row gap-2">
+            <Popover open={employeeSearchOpen} onOpenChange={setEmployeeSearchOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={employeeSearchOpen}
+                  className="w-full md:flex-1 justify-between font-normal"
+                  disabled={isAssigning}
+                >
+                  <span className="truncate">
+                    {selectedEmployeeLabel ?? "Buscar empleado..."}
+                  </span>
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+
+              <PopoverContent className="w-[380px] sm:w-[460px] p-0" align="start">
+                <Command shouldFilter={false}>
+                  <div className="border-b px-3 py-2 flex items-center gap-2">
+                    <Search className="h-4 w-4 text-muted-foreground" />
+                    <CommandInput
+                      placeholder="Buscar por nombre, cédula o correo..."
+                      value={employeeCombobox.searchTerm}
+                      onValueChange={employeeCombobox.setSearchTerm}
+                    />
+                  </div>
+
+                  <CommandList>
+                    {employeeCombobox.isLoading || employeeCombobox.isFetching ? (
+                      <div className="flex items-center justify-center py-6">
+                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                        <span className="ml-2 text-sm text-muted-foreground">
+                          Buscando...
+                        </span>
+                      </div>
+                    ) : (
+                      <>
+                        <CommandEmpty>No se encontraron empleados.</CommandEmpty>
+
+                        <CommandGroup>
+                          {availableEmployeeOptions.map((opt) => (
+                            <CommandItem
+                              key={String(opt.value)}
+                              value={String(opt.value)}
+                              onSelect={() => {
+                                setSelectedEmployeeId(Number(opt.value));
+                                setSelectedEmployeeLabel(
+                                  `${opt.label}${opt.detail ? ` — ${opt.detail}` : ""}`
+                                );
+                                setEmployeeSearchOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  selectedEmployeeId === Number(opt.value)
+                                    ? "opacity-100"
+                                    : "opacity-0"
+                                )}
+                              />
+
+                              <div className="flex flex-col min-w-0">
+                                <span className="text-sm font-medium truncate">
+                                  {opt.label}
+                                </span>
+                                <span className="text-xs text-muted-foreground truncate">
+                                  {opt.detail || "Sin detalle"}
+                                  {opt.extra ? ` · ${opt.extra}` : ""}
+                                </span>
+                              </div>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+
+                        <div className="border-t p-2 flex items-center justify-between gap-2">
+                          <div className="text-[11px] text-muted-foreground">
+                            Página {employeeCombobox.page} de {employeeCombobox.totalPages} ·{" "}
+                            {employeeCombobox.totalCount} resultado(s)
+                          </div>
+
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={employeeCombobox.goPrev}
+                              disabled={
+                                employeeCombobox.isLoading ||
+                                employeeCombobox.isFetching ||
+                                !employeeCombobox.hasPreviousPage
+                              }
+                            >
+                              Anterior
+                            </Button>
+
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={employeeCombobox.goNext}
+                              disabled={
+                                employeeCombobox.isLoading ||
+                                employeeCombobox.isFetching ||
+                                !employeeCombobox.hasNextPage
+                              }
+                            >
+                              Siguiente
+                            </Button>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+
+            <Button
+              type="button"
+              onClick={handleAssignEmployee}
+              disabled={!selectedEmployeeId || isAssigning}
+              className="md:w-auto"
+            >
+              {isAssigning ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Asignando...
+                </>
+              ) : (
+                <>
+                  <PlusCircle className="h-4 w-4 mr-2" />
+                  Agregar
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
 
         {isLoading ? (
-          <div className="flex justify-center items-center py-8">
+          <div className="flex justify-center items-center py-10">
             <RefreshCw className="h-8 w-8 animate-spin mr-2" />
             <span className="text-sm sm:text-base">Cargando empleados…</span>
           </div>
         ) : employees.length > 0 ? (
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div className="text-sm text-muted-foreground">{employees.length} empleado(s) asignado(s)</div>
+              <div className="text-sm text-muted-foreground">
+                {employees.length} empleado(s) asignado(s)
+              </div>
+
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={loadEmployees} className="text-xs">
                   <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
                   Refrescar
                 </Button>
+
                 <Button variant="outline" size="sm" onClick={handleExport} className="text-xs">
                   <Download className="h-3.5 w-3.5 mr-1.5" />
                   Exportar
@@ -301,51 +632,73 @@ export default function TimePlanningEmployeeForm({
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="min-w-[200px]">Empleado</TableHead>
-                      <TableHead className="hidden sm:table-cell min-w-[130px]">Departamento</TableHead>
-                      <TableHead className="hidden md:table-cell min-w-[120px]">Cargo</TableHead>
-                      <TableHead className="min-w-[100px]">Estado</TableHead>
-                      <TableHead className="min-w-[110px]">Asignado</TableHead>
-                      <TableHead className="min-w-[110px]">Real</TableHead>
-                      <TableHead className="hidden lg:table-cell min-w-[110px]">Monto</TableHead>
-                      <TableHead className="min-w-[130px] text-right">Acciones</TableHead>
+                      <TableHead className="min-w-[220px]">Empleado</TableHead>
+                      <TableHead className="hidden md:table-cell min-w-[140px]">
+                        Departamento
+                      </TableHead>
+                      <TableHead className="hidden lg:table-cell min-w-[140px]">
+                        Cargo
+                      </TableHead>
+                      <TableHead className="min-w-[110px]">Estado</TableHead>
+                      <TableHead className="min-w-[120px]">Asignado</TableHead>
+                      <TableHead className="min-w-[120px]">Real</TableHead>
+                      <TableHead className="hidden xl:table-cell min-w-[110px]">
+                        Pago
+                      </TableHead>
+                      <TableHead className="text-right min-w-[140px]">
+                        Acciones
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
+
                   <TableBody>
                     {employees.map((employee) => (
                       <TableRow key={employee.planEmployeeID}>
                         <TableCell>
                           <div className="space-y-1">
-                            <div className="font-medium text-sm">{employee.employeeName}</div>
+                            <div className="font-medium text-sm">
+                              {employee.employeeName || `Empleado #${employee.employeeID}`}
+                            </div>
+
                             <div className="flex items-center text-xs text-muted-foreground">
                               <Mail className="h-3 w-3 mr-1" />
-                              {employee.email}
+                              {employee.email || "Sin correo"}
                             </div>
-                            <div className="flex items-center text-xs text-muted-foreground sm:hidden">
+
+                            <div className="flex items-center text-xs text-muted-foreground md:hidden">
                               <Building className="h-3 w-3 mr-1" />
-                              {employee.department}
+                              {employee.department || "Sin departamento"}
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="hidden sm:table-cell">
+
+                        <TableCell className="hidden md:table-cell">
                           <div className="flex items-center text-sm">
                             <Building className="h-3 w-3 mr-1 text-muted-foreground" />
-                            {employee.department}
+                            {employee.department || "N/A"}
                           </div>
                         </TableCell>
-                        <TableCell className="hidden md:table-cell text-sm">
+
+                        <TableCell className="hidden lg:table-cell text-sm">
                           {employee.position || "N/A"}
                         </TableCell>
-                        <TableCell>{getEmployeeStatusBadge(employee.employeeStatusTypeID)}</TableCell>
+
+                        <TableCell>
+                          {getEmployeeStatusBadge(employee.employeeStatusTypeID)}
+                        </TableCell>
+
                         <TableCell className="text-sm">
                           {formatHM(employee.assignedHours, employee.assignedMinutes)}
                         </TableCell>
+
                         <TableCell className="text-sm">
                           {formatHM(employee.actualHours, employee.actualMinutes)}
                         </TableCell>
-                        <TableCell className="hidden lg:table-cell text-sm">
+
+                        <TableCell className="hidden xl:table-cell text-sm">
                           {toLocaleMoney(employee.paymentAmount)}
                         </TableCell>
+
                         <TableCell>
                           <div className="flex justify-end">
                             <DropdownMenu>
@@ -354,7 +707,8 @@ export default function TimePlanningEmployeeForm({
                                   Acciones
                                 </Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-48">
+
+                              <DropdownMenuContent align="end" className="w-52">
                                 <DropdownMenuItem
                                   onClick={() =>
                                     handleUpdateStatus(employee.planEmployeeID!, "En Progreso")
@@ -364,6 +718,7 @@ export default function TimePlanningEmployeeForm({
                                   <Play className="h-3.5 w-3.5 mr-2" />
                                   Iniciar trabajo
                                 </DropdownMenuItem>
+
                                 <DropdownMenuItem
                                   onClick={() =>
                                     handleUpdateStatus(employee.planEmployeeID!, "Completado")
@@ -373,6 +728,7 @@ export default function TimePlanningEmployeeForm({
                                   <Edit className="h-3.5 w-3.5 mr-2" />
                                   Marcar completado
                                 </DropdownMenuItem>
+
                                 <DropdownMenuItem
                                   onClick={() =>
                                     handleUpdateStatus(employee.planEmployeeID!, "Cancelado")
@@ -402,38 +758,36 @@ export default function TimePlanningEmployeeForm({
             </div>
           </div>
         ) : (
-          <div className="text-center py-8 text-muted-foreground">
+          <div className="text-center py-10 text-muted-foreground border rounded-lg bg-card">
             <User className="mx-auto h-12 w-12 mb-3 opacity-50" />
             <p className="text-base mb-1">No hay empleados asignados</p>
-            <p className="text-sm">Los empleados asignados aparecerán aquí</p>
+            <p className="text-sm">
+              Usa la búsqueda paginada de arriba para agregarlos
+            </p>
           </div>
         )}
+      </div>
 
-        <DialogFooter className="flex flex-col sm:flex-row gap-2">
-          <Button onClick={onClose} className="w-full sm:w-auto">
-            Cerrar
-          </Button>
-        </DialogFooter>
+      <DialogFooter className="flex flex-col sm:flex-row gap-2">
+        <Button onClick={onClose} className="w-full sm:w-auto">
+          Cerrar
+        </Button>
+      </DialogFooter>
 
-        {/* Sub-diálogo de ejecuciones */}
-        {execForEmployee && (
-          <ExecutionDialog
-            open={execDialogOpen}
-            onOpenChange={setExecDialogOpen}
-            employee={execForEmployee}
-            onChanged={async () => {
-              await loadEmployees();
-            }}
-          />
-        )}
-      </DialogContent>
-    </Dialog>
+      {execForEmployee && (
+        <ExecutionDialog
+          open={execDialogOpen}
+          onOpenChange={setExecDialogOpen}
+          employee={execForEmployee}
+          onChanged={async () => {
+            await loadEmployees();
+          }}
+        />
+      )}
+    </>
   );
 }
 
-/* ============================
- * Sub-diálogo de ejecuciones
- * ============================*/
 function ExecutionDialog({
   open,
   onOpenChange,
@@ -448,7 +802,7 @@ function ExecutionDialog({
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState<ExecutionRow[]>([]);
-  // Form: registrar trabajo
+
   const [workDate, setWorkDate] = useState<string>("");
   const [start, setStart] = useState<string>("18:00");
   const [end, setEnd] = useState<string>("20:00");
@@ -457,16 +811,27 @@ function ExecutionDialog({
   const loadExecutions = async () => {
     try {
       setLoading(true);
-      const r = await TimePlanningExecutionsAPI.getByPlanEmployee(employee.planEmployeeID!);
+      const r = await TimePlanningExecutionsAPI.getByPlanEmployee(
+        employee.planEmployeeID!
+      );
+
       if (r.status === "success") {
         setRows(r.data || []);
       } else {
         setRows([]);
-        toast({ title: "Error", description: "No se pudieron cargar ejecuciones", variant: "destructive" });
+        toast({
+          title: "Error",
+          description: "No se pudieron cargar ejecuciones",
+          variant: "destructive",
+        });
       }
     } catch {
       setRows([]);
-      toast({ title: "Error", description: "No se pudieron cargar ejecuciones", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar ejecuciones",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -476,15 +841,19 @@ function ExecutionDialog({
     if (open && employee?.planEmployeeID) {
       loadExecutions();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, employee?.planEmployeeID]);
 
   const registerWork = async () => {
     try {
       if (!workDate) {
-        toast({ title: "Falta fecha", description: "Selecciona la fecha de trabajo", variant: "destructive" });
+        toast({
+          title: "Falta fecha",
+          description: "Selecciona la fecha de trabajo",
+          variant: "destructive",
+        });
         return;
       }
+
       const payload = {
         planEmployeeID: employee.planEmployeeID!,
         workDate,
@@ -492,9 +861,18 @@ function ExecutionDialog({
         endTime: ensureTime(end),
         comments: comments || undefined,
       };
-      const r = await TimePlanningExecutionsAPI.registerWorkTime(employee.planEmployeeID!, payload);
+
+      const r = await TimePlanningExecutionsAPI.registerWorkTime(
+        employee.planEmployeeID!,
+        payload
+      );
+
       if (r.status === "success") {
-        toast({ title: "Registrado", description: "Tiempo de trabajo guardado" });
+        toast({
+          title: "Registrado",
+          description: "Tiempo de trabajo guardado",
+        });
+
         setComments("");
         await loadExecutions();
         await onChanged();
@@ -506,19 +884,31 @@ function ExecutionDialog({
         });
       }
     } catch (e: unknown) {
-      toast({ title: "Error", description: parseApiError(e).message, variant: "destructive" });
+      toast({
+        title: "Error",
+        description: parseApiError(e).message,
+        variant: "destructive",
+      });
     }
   };
 
-  // Edición simple: solo hora fin (caso rápido)
   const updateEndTime = async (row: ExecutionRow, newEnd: string) => {
     try {
-      const r = await TimePlanningExecutionsAPI.update(row.planEmployeeID, row.executionID, {
-        executionID: row.executionID,
-        endTime: ensureTime(newEnd),
-      });
+      const r = await TimePlanningExecutionsAPI.update(
+        row.planEmployeeID,
+        row.executionID,
+        {
+          executionID: row.executionID,
+          endTime: ensureTime(newEnd),
+        }
+      );
+
       if (r.status === "success") {
-        toast({ title: "Actualizado", description: "Hora fin actualizada" });
+        toast({
+          title: "Actualizado",
+          description: "Hora fin actualizada",
+        });
+
         await loadExecutions();
         await onChanged();
       } else {
@@ -529,7 +919,11 @@ function ExecutionDialog({
         });
       }
     } catch (e: unknown) {
-      toast({ title: "Error", description: parseApiError(e).message, variant: "destructive" });
+      toast({
+        title: "Error",
+        description: parseApiError(e).message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -547,36 +941,57 @@ function ExecutionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Timer className="h-5 w-5" />
             Ejecución — {employee.employeeName}
           </DialogTitle>
-          <DialogDescription>Registra o revisa minutos trabajados para este empleado.</DialogDescription>
+          <DialogDescription>
+            Registra o revisa minutos trabajados para este empleado.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Form rápido */}
-          <div className="border rounded-lg p-3">
+          <div className="border rounded-lg p-4 bg-card">
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
               <div className="space-y-1">
                 <Label>Fecha</Label>
-                <Input type="date" value={workDate} onChange={(e) => setWorkDate(e.target.value)} />
+                <Input
+                  type="date"
+                  value={workDate}
+                  onChange={(e) => setWorkDate(e.target.value)}
+                />
               </div>
+
               <div className="space-y-1">
                 <Label>Hora inicio</Label>
-                <Input type="time" value={start} onChange={(e) => setStart(e.target.value)} />
+                <Input
+                  type="time"
+                  value={start}
+                  onChange={(e) => setStart(e.target.value)}
+                />
               </div>
+
               <div className="space-y-1">
                 <Label>Hora fin</Label>
-                <Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} />
+                <Input
+                  type="time"
+                  value={end}
+                  onChange={(e) => setEnd(e.target.value)}
+                />
               </div>
+
               <div className="space-y-1">
                 <Label>Comentarios</Label>
-                <Input placeholder="Opcional" value={comments} onChange={(e) => setComments(e.target.value)} />
+                <Input
+                  placeholder="Opcional"
+                  value={comments}
+                  onChange={(e) => setComments(e.target.value)}
+                />
               </div>
             </div>
+
             <div className="mt-3">
               <Button size="sm" onClick={registerWork}>
                 <PlusCircle className="h-4 w-4 mr-2" />
@@ -592,7 +1007,7 @@ function ExecutionDialog({
                   <TableRow>
                     <TableHead className="min-w-[110px]">Fecha</TableHead>
                     <TableHead className="min-w-[120px]">Inicio</TableHead>
-                    <TableHead className="min-w-[140px]">Fin (editable)</TableHead>
+                    <TableHead className="min-w-[140px]">Fin</TableHead>
                     <TableHead className="min-w-[110px]">Total</TableHead>
                     <TableHead className="hidden sm:table-cell">Reg.</TableHead>
                     <TableHead className="hidden sm:table-cell">HE</TableHead>
@@ -601,18 +1016,23 @@ function ExecutionDialog({
                     <TableHead className="hidden lg:table-cell">Obs.</TableHead>
                   </TableRow>
                 </TableHeader>
+
                 <TableBody>
                   {loading ? (
                     <TableRow>
                       <TableCell colSpan={9}>
                         <div className="flex items-center justify-center py-6 text-sm">
-                          <RefreshCw className="h-4 w-4 animate-spin mr-2" /> Cargando ejecuciones…
+                          <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                          Cargando ejecuciones…
                         </div>
                       </TableCell>
                     </TableRow>
                   ) : rows.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center text-muted-foreground py-6">
+                      <TableCell
+                        colSpan={9}
+                        className="text-center text-muted-foreground py-6"
+                      >
                         No hay ejecuciones registradas.
                       </TableCell>
                     </TableRow>
@@ -620,49 +1040,76 @@ function ExecutionDialog({
                     rows.map((r) => (
                       <TableRow key={r.executionID}>
                         <TableCell className="text-sm">
-                          {new Date(r.workDate).toLocaleDateString()}
+                          {new Date(`${r.workDate}T00:00:00`).toLocaleDateString()}
                         </TableCell>
+
                         <TableCell className="text-sm">
-                          {r.startTime ? new Date(r.startTime).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) : "—"}
+                          {r.startTime
+                            ? new Date(r.startTime).toLocaleTimeString(undefined, {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })
+                            : "—"}
                         </TableCell>
+
                         <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Input
-                              type="time"
-                              defaultValue={
-                                r.endTime
-                                  ? new Date(r.endTime).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false })
-                                  : ""
-                              }
-                              className="h-8 w-[120px]"
-                              onBlur={(e) => {
-                                const val = e.target.value;
-                                if (val) updateEndTime(r, val);
-                              }}
-                            />
-                          </div>
+                          <Input
+                            type="time"
+                            defaultValue={
+                              r.endTime
+                                ? new Date(r.endTime).toLocaleTimeString("en-GB", {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    hour12: false,
+                                  })
+                                : ""
+                            }
+                            className="h-8 w-[120px]"
+                            onBlur={(e) => {
+                              const val = e.target.value;
+                              if (val) updateEndTime(r, val);
+                            }}
+                          />
                         </TableCell>
+
                         <TableCell className="text-sm">{r.totalMinutes}m</TableCell>
-                        <TableCell className="hidden sm:table-cell text-sm">{r.regularMinutes}m</TableCell>
-                        <TableCell className="hidden sm:table-cell text-sm">{r.overtimeMinutes}m</TableCell>
-                        <TableCell className="hidden sm:table-cell text-sm">{r.nightMinutes}m</TableCell>
-                        <TableCell className="hidden md:table-cell text-sm">{r.holidayMinutes}m</TableCell>
+                        <TableCell className="hidden sm:table-cell text-sm">
+                          {r.regularMinutes}m
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell text-sm">
+                          {r.overtimeMinutes}m
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell text-sm">
+                          {r.nightMinutes}m
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell text-sm">
+                          {r.holidayMinutes}m
+                        </TableCell>
                         <TableCell className="hidden lg:table-cell text-xs text-muted-foreground">
                           {r.comments || "—"}
                         </TableCell>
                       </TableRow>
                     ))
                   )}
+
                   {rows.length > 0 && !loading && (
                     <TableRow>
                       <TableCell colSpan={3} className="text-right font-medium">
                         Totales:
                       </TableCell>
                       <TableCell className="font-medium">{total.total}m</TableCell>
-                      <TableCell className="hidden sm:table-cell font-medium">{total.regular}m</TableCell>
-                      <TableCell className="hidden sm:table-cell font-medium">{total.overtime}m</TableCell>
-                      <TableCell className="hidden sm:table-cell font-medium">{total.night}m</TableCell>
-                      <TableCell className="hidden md:table-cell font-medium">{total.holiday}m</TableCell>
+                      <TableCell className="hidden sm:table-cell font-medium">
+                        {total.regular}m
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell font-medium">
+                        {total.overtime}m
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell font-medium">
+                        {total.night}m
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell font-medium">
+                        {total.holiday}m
+                      </TableCell>
                       <TableCell className="hidden lg:table-cell" />
                     </TableRow>
                   )}
@@ -680,16 +1127,4 @@ function ExecutionDialog({
       </DialogContent>
     </Dialog>
   );
-}
-
-/* ============================
- * Helpers
- * ============================*/
-function quote(v?: string) {
-  if (!v && v !== "") return "";
-  const s = String(v);
-  if (s.includes(",") || s.includes('"') || s.includes("\n")) {
-    return `"${s.replace(/"/g, '""')}"`;
-  }
-  return s;
 }

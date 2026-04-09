@@ -1,6 +1,4 @@
-// components/Sidebar.tsx
-// Diseño UX profesional con soporte completo dark/light mode.
-// Principio: NUNCA usar colores hardcodeados. Usar siempre variables semánticas del tema.
+// src/components/Sidebar.tsx
 import React, { useState, useEffect, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import {
@@ -262,24 +260,42 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onLogout }) => {
       <SidebarHeader collapsed={collapsed} onToggle={onToggle} />
 
       {/* ── Búsqueda (solo expandido) ── */}
-      {!collapsed && (
-        <div className="shrink-0 px-3 pt-2.5 pb-2 border-b border-sidebar-border">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-sidebar-foreground/40 pointer-events-none" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              placeholder="Buscar en el menú…"
-              className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-sidebar-border
-                         bg-sidebar-accent/50 text-xs text-sidebar-foreground
-                         placeholder:text-sidebar-foreground/40
-                         focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring
-                         transition-all duration-200"
-            />
-          </div>
+      {!collapsed && (      
+      <div className="shrink-0 border-b border-sidebar-border px-3 pb-2 pt-2.5">
+        <div className="relative">
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+          />
+
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Buscar en el menú..."
+            className="
+              w-full rounded-xl border border-border
+              bg-background
+              py-2 pl-10 pr-3
+              text-sm text-foreground
+              placeholder:text-muted-foreground
+              shadow-sm
+              outline-none
+              transition-all duration-200
+
+              hover:bg-muted/40
+              focus:border-primary/50
+              focus:ring-2 focus:ring-primary/20
+
+              dark:border-slate-700
+              dark:bg-slate-900
+              dark:text-slate-100
+              dark:placeholder:text-slate-400
+              dark:hover:bg-slate-800
+            "
+          />
         </div>
-      )}
+      </div>
+    )}
 
       {/* ── Navegación ── */}
       <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-0.5" aria-label="Menú principal">

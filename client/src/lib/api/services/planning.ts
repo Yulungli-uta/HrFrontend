@@ -82,6 +82,17 @@ export interface TimePlanningCreateDTO {
 export const TimePlanningsAPI = {
   ...createCrudService<any, TimePlanningCreateDTO>('/api/v1/rh/planning/timePlannings'),
 
+  /**
+   * Obtiene planificaciones creadas por un jefe/responsable.
+   * Se expone con ambos nombres para evitar regresiones en consumidores existentes.
+   */
+  getByCreateBy: (employeeId: number): Promise<ApiResponse<any>> =>
+    apiFetch<any>(`/api/v1/rh/planning/timePlannings/boss/${employeeId}`),
+
+  /** @alias getByCreateBy — nombre canónico con 'd' final */
+  getByCreatedBy: (employeeId: number): Promise<ApiResponse<any>> =>
+    apiFetch<any>(`/api/v1/rh/planning/timePlannings/boss/${employeeId}`),
+
   getByEmployee: (employeeId: number): Promise<ApiResponse<any>> =>
     apiFetch<any>(`/api/v1/rh/planning/timePlannings/employee/${employeeId}`),
 
@@ -94,32 +105,55 @@ export const TimePlanningsAPI = {
 // =============================================================================
 
 export const TimePlanningEmployeesAPI = {
+  /**
+   * Lista todos los empleados de una planificación.
+   * GET /planning/employees/by-plan/{planId}
+   */
   getByPlan: (planId: number): Promise<ApiResponse<any>> =>
     apiFetch<any>(`/api/v1/rh/planning/employees/by-plan/${planId}`),
 
-  getById: (planId: number, id: number): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`/api/v1/rh/planning/employees/${planId}/${id}`),
+  /**
+   * Obtiene un empleado de planificación por su ID.
+   * GET /planning/employees/{id}
+   * Nota: el backend no incluye planId en esta ruta.
+   */
+  getById: (id: number): Promise<ApiResponse<any>> =>
+    apiFetch<any>(`/api/v1/rh/planning/employees/${id}`),
 
+  /**
+   * Actualiza un empleado en la planificación.
+   * PUT /planning/employees/{id}
+   * Nota: el backend no incluye planId en esta ruta.
+   */
   update: (
-    planId: number,
     id: number,
     data: TimePlanningEmployeeUpdateDTO
   ): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`/api/v1/rh/planning/employees/${planId}/${id}`, {
+    apiFetch<any>(`/api/v1/rh/planning/employees/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
 
-  remove: (planId: number, id: number): Promise<ApiResponse<void>> =>
-    apiFetch<void>(`/api/v1/rh/planning/employees/${planId}/${id}`, {
+  /**
+   * Elimina un empleado de la planificación.
+   * DELETE /planning/employees/{id}
+   * Nota: el backend no incluye planId en esta ruta.
+   */
+  remove: (id: number): Promise<ApiResponse<void>> =>
+    apiFetch<void>(`/api/v1/rh/planning/employees/${id}`, {
       method: 'DELETE',
     }),
 
+  /**
+   * Agrega un empleado a una planificación existente.
+   * POST /planning/employees
+   * El planID viaja dentro del body (TimePlanningEmployeeCreateDTO.PlanID),
+   * no como parámetro de ruta ni query string.
+   */
   addEmployee: (
-    planId: number,
     data: TimePlanningEmployeeCreateDTO
   ): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`/api/v1/rh/planning/employees?planId=${planId}`, {
+    apiFetch<any>(`/api/v1/rh/planning/employees`, {
       method: 'POST',
       body: JSON.stringify(data),
     }),

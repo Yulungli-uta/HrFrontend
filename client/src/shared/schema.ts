@@ -100,6 +100,7 @@ export const schedules = pgTable("schedules", {
   lunchEnd: varchar("lunch_end", { length: 8 }),
   isRotating: boolean("is_rotating"),
   rotationPattern: text("rotation_pattern"),
+  isActive: boolean("is_active"),
   createdAt: timestamp("created_at"),
   updatedAt: timestamp("updated_at"),
 });
@@ -540,6 +541,7 @@ export const insertScheduleSchema = z.object({
   lunchEnd: z.string().nullable().optional(),
   isRotating: z.boolean(),
   rotationPattern: z.string().nullable().optional(),
+  isActive: z.boolean().default(true),
 });
 
 export const insertContractSchema = createInsertSchema(contracts);
@@ -624,19 +626,24 @@ export type RefType = z.infer<typeof refTypeSchema>;
 // ===============================
 export type FrontendSchedule = Schedule & {
   scheduleId?: number;
+  isActive?: boolean;
 };
 
 export function normalizeSchedule(backendSchedule: any): FrontendSchedule {
+  const normalizedId = backendSchedule.scheduleId ?? backendSchedule.id;
   if (backendSchedule.scheduleId !== undefined) {
     return {
       ...backendSchedule,
       id: backendSchedule.scheduleId,
       scheduleId: backendSchedule.scheduleId,
+      isActive: backendSchedule.isActive ?? true,
     };
   }
 
   return {
-    ...backendSchedule,
-    scheduleId: backendSchedule.id,
+     ...backendSchedule,
+    id: normalizedId,
+    scheduleId: normalizedId,
+    isActive: backendSchedule.isActive ?? true,
   };
 }

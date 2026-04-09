@@ -80,6 +80,7 @@ export interface ScheduleOption {
   startTime?: string | null;
   endTime?: string | null;
   workingDays?: string | null;
+  isActive: boolean;
 }
 
 export type BossStatusFilterValue =

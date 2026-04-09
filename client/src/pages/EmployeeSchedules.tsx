@@ -417,14 +417,14 @@ export default function EmployeeSchedules() {
     });
   }, [employees, filters, schedulesByEmployee]);
 
-  const stats = useMemo(() => {
-    const total = employees.length;
-    const withSchedule = employees.filter(
-      (e) => getEmployeeScheduleInfo(e).hasAssignedSchedule
-    ).length;
-    const withoutSchedule = total - withSchedule;
-    return { total, withSchedule, withoutSchedule };
-  }, [employees, schedulesByEmployee]);
+  // const stats = useMemo(() => {
+  //   const total = employees.length;
+  //   const withSchedule = employees.filter(
+  //     (e) => getEmployeeScheduleInfo(e).hasAssignedSchedule
+  //   ).length;
+  //   const withoutSchedule = total - withSchedule;
+  //   return { total, withSchedule, withoutSchedule };
+  // }, [employees, schedulesByEmployee]);
 
   const handleAssignSchedule = (employee: Employee) => {
     setSelectedEmployee(employee);
@@ -520,7 +520,7 @@ export default function EmployeeSchedules() {
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
+      {/* <div className="grid gap-6 md:grid-cols-3">
         <Card className="transition-shadow hover:shadow-md">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2">
@@ -571,7 +571,7 @@ export default function EmployeeSchedules() {
             </p>
           </CardContent>
         </Card>
-      </div>
+      </div> */}
 
       {scheduleCounts.length > 0 && (
         <Card>

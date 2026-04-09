@@ -1,4 +1,3 @@
-// src/components/scheduleChangePlans/scheduleChangePlansHelpers.ts
 import type {
   BossStatusFilterValue,
   CreateScheduleChangePlanRequest,
@@ -106,6 +105,13 @@ export function normalizeSchedule(item: any): ScheduleOption {
       item.ExitTime ??
       null,
     workingDays: item.workingDays ?? item.WorkingDays ?? null,
+    isActive: Boolean(
+      item.isActive ??
+      item.IsActive ??
+      item.active ??
+      item.Active ??
+      true
+    ),
   };
 }
 

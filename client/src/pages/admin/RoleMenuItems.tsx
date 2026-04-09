@@ -16,9 +16,14 @@ import {
 import { Settings, Save, ChevronRight, ChevronDown } from "lucide-react";
 import { RolesAPI, MenuItemsAPI, RoleMenuItemsAPI } from "@/lib/api";
 import type { ApiResponse } from "@/lib/api";
-import type { Role, MenuItem, RoleMenuItem, CreateRoleMenuItemDto } from "@/types/auth";
+import type {
+  Role,
+  MenuItem,
+  RoleMenuItem,
+  CreateRoleMenuItemDto,
+} from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
-import { parseApiError } from '@/lib/error-handling';
+import { parseApiError } from "@/lib/error-handling";
 
 /* =========================
  * Helpers
@@ -34,11 +39,13 @@ function buildTree(items: MenuItem[]): Node[] {
   const roots: Node[] = [];
 
   for (const it of items) map.set(it.id, { ...it, children: [] });
+
   for (const it of items) {
     const node = map.get(it.id)!;
     const p = it.parentId ?? null;
-    if (p === null) roots.push(node);
-    else {
+    if (p === null) {
+      roots.push(node);
+    } else {
       const parent = map.get(p);
       if (parent && parent !== node) parent.children!.push(node);
       else roots.push(node);
@@ -49,6 +56,7 @@ function buildTree(items: MenuItem[]): Node[] {
     arr.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     arr.forEach((n) => n.children && n.children.length && sortByOrder(n.children));
   };
+
   sortByOrder(roots);
   return roots;
 }
@@ -99,14 +107,13 @@ function TriStateCheckbox({
       className="h-4 w-4 rounded border-border cursor-pointer"
       checked={checked}
       onChange={(e) => {
-        e.stopPropagation(); // evita el doble toggle
+        e.stopPropagation();
         onToggle();
       }}
       disabled={disabled}
     />
   );
 }
-
 
 /* =========================
  * Página
@@ -116,25 +123,30 @@ export default function RoleMenuItemsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [dirty, setDirty] = useState<boolean>(false);
+
   const { toast } = useToast();
   const qc = useQueryClient();
 
-  /* ====== Queries (sin refetch en foco para no pisar selección) ====== */
+  /* ====== Queries ======
+   * Corrección:
+   * - Cargar más registros para evitar truncar asignaciones/menús
+   * - Si tu volumen crece mucho, conviene migrar a endpoints paginados o por rol
+   */
   const { data: rolesResp } = useQuery<ApiResponse<Role[]>>({
     queryKey: ["roles"],
-    queryFn: () => RolesAPI.list(),
+    queryFn: () => RolesAPI.list(1, 10000),
     refetchOnWindowFocus: false,
   });
 
   const { data: menusResp } = useQuery<ApiResponse<MenuItem[]>>({
     queryKey: ["menu-items"],
-    queryFn: () => MenuItemsAPI.list(),
+    queryFn: () => MenuItemsAPI.list(1, 10000),
     refetchOnWindowFocus: false,
   });
 
   const { data: roleMenusResp, isLoading } = useQuery<ApiResponse<RoleMenuItem[]>>({
     queryKey: ["role-menu-items"],
-    queryFn: () => RoleMenuItemsAPI.list(),
+    queryFn: () => RoleMenuItemsAPI.list(1, 10000),
     refetchOnWindowFocus: false,
   });
 
@@ -161,7 +173,6 @@ export default function RoleMenuItemsPage() {
   const tree = useMemo(() => buildTree(allMenus), [allMenus]);
   const allIds = useMemo(() => new Set(collectAllIds(tree)), [tree]);
 
-  // Mapas para cálculo eficiente (padres/hijos)
   const parentById = useMemo(() => {
     const map = new Map<number, number | null>();
     for (const m of allMenus) map.set(m.id, m.parentId ?? null);
@@ -179,32 +190,34 @@ export default function RoleMenuItemsPage() {
     return map;
   }, [allMenus]);
 
-  // Expandir raíces por defecto
   useEffect(() => {
     if (expanded.size === 0 && tree.length) {
       setExpanded(new Set(tree.map((r) => r.id)));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tree.length]);
+  }, [tree, expanded.size]);
 
-  // Cargar asignación SOLO cuando cambia el rol
+  /* Corrección clave:
+   * Antes dependía solo de selectedRoleId
+   * Ahora también depende de roleMenuItems y allIds
+   * para recargar selección cuando terminen de llegar los datos
+   */
   useEffect(() => {
     if (!selectedRoleId) {
       setSelectedIds(new Set());
       setDirty(false);
       return;
     }
+
     const roleId = Number(selectedRoleId);
     const current = roleMenuItems
       .filter((rm) => rm.roleId === roleId)
       .map((rm) => rm.menuItemId)
       .filter((id) => allIds.has(id));
+
     setSelectedIds(new Set(current));
     setDirty(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedRoleId]);
+  }, [selectedRoleId, roleMenuItems, allIds]);
 
-  /* ====== Estado calculado ====== */
   const isChecked = (id: number) => selectedIds.has(id);
 
   const isIndeterminate = (id: number): boolean => {
@@ -213,16 +226,17 @@ export default function RoleMenuItemsPage() {
 
     let any = false;
     let all = true;
+
     for (const k of kids) {
       const childChecked = isChecked(k);
       const childInd = isIndeterminate(k);
       any = any || childChecked || childInd;
       all = all && childChecked && !childInd;
     }
+
     return any && !all && !isChecked(id);
   };
 
-  /* ====== Mutations ====== */
   const assignMutation = useMutation({
     mutationFn: (data: CreateRoleMenuItemDto) => RoleMenuItemsAPI.assign(data),
   });
@@ -232,7 +246,6 @@ export default function RoleMenuItemsPage() {
       RoleMenuItemsAPI.remove(roleId, menuItemId),
   });
 
-  /* ====== Handlers ====== */
   const toggleExpand = (id: number) => {
     setExpanded((prev) => {
       const next = new Set(prev);
@@ -247,6 +260,7 @@ export default function RoleMenuItemsPage() {
   const collectDescendants = (id: number): number[] => {
     const out: number[] = [];
     const stack = [id];
+
     while (stack.length) {
       const cur = stack.pop()!;
       const kids = childrenById.get(cur) ?? [];
@@ -255,28 +269,32 @@ export default function RoleMenuItemsPage() {
         stack.push(k);
       }
     }
+
     return out;
   };
 
   const collectAncestors = (id: number): number[] => {
     const out: number[] = [];
     let cur: number | null | undefined = id;
+
     while (true) {
       const p = parentById.get(cur!);
       if (p == null) break;
       out.push(p);
       cur = p;
     }
+
     return out;
   };
 
   const handleToggle = (id: number) => {
-    console.debug("toggle", { role: selectedRoleId, id });
     if (!selectedRoleId) return;
+
     setDirty(true);
     setSelectedIds((prev) => {
       const next = new Set(prev);
       const currently = next.has(id);
+
       if (currently) {
         next.delete(id);
         for (const d of collectDescendants(id)) next.delete(d);
@@ -284,6 +302,7 @@ export default function RoleMenuItemsPage() {
         next.add(id);
         for (const a of collectAncestors(id)) next.add(a);
       }
+
       return next;
     });
   };
@@ -302,11 +321,13 @@ export default function RoleMenuItemsPage() {
 
   const handleResetFromServer = () => {
     if (!selectedRoleId) return;
+
     const roleId = Number(selectedRoleId);
     const current = roleMenuItems
       .filter((rm) => rm.roleId === roleId)
       .map((rm) => rm.menuItemId)
       .filter((id) => allIds.has(id));
+
     setSelectedIds(new Set(current));
     setDirty(false);
   };
@@ -320,6 +341,7 @@ export default function RoleMenuItemsPage() {
       });
       return;
     }
+
     const roleId = Number(selectedRoleId);
     const currentAssigned = roleMenuItems
       .filter((rm) => rm.roleId === roleId)
@@ -330,33 +352,52 @@ export default function RoleMenuItemsPage() {
     const toRemove = currentAssigned.filter((id) => !selectedIds.has(id));
 
     if (!toAdd.length && !toRemove.length) {
-      toast({ title: "Sin cambios", description: "No hay cambios para guardar." });
+      toast({
+        title: "Sin cambios",
+        description: "No hay cambios para guardar.",
+      });
       setDirty(false);
       return;
     }
 
-    try {
-      await Promise.allSettled([
-        ...toAdd.map((menuItemId) =>
-          assignMutation.mutateAsync({ roleId, menuItemId, isVisible: true })
-        ),
-        ...toRemove.map((menuItemId) => removeMutation.mutateAsync({ roleId, menuItemId })),
-      ]);
+    const results = await Promise.allSettled([
+      ...toAdd.map((menuItemId) =>
+        assignMutation.mutateAsync({ roleId, menuItemId, isVisible: true })
+      ),
+      ...toRemove.map((menuItemId) =>
+        removeMutation.mutateAsync({ roleId, menuItemId })
+      ),
+    ]);
 
-      toast({ title: "Cambios guardados", description: "Asignaciones actualizadas." });
-      setDirty(false);
-      qc.invalidateQueries({ queryKey: ["role-menu-items"] });
-    } catch (err: unknown) {
-      console.error(err);
+    const failed = results.filter((r) => r.status === "rejected");
+
+    if (failed.length > 0) {
       toast({
-        title: "Error al guardar",
-        description: parseApiError(err).message,
+        title: "Guardado parcial",
+        description: `Se produjeron ${failed.length} errores al actualizar las asignaciones.`,
         variant: "destructive",
       });
+    } else {
+      toast({
+        title: "Cambios guardados",
+        description: "Asignaciones actualizadas.",
+      });
     }
+
+    setDirty(false);
+    await qc.invalidateQueries({ queryKey: ["role-menu-items"] });
   };
 
-  /* ====== Render ====== */
+  const selectedRole = useMemo(
+    () => roles.find((r) => r.id === Number(selectedRoleId)),
+    [roles, selectedRoleId]
+  );
+
+  const selectedRoleAssignmentsCount = useMemo(() => {
+    if (!selectedRoleId) return 0;
+    return roleMenuItems.filter((rm) => rm.roleId === Number(selectedRoleId)).length;
+  }, [roleMenuItems, selectedRoleId]);
+
   const renderNode = (node: Node, level = 0) => {
     const hasChildren = !!node.children?.length;
     const isOpen = expanded.has(node.id);
@@ -369,7 +410,6 @@ export default function RoleMenuItemsPage() {
           className="flex items-center gap-2 py-1 select-none"
           style={{ paddingLeft: `${level * 16}px` }}
           onClick={(e) => {
-            // Permite hacer clic en la fila para alternar (sin afectar el botón de expandir ni el checkbox)
             e.stopPropagation();
             handleToggle(node.id);
           }}
@@ -386,7 +426,11 @@ export default function RoleMenuItemsPage() {
               aria-label={isOpen ? "Contraer" : "Expandir"}
               title={isOpen ? "Contraer" : "Expandir"}
             >
-              {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              {isOpen ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
             </button>
           ) : (
             <span className="inline-block h-6 w-6" />
@@ -397,7 +441,6 @@ export default function RoleMenuItemsPage() {
             checked={checked}
             indeterminate={indeterminate}
             disabled={!selectedRoleId}
-            // onClick={() => handleToggle(node.id)}
             onToggle={() => handleToggle(node.id)}
           />
 
@@ -415,11 +458,7 @@ export default function RoleMenuItemsPage() {
           </Label>
         </div>
 
-        {hasChildren && isOpen && (
-          <div>
-            {node.children!.map((c) => renderNode(c, level + 1))}
-          </div>
-        )}
+        {hasChildren && isOpen && <div>{node.children!.map((c) => renderNode(c, level + 1))}</div>}
       </div>
     );
   };
@@ -454,14 +493,12 @@ export default function RoleMenuItemsPage() {
         </div>
       </div>
 
-      {/* Configuración + Toolbar */}
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="text-base md:text-lg">Configuración</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-            {/* Select de Rol */}
             <div className="min-w-0">
               <Label className="mb-2 block">Seleccionar Rol</Label>
               <Select value={selectedRoleId} onValueChange={setSelectedRoleId}>
@@ -482,16 +519,19 @@ export default function RoleMenuItemsPage() {
                   )}
                 </SelectContent>
               </Select>
+
               {selectedRoleId && (
-                <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
-                  <strong>Descripción:</strong>{" "}
-                  {roles.find((r) => r.id === Number(selectedRoleId))?.description ||
-                    "Sin descripción"}
-                </p>
+                <div className="mt-2 space-y-1">
+                  <p className="text-xs text-muted-foreground line-clamp-2">
+                    <strong>Descripción:</strong> {selectedRole?.description || "Sin descripción"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    <strong>Asignaciones actuales:</strong> {selectedRoleAssignmentsCount}
+                  </p>
+                </div>
               )}
             </div>
 
-            {/* Toolbar */}
             <div className="xl:col-span-2 min-w-0">
               <Label className="mb-2 block">Acciones</Label>
               <div className="flex flex-wrap items-center gap-2 overflow-x-auto no-scrollbar">
@@ -554,7 +594,8 @@ export default function RoleMenuItemsPage() {
                     disabled={
                       !selectedRoleId ||
                       assignMutation.isPending ||
-                      removeMutation.isPending
+                      removeMutation.isPending ||
+                      !dirty
                     }
                     className="bg-primary hover:bg-primary/90 h-8 px-3 text-xs whitespace-nowrap"
                   >
@@ -569,7 +610,6 @@ export default function RoleMenuItemsPage() {
         </CardContent>
       </Card>
 
-      {/* Árbol */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div className="hidden xl:block" />
         <Card className="xl:col-span-2">
@@ -594,13 +634,12 @@ export default function RoleMenuItemsPage() {
         </Card>
       </div>
 
-      {/* Nota */}
       <Card className="mt-6">
         <CardContent className="pt-6">
           <div className="bg-primary/10 border border-primary/30 rounded-lg p-4">
             <p className="text-sm text-primary">
-              <strong>Nota:</strong> Los items seleccionados serán visibles para los usuarios con el
-              rol elegido cuando presione “Guardar Cambios”.
+              <strong>Nota:</strong> Los items seleccionados serán visibles para los
+              usuarios con el rol elegido cuando presione “Guardar Cambios”.
             </p>
           </div>
         </CardContent>

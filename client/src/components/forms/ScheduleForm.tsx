@@ -1,171 +1,162 @@
-// ScheduleForm.tsx - VERSIÓN COMPLETA CON DEBUG
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useToast } from "@/hooks/use-toast";
-import { insertScheduleSchema, type InsertSchedule, type FrontendSchedule } from "@/shared/schema";
-import { Clock, Save, X, Calendar, Zap, Smartphone } from "lucide-react";
-import { HorariosAPI, type ApiResponse } from "@/lib/api";
-import { useEffect, useState } from "react";
-import { useMediaQuery } from "@/hooks/use-media-query";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
-import { tokenService } from "@/services/auth";
-import { parseApiError } from '@/lib/error-handling';
 
+import { useToast } from "@/hooks/use-toast";
+import { useMediaQuery } from "@/hooks/use-media-query";
+import { HorariosAPI } from "@/lib/api";
+import { parseApiError } from "@/lib/error-handling";
+import {
+  insertScheduleSchema,
+  type InsertSchedule,
+  type FrontendSchedule,
+} from "@/shared/schema";
+import { Calendar, Clock, Save, Smartphone, X, Zap } from "lucide-react";
+import { z } from "zod";
 interface ScheduleFormProps {
   schedule?: FrontendSchedule;
   onSuccess?: () => void;
   onCancel?: () => void;
 }
-
-// 🔧 FUNCIÓN PARA NORMALIZAR TIEMPO (eliminar segundos si los tiene)
+type ScheduleFormValues = z.input<typeof insertScheduleSchema>;
 const normalizeTime = (time: string | null | undefined): string | null => {
   if (!time) return null;
-  // Si el tiempo tiene formato HH:MM:SS, convertir a HH:MM
-  if (time.length === 8 && time.split(':').length === 3) {
-    return time.substring(0, 5); // "08:00:00" → "08:00"
+  if (time.length === 8 && time.split(":").length === 3) {
+    return time.substring(0, 5);
   }
   return time;
 };
 
-// 🔧 FUNCIÓN ESPECÍFICA PARA DEBUG DE UPDATE
-const debugUpdateSchedule = async (id: number, data: any): Promise<ApiResponse<any>> => {
-  const url = `http://localhost:5000/api/v1/rh/schedules/${id}`;
-  const accessToken = tokenService.getAccessToken();
-  
-  console.group('🔍 DEBUG UPDATE SCHEDULE');
-  console.log('📤 URL:', url);
-  console.log('📦 Payload:', data);
-  console.log('🔑 Token:', accessToken ? 'Presente' : 'No presente');
-  
-  try {
-    const response = await fetch(url, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(accessToken && { 'Authorization': `Bearer ${accessToken}` })
-      },
-      credentials: 'include',
-      body: JSON.stringify(data)
-    });
-
-    const responseText = await response.text();
-    
-    console.log('📥 Response Status:', response.status, response.statusText);
-    console.log('📋 Response Headers:', Object.fromEntries(response.headers.entries()));
-    console.log('📄 Response Body (RAW):', responseText);
-    
-    let parsedData;
-    try {
-      parsedData = JSON.parse(responseText);
-    } catch (e) {
-      parsedData = { rawText: responseText };
-    }
-
-    console.log('📊 Response Body (Parsed):', parsedData);
-    console.groupEnd();
-
-    if (!response.ok) {
-      return {
-        status: "error",
-        error: {
-          code: response.status,
-          message: `HTTP Error ${response.status}: ${response.statusText}`,
-          details: parsedData,
-          /* responseText */
-        }
-      };
-    }
-
-    return {
-      status: "success",
-      data: parsedData
-    };
-  } catch (error: unknown) {
-    console.groupEnd();
-    console.error('💥 Network Error:', error);
-    
-    return {
-      status: "error",
-      error: {
-        code: 0,
-        message: (error as any).message || "Network error"
-      }
-    };
-  }
+const timeToMinutes = (time?: string | null): number | null => {
+  if (!time) return null;
+  const [hours, minutes] = time.split(":").map(Number);
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+  return hours * 60 + minutes;
 };
 
-export default function ScheduleForm({ schedule, onSuccess, onCancel }: ScheduleFormProps) {
+const calculateRequiredHours = (
+  entryTime?: string | null,
+  exitTime?: string | null,
+  hasLunchBreak?: boolean,
+  lunchStart?: string | null,
+  lunchEnd?: string | null
+): string => {
+  const entryMinutes = timeToMinutes(entryTime);
+  const exitMinutes = timeToMinutes(exitTime);
+
+  if (entryMinutes === null || exitMinutes === null || exitMinutes <= entryMinutes) {
+    return "0.0";
+  }
+
+  let totalWorkedMinutes = exitMinutes - entryMinutes;
+
+  if (hasLunchBreak) {
+    const lunchStartMinutes = timeToMinutes(lunchStart);
+    const lunchEndMinutes = timeToMinutes(lunchEnd);
+
+    if (
+      lunchStartMinutes !== null &&
+      lunchEndMinutes !== null &&
+      lunchEndMinutes > lunchStartMinutes
+    ) {
+      totalWorkedMinutes -= lunchEndMinutes - lunchStartMinutes;
+    }
+  }
+
+  if (totalWorkedMinutes < 0) totalWorkedMinutes = 0;
+
+  return (totalWorkedMinutes / 60).toFixed(2);
+};
+
+export default function ScheduleForm({
+  schedule,
+  onSuccess,
+  onCancel,
+}: ScheduleFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const isMobile = useMediaQuery("(max-width: 768px)");
   const isEditing = !!schedule;
-  
+
   const [editingId, setEditingId] = useState<number | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  const form = useForm<InsertSchedule>({
+  const form = useForm<ScheduleFormValues>({
     resolver: zodResolver(insertScheduleSchema),
     defaultValues: {
       description: "",
       entryTime: "08:00",
       exitTime: "17:00",
       workingDays: "Lunes a Viernes",
-      requiredHoursPerDay: "8.0",
+      requiredHoursPerDay: "8.00",
       hasLunchBreak: false,
       lunchStart: null,
       lunchEnd: null,
       isRotating: false,
-      rotationPattern: null
-    }
+      rotationPattern: null,
+      isActive: true,
+    },
   });
 
-  // Efecto para capturar el ID de forma segura y resetear el formulario
   useEffect(() => {
-    console.log("🔄 ScheduleForm useEffect - schedule:", schedule);
-    
     if (schedule) {
-      try {
-        const scheduleId = schedule.id || schedule.scheduleId;
-        console.log("✅ ID extraído:", scheduleId);
-        
-        if (scheduleId) {
-          setEditingId(scheduleId);
-        }
-        
-        // 🔧 Normalizar tiempos al cargar
-        const formattedSchedule = {
-          description: schedule.description || "",
-          entryTime: normalizeTime(schedule.entryTime) || "08:00",
-          exitTime: normalizeTime(schedule.exitTime) || "17:00", 
-          workingDays: schedule.workingDays || "Lunes a Viernes",
-          requiredHoursPerDay: typeof schedule.requiredHoursPerDay === 'number' 
-            ? String(schedule.requiredHoursPerDay) 
-            : (schedule.requiredHoursPerDay || "8.0"),
-          hasLunchBreak: schedule.hasLunchBreak ?? false,
-          lunchStart: normalizeTime(schedule.lunchStart),
-          lunchEnd: normalizeTime(schedule.lunchEnd),
-          isRotating: schedule.isRotating ?? false,
-          rotationPattern: schedule.rotationPattern || null
-        };
-        
-        console.log("📋 Datos formateados para formulario:", formattedSchedule);
-        form.reset(formattedSchedule);
-      } catch (error) {
-        console.error("❌ Error al procesar schedule:", error);
-        toast({
-          title: "Error al cargar datos",
-          description: "No se pudieron cargar los datos del horario",
-          variant: "destructive"
-        });
-      }
+      const scheduleId = schedule.id ?? schedule.scheduleId ?? null;
+      setEditingId(scheduleId);
+
+      const entryTime = normalizeTime(schedule.entryTime) || "08:00";
+      const exitTime = normalizeTime(schedule.exitTime) || "17:00";
+      const hasLunchBreak = schedule.hasLunchBreak ?? false;
+      const lunchStart = normalizeTime(schedule.lunchStart);
+      const lunchEnd = normalizeTime(schedule.lunchEnd);
+
+      form.reset({
+        description: schedule.description || "",
+        entryTime,
+        exitTime,
+        workingDays: schedule.workingDays || "Lunes a Viernes",
+        requiredHoursPerDay: calculateRequiredHours(
+          entryTime,
+          exitTime,
+          hasLunchBreak,
+          lunchStart,
+          lunchEnd
+        ),
+        hasLunchBreak,
+        lunchStart,
+        lunchEnd,
+        isRotating: schedule.isRotating ?? false,
+        rotationPattern: schedule.rotationPattern || null,
+        isActive: schedule.isActive ?? true,
+      });
     } else {
       setEditingId(null);
       form.reset({
@@ -173,17 +164,41 @@ export default function ScheduleForm({ schedule, onSuccess, onCancel }: Schedule
         entryTime: "08:00",
         exitTime: "17:00",
         workingDays: "Lunes a Viernes",
-        requiredHoursPerDay: "8.0",
+        requiredHoursPerDay: "9.00",
         hasLunchBreak: false,
         lunchStart: null,
         lunchEnd: null,
         isRotating: false,
-        rotationPattern: null
+        rotationPattern: null,
+        isActive: true,
       });
     }
-    
+
     setIsInitialized(true);
-  }, [schedule, form, toast]);
+  }, [schedule, form]);
+
+  const entryTime = form.watch("entryTime");
+  const exitTime = form.watch("exitTime");
+  const hasLunchBreak = form.watch("hasLunchBreak");
+  const lunchStart = form.watch("lunchStart");
+  const lunchEnd = form.watch("lunchEnd");
+
+  const computedHours = useMemo(() => {
+    return calculateRequiredHours(
+      entryTime,
+      exitTime,
+      hasLunchBreak,
+      lunchStart,
+      lunchEnd
+    );
+  }, [entryTime, exitTime, hasLunchBreak, lunchStart, lunchEnd]);
+
+  useEffect(() => {
+    form.setValue("requiredHoursPerDay", computedHours, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+  }, [computedHours, form]);
 
   const ensureLunchCoherence = (hasLunch: boolean) => {
     if (!hasLunch) {
@@ -195,244 +210,135 @@ export default function ScheduleForm({ schedule, onSuccess, onCancel }: Schedule
     }
   };
 
-  const invalidateSchedulesList = () =>
-    queryClient.invalidateQueries({ queryKey: ["/api/v1/rh/schedules"] });
+  const invalidateSchedulesList = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["/api/v1/rh/schedules"] });
+    await queryClient.invalidateQueries({ queryKey: ["schedules"] });
+  };
 
-  // CREATE mutation 
   const createMutation = useMutation({
-    mutationFn: async (data: InsertSchedule) => {
-      console.log("🚀 Creando horario con datos:", data);
-      
-      // 🔧 NORMALIZAR Y CONVERTIR TIPOS para el backend
+    mutationFn: async (data: ScheduleFormValues) => {
       const payload = {
         description: data.description,
-        entryTime: normalizeTime(data.entryTime)!, // Asegurar formato HH:MM
-        exitTime: normalizeTime(data.exitTime)!,   // Asegurar formato HH:MM
+        entryTime: normalizeTime(data.entryTime)!,
+        exitTime: normalizeTime(data.exitTime)!,
         workingDays: data.workingDays,
-        requiredHoursPerDay: parseFloat(data.requiredHoursPerDay), // Convertir a número
+        requiredHoursPerDay: parseFloat(
+          calculateRequiredHours(
+            data.entryTime,
+            data.exitTime,
+            data.hasLunchBreak,
+            data.lunchStart,
+            data.lunchEnd
+          )
+        ),
         hasLunchBreak: data.hasLunchBreak,
-        lunchStart: data.hasLunchBreak ? (normalizeTime(data.lunchStart) || null) : null,
-        lunchEnd: data.hasLunchBreak ? (normalizeTime(data.lunchEnd) || null) : null,
+        lunchStart: data.hasLunchBreak ? normalizeTime(data.lunchStart) : null,
+        lunchEnd: data.hasLunchBreak ? normalizeTime(data.lunchEnd) : null,
         isRotating: data.isRotating,
-        rotationPattern: data.isRotating ? data.rotationPattern : null
+        rotationPattern: data.isRotating ? data.rotationPattern : null,
+        isActive: data.isActive,
       };
-      
-      console.log("📤 Payload final (convertido):", payload);
-      console.log("📤 Tipo de requiredHoursPerDay:", typeof payload.requiredHoursPerDay);
-      console.log("📤 Formato de entryTime:", payload.entryTime);
-      console.log("📤 Formato de exitTime:", payload.exitTime);
-      
+
       const res = await HorariosAPI.create(payload);
       if (res.status === "error") {
-        console.error("❌ Error en creación:", res.error);
         throw new Error(res.error.message || "Error al crear horario");
       }
       return res.data;
     },
-    onSuccess: () => {
-      invalidateSchedulesList();
-      toast({ 
-        title: "✅ Horario creado exitosamente",
-        description: "El horario ha sido registrado en el sistema"
+    onSuccess: async () => {
+      await invalidateSchedulesList();
+      toast({
+        title: "Horario creado exitosamente",
+        description: "El horario ha sido registrado en el sistema",
       });
       onSuccess?.();
     },
     onError: (e: unknown) => {
-      console.error("💥 Error en creación:", e);
-      toast({ 
-        title: "❌ Error al crear horario", 
+      toast({
+        title: "Error al crear horario",
         description: parseApiError(e).message,
-        variant: "destructive" 
+        variant: "destructive",
       });
-    }
+    },
   });
 
-  // UPDATE mutation - VERSIÓN CON DEBUG ESPECÍFICO
-  // UPDATE mutation - VERSIÓN CON MANEJO DE CONCURRENCIA OPTIMISTA
-const updateMutation = useMutation({
-  mutationFn: async (data: InsertSchedule) => {
-    console.log("🔄 Iniciando actualización con manejo de concurrencia...");
-    
-    if (!editingId) {
-      throw new Error("ID de horario no proporcionado");
-    }
-
-    // 🔧 PASO 1: Obtener el registro ACTUAL con todos los campos (incluyendo el de concurrencia)
-    console.log("📋 Obteniendo horario actual para concurrencia...");
-    const currentResponse = await HorariosAPI.get(editingId);
-    
-    if (currentResponse.status === "error") {
-      throw new Error("El horario no existe o fue eliminado. Recargando página...");
-    }
-
-    const currentSchedule = currentResponse.data;
-    console.log("📊 Horario actual obtenido:", currentSchedule);
-
-    // 🔧 PASO 2: Construir payload INCLUYENDO el campo de concurrencia
-    // El campo podría llamarse: rowVersion, version, timestamp, concurrencyToken, etc.
-    const payload: any = {
-      // 🔧 Incluir todos los campos que el backend espera para UPDATE
-      scheduleId: editingId, // Posiblemente requerido
-      description: data.description,
-      entryTime: data.entryTime,
-      exitTime: data.exitTime,
-      workingDays: data.workingDays,
-      requiredHoursPerDay: parseFloat(data.requiredHoursPerDay),
-      hasLunchBreak: data.hasLunchBreak,
-      isRotating: data.isRotating,
-      lunchStart: data.hasLunchBreak ? data.lunchStart : null,
-      lunchEnd: data.hasLunchBreak ? data.lunchEnd : null,
-      rotationPattern: data.isRotating ? data.rotationPattern : "",
-      
-      // 🔧 INCLUIR CAMPOS DE CONCURRENCIA (probables nombres)
-      // El backend NECESITA estos campos para la verificación de concurrencia
-      rowVersion: currentSchedule.rowVersion || currentSchedule.version || currentSchedule.timestamp,
-      
-      // 🔧 Posiblemente también necesite estos campos
-      updatedAt: currentSchedule.updatedAt,
-      createdAt: currentSchedule.createdAt
-    };
-
-    // 🔧 Limpiar campos undefined/null
-    Object.keys(payload).forEach(key => {
-      if (payload[key] === undefined || payload[key] === null) {
-        delete payload[key];
+  const updateMutation = useMutation({
+    mutationFn: async (data: InsertSchedule) => {
+      if (!editingId) {
+        throw new Error("ID de horario no proporcionado");
       }
-    });
 
-    console.log("🎯 Payload FINAL con campos de concurrencia:", payload);
-
-    // 🔧 PASO 3: Intentar la actualización
-    const updateRes = await HorariosAPI.update(editingId, payload);
-    
-    if (updateRes.status === "error") {
-      console.error("❌ Error en actualización:", updateRes.error);
-      
-      // 🔧 Manejar específicamente el error de concurrencia
-      if (updateRes.error.message?.includes("concurrency") || 
-          ((updateRes.error.details as any)?.title?.includes("validation errors"))) {
-        throw new Error("CONCURRENCY_ERROR: El horario fue modificado por otro usuario. Por favor, recargue la página y vuelva a intentar.");
+      const currentResponse = await HorariosAPI.get(editingId);
+      if (currentResponse.status === "error") {
+        throw new Error("El horario no existe o fue eliminado");
       }
-      
-      throw updateRes.error;
-    }
-    
-    console.log("✅ Actualización exitosa con manejo de concurrencia");
-    return updateRes.data;
-  },
-  onSuccess: () => {
-    invalidateSchedulesList();
-    toast({ 
-      title: "✅ Horario actualizado",
-      description: "Los cambios han sido guardados correctamente",
-      duration: 5000
-    });
-    onSuccess?.();
-  },
-  onError: (e: unknown) => {
-    console.error("💥 Error en actualización:", e);
-    
-    let errorMessage = parseApiError(e).message;
-    let title = "❌ Error al actualizar";
-    let shouldReload = false;
 
-    // 🔧 Manejo específico de errores
-    if (errorMessage.includes("CONCURRENCY_ERROR")) {
-      title = "⚠️ Conflicto de concurrencia";
-      errorMessage = "El horario fue modificado por otro usuario. La página se recargará automáticamente.";
-      shouldReload = true;
-    } else if (errorMessage.includes("no existe") || errorMessage.includes("eliminado")) {
-      title = "❌ Horario no encontrado";
-      errorMessage = "El horario que intenta editar ya no existe. Recargando página...";
-      shouldReload = true;
-    } else if (errorMessage.includes("validation") || errorMessage.includes("validación")) {
-      title = "❌ Error de validación";
-      errorMessage = "Los datos enviados no son válidos. Verifique la información.";
-    }
+      const currentSchedule = currentResponse.data as any;
 
-    toast({ 
-      title, 
-      description: errorMessage,
-      variant: "destructive",
-      duration: 8000
-    });
+      const payload: any = {
+        scheduleId: editingId,
+        description: data.description,
+        entryTime: normalizeTime(data.entryTime)!,
+        exitTime: normalizeTime(data.exitTime)!,
+        workingDays: data.workingDays,
+        requiredHoursPerDay: parseFloat(
+          calculateRequiredHours(
+            data.entryTime,
+            data.exitTime,
+            data.hasLunchBreak,
+            data.lunchStart,
+            data.lunchEnd
+          )
+        ),
+        hasLunchBreak: data.hasLunchBreak,
+        lunchStart: data.hasLunchBreak ? normalizeTime(data.lunchStart) : null,
+        lunchEnd: data.hasLunchBreak ? normalizeTime(data.lunchEnd) : null,
+        isRotating: data.isRotating,
+        rotationPattern: data.isRotating ? data.rotationPattern : null,
+        isActive: data.isActive,
+        createdAt: currentSchedule.createdAt,
+        updatedAt: currentSchedule.updatedAt,
+        rowVersion:
+          currentSchedule.rowVersion ??
+          currentSchedule.version ??
+          currentSchedule.timestamp,
+      };
 
-    // 🔧 Recargar página si es necesario
-    if (shouldReload) {
-      setTimeout(() => {
-        window.location.reload();
-      }, 3000);
-    }
-  }
-});
+      Object.keys(payload).forEach((key) => {
+        if (payload[key] === undefined) delete payload[key];
+      });
 
-  // 🔧 TEST DE DIFERENTES FORMATOS
-  const testDifferentFormats = async () => {
-    if (!editingId) return;
-
-    const formats = [
-      {
-        name: "Formato CREATE",
-        payload: {
-          description: "TEST CREATE FORMAT",
-          entryTime: "08:00",
-          exitTime: "17:00",
-          workingDays: "Lunes a Viernes",
-          requiredHoursPerDay: 8,
-          hasLunchBreak: false,
-          isRotating: false
-        }
-      },
-      {
-        name: "Formato con scheduleId",
-        payload: {
-          scheduleId: editingId,
-          description: "TEST WITH SCHEDULEID",
-          entryTime: "08:00",
-          exitTime: "17:00",
-          workingDays: "Lunes a Viernes",
-          requiredHoursPerDay: 8,
-          hasLunchBreak: false,
-          isRotating: false
-        }
-      },
-      {
-        name: "Formato mínimo",
-        payload: {
-          description: "TEST MINIMAL"
-        }
+      const updateRes = await HorariosAPI.update(editingId, payload);
+      if (updateRes.status === "error") {
+        throw updateRes.error;
       }
-    ];
 
-    for (const format of formats) {
-      console.log(`🧪 Testing: ${format.name}`);
-      const result = await debugUpdateSchedule(editingId, format.payload);
-      
-      if (result.status === "success") {
-        console.log(`✅ ${format.name} - FUNCIONÓ`);
-        toast({
-          title: `✅ ${format.name} funciona`,
-          description: "Revisa consola para detalles"
-        });
-        break;
-      } else {
-        console.log(`❌ ${format.name} - Falló:`, result.error);
-      }
-    }
-  };
+      return updateRes.data;
+    },
+    onSuccess: async () => {
+      await invalidateSchedulesList();
+      toast({
+        title: "Horario actualizado",
+        description: "Los cambios han sido guardados correctamente",
+      });
+      onSuccess?.();
+    },
+    onError: (e: unknown) => {
+      toast({
+        title: "Error al actualizar",
+        description: parseApiError(e).message,
+        variant: "destructive",
+      });
+    },
+  });
 
   const onSubmit = (data: InsertSchedule) => {
-    console.log("📝 Enviando formulario...");
-    console.log("🔄 Modo edición:", isEditing);
-    console.log("🆔 ID disponible:", editingId);
-    console.log("📋 Datos del formulario:", data);
-
     if (isEditing) {
       if (!editingId) {
         toast({
-          title: "❌ Error crítico",
+          title: "Error",
           description: "No se pudo obtener el ID del horario.",
-          variant: "destructive"
+          variant: "destructive",
         });
         return;
       }
@@ -446,49 +352,76 @@ const updateMutation = useMutation({
 
   const workingDaysOptions = [
     "Lunes a Viernes",
-    "Lunes a Sábado", 
+    "Lunes a Sábado",
     "Días Específicos",
     "Rotativo",
-    "Fines de Semana"
+    "Fines de Semana",
   ];
 
   const scheduleTemplates = [
-    { name: "Administrativo", entry: "08:00", exit: "17:00", hours: "8.0", lunch: true, color: "blue" },
-    { name: "Docente Matutino", entry: "07:00", exit: "13:00", hours: "8.0", lunch: false, color: "green" },
-    { name: "Docente Vespertino", entry: "14:00", exit: "20:00", hours: "8.0", lunch: false, color: "orange" },
-    { name: "Nocturno", entry: "18:00", exit: "22:00", hours: "8.0", lunch: false, color: "purple" }
+    {
+      name: "Administrativo",
+      entry: "08:00",
+      exit: "17:00",
+      lunch: true,
+      color: "blue",
+    },
+    {
+      name: "Docente Matutino",
+      entry: "07:00",
+      exit: "13:00",
+      lunch: false,
+      color: "green",
+    },
+    {
+      name: "Docente Vespertino",
+      entry: "14:00",
+      exit: "20:00",
+      lunch: false,
+      color: "orange",
+    },
+    {
+      name: "Nocturno",
+      entry: "18:00",
+      exit: "22:00",
+      lunch: false,
+      color: "purple",
+    },
   ] as const;
 
-  const applyTemplate = (t: typeof scheduleTemplates[number]) => {
+  const applyTemplate = (t: (typeof scheduleTemplates)[number]) => {
     form.setValue("entryTime", t.entry);
     form.setValue("exitTime", t.exit);
-    form.setValue("requiredHoursPerDay", t.hours);
     form.setValue("hasLunchBreak", t.lunch);
     ensureLunchCoherence(t.lunch);
-    
+
     toast({
-      title: "📋 Plantilla aplicada",
-      description: `Configuración "${t.name}" cargada`
+      title: "Plantilla aplicada",
+      description: `Configuración "${t.name}" cargada`,
     });
   };
 
   const getBadgeVariant = (color: string) => {
     switch (color) {
-      case 'blue': return 'default';
-      case 'green': return 'secondary';
-      case 'orange': return 'outline';
-      case 'purple': return 'default';
-      default: return 'secondary';
+      case "blue":
+        return "default";
+      case "green":
+        return "secondary";
+      case "orange":
+        return "outline";
+      case "purple":
+        return "default";
+      default:
+        return "secondary";
     }
   };
 
-  // Si no está inicializado, mostrar loading
   if (!isInitialized) {
     return (
       <Card className="w-full max-w-3xl mx-auto">
         <CardContent className="pt-6">
           <div className="flex justify-center items-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
             <span className="ml-2">Cargando formulario...</span>
           </div>
         </CardContent>
@@ -501,9 +434,11 @@ const updateMutation = useMutation({
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className={`p-2 rounded-lg ${
-              isEditing ? 'bg-primary/15 text-primary' : 'bg-success/15 text-success'
-            }`}>
+            <div
+              className={`p-2 rounded-lg ${
+                isEditing ? "bg-primary/15 text-primary" : "bg-success/15 text-success"
+              }`}
+            >
               <Clock className="h-5 w-5" />
             </div>
             <div>
@@ -517,7 +452,9 @@ const updateMutation = useMutation({
                 )}
               </CardTitle>
               <CardDescription className="text-sm sm:text-base">
-                {isEditing ? "Modifique el horario de trabajo" : "Configure un nuevo horario de trabajo"}
+                {isEditing
+                  ? "Modifique el horario de trabajo"
+                  : "Configure un nuevo horario de trabajo"}
               </CardDescription>
             </div>
           </div>
@@ -528,9 +465,8 @@ const updateMutation = useMutation({
           )}
         </div>
       </CardHeader>
-      
+
       <CardContent className="space-y-6 px-0 sm:px-6">
-        {/* Plantillas de Horario */}
         <div className="bg-primary/10 dark:bg-primary/15 p-4 rounded-lg border">
           <div className="flex items-center gap-2 mb-3">
             <Zap className="h-4 w-4 text-primary" />
@@ -539,30 +475,27 @@ const updateMutation = useMutation({
               {isMobile ? "Toque" : "Click"} para aplicar
             </Badge>
           </div>
-          <div className={`grid gap-2 ${
-            isMobile ? "grid-cols-2" : "grid-cols-2 md:grid-cols-4"
-          }`}>
+          <div
+            className={`grid gap-2 ${
+              isMobile ? "grid-cols-2" : "grid-cols-2 md:grid-cols-4"
+            }`}
+          >
             {scheduleTemplates.map((t) => (
               <Button
                 key={t.name}
                 type="button"
                 variant="outline"
                 size="sm"
-                className={`h-auto p-3 text-xs border-2 hover:scale-105 transition-transform ${
-                  t.color === 'blue' ? 'hover:border-blue-300' :
-                  t.color === 'green' ? 'hover:border-success/40' :
-                  t.color === 'orange' ? 'hover:border-orange-300' :
-                  'hover:border-purple-300'
-                }`}
+                className="h-auto p-3 text-xs border-2 hover:scale-105 transition-transform"
                 onClick={() => applyTemplate(t)}
-                data-testid={`template-${t.name.replace(/\s+/g, '-').toLowerCase()}`}
               >
                 <div className="text-center space-y-1">
                   <Badge variant={getBadgeVariant(t.color)} className="text-xs mb-1">
                     {t.name}
                   </Badge>
-                  <div className="font-mono text-xs">{t.entry} - {t.exit}</div>
-                  <div className="text-muted-foreground text-xs">{t.hours}h</div>
+                  <div className="font-mono text-xs">
+                    {t.entry} - {t.exit}
+                  </div>
                 </div>
               </Button>
             ))}
@@ -571,17 +504,17 @@ const updateMutation = useMutation({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {/* Descripción */}
             <FormField
               control={form.control}
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-semibold">Descripción del Horario *</FormLabel>
+                  <FormLabel className="text-sm font-semibold">
+                    Descripción del Horario *
+                  </FormLabel>
                   <FormControl>
                     <Input
                       placeholder="Ej: Horario Administrativo Regular"
-                      data-testid="input-description"
                       className="h-11 text-sm"
                       {...field}
                     />
@@ -591,23 +524,21 @@ const updateMutation = useMutation({
               )}
             />
 
-            {/* Horarios - Grid Responsive */}
-            <div className={`grid gap-4 ${
-              isMobile ? "grid-cols-1" : "grid-cols-1 md:grid-cols-3"
-            }`}>
+            <div
+              className={`grid gap-4 ${
+                isMobile ? "grid-cols-1" : "grid-cols-1 md:grid-cols-3"
+              }`}
+            >
               <FormField
                 control={form.control}
                 name="entryTime"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm font-semibold">Hora de Entrada *</FormLabel>
+                    <FormLabel className="text-sm font-semibold">
+                      Hora de Entrada *
+                    </FormLabel>
                     <FormControl>
-                      <Input 
-                        type="time" 
-                        data-testid="input-entryTime" 
-                        className="h-11 text-sm"
-                        {...field} 
-                      />
+                      <Input type="time" className="h-11 text-sm" {...field} />
                     </FormControl>
                     <FormMessage className="text-xs" />
                   </FormItem>
@@ -619,14 +550,11 @@ const updateMutation = useMutation({
                 name="exitTime"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm font-semibold">Hora de Salida *</FormLabel>
+                    <FormLabel className="text-sm font-semibold">
+                      Hora de Salida *
+                    </FormLabel>
                     <FormControl>
-                      <Input 
-                        type="time" 
-                        data-testid="input-exitTime" 
-                        className="h-11 text-sm"
-                        {...field} 
-                      />
+                      <Input type="time" className="h-11 text-sm" {...field} />
                     </FormControl>
                     <FormMessage className="text-xs" />
                   </FormItem>
@@ -638,35 +566,37 @@ const updateMutation = useMutation({
                 name="requiredHoursPerDay"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm font-semibold">Horas Requeridas/Día *</FormLabel>
+                    <FormLabel className="text-sm font-semibold">
+                      Horas Requeridas/Día
+                    </FormLabel>
                     <FormControl>
                       <Input
-                        type="number"
-                        step="0.5"
-                        min="1"
-                        max="12"
-                        placeholder="8.0"
-                        data-testid="input-requiredHours"
-                        className="h-11 text-sm"
+                        readOnly
+                        className="h-11 text-sm bg-muted font-mono"
                         {...field}
+                        value={computedHours}
                       />
                     </FormControl>
+                    <p className="text-xs text-muted-foreground">
+                      Se calcula automáticamente: salida - entrada - almuerzo
+                    </p>
                     <FormMessage className="text-xs" />
                   </FormItem>
                 )}
               />
             </div>
 
-            {/* Días de Trabajo */}
             <FormField
               control={form.control}
               name="workingDays"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-semibold">Días de Trabajo *</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormLabel className="text-sm font-semibold">
+                    Días de Trabajo *
+                  </FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
-                      <SelectTrigger className="h-11 text-sm" data-testid="select-workingDays">
+                      <SelectTrigger className="h-11 text-sm">
                         <SelectValue placeholder="Seleccione los días" />
                       </SelectTrigger>
                     </FormControl>
@@ -683,121 +613,51 @@ const updateMutation = useMutation({
               )}
             />
 
-            {/* Switch Almuerzo */}
-            <div className={`space-y-4 ${isMobile ? 'bg-background p-4 rounded-lg' : ''}`}>
-              <FormField
-                control={form.control}
-                name="hasLunchBreak"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 bg-card">
-                    <div className="space-y-0.5 flex-1">
-                      <FormLabel className="text-base font-semibold">Incluye Almuerzo</FormLabel>
-                      <div className="text-sm text-muted-foreground">
-                        Indique si el horario incluye tiempo de almuerzo
-                      </div>
+            <FormField
+              control={form.control}
+              name="hasLunchBreak"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 bg-card">
+                  <div className="space-y-0.5 flex-1">
+                    <FormLabel className="text-base font-semibold">
+                      Incluye Almuerzo
+                    </FormLabel>
+                    <div className="text-sm text-muted-foreground">
+                      Indique si el horario incluye tiempo de almuerzo
                     </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={(v) => { field.onChange(v); ensureLunchCoherence(v); }}
-                        data-testid="switch-hasLunchBreak"
-                        className="data-[state=checked]:bg-success"
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-
-              {form.watch("hasLunchBreak") && (
-                <div className={`grid gap-4 ${
-                  isMobile ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2"
-                } bg-primary/10 p-4 rounded-lg border border-primary/30`}>
-                  <FormField
-                    control={form.control}
-                    name="lunchStart"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-sm font-semibold flex items-center gap-2">
-                          <span>Inicio de Almuerzo</span>
-                          <Badge variant="outline" className="text-xs">Opcional</Badge>
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            type="time"
-                            data-testid="input-lunchStart"
-                            className="h-11 text-sm"
-                            {...field}
-                            value={field.value || ""}
-                          />
-                        </FormControl>
-                        <FormMessage className="text-xs" />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="lunchEnd"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-sm font-semibold flex items-center gap-2">
-                          <span>Fin de Almuerzo</span>
-                          <Badge variant="outline" className="text-xs">Opcional</Badge>
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            type="time"
-                            data-testid="input-lunchEnd"
-                            className="h-11 text-sm"
-                            {...field}
-                            value={field.value || ""}
-                          />
-                        </FormControl>
-                        <FormMessage className="text-xs" />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={(v) => {
+                        field.onChange(v);
+                        ensureLunchCoherence(v);
+                      }}
+                      className="data-[state=checked]:bg-success"
+                    />
+                  </FormControl>
+                </FormItem>
               )}
-            </div>
+            />
 
-            {/* Horario Rotativo */}
-            <div className={`space-y-4 ${isMobile ? 'bg-background p-4 rounded-lg' : ''}`}>
-              <FormField
-                control={form.control}
-                name="isRotating"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 bg-card">
-                    <div className="space-y-0.5 flex-1">
-                      <FormLabel className="text-base font-semibold">Horario Rotativo</FormLabel>
-                      <div className="text-sm text-muted-foreground">
-                        Marque si es un horario con rotación de turnos
-                      </div>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        data-testid="switch-isRotating"
-                        className="data-[state=checked]:bg-purple-600"
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-
-              {form.watch("isRotating") && (
+            {form.watch("hasLunchBreak") && (
+              <div
+                className={`grid gap-4 ${
+                  isMobile ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2"
+                } bg-primary/10 p-4 rounded-lg border border-primary/30`}
+              >
                 <FormField
                   control={form.control}
-                  name="rotationPattern"
+                  name="lunchStart"
                   render={({ field }) => (
-                    <FormItem className="bg-accent/50 p-4 rounded-lg border border-secondary/30">
-                      <FormLabel className="text-sm font-semibold">Patrón de Rotación</FormLabel>
+                    <FormItem>
+                      <FormLabel className="text-sm font-semibold">
+                        Inicio de Almuerzo
+                      </FormLabel>
                       <FormControl>
-                        <Textarea
-                          placeholder="Describa el patrón de rotación (ej: Semana 1: Mañana 08:00-16:00, Semana 2: Tarde 14:00-22:00, etc.)"
-                          data-testid="input-rotationPattern"
-                          className="min-h-[80px] text-sm resize-vertical"
+                        <Input
+                          type="time"
+                          className="h-11 text-sm"
                           {...field}
                           value={field.value || ""}
                         />
@@ -806,10 +666,100 @@ const updateMutation = useMutation({
                     </FormItem>
                   )}
                 />
-              )}
-            </div>
 
-            {/* Vista previa del horario */}
+                <FormField
+                  control={form.control}
+                  name="lunchEnd"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-semibold">
+                        Fin de Almuerzo
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="time"
+                          className="h-11 text-sm"
+                          {...field}
+                          value={field.value || ""}
+                        />
+                      </FormControl>
+                      <FormMessage className="text-xs" />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
+
+            <FormField
+              control={form.control}
+              name="isRotating"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 bg-card">
+                  <div className="space-y-0.5 flex-1">
+                    <FormLabel className="text-base font-semibold">
+                      Horario Rotativo
+                    </FormLabel>
+                    <div className="text-sm text-muted-foreground">
+                      Marque si es un horario con rotación de turnos
+                    </div>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      className="data-[state=checked]:bg-purple-600"
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            {form.watch("isRotating") && (
+              <FormField
+                control={form.control}
+                name="rotationPattern"
+                render={({ field }) => (
+                  <FormItem className="bg-accent/50 p-4 rounded-lg border border-secondary/30">
+                    <FormLabel className="text-sm font-semibold">
+                      Patrón de Rotación
+                    </FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Describa el patrón de rotación"
+                        className="min-h-[80px] text-sm resize-vertical"
+                        {...field}
+                        value={field.value || ""}
+                      />
+                    </FormControl>
+                    <FormMessage className="text-xs" />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            <FormField
+              control={form.control}
+              name="isActive"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 bg-card">
+                  <div className="space-y-0.5 flex-1">
+                    <FormLabel className="text-base font-semibold">
+                      Horario Activo
+                    </FormLabel>
+                    <div className="text-sm text-muted-foreground">
+                      Define si el horario estará disponible para uso
+                    </div>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
             <div className="bg-success/10 dark:bg-success/15 p-4 rounded-lg border border-success/30">
               <div className="flex items-center space-x-2 text-success mb-3">
                 <Calendar className="h-4 w-4" />
@@ -825,84 +775,69 @@ const updateMutation = useMutation({
                 <div className="flex justify-between items-center">
                   <span className="font-medium">Horas diarias:</span>
                   <Badge variant="secondary" className="font-mono">
-                    {form.watch("requiredHoursPerDay")}h
+                    {computedHours}h
                   </Badge>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="font-medium">Días:</span>
                   <span className="text-right">{form.watch("workingDays")}</span>
                 </div>
-                {form.watch("hasLunchBreak") && form.watch("lunchStart") && form.watch("lunchEnd") && (
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium">Almuerzo:</span>
-                    <span className="font-mono bg-card px-2 py-1 rounded text-xs">
-                      {form.watch("lunchStart")} - {form.watch("lunchEnd")}
-                    </span>
-                  </div>
-                )}
+                {form.watch("hasLunchBreak") &&
+                  form.watch("lunchStart") &&
+                  form.watch("lunchEnd") && (
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium">Almuerzo:</span>
+                      <span className="font-mono bg-card px-2 py-1 rounded text-xs">
+                        {form.watch("lunchStart")} - {form.watch("lunchEnd")}
+                      </span>
+                    </div>
+                  )}
                 <div className="flex justify-between items-center">
                   <span className="font-medium">Tipo:</span>
-                  <Badge variant={form.watch("isRotating") ? "default" : "outline"} className="text-xs">
-                    {form.watch("isRotating") ? "🔄 Rotativo" : "⏰ Fijo"}
+                  <Badge variant={form.watch("isRotating") ? "default" : "outline"}>
+                    {form.watch("isRotating") ? "Rotativo" : "Fijo"}
                   </Badge>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">Estado:</span>
+                  {form.watch("isActive") ? (
+                    <Badge className="bg-success/15 text-success">Activo</Badge>
+                  ) : (
+                    <Badge className="bg-destructive/15 text-destructive">
+                      Inactivo
+                    </Badge>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* 🔧 SECCIÓN DEBUG (Solo desarrollo y modo edición) */}
-            {/* {process.env.NODE_ENV === 'development' && isEditing && (
-              <div className="mt-6 p-4 border border-orange-300 bg-secondary/10 rounded-lg">
-                <p className="text-sm font-medium text-secondary-foreground mb-3">
-                  🐛 Debug Update (Solo Desarrollo)
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={testDifferentFormats}
-                    className="text-xs"
-                  >
-                    Probar Diferentes Formatos
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => console.log("🆔 Editing ID:", editingId)}
-                    className="text-xs"
-                  >
-                    Ver ID Actual
-                  </Button>
-                </div>
-              </div>
-            )} */}
-
-            {/* Botones de acción */}
-            <div className={`flex flex-col sm:flex-row gap-3 pt-6 border-t ${
-              isMobile ? 'sticky bottom-0 bg-card pb-2' : ''
-            }`}>
+            <div
+              className={`flex flex-col sm:flex-row gap-3 pt-6 border-t ${
+                isMobile ? "sticky bottom-0 bg-card pb-2" : ""
+              }`}
+            >
               <Button
                 type="submit"
                 disabled={isLoading}
                 className="flex-1 h-12 sm:h-10 bg-success hover:bg-green-700"
-                data-testid="button-save-schedule"
-                size={isMobile ? "default" : "default"}
               >
                 <Save className="mr-2 h-4 w-4" />
-                {isLoading ? "Guardando..." : (isEditing ? "Actualizar Horario" : "Crear Horario")}
+                {isLoading
+                  ? "Guardando..."
+                  : isEditing
+                  ? "Actualizar Horario"
+                  : "Crear Horario"}
               </Button>
+
               {onCancel && (
                 <Button
                   type="button"
                   variant="outline"
                   onClick={onCancel}
                   className="flex-1 h-12 sm:h-10"
-                  data-testid="button-cancel"
-                  size={isMobile ? "default" : "default"}
                 >
                   <X className="mr-2 h-4 w-4" />
-                  {isMobile ? "Cancelar" : "Cancelar Operación"}
+                  Cancelar
                 </Button>
               )}
             </div>

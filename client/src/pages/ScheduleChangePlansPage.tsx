@@ -9,7 +9,6 @@ import {
   FilePlus2,
   Filter,
   Search,
-  Users,
 } from "lucide-react";
 
 import { useToast } from "@/hooks/use-toast";
@@ -59,7 +58,6 @@ import { ScheduleChangePlanDetailsModal } from "@/components/scheduleChangePlans
 
 import {
   QUERY_KEY,
-  STATUS_FILTERS,
   EMPTY_FORM,
 } from "@/features/sheduleChangePlansConstant";
 
@@ -68,14 +66,12 @@ import {
   getScheduleLabel,
   getScheduleTimeRange,
   getStatusMeta,
-  matchesStatusFilter,
   normalizeEmployeeDetail,
   normalizeSchedule,
   validateForm,
 } from "@/components/scheduleChangePlans/scheduleChangePlansHelpers";
 
 import type {
-  BossStatusFilterValue,
   EmployeeDetailOption,
   PlanFormState,
   ScheduleChangePlanResponse,
@@ -132,9 +128,9 @@ function ScheduleChangePlanCard({
         </div>
 
         <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             className="w-full"
             onClick={() => onViewDetails(plan)}
           >
@@ -192,17 +188,23 @@ function CreateScheduleChangePlanDialog({
       );
   }, [employeesResponse]);
 
-  const schedules = useMemo<ScheduleOption[]>(() => {
+  // Solo activos para selección
+  const activeSchedules = useMemo<ScheduleOption[]>(() => {
     if (schedulesResponse?.status !== "success" || !Array.isArray(schedulesResponse.data)) {
       return [];
     }
 
-    return schedulesResponse.data.map(normalizeSchedule);
+    return schedulesResponse.data
+      .map(normalizeSchedule)
+      .filter((schedule) => schedule.isActive === true);
   }, [schedulesResponse]);
 
-  const schedulesMap = useMemo(
-    () => new Map<number, ScheduleOption>(schedules.map((item) => [item.scheduleId, item])),
-    [schedules]
+  const activeSchedulesMap = useMemo(
+    () =>
+      new Map<number, ScheduleOption>(
+        activeSchedules.map((item) => [item.scheduleId, item])
+      ),
+    [activeSchedules]
   );
 
   const selectedEmployees = useMemo(
@@ -215,9 +217,9 @@ function CreateScheduleChangePlanDialog({
     if (!term) return selectedEmployees;
 
     return selectedEmployees.filter((employee) => {
-      const currentSchedule = getScheduleLabel(employee.scheduleID, schedulesMap);
+      const currentSchedule = getScheduleLabel(employee.scheduleID, activeSchedulesMap);
       const nextSchedule = form.newScheduleID
-        ? getScheduleLabel(Number(form.newScheduleID), schedulesMap)
+        ? getScheduleLabel(Number(form.newScheduleID), activeSchedulesMap)
         : "";
 
       const haystack = [
@@ -235,9 +237,9 @@ function CreateScheduleChangePlanDialog({
 
       return haystack.includes(term);
     });
-  }, [selectedEmployees, tableFilter, form.newScheduleID, schedulesMap]);
+  }, [selectedEmployees, tableFilter, form.newScheduleID, activeSchedulesMap]);
 
-  const selectedSchedule = schedules.find(
+  const selectedSchedule = activeSchedules.find(
     (schedule) => String(schedule.scheduleId) === form.newScheduleID
   );
 
@@ -246,22 +248,29 @@ function CreateScheduleChangePlanDialog({
       const validationError = validateForm(form);
       if (validationError) throw new Error(validationError);
 
-      const activePlans = bossPlans.filter(plan => {
+      const activePlans = bossPlans.filter((plan) => {
         const planStatus = plan.statusName || statusCatalog[plan.statusTypeID]?.label || "";
         const st = planStatus.toLowerCase();
         return st.includes("pendiente") || st.includes("borrador") || st.includes("aprobado");
       });
 
       const employeesInActivePlans = new Map<number, string>();
-      activePlans.forEach(plan => {
+      activePlans.forEach((plan) => {
         const label = plan.planCode || `Plan #${plan.planID}`;
-        plan.details?.forEach(detail => employeesInActivePlans.set(detail.employeeID, label));
+        plan.details?.forEach((detail) => employeesInActivePlans.set(detail.employeeID, label));
       });
 
-      const conflictingEmployees = selectedEmployees.filter(emp => employeesInActivePlans.has(emp.employeeID));
+      const conflictingEmployees = selectedEmployees.filter((emp) =>
+        employeesInActivePlans.has(emp.employeeID)
+      );
+
       if (conflictingEmployees.length > 0) {
-        const names = conflictingEmployees.map(e => `${e.fullName} (${employeesInActivePlans.get(e.employeeID)})`).join(', ');
-        throw new Error(`Los siguientes colaboradores ya se encuentran en una planificación activa: ${names}`);
+        const names = conflictingEmployees
+          .map((e) => `${e.fullName} (${employeesInActivePlans.get(e.employeeID)})`)
+          .join(", ");
+        throw new Error(
+          `Los siguientes colaboradores ya se encuentran en una planificación activa: ${names}`
+        );
       }
 
       const payload = buildCreatePayload(form, bossId);
@@ -275,8 +284,7 @@ function CreateScheduleChangePlanDialog({
 
       toast({
         title: "Planificación creada",
-        description:
-          "La planificación fue registrada. Si el backend aún devuelve error de estado, revisa la asignación de StatusTypeID en la creación del detalle.",
+        description: "La planificación fue registrada correctamente.",
       });
 
       setForm(EMPTY_FORM);
@@ -353,6 +361,7 @@ function CreateScheduleChangePlanDialog({
                       setForm((current) => ({ ...current, newScheduleID: value }))
                     }
                     disabled={isLoadingSchedules}
+                    schedules={activeSchedules}
                   />
                   {selectedSchedule ? (
                     <div className="text-xs text-muted-foreground space-y-1">
@@ -480,14 +489,14 @@ function CreateScheduleChangePlanDialog({
 
                             <div>
                               <Badge variant="outline">
-                                {getScheduleLabel(employee.scheduleID, schedulesMap)}
+                                {getScheduleLabel(employee.scheduleID, activeSchedulesMap)}
                               </Badge>
                             </div>
 
                             <div>
                               <Badge>
                                 {form.newScheduleID
-                                  ? getScheduleLabel(Number(form.newScheduleID), schedulesMap)
+                                  ? getScheduleLabel(Number(form.newScheduleID), activeSchedulesMap)
                                   : "No seleccionado"}
                               </Badge>
                             </div>
@@ -528,14 +537,14 @@ function CreateScheduleChangePlanDialog({
                               <div>
                                 <p className="text-muted-foreground">Horario actual</p>
                                 <Badge variant="outline">
-                                  {getScheduleLabel(employee.scheduleID, schedulesMap)}
+                                  {getScheduleLabel(employee.scheduleID, activeSchedulesMap)}
                                 </Badge>
                               </div>
                               <div>
                                 <p className="text-muted-foreground">Horario nuevo</p>
                                 <Badge>
                                   {form.newScheduleID
-                                    ? getScheduleLabel(Number(form.newScheduleID), schedulesMap)
+                                    ? getScheduleLabel(Number(form.newScheduleID), activeSchedulesMap)
                                     : "No seleccionado"}
                                 </Badge>
                               </div>
@@ -601,9 +610,9 @@ function CreateScheduleChangePlanDialog({
                           <div>
                             <p className="text-sm font-medium">{employee.fullName}</p>
                             <p className="text-xs text-muted-foreground">
-                              {getScheduleLabel(employee.scheduleID, schedulesMap)} →{" "}
+                              {getScheduleLabel(employee.scheduleID, activeSchedulesMap)} →{" "}
                               {form.newScheduleID
-                                ? getScheduleLabel(Number(form.newScheduleID), schedulesMap)
+                                ? getScheduleLabel(Number(form.newScheduleID), activeSchedulesMap)
                                 : "No seleccionado"}
                             </p>
                           </div>
@@ -708,9 +717,13 @@ export default function ScheduleChangePlansPage() {
     staleTime: 10 * 60_000,
   });
 
+  // Todos los horarios para visualización histórica
   const schedules = useMemo<ScheduleOption[]>(() => {
-    if (schedulesResponse?.status !== "success") return [];
-    return (schedulesResponse.data ?? []).map(normalizeSchedule);
+    if (schedulesResponse?.status !== "success" || !Array.isArray(schedulesResponse.data)) {
+      return [];
+    }
+
+    return schedulesResponse.data.map(normalizeSchedule);
   }, [schedulesResponse]);
 
   const schedulesMap = useMemo(
@@ -747,8 +760,15 @@ export default function ScheduleChangePlansPage() {
   });
 
   const employeesMap = useMemo(() => {
-    const list = employeesResponse?.status === "success" && Array.isArray(employeesResponse.data) ? employeesResponse.data : [];
-    return new Map<number, string>(list.map(normalizeEmployeeDetail).map((e: EmployeeDetailOption) => [e.employeeID, e.fullName]));
+    const list =
+      employeesResponse?.status === "success" && Array.isArray(employeesResponse.data)
+        ? employeesResponse.data
+        : [];
+    return new Map<number, string>(
+      list
+        .map(normalizeEmployeeDetail)
+        .map((e: EmployeeDetailOption) => [e.employeeID, e.fullName])
+    );
   }, [employeesResponse]);
 
   const filteredPlans = useMemo(() => {
@@ -791,23 +811,15 @@ export default function ScheduleChangePlansPage() {
       return statusName.toLowerCase().includes("aprobado");
     }).length;
 
-    const pendingExecution = bossPlans.filter((plan: any) => {
-      const statusName =
-        plan.statusName ||
-        statusCatalog[plan.statusTypeID]?.label ||
-        "";
-      return (
-        statusName.toLowerCase().includes("pendiente") ||
-        statusName.toLowerCase().includes("borrador")
-      );
-    }).length;
-
     const executed = bossPlans.filter((plan: any) => {
       const statusName =
         plan.statusName ||
         statusCatalog[plan.statusTypeID]?.label ||
         "";
-      return statusName.toLowerCase().includes("ejecutado") || statusName.toLowerCase().includes("aplicado");
+      return (
+        statusName.toLowerCase().includes("ejecutado") ||
+        statusName.toLowerCase().includes("aplicado")
+      );
     }).length;
 
     return {
@@ -868,38 +880,44 @@ export default function ScheduleChangePlansPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="bg-gradient-to-br from-blue-500 to-blue-700 text-white border-none shadow-md overflow-hidden relative">
-          <div className="absolute right-0 top-0 opacity-10 bg-card w-24 h-24 rounded-full -mr-8 -mt-8 translate-x-4"></div>
+          <div className="absolute right-0 top-0 opacity-10 bg-card w-24 h-24 rounded-full -mr-8 -mt-8 translate-x-4" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
             <CardTitle className="text-sm font-medium text-primary-foreground">Planes Creados</CardTitle>
             <CalendarDays className="h-5 w-5 text-primary-foreground" />
           </CardHeader>
           <CardContent className="relative z-10">
             <div className="text-4xl font-extrabold">{stats.total}</div>
-            <p className="text-xs text-primary-foreground mt-1 opacity-80">Total registrados por la jefatura</p>
+            <p className="text-xs text-primary-foreground mt-1 opacity-80">
+              Total registrados por la jefatura
+            </p>
           </CardContent>
         </Card>
 
         <Card className="bg-gradient-to-br from-teal-500 to-emerald-600 text-white border-none shadow-md overflow-hidden relative">
-          <div className="absolute right-0 top-0 opacity-10 bg-card w-24 h-24 rounded-full -mr-8 -mt-8 translate-x-4"></div>
+          <div className="absolute right-0 top-0 opacity-10 bg-card w-24 h-24 rounded-full -mr-8 -mt-8 translate-x-4" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
             <CardTitle className="text-sm font-medium text-teal-100">Planes Aprobados</CardTitle>
             <CheckCircle2 className="h-5 w-5 text-teal-100" />
           </CardHeader>
           <CardContent className="relative z-10">
             <div className="text-4xl font-extrabold">{stats.approved}</div>
-            <p className="text-xs text-teal-100 mt-1 opacity-80">Listos para su ejecución</p>
+            <p className="text-xs text-teal-100 mt-1 opacity-80">
+              Listos para su ejecución
+            </p>
           </CardContent>
         </Card>
 
         <Card className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white border-none shadow-md overflow-hidden relative">
-          <div className="absolute right-0 top-0 opacity-10 bg-card w-24 h-24 rounded-full -mr-8 -mt-8 translate-x-4"></div>
+          <div className="absolute right-0 top-0 opacity-10 bg-card w-24 h-24 rounded-full -mr-8 -mt-8 translate-x-4" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
             <CardTitle className="text-sm font-medium text-indigo-100">Planes Ejecutados</CardTitle>
             <Clock3 className="h-5 w-5 text-indigo-100" />
           </CardHeader>
           <CardContent className="relative z-10">
             <div className="text-4xl font-extrabold">{stats.executed}</div>
-            <p className="text-xs text-indigo-100 mt-1 opacity-80">Cambios de horario aplicados</p>
+            <p className="text-xs text-indigo-100 mt-1 opacity-80">
+              Cambios de horario aplicados
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -920,16 +938,20 @@ export default function ScheduleChangePlansPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">
-                      <div className="flex items-center"><Filter className="h-4 w-4 mr-2" /> Todos</div>
+                      <div className="flex items-center">
+                        <Filter className="h-4 w-4 mr-2" /> Todos
+                      </div>
                     </SelectItem>
-                    {planStatusResponse?.status === "success" && Array.isArray(planStatusResponse.data) && planStatusResponse.data.map((s: any) => {
-                       const typeId = s.typeId || s.typeID;
-                       return (
-                         <SelectItem key={typeId} value={String(typeId)}>
-                           {s.name || `Estado ${typeId}`}
-                         </SelectItem>
-                       );
-                    })}
+                    {planStatusResponse?.status === "success" &&
+                      Array.isArray(planStatusResponse.data) &&
+                      planStatusResponse.data.map((s: any) => {
+                        const typeId = s.typeId || s.typeID;
+                        return (
+                          <SelectItem key={typeId} value={String(typeId)}>
+                            {s.name || `Estado ${typeId}`}
+                          </SelectItem>
+                        );
+                      })}
                   </SelectContent>
                 </Select>
               </div>
@@ -1050,8 +1072,8 @@ export default function ScheduleChangePlansPage() {
                                 <Badge variant={status.variant}>{status.label}</Badge>
                               </td>
                               <td className="px-4 py-3 text-right">
-                                <Button 
-                                  variant="outline" 
+                                <Button
+                                  variant="outline"
                                   size="sm"
                                   onClick={() => {
                                     setSelectedPlan(plan);

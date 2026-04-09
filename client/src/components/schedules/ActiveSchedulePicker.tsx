@@ -1,4 +1,4 @@
-//src/components/schedules/ActiveSchedulePicker.tsx
+// src/components/schedules/ActiveSchedulePicker.tsx
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { HorariosAPI } from "@/lib/api";
@@ -11,6 +11,7 @@ interface ActiveSchedulePickerProps {
   value?: string;
   onChange: (value: string) => void;
   disabled?: boolean;
+  schedules?: any[];
 }
 
 const pickScheduleId = (schedule: any): number => {
@@ -54,6 +55,15 @@ const getWorkingDays = (schedule: any): string =>
   schedule?.WorkingDays ??
   "";
 
+const isScheduleActive = (schedule: any): boolean =>
+  Boolean(
+    schedule?.isActive ??
+    schedule?.IsActive ??
+    schedule?.active ??
+    schedule?.Active ??
+    true
+  );
+
 const fmtTime = (value?: string) => {
   if (!value) return "";
   return value.includes(":") ? value.substring(0, 5) : value;
@@ -63,18 +73,33 @@ export function ActiveSchedulePicker({
   value,
   onChange,
   disabled = false,
+  schedules,
 }: ActiveSchedulePickerProps) {
+  const shouldFetch = !Array.isArray(schedules);
+
   const { data, isLoading } = useQuery({
     queryKey: ["schedules"],
     queryFn: () => HorariosAPI.list(),
     staleTime: 5 * 60_000,
     retry: 2,
+    enabled: shouldFetch,
   });
 
-  const options = useMemo<PickerOption[]>(() => {
-    if (data?.status !== "success") return [];
+  const sourceSchedules = useMemo(() => {
+    if (Array.isArray(schedules)) {
+      return schedules;
+    }
 
-    return (data.data ?? [])
+    if (data?.status !== "success" || !Array.isArray(data.data)) {
+      return [];
+    }
+
+    return data.data;
+  }, [schedules, data]);
+
+  const options = useMemo<PickerOption[]>(() => {
+    return sourceSchedules
+      .filter((schedule: any) => isScheduleActive(schedule))
       .map((schedule: any) => {
         const scheduleId = pickScheduleId(schedule);
         const name = getScheduleName(schedule);
@@ -99,18 +124,18 @@ export function ActiveSchedulePicker({
         };
       })
       .filter((option) => Number(option.value) > 0);
-  }, [data]);
+  }, [sourceSchedules]);
 
   return (
     <SearchableEntityPicker
       value={value}
       onChange={onChange}
       options={options}
-      placeholder={isLoading ? "Cargando horarios..." : "Seleccione un horario"}
+      placeholder={isLoading && shouldFetch ? "Cargando horarios..." : "Seleccione un horario"}
       searchPlaceholder="Buscar horario..."
-      emptyMessage="No se encontraron horarios."
-      loading={isLoading}
-      disabled={disabled || isLoading}
+      emptyMessage="No se encontraron horarios activos."
+      loading={isLoading && shouldFetch}
+      disabled={disabled || (isLoading && shouldFetch)}
     />
   );
 }
