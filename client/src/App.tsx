@@ -58,6 +58,7 @@ const JobActivitiesPage = lazy(() => import("@/pages/JobActivities"));
 const ReferenceTypesPage = lazy(() => import("@/pages/ReferenceTypes"));
 const HolidaysPage = lazy(() => import("@/pages/Holidays"));
 const FilesUploadPage = lazy(() => import("@/pages/FilesUploadPage"));
+const DepartmentAuthoritiesPage = lazy(() => import("@/pages/catalogs/DepartmentAuthorities"));
 
 // Páginas de administración
 const UsersPage = lazy(() => import("@/pages/admin/Users"));
@@ -420,6 +421,15 @@ function AppRouter() {
             {() => (
               <ProtectedRoute requiredPath="/reports/audit">
                 <ReportAuditPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          {/* ===== Catálogos ===== */}
+          <Route path="/catalogs/department-authorities">
+            {() => (
+              <ProtectedRoute requiredPath="/catalogs/department-authorities">
+                <DepartmentAuthoritiesPage />
               </ProtectedRoute>
             )}
           </Route>

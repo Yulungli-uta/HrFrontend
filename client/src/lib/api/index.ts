@@ -275,3 +275,15 @@ export { reportService, downloadBlob, ReportError } from './services/reports';
 // =============================================================================
 export { UserEmployeesAPI } from './services/auth';
 export type { CreateUserEmployeeDto, UpdateUserEmployeeDto } from './services/auth';
+
+// =============================================================================
+// Autoridades de Departamento
+// =============================================================================
+export { DepartmentAuthoritiesAPI } from './services/departmentAuthorities';
+export type {
+  DepartmentAuthorityDto,
+  DepartmentAuthorityCreateDto,
+  DepartmentAuthorityUpdateDto,
+  DepartmentAuthorityDenominationDto,
+  DepartmentAuthorityPagedRequest,
+} from './services/departmentAuthorities';
