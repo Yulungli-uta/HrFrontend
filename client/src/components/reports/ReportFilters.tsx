@@ -29,7 +29,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { cn } from "@/lib/utils";
-import type { ReportFilter, ReportType } from "@/types/reports";
+import type { ReportFilter, ReportType, PageOrientation } from "@/types/reports";
 import { REPORT_CONFIGS } from "@/types/reports";
 
 import { DepartamentosAPI, FacultadesAPI, TiposReferenciaAPI, VistaEmpleadosAPI } from "@/lib/api";
@@ -473,6 +473,34 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
                   <SelectItem value="true">Incluir Inactivos</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+          )}
+
+          {/* Orientación de página PDF (portrait / landscape) */}
+          {hasFilter("orientation") && (
+            <div className="space-y-2">
+              <Label htmlFor="orientation">Orientación del PDF</Label>
+              <Select
+                value={filter.orientation ?? "landscape"}
+                onValueChange={(value) =>
+                  setFilterValue("orientation", value as PageOrientation)
+                }
+              >
+                <SelectTrigger id="orientation">
+                  <SelectValue placeholder="Seleccionar orientación" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="landscape">
+                    ↔️ Horizontal (Landscape)
+                  </SelectItem>
+                  <SelectItem value="portrait">
+                    ↕️ Vertical (Portrait)
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Horizontal recomendado para reportes con muchas columnas
+              </p>
             </div>
           )}
         </div>

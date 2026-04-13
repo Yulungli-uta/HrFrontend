@@ -10,6 +10,13 @@
 export type ReportType = 'employees' | 'attendance' | 'departments' | 'attendancesumary';
 export type ReportFormat = 'pdf' | 'excel';
 
+/**
+ * Orientación de página para el PDF generado.
+ * - `portrait`  → Vertical  (A4 210×297 mm) — por defecto en la mayoría de reportes.
+ * - `landscape` → Horizontal (A4 297×210 mm) — recomendado para reportes con muchas columnas.
+ */
+export type PageOrientation = 'portrait' | 'landscape';
+
 // ============================================
 // Filtros de Reportes
 // ============================================
@@ -23,6 +30,12 @@ export interface ReportFilter {
   employeeType?: string;
   isActive?: boolean;
   includeInactive?: boolean;
+  /**
+   * Orientación de página del PDF.
+   * Si no se envía, el backend usa el valor por defecto definido en el `IReportSource`.
+   * (p.ej. `attendancesumary` usa `landscape` por defecto al tener 15 columnas)
+   */
+  orientation?: PageOrientation;
 }
 
 // ============================================
@@ -70,7 +83,9 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
     description: 'Estadísticas y resumen por asistencia',
     icon: 'Building',
     availableFormats: ['pdf', 'excel'],
-    availableFilters: ['startDate', 'endDate',  'employeeId', 'employeeType']
+    // 'orientation' se incluye porque este reporte tiene 15 columnas y necesita
+    // que el usuario pueda elegir entre horizontal (por defecto) o vertical.
+    availableFilters: ['startDate', 'endDate', 'employeeId', 'employeeType', 'orientation']
   }
 };
 
