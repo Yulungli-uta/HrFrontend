@@ -58,7 +58,7 @@ const JobActivitiesPage = lazy(() => import("@/pages/JobActivities"));
 const ReferenceTypesPage = lazy(() => import("@/pages/ReferenceTypes"));
 const HolidaysPage = lazy(() => import("@/pages/Holidays"));
 const FilesUploadPage = lazy(() => import("@/pages/FilesUploadPage"));
-const DepartmentAuthoritiesPage = lazy(() => import("@/pages/catalogs/DepartmentAuthorities"));
+const DepartmentAuthoritiesPage = lazy(() => import("@/pages/DepartmentAuthorities"));
 
 // Páginas de administración
 const UsersPage = lazy(() => import("@/pages/admin/Users"));
@@ -293,6 +293,14 @@ function AppRouter() {
               </ProtectedRoute>
             )}
           </Route>
+          
+          <Route path="/department-authorities">
+            {() => (
+              <ProtectedRoute requiredPath="/department-authorities">
+                <DepartmentAuthoritiesPage />
+              </ProtectedRoute>
+            )}
+          </Route>
 
           {/* ===== Asistencia y Horarios ===== */}
           <Route path="/attendance">
@@ -425,15 +433,7 @@ function AppRouter() {
             )}
           </Route>
 
-          {/* ===== Catálogos ===== */}
-          <Route path="/catalogs/department-authorities">
-            {() => (
-              <ProtectedRoute requiredPath="/catalogs/department-authorities">
-                <DepartmentAuthoritiesPage />
-              </ProtectedRoute>
-            )}
-          </Route>
-
+          
           {/* ===== Otros ===== */}
           <Route path="/jobActivities">
             {() => (
@@ -648,6 +648,9 @@ function AppRouter() {
               </DocflowServiceProvider>
             )}
           </Route>
+
+          
+
 
 
           {/* ===== 404 (siempre al final) ===== */}

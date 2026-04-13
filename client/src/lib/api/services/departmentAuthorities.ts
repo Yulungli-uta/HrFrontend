@@ -92,7 +92,7 @@ export interface DepartmentAuthorityPagedRequest extends PagedRequest {
 // Servicio API
 // =============================================================================
 
-const BASE_PATH = '/department-authorities';
+const BASE_PATH = '/api/v1/rh/department-authorities';
 
 /** Servicio CRUD base generado por el factory */
 const _base = createApiService<

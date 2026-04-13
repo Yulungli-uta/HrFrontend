@@ -38,7 +38,6 @@ import { useToast } from "@/hooks/use-toast";
 import {
   TimePlanningsAPI,
   ConfigHorasExtrasAPI,
-  DirectoryParametersAPI,
   ParametersAPI,
   VistaDetallesEmpleadosAPI,
   TiposReferenciaAPI,
@@ -91,28 +90,8 @@ type BossSubordinateRow = {
   department?: string;
 };
 
-
-
 function toApiPlanType(uiValue: PlanTypeUI): "Overtime" | "Recovery" {
   return uiValue === "OVERTIME" ? "Overtime" : "Recovery";
-}
-
-/**
- * Convierte el tipo de HE clasificado internamente al valor exacto almacenado
- * en HR.tbl_OvertimeConfig.OvertimeType, que es la PK referenciada por la FK
- * "FK_TimePlanning_OvertimeType" en tbl_TimePlanning.
- *
- * Valores válidos en BD: "Ordinaria" | "Nocturna" | "Feriado"
- * (verificado en SELECT * FROM hr.tbl_OvertimeConfig)
- *
- * IMPORTANTE: si se agregan nuevos tipos en BD, actualizar también este mapeo.
- */
-function toApiOvertimeType(uiValue: string): string {
-  const v = normalizeHeKey(uiValue);
-
-  if (v.includes("NOCT") || v === "NOCTURNA" || v === "NIGHT")   return "Nocturna";
-  if (v.includes("FERI") || v === "FERIADA"  || v === "HOLIDAY") return "Feriado";
-  return "Ordinaria"; // valor por defecto — coincide con OvertimeType en BD
 }
 
 function normalizeHeKey(value?: string | null) {
@@ -124,25 +103,19 @@ function normalizeHeKey(value?: string | null) {
     .trim();
 }
 
-/**
- * Construye un mapa { claveNormalizada → factor } a partir de la configuración
- * de horas extras cargada desde ConfigHorasExtrasAPI (tabla tbl_OvertimeConfig).
- *
- * Itera todos los campos candidatos de cada registro (name, overtimeType, type,
- * description) para maximizar la probabilidad de encontrar la clave correcta
- * independientemente de la columna que use el backend.
- */
+function toApiOvertimeType(uiValue: string): string {
+  const v = normalizeHeKey(uiValue);
+
+  if (v.includes("NOCT") || v === "NOCTURNA" || v === "NIGHT") return "Nocturna";
+  if (v.includes("FERI") || v === "FERIADA" || v === "HOLIDAY") return "Feriado";
+  return "Ordinaria";
+}
+
 function buildFactorMap(configs: any[]) {
   const map = new Map<string, number>();
 
   for (const c of configs) {
-    // Se leen todos los campos posibles que puedan contener el nombre del tipo
-    const candidates = [
-      c?.name,
-      c?.overtimeType,
-      c?.type,
-      c?.description,
-    ]
+    const candidates = [c?.name, c?.overtimeType, c?.type, c?.description]
       .filter(Boolean)
       .map((x: any) => normalizeHeKey(String(x)));
 
@@ -150,29 +123,13 @@ function buildFactorMap(configs: any[]) {
     if (!Number.isFinite(factor) || factor <= 0) continue;
 
     for (const key of candidates) {
-      if (!key) continue;
-      map.set(key, factor);
+      if (key) map.set(key, factor);
     }
-  }
-
-  if (import.meta.env.DEV) {
-    // Solo en desarrollo: loguear el mapa para facilitar diagnóstico de claves
-    console.debug("[buildFactorMap] claves registradas:", [...map.entries()]);
   }
 
   return map;
 }
 
-/**
- * Busca el factor correspondiente al tipo de HE en el mapa construido desde BD.
- *
- * Se incluyen variantes masculinas Y femeninas porque la BD puede tener:
- *   "Ordinaria" | "Ordinario" | "Ordinary"
- *   "Nocturna"  | "Nocturno"  | "Night"
- *   "Feriado"   | "Feriada"   | "Holiday"
- * normalizeHeKey elimina tildes y convierte a mayúsculas, por lo que
- * "Ordinaria" → "ORDINARIA" y "Ordinario" → "ORDINARIO" son claves distintas.
- */
 function findFactorForHeType(
   heType: string,
   factorMap: Map<string, number>,
@@ -181,19 +138,14 @@ function findFactorForHeType(
   const normalized = normalizeHeKey(heType);
 
   const candidates: string[] =
-    // Feriado nocturno: combinación especial primero
     (normalized === "FERIADO" || normalized === "FERIADA") && night
       ? ["FERIADONOCTURNO", "FERIADONOCTURNA", "HOLIDAYNIGHT", "FERIADO", "FERIADA", "HOLIDAY"]
-      // Nocturno: masculino y femenino
       : normalized === "NOCTURNO" || normalized === "NOCTURNA"
       ? ["NOCTURNO", "NOCTURNA", "NIGHT"]
-      // Ordinario: masculino y femenino — valores más comunes en BD
       : normalized === "ORDINARIO" || normalized === "ORDINARIA"
       ? ["ORDINARIO", "ORDINARIA", "ORDINARY"]
-      // Feriado sin noche
       : normalized === "FERIADO" || normalized === "FERIADA"
       ? ["FERIADO", "FERIADA", "HOLIDAY"]
-      // Fallback: usar la clave tal como viene normalizada
       : [normalized];
 
   for (const key of candidates) {
@@ -216,8 +168,6 @@ export default function CreatePlanningDialog({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { employeeDetails } = useAuth();
-  // employeeID proviene del contexto de autenticación real (JWT decodificado en AuthContext)
-  // Nunca usar localStorage ni window globals para datos de identidad
   const bossId = employeeDetails?.employeeID ?? 0;
 
   const [planTypeUI, setPlanTypeUI] = useState<PlanTypeUI>("OVERTIME");
@@ -244,10 +194,7 @@ export default function CreatePlanningDialog({
 
   const parseHM = (t: string) => {
     const [h, m] = (t || "00:00").slice(0, 5).split(":").map(Number);
-    return {
-      h: Number.isNaN(h) ? 0 : h,
-      m: Number.isNaN(m) ? 0 : m,
-    };
+    return { h: Number.isNaN(h) ? 0 : h, m: Number.isNaN(m) ? 0 : m };
   };
 
   const minutesOfDay = (t: string) => {
@@ -294,16 +241,16 @@ export default function CreatePlanningDialog({
     return e > s ? e - s : 0;
   }, [startTime, endTime]);
 
-  const durationHours = useMemo(() => {
-    return Number((durationMinutes / 60).toFixed(2));
-  }, [durationMinutes]);
+  const durationHours = useMemo(
+    () => Number((durationMinutes / 60).toFixed(2)),
+    [durationMinutes]
+  );
 
   const borradorTypeId = useMemo(() => {
     const item = planStatuses.find((s) => s.name?.toLowerCase() === "borrador");
     return item?.typeId ?? null;
   }, [planStatuses]);
 
-  /** True mientras los estados del plan aún no han cargado del servidor padre */
   const isPlanStatusesReady = borradorTypeId !== null;
 
   const { data: employeePlanStatusResp } = useQuery({
@@ -322,32 +269,19 @@ export default function CreatePlanningDialog({
     const item = employeePlanStatuses.find(
       (s) => s.name?.toLowerCase() === "asignado"
     );
-    // Si el query aún no resolvió se retorna null; la validación de negocio
-    // lo detectará antes del envío evitando un PK/FK inválido en BD.
     return item?.typeId ?? null;
   }, [employeePlanStatuses]);
 
-  /** True mientras los estados de empleado aún no han cargado */
   const isEmployeeStatusesReady = asignadoTypeId !== null;
 
-  /**
-   * Parámetros de horario nocturno leídos desde DirectoryParameters.
-   * REQUISITO BD: deben existir registros con Code = "NIGHT_START" y "NIGHT_END"
-   * en la tabla DirectoryParameters (pvalue en formato "HH:mm").
-   * Ejemplo SQL:
-   *   INSERT INTO DirectoryParameters (Code, PValue, Description)
-   *   VALUES ('NIGHT_START', '22:00', 'Inicio jornada nocturna'),
-   *          ('NIGHT_END',   '06:00', 'Fin jornada nocturna');
-   * Mientras no existan, se aplican los valores por defecto definidos abajo.
-   */
   const NIGHT_START_DEFAULT = "22:00";
-  const NIGHT_END_DEFAULT   = "06:00";
+  const NIGHT_END_DEFAULT = "06:00";
 
   const { data: nightStartResp } = useQuery({
     queryKey: ["param-NIGHT_START"],
     queryFn: () => ParametersAPI.getByName("NIGHT_START"),
     staleTime: 5 * 60_000,
-    retry: false, // evitar reintentos cuando el registro no existe en BD
+    retry: false,
   });
 
   const { data: nightEndResp } = useQuery({
@@ -394,12 +328,7 @@ export default function CreatePlanningDialog({
     return false;
   };
 
-  const overlapsNight = (
-    from: string,
-    to: string,
-    nStart: string,
-    nEnd: string
-  ) => {
+  const overlapsNight = (from: string, to: string, nStart: string, nEnd: string) => {
     if (!from || !to || !nStart || !nEnd) return false;
 
     const a1 = minutesOfDay(from);
@@ -523,7 +452,6 @@ export default function CreatePlanningDialog({
       .filter((e) => !selectedIds.has(e.employeeID))
       .filter((e) => {
         if (!q) return true;
-
         return [e.fullName, e.detail || "", e.extra || ""]
           .join(" ")
           .toLowerCase()
@@ -545,8 +473,7 @@ export default function CreatePlanningDialog({
   };
 
   const addCandidateEmployee = () => {
-    if (!candidateEmployee) return;
-    if (selectedIds.has(candidateEmployee.employeeID)) return;
+    if (!candidateEmployee || selectedIds.has(candidateEmployee.employeeID)) return;
 
     setSelectedEmployees((prev) => [
       ...prev,
@@ -606,27 +533,20 @@ export default function CreatePlanningDialog({
       throw new Error("La hora fin debe ser mayor a la hora inicio");
     }
     if (!isPlanStatusesReady) {
-      throw new Error(
-        "Los estados de planificación aún están cargando. Espera un momento e intenta de nuevo."
-      );
+      throw new Error("Los estados de planificación aún están cargando.");
     }
     if (!isEmployeeStatusesReady) {
-      throw new Error(
-        "Los estados de empleado aún están cargando. Espera un momento e intenta de nuevo."
-      );
+      throw new Error("Los estados de empleado aún están cargando.");
     }
     if (selectedEmployees.length === 0) {
       throw new Error("Debes agregar al menos un empleado");
     }
 
     if (planTypeUI === "OVERTIME") {
-      if (!overtimeType) {
-        throw new Error("No se pudo determinar el tipo de horas extra");
-      }
+      if (!overtimeType) throw new Error("No se pudo determinar el tipo de horas extra");
       if (factor == null || factor <= 0) {
         throw new Error(
-          `No se encontró un factor válido para el tipo de horas extra "${overtimeType}". ` +
-          "Verifica la configuración de horas extras."
+          `No se encontró un factor válido para el tipo "${overtimeType}".`
         );
       }
 
@@ -666,30 +586,24 @@ export default function CreatePlanningDialog({
         createdBy: bossId,
         requiresApproval,
         employees: selectedEmployees.map((emp) => ({
-          // planID se envía en 0; el servicio CreateWithEmployeesAsync
-          // es responsable de sobreescribirlo con el PlanID recién generado
-          // antes de insertar los registros de empleados en BD.
           planID: 0,
           employeeID: emp.employeeID,
-          employeeStatusTypeID: asignadoTypeId!, // validado como non-null en validateBusinessRules
-          assignedHours:
-            planTypeUI === "OVERTIME" ? emp.assignedHours : undefined,
-          assignedMinutes:
-            planTypeUI === "RECOVERY" ? emp.assignedMinutes : undefined,
+          employeeStatusTypeID: asignadoTypeId!,
+          assignedHours: planTypeUI === "OVERTIME" ? emp.assignedHours : undefined,
+          assignedMinutes: planTypeUI === "RECOVERY" ? emp.assignedMinutes : undefined,
           actualHours: 0,
           actualMinutes: 0,
         })),
         ...(planTypeUI === "OVERTIME"
           ? {
               overtimeType: toApiOvertimeType(overtimeType),
-              factor: factor!, // validado como non-null y > 0 en validateBusinessRules
+              factor: factor!,
             }
           : {
               owedMinutes,
             }),
       };
 
-      console.log("[CREATE] payload", payload);
       return TimePlanningsAPI.create(payload as any);
     },
     onSuccess: (resp) => {
@@ -709,7 +623,6 @@ export default function CreatePlanningDialog({
       }
     },
     onError: (e: unknown) => {
-      console.error("[CREATE] mutation error", e);
       toast({
         title: "Error",
         description: parseApiError(e).message,
@@ -723,355 +636,372 @@ export default function CreatePlanningDialog({
       open={open}
       onOpenChange={(v) => !createMutation.isPending && onOpenChange(v)}
     >
-      <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Nueva planificación</DialogTitle>
-          <DialogDescription>
-            Se crea en estado <strong>Borrador</strong> junto con los empleados
-            asignados.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="w-[95vw] max-w-4xl h-[90vh] overflow-hidden p-0">
+        <div className="flex h-full min-h-0 flex-col">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
+            <DialogTitle>Nueva planificación</DialogTitle>
+            <DialogDescription>
+              Se crea en estado <strong>Borrador</strong> junto con los empleados
+              asignados.
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              type="button"
-              variant={planTypeUI === "OVERTIME" ? "default" : "outline"}
-              onClick={() => setPlanTypeUI("OVERTIME")}
-              disabled={createMutation.isPending}
-            >
-              <Clock className="h-4 w-4 mr-2" />
-              HE
-            </Button>
+          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5">
+            <div className="space-y-5">
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant={planTypeUI === "OVERTIME" ? "default" : "outline"}
+                  onClick={() => setPlanTypeUI("OVERTIME")}
+                  disabled={createMutation.isPending}
+                  className="h-10"
+                >
+                  <Clock className="h-4 w-4 mr-2" />
+                  HE
+                </Button>
 
-            <Button
-              type="button"
-              variant={planTypeUI === "RECOVERY" ? "default" : "outline"}
-              onClick={() => setPlanTypeUI("RECOVERY")}
-              disabled={createMutation.isPending}
-            >
-              <TimerReset className="h-4 w-4 mr-2" />
-              Recuperación
-            </Button>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Título</Label>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              disabled={createMutation.isPending}
-              placeholder="Ej. HE Jornada Nocturna"
-            />
-
-            <Label>Descripción</Label>
-            <Input
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              disabled={createMutation.isPending}
-              placeholder="Detalles"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <Label>Desde</Label>
-              <Input
-                type="date"
-                min={MIN_START_DATE}
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                disabled={createMutation.isPending}
-                className={dateInputClass}
-              />
-            </div>
-
-            <div>
-              <Label>Hasta</Label>
-              <Input
-                type="date"
-                min={startDate || MIN_START_DATE}
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                disabled={createMutation.isPending}
-                className={dateInputClass}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <Label>Hora inicio</Label>
-              <Select
-                value={startTime}
-                onValueChange={setStartTime}
-                disabled={createMutation.isPending}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona…" />
-                </SelectTrigger>
-                <SelectContent className="max-h-[50vh]">
-                  {timeSlots.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label>Hora fin</Label>
-              <Select
-                value={endTime}
-                onValueChange={setEndTime}
-                disabled={createMutation.isPending}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona…" />
-                </SelectTrigger>
-                <SelectContent className="max-h-[50vh]">
-                  {timeSlots.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {planTypeUI === "OVERTIME" ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <Label>Tipo de HE</Label>
-                <Input readOnly value={overtimeType || ""} />
+                <Button
+                  type="button"
+                  variant={planTypeUI === "RECOVERY" ? "default" : "outline"}
+                  onClick={() => setPlanTypeUI("RECOVERY")}
+                  disabled={createMutation.isPending}
+                  className="h-10"
+                >
+                  <TimerReset className="h-4 w-4 mr-2" />
+                  Recuperación
+                </Button>
               </div>
 
-              <div>
-                <Label>Factor</Label>
-                <Input readOnly value={factor ?? ""} />
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label>Título</Label>
+                  <Input
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    disabled={createMutation.isPending}
+                    placeholder="Ej. HE Jornada Nocturna"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Descripción</Label>
+                  <Input
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    disabled={createMutation.isPending}
+                    placeholder="Detalles"
+                  />
+                </div>
               </div>
-            </div>
-          ) : (
-            <div>
-              <Label>Minutos a recuperar</Label>
-              <Input readOnly value={String(owedMinutes)} />
-            </div>
-          )}
 
-          <div className="flex items-center gap-2">
-            <Switch
-              checked={requiresApproval}
-              onCheckedChange={setRequiresApproval}
-              id="requiresApproval"
-              disabled={createMutation.isPending}
-            />
-            <Label htmlFor="requiresApproval">Requiere aprobación</Label>
-          </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Desde</Label>
+                  <Input
+                    type="date"
+                    min={MIN_START_DATE}
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    disabled={createMutation.isPending}
+                    className={dateInputClass}
+                  />
+                </div>
 
-          <div className="border rounded-lg p-3 space-y-3">
-            <div className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              <div>
-                <Label>Empleados</Label>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Solo se muestran subordinados del jefe inmediato logueado.
-                </p>
+                <div className="space-y-2">
+                  <Label>Hasta</Label>
+                  <Input
+                    type="date"
+                    min={startDate || MIN_START_DATE}
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    disabled={createMutation.isPending}
+                    className={dateInputClass}
+                  />
+                </div>
               </div>
-            </div>
 
-            <div className="flex flex-col md:flex-row gap-2">
-              <Popover open={employeeSearchOpen} onOpenChange={setEmployeeSearchOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full md:flex-1 justify-between font-normal"
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Hora inicio</Label>
+                  <Select
+                    value={startTime}
+                    onValueChange={setStartTime}
                     disabled={createMutation.isPending}
                   >
-                    <span className="truncate">
-                      {candidateEmployee
-                        ? `${candidateEmployee.fullName}${
-                            candidateEmployee.detail
-                              ? ` — ${candidateEmployee.detail}`
-                              : ""
-                          }`
-                        : "Buscar subordinado..."}
-                    </span>
-                    <ChevronsUpDown className="h-4 w-4 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona…" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[50vh]">
+                      {timeSlots.map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {s}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                <PopoverContent className="w-[420px] p-0" align="start">
-                  <Command shouldFilter={false}>
-                    <CommandInput
-                      placeholder="Buscar por nombre, cédula o correo..."
-                      value={employeeSearch}
-                      onValueChange={setEmployeeSearch}
-                    />
+                <div className="space-y-2">
+                  <Label>Hora fin</Label>
+                  <Select
+                    value={endTime}
+                    onValueChange={setEndTime}
+                    disabled={createMutation.isPending}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona…" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[50vh]">
+                      {timeSlots.map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {s}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
 
-                    <CommandList>
-                      {isLoadingBossSubordinates ? (
-                        <div className="flex items-center justify-center py-6">
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Buscando...
-                        </div>
-                      ) : (
-                        <>
-                          <CommandEmpty>No se encontraron subordinados.</CommandEmpty>
+              {planTypeUI === "OVERTIME" ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label>Tipo de HE</Label>
+                    <Input readOnly value={overtimeType || ""} />
+                  </div>
 
-                          <CommandGroup>
-                            {availableEmployeeOptions.map((opt) => (
-                              <CommandItem
-                                key={String(opt.employeeID)}
-                                value={String(opt.employeeID)}
-                                onSelect={() => handlePickCandidate(opt)}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    candidateEmployee?.employeeID === opt.employeeID
-                                      ? "opacity-100"
-                                      : "opacity-0"
-                                  )}
-                                />
-                                <div className="flex flex-col min-w-0">
-                                  <span className="truncate">{opt.fullName}</span>
-                                  <span className="text-xs text-muted-foreground truncate">
-                                    {opt.detail || "Sin detalle"}
-                                    {opt.extra ? ` · ${opt.extra}` : ""}
-                                  </span>
-                                </div>
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </>
-                      )}
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-
-              <Button
-                type="button"
-                onClick={addCandidateEmployee}
-                disabled={!candidateEmployee || createMutation.isPending}
-              >
-                <PlusCircle className="h-4 w-4 mr-2" />
-                Agregar empleado
-              </Button>
-            </div>
-
-            <div className="space-y-2">
-              {selectedEmployees.length === 0 ? (
-                <div className="text-sm text-muted-foreground">
-                  No has agregado empleados.
+                  <div className="space-y-2">
+                    <Label>Factor</Label>
+                    <Input readOnly value={factor ?? ""} />
+                  </div>
                 </div>
               ) : (
-                selectedEmployees.map((emp) => (
-                  <div
-                    key={emp.employeeID}
-                    className="border rounded-md p-3 flex flex-col md:flex-row md:items-center gap-3"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">{emp.fullName}</div>
-                      <div className="text-xs text-muted-foreground truncate">
-                        {emp.detail || `ID ${emp.employeeID}`}
-                        {emp.extra ? ` · ${emp.extra}` : ""}
-                      </div>
-                    </div>
+                <div className="space-y-2">
+                  <Label>Minutos a recuperar</Label>
+                  <Input readOnly value={String(owedMinutes)} />
+                </div>
+              )}
 
-                    {planTypeUI === "OVERTIME" ? (
-                      <div className="w-full md:w-40">
-                        <Label>Horas asignadas</Label>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.25"
-                          value={emp.assignedHours ?? 0}
-                          onChange={(e) =>
-                            updateEmployeeHours(emp.employeeID, e.target.value)
-                          }
-                          disabled={createMutation.isPending}
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={requiresApproval}
+                  onCheckedChange={setRequiresApproval}
+                  id="requiresApproval"
+                  disabled={createMutation.isPending}
+                />
+                <Label htmlFor="requiresApproval">Requiere aprobación</Label>
+              </div>
+
+              <div className="border rounded-lg p-4 space-y-4">
+                <div className="flex items-start gap-2">
+                  <Users className="h-4 w-4 mt-0.5 shrink-0" />
+                  <div>
+                    <Label>Empleados</Label>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Solo se muestran subordinados del jefe inmediato logueado.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_180px] gap-2 items-start">
+                  <Popover open={employeeSearchOpen} onOpenChange={setEmployeeSearchOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-between font-normal"
+                        disabled={createMutation.isPending}
+                      >
+                        <span className="truncate">
+                          {candidateEmployee
+                            ? `${candidateEmployee.fullName}${
+                                candidateEmployee.detail
+                                  ? ` — ${candidateEmployee.detail}`
+                                  : ""
+                              }`
+                            : "Buscar subordinado..."}
+                        </span>
+                        <ChevronsUpDown className="h-4 w-4 opacity-50 shrink-0" />
+                      </Button>
+                    </PopoverTrigger>
+
+                    <PopoverContent
+                      className="w-[min(420px,calc(100vw-3rem))] p-0"
+                      align="start"
+                    >
+                      <Command shouldFilter={false}>
+                        <CommandInput
+                          placeholder="Buscar por nombre, cédula o correo..."
+                          value={employeeSearch}
+                          onValueChange={setEmployeeSearch}
                         />
+
+                        <CommandList>
+                          {isLoadingBossSubordinates ? (
+                            <div className="flex items-center justify-center py-6">
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Buscando...
+                            </div>
+                          ) : (
+                            <>
+                              <CommandEmpty>No se encontraron subordinados.</CommandEmpty>
+
+                              <CommandGroup>
+                                {availableEmployeeOptions.map((opt) => (
+                                  <CommandItem
+                                    key={String(opt.employeeID)}
+                                    value={String(opt.employeeID)}
+                                    onSelect={() => handlePickCandidate(opt)}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        candidateEmployee?.employeeID === opt.employeeID
+                                          ? "opacity-100"
+                                          : "opacity-0"
+                                      )}
+                                    />
+                                    <div className="flex flex-col min-w-0">
+                                      <span className="truncate">{opt.fullName}</span>
+                                      <span className="text-xs text-muted-foreground truncate">
+                                        {opt.detail || "Sin detalle"}
+                                        {opt.extra ? ` · ${opt.extra}` : ""}
+                                      </span>
+                                    </div>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </>
+                          )}
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+
+                  <Button
+                    type="button"
+                    onClick={addCandidateEmployee}
+                    disabled={!candidateEmployee || createMutation.isPending}
+                    className="w-full"
+                  >
+                    <PlusCircle className="h-4 w-4 mr-2" />
+                    Agregar empleado
+                  </Button>
+                </div>
+
+                <div className="border rounded-md">
+                  <div className="max-h-52 sm:max-h-56 md:max-h-64 overflow-y-auto p-3 space-y-2">
+                    {selectedEmployees.length === 0 ? (
+                      <div className="text-sm text-muted-foreground">
+                        No has agregado empleados.
                       </div>
                     ) : (
-                      <div className="w-full md:w-40">
-                        <Label>Minutos asignados</Label>
-                        <Input
-                          type="number"
-                          min="0"
-                          value={emp.assignedMinutes ?? 0}
-                          onChange={(e) =>
-                            updateEmployeeMinutes(emp.employeeID, e.target.value)
-                          }
-                          disabled={createMutation.isPending}
-                        />
-                      </div>
+                      selectedEmployees.map((emp) => (
+                        <div
+                          key={emp.employeeID}
+                          className="border rounded-md p-3 grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_140px_120px] gap-3 items-end"
+                        >
+                          <div className="min-w-0">
+                            <div className="font-medium truncate">{emp.fullName}</div>
+                            <div className="text-xs text-muted-foreground truncate">
+                              {emp.detail || `ID ${emp.employeeID}`}
+                              {emp.extra ? ` · ${emp.extra}` : ""}
+                            </div>
+                          </div>
+
+                          {planTypeUI === "OVERTIME" ? (
+                            <div className="space-y-2">
+                              <Label>Horas asignadas</Label>
+                              <Input
+                                type="number"
+                                min="0"
+                                step="0.25"
+                                value={emp.assignedHours ?? 0}
+                                onChange={(e) =>
+                                  updateEmployeeHours(emp.employeeID, e.target.value)
+                                }
+                                disabled={createMutation.isPending}
+                              />
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <Label>Minutos asignados</Label>
+                              <Input
+                                type="number"
+                                min="0"
+                                value={emp.assignedMinutes ?? 0}
+                                onChange={(e) =>
+                                  updateEmployeeMinutes(emp.employeeID, e.target.value)
+                                }
+                                disabled={createMutation.isPending}
+                              />
+                            </div>
+                          )}
+
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => removeEmployee(emp.employeeID)}
+                            disabled={createMutation.isPending}
+                            className="w-full"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Quitar
+                          </Button>
+                        </div>
+                      ))
                     )}
-
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => removeEmployee(emp.employeeID)}
-                      disabled={createMutation.isPending}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Quitar
-                    </Button>
                   </div>
-                ))
-              )}
-            </div>
+                </div>
 
-            <div className="flex flex-wrap gap-2 text-xs">
-              <Badge variant="outline">
-                Total empleados: {selectedEmployees.length}
-              </Badge>
-              {planTypeUI === "OVERTIME" ? (
-                <Badge variant="secondary">
-                  Duración sugerida: {durationHours}h
-                </Badge>
-              ) : (
-                <Badge variant="secondary">
-                  Duración sugerida: {durationMinutes} min
-                </Badge>
-              )}
+                <div className="flex flex-wrap gap-2 text-xs">
+                  <Badge variant="outline">
+                    Total empleados: {selectedEmployees.length}
+                  </Badge>
+                  {planTypeUI === "OVERTIME" ? (
+                    <Badge variant="secondary">
+                      Duración sugerida: {durationHours}h
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary">
+                      Duración sugerida: {durationMinutes} min
+                    </Badge>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
+
+          <DialogFooter className="px-6 py-4 border-t gap-2 shrink-0">
+            <Button
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={createMutation.isPending}
+            >
+              Cancelar
+            </Button>
+
+            <Button
+              onClick={() => createMutation.mutate()}
+              disabled={createMutation.isPending || !isPlanStatusesReady || !isEmployeeStatusesReady}
+            >
+              {createMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Creando...
+                </>
+              ) : !isPlanStatusesReady || !isEmployeeStatusesReady ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Cargando catálogos...
+                </>
+              ) : (
+                <>
+                  <PlusCircle className="h-4 w-4 mr-2" />
+                  Crear con empleados
+                </>
+              )}
+            </Button>
+          </DialogFooter>
         </div>
-
-        <DialogFooter className="gap-2">
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={createMutation.isPending}
-          >
-            Cancelar
-          </Button>
-
-          <Button
-            onClick={() => createMutation.mutate()}
-            disabled={createMutation.isPending || !isPlanStatusesReady || !isEmployeeStatusesReady}
-          >
-            {createMutation.isPending ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Creando...
-              </>
-            ) : !isPlanStatusesReady || !isEmployeeStatusesReady ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Cargando catálogos...
-              </>
-            ) : (
-              <>
-                <PlusCircle className="h-4 w-4 mr-2" />
-                Crear con empleados
-              </>
-            )}
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

@@ -1,6 +1,6 @@
 // src/pages/Overtime.tsx
 import { useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   Card,
   CardHeader,
@@ -39,14 +39,12 @@ import {
   DialogContent,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
 import {
   Calendar,
   ChevronDown,
   Eye,
   RefreshCw,
   Filter,
-  CheckCircle,
   Plus,
   Clock,
   TimerReset,
@@ -58,7 +56,6 @@ import {
   type ApiResponse,
 } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
-
 import TimePlanningEmployeeForm from "@/components/forms/TimePlanningEmployeeForm";
 import CreatePlanningDialog from "@/components/planning/CreatePlanningDialog";
 
@@ -89,8 +86,6 @@ type RefType = {
   description?: string;
   isActive: boolean;
 };
-
-
 
 const fmtDate = (value?: string | null) => {
   if (!value) return "—";
@@ -142,10 +137,7 @@ function StatusBadge({
 }
 
 export default function OvertimePage() {
-  const { toast } = useToast();
-  const qc = useQueryClient();
   const { employeeDetails } = useAuth();
-  // Se obtiene el employeeID del contexto de autenticación real (no de localStorage ni globals)
   const currentEmployeeId = employeeDetails?.employeeID ?? 0;
 
   const [search, setSearch] = useState("");
@@ -175,8 +167,7 @@ export default function OvertimePage() {
     staleTime: 30_000,
   });
 
-  const plans =
-    plansResp?.status === "success" ? (plansResp.data || []) : [];
+  const plans = plansResp?.status === "success" ? plansResp.data || [] : [];
 
   const filtered = useMemo(() => {
     return plans
@@ -193,39 +184,6 @@ export default function OvertimePage() {
       )
       .sort((a, b) => a.startDate.localeCompare(b.startDate));
   }, [plans, statusFilter, search]);
-
-  const updatePlanStatus = useMutation({
-    mutationFn: async ({
-      id,
-      planStatusTypeID,
-    }: {
-      id: number;
-      planStatusTypeID: number;
-    }) => TimePlanningsAPI.update(id, { planStatusTypeID } as any),
-    onSuccess: (resp) => {
-      if (resp.status === "success") {
-        toast({
-          title: "Estado actualizado",
-          description: "La planificación fue actualizada.",
-        });
-        qc.invalidateQueries({
-          queryKey: ["time-plannings", "created-by", currentEmployeeId],
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: resp.error.message,
-          variant: "destructive",
-        });
-      }
-    },
-    onError: () =>
-      toast({
-        title: "Error",
-        description: "No se pudo actualizar.",
-        variant: "destructive",
-      }),
-  });
 
   const openEmployees = (plan: TimePlanning) => {
     setSelectedPlan(plan);
@@ -358,9 +316,7 @@ export default function OvertimePage() {
 
                         <div className="text-xs text-muted-foreground">
                           {p.planType === "Overtime"
-                            ? `Tipo: ${p.overtimeType ?? "—"} · Factor: ${
-                                p.factor ?? "—"
-                              }`
+                            ? `Tipo: ${p.overtimeType ?? "—"} · Factor: ${p.factor ?? "—"}`
                             : `Deuda (min): ${p.owedMinutes ?? 0}`}
                         </div>
                       </TableCell>
@@ -391,37 +347,14 @@ export default function OvertimePage() {
                               </Button>
                             </DropdownMenuTrigger>
 
-                            <DropdownMenuContent align="end" className="w-52">
+                            <DropdownMenuContent align="end" className="w-48">
                               <DropdownMenuItem
                                 onClick={() => openEmployees(p)}
                                 className="text-sm"
                               >
                                 <Eye className="h-4 w-4 mr-2" />
-                                Empleados / Ejecución
+                                Ver detalle
                               </DropdownMenuItem>
-
-                              <DropdownMenuItem asChild>
-                                <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                                  Cambiar estado
-                                </div>
-                              </DropdownMenuItem>
-
-                              {planStatuses.map((st) => (
-                                <DropdownMenuItem
-                                  key={st.typeId}
-                                  className="text-xs"
-                                  disabled={updatePlanStatus.isPending}
-                                  onClick={() =>
-                                    updatePlanStatus.mutate({
-                                      id: p.planID,
-                                      planStatusTypeID: st.typeId,
-                                    })
-                                  }
-                                >
-                                  <CheckCircle className="h-3.5 w-3.5 mr-2" />
-                                  {st.name}
-                                </DropdownMenuItem>
-                              ))}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
@@ -454,21 +387,23 @@ export default function OvertimePage() {
             else setIsEmployeesOpen(true);
           }}
         >
-          <DialogContent className="w-[95vw] max-w-[1100px] max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
-                Gestión de empleados — {selectedPlan.title}
-              </DialogTitle>
-              <DialogDescription>
-                Asigna empleados, actualiza estados y registra ejecución.
-              </DialogDescription>
-            </DialogHeader>
+          <DialogContent className="w-[95vw] max-w-[980px] max-h-[88vh] overflow-hidden p-0">
+            <div className="flex h-full flex-col">
+              <DialogHeader className="px-6 pt-6 pb-4 border-b">
+                <DialogTitle>Detalle de planificación — {selectedPlan.title}</DialogTitle>
+                <DialogDescription>
+                  Consulta los empleados asignados a esta planificación.
+                </DialogDescription>
+              </DialogHeader>
 
-            <TimePlanningEmployeeForm
-              planningId={selectedPlan.planID}
-              planningTitle={selectedPlan.title}
-              onClose={closeEmployees}
-            />
+              <div className="flex-1 overflow-y-auto px-6 py-5">
+                <TimePlanningEmployeeForm
+                  planningId={selectedPlan.planID}
+                  planningTitle={selectedPlan.title}
+                  onClose={closeEmployees}
+                />
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
       )}

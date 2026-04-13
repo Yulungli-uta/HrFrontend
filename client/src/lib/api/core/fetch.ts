@@ -1,10 +1,10 @@
 /**
  * Cliente HTTP base para llamadas API.
  * Principio SRP: responsabilidad única de ejecutar peticiones HTTP con autenticación.
- * Maneja autenticación, timeouts, logging y errores de forma centralizada.
+ * Maneja autenticación, timeouts, logging, refresh automático y errores de forma centralizada.
  */
 
-import { tokenService } from '@/services/auth';
+import { authService, tokenService } from '@/services/auth';
 import { API_CONFIG, resolveBaseUrl } from './config';
 import { apiLogger } from './logger';
 
@@ -21,6 +21,12 @@ export interface ApiError {
   message: string;
   details?: unknown;
 }
+
+// =============================================================================
+// Estado global de refresh (evita refresh simultáneos)
+// =============================================================================
+
+let refreshPromise: Promise<string | null> | null = null;
 
 // =============================================================================
 // Helpers internos
@@ -84,6 +90,192 @@ function wantsBinaryResponse(finalHeaders: Headers, contentType: string): boolea
   return false;
 }
 
+function clearLocalSessionArtifacts(): void {
+  try {
+    tokenService.clearTokens();
+  } catch {
+    // ignore
+  }
+
+  try {
+    localStorage.removeItem('wsuta-last-activity');
+    localStorage.removeItem('wsuta-employee-details');
+  } catch {
+    // ignore
+  }
+}
+
+function redirectToLogin(): void {
+  clearLocalSessionArtifacts();
+
+  if (typeof window !== 'undefined') {
+    const loginUrl = `${import.meta.env.BASE_URL}login`;
+    const currentPath = window.location.pathname + window.location.search + window.location.hash;
+
+    if (!currentPath.includes('/login')) {
+      try {
+        window.location.replace(loginUrl);
+      } catch {
+        window.location.href = loginUrl;
+      }
+    }
+  }
+}
+
+function buildHeaders(initHeaders?: HeadersInit, token?: string | null): Headers {
+  const headers = new Headers({
+    ...API_CONFIG.DEFAULT_HEADERS,
+    ...((initHeaders as Record<string, string>) || {}),
+  });
+
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  return headers;
+}
+
+async function parseSuccessResponse<T>(
+  response: Response,
+  headers: Headers,
+  method: string,
+  url: string,
+  elapsedMs: number
+): Promise<ApiResponse<T>> {
+  const contentType = response.headers.get('content-type') || '';
+
+  if (response.status === 204) {
+    apiLogger.logResponse(method, url, response, undefined, elapsedMs);
+    return { status: 'success', data: undefined as unknown as T };
+  }
+
+  if (wantsBinaryResponse(headers, contentType) && !isJsonContentType(contentType)) {
+    const blob = await response.blob();
+    apiLogger.logResponse(method, url, response, blob, elapsedMs);
+    return { status: 'success', data: blob as unknown as T };
+  }
+
+  let rawText = '';
+  try {
+    rawText = await response.text();
+  } catch {
+    rawText = '';
+  }
+
+  let parsed: unknown = rawText;
+  if (rawText && isJsonContentType(contentType)) {
+    try {
+      parsed = JSON.parse(rawText);
+    } catch {
+      parsed = rawText;
+    }
+  }
+
+  apiLogger.logResponse(method, url, response, parsed, elapsedMs);
+
+  if (parsed && typeof parsed === 'object' && 'status' in (parsed as object)) {
+    return parsed as ApiResponse<T>;
+  }
+
+  return { status: 'success', data: parsed as T };
+}
+
+async function parseErrorResponse(
+  response: Response,
+  method: string,
+  url: string,
+  elapsedMs: number
+): Promise<ApiResponse<never>> {
+  const contentType = response.headers.get('content-type') || '';
+
+  let rawText = '';
+  try {
+    rawText = await response.text();
+  } catch {
+    rawText = '';
+  }
+
+  let parsed: unknown = rawText;
+  if (rawText && isJsonContentType(contentType)) {
+    try {
+      parsed = JSON.parse(rawText);
+    } catch {
+      parsed = rawText;
+    }
+  }
+
+  apiLogger.logResponse(method, url, response, parsed, elapsedMs);
+
+  let errorMessage = `Error HTTP ${response.status}`;
+  let errorDetails: unknown = undefined;
+
+  if (parsed && typeof parsed === 'object') {
+    const p = parsed as Record<string, unknown>;
+    errorMessage =
+      (p.message as string) ||
+      (p.error as string) ||
+      (p.title as string) ||
+      errorMessage;
+    errorDetails = p.details ?? parsed;
+  } else if (typeof parsed === 'string' && parsed.trim()) {
+    errorMessage = parsed;
+    errorDetails = { raw: parsed };
+  }
+
+  const apiError: ApiError = {
+    code: response.status,
+    message: errorMessage,
+    details: errorDetails,
+  };
+
+  apiLogger.logError(method, url, apiError, elapsedMs, response);
+
+  return { status: 'error', error: apiError };
+}
+
+async function executeRequest(
+  url: string,
+  headers: Headers,
+  initWithoutHeaders: RequestInit,
+  controller: AbortController
+): Promise<Response> {
+  return fetch(url, {
+    credentials: API_CONFIG.CREDENTIALS,
+    ...initWithoutHeaders,
+    headers,
+    signal: controller.signal,
+  });
+}
+
+/**
+ * Intenta renovar el access token usando un único refresh compartido.
+ * Si varias requests reciben 401 al mismo tiempo, todas esperan la misma promesa.
+ */
+async function getFreshAccessToken(): Promise<string | null> {
+  if (refreshPromise) {
+    return refreshPromise;
+  }
+
+  refreshPromise = (async () => {
+    try {
+      const refreshToken = tokenService.getRefreshToken();
+      if (!refreshToken) return null;
+
+      const newTokens = await authService.refreshToken(refreshToken);
+      tokenService.setTokens(newTokens);
+
+      return newTokens.accessToken;
+    } catch (error) {
+      console.error('[API] Error refreshing access token:', error);
+      return null;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
+}
+
 // =============================================================================
 // Cliente HTTP principal
 // =============================================================================
@@ -91,6 +283,7 @@ function wantsBinaryResponse(finalHeaders: Headers, contentType: string): boolea
 /**
  * Función base para todas las llamadas HTTP a la API.
  * Inyecta automáticamente el token Bearer, maneja timeouts y normaliza errores.
+ * Si recibe 401, intenta renovar el access token una sola vez y reintenta la petición.
  */
 export async function apiFetch<T = unknown>(
   path: string,
@@ -103,22 +296,10 @@ export async function apiFetch<T = unknown>(
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
 
-  const accessToken = tokenService.getAccessToken();
-
-  const headers = new Headers({
-    ...API_CONFIG.DEFAULT_HEADERS,
-    ...(init.headers as Record<string, string> || {}),
-  });
-
-  if (accessToken) {
-    headers.set('Authorization', `Bearer ${accessToken}`);
-  }
-
   const base = resolveBaseUrl(path);
   const url = `${base}${path}`;
   const method = (init.method || 'GET').toUpperCase();
 
-  // Preparar body para logging (sin exponer datos sensibles)
   let bodyForLog: unknown = undefined;
   if (init.body instanceof FormData) {
     bodyForLog = init.body;
@@ -132,113 +313,60 @@ export async function apiFetch<T = unknown>(
     bodyForLog = maskSensitive(bodyForLog);
   }
 
-  apiLogger.logRequest(method, url, headers, bodyForLog, startedEpoch);
-
   try {
-    // Separar headers del init para evitar duplicados
     const { headers: _ignored, ...initWithoutHeaders } = init;
 
-    const response = await fetch(url, {
-      credentials: API_CONFIG.CREDENTIALS,
-      ...initWithoutHeaders,
-      headers,
-      signal: controller.signal,
-    });
+    let accessToken = tokenService.getAccessToken();
+    let headers = buildHeaders(init.headers, accessToken);
+
+    apiLogger.logRequest(method, url, headers, bodyForLog, startedEpoch);
+
+    let response = await executeRequest(url, headers, initWithoutHeaders, controller);
+
+    // Si no está autorizado, intentar refresh y reintentar una sola vez
+    if (response.status === 401) {
+      const newAccessToken = await getFreshAccessToken();
+
+      if (newAccessToken) {
+        accessToken = newAccessToken;
+        headers = buildHeaders(init.headers, accessToken);
+
+        apiLogger.logRequest(
+          `${method} (RETRY)`,
+          url,
+          headers,
+          bodyForLog,
+          Date.now()
+        );
+
+        response = await executeRequest(url, headers, initWithoutHeaders, controller);
+      } else {
+        clearTimeout(timeoutId);
+
+        const elapsedMs = Math.round(nowMs() - started);
+        const errorResult = await parseErrorResponse(response, method, url, elapsedMs);
+
+        redirectToLogin();
+        return errorResult as ApiResponse<T>;
+      }
+    }
 
     clearTimeout(timeoutId);
 
     const elapsedMs = Math.round(nowMs() - started);
-    const contentType = response.headers.get('content-type') || '';
 
     if (response.ok) {
-      // 204 No Content
-      if (response.status === 204) {
-        apiLogger.logResponse(method, url, response, undefined, elapsedMs);
-        return { status: 'success', data: undefined as unknown as T };
-      }
-
-      // Respuesta binaria (PDF, Excel, etc.)
-      if (wantsBinaryResponse(headers, contentType) && !isJsonContentType(contentType)) {
-        const blob = await response.blob();
-        apiLogger.logResponse(method, url, response, blob, elapsedMs);
-        return { status: 'success', data: blob as unknown as T };
-      }
-
-      // Respuesta JSON o texto
-      let rawText = '';
-      try {
-        rawText = await response.text();
-      } catch {
-        rawText = '';
-      }
-
-      let parsed: unknown = rawText;
-      if (rawText && isJsonContentType(contentType)) {
-        try {
-          parsed = JSON.parse(rawText);
-        } catch {
-          parsed = rawText;
-        }
-      }
-
-      apiLogger.logResponse(method, url, response, parsed, elapsedMs);
-
-      // Si el backend ya devuelve un ApiResponse envuelto, pasarlo directamente
-      if (
-        parsed &&
-        typeof parsed === 'object' &&
-        'status' in (parsed as object)
-      ) {
-        return parsed as ApiResponse<T>;
-      }
-
-      return { status: 'success', data: parsed as T };
+      return await parseSuccessResponse<T>(response, headers, method, url, elapsedMs);
     }
 
-    // ─── Respuesta con error HTTP ────────────────────────────────────────────
-    let rawText = '';
-    try {
-      rawText = await response.text();
-    } catch {
-      rawText = '';
+    const errorResult = await parseErrorResponse(response, method, url, elapsedMs);
+
+    // Si incluso después del retry sigue siendo 401, cerrar sesión
+    if (response.status === 401) {
+      redirectToLogin();
     }
 
-    let parsed: unknown = rawText;
-    if (rawText && isJsonContentType(contentType)) {
-      try {
-        parsed = JSON.parse(rawText);
-      } catch {
-        parsed = rawText;
-      }
-    }
-
-    apiLogger.logResponse(method, url, response, parsed, elapsedMs);
-
-    let errorMessage = `Error HTTP ${response.status}`;
-    let errorDetails: unknown = undefined;
-
-    if (parsed && typeof parsed === 'object') {
-      const p = parsed as Record<string, unknown>;
-      errorMessage =
-        (p.message as string) ||
-        (p.error as string) ||
-        (p.title as string) ||
-        errorMessage;
-      errorDetails = p.details ?? parsed;
-    } else if (typeof parsed === 'string' && parsed.trim()) {
-      errorMessage = parsed;
-      errorDetails = { raw: parsed };
-    }
-
-    const apiError: ApiError = {
-      code: response.status,
-      message: errorMessage,
-      details: errorDetails,
-    };
-
-    apiLogger.logError(method, url, apiError, elapsedMs, response);
-
-    return { status: 'error', error: apiError };
+    return errorResult as ApiResponse<T>;
   } catch (error) {
     clearTimeout(timeoutId);
 
