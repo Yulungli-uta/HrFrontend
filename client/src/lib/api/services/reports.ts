@@ -31,12 +31,18 @@ export class ReportError extends Error {
 
 class ReportService {
   private baseUrl = '/api/v1/rh/reports';
-  // private baseUrl = '/reports';
 
+  /**
+   * Construye el endpoint v2 genérico.
+   * Rutas: POST /api/v1/rh/reports/v2/{type}/preview|pdf/download|excel
+   *
+   * El backend acepta cualquier slug registrado en ReportTypeMapper:
+   * employees | attendance | departments | attendancesumary | attendancesummary
+   */
   private buildEndpoint(type: ReportType, format: ReportFormat, action: 'preview' | 'download'): string {
-    if (action === 'preview') return `${this.baseUrl}/${type}/preview`;
-    if (format === 'pdf') return `${this.baseUrl}/${type}/pdf/download`;
-    return `${this.baseUrl}/${type}/excel`;
+    if (action === 'preview') return `${this.baseUrl}/v2/${type}/preview`;
+    if (format === 'pdf') return `${this.baseUrl}/v2/${type}/pdf/download`;
+    return `${this.baseUrl}/v2/${type}/excel`;
   }
 
   private handleApiResponse<T>(response: ApiResponse<T>, endpoint: string): T {
