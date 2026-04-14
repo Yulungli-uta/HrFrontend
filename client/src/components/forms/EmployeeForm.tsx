@@ -1,3 +1,4 @@
+// src/components/forms/EmployeeForm.tsx
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -133,6 +134,23 @@ function useDebounce<T>(value: T, delay: number): T {
   }, [value, delay]);
 
   return debouncedValue;
+}
+
+function toDateInputValue(value?: string | null): string {
+  if (!value) return "";
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value;
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
 }
 
 interface UsePagedComboboxOptions<T> {
@@ -273,7 +291,7 @@ export default function EmployeeForm({
       contractTypeId: undefined,
       departmentId: employee?.departmentId ?? null,
       immediateBossId: employee?.immediateBossId ?? null,
-      hireDate: employee?.hireDate ?? "",
+      hireDate: toDateInputValue(employee?.hireDate ?? ""),
       isActive: employee?.isActive ?? true,
       email: "",
     },
@@ -286,8 +304,12 @@ export default function EmployeeForm({
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const input = new Date(value);
+    const input = new Date(`${value}T00:00:00`);
     input.setHours(0, 0, 0, 0);
+
+    if (Number.isNaN(input.getTime())) {
+      return "La fecha de contratación no es válida";
+    }
 
     if (input > today) return "La fecha de contratación no puede ser futura";
     return true;
@@ -379,6 +401,19 @@ export default function EmployeeForm({
             viewSeed.email ??
             "";
 
+          const hireDate = toDateInputValue(
+            empData.hireDate ??
+              empData.HireDate ??
+              viewSeed.hireDate ??
+              ""
+          );
+
+          const isActive =
+            empData.isActive ??
+            empData.IsActive ??
+            viewSeed.employeeIsActive ??
+            true;
+
           setEmployeeIdForUpdate(employeeId);
 
           form.reset({
@@ -386,8 +421,8 @@ export default function EmployeeForm({
             contractTypeId: employeeType,
             departmentId,
             immediateBossId,
-            hireDate: viewSeed.hireDate ?? "",
-            isActive: viewSeed.employeeIsActive ?? true,
+            hireDate,
+            isActive,
             email,
           });
 
@@ -412,6 +447,7 @@ export default function EmployeeForm({
             console.log("departmentId:", departmentId);
             console.log("immediateBossId:", immediateBossId);
             console.log("employeeType:", employeeType);
+            console.log("hireDate:", hireDate);
             console.groupEnd();
           }
         }
@@ -423,7 +459,7 @@ export default function EmployeeForm({
           contractTypeId,
           departmentId: null,
           immediateBossId: null,
-          hireDate: viewSeed.hireDate ?? "",
+          hireDate: toDateInputValue(viewSeed.hireDate),
           isActive: viewSeed.employeeIsActive ?? true,
           email: viewSeed.email ?? "",
         });
@@ -1024,6 +1060,7 @@ export default function EmployeeForm({
                         disabled={disabling}
                         {...field}
                         value={field.value ?? ""}
+                        onChange={(e) => field.onChange(e.target.value)}
                       />
                     </FormControl>
                     <FormMessage />
@@ -1089,3 +1126,4 @@ export default function EmployeeForm({
     </Card>
   );
 }
+

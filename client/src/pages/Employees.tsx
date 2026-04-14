@@ -486,7 +486,7 @@ const employeeStats = useMemo(() => {
           <div className="relative flex-1 md:flex-initial">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
-              placeholder="Buscar por nombre, cédula o email..."
+              placeholder="Buscar por nombre, cédula, email o dependencia..."
               value={currentParams.search ?? ""}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-10 pr-10 py-2 w-full md:w-64"

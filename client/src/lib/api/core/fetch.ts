@@ -22,6 +22,10 @@ export interface ApiError {
   details?: unknown;
 }
 
+export interface ApiFetchOptions extends RequestInit {
+  timeoutMs?: number;
+}
+
 // =============================================================================
 // Estado global de refresh (evita refresh simultáneos)
 // =============================================================================
@@ -287,14 +291,15 @@ async function getFreshAccessToken(): Promise<string | null> {
  */
 export async function apiFetch<T = unknown>(
   path: string,
-  init: RequestInit = {}
+  init: ApiFetchOptions = {}
 ): Promise<ApiResponse<T>> {
   const requestId = newRequestId();
   const started = nowMs();
   const startedEpoch = Date.now();
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
+  const timeoutMs = init.timeoutMs ?? API_CONFIG.TIMEOUT;
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   const base = resolveBaseUrl(path);
   const url = `${base}${path}`;
@@ -314,7 +319,7 @@ export async function apiFetch<T = unknown>(
   }
 
   try {
-    const { headers: _ignored, ...initWithoutHeaders } = init;
+    const { headers: _ignored, timeoutMs: _ignoredTimeout, ...initWithoutHeaders } = init;
 
     let accessToken = tokenService.getAccessToken();
     let headers = buildHeaders(init.headers, accessToken);
@@ -377,7 +382,7 @@ export async function apiFetch<T = unknown>(
         const apiError: ApiError = {
           code: 408,
           message: 'La solicitud excedió el tiempo de espera',
-          details: { timeout: API_CONFIG.TIMEOUT, requestId },
+          details: { timeout: timeoutMs, requestId },
         };
 
         apiLogger.logError(method, url, apiError, elapsedMs);

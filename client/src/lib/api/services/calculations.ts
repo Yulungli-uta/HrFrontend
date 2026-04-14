@@ -25,48 +25,90 @@ export interface PayrollPeriodRequestDto {
 // =============================================================================
 // API de Cálculos de Asistencia (operaciones especializadas)
 // =============================================================================
+const ATTENDANCE_LONG_TIMEOUT_MS = 1000 * 60 * 60; // 60 minutos - tiempo de session
 
 export const AttendanceCalculationAPI = {
   /**
-   * Ejecuta el cálculo masivo de asistencia para un rango de fechas
+   * Endpoint oficial.
+   * Ejecuta el pipeline completo de asistencia para un rango de fechas.
+   *
+   * Incluye:
+   * - cálculo base
+   * - permisos / vacaciones
+   * - justificaciones
+   * - recovery
+   * - overtime / planning
+   * - finalización
    */
-  calculateRange: (data: AttendanceCalculationRequestDto): Promise<ApiResponse<any>> =>
+  processAttendanceRange: (
+    data: AttendanceCalculationRequestDto
+  ): Promise<ApiResponse<any>> =>
+    apiFetch<any>('/api/v1/rh/attendance/calculations/process-range', {
+      method: 'POST',
+      body: JSON.stringify(data),
+      timeoutMs: ATTENDANCE_LONG_TIMEOUT_MS,
+    }),
+
+  /**
+   * Alias semántico del pipeline principal.
+   * Puedes usar este nombre en pantallas nuevas si quieres dejar más claro
+   * que ejecuta toda la orquestación.
+   */
+  runAttendancePipelineRange: (
+    data: AttendanceCalculationRequestDto
+  ): Promise<ApiResponse<any>> =>
+    apiFetch<any>('/api/v1/rh/attendance/calculations/process-range', {
+      method: 'POST',
+      body: JSON.stringify(data),
+      timeoutMs: ATTENDANCE_LONG_TIMEOUT_MS,
+    }),
+
+  /**
+   * @deprecated
+   * Usa processAttendanceRange o runAttendancePipelineRange.
+   *
+   * Este endpoint ejecuta el flujo legacy de cálculo masivo y puede no estar
+   * alineado con la nueva estructura de asistencia.
+   */
+  calculateRange: (
+    data: AttendanceCalculationRequestDto
+  ): Promise<ApiResponse<any>> =>
     apiFetch<any>('/api/v1/rh/attendance/calculations/calculate-range', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
 
   /**
-   * Calcula los minutos nocturnos trabajados para un rango de fechas
+   * @deprecated
+   * Los minutos nocturnos ahora forman parte del pipeline principal.
    */
-  calculateNightMinutes: (data: AttendanceCalculationRequestDto): Promise<ApiResponse<any>> =>
+  calculateNightMinutes: (
+    data: AttendanceCalculationRequestDto
+  ): Promise<ApiResponse<any>> =>
     apiFetch<any>('/api/v1/rh/attendance/calculations/calc-night-minutes', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
 
   /**
-   * Procesa el rango completo de asistencia (orquestador principal)
+   * @deprecated
+   * Las justificaciones ahora forman parte del pipeline principal.
    */
-  processAttendanceRange: (data: AttendanceCalculationRequestDto): Promise<ApiResponse<any>> =>
-    apiFetch<any>('/api/v1/rh/attendance/calculations/process-range', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
-
-  /**
-   * Aplica justificaciones aprobadas para anular atrasos o ausencias
-   */
-  applyJustifications: (data: AttendanceCalculationRequestDto): Promise<ApiResponse<any>> =>
+  applyJustifications: (
+    data: AttendanceCalculationRequestDto
+  ): Promise<ApiResponse<any>> =>
     apiFetch<any>('/api/v1/rh/attendance/calculations/apply-justifications', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
 
   /**
-   * Procesa el cálculo y aplicación de recuperación de horas extra
+   * @deprecated
+   * Overtime y recovery ahora forman parte del pipeline principal.
    */
-  applyOvertimeRecovery: (data: AttendanceCalculationRequestDto): Promise<ApiResponse<any>> =>
+  applyOvertimeRecovery: (
+    data: AttendanceCalculationRequestDto
+  ): Promise<ApiResponse<any>> =>
     apiFetch<any>('/api/v1/rh/attendance/calculations/apply-overtime-recovery', {
       method: 'POST',
       body: JSON.stringify(data),
