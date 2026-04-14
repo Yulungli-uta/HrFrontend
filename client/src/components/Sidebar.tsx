@@ -12,7 +12,7 @@ import {
   MessageSquare, Settings2, Layers, PanelLeftClose, PanelLeftOpen,
   ChevronDown, ChevronRight, Loader2, User2, ChartLine, Search,
 } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/features/auth";
 import logoPath from "@/assets/LogoUTA.png";
 
 const DEBUG = import.meta.env.VITE_DEBUG_AUTH === "true";

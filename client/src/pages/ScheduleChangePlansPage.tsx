@@ -13,7 +13,7 @@ import {
 
 import { useToast } from "@/hooks/use-toast";
 import { usePaged } from "@/hooks/pagination/usePaged";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/features/auth";
 import {
   Card,
   CardContent,

@@ -13,7 +13,7 @@ import { es } from "date-fns/locale";
 import { Timer, Clock, MapPin, Filter, AlertCircle, CheckCircle, Calendar, Search, RefreshCw, Info } from "lucide-react";
 import type { AttendancePunch } from "@/shared/schema";
 import { MarcacionesAPI, MarcacionesEspecializadasAPI, handleApiError, TimeAPI } from "@/lib/api";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/features/auth";
 import { PunchTable } from "@/components/forms/PunchTable";
 import { parseApiError } from "@/lib/error-handling";
 

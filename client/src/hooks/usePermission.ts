@@ -16,7 +16,7 @@
  */
 
 import { useMemo } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/features/auth';
 import { PermissionService } from '@/services/permissions';
 
 /**

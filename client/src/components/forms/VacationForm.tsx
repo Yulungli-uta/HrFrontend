@@ -14,7 +14,7 @@ type VacationFormData = {
   daysTaken: number;
   status: string;
 };
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/features/auth";
 import { parseApiError } from '@/lib/error-handling';
 
 /** Utils */

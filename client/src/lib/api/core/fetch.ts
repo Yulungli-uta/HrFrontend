@@ -4,7 +4,7 @@
  * Maneja autenticación, timeouts, logging, refresh automático y errores de forma centralizada.
  */
 
-import { authService, tokenService } from '@/services/auth';
+import { authService, tokenService } from '@/features/auth';
 import { API_CONFIG, resolveBaseUrl } from './config';
 import { apiLogger } from './logger';
 
@@ -31,6 +31,22 @@ export interface ApiFetchOptions extends RequestInit {
 // =============================================================================
 
 let refreshPromise: Promise<string | null> | null = null;
+
+// =============================================================================
+// Callback de logout forzado — registrado por AuthContext al montar.
+// Permite que el 401 definitivo limpie el estado React antes de redirigir.
+// DIP: fetch.ts no depende de AuthContext directamente, solo del contrato.
+// =============================================================================
+
+let forceLogoutCallback: (() => void) | null = null;
+
+/**
+ * Registra el callback que AuthContext provee para ejecutar logout limpio.
+ * Debe llamarse una sola vez al montar AuthProvider.
+ */
+export function registerForceLogoutCallback(cb: () => void): void {
+  forceLogoutCallback = cb;
+}
 
 // =============================================================================
 // Helpers internos
@@ -110,6 +126,18 @@ function clearLocalSessionArtifacts(): void {
 }
 
 function redirectToLogin(): void {
+  // Si AuthContext ya registró su callback, usarlo para limpiar el estado React
+  // antes de redirigir (evita estado sucio en la UI).
+  if (forceLogoutCallback) {
+    try {
+      forceLogoutCallback();
+      return; // AuthContext.logout() se encarga de la redirección
+    } catch {
+      // Si el callback falla, caer en el fallback nativo
+    }
+  }
+
+  // Fallback: limpiar artefactos y redirigir directamente
   clearLocalSessionArtifacts();
 
   if (typeof window !== 'undefined') {

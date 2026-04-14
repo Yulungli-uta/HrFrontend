@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { AuthUsersAPI, RolesAPI, UserRolesAPI } from "@/lib/api";
 import type { ApiResponse } from "@/lib/api";
-import type { User, Role, UserRole } from "@/types/auth";
+import type { User, Role, UserRole } from "@/features/auth";
 import { useToast } from "@/hooks/use-toast";
 import AssignRoleForm from "@/components/forms/AssignRoleForm";
 import { Skeleton } from "@/components/ui/skeleton";

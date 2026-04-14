@@ -8,7 +8,7 @@
 import { apiFetch } from '../core/fetch';
 import { API_CONFIG } from '../core/config';
 import type { ApiResponse } from '../core/fetch';
-import { tokenService } from '@/services/auth';
+import { tokenService } from '@/features/auth';
 import type {
   UploadSingleArgs,
   DocumentUploadResultDto,

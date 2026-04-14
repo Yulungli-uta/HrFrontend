@@ -55,7 +55,7 @@ import {
   TiposReferenciaAPI,
   type ApiResponse,
 } from "@/lib/api";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/features/auth";
 import TimePlanningEmployeeForm from "@/components/forms/TimePlanningEmployeeForm";
 import CreatePlanningDialog from "@/components/planning/CreatePlanningDialog";
 

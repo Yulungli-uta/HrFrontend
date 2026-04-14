@@ -1,6 +1,6 @@
-// services/auth/authService.ts
+// features/auth/services/authService.ts
 import { ApiResponse } from "@/lib/api";
-import { TokenPair, UserSession, LoginRequest } from "./types";
+import { TokenPair, UserSession, LoginRequest } from "../types/authTypes";
 import { getBrowserId } from "@/utils/browserId";
 import { parseApiError } from '@/lib/error-handling';
 

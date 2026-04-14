@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/features/auth";
 import { HorariosEmpleadosAPI, handleApiError } from "@/lib/api";
 import type { Employee, Schedule, EmployeeSchedule } from "@/types/schedule";
 import { parseApiError } from "@/lib/error-handling";

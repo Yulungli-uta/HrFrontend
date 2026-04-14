@@ -19,7 +19,7 @@ import {
   TabsList,
   TabsTrigger
 } from "@/components/ui/tabs";
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/features/auth';
 import { Loader2 } from 'lucide-react';
 import { parseApiError } from '@/lib/error-handling';
 

@@ -6,9 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/features/auth";
 import { JustificationsAPI, HorariosAPI, TiposReferenciaAPI, handleApiError } from "@/lib/api";
-import { getBossFromEmployeeDetails } from "@/helpers/AuthBoss";
+import { getBossFromEmployeeDetails } from "@/components/employees/AuthBoss";
 import { parseApiError } from '@/lib/error-handling';
 
 /** ------------- Helpers de fecha/hora (LOCAL, sin convertir a UTC) ------------- **/

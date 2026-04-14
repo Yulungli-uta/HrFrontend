@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/features/auth";
 
 interface LayoutProps {
   children: React.ReactNode;

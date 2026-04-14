@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { TiposReferenciaAPI, JustificationsAPI } from "@/lib/api";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/features/auth";
 import JustificationForm from "@/components/justifications/JustificationForm";
 
 type Status = "PENDING" | "APPROVED" | "REJECTED" | "APPLIED";

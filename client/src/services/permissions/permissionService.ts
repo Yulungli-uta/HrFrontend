@@ -3,8 +3,8 @@
  * Servicio de validación y carga de permisos
  */
 
-import { UserSession } from "@/services/auth/types";
-import { tokenService, authService } from "@/services/auth";
+import { UserSession } from "@/features/auth";
+import { tokenService, authService } from "@/features/auth";
 import { CacheService } from "./cacheService";
 
 const DEBUG = import.meta.env.VITE_DEBUG_AUTH === "true";

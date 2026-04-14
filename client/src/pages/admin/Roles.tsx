@@ -36,7 +36,7 @@ import { Shield, Plus, Edit, Trash2, Search } from "lucide-react";
 import { RolesAPI } from "@/lib/api";
 import { usePaged } from "@/hooks/pagination/usePaged";
 import { DataPagination } from "@/components/ui/DataPagination";
-import type { Role } from "@/types/auth";
+import type { Role } from "@/features/auth";
 import { useToast } from "@/hooks/use-toast";
 import RoleForm from "@/components/forms/RoleForm";
 import { parseApiError } from "@/lib/error-handling";

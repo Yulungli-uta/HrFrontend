@@ -1,5 +1,5 @@
-// services/auth/tokenService.ts
-import { TokenPair, UserSession } from "./types";
+// features/auth/services/tokenService.ts
+import { TokenPair, UserSession } from "../types/authTypes";
 import { getBrowserId } from "@/utils/browserId";
 
 const DEBUG = import.meta.env.VITE_DEBUG_AUTH === "true";

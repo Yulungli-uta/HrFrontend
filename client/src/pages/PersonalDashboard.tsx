@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { format, isSameDay } from "date-fns";
 import { es } from "date-fns/locale";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/features/auth";
 import {
   PermisosAPI,
   VacacionesAPI,

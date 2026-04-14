@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { MenuItemsAPI } from "@/lib/api";
 import type { ApiResponse } from "@/lib/api";
-import type { MenuItem } from "@/types/auth";
+import type { MenuItem } from "@/features/auth";
 import { parseApiError } from '@/lib/error-handling';
 
 type Props = {

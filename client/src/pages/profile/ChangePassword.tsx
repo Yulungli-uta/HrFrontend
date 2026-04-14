@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { KeyRound, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { PasswordAPI } from "@/lib/api";
-import type { ChangePasswordDto } from "@/types/auth";
+import type { ChangePasswordDto } from "@/features/auth";
 import { useToast } from "@/hooks/use-toast";
 import { parseApiError } from '@/lib/error-handling';
 

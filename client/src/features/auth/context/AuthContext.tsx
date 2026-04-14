@@ -1,4 +1,16 @@
-// contexts/AuthContext.tsx
+/**
+ * features/auth/context/AuthContext.tsx
+ *
+ * Fuente oficial de verdad para el estado de autenticación de la aplicación.
+ *
+ * Responsabilidades (SRP):
+ *  - Gestionar el ciclo de vida de la sesión (login, logout, refresh)
+ *  - Detectar inactividad y cerrar sesión automáticamente
+ *  - Exponer el hook useAuth como único punto de acceso al estado de auth
+ *
+ * OCP: agregar nuevos métodos al contexto no requiere modificar los consumidores.
+ * DIP: depende de interfaces (authService, tokenService) no de implementaciones concretas.
+ */
 import React, {
   createContext,
   useContext,
@@ -8,7 +20,16 @@ import React, {
   useCallback,
   useRef,
 } from "react";
-import { authService, tokenService, UserSession } from "@/features/auth";
+import { authService } from "../services/authService";
+import { tokenService } from "../services/tokenService";
+import { UserSession } from "../types/authTypes";
+import {
+  LS_LAST_ACTIVITY,
+  LS_EMPLOYEE_DETAILS,
+  INACTIVITY_TIMEOUT,
+  INACTIVITY_CHECK_INTERVAL_MS,
+  ACTIVITY_EVENTS,
+} from "../constants/sessionConstants";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { VistaDetallesEmpleadosAPI } from "@/lib/api";
@@ -16,18 +37,22 @@ import {
   useNotificationWebSocket,
   WebSocketMessage,
 } from "@/hooks/useNotificationWebSocket";
-
 import { PermissionService, CacheService } from "@/services/permissions";
-import { parseApiError } from '@/lib/error-handling';
+import { parseApiError } from "@/lib/error-handling";
+import { registerForceLogoutCallback } from "@/lib/api/core/fetch";
 
 const AUTH_DEBUG = import.meta.env.VITE_DEBUG_AUTH === "true";
 
-const logAuth = (...args: any[]) => {
+const logAuth = (...args: unknown[]) => {
   if (AUTH_DEBUG) {
     // eslint-disable-next-line no-console
     console.log("[AUTH]", ...args);
   }
 };
+
+const APP_CLIENT_ID = import.meta.env.VITE_APP_CLIENT_ID;
+
+// ─── Tipos públicos ────────────────────────────────────────────────────────────
 
 export interface EmployeeDetails {
   employeeID: number;
@@ -45,7 +70,7 @@ export interface EmployeeDetails {
   hasActiveSalary: boolean;
 }
 
-interface AuthContextType {
+export interface AuthContextType {
   isAuthenticated: boolean;
   user: UserSession | null;
   employeeDetails: EmployeeDetails | null;
@@ -57,20 +82,16 @@ interface AuthContextType {
   refreshAuth: () => Promise<void>;
 }
 
+// ─── Contexto ──────────────────────────────────────────────────────────────────
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-const APP_CLIENT_ID = import.meta.env.VITE_APP_CLIENT_ID;
 
-const LS_EMPLOYEE_DETAILS = "wsuta-employee-details";
-const LS_LAST_ACTIVITY = "wsuta-last-activity";
-
-interface AuthProviderProps {
-  children: ReactNode;
-}
+// ─── Utilidades internas ───────────────────────────────────────────────────────
 
 const equalEmployeeDetails = (
   a: EmployeeDetails | null,
   b: EmployeeDetails | null
-) => {
+): boolean => {
   if (a === b) return true;
   if (!a || !b) return false;
   return (
@@ -85,29 +106,25 @@ const equalEmployeeDetails = (
   );
 };
 
+// ─── Provider ──────────────────────────────────────────────────────────────────
+
+interface AuthProviderProps {
+  children: ReactNode;
+}
+
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<UserSession | null>(null);
   const [employeeDetails, setEmployeeDetails] =
     useState<EmployeeDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { toast } = useToast();
-  const [, setLocation] = useLocation();
-
-  const clientId = APP_CLIENT_ID;
-  const { isConnected, lastMessage } = useNotificationWebSocket(clientId);
-
-  const processedLoginEventsRef = useRef<Set<string>>(new Set());
-  const isProcessingLoginRef = useRef(false);
-
-  // 15 minutos real:
-  // const INACTIVITY_TIMEOUT = 15 * 60 * 1000;
-  // Para pruebas:
-  //const INACTIVITY_TIMEOUT = 30 * 1000;
-  const INACTIVITY_TIMEOUT =Number(import.meta.env.VITE_INACTIVITY_TIMEOUT) || 15 * 60 * 1000;
-
   const [lastActivity, setLastActivity] = useState(Date.now());
 
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  const { isConnected, lastMessage } = useNotificationWebSocket(APP_CLIENT_ID);
+
+  // Refs para evitar closures obsoletos en callbacks asíncronos
   const logoutRef = useRef<() => void>(() => {});
   const doLoginStateRef = useRef<
     (u: UserSession, showToast?: boolean) => Promise<void>
@@ -116,19 +133,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     async () => {}
   );
 
-  // ---------------------------------------------------------------------------
-  // Persistencia de detalles del empleado
-  // ---------------------------------------------------------------------------
-  const persistEmployeeDetails = (details: EmployeeDetails) => {
-    setEmployeeDetails((prev) =>
-      equalEmployeeDetails(prev, details) ? prev : details
-    );
-    try {
-      localStorage.setItem(LS_EMPLOYEE_DETAILS, JSON.stringify(details));
-    } catch {
-      /* ignore */
-    }
-  };
+  const processedLoginEventsRef = useRef<Set<string>>(new Set());
+  const isProcessingLoginRef = useRef(false);
+
+  // ─── Persistencia de detalles del empleado ────────────────────────────────
+
+  const persistEmployeeDetails = useCallback(
+    (details: EmployeeDetails) => {
+      setEmployeeDetails((prev) =>
+        equalEmployeeDetails(prev, details) ? prev : details
+      );
+      try {
+        localStorage.setItem(LS_EMPLOYEE_DETAILS, JSON.stringify(details));
+      } catch {
+        /* ignore */
+      }
+    },
+    []
+  );
 
   const fetchEmployeeDetails = useCallback(
     async (email: string) => {
@@ -136,11 +158,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const response = await VistaDetallesEmpleadosAPI.byEmail(email);
         if (response.status === "success" && response.data) {
           persistEmployeeDetails(response.data);
-          logAuth("FETCH EMPLOYEE DETAILS", {
-            isAuthenticated: true,
-            user,
-            employeeDetails: response.data,
-          });
+          logAuth("FETCH EMPLOYEE DETAILS OK", { email });
         } else {
           console.error(
             "Error al obtener detalles del empleado:",
@@ -151,15 +169,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.error("Error en fetchEmployeeDetails:", error);
       }
     },
-    [user]
+    [persistEmployeeDetails]
   );
   fetchEmployeeDetailsRef.current = fetchEmployeeDetails;
 
-  // ---------------------------------------------------------------------------
-  // APLICAR ESTADO DE LOGIN (No navega, solo actualiza contexto)
-  // ---------------------------------------------------------------------------
+  // ─── Aplicar estado de login ──────────────────────────────────────────────
+
   const doLoginState = useCallback(
-    async (userInfo: UserSession, showToast: boolean = true) => {
+    async (userInfo: UserSession, showToast = true) => {
       setIsAuthenticated(true);
       setUser((prev) =>
         prev?.id === userInfo.id && prev?.email === userInfo.email
@@ -176,18 +193,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       try {
-        try {
-          CacheService.clearAll();
-        } catch (err) {
-          console.warn("[AUTH] Error limpiando caché permisos:", err);
-        }
-
+        CacheService.clearAll();
         logAuth("Cargando permisos desde /api/menu/user...", {
           userId: userInfo.id,
         });
-
         const perms = await PermissionService.fetchAllPermissions(userInfo.id);
-
         const mergedUser: UserSession = {
           ...userInfo,
           roles:
@@ -203,10 +213,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               ? perms.menuItems
               : (userInfo as any).menuItems) ?? [],
         };
-
         setUser(mergedUser);
         tokenService.setUserSession(mergedUser);
-
         logAuth("Permisos cargados", {
           roles: mergedUser.roles,
           permissions: mergedUser.permissions?.length ?? 0,
@@ -214,19 +222,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         });
       } catch (err) {
         console.error("[AUTH] Error loading permissions/menu:", err);
-
         const safeUser: UserSession = {
           ...userInfo,
           roles: userInfo.roles ?? [],
           permissions: userInfo.permissions ?? [],
           menuItems: (userInfo as any).menuItems ?? [],
         };
-
         setUser(safeUser);
         tokenService.setUserSession(safeUser);
       }
 
-      // Detalles del empleado en background
+      // Detalles del empleado en background (no bloquea el login)
       fetchEmployeeDetailsRef.current(userInfo.email);
 
       if (showToast) {
@@ -237,35 +243,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }`,
         });
       }
-
-      AUTH_DEBUG &&
-        console.log("🔐 AUTH DEBUG → LOGIN STATE FINAL", {
-          isAuthenticated: true,
-          user: userInfo,
-          employeeDetails,
-        });
     },
-    [toast, employeeDetails]
+    [toast]
   );
   doLoginStateRef.current = doLoginState;
 
-  // ---------------------------------------------------------------------------
-  // LOGOUT
-  // ---------------------------------------------------------------------------
-  const logout = useCallback(() => {
-    // Para no quedarse en blanco en ningún caso
-    setIsLoading(false);
+  // ─── Logout ───────────────────────────────────────────────────────────────
 
+  const logout = useCallback(() => {
+    setIsLoading(false);
     setIsAuthenticated(false);
     setUser(null);
     setEmployeeDetails(null);
     tokenService.clearTokens();
 
-    // Limpiar caché de permisos
     try {
-      // import("@/services/permissions").then(({ CacheService }) => {
-        CacheService.clearAll();
-      // });
+      CacheService.clearAll();
     } catch (error) {
       console.error("Error limpiando caché:", error);
     }
@@ -283,29 +276,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     });
 
     setLocation("/login");
-
-    logAuth("LOGOUT", {
-      isAuthenticated: false,
-      user: null,
-      employeeDetails: null,
-    });
+    logAuth("LOGOUT completado");
   }, [setLocation, toast]);
   logoutRef.current = logout;
 
-  // ---------------------------------------------------------------------------
-  // REFRESH AUTH
-  // ---------------------------------------------------------------------------
+  // ─── Registrar callback de logout en fetch.ts ─────────────────────────────
+  // Garantiza que cuando fetch.ts detecte un 401 definitivo, el estado React
+  // quede limpio antes de redirigir (evita estado sucio en la UI).
+  useEffect(() => {
+    registerForceLogoutCallback(() => {
+      logAuth("FORCE LOGOUT desde fetch.ts (401 definitivo)");
+      logoutRef.current();
+    });
+  }, []);
+
+  // ─── Refresh Auth (para bootstrap de sesión desde componentes externos) ───
+
   const refreshAuth = useCallback(async () => {
     try {
       const accessToken = tokenService.getAccessToken();
       if (!accessToken) {
         setIsAuthenticated(false);
         setUser(null);
-        logAuth("REFRESH AUTH / NO ACCESS TOKEN", {
-          isAuthenticated: false,
-          user: null,
-          employeeDetails,
-        });
+        logAuth("REFRESH AUTH / NO ACCESS TOKEN");
         return;
       }
 
@@ -314,17 +307,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (refreshToken) {
           const newTokens = await authService.refreshToken(refreshToken);
           tokenService.setTokens(newTokens);
-
           const userInfo = await authService.getCurrentUser(
             newTokens.accessToken
           );
           await doLoginState(userInfo, false);
-
-          logAuth("REFRESH AUTH / TOKEN RENEWED", {
-            isAuthenticated: true,
-            user: userInfo,
-            employeeDetails,
-          });
+          logAuth("REFRESH AUTH / TOKEN RENEWED");
         } else {
           logout();
         }
@@ -332,16 +319,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const userSession = tokenService.getUserSession();
         if (userSession) {
           if (!userSession.permissions || !(userSession as any).menuItems) {
-            logAuth(
-              "REFRESH AUTH / userSession sin permisos, recargando permisos..."
-            );
+            logAuth("REFRESH AUTH / sin permisos, recargando...");
             await doLoginState(userSession, false);
           } else {
             setIsAuthenticated(true);
             setUser((prev) =>
               prev?.id === userSession.id ? prev : userSession
             );
-
             const savedDetailsStr = (() => {
               try {
                 return localStorage.getItem(LS_EMPLOYEE_DETAILS);
@@ -349,48 +333,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 return null;
               }
             })();
-
             if (savedDetailsStr) {
               const parsed = JSON.parse(savedDetailsStr) as EmployeeDetails;
               setEmployeeDetails((prev) =>
                 equalEmployeeDetails(prev, parsed) ? prev : parsed
               );
-              logAuth("REFRESH AUTH / SESSION + CACHED DETAILS", {
-                isAuthenticated: true,
-                user: userSession,
-                employeeDetails: parsed,
-              });
+              logAuth("REFRESH AUTH / SESSION + CACHED DETAILS");
             } else {
               await fetchEmployeeDetails(userSession.email);
-              logAuth("REFRESH AUTH / SESSION + API DETAILS", {
-                isAuthenticated: true,
-                user: userSession,
-                employeeDetails,
-              });
+              logAuth("REFRESH AUTH / SESSION + API DETAILS");
             }
           }
         } else {
           const userInfo = await authService.getCurrentUser(accessToken);
           await doLoginState(userInfo, false);
-          logAuth("REFRESH AUTH / API USERINFO", {
-            isAuthenticated: true,
-            user: userInfo,
-            employeeDetails,
-          });
+          logAuth("REFRESH AUTH / API USERINFO");
         }
       }
     } catch (error) {
       console.error("Error refreshing auth:", error);
       logout();
     }
-  }, [employeeDetails, logout, doLoginState, fetchEmployeeDetails]);
+  }, [logout, doLoginState, fetchEmployeeDetails]);
 
-  // ---------------------------------------------------------------------------
-  // WebSocket: LoginNotification → completar login AzureAD
-  // ---------------------------------------------------------------------------
+  // ─── WebSocket: LoginNotification → completar login AzureAD ──────────────
+
   useEffect(() => {
     if (!lastMessage || lastMessage.eventType !== "Login") return;
-
     logAuth("WS LOGIN EVENT", { msg: lastMessage });
 
     const eventKey =
@@ -401,9 +370,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         u: (lastMessage as any)?.data?.email,
       });
 
-    if (processedLoginEventsRef.current.has(eventKey)) {
-      return;
-    }
+    if (processedLoginEventsRef.current.has(eventKey)) return;
     processedLoginEventsRef.current.add(eventKey);
     if (isProcessingLoginRef.current) return;
     isProcessingLoginRef.current = true;
@@ -412,9 +379,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
         const { data, pair } = lastMessage as WebSocketMessage;
         if (!pair) return;
-
         tokenService.setTokens(pair);
-
         const wsUser: UserSession = {
           id: (data as any).userId,
           email: (data as any).email,
@@ -424,17 +389,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           userType: "AzureAD",
           roles: (data as any).roles ?? [],
         };
-
         await doLoginStateRef.current(wsUser, true);
-
-        setTimeout(() => {
-          setLocation("/");
-        }, 300);
-
-        logAuth("LOGIN VIA WEBSOCKET COMPLETADO", {
-          isAuthenticated: true,
-          user: wsUser,
-        });
+        setTimeout(() => setLocation("/"), 300);
+        logAuth("LOGIN VIA WEBSOCKET COMPLETADO");
       } catch (e) {
         console.error("WS login handling error:", e);
       } finally {
@@ -443,9 +400,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     })();
   }, [lastMessage, setLocation]);
 
-  // ---------------------------------------------------------------------------
-  // Chequeo inicial de sesión al montar
-  // ---------------------------------------------------------------------------
+  // ─── Chequeo inicial de sesión al montar ──────────────────────────────────
+
   useEffect(() => {
     let active = true;
 
@@ -453,13 +409,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
         const accessToken = tokenService.getAccessToken();
         if (!accessToken) {
-          if (!active) return;
-          setIsLoading(false);
-          logAuth("CHECK AUTH / NO ACCESS TOKEN", {
-            isAuthenticated,
-            user,
-            employeeDetails,
-          });
+          if (active) setIsLoading(false);
+          logAuth("CHECK AUTH / NO ACCESS TOKEN");
           return;
         }
 
@@ -475,12 +426,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 newTokens.accessToken
               );
               await doLoginStateRef.current(userInfo, false);
-              logAuth("CHECK AUTH / REFRESH OK", {
-                isAuthenticated: true,
-                user: userInfo,
-                employeeDetails,
-              });
-            } catch (error) {
+              logAuth("CHECK AUTH / REFRESH OK");
+            } catch {
               logoutRef.current();
             }
           } else {
@@ -490,16 +437,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const userSession = tokenService.getUserSession();
           if (userSession) {
             if (!userSession.permissions || !(userSession as any).menuItems) {
-              logAuth(
-                "CHECK AUTH / userSession sin permisos, recargando permisos..."
-              );
+              logAuth("CHECK AUTH / sin permisos, recargando...");
               await doLoginStateRef.current(userSession, false);
             } else {
               setIsAuthenticated(true);
               setUser((prev) =>
                 prev?.id === userSession.id ? prev : userSession
               );
-
               const savedDetailsStr = (() => {
                 try {
                   return localStorage.getItem(LS_EMPLOYEE_DETAILS);
@@ -512,31 +456,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 setEmployeeDetails((prev) =>
                   equalEmployeeDetails(prev, parsed) ? prev : parsed
                 );
-                logAuth("CHECK AUTH / SESSION + CACHED DETAILS", {
-                  isAuthenticated: true,
-                  user: userSession,
-                  employeeDetails: parsed,
-                });
+                logAuth("CHECK AUTH / SESSION + CACHED DETAILS");
               } else {
                 await fetchEmployeeDetailsRef.current(userSession.email);
-                logAuth("CHECK AUTH / SESSION + API DETAILS", {
-                  isAuthenticated: true,
-                  user: userSession,
-                  employeeDetails,
-                });
+                logAuth("CHECK AUTH / SESSION + API DETAILS");
               }
             }
           } else {
             const userInfo = await authService.getCurrentUser(accessToken);
             await doLoginStateRef.current(userInfo, false);
-            logAuth("CHECK AUTH / API USERINFO", {
-              isAuthenticated: true,
-              user: userInfo,
-              employeeDetails,
-            });
+            logAuth("CHECK AUTH / API USERINFO");
           }
         }
-      } catch (error) {
+      } catch {
         logoutRef.current();
       } finally {
         if (active) setIsLoading(false);
@@ -550,9 +482,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ---------------------------------------------------------------------------
-  // Inactividad → auto-logout
-  // ---------------------------------------------------------------------------
+  // ─── Inactividad → auto-logout ────────────────────────────────────────────
+
   const updateActivity = useCallback(() => {
     const now = Date.now();
     setLastActivity(now);
@@ -568,95 +499,58 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    const events = [
-      "mousedown",
-      "mousemove",
-      "keypress",
-      "scroll",
-      "touchstart",
-      "click",
-    ] as const;
-
-    events.forEach((event) =>
+    ACTIVITY_EVENTS.forEach((event) =>
       document.addEventListener(event, updateActivity, true)
     );
 
     const interval = setInterval(() => {
       const now = Date.now();
       const diffMs = now - lastActivity;
-      const diffSegundos = Math.round(diffMs / 1000);
 
       if (diffMs >= INACTIVITY_TIMEOUT) {
         logAuth("AUTO-LOGOUT por inactividad", {
-          lastActivity,
-          now,
-          diffSegundos,
+          diffSegundos: Math.round(diffMs / 1000),
         });
-
         toast({
           title: "Sesión expirada",
           description: "Su sesión ha expirado por inactividad",
           variant: "destructive",
         });
-
-        // 1️⃣ Intento de navegación SPA
         setLocation("/login");
-
-        // 2️⃣ Logout para limpiar estado
         logoutRef.current();
-
-        // 3️⃣ Fallback fuerte: recarga completa en /login
+        // Fallback de recarga completa para garantizar limpieza total
         if (typeof window !== "undefined") {
-          try {
-            // winkdow.location.href = "/login";
-            window.location.replace(`${import.meta.env.BASE_URL}login`);
-          } catch {
-            // último recurso, pero prácticamente nunca llega aquí
-          }
+          window.location.replace(`${import.meta.env.BASE_URL}login`);
         }
       }
-    }, 30_000);
+    }, INACTIVITY_CHECK_INTERVAL_MS);
 
     return () => {
-      events.forEach((event) =>
+      ACTIVITY_EVENTS.forEach((event) =>
         document.removeEventListener(event, updateActivity, true)
       );
       clearInterval(interval);
     };
-  }, [
-    isAuthenticated,
-    lastActivity,
-    toast,
-    updateActivity,
-    setLocation,
-    INACTIVITY_TIMEOUT,
-  ]);
+  }, [isAuthenticated, lastActivity, toast, updateActivity, setLocation]);
 
-  // ---------------------------------------------------------------------------
-  // LOGIN LOCAL
-  // ---------------------------------------------------------------------------
+  // ─── Login local ──────────────────────────────────────────────────────────
+
   const login = async (email: string, password: string): Promise<boolean> => {
     logAuth("login() called", { email });
     try {
       setIsLoading(true);
-      logAuth("🔐 Iniciando login local...", { username: email });
-
       const tokens = await authService.loginLocal({ email, password });
       const userInfo = await authService.getCurrentUser(tokens.accessToken);
-
       tokenService.setTokens(tokens);
       tokenService.setUserSession(userInfo);
-
       await doLoginState(userInfo, true);
-
-      logAuth("LOGIN LOCAL OK", { user: userInfo });
+      logAuth("LOGIN LOCAL OK");
       return true;
     } catch (error: unknown) {
       console.error("[AUTH] Error en login local:", error);
       toast({
         title: "Error de autenticación",
-        description:
-          parseApiError(error).message,
+        description: parseApiError(error).message,
         variant: "destructive",
       });
       return false;
@@ -665,32 +559,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // ---------------------------------------------------------------------------
-  // LOGIN O365
-  // ---------------------------------------------------------------------------
+  // ─── Login Office 365 ─────────────────────────────────────────────────────
+
   const loginWithOffice365 = async (): Promise<void> => {
     try {
       setIsLoading(true);
-      logAuth("🔐 Iniciando login Office 365...");
+      logAuth("Iniciando login Office 365...");
       const { url, state } = await authService.getAzureAuthUrl();
       sessionStorage.setItem("oauth_state", state);
-      window.open(
-        url,
-        "office365login",
-        "width=600,height=700,left=200,top=100"
-      );
+      window.open(url, "office365login", "width=600,height=700,left=200,top=100");
     } catch (error: unknown) {
-      console.error("❌ Error en Office 365 login:", error);
+      console.error("[AUTH] Error en Office 365 login:", error);
       toast({
         title: "Error de autenticación",
-        description:
-          parseApiError(error).message,
+        description: parseApiError(error).message,
         variant: "destructive",
       });
     } finally {
       setIsLoading(false);
     }
   };
+
+  // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
     <AuthContext.Provider
@@ -710,6 +600,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     </AuthContext.Provider>
   );
 };
+
+// ─── Hook público ──────────────────────────────────────────────────────────────
 
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);

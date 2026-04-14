@@ -2,7 +2,7 @@
 import { useMemo, useState, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/features/auth";
 import { useToast } from "@/hooks/use-toast";
 
 import { FileManagementAPI, TiposReferenciaAPI, type ApiResponse } from "@/lib/api";

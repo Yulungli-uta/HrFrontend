@@ -33,7 +33,7 @@ type PermissionFormData = {
   hourTaken: number;
   vacationId: number | null;
 };
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/features/auth";
 
 import {
   ReusableDocumentManager,

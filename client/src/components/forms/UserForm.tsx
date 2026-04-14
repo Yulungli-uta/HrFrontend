@@ -35,7 +35,7 @@ import {
 } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import type { User, CreateUserDto, UpdateUserDto } from "@/types/auth";
+import type { User, CreateUserDto, UpdateUserDto } from "@/features/auth";
 import type { BaseCrudFormProps } from "@/types/components";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────

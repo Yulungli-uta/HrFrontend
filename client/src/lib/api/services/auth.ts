@@ -31,7 +31,7 @@ import type {
   UpdateRoleMenuItemDto,
   ChangePasswordDto as ChangePasswordDtoFromTypes,
   ChangePasswordResponse,
-} from '@/types/auth';
+} from '@/features/auth';
 
 /* =============================================================================
  * Helpers de request/response

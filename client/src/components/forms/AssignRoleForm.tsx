@@ -14,7 +14,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { RolesAPI, UserRolesAPI } from "@/lib/api";
 import type { ApiResponse } from "@/lib/api";
-import type { Role, CreateUserRoleDto } from "@/types/auth";
+import type { Role, CreateUserRoleDto } from "@/features/auth";
 import { parseApiError } from '@/lib/error-handling';
 
 interface AssignRoleFormProps {

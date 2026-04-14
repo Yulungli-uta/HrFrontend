@@ -42,7 +42,7 @@ import {
   VistaDetallesEmpleadosAPI,
   TiposReferenciaAPI,
 } from "@/lib/api";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/features/auth";
 import { parseApiError } from "@/lib/error-handling";
 import { cn } from "@/lib/utils";
 import {

@@ -28,7 +28,7 @@ import {
   type ApiResponse,
 } from "@/lib/api";
 
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/features/auth";
 import { useToast } from "@/hooks/use-toast";
 
 import type { PermissionType } from "@/types/permission";

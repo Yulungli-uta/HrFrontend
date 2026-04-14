@@ -36,7 +36,7 @@ import {
 import { Users as UsersIcon, Plus, Edit, Trash2, Search } from "lucide-react";
 import { AuthUsersAPI } from "@/lib/api";
 import { DataPagination } from "@/components/ui/DataPagination";
-import type { User } from "@/types/auth";
+import type { User } from "@/features/auth";
 import { useToast } from "@/hooks/use-toast";
 import UserForm from "@/components/forms/UserForm";
 import { parseApiError } from "@/lib/error-handling";

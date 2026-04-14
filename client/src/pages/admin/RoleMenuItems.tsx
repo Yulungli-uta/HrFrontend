@@ -21,7 +21,7 @@ import type {
   MenuItem,
   RoleMenuItem,
   CreateRoleMenuItemDto,
-} from "@/types/auth";
+} from "@/features/auth";
 import { useToast } from "@/hooks/use-toast";
 import { parseApiError } from "@/lib/error-handling";
 

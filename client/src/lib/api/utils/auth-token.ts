@@ -8,7 +8,7 @@
  */
 
 import { API_CONFIG } from '../core/config';
-import { tokenService } from '@/services/auth';
+import { tokenService } from '@/features/auth';
 
 // =============================================================================
 // Gestión del token de autenticación
@@ -39,7 +39,7 @@ export function setAuthToken(token: string | null): void {
     //    (evitar sobreescribir el refreshToken si el token ya es el mismo)
     if (tokenService.getAccessToken() !== token) {
       const existingRefresh = tokenService.getRefreshToken() ?? '';
-      tokenService.setTokens(token, existingRefresh);
+      tokenService.setTokens({ accessToken: token, refreshToken: existingRefresh });
     }
   } else {
     // Limpiar token de los headers en memoria

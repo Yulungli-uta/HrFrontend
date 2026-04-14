@@ -19,7 +19,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { FileText, Plus, Search, Calendar, Eye } from "lucide-react";
 
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/features/auth";
 
 import { useContractRequest } from "@/hooks/contractRequest/useContractRequests";
 
