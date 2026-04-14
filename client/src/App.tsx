@@ -86,6 +86,29 @@ const AttendanceSumaryReportPage = lazy(
   () => import("@/pages/reports/AttendanceSumaryReport")
 );
 const ReportAuditPage = lazy(() => import("@/pages/reports/ReportAudit"));
+
+// Reportes v2 — sources del usuario
+const EmployeesByDepartmentReportPage = lazy(
+  () => import("@/pages/reports/EmployeesByDepartmentReport")
+);
+const DepartmentContractSummaryReportPage = lazy(
+  () => import("@/pages/reports/DepartmentContractSummaryReport")
+);
+const ScheduleContractSummaryReportPage = lazy(
+  () => import("@/pages/reports/ScheduleContractSummaryReport")
+);
+
+// Reportes v2 — AttendanceCalculations
+const LatenessReportPage = lazy(
+  () => import("@/pages/reports/LatenessReport")
+);
+const OvertimeReportPage = lazy(
+  () => import("@/pages/reports/OvertimeReport")
+);
+const AttendanceCrossReportPage = lazy(
+  () => import("@/pages/reports/AttendanceCrossReport")
+);
+
 const AzureManagementPage = lazy(() => import("@/pages/admin/AzureManagement"));
 const JobexecutionPage = lazy(() => import("@/pages/admin/Jobexecution"));
 
@@ -433,7 +456,52 @@ function AppRouter() {
             )}
           </Route>
 
-          
+          {/* ===== Reportes v2 — sources del usuario ===== */}
+          <Route path="/reports/employees-by-department">
+            {() => (
+              <ProtectedRoute requiredPath="/reports/employees-by-department">
+                <EmployeesByDepartmentReportPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+          <Route path="/reports/department-contract-summary">
+            {() => (
+              <ProtectedRoute requiredPath="/reports/department-contract-summary">
+                <DepartmentContractSummaryReportPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+          <Route path="/reports/schedule-contract-summary">
+            {() => (
+              <ProtectedRoute requiredPath="/reports/schedule-contract-summary">
+                <ScheduleContractSummaryReportPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          {/* ===== Reportes v2 — AttendanceCalculations ===== */}
+          <Route path="/reports/lateness">
+            {() => (
+              <ProtectedRoute requiredPath="/reports/lateness">
+                <LatenessReportPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+          <Route path="/reports/overtime">
+            {() => (
+              <ProtectedRoute requiredPath="/reports/overtime">
+                <OvertimeReportPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+          <Route path="/reports/attendance-cross">
+            {() => (
+              <ProtectedRoute requiredPath="/reports/attendance-cross">
+                <AttendanceCrossReportPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
           {/* ===== Otros ===== */}
           <Route path="/jobActivities">
             {() => (

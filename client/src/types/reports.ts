@@ -7,7 +7,20 @@
 // Tipos Base
 // ============================================
 
-export type ReportType = 'employees' | 'attendance' | 'departments' | 'attendancesumary';
+export type ReportType =
+  | 'employees'
+  | 'attendance'
+  | 'departments'
+  | 'attendancesumary'
+  // Reportes v2 — sources del usuario
+  | 'employees-by-department'
+  | 'department-contract-summary'
+  | 'schedule-contract-summary'
+  // Reportes v2 — AttendanceCalculations
+  | 'lateness'
+  | 'overtime'
+  | 'attendance-cross';
+
 export type ReportFormat = 'pdf' | 'excel';
 
 /**
@@ -28,6 +41,11 @@ export interface ReportFilter {
   facultyId?: number;
   employeeId?: number;
   employeeType?: string;
+  /**
+   * ID del tipo de empleado (relación con la tabla de tipos de empleado).
+   * Usado por los reportes de estructura organizacional.
+   */
+  employeeTypeId?: number;
   isActive?: boolean;
   includeInactive?: boolean;
   /**
@@ -53,6 +71,7 @@ export interface ReportConfig {
 
 // Configuraciones predefinidas de reportes
 export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
+  // ── Reportes v1 ────────────────────────────────────────────────────────────
   employees: {
     type: 'employees',
     title: 'Reporte de Empleados',
@@ -79,13 +98,65 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
   },
   attendancesumary: {
     type: 'attendancesumary',
-    title: 'Reporte de resumen de Asistencias',
-    description: 'Estadísticas y resumen por asistencia',
-    icon: 'Building',
+    title: 'Reporte de Resumen de Asistencias',
+    description: 'Estadísticas y resumen consolidado de asistencia por empleado',
+    icon: 'ClipboardList',
     availableFormats: ['pdf', 'excel'],
     // 'orientation' se incluye porque este reporte tiene 15 columnas y necesita
     // que el usuario pueda elegir entre horizontal (por defecto) o vertical.
     availableFilters: ['startDate', 'endDate', 'employeeId', 'employeeType', 'orientation']
+  },
+
+  // ── Reportes v2 — sources del usuario ──────────────────────────────────────
+  'employees-by-department': {
+    type: 'employees-by-department',
+    title: 'Empleados por Dependencia',
+    description: 'Listado detallado de empleados agrupado por dependencia organizacional',
+    icon: 'Users',
+    availableFormats: ['pdf', 'excel'],
+    availableFilters: ['departmentId', 'employeeTypeId', 'isActive', 'orientation']
+  },
+  'department-contract-summary': {
+    type: 'department-contract-summary',
+    title: 'Resumen por Dependencia y Contrato',
+    description: 'Resumen consolidado de empleados agrupado por dependencia y tipo de contrato',
+    icon: 'Building2',
+    availableFormats: ['pdf', 'excel'],
+    availableFilters: ['departmentId', 'employeeTypeId', 'isActive', 'orientation']
+  },
+  'schedule-contract-summary': {
+    type: 'schedule-contract-summary',
+    title: 'Resumen por Horario y Contrato',
+    description: 'Resumen consolidado de empleados agrupado por horario asignado y tipo de contrato',
+    icon: 'CalendarClock',
+    availableFormats: ['pdf', 'excel'],
+    availableFilters: ['departmentId', 'employeeTypeId', 'isActive', 'orientation']
+  },
+
+  // ── Reportes v2 — AttendanceCalculations ───────────────────────────────────
+  lateness: {
+    type: 'lateness',
+    title: 'Reporte de Atrasos',
+    description: 'Detalle de atrasos, tardanzas y salidas anticipadas por empleado en el período',
+    icon: 'AlarmClock',
+    availableFormats: ['pdf', 'excel'],
+    availableFilters: ['startDate', 'endDate', 'employeeId', 'departmentId', 'orientation']
+  },
+  overtime: {
+    type: 'overtime',
+    title: 'Reporte de Horas Extras',
+    description: 'Horas extras ordinarias, nocturnas, feriado y fuera de horario por empleado',
+    icon: 'Timer',
+    availableFormats: ['pdf', 'excel'],
+    availableFilters: ['startDate', 'endDate', 'employeeId', 'departmentId', 'orientation']
+  },
+  'attendance-cross': {
+    type: 'attendance-cross',
+    title: 'Reporte Cruzado de Asistencia',
+    description: 'Vista consolidada: horas trabajadas, permisos, vacaciones, justificaciones y licencias',
+    icon: 'LayoutGrid',
+    availableFormats: ['pdf', 'excel'],
+    availableFilters: ['startDate', 'endDate', 'employeeId', 'departmentId', 'orientation']
   }
 };
 
@@ -180,12 +251,12 @@ export function getReportMimeType(format: ReportFormat): string {
 export function formatBytes(bytes?: number): string {
   if (!bytes) return 'N/A';
   if (bytes === 0) return '0 Bytes';
-  
+
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
-  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
 }
 
 /**

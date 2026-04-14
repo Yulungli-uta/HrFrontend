@@ -284,7 +284,7 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
     };
 
     const loadContractTypes = async () => {
-      if (!hasFilter("employeeType")) return;
+      if (!hasFilter("employeeType") && !hasFilter("employeeTypeId")) return;
       setContractTypes({ loading: true, items: [] });
       try {
         const res = await TiposReferenciaAPI.byCategory("CONTRACT_TYPE");
@@ -431,6 +431,23 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
               />
               {contractTypes.error && <p className="text-xs text-destructive">{contractTypes.error}</p>}
               <p className="text-xs text-muted-foreground">Fuente: CONTRACT_TYPE</p>
+            </div>
+          )}
+
+          {/* Tipo de Empleado por ID (EMPLOYEE_TYPE) — usado por reportes de estructura organizacional */}
+          {hasFilter("employeeTypeId") && (
+            <div className="space-y-2">
+              <Label>Tipo de Empleado</Label>
+              <SearchableCombobox
+                value={filter.employeeTypeId != null ? String(filter.employeeTypeId) : "all"}
+                onChange={(v) => setFilterValue("employeeTypeId", v === "all" ? undefined : Number(v))}
+                options={contractTypeOptions}
+                placeholder="Todos los tipos"
+                searchPlaceholder="Buscar tipo..."
+                emptyText={contractTypes.loading ? "Cargando..." : "Sin resultados"}
+                disabled={contractTypes.loading}
+              />
+              {contractTypes.error && <p className="text-xs text-destructive">{contractTypes.error}</p>}
             </div>
           )}
 
