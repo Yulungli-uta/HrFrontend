@@ -58,7 +58,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 
-import { AzureManagementAPI } from "@/lib/api/services/auth";
+import { AzureManagementAPI } from "@/lib/api";
 import AzureUserForm, { type AzureUserFormMode } from "@/components/forms/AzureUserForm";
 import { parseApiError } from '@/lib/error-handling';
 

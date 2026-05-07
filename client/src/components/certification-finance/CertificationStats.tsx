@@ -2,63 +2,32 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { FileText, CheckCircle, Clock, DollarSign, Calendar } from "lucide-react";
+import { FileText, CheckCircle, Clock, XCircle } from "lucide-react";
 import type { UIFinancialCertification } from "@/types/certificationFinance";
-
-type RefTypeItem = any;
-
-function getRefId(rt: RefTypeItem): string {
-  return String(rt?.id ?? rt?.refTypeId ?? rt?.typeId ?? rt?.valueId ?? "");
-}
-
-function isApprovedRef(rt: RefTypeItem): boolean {
-  const code = String(rt?.code ?? "").toUpperCase();
-  const name = String(rt?.name ?? rt?.description ?? "").toUpperCase();
-  const text = `${code} ${name}`;
-  return text.includes("APROB") || text.includes("APPROV") || code.includes("APR") || text.includes("APPROVED");
-}
-
-function isPendingRef(rt: RefTypeItem): boolean {
-  const code = String(rt?.code ?? "").toUpperCase();
-  const name = String(rt?.name ?? rt?.description ?? "").toUpperCase();
-  const text = `${code} ${name}`;
-  return text.includes("PEND") || code.includes("PEN") || text.includes("PENDING") || text.includes("EN PROCESO");
-}
 
 export function CertificationStats(props: {
   list: UIFinancialCertification[];
-  statusRefTypes: RefTypeItem[];
   totalBudget: number;
   expiringSoon: number;
 }) {
-  const { list, statusRefTypes, totalBudget, expiringSoon } = props;
+  const { list, totalBudget, expiringSoon } = props;
 
-  const { total, approved, pending } = useMemo(() => {
+  const { total, approved, pending, rejected } = useMemo(() => {
     const total = list.length;
-
-    // mapa id -> refType
-    const map = new Map<string, RefTypeItem>();
-    for (const rt of statusRefTypes || []) {
-      const id = getRefId(rt);
-      if (id) map.set(id, rt);
-    }
-
     let approved = 0;
     let pending = 0;
-
+    let rejected = 0;
     for (const c of list) {
-      const id = c.status !== undefined && c.status !== null ? String(c.status) : "";
-      const rt = id ? map.get(id) : undefined;
-
-      if (rt && isApprovedRef(rt)) approved++;
-      else if (rt && isPendingRef(rt)) pending++;
+      const name = (c.statusName ?? "").toUpperCase();
+      if (name === "APROBADA") approved++;
+      else if (name === "PENDIENTE_REVISION") pending++;
+      else if (name === "RECHAZADA") rejected++;
     }
-
-    return { total, approved, pending };
-  }, [list, statusRefTypes]);
+    return { total, approved, pending, rejected };
+  }, [list]);
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       <Card className="bg-primary/10 dark:bg-primary/15">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm lg:text-lg flex items-center justify-between">
@@ -110,6 +79,25 @@ export function CertificationStats(props: {
         <CardContent>
           <div className="text-xs lg:text-sm text-muted-foreground">
             {total > 0 ? ((pending / total) * 100).toFixed(1) : 0}% del total
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-destructive/10 dark:bg-destructive/15">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm lg:text-lg flex items-center justify-between">
+            <span className="flex items-center">
+              <XCircle className="h-4 w-4 lg:h-5 lg:w-5 text-destructive mr-2" />
+              Rechazadas
+            </span>
+            <Badge variant="secondary" className="bg-destructive/20 text-destructive text-xs lg:text-sm">
+              {rejected}
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-xs lg:text-sm text-muted-foreground">
+            {total > 0 ? ((rejected / total) * 100).toFixed(1) : 0}% del total
           </div>
         </CardContent>
       </Card>

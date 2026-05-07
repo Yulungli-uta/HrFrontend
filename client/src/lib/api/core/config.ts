@@ -103,6 +103,7 @@ export function resolveBaseUrl(path: string): string {
     '/api/sessions',
     '/api/user-activity',
     '/api/user-employees',
+    '/api/local-ad',
   ];
 
   if (AUTH_PREFIXES.some((p) => path.startsWith(p))) {

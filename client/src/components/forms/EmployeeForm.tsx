@@ -53,15 +53,16 @@ import {
 } from "lucide-react";
 import {
   PersonasAPI,
-  DepartamentosAPI,
   EmpleadosAPI,
   TiposReferenciaAPI,
   VistaEmpleadosAPI,
+  CargosAPI,
   type ApiResponse,
   type PagedResult,
 } from "@/lib/api";
 import type { PersonDto } from "@/lib/api/services/employees";
 import { cn } from "@/lib/utils";
+import { DepartmentSelect } from "@/components/departments/DepartmentSelect";
 
 type EmployeeViewSeed = {
   employeeID: number;
@@ -78,6 +79,8 @@ type EmployeeViewSeed = {
   employeeIsActive?: boolean;
   employeeType?: number | null;
   employeeTypeName?: string | null;
+  jobId?: number | null;
+  jobName?: string | null;
   department?: string | null;
   faculty?: string | null;
   immediateBoss?: string | null;
@@ -110,6 +113,7 @@ type EmployeeFormData = {
   email: string;
   contractTypeId?: number;
   departmentId: number | null;
+  jobId: number | null;
   immediateBossId: number | null;
   hireDate: string;
   isActive: boolean;
@@ -208,11 +212,11 @@ export default function EmployeeForm({
 
   const [personOpen, setPersonOpen] = useState(false);
   const [bossOpen, setBossOpen] = useState(false);
-  const [deptOpen, setDeptOpen] = useState(false);
+  const [jobOpen, setJobOpen] = useState(false);
 
   const [personLabel, setPersonLabel] = useState<string | null>(null);
   const [bossLabel, setBossLabel] = useState<string | null>(null);
-  const [deptLabel, setDeptLabel] = useState<string | null>(null);
+  const [jobLabel, setJobLabel] = useState<string | null>(null);
 
   const { data: refTypes, isLoading: loadingRefTypes } = useQuery<
     ApiResponse<RefType[]>
@@ -243,22 +247,6 @@ export default function EmployeeForm({
     mapFn: mapPerson,
   });
 
-  const mapDepartment = useCallback((d: any): ComboboxOption | null => {
-    const did = Number(d?.departmentId ?? d?.id ?? d?.DepartmentId ?? 0);
-    if (!did || did <= 0) return null;
-
-    return {
-      value: did,
-      label: String(d?.name ?? d?.Name ?? `Departamento #${did}`),
-    };
-  }, []);
-
-  const deptCombobox = usePagedCombobox<any>({
-    queryKey: "departments",
-    queryFn: (params) => DepartamentosAPI.listPaged(params),
-    mapFn: mapDepartment,
-  });
-
   const mapBoss = useCallback((e: any): ComboboxOption | null => {
     const id = Number(e?.employeeID ?? e?.employeeId ?? e?.id ?? 0);
     if (!id || id <= 0) return null;
@@ -280,6 +268,21 @@ export default function EmployeeForm({
     mapFn: mapBoss,
   });
 
+  const mapJob = useCallback((j: any): ComboboxOption | null => {
+    const id = Number(j?.jobID ?? j?.jobId ?? j?.id ?? 0);
+    if (!id || id <= 0) return null;
+    return {
+      value: id,
+      label: String(j?.description ?? j?.Description ?? `Cargo #${id}`),
+    };
+  }, []);
+
+  const jobCombobox = usePagedCombobox<any>({
+    queryKey: "jobs",
+    queryFn: (params) => CargosAPI.listPaged(params),
+    mapFn: mapJob,
+  });
+
   const isEditingFromEmployee = !!employee?.id;
   const [employeeIdForUpdate, setEmployeeIdForUpdate] = useState<number | null>(
     employee?.id ?? null
@@ -290,6 +293,7 @@ export default function EmployeeForm({
       personId: 0,
       contractTypeId: undefined,
       departmentId: employee?.departmentId ?? null,
+      jobId: null,
       immediateBossId: employee?.immediateBossId ?? null,
       hireDate: toDateInputValue(employee?.hireDate ?? ""),
       isActive: employee?.isActive ?? true,
@@ -344,6 +348,7 @@ export default function EmployeeForm({
         personId: 0,
         contractTypeId: undefined,
         departmentId: null,
+        jobId: null,
         immediateBossId: null,
         hireDate: "",
         isActive: true,
@@ -352,7 +357,7 @@ export default function EmployeeForm({
       setEmployeeIdForUpdate(null);
       setPersonLabel(null);
       setBossLabel(null);
-      setDeptLabel(null);
+      setJobLabel(null);
       return;
     }
 
@@ -383,6 +388,13 @@ export default function EmployeeForm({
           const departmentId =
             empData.departmentId ??
             empData.DepartmentId ??
+            null;
+
+          const jobId =
+            empData.jobId ??
+            empData.jobID ??
+            empData.JobId ??
+            empData.JobID ??
             null;
 
           const immediateBossId =
@@ -420,6 +432,7 @@ export default function EmployeeForm({
             personId,
             contractTypeId: employeeType,
             departmentId,
+            jobId,
             immediateBossId,
             hireDate,
             isActive,
@@ -436,7 +449,7 @@ export default function EmployeeForm({
               : null
           );
           setBossLabel(viewSeed.immediateBoss ?? null);
-          setDeptLabel(viewSeed.department ?? null);
+          setJobLabel(viewSeed.jobName ?? null);
 
           if (DEBUG) {
             console.group("Hydrate EmployeeForm from viewSeed");
@@ -458,6 +471,7 @@ export default function EmployeeForm({
           personId: 0,
           contractTypeId,
           departmentId: null,
+          jobId: null,
           immediateBossId: null,
           hireDate: toDateInputValue(viewSeed.hireDate),
           isActive: viewSeed.employeeIsActive ?? true,
@@ -475,6 +489,7 @@ export default function EmployeeForm({
         );
         setBossLabel(viewSeed.immediateBoss ?? null);
         setDeptLabel(viewSeed.department ?? null);
+        setJobLabel(viewSeed.jobName ?? null);
       }
 
       hydratedRef.current = true;
@@ -491,6 +506,7 @@ export default function EmployeeForm({
         personID: data.personId,
         employeeType: data.contractTypeId ?? 0,
         departmentId: data.departmentId,
+        jobId: data.jobId,
         immediateBossId: data.immediateBossId,
         hireDate: data.hireDate,
         email: data.email,
@@ -536,6 +552,7 @@ export default function EmployeeForm({
         personID: data.personId,
         employeeType: data.contractTypeId ?? 0,
         departmentId: data.departmentId,
+        jobId: data.jobId,
         immediateBossId: data.immediateBossId,
         hireDate: data.hireDate,
         email: data.email,
@@ -621,7 +638,6 @@ export default function EmployeeForm({
 
   const currentPersonId = form.watch("personId");
   const currentBossId = form.watch("immediateBossId");
-  const currentDeptId = form.watch("departmentId");
 
   return (
     <Card className="w-full max-w-2xl mx-auto">
@@ -817,109 +833,131 @@ export default function EmployeeForm({
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
                     <FormLabel>Departamento</FormLabel>
-                    <Popover open={deptOpen} onOpenChange={setDeptOpen}>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant="outline"
-                            role="combobox"
-                            aria-expanded={deptOpen}
-                            disabled={disabling}
-                            data-testid="select-department"
-                            className={cn(
-                              "w-full justify-between font-normal",
-                              !currentDeptId && "text-muted-foreground"
-                            )}
-                          >
-                            <span className="truncate">
-                              {currentDeptId && deptLabel
-                                ? deptLabel
-                                : currentDeptId
-                                ? `Departamento #${currentDeptId}`
-                                : "Buscar departamento..."}
-                            </span>
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent
-                        className="w-[--radix-popover-trigger-width] p-0"
-                        align="start"
-                      >
-                        <Command shouldFilter={false}>
-                          <CommandInput
-                            placeholder="Buscar departamento..."
-                            value={deptCombobox.searchTerm}
-                            onValueChange={deptCombobox.setSearchTerm}
-                          />
-                          <CommandList>
-                            {deptCombobox.isLoading ? (
-                              <div className="flex items-center justify-center py-6">
-                                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                                <span className="ml-2 text-sm text-muted-foreground">
-                                  Buscando...
-                                </span>
-                              </div>
-                            ) : (
-                              <>
-                                <CommandEmpty>
-                                  No se encontraron departamentos.
-                                </CommandEmpty>
-                                <CommandGroup>
-                                  <CommandItem
-                                    value="null"
-                                    onSelect={() => {
-                                      field.onChange(null);
-                                      setDeptLabel(null);
-                                      setDeptOpen(false);
-                                    }}
-                                  >
-                                    <Check
-                                      className={cn(
-                                        "mr-2 h-4 w-4",
-                                        currentDeptId === null
-                                          ? "opacity-100"
-                                          : "opacity-0"
-                                      )}
-                                    />
-                                    <span className="text-sm text-muted-foreground italic">
-                                      Sin departamento
-                                    </span>
-                                  </CommandItem>
+                    <FormControl>
+                      <DepartmentSelect
+                        value={field.value ?? null}
+                        onChange={(id) => field.onChange(id)}
+                        disabled={disabling}
+                        placeholder="Buscar departamento..."
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                                  {deptCombobox.options.map((opt) => (
+              <FormField
+                control={form.control}
+                name="jobId"
+                render={({ field }) => {
+                  const currentJobId = form.watch("jobId") ?? null;
+                  return (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Cargo</FormLabel>
+                      <Popover open={jobOpen} onOpenChange={setJobOpen}>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              aria-expanded={jobOpen}
+                              disabled={disabling}
+                              data-testid="select-job"
+                              className={cn(
+                                "w-full justify-between font-normal",
+                                !currentJobId && "text-muted-foreground"
+                              )}
+                            >
+                              <span className="truncate">
+                                {currentJobId && jobLabel
+                                  ? jobLabel
+                                  : currentJobId
+                                  ? `Cargo #${currentJobId}`
+                                  : "Buscar cargo..."}
+                              </span>
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent
+                          className="w-[--radix-popover-trigger-width] p-0"
+                          align="start"
+                        >
+                          <Command shouldFilter={false}>
+                            <CommandInput
+                              placeholder="Buscar cargo..."
+                              value={jobCombobox.searchTerm}
+                              onValueChange={jobCombobox.setSearchTerm}
+                            />
+                            <CommandList>
+                              {jobCombobox.isLoading ? (
+                                <div className="flex items-center justify-center py-6">
+                                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                                  <span className="ml-2 text-sm text-muted-foreground">
+                                    Buscando...
+                                  </span>
+                                </div>
+                              ) : (
+                                <>
+                                  <CommandEmpty>
+                                    No se encontraron cargos.
+                                  </CommandEmpty>
+                                  <CommandGroup>
                                     <CommandItem
-                                      key={opt.value}
-                                      value={String(opt.value)}
+                                      value="null"
                                       onSelect={() => {
-                                        field.onChange(opt.value);
-                                        setDeptLabel(opt.label);
-                                        setDeptOpen(false);
+                                        field.onChange(null);
+                                        setJobLabel(null);
+                                        setJobOpen(false);
                                       }}
                                     >
                                       <Check
                                         className={cn(
                                           "mr-2 h-4 w-4",
-                                          currentDeptId === opt.value
+                                          currentJobId === null
                                             ? "opacity-100"
                                             : "opacity-0"
                                         )}
                                       />
-                                      <span className="text-sm font-medium truncate">
-                                        {opt.label}
+                                      <span className="text-sm text-muted-foreground italic">
+                                        Sin cargo
                                       </span>
                                     </CommandItem>
-                                  ))}
-                                </CommandGroup>
-                              </>
-                            )}
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
+
+                                    {jobCombobox.options.map((opt) => (
+                                      <CommandItem
+                                        key={opt.value}
+                                        value={String(opt.value)}
+                                        onSelect={() => {
+                                          field.onChange(opt.value);
+                                          setJobLabel(opt.label);
+                                          setJobOpen(false);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            currentJobId === opt.value
+                                              ? "opacity-100"
+                                              : "opacity-0"
+                                          )}
+                                        />
+                                        <span className="text-sm font-medium truncate">
+                                          {opt.label}
+                                        </span>
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </>
+                              )}
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
 
               <FormField

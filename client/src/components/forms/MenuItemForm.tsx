@@ -1,5 +1,5 @@
 // src/components/forms/MenuItemForm.tsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -36,18 +36,14 @@ function coerceToArray<T = any>(payload: unknown): T[] {
   return [];
 }
 
-const PARENT_NONE = "none"; // 👈 Sentinela Radix (no vacío)
+const PARENT_NONE = "none";
+const MODULE_NONE = "__mod_none__";
+const MODULE_CUSTOM = "__mod_custom__";
 
 const normalizeParentId = (v: string | number | null | undefined) => {
   if (v === PARENT_NONE || v === null || v === undefined) return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
-};
-
-const normalizeOrder = (v: string | number | undefined) => {
-  if (v === "" || v === undefined || v === null) return 0;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : 0;
 };
 
 // Si el valor actual no existe en opciones, mantenemos NONE (placeholder controlado)
@@ -62,14 +58,14 @@ export default function MenuItemForm({ menuItem, onSuccess, onCancel }: Props) {
   const { toast } = useToast();
   const qc = useQueryClient();
 
-  // Cargar opciones de padre
+  // Cargar opciones de padre (y fuente de módulos/órdenes)
   const { data: parents = [], isLoading: loadingParents } = useQuery<
     ApiResponse<unknown>,
     Error,
     MenuItem[]
   >({
     queryKey: ["menu-items", "for-parent-dropdown"],
-    queryFn: async () => MenuItemsAPI.list(),
+    queryFn: async () => MenuItemsAPI.list(1, 10000),
     select: (res) => {
       if (!res) return [];
       // @ts-ignore
@@ -84,31 +80,62 @@ export default function MenuItemForm({ menuItem, onSuccess, onCancel }: Props) {
   const [name, setName] = useState(menuItem?.name ?? "");
   const [url, setUrl] = useState(menuItem?.url ?? "");
   const [icon, setIcon] = useState(menuItem?.icon ?? "");
-  const [order, setOrder] = useState<string>(
-    menuItem?.order !== undefined && menuItem?.order !== null ? String(menuItem.order) : "0"
-  );
   const [moduleName, setModuleName] = useState(menuItem?.moduleName ?? "");
+  const [moduleMode, setModuleMode] = useState<"select" | "custom">("select");
   const [isVisible, setIsVisible] = useState<boolean>(menuItem?.isVisible ?? true);
-
-  // parentId en Select (usa sentinela "none", no cadenas vacías)
+  // parentId debe declararse antes de autoOrder (que lo usa en su useMemo)
   const [parentId, setParentId] = useState<string>(
-    menuItem?.parentId === null || menuItem?.parentId === undefined ? PARENT_NONE : String(menuItem.parentId)
+    menuItem?.parentId === null || menuItem?.parentId === undefined
+      ? PARENT_NONE
+      : String(menuItem.parentId)
   );
+
+  // Valores distintos de módulo extraídos de todos los ítems existentes
+  const moduleOptions = useMemo(() => {
+    const names = parents
+      .map((p) => p.moduleName)
+      .filter((m): m is string => typeof m === "string" && m.trim() !== "");
+    return Array.from(new Set(names)).sort();
+  }, [parents]);
+
+  // Orden automático: máximo entre hermanos (mismo parentId) + 1
+  const autoOrder = useMemo(() => {
+    const sibParentId = normalizeParentId(parentId);
+    const siblings = parents.filter((p) => {
+      if (menuItem?.id && Number(p.id) === Number(menuItem.id)) return false;
+      const pParentId =
+        p.parentId === null || p.parentId === undefined ? null : Number(p.parentId);
+      return pParentId === sibParentId;
+    });
+    const maxOrder = siblings.length > 0 ? Math.max(...siblings.map((s) => s.order ?? 0)) : -1;
+    return maxOrder + 1;
+  }, [parents, parentId, menuItem?.id]);
+
+  // Ref para evitar re-inicializar moduleMode si ya fue ajustado manualmente
+  const moduleModeSetRef = useRef(false);
 
   // Reset al cambiar item editado
   useEffect(() => {
     setName(menuItem?.name ?? "");
     setUrl(menuItem?.url ?? "");
     setIcon(menuItem?.icon ?? "");
-    setOrder(
-      menuItem?.order !== undefined && menuItem?.order !== null ? String(menuItem.order) : "0"
-    );
     setModuleName(menuItem?.moduleName ?? "");
     setIsVisible(menuItem?.isVisible ?? true);
     setParentId(
-      menuItem?.parentId === null || menuItem?.parentId === undefined ? PARENT_NONE : String(menuItem.parentId)
+      menuItem?.parentId === null || menuItem?.parentId === undefined
+        ? PARENT_NONE
+        : String(menuItem.parentId)
     );
+    moduleModeSetRef.current = false; // permitir re-inicialización desde el efecto de parents
   }, [menuItem?.id]);
+
+  // Detectar modo de módulo al cargar/cambiar parents
+  useEffect(() => {
+    if (loadingParents || moduleModeSetRef.current) return;
+    moduleModeSetRef.current = true;
+    const current = menuItem?.moduleName?.trim() ?? "";
+    setModuleMode(current && !moduleOptions.includes(current) ? "custom" : "select");
+  }, [loadingParents, moduleOptions.length, menuItem?.id]);
 
   // Opciones para Select (excluye el propio item)
   const parentOptions = useMemo(() => {
@@ -132,10 +159,10 @@ export default function MenuItemForm({ menuItem, onSuccess, onCancel }: Props) {
         name: name.trim(),
         url: url.trim() || null,
         icon: icon.trim() || null,
-        order: normalizeOrder(order),
+        order: autoOrder,
         moduleName: moduleName.trim() || null,
         isVisible: Boolean(isVisible),
-        parentId: normalizeParentId(parentId), // 👈 mapear "none" → null
+        parentId: normalizeParentId(parentId),
       };
       // @ts-ignore
       return MenuItemsAPI.create(payload);
@@ -159,10 +186,10 @@ export default function MenuItemForm({ menuItem, onSuccess, onCancel }: Props) {
         name: name.trim(),
         url: url.trim() || null,
         icon: icon.trim() || null,
-        order: normalizeOrder(order),
+        order: menuItem.order ?? 0,
         moduleName: moduleName.trim() || null,
         isVisible: Boolean(isVisible),
-        parentId: normalizeParentId(parentId), // 👈 mapear "none" → null
+        parentId: normalizeParentId(parentId),
       };
       // @ts-ignore
       return MenuItemsAPI.update(Number(menuItem.id), payload);
@@ -207,23 +234,63 @@ export default function MenuItemForm({ menuItem, onSuccess, onCancel }: Props) {
               <Input id="icon" value={icon} onChange={(e) => setIcon(e.target.value)} />
             </div>
 
-            {/* Orden */}
+            {/* Módulo — combobox con valores existentes + opción personalizada */}
             <div className="space-y-2">
-              <Label htmlFor="order">Orden</Label>
-              <Input
-                id="order"
-                type="number"
-                inputMode="numeric"
-                value={order}
-                onChange={(e) => setOrder(e.target.value)}
-                min={0}
-              />
-            </div>
-
-            {/* Módulo */}
-            <div className="space-y-2">
-              <Label htmlFor="moduleName">Módulo</Label>
-              <Input id="moduleName" value={moduleName} onChange={(e) => setModuleName(e.target.value)} />
+              <Label>Módulo</Label>
+              {moduleMode === "custom" ? (
+                <div className="flex gap-2">
+                  <Input
+                    value={moduleName}
+                    onChange={(e) => setModuleName(e.target.value)}
+                    placeholder="Nombre del módulo"
+                    autoFocus
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0"
+                    onClick={() => {
+                      setModuleMode("select");
+                      if (!moduleOptions.includes(moduleName)) setModuleName("");
+                    }}
+                  >
+                    ← Lista
+                  </Button>
+                </div>
+              ) : (
+                <Select
+                  value={
+                    moduleName && moduleOptions.includes(moduleName) ? moduleName : MODULE_NONE
+                  }
+                  onValueChange={(v) => {
+                    if (v === MODULE_CUSTOM) {
+                      setModuleMode("custom");
+                      setModuleName("");
+                    } else if (v === MODULE_NONE) {
+                      setModuleName("");
+                    } else {
+                      setModuleName(v);
+                    }
+                  }}
+                  disabled={loadingParents}
+                >
+                  <SelectTrigger>
+                    <SelectValue
+                      placeholder={loadingParents ? "Cargando..." : "-- Sin módulo --"}
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={MODULE_NONE}>-- Sin módulo --</SelectItem>
+                    {moduleOptions.map((m) => (
+                      <SelectItem key={m} value={m}>
+                        {m}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value={MODULE_CUSTOM}>Personalizado...</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             {/* Visible */}

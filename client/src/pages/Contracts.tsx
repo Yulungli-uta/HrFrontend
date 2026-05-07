@@ -1,4 +1,7 @@
+// src/pages/Contracts.tsx
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,21 +15,34 @@ import {
   Building2,
   Calendar,
   X,
+  Eye,
+  CheckCircle,
+  Clock,
+  Award,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
-import { ContractsRHAPI } from "@/lib/api";
+import { ContractsRHAPI, TiposReferenciaAPI, FinancialCertificationAPI } from "@/lib/api";
 import { usePaged } from "@/hooks/pagination/usePaged";
 import { DataPagination } from "@/components/ui/DataPagination";
 import type { ContractDto } from "@/types/contract";
 import { ContractDialog } from "@/components/contracts/ContractDialog";
 import { useContractLookups } from "@/hooks/contracts/useContractLookups";
-import { getEntityId, getEntityLabel } from "@/utils/options";
+
+const CURRENT_YEAR = new Date().getFullYear();
 
 export default function ContractsPage() {
+  const [, navigate] = useLocation();
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"create" | "view" | "edit">("create");
   const [selected, setSelected] = useState<ContractDto | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [yearFilter, setYearFilter] = useState<number>(CURRENT_YEAR);
 
   const {
     items: contracts,
@@ -45,49 +61,109 @@ export default function ContractsPage() {
     clearSearch,
     currentParams,
   } = usePaged<ContractDto>({
-    queryKey: "contracts-rh",
-    queryFn: (params) => ContractsRHAPI.listPaged(params),
+    queryKey: ["contracts-rh", statusFilter, yearFilter],
+    queryFn: (params) =>
+      ContractsRHAPI.listPaged({
+        ...params,
+        sortDirection: "desc",
+        statusTypeId: statusFilter !== "all" ? Number(statusFilter) : undefined,
+        year: yearFilter > 0 ? yearFilter : undefined,
+      }),
     initialPageSize: 20,
   });
 
   const lookups = useContractLookups({ enabled: true });
 
+  const qStatusTypes = useQuery({
+    queryKey: ["reftypes", "CONTRACT_STATUS"],
+    queryFn: () => TiposReferenciaAPI.byCategory("CONTRACT_STATUS"),
+    staleTime: 10 * 60 * 1000,
+  });
+  const statusTypes =
+    qStatusTypes.data?.status === "success" ? qStatusTypes.data.data ?? [] : [];
+
+  const statusLabelById = useMemo(() => {
+    const m = new Map<number, string>();
+    for (const s of statusTypes) {
+      const id = s.typeId ?? s.typeID;
+      if (id != null) m.set(Number(id), s.name as string);
+    }
+    return m;
+  }, [statusTypes]);
+
+  // typeId for VIGENTE and in-process statuses (for count queries)
+  const vigenteTypeId = useMemo(
+    () => statusTypes.find((s: any) => (s.name as string)?.toUpperCase() === "VIGENTE")?.typeId
+      ?? statusTypes.find((s: any) => (s.name as string)?.toUpperCase() === "VIGENTE")?.typeID,
+    [statusTypes]
+  );
+
+  // Count VIGENTE contracts globally
+  const qVigenteCount = useQuery({
+    queryKey: ["contracts-count", "VIGENTE", yearFilter, vigenteTypeId],
+    queryFn: () => ContractsRHAPI.listPaged({
+      page: 1, pageSize: 1,
+      statusTypeId: Number(vigenteTypeId),
+      year: yearFilter > 0 ? yearFilter : undefined,
+    }),
+    enabled: vigenteTypeId != null,
+    staleTime: 60_000,
+  });
+  const vigenteCount = qVigenteCount.data?.status === "success"
+    ? ((qVigenteCount.data.data as any)?.totalCount ?? 0)
+    : 0;
+
+  // Count approved financial certifications
+  const qApprovedCerts = useQuery({
+    queryKey: ["financial-certifications", "approved", "count"],
+    queryFn: () => FinancialCertificationAPI.paged({ statusName: "APROBADA", pageSize: 1 }),
+    staleTime: 5 * 60 * 1000,
+  });
+  const approvedCertsCount = qApprovedCerts.data?.status === "success"
+    ? ((qApprovedCerts.data.data as any)?.totalCount ?? 0)
+    : 0;
+
   const peopleById = useMemo(() => {
     const m = new Map<number, string>();
-    for (const x of lookups.people ?? []) {
-      const id = Number(getEntityId(x));
-      if (Number.isFinite(id)) m.set(id, getEntityLabel(x));
+    for (const p of lookups.people ?? []) {
+      const id = (p as any).personId ?? (p as any).personID;
+      if (id != null) {
+        const name = `${(p as any).firstName ?? ""} ${(p as any).lastName ?? ""}`.trim();
+        m.set(Number(id), name || `ID ${id}`);
+      }
     }
     return m;
   }, [lookups.people]);
 
   const typeById = useMemo(() => {
     const m = new Map<number, string>();
-    for (const x of lookups.types ?? []) {
-      const id = Number(getEntityId(x));
-      if (Number.isFinite(id)) m.set(id, getEntityLabel(x));
+    for (const t of lookups.types ?? []) {
+      const id = (t as any).contractTypeId ?? (t as any).contractTypeID;
+      if (id != null) m.set(Number(id), (t as any).name ?? String(id));
     }
     return m;
   }, [lookups.types]);
 
   const deptById = useMemo(() => {
     const m = new Map<number, string>();
-    for (const x of lookups.depts ?? []) {
-      const id = Number(getEntityId(x));
-      if (Number.isFinite(id)) m.set(id, getEntityLabel(x));
+    for (const d of lookups.depts ?? []) {
+      const id = (d as any).departmentId ?? (d as any).departmentID;
+      if (id != null) m.set(Number(id), (d as any).name ?? (d as any).code ?? String(id));
     }
     return m;
   }, [lookups.depts]);
 
-  const uniqueStatuses = useMemo(() => {
-    const statuses = new Set(contracts.map((c) => c.status));
-    return Array.from(statuses).sort((a, b) => a - b);
-  }, [contracts]);
+  // En-proceso count from current page (BORRADOR, GENERADO, PENDIENTE_FIRMAS, FIRMADO_CARGADO)
+  const enProcesoCount = useMemo(() => {
+    const inProcess = new Set(["BORRADOR", "GENERADO", "PENDIENTE_FIRMAS", "FIRMADO_CARGADO"]);
+    return contracts.filter(c => inProcess.has((statusLabelById.get(c.status) ?? "").toUpperCase())).length;
+  }, [contracts, statusLabelById]);
 
-  const filteredContracts = useMemo(() => {
-    if (statusFilter === "all") return contracts;
-    return contracts.filter((c) => String(c.status) === statusFilter);
-  }, [contracts, statusFilter]);
+  const yearOptions = useMemo(() => {
+    const years: number[] = [];
+    for (let y = CURRENT_YEAR; y >= CURRENT_YEAR - 5; y--) years.push(y);
+    return years;
+  }, []);
 
   function openCreate() {
     setSelected(null);
@@ -96,18 +172,29 @@ export default function ContractsPage() {
   }
 
   function openView(c: ContractDto) {
-    setSelected(c);
-    setMode("view");
-    setOpen(true);
+    navigate(`/contracts/${c.contractID}`);
+  }
+
+  function getStatusLabel(status: number): string {
+    return statusLabelById.get(status) ?? `Estado ${status}`;
   }
 
   function getStatusVariant(
     status: number
   ): "default" | "secondary" | "destructive" | "outline" {
-    if (status === 1) return "default";
-    if (status === 2) return "secondary";
-    if (status === 3) return "outline";
-    return "destructive";
+    const name = (statusLabelById.get(status) ?? "").toUpperCase();
+    switch (name) {
+      case "VIGENTE": return "default";
+      case "BORRADOR":
+      case "GENERADO":
+      case "PENDIENTE_FIRMAS":
+      case "FIRMADO_CARGADO": return "secondary";
+      case "FINALIZADO": return "outline";
+      case "ANULADO":
+      case "VENCIDO":
+      case "RENUNCIA": return "destructive";
+      default: return "secondary";
+    }
   }
 
   if (isLoading) {
@@ -173,6 +260,9 @@ export default function ContractsPage() {
                 <div>
                   <p className="text-sm text-muted-foreground">Total Contratos</p>
                   <p className="text-2xl font-bold">{totalCount}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {yearFilter > 0 ? `Año ${yearFilter}` : "Todos los años"}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -181,12 +271,13 @@ export default function ContractsPage() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-success/15 rounded-lg">
-                  <User className="h-5 w-5 text-success" />
+                <div className="p-2 bg-green-500/10 rounded-lg">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Personas</p>
-                  <p className="text-2xl font-bold">{peopleById.size}</p>
+                  <p className="text-sm text-muted-foreground">Vigentes</p>
+                  <p className="text-2xl font-bold">{vigenteCount}</p>
+                  <p className="text-xs text-muted-foreground">Contratos activos</p>
                 </div>
               </div>
             </CardContent>
@@ -195,12 +286,13 @@ export default function ContractsPage() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/15 rounded-lg">
-                  <Building2 className="h-5 w-5 text-primary" />
+                <div className="p-2 bg-amber-500/10 rounded-lg">
+                  <Clock className="h-5 w-5 text-amber-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Departamentos</p>
-                  <p className="text-2xl font-bold">{deptById.size}</p>
+                  <p className="text-sm text-muted-foreground">En proceso</p>
+                  <p className="text-2xl font-bold">{enProcesoCount}</p>
+                  <p className="text-xs text-muted-foreground">En esta vista</p>
                 </div>
               </div>
             </CardContent>
@@ -209,12 +301,13 @@ export default function ContractsPage() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-accent rounded-lg">
-                  <Calendar className="h-5 w-5 text-secondary-foreground" />
+                <div className="p-2 bg-blue-500/10 rounded-lg">
+                  <Award className="h-5 w-5 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Mostrados</p>
-                  <p className="text-2xl font-bold">{filteredContracts.length}</p>
+                  <p className="text-sm text-muted-foreground">Cert. aprobadas</p>
+                  <p className="text-2xl font-bold">{approvedCertsCount}</p>
+                  <p className="text-xs text-muted-foreground">Disponibles para contratar</p>
                 </div>
               </div>
             </CardContent>
@@ -242,17 +335,34 @@ export default function ContractsPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
+              <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                onChange={(e) => { setStatusFilter(e.target.value); goToPage(1); }}
                 className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="all">Todos los estados</option>
-                {uniqueStatuses.map((s) => (
-                  <option key={s} value={String(s)}>
-                    Estado {s}
-                  </option>
+                {statusTypes.map((s: any) => {
+                  const id = s.typeId ?? s.typeID;
+                  return (
+                    <option key={id} value={String(id)}>
+                      {s.name}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+              <select
+                value={yearFilter}
+                onChange={(e) => { setYearFilter(Number(e.target.value)); goToPage(1); }}
+                className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value={0}>Todos los años</option>
+                {yearOptions.map((y) => (
+                  <option key={y} value={y}>{y}</option>
                 ))}
               </select>
             </div>
@@ -284,22 +394,25 @@ export default function ContractsPage() {
                   <th className="p-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Estado
                   </th>
+                  <th className="p-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Elaborado por
+                  </th>
                   <th className="p-4 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Acciones
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filteredContracts.length === 0 ? (
+                {contracts.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="p-8 text-center text-sm text-muted-foreground">
+                    <td colSpan={8} className="p-8 text-center text-sm text-muted-foreground">
                       {currentParams.search || statusFilter !== "all"
                         ? "No se encontraron contratos con ese criterio"
                         : "No hay contratos registrados"}
                     </td>
                   </tr>
                 ) : (
-                  filteredContracts.map((c) => (
+                  contracts.map((c) => (
                     <tr
                       key={c.contractID}
                       className="hover:bg-muted/50 transition-colors cursor-pointer"
@@ -315,7 +428,7 @@ export default function ContractsPage() {
                       </td>
                       <td className="p-4">
                         <div className="flex items-center gap-2">
-                          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
+                          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shrink-0">
                             <User className="h-4 w-4 text-primary" />
                           </div>
                           <span className="font-medium">
@@ -325,12 +438,12 @@ export default function ContractsPage() {
                       </td>
                       <td className="p-4">
                         <span className="text-sm">
-                          {typeById.get(Number(c.contractTypeID)) ?? c.contractTypeID}
+                          {typeById.get(Number(c.contractTypeID)) ?? `ID ${c.contractTypeID}`}
                         </span>
                       </td>
                       <td className="p-4">
                         <span className="text-sm">
-                          {deptById.get(Number(c.departmentID)) ?? c.departmentID}
+                          {deptById.get(Number(c.departmentID)) ?? `ID ${c.departmentID}`}
                         </span>
                       </td>
                       <td className="p-4">
@@ -347,20 +460,34 @@ export default function ContractsPage() {
                       </td>
                       <td className="p-4">
                         <Badge variant={getStatusVariant(c.status)}>
-                          Estado {c.status}
+                          {getStatusLabel(c.status)}
                         </Badge>
                       </td>
+                      <td className="p-4">
+                        <span className="text-sm text-muted-foreground">
+                          {c.createdBy != null
+                            ? (peopleById.get(Number(c.createdBy)) ?? `#${c.createdBy}`)
+                            : "—"}
+                        </span>
+                      </td>
                       <td className="p-4 text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openView(c);
-                          }}
-                        >
-                          Ver detalles
-                        </Button>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openView(c);
+                                }}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Ver detalles</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </td>
                     </tr>
                   ))
@@ -372,7 +499,7 @@ export default function ContractsPage() {
       </Card>
 
       <div className="lg:hidden space-y-3">
-        {filteredContracts.length === 0 ? (
+        {contracts.length === 0 ? (
           <Card>
             <CardContent className="pt-6 text-center text-sm text-muted-foreground">
               {currentParams.search || statusFilter !== "all"
@@ -381,7 +508,7 @@ export default function ContractsPage() {
             </CardContent>
           </Card>
         ) : (
-          filteredContracts.map((c) => (
+          contracts.map((c) => (
             <Card
               key={c.contractID}
               className="cursor-pointer hover:shadow-md transition-shadow"
@@ -393,7 +520,7 @@ export default function ContractsPage() {
                     <div className="flex items-center gap-2">
                       <p className="font-semibold text-lg">#{c.contractID}</p>
                       <Badge variant={getStatusVariant(c.status)} className="text-xs">
-                        Estado {c.status}
+                        {getStatusLabel(c.status)}
                       </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">
@@ -412,13 +539,13 @@ export default function ContractsPage() {
                   <div className="flex items-center gap-2">
                     <FileText className="h-4 w-4 text-muted-foreground" />
                     <span>
-                      {typeById.get(Number(c.contractTypeID)) ?? c.contractTypeID}
+                      {typeById.get(Number(c.contractTypeID)) ?? `ID ${c.contractTypeID}`}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Building2 className="h-4 w-4 text-muted-foreground" />
                     <span>
-                      {deptById.get(Number(c.departmentID)) ?? c.departmentID}
+                      {deptById.get(Number(c.departmentID)) ?? `ID ${c.departmentID}`}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -427,17 +554,26 @@ export default function ContractsPage() {
                       {String(c.startDate).slice(0, 10)} → {String(c.endDate).slice(0, 10)}
                     </span>
                   </div>
+                  {c.createdBy != null && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <User className="h-4 w-4" />
+                      <span className="text-xs">
+                        Elaborado por: {peopleById.get(Number(c.createdBy)) ?? `#${c.createdBy}`}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <Button
                   variant="outline"
                   size="sm"
-                  className="w-full"
+                  className="w-full flex items-center gap-2"
                   onClick={(e) => {
                     e.stopPropagation();
                     openView(c);
                   }}
                 >
+                  <Eye className="h-4 w-4" />
                   Ver detalles
                 </Button>
               </CardContent>

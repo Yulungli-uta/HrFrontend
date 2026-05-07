@@ -1,12 +1,11 @@
-// src/components/departments/DepartmentModal.tsx
 import { useState, useEffect } from "react";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogDescription, 
-  DialogFooter 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +13,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { RefreshCw, AlertCircle, CheckCircle2, Building2 } from "lucide-react";
 import type { Department, ReferenceType, DepartmentFormData } from "@/types/department";
+import type { VwDepartmentWithType } from "@/lib/api";
+import { DepartmentParentSelect } from "./DepartmentParentSelect";
 
 interface DepartmentModalProps {
   open: boolean;
@@ -22,7 +23,7 @@ interface DepartmentModalProps {
   loading: boolean;
   formData: DepartmentFormData;
   refTypes: ReferenceType[];
-  departments: Department[];
+  refScopeTypes: ReferenceType[];
   onOpenChange: (open: boolean) => void;
   onFormDataChange: (data: DepartmentFormData) => void;
   onSave: () => Promise<void>;
@@ -36,7 +37,7 @@ export const DepartmentModal = ({
   loading,
   formData,
   refTypes,
-  departments,
+  refScopeTypes,
   onOpenChange,
   onFormDataChange,
   onSave,
@@ -46,11 +47,10 @@ export const DepartmentModal = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const title = mode === 'create' ? 'Agregar departamento' : 'Editar departamento';
-  const description = mode === 'create' 
-    ? 'Complete los datos del nuevo departamento' 
+  const description = mode === 'create'
+    ? 'Complete los datos del nuevo departamento'
     : 'Modifica y guarda los cambios';
 
-  // Resetear estados cuando se abre/cierra el modal
   useEffect(() => {
     if (!open) {
       setLocalError("");
@@ -58,66 +58,36 @@ export const DepartmentModal = ({
     }
   }, [open]);
 
-  const handleParentChange = (value: string) => {
-    const newParentId = value === "none" ? "" : value;
-    const updatedFormData = { ...formData, parentId: newParentId };
-    
-    // Heredar tipo del padre seleccionado
-    if (newParentId) {
-      const parentDept = departments.find(x => x.departmentId === Number(newParentId));
-      if (parentDept?.departmentType) {
-        let parentTypeId: string = "";
-        
-        // Convertir departmentType del padre a string para el formulario
-        if (typeof parentDept.departmentType === "number") {
-          parentTypeId = String(parentDept.departmentType);
-        } else if (typeof parentDept.departmentType === "string") {
-          // Si es string, buscar el typeId correspondiente en refTypes
-          const found = refTypes.find(t => t.name === parentDept.departmentType);
-          if (found) {
-            parentTypeId = String(found.typeId);
-          } else {
-            // Si no se encuentra, usar el string directamente
-            parentTypeId = parentDept.departmentType;
-          }
-        }
-        
-        if (parentTypeId) {
-          updatedFormData.type = parentTypeId;
-        }
-      }
+  const handleParentChange = (id: number | null, dept: VwDepartmentWithType | null) => {
+    const parentIdStr = id ? String(id) : "";
+    const updatedFormData = { ...formData, parentId: parentIdStr };
+
+    if (dept?.departmentTypeID) {
+      updatedFormData.type = String(dept.departmentTypeID);
     }
-    
+
     onFormDataChange(updatedFormData);
   };
 
   const updateField = (field: keyof DepartmentFormData, value: string | boolean) => {
     onFormDataChange({ ...formData, [field]: value });
-    // Limpiar error local cuando el usuario empiece a escribir
-    if (field === 'name' && localError) {
-      setLocalError("");
-    }
+    if (field === 'name' && localError) setLocalError("");
   };
 
   const handleSave = async () => {
-    // Validación básica
     if (!formData.name.trim()) {
       setLocalError("El nombre del departamento es requerido");
       return;
     }
-
     if (formData.name.trim().length < 2) {
       setLocalError("El nombre debe tener al menos 2 caracteres");
       return;
     }
-
     setLocalError("");
     setIsSubmitting(true);
-    
     try {
       await onSave();
-    } catch (error) {
-      console.error("Error saving department:", error);
+    } catch {
       setLocalError("Error al guardar los cambios");
     } finally {
       setIsSubmitting(false);
@@ -125,36 +95,21 @@ export const DepartmentModal = ({
   };
 
   const handleClose = () => {
-    if (!loading && !isSubmitting) {
-      onOpenChange(false);
-    }
+    if (!loading && !isSubmitting) onOpenChange(false);
   };
 
-  const isConcurrencyError = error?.includes("modificado por otro usuario") || 
-                            error?.includes("concurrencia") ||
-                            error?.includes("409");
+  const isConcurrencyError = error?.includes("modificado por otro usuario") ||
+    error?.includes("concurrencia") ||
+    error?.includes("409");
 
-  const isValidationError = error?.includes("400") || 
-                           error?.includes("validación") ||
-                           localError !== "";
+  const isValidationError = error?.includes("400") ||
+    error?.includes("validación") ||
+    localError !== "";
 
   const isValid = formData.name.trim().length >= 2;
 
-  // Preparar departamentos para el selector de padre (excluir el actual en edición y sus hijos)
-  const availableParentDepartments = departments.filter(dept => {
-    if (mode === 'edit' && department) {
-      // Excluir el departamento actual y todos sus hijos
-      const isCurrentOrChild = (dept: Department): boolean => {
-        if (dept.departmentId === department.departmentId) return true;
-        if (dept.children) {
-          return dept.children.some(child => isCurrentOrChild(child));
-        }
-        return false;
-      };
-      return !isCurrentOrChild(dept);
-    }
-    return true;
-  });
+  const parentIdNumber = formData.parentId ? Number(formData.parentId) : null;
+  const scopeIdNumber = formData.scope ? Number(formData.scope) : null;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -169,9 +124,8 @@ export const DepartmentModal = ({
           </DialogDescription>
         </DialogHeader>
 
-        {/* Formulario */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* Nombre - Full width */}
+          {/* Nombre */}
           <div className="sm:col-span-2">
             <Label htmlFor="name" className="flex items-center gap-1 mb-2">
               Nombre <span className="text-destructive">*</span>
@@ -201,9 +155,7 @@ export const DepartmentModal = ({
               placeholder="Código único"
               disabled={loading || isSubmitting}
             />
-            <p className="text-xs text-muted-foreground mt-1">
-              Ej: DEP-SIS
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">Ej: DEP-SIS</p>
           </div>
 
           {/* Nombre Corto */}
@@ -216,9 +168,7 @@ export const DepartmentModal = ({
               placeholder="Nombre abreviado"
               disabled={loading || isSubmitting}
             />
-            <p className="text-xs text-muted-foreground mt-1">
-              Ej: Sistemas
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">Ej: Sistemas</p>
           </div>
 
           {/* Tipo */}
@@ -241,40 +191,44 @@ export const DepartmentModal = ({
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground mt-1">
-              Categoría del departamento
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">Categoría del departamento</p>
           </div>
 
-          {/* Padre */}
+          {/* Ámbito */}
           <div>
-            <Label htmlFor="parent" className="mb-2 block">Departamento Padre</Label>
-            <Select 
-              value={formData.parentId || "none"} 
-              onValueChange={handleParentChange}
+            <Label htmlFor="scope" className="mb-2 block">Ámbito</Label>
+            <Select
+              value={formData.scope || "none"}
+              onValueChange={(v) => updateField('scope', v === "none" ? "" : v)}
               disabled={loading || isSubmitting}
             >
-              <SelectTrigger id="parent" className="w-full">
-                <SelectValue placeholder="(sin padre)" />
+              <SelectTrigger id="scope" className="w-full">
+                <SelectValue placeholder={refScopeTypes.length === 0 ? "Cargando ámbitos..." : "Seleccionar ámbito"} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">(sin padre - departamento raíz)</SelectItem>
-                {availableParentDepartments.map(dept => (
-                  <SelectItem key={dept.departmentId} value={String(dept.departmentId)}>
-                    <div className="flex items-center gap-2">
-                      <Building2 className="h-3 w-3" />
-                      <span className="truncate">{dept.name}</span>
-                      {dept.code && (
-                        <span className="text-xs text-muted-foreground ml-1">({dept.code})</span>
-                      )}
-                    </div>
+                <SelectItem value="none">(sin ámbito)</SelectItem>
+                {refScopeTypes.map(t => (
+                  <SelectItem key={t.typeId} value={String(t.typeId)}>
+                    {t.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground mt-1">
-              Jerarquía organizacional
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">Ámbito organizacional</p>
+          </div>
+
+          {/* Departamento Padre */}
+          <div className="sm:col-span-2">
+            <Label className="mb-2 block">Departamento Padre</Label>
+            <DepartmentParentSelect
+              value={parentIdNumber}
+              onChange={handleParentChange}
+              excludeDepartmentId={mode === 'edit' && department ? department.departmentId : undefined}
+              disabled={loading || isSubmitting}
+              placeholder="(sin padre — departamento raíz)"
+              departmentScopeId={scopeIdNumber}
+            />
+            <p className="text-xs text-muted-foreground mt-1">Jerarquía organizacional</p>
           </div>
 
           {/* Estado Activo */}
@@ -297,50 +251,44 @@ export const DepartmentModal = ({
         {/* Mensajes de Error */}
         {(localError || error) && (
           <div className={`p-4 rounded-lg border ${
-            isConcurrencyError 
-              ? "bg-primary/10 border-primary/30" 
+            isConcurrencyError
+              ? "bg-primary/10 border-primary/30"
               : isValidationError
               ? "bg-amber-50 border-warning/30"
               : "bg-destructive/10 border-destructive/30"
           }`}>
             <div className="flex items-start gap-3">
               <AlertCircle className={`h-5 w-5 mt-0.5 ${
-                isConcurrencyError ? "text-primary" : 
-                isValidationError ? "text-warning" : 
+                isConcurrencyError ? "text-primary" :
+                isValidationError ? "text-warning" :
                 "text-destructive"
               }`} />
               <div className="flex-1">
                 <p className={`text-sm font-medium ${
-                  isConcurrencyError ? "text-primary" : 
-                  isValidationError ? "text-amber-800" : 
+                  isConcurrencyError ? "text-primary" :
+                  isValidationError ? "text-amber-800" :
                   "text-destructive"
                 }`}>
-                  {isConcurrencyError ? "Conflicto de simultaneidad" : 
-                   isValidationError ? "Error de validación" : 
+                  {isConcurrencyError ? "Conflicto de simultaneidad" :
+                   isValidationError ? "Error de validación" :
                    "Error"}
                 </p>
                 <p className={`text-sm mt-1 ${
-                  isConcurrencyError ? "text-primary" : 
-                  isValidationError ? "text-warning" : 
+                  isConcurrencyError ? "text-primary" :
+                  isValidationError ? "text-warning" :
                   "text-destructive"
                 }`}>
                   {localError || error}
                 </p>
-                
                 {isValidationError && (
-                  <div className="mt-2">
-                    <p className="text-xs text-warning">
-                      Verifique que todos los campos estén completos y en el formato correcto.
-                    </p>
-                  </div>
+                  <p className="text-xs text-warning mt-2">
+                    Verifique que todos los campos estén completos y en el formato correcto.
+                  </p>
                 )}
-
                 {isConcurrencyError && (
                   <div className="mt-3 flex items-center gap-2">
                     <RefreshCw className="h-4 w-4 animate-spin text-primary" />
-                    <span className="text-xs text-primary">
-                      Recargando datos automáticamente...
-                    </span>
+                    <span className="text-xs text-primary">Recargando datos automáticamente...</span>
                   </div>
                 )}
               </div>
@@ -348,21 +296,21 @@ export const DepartmentModal = ({
           </div>
         )}
 
-        {/* Información del Departamento (solo en edición) */}
+        {/* Info del Departamento (solo edición) */}
         {mode === 'edit' && department && (
           <div className="bg-background border border-border rounded-lg p-3">
             <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-              <div>
-                <span className="font-medium">ID:</span> {department.departmentId}
-              </div>
+              <div><span className="font-medium">ID:</span> {department.departmentId}</div>
               {department.createdAt && (
                 <div>
-                  <span className="font-medium">Creado:</span> {new Date(department.createdAt).toLocaleDateString()}
+                  <span className="font-medium">Creado:</span>{' '}
+                  {new Date(department.createdAt).toLocaleDateString()}
                 </div>
               )}
               {department.updatedAt && (
                 <div className="col-span-2">
-                  <span className="font-medium">Última modificación:</span> {new Date(department.updatedAt).toLocaleString()}
+                  <span className="font-medium">Última modificación:</span>{' '}
+                  {new Date(department.updatedAt).toLocaleString()}
                 </div>
               )}
             </div>
@@ -399,7 +347,6 @@ export const DepartmentModal = ({
           </Button>
         </DialogFooter>
 
-        {/* Indicador de carga global */}
         {(loading || isSubmitting) && (
           <div className="absolute inset-0 bg-card bg-opacity-50 flex items-center justify-center rounded-lg">
             <div className="flex items-center gap-2 bg-card p-4 rounded-lg shadow-lg border">

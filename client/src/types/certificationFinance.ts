@@ -2,6 +2,14 @@
 // ============================================
 // Tipos para Certificaciones Financieras
 // ============================================
+
+export interface ContractRequestSummary {
+  requestId: number;
+  numberOfPeopleToHire: number;
+  totalPeopleHired: number;
+  pendingCount: number;
+}
+
 export interface FinancialCertification {
   certificationId: number;
   requestId?: number | null;
@@ -18,7 +26,11 @@ export interface FinancialCertification {
 
   createdAt: string;
   createdBy: number;
+  updatedAt?: string | null;
+  updatedBy?: number | null;
   status?: number | null;
+  statusName?: string | null;
+  requestSummary?: ContractRequestSummary | null;
 }
 
 export interface UIFinancialCertification extends FinancialCertification {

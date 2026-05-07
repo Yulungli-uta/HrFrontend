@@ -1,16 +1,22 @@
 // src/pages/CertificationFinance.tsx
-import { useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DataPagination } from "@/components/ui/DataPagination";
 
 import { useAuth } from "@/features/auth";
 import { useToast } from "@/hooks/use-toast";
 
-import { FileManagementAPI, TiposReferenciaAPI, type ApiResponse } from "@/lib/api";
-import { useQuery } from "@tanstack/react-query";
+import { FileManagementAPI } from "@/lib/api";
 
 import type { DialogMode, UIFinancialCertification } from "@/types/certificationFinance";
-import { mapToUI, filterCerts, calcStats } from "@/utils/certificationfinance";
-import { useDirectoryParams, useCertifications, useCertificationMutations } from "@/hooks/certification-finance/hook";
+import { mapToUI, filterCerts, calcStats, statusTextFromName } from "@/utils/certificationfinance";
+import {
+  useDirectoryParams,
+  useCertifications,
+  useCertStatusTypes,
+  useCertificationMutations,
+} from "@/hooks/certification-finance/hook";
 import { CertificationHeader } from "@/components/certification-finance/CertificationHeader";
 import { CertificationStats } from "@/components/certification-finance/CertificationStats";
 import { CertificationSearch } from "@/components/certification-finance/CertificationSearch";
@@ -28,6 +34,9 @@ export default function FinancialCertificationPage() {
     : (Number.isFinite(Number(user?.id)) ? Number(user?.id) : 0);
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // modal único (create/view/edit)
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -49,26 +58,60 @@ export default function FinancialCertificationPage() {
       ? dirParam.relativePath
       : "/financial-certifications/";
 
+  useEffect(() => { setPage(1); }, [searchTerm, statusFilter]);
+
   const { data: apiResponse, isLoading, error } = useCertifications();
-  const { createMutation, updateMutation } = useCertificationMutations();
+  const { data: certStatusTypesResp } = useCertStatusTypes();
+  const { createMutation, updateMutation, approveMutation, rejectMutation } = useCertificationMutations();
 
-  // Estados (reftype) para CERT_FINANCE_TYPE: se usa en tablas/listas
-  const CERT_FINANCE_TYPE_CATEGORY = "CERT_FINANCE_TYPE";
-  const { data: statusRefResp } = useQuery<ApiResponse<any[]>>({
-    queryKey: ["refTypes", CERT_FINANCE_TYPE_CATEGORY],
-    queryFn: () =>
-      TiposReferenciaAPI.byCategory(CERT_FINANCE_TYPE_CATEGORY) as Promise<ApiResponse<any[]>>,
-    staleTime: 10 * 60 * 1000,
-  });
-  const statusRefTypes = statusRefResp?.status === "success" ? statusRefResp.data : [];
+  // Mapa typeId → name para resolver statusName cuando el backend lo omite
+  const statusById = useMemo(() => {
+    const map = new Map<number, string>();
+    if (certStatusTypesResp?.status === "success") {
+      for (const rt of (certStatusTypesResp.data ?? [])) {
+        const id: number | undefined = rt.typeId ?? rt.typeID;
+        if (id != null) map.set(id, rt.name as string);
+      }
+    }
+    return map;
+  }, [certStatusTypesResp]);
 
-  const certifications = useMemo(() => {
+  // Opciones del dropdown — provienen del catálogo, no de los datos
+  const statusOptions = useMemo(() => {
+    if (certStatusTypesResp?.status !== "success") return [];
+    return (certStatusTypesResp.data ?? []).map((rt: any) => {
+      const name = (rt.name as string).toUpperCase();
+      return { name, text: statusTextFromName(rt.name as string) };
+    });
+  }, [certStatusTypesResp]);
+
+  // Todos los certs enriquecidos con statusName resuelto del catálogo si venía null
+  const allCerts = useMemo(() => {
     if (apiResponse?.status !== "success") return [];
-    return mapToUI(apiResponse.data || []);
-  }, [apiResponse]);
+    const raw: any[] = apiResponse.data || [];
+    const enriched = raw.map((c) => ({
+      ...c,
+      statusName: c.statusName ?? statusById.get(c.status) ?? null,
+    }));
+    return mapToUI(enriched);
+  }, [apiResponse, statusById]);
 
-  const filtered = useMemo(() => filterCerts(certifications, searchTerm), [certifications, searchTerm]);
-  const stats = useMemo(() => calcStats(certifications), [certifications]);
+  const filtered = useMemo(() => {
+    let list = allCerts;
+    if (statusFilter !== "all") {
+      list = list.filter((c) => (c.statusName ?? "").toUpperCase() === statusFilter);
+    }
+    return filterCerts(list, searchTerm);
+  }, [allCerts, searchTerm, statusFilter]);
+
+  // Stats siempre sobre todos los certs sin filtro
+  const stats = useMemo(() => calcStats(allCerts), [allCerts]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const paginated = useMemo(
+    () => filtered.slice((page - 1) * pageSize, page * pageSize),
+    [filtered, page, pageSize]
+  );
 
   const directoryInfo = useMemo(() => {
     if (isDirLoading) return "Cargando parámetros FINCERT...";
@@ -120,7 +163,6 @@ export default function FinancialCertificationPage() {
     setDialogOpen(true);
   };
 
-  // loading / error
   if (isLoading) {
     return (
       <div className="container mx-auto p-4 md:p-6">
@@ -171,34 +213,64 @@ export default function FinancialCertificationPage() {
         updateAsync={(args) => updateMutation.mutateAsync(args as any)}
         isCreatePending={createMutation.isPending}
         isUpdatePending={updateMutation.isPending}
+        approveAsync={(id) => approveMutation.mutateAsync(id)}
+        rejectAsync={(id, reason) => rejectMutation.mutateAsync({ id, reason })}
         onDownloadLegacy={downloadLegacy}
+        onApprove={(id) => approveMutation.mutate(id)}
+        onReject={(id, reason) => rejectMutation.mutate({ id, reason })}
+        isApprovePending={approveMutation.isPending}
+        isRejectPending={rejectMutation.isPending}
       />
 
-     <CertificationStats
-        list={certifications}              
-        statusRefTypes={statusRefTypes}
+      <CertificationStats
+        list={allCerts}
         totalBudget={stats.totalBudget}
         expiringSoon={stats.expiringSoon}
       />
 
-      <CertificationSearch value={searchTerm} onChange={setSearchTerm} />
+      <div className="mb-4 flex flex-col sm:flex-row gap-3">
+        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
+          <SelectTrigger className="w-full sm:w-56">
+            <SelectValue placeholder="Filtrar por estado" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los estados</SelectItem>
+            {statusOptions.map(({ name, text }) => (
+              <SelectItem key={name} value={name}>{text}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <div className="flex-1">
+          <CertificationSearch value={searchTerm} onChange={(v) => { setSearchTerm(v); setPage(1); }} />
+        </div>
+      </div>
 
       <CertificationListMobile
-        list={filtered}
-        statusRefTypes={statusRefTypes}
+        list={paginated}
         directoryCode={directoryCode}
         onView={openView}
         onDownloadLegacy={downloadLegacy}
       />
 
       <CertificationListDesktop
-        list={filtered}
-        total={stats.total}
+        list={paginated}
+        total={filtered.length}
         searchTerm={searchTerm}
-        statusRefTypes={statusRefTypes}
         directoryCode={directoryCode}
         onView={openView}
         onDownloadLegacy={downloadLegacy}
+      />
+
+      <DataPagination
+        page={page}
+        totalPages={totalPages}
+        totalCount={filtered.length}
+        pageSize={pageSize}
+        hasPreviousPage={page > 1}
+        hasNextPage={page < totalPages}
+        onPageChange={(p) => setPage(p)}
+        onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+        disabled={isLoading}
       />
     </div>
   );

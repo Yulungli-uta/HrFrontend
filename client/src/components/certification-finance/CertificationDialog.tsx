@@ -11,9 +11,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Download, Pencil, FileText } from "lucide-react";
+import { Download, Pencil, FileText, CheckCircle, XCircle } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectTrigger,
@@ -29,7 +30,7 @@ import type { DialogMode, FinancialCertification, UIFinancialCertification } fro
 import type { DirectoryParameter } from "@/types/directoryParameter";
 
 import { useQuery } from "@tanstack/react-query";
-import { TiposReferenciaAPI, type ApiResponse } from "@/lib/api";
+import { FinancialCertificationAPI, TiposReferenciaAPI, type ApiResponse } from "@/lib/api";
 
 // ✅ ContractRequest (para requestId + preview + documentos)
 import { useContractRequest } from "@/hooks/contractRequest/useContractRequests";
@@ -68,8 +69,8 @@ type FormState = Partial<Omit<FinancialCertification, "certificationId">> & {
   certBudgetDate?: string; // "YYYY-MM-DD"
 };
 
-// 👇 ESTE ES EL "ESTADO" de la certificación (ANULADO/APROBADO), NO el "tipo de archivo"
-const CERT_FINANCE_TYPE_CATEGORY = "CERT_FINANCE_TYPE";
+// Categoría correcta para los estados de la certificación financiera
+const FIN_CERT_STATUS_CATEGORY = "FIN_CERT_STATUS";
 
 function ContractRequestPreviewCard(props: {
   item: UIContractRequest;
@@ -162,8 +163,18 @@ export function CertificationDialog(props: {
   isCreatePending: boolean;
   isUpdatePending: boolean;
 
+  // approve/reject directo desde el formulario de creación
+  approveAsync?: (certificationId: number) => Promise<any>;
+  rejectAsync?: (certificationId: number, reason: string) => Promise<any>;
+
   // download legacy
   onDownloadLegacy: (directoryCode: string, filepath: string, filename: string) => void;
+
+  // approve / reject (solo en vista, certificaciones PENDIENTE_REVISION)
+  onApprove?: (certificationId: number) => void;
+  onReject?: (certificationId: number, reason: string) => void;
+  isApprovePending?: boolean;
+  isRejectPending?: boolean;
 }) {
   const {
     open, onOpenChange,
@@ -173,8 +184,13 @@ export function CertificationDialog(props: {
     refetchDir,
     ctxCreatedBy,
     createAsync, updateAsync, isCreatePending, isUpdatePending,
-    onDownloadLegacy
+    approveAsync, rejectAsync,
+    onDownloadLegacy,
+    onApprove, onReject, isApprovePending, isRejectPending,
   } = props;
+
+  const [rejectReason, setRejectReason] = useState("");
+  const [showRejectInput, setShowRejectInput] = useState(false);
 
   const { toast } = useToast();
 
@@ -185,7 +201,6 @@ export function CertificationDialog(props: {
   const docManagerRef = useRef<ReusableDocumentManagerHandle | null>(null);
   const contractRequestDocsRef = useRef<ReusableDocumentManagerHandle | null>(null);
 
-  const [createdCertificationId, setCreatedCertificationId] = useState<number | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
   // ✅ Estado para mostrar/ocultar documentos de CONTRACT_REQUEST
@@ -199,13 +214,26 @@ export function CertificationDialog(props: {
     isLoading: isLoadingRefTypes,
     error: refTypesError,
   } = useQuery<ApiResponse<any[]>>({
-    queryKey: ["refTypes", CERT_FINANCE_TYPE_CATEGORY],
+    queryKey: ["refTypes", FIN_CERT_STATUS_CATEGORY],
     queryFn: () =>
-      TiposReferenciaAPI.byCategory(CERT_FINANCE_TYPE_CATEGORY) as Promise<ApiResponse<any[]>>,
+      TiposReferenciaAPI.byCategory(FIN_CERT_STATUS_CATEGORY) as Promise<ApiResponse<any[]>>,
     enabled: open,
   });
 
   const refTypes = refTypesResponse?.status === "success" ? refTypesResponse.data : [];
+
+  // ID del estado PENDIENTE_REVISION — comparar por ID es robusto aunque statusName llegue null
+  const pendingRevisionStatusId = useMemo(() => {
+    const found = refTypes.find((rt: any) => (rt.name ?? "").toUpperCase() === "PENDIENTE_REVISION");
+    if (!found) return null;
+    const id = found.id ?? found.refTypeId ?? found.typeId ?? found.valueId;
+    return id != null ? Number(id) : null;
+  }, [refTypes]);
+
+  const isPendingRevision =
+    selected != null &&
+    pendingRevisionStatusId != null &&
+    Number(selected.status) === pendingRevisionStatusId;
 
   // =========================
   // 2) ContractRequest: lista + mapeos + preview (requestId)
@@ -213,27 +241,34 @@ export function CertificationDialog(props: {
   const cr = useContractRequest(CONTRACT_REQUEST_DIRECTORY_CODE);
 
   const [requestSearch, setRequestSearch] = useState<string>("");
-  const [candidateRequestId, setCandidateRequestId] = useState<number | null>(null);
+
+  // ID del estado PENDIENTE_CERT_FINANCIERA en solicitudes de contrato
+  const pendingCertFinancieraId = useMemo(() => {
+    const found = cr.statuses.find(
+      (s: any) => (s.name ?? "").toUpperCase() === "PENDIENTE_CERT_FINANCIERA"
+    );
+    return found ? found.id : null;
+  }, [cr.statuses]);
 
   const filteredContractRequests = useMemo(() => {
-    const q = requestSearch.trim().toLowerCase();
     const list = cr.contracts ?? [];
-    if (!q) return list;
+    // solo solicitudes en PENDIENTE_CERT_FINANCIERA
+    const pendingOnly =
+      pendingCertFinancieraId != null
+        ? list.filter((x) => Number(x.status) === pendingCertFinancieraId)
+        : list.filter((x) => (x.statusText ?? "").toUpperCase().includes("PENDIENTE_CERT"));
 
-    return list.filter((x) => {
+    const q = requestSearch.trim().toLowerCase();
+    if (!q) return pendingOnly;
+
+    return pendingOnly.filter((x) => {
       const modality = cr.workModalityNameById.get(Number(x.workModalityId)) ?? "";
       const dept = cr.departmentNameById.get(Number(x.departmentId)) ?? "";
-      const statusText = x.statusText ?? "";
       const obs = x.observation ?? "";
-      const haystack = `${x.requestId} ${modality} ${dept} ${statusText} ${obs}`.toLowerCase();
+      const haystack = `${x.requestId} ${modality} ${dept} ${obs}`.toLowerCase();
       return haystack.includes(q);
     });
-  }, [requestSearch, cr.contracts, cr.workModalityNameById, cr.departmentNameById]);
-
-  const candidateContract: UIContractRequest | null = useMemo(() => {
-    if (!candidateRequestId) return null;
-    return (cr.contracts ?? []).find((x) => Number(x.requestId) === Number(candidateRequestId)) ?? null;
-  }, [candidateRequestId, cr.contracts]);
+  }, [requestSearch, cr.contracts, cr.workModalityNameById, cr.departmentNameById, pendingCertFinancieraId]);
 
   // =========================
   // 3) Form
@@ -249,7 +284,7 @@ export function CertificationDialog(props: {
     filepath: undefined,
     createdAt: new Date().toISOString(),
     createdBy: ctxCreatedBy,
-    status: 2, // default
+    status: null, // se asigna a PENDIENTE_REVISION desde catálogo
     requestId: null,
   });
 
@@ -259,11 +294,6 @@ export function CertificationDialog(props: {
     if (!form.requestId) return null;
     return (cr.contracts ?? []).find((x) => Number(x.requestId) === Number(form.requestId)) ?? null;
   }, [form.requestId, cr.contracts]);
-
-  const confirmCandidateRequest = () => {
-    if (!candidateContract) return;
-    setForm((f) => ({ ...f, requestId: Number(candidateContract.requestId) }));
-  };
 
   const clearConfirmedRequest = () => {
     setForm((f) => ({ ...f, requestId: null }));
@@ -283,13 +313,9 @@ export function CertificationDialog(props: {
 
     if (isCreate && !selected) {
       setForm(buildEmptyForm());
-      setCreatedCertificationId(null);
       setIsProcessing(false);
       docManagerRef.current?.clearSelected();
-
-      // reset request picker state
       setRequestSearch("");
-      setCandidateRequestId(null);
       setShowContractRequestDocs(false);
       return;
     }
@@ -307,18 +333,23 @@ export function CertificationDialog(props: {
         filepath: selected.filepath ?? null,
         createdAt: selected.createdAt ?? new Date().toISOString(),
         createdBy: selected.createdBy ?? ctxCreatedBy,
-        status: selected.status ?? 2,
+        status: selected.status ?? null,
       });
 
-      // set request picker candidate to current selection (si existe)
-      setCandidateRequestId(selected.requestId ?? null);
-
-      setCreatedCertificationId(null);
       setIsProcessing(false);
       docManagerRef.current?.clearSelected();
       setShowContractRequestDocs(false);
     }
   }, [open, selected, isCreate, ctxCreatedBy]);
+
+  // En CREATE, auto-asignar PENDIENTE_REVISION cuando carga el catálogo
+  useEffect(() => {
+    if (!isCreate || form.status != null || refTypes.length === 0) return;
+    const found = refTypes.find((rt: any) => (rt.name ?? "").toUpperCase() === "PENDIENTE_REVISION");
+    if (!found) return;
+    const id = found.id ?? found.refTypeId ?? found.typeId ?? found.valueId;
+    if (id != null) setForm((f) => ({ ...f, status: Number(id) }));
+  }, [refTypes, isCreate, form.status]);
 
   const title = useMemo(() => {
     if (isCreate) return "Nueva Certificación Financiera";
@@ -333,6 +364,15 @@ export function CertificationDialog(props: {
   }, [isCreate, isView]);
 
   const validateRequired = () => {
+    if (isCreate && pendingRevisionStatusId == null) {
+      toast({
+        title: "⚠️ Error de configuración",
+        description: "No se pudo cargar el estado inicial (PENDIENTE_REVISION). Recarga la página.",
+        variant: "destructive",
+      });
+      return false;
+    }
+
     // ✅ RequestId obligatorio (según tu requerimiento)
     if (!form.requestId) {
       toast({
@@ -351,7 +391,7 @@ export function CertificationDialog(props: {
       });
       return false;
     }
-    if (form.status === undefined || form.status === null) {
+    if (!isCreate && (form.status === undefined || form.status === null)) {
       toast({
         title: "⚠️ Estado requerido",
         description: "Selecciona un estado.",
@@ -366,98 +406,96 @@ export function CertificationDialog(props: {
     onOpenChange(false);
     setMode("create");
     setSelected(null);
-    setCreatedCertificationId(null);
     setIsProcessing(false);
     docManagerRef.current?.clearSelected();
     setForm(buildEmptyForm());
-
     setRequestSearch("");
-    setCandidateRequestId(null);
     setShowContractRequestDocs(false);
+    setRejectReason("");
+    setShowRejectInput(false);
   };
 
   // =========================================
-  // CREATE + upload orchestrator
+  // CREATE helpers
   // =========================================
-  const handleCreateAndUpload = async () => {
+  const buildCreatePayload = (): Omit<FinancialCertification, "certificationId"> => ({
+    requestId: form.requestId ?? null,
+    certCode: form.certCode!.trim(),
+    certNumber: form.certNumber!.trim(),
+    budget: form.budget!.trim(),
+    certBudgetDate: toEcuadorMidnightISO(form.certBudgetDate!),
+    rmuHour: form.rmuHour ?? 0,
+    rmuCon: form.rmuCon ?? 0,
+    filename: null,
+    filepath: null,
+    createdAt: new Date().toISOString(),
+    createdBy: ctxCreatedBy,
+    status: pendingRevisionStatusId ?? form.status ?? 0,
+  });
+
+  const extractCreatedId = (resp: any): number | null =>
+    resp?.data?.certificationId ??
+    resp?.data?.CertificationId ??
+    resp?.data?.id ??
+    resp?.data?.Id ??
+    null;
+
+  // =========================================
+  // Guardar — crea + sube documentos de forma atómica.
+  // Si la carga falla se elimina la certificación recién creada.
+  // =========================================
+  const handleGuardar = async () => {
     if (!validateRequired()) return;
     if (isProcessing) return;
 
-    const selectedCount = docManagerRef.current?.getSelectedCount() ?? 0;
-    if (selectedCount === 0) {
-      toast({
-        title: "⚠️ Sin archivos",
-        description: "Selecciona al menos un archivo en el orquestador antes de guardar.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsProcessing(true);
     try {
-      const payload: Omit<FinancialCertification, "certificationId"> = {
-        requestId: form.requestId ?? null,
-        certCode: form.certCode!.trim(),
-        certNumber: form.certNumber!.trim(),
-        budget: form.budget!.trim(),
-        certBudgetDate: toEcuadorMidnightISO(form.certBudgetDate!),
+      const resp: any = await createAsync(buildCreatePayload());
+      if (resp?.status !== "success") { setIsProcessing(false); return; }
 
-        rmuHour: form.rmuHour ?? 0,
-        rmuCon: form.rmuCon ?? 0,
-        filename: null,
-        filepath: null,
-        createdAt: new Date().toISOString(),
-        createdBy: ctxCreatedBy,
-        status: Number(form.status ?? 2),
-      };
-
-      const resp: any = await createAsync(payload);
-      if (resp?.status !== "success") {
-        setIsProcessing(false);
-        return;
-      }
-
-      const createdId: number | undefined =
-        resp?.data?.certificationId ??
-        resp?.data?.CertificationId ??
-        resp?.data?.id ??
-        resp?.data?.Id;
-
+      const createdId = extractCreatedId(resp);
       if (!createdId) {
-        toast({
-          title: "❌ No se obtuvo CertificationId",
-          description: "El backend no devolvió el id creado. Revisa el endpoint Create().",
-          variant: "destructive",
-        });
+        toast({ title: "❌ No se obtuvo CertificationId", description: "El backend no devolvió el id creado.", variant: "destructive" });
         setIsProcessing(false);
         return;
       }
 
-      setCreatedCertificationId(createdId);
+      const selectedCount = docManagerRef.current?.getSelectedCount() ?? 0;
+      if (selectedCount > 0) {
+        const uploadResult = await docManagerRef.current?.uploadAll(createdId);
 
-      const result = await docManagerRef.current?.uploadAll(createdId);
-      await docManagerRef.current?.refresh(createdId);
-
-      if (result?.success) {
-        toast({
-          title: "✅ Proceso completo",
-          description: `Creado #${createdId} y documentos subidos (OK: ${result.uploaded}).`,
-        });
-        close();
-      } else {
-        toast({
-          title: "⚠️ Registro creado, pero upload falló",
-          description: `Se creó #${createdId}. Revisa el resultado del upload.`,
-          variant: "destructive",
-        });
-        setIsProcessing(false);
+        if (!uploadResult || uploadResult.uploaded === 0) {
+          // Transacción compensatoria: revertir la certificación recién creada
+          try {
+            await FinancialCertificationAPI.delete(createdId);
+          } catch {
+            toast({
+              title: "⚠️ Error grave",
+              description: `La carga de documentos falló Y la reversión también. La certificación #${createdId} quedó sin documentos. Elimínela manualmente.`,
+              variant: "destructive",
+            });
+            setIsProcessing(false);
+            close();
+            return;
+          }
+          const errMsg =
+            uploadResult?.items?.[0]?.message ??
+            uploadResult?.message ??
+            "La carga de documentos falló.";
+          toast({
+            title: "❌ Certificación no guardada",
+            description: `${errMsg} El registro fue revertido automáticamente.`,
+            variant: "destructive",
+          });
+          setIsProcessing(false);
+          return;
+        }
       }
+
+      toast({ title: "✅ Certificación registrada", description: `Creada con ID #${createdId}.` });
+      close();
     } catch (e: unknown) {
-      toast({
-        title: "❌ Error inesperado",
-        description: parseApiError(e).message,
-        variant: "destructive",
-      });
+      toast({ title: "❌ Error inesperado", description: parseApiError(e).message, variant: "destructive" });
       setIsProcessing(false);
     }
   };
@@ -602,7 +640,7 @@ export function CertificationDialog(props: {
                 </Button>
               )}
 
-              {isView && (
+              {isView && isPendingRevision && (
                 <Button onClick={() => setMode("edit")} className="w-full sm:w-auto">
                   <Pencil className="h-4 w-4 mr-2" />
                   Editar
@@ -624,7 +662,7 @@ export function CertificationDialog(props: {
                 <CardTitle className="text-base">Solicitud de Contratación (Request ID)</CardTitle>
                 {form.requestId ? (
                   <Badge variant="secondary" className="w-fit">
-                    Confirmado: #{form.requestId}
+                    Seleccionado: #{form.requestId}
                   </Badge>
                 ) : (
                   <Badge variant="outline" className="w-fit">Sin selección</Badge>
@@ -641,18 +679,18 @@ export function CertificationDialog(props: {
                     value={requestSearch}
                     disabled={isView}
                     onChange={(e) => setRequestSearch(e.target.value)}
-                    placeholder="Ej: 1234, Departamento, Modalidad, Estado..."
+                    placeholder="Ej: 1234, Departamento, Modalidad..."
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Request ID (candidato)</Label>
+                  <Label>Request ID</Label>
                   <Select
                     disabled={isView || cr.listQ.isLoading || cr.listQ.isFetching}
-                    value={candidateRequestId ? String(candidateRequestId) : ""}
+                    value={form.requestId ? String(form.requestId) : ""}
                     onValueChange={(v) => {
                       const id = Number(v);
-                      setCandidateRequestId(Number.isFinite(id) ? id : null);
+                      setForm((f) => ({ ...f, requestId: Number.isFinite(id) ? id : null }));
                     }}
                   >
                     <SelectTrigger>
@@ -680,53 +718,28 @@ export function CertificationDialog(props: {
                 </div>
               </div>
 
-              {!isView && (
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <Button type="button" variant="outline" disabled={!candidateContract} onClick={confirmCandidateRequest}>
-                    Confirmar selección
-                  </Button>
-                  <Button type="button" variant="ghost" disabled={!form.requestId} onClick={clearConfirmedRequest}>
-                    Limpiar confirmado
-                  </Button>
-                </div>
+              {!isView && form.requestId && (
+                <Button type="button" variant="ghost" onClick={clearConfirmedRequest}>
+                  Limpiar selección
+                </Button>
               )}
 
               <div className="h-px bg-border" />
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Previsualización (candidato)</p>
-                  {candidateContract ? (
-                    <ContractRequestPreviewCard
-                      item={candidateContract}
-                      workModalityNameById={cr.workModalityNameById}
-                      departmentNameById={cr.departmentNameById}
-                    />
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      Selecciona un Request ID para ver el detalle.
-                    </p>
-                  )}
-                </div>
+              {confirmedContract ? (
+                <ContractRequestPreviewCard
+                  item={confirmedContract}
+                  workModalityNameById={cr.workModalityNameById}
+                  departmentNameById={cr.departmentNameById}
+                  onViewDocuments={handleViewContractRequestDocs}
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Selecciona un Request ID para ver el detalle.
+                </p>
+              )}
 
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Seleccionado (confirmado)</p>
-                  {confirmedContract ? (
-                    <ContractRequestPreviewCard
-                      item={confirmedContract}
-                      workModalityNameById={cr.workModalityNameById}
-                      departmentNameById={cr.departmentNameById}
-                      onViewDocuments={handleViewContractRequestDocs}
-                    />
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      Aún no has confirmado una solicitud.
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* ✅ Sección de documentos de CONTRACT_REQUEST (solo lectura) */}
+              {/* Documentos de CONTRACT_REQUEST (solo lectura) */}
               {showContractRequestDocs && confirmedContract && (
                 <div className="mt-4 pt-4 border-t space-y-3">
                   <div className="flex items-center justify-between">
@@ -838,21 +851,16 @@ export function CertificationDialog(props: {
             />
           </div>
 
-          <div>
-            <Label htmlFor="createdBy">Creado por (ID usuario)</Label>
-            <Input id="createdBy" type="number" value={Number(form.createdBy ?? ctxCreatedBy)} disabled />
-          </div>
-
-          {/* ✅ Estado desde TiposReferenciaAPI (NO es el tipo de archivo) */}
-          <div>
+          {/* Estado de la certificación — oculto en CREATE (se asigna PENDIENTE_REVISION automáticamente); en EDIT usa Aprobar/Rechazar */}
+          {!isCreate && <div>
             <Label>Estado *</Label>
             <Select
               value={form.status !== undefined && form.status !== null ? String(form.status) : ""}
               onValueChange={(val) => setForm((f) => ({ ...f, status: Number(val) }))}
-              disabled={isView || isLoadingRefTypes}
+              disabled={isView || isEdit || isLoadingRefTypes}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Seleccione un estado" />
+                <SelectValue placeholder={isLoadingRefTypes ? "Cargando..." : "Seleccione un estado"} />
               </SelectTrigger>
               <SelectContent>
                 {refTypes.map((rt: any) => {
@@ -867,17 +875,19 @@ export function CertificationDialog(props: {
               </SelectContent>
             </Select>
 
-            {isLoadingRefTypes && (
-              <p className="text-xs text-muted-foreground mt-1">Cargando estados...</p>
+            {isEdit && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Para cambiar el estado usa las acciones Aprobar / Rechazar.
+              </p>
             )}
             {refTypesError && (
               <p className="text-xs text-destructive mt-1">Error al cargar estados.</p>
             )}
-          </div>
+          </div>}
         </div>
 
         {/* =========================
-            CREATE BLOCK: primero upload, luego guardar (como pediste)
+            CREATE BLOCK: un solo botón "Guardar" — atómico
            ========================= */}
         {isCreate && (
           <div className="mt-8 space-y-4">
@@ -886,8 +896,8 @@ export function CertificationDialog(props: {
               label="Anexar Documentos"
               directoryCode={FINANCE_CERTIFICATION_DIRECTORY_CODE}
               entityType={FINANCE_CERTIFICATION_ENTITY_TYPE}
-              entityId={createdCertificationId ?? undefined}
-              entityReady={!!createdCertificationId}
+              entityId={undefined}
+              entityReady={false}
               allowSelectWhenNotReady={true}
               showInternalUploadButton={false}
               relativePath={relativePath}
@@ -896,60 +906,41 @@ export function CertificationDialog(props: {
               maxFiles={10}
               disabled={isCreatePending || isProcessing}
               roles={{ canUpload: true, canPreview: true, canDownload: true, canDelete: true }}
-              documentType={{ enabled: true, required: true }} // usa DOCUMENT_TYPE interno
+              documentType={{ enabled: true, required: true }}
             />
 
             <p className="text-xs text-muted-foreground">
-              Selecciona archivos aquí y luego presiona <b>Guardar</b>.
+              Los documentos se subirán junto al registro. Si la carga falla, el registro se revierte automáticamente.
             </p>
 
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pt-2">
-              <Badge variant="outline" className="text-xs w-fit">
-                entityId: {createdCertificationId ? `FINCERT:${createdCertificationId}` : "PENDING"}
-              </Badge>
-
-              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                <Button
-                  variant="outline"
-                  onClick={close}
-                  className="w-full sm:w-auto"
-                  disabled={isCreatePending || isProcessing}
-                >
-                  Cancelar
-                </Button>
-
-                <Button
-                  onClick={handleCreateAndUpload}
-                  disabled={isCreatePending || isProcessing}
-                  className="w-full sm:w-auto"
-                >
-                  {(isCreatePending || isProcessing) ? "Procesando..." : "Guardar"}
-                </Button>
-              </div>
+            <div className="flex flex-col sm:flex-row sm:justify-between gap-2 pt-2">
+              <Button
+                variant="outline"
+                onClick={close}
+                disabled={isCreatePending || isProcessing}
+                className="w-full sm:w-auto"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleGuardar}
+                disabled={isCreatePending || isProcessing}
+                className="w-full sm:w-auto"
+              >
+                {isProcessing ? "Guardando..." : "Guardar"}
+              </Button>
             </div>
           </div>
         )}
 
         {/* VIEW/EDIT docs */}
         {!isCreate && selected && (
-          <div className="mt-8">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <Label className="mb-2 block">Documentos (Orquestador)</Label>
-
-              <Button
-                variant="outline"
-                onClick={handleUploadSelectedExisting}
-                disabled={isView || isProcessing}
-                className="w-full sm:w-auto"
-                title={isView ? "Cambia a editar para subir" : "Subir archivos seleccionados"}
-              >
-                {isProcessing ? "Subiendo..." : "Subir seleccionados"}
-              </Button>
-            </div>
+          <div className="mt-8 space-y-3">
+            <Label className="block">Documentos</Label>
 
             <ReusableDocumentManager
               ref={docManagerRef}
-              label="Documentos (orquestador)"
+              label="Documentos"
               directoryCode={directoryCode}
               entityType="FINCERT"
               entityId={selected.certificationId}
@@ -961,13 +952,114 @@ export function CertificationDialog(props: {
               maxSizeMB={maxSizeMB}
               maxFiles={10}
               disabled={isProcessing}
-              roles={{ canUpload: true, canPreview: true, canDownload: true, canDelete: true }}
+              roles={{
+                canUpload: isEdit,
+                canDelete: isEdit,
+                canPreview: true,
+                canDownload: true,
+              }}
               documentType={{ enabled: true, required: true }}
             />
 
-            <p className="text-xs text-muted-foreground mt-2">
-              {isView ? "Para subir nuevos documentos, presiona Editar." : "Selecciona archivos y presiona Subir seleccionados."}
+            {isEdit && (
+              <Button
+                variant="outline"
+                onClick={handleUploadSelectedExisting}
+                disabled={isProcessing}
+                className="w-full sm:w-auto"
+              >
+                {isProcessing ? "Subiendo..." : "Subir seleccionados"}
+              </Button>
+            )}
+
+            <p className="text-xs text-muted-foreground">
+              {isView
+                ? "Para subir nuevos documentos, presiona Editar."
+                : "Selecciona archivos y presiona Subir."}
             </p>
+          </div>
+        )}
+
+        {/* Panel de Aprobar/Rechazar — solo en vista y cuando está PENDIENTE_REVISION */}
+        {isView && selected && isPendingRevision && (onApprove || onReject) && (
+          <div className="mt-6 border rounded-lg p-4 space-y-3 bg-muted/30">
+            {selected.requestSummary && (
+              <div className="text-sm grid grid-cols-3 gap-2 text-center mb-2">
+                <div className="bg-background rounded p-2">
+                  <p className="text-muted-foreground text-xs">Solicitados</p>
+                  <p className="font-bold text-lg">{selected.requestSummary.numberOfPeopleToHire}</p>
+                </div>
+                <div className="bg-background rounded p-2">
+                  <p className="text-muted-foreground text-xs">Contratados</p>
+                  <p className="font-bold text-lg">{selected.requestSummary.totalPeopleHired}</p>
+                </div>
+                <div className="bg-background rounded p-2">
+                  <p className="text-muted-foreground text-xs">Pendientes</p>
+                  <p className="font-bold text-lg text-primary">{selected.requestSummary.pendingCount}</p>
+                </div>
+              </div>
+            )}
+
+            <p className="text-sm font-medium">Decisión del Financiero</p>
+
+            {showRejectInput ? (
+              <div className="space-y-2">
+                <Textarea
+                  placeholder="Motivo del rechazo (requerido)"
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  rows={3}
+                />
+                <div className="flex gap-2">
+                  <Button
+                    variant="destructive"
+                    className="flex-1"
+                    disabled={!rejectReason.trim() || isRejectPending}
+                    onClick={() => {
+                      if (!selected.certificationId || !rejectReason.trim()) return;
+                      onReject?.(selected.certificationId, rejectReason.trim());
+                      setShowRejectInput(false);
+                      setRejectReason("");
+                      close();
+                    }}
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    {isRejectPending ? "Rechazando..." : "Confirmar rechazo"}
+                  </Button>
+                  <Button variant="outline" onClick={() => { setShowRejectInput(false); setRejectReason(""); }}>
+                    Cancelar
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                {onApprove && (
+                  <Button
+                    className="flex-1 bg-green-600 hover:bg-green-700"
+                    disabled={isApprovePending || isRejectPending}
+                    onClick={() => {
+                      if (!selected.certificationId) return;
+                      onApprove(selected.certificationId);
+                      close();
+                    }}
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    {isApprovePending ? "Aprobando..." : "Aprobar"}
+                  </Button>
+                )}
+                {onReject && (
+                  <Button
+                    variant="destructive"
+                    className="flex-1"
+                    disabled={isApprovePending || isRejectPending}
+                    onClick={() => setShowRejectInput(true)}
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Rechazar
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         )}
 

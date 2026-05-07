@@ -205,7 +205,14 @@ async function parseSuccessResponse<T>(
 
   apiLogger.logResponse(method, url, response, parsed, elapsedMs);
 
-  if (parsed && typeof parsed === 'object' && 'status' in (parsed as object)) {
+  // Solo tratar como ApiResponse si el campo status es exactamente 'success' o 'error'
+  // Evita confundir DTOs con campo status propio (ej: status: 'BORRADOR') con ApiResponse
+  if (
+    parsed &&
+    typeof parsed === 'object' &&
+    'status' in (parsed as object) &&
+    ((parsed as any).status === 'success' || (parsed as any).status === 'error')
+  ) {
     return parsed as ApiResponse<T>;
   }
 
@@ -351,6 +358,9 @@ export async function apiFetch<T = unknown>(
 
     let accessToken = tokenService.getAccessToken();
     let headers = buildHeaders(init.headers, accessToken);
+    // FormData requiere que el navegador genere el boundary de multipart/form-data.
+    // Si Content-Type está fijado explícitamente, el boundary no se incluye → 415.
+    if (init.body instanceof FormData) headers.delete('Content-Type');
 
     apiLogger.logRequest(method, url, headers, bodyForLog, startedEpoch);
 
@@ -363,6 +373,7 @@ export async function apiFetch<T = unknown>(
       if (newAccessToken) {
         accessToken = newAccessToken;
         headers = buildHeaders(init.headers, accessToken);
+        if (init.body instanceof FormData) headers.delete('Content-Type');
 
         apiLogger.logRequest(
           `${method} (RETRY)`,

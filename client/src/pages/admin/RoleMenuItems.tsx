@@ -1,4 +1,3 @@
-// src/pages/admin/RoleMenuItems.tsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -15,7 +14,7 @@ import {
 
 import { Settings, Save, ChevronRight, ChevronDown } from "lucide-react";
 import { RolesAPI, MenuItemsAPI, RoleMenuItemsAPI } from "@/lib/api";
-import type { ApiResponse } from "@/lib/api";
+import type { ApiResponse, PagedResult } from "@/lib/api";
 import type {
   Role,
   MenuItem,
@@ -28,21 +27,38 @@ import { parseApiError } from "@/lib/error-handling";
 /* =========================
  * Helpers
  * ========================= */
-function asArray<T>(v: unknown): T[] {
-  return Array.isArray(v) ? (v as T[]) : [];
-}
 
 type Node = MenuItem & { children?: Node[] };
+
+function normalizePagedItems<T>(resp: any): T[] {
+  if (!resp) return [];
+
+  const d = resp.data;
+
+  if (Array.isArray(d?.items)) return d.items as T[];
+  if (Array.isArray(d?.Items)) return d.Items as T[];
+
+  if (d?.success === true) {
+    if (Array.isArray(d?.data?.items)) return d.data.items as T[];
+    if (Array.isArray(d?.data?.Items)) return d.data.Items as T[];
+  }
+
+  if (Array.isArray(d)) return d as T[];
+  return [];
+}
 
 function buildTree(items: MenuItem[]): Node[] {
   const map = new Map<number, Node>();
   const roots: Node[] = [];
 
-  for (const it of items) map.set(it.id, { ...it, children: [] });
+  for (const it of items) {
+    map.set(it.id, { ...it, children: [] });
+  }
 
   for (const it of items) {
     const node = map.get(it.id)!;
     const p = it.parentId ?? null;
+
     if (p === null) {
       roots.push(node);
     } else {
@@ -54,7 +70,9 @@ function buildTree(items: MenuItem[]): Node[] {
 
   const sortByOrder = (arr: Node[]) => {
     arr.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-    arr.forEach((n) => n.children && n.children.length && sortByOrder(n.children));
+    arr.forEach((n) => {
+      if (n.children?.length) sortByOrder(n.children);
+    });
   };
 
   sortByOrder(roots);
@@ -127,42 +145,34 @@ export default function RoleMenuItemsPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
 
-  /* ====== Queries ======
-   * Corrección:
-   * - Cargar más registros para evitar truncar asignaciones/menús
-   * - Si tu volumen crece mucho, conviene migrar a endpoints paginados o por rol
-   */
-  const { data: rolesResp } = useQuery<ApiResponse<Role[]>>({
+  const { data: rolesResp } = useQuery<ApiResponse<PagedResult<Role>>>({
     queryKey: ["roles"],
     queryFn: () => RolesAPI.list(1, 10000),
     refetchOnWindowFocus: false,
   });
 
-  const { data: menusResp } = useQuery<ApiResponse<MenuItem[]>>({
+  const { data: menusResp } = useQuery<ApiResponse<PagedResult<MenuItem>>>({
     queryKey: ["menu-items"],
     queryFn: () => MenuItemsAPI.list(1, 10000),
     refetchOnWindowFocus: false,
   });
 
-  const { data: roleMenusResp, isLoading } = useQuery<ApiResponse<RoleMenuItem[]>>({
+  const { data: roleMenusResp, isLoading } = useQuery<ApiResponse<PagedResult<RoleMenuItem>>>({
     queryKey: ["role-menu-items"],
     queryFn: () => RoleMenuItemsAPI.list(1, 10000),
     refetchOnWindowFocus: false,
   });
 
   const roles: Role[] = useMemo(() => {
-    if (!rolesResp || (rolesResp as any).status === "error") return [];
-    return asArray<Role>((rolesResp as any).data);
+    return normalizePagedItems<Role>(rolesResp);
   }, [rolesResp]);
 
   const allMenus: MenuItem[] = useMemo(() => {
-    if (!menusResp || (menusResp as any).status === "error") return [];
-    return asArray<MenuItem>((menusResp as any).data).filter((m) => !m.isDeleted);
+    return normalizePagedItems<MenuItem>(menusResp).filter((m) => !m.isDeleted);
   }, [menusResp]);
 
   const roleMenuItems: RoleMenuItem[] = useMemo(() => {
-    if (!roleMenusResp || (roleMenusResp as any).status === "error") return [];
-    return asArray<RoleMenuItem>((roleMenusResp as any).data);
+    return normalizePagedItems<RoleMenuItem>(roleMenusResp);
   }, [roleMenusResp]);
 
   const activeRoles = useMemo(
@@ -196,11 +206,6 @@ export default function RoleMenuItemsPage() {
     }
   }, [tree, expanded.size]);
 
-  /* Corrección clave:
-   * Antes dependía solo de selectedRoleId
-   * Ahora también depende de roleMenuItems y allIds
-   * para recargar selección cuando terminen de llegar los datos
-   */
   useEffect(() => {
     if (!selectedRoleId) {
       setSelectedIds(new Set());
@@ -583,7 +588,6 @@ export default function RoleMenuItemsPage() {
                   onClick={handleResetFromServer}
                   disabled={!selectedRoleId}
                   className="h-8 px-2 text-xs whitespace-nowrap"
-                  title="Descartar cambios locales y recuperar asignaciones desde servidor"
                 >
                   Reset desde servidor
                 </Button>

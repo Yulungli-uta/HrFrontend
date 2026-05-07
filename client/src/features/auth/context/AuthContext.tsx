@@ -1,5 +1,5 @@
 /**
- * features/auth/context/AuthContext.tsx
+ * features/src/features/auth/context/AuthContext.tsx
  *
  * Fuente oficial de verdad para el estado de autenticación de la aplicación.
  *
@@ -60,6 +60,7 @@ export interface EmployeeDetails {
   lastName: string;
   idCard: string;
   email: string;
+  personnelEmail: string;
   employeeType: number;
   department: string;
   scheduleID: number;
@@ -97,6 +98,7 @@ const equalEmployeeDetails = (
   return (
     a.employeeID === b.employeeID &&
     a.email === b.email &&
+    a.personnelEmail === b.personnelEmail &&
     a.firstName === b.firstName &&
     a.lastName === b.lastName &&
     a.department === b.department &&
@@ -125,12 +127,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const { isConnected, lastMessage } = useNotificationWebSocket(APP_CLIENT_ID);
 
   // Refs para evitar closures obsoletos en callbacks asíncronos
-  const logoutRef = useRef<() => void>(() => {});
+  const logoutRef = useRef<() => void>(() => { });
   const doLoginStateRef = useRef<
     (u: UserSession, showToast?: boolean) => Promise<void>
-  >(async () => {});
+  >(async () => { });
   const fetchEmployeeDetailsRef = useRef<(email: string) => Promise<void>>(
-    async () => {}
+    async () => { }
   );
 
   const processedLoginEventsRef = useRef<Set<string>>(new Set());
@@ -238,9 +240,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (showToast) {
         toast({
           title: "Inicio de sesión exitoso",
-          description: `Bienvenido ${
-            userInfo.displayName || userInfo.email || ""
-          }`,
+          description: `Bienvenido ${userInfo.displayName || userInfo.email || ""
+            }`,
         });
       }
     },
@@ -383,6 +384,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const wsUser: UserSession = {
           id: (data as any).userId,
           email: (data as any).email,
+          personnelEmail: (data as any).personnelEmail,
           username: (data as any).username ?? (data as any).email ?? "",
           fullName: (data as any).fullName ?? (data as any).displayName ?? "",
           displayName: (data as any).displayName,

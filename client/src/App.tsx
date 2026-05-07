@@ -109,7 +109,15 @@ const AttendanceCrossReportPage = lazy(
   () => import("@/pages/reports/AttendanceCrossReport")
 );
 
+// Acciones de Personal
+const PersonnelActionsPage = lazy(() => import("@/pages/PersonnelActions"));
+const PersonnelActionDetailPage = lazy(() => import("@/pages/PersonnelActionDetail"));
+
+// Detalle de Contrato
+const ContractDetailPage = lazy(() => import("@/pages/ContractDetail"));
+
 const AzureManagementPage = lazy(() => import("@/pages/admin/AzureManagement"));
+const LocalADManagementPage = lazy(() => import("@/pages/admin/LocalADManagement"));
 const JobexecutionPage = lazy(() => import("@/pages/admin/Jobexecution"));
 
 //Paginas de Docflow
@@ -260,11 +268,36 @@ function AppRouter() {
             )}
           </Route>
 
+          {/* ===== Acciones de Personal ===== */}
+          <Route path="/personnel-actions">
+            {() => (
+              <ProtectedRoute requiredPath="/personnel-actions">
+                <PersonnelActionsPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          <Route path="/personnel-actions/:id">
+            {() => (
+              <ProtectedRoute requiredPath="/personnel-actions">
+                <PersonnelActionDetailPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
           {/* ===== Contratos y Permisos ===== */}
           <Route path="/contracts">
             {() => (
               <ProtectedRoute requiredPath="/contracts">
                 <ContractsPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          <Route path="/contracts/:id">
+            {() => (
+              <ProtectedRoute requiredPath="/contracts">
+                <ContractDetailPage />
               </ProtectedRoute>
             )}
           </Route>
@@ -572,6 +605,14 @@ function AppRouter() {
             {() => (
               <ProtectedRoute requiredPath="/admin/AzureMagnament">
                 <AzureManagementPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          <Route path="/admin/local-ad">
+            {() => (
+              <ProtectedRoute requiredPath="/admin/local-ad">
+                <LocalADManagementPage />
               </ProtectedRoute>
             )}
           </Route>

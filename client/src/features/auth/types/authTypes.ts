@@ -34,6 +34,7 @@ export interface UserSession {
   username: string;
   fullName: string;
   email: string;
+  personnelEmail: string;
   /** @deprecated Usar roles[] en su lugar */
   role?: string;
   department?: string;

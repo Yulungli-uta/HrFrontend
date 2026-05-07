@@ -150,12 +150,7 @@ export default function MenuItemsPage() {
     error,
   } = useQuery<ApiResponse<unknown>, Error, MenuItem[]>({
     queryKey: ["menu-items"],
-    queryFn: async () => {
-      const res = await MenuItemsAPI.list();
-      // eslint-disable-next-line no-console
-      console.debug("[MenuItemsPage] MenuItemsAPI.list() raw:", res);
-      return res;
-    },
+    queryFn: async () => MenuItemsAPI.list(1, 10000),
     select: (res) => {
       if (!res) return [];
       // @ts-ignore

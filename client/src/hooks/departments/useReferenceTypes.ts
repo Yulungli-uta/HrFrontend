@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { TiposReferenciaAPI, handleApiError, type ApiResponse } from "@/lib/api";
 import type { ReferenceType } from "@/types/department";
 
-const DEPT_TYPE_CATEGORY = "DEPARTAMENT_TYPE";
+const DEPT_TYPE_CATEGORY = "DEPARTMENT_TYPE";
 
 export const useReferenceTypes = () => {
   const [refTypes, setRefTypes] = useState<ReferenceType[]>([]);

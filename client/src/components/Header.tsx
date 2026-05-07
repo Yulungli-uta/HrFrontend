@@ -2,7 +2,7 @@
 // Diseño UX profesional con soporte completo dark/light mode.
 // Principio: NUNCA usar colores hardcodeados. Usar siempre variables semánticas del tema.
 import { Button } from "@/components/ui/button";
-import { LogOut, User, Menu, UserCog, ChevronDown } from "lucide-react";
+import { LogOut, User, Menu, UserCog, KeyRound, ChevronDown } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -141,6 +141,17 @@ export default function Header({
               >
                 <UserCog className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <span>Actualizar datos</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={() => navigate("/profile/change-password")}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm
+                           text-foreground cursor-pointer
+                           hover:bg-accent hover:text-accent-foreground
+                           transition-colors duration-150"
+              >
+                <KeyRound className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span>Cambiar contraseña</span>
               </DropdownMenuItem>
 
               <DropdownMenuSeparator className="bg-border my-1" />

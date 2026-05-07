@@ -10,10 +10,11 @@ import { contractRequestService, type SelectItem } from "@/services/contractRequ
 
 const LIST_KEY = ["/api/v1/rh/cv/contract-request"] as const;
 
-function statusVariantFromStatusId(statusId?: number | null): StatusVariant {
-  if (statusId === 4) return "destructive";
-  if (statusId === 2) return "secondary";
-  if (statusId === 0) return "outline";
+function statusVariantFromName(statusName?: string | null): StatusVariant {
+  const name = (statusName ?? "").toUpperCase();
+  if (name === "CERT_RECHAZADA" || name === "ANULADO") return "destructive";
+  if (name === "PENDIENTE_CERT_FINANCIERA" || name === "PENDIENTE_CONTRATACION") return "secondary";
+  if (name === "COMPLETADO") return "outline";
   return "default";
 }
 
@@ -74,8 +75,8 @@ export function useContractRequest(directoryCode: string) {
   const contracts: UIContractRequest[] = useMemo(() => {
     if (listQ.data?.status !== "success") return [];
     return (listQ.data.data ?? []).map((x) => {
-      const text = statusNameById.get(Number(x.status)) ?? "Desconocido";
-      const variant = statusVariantFromStatusId(x.status);
+      const text = x.statusName ?? statusNameById.get(Number(x.status)) ?? "Desconocido";
+      const variant = statusVariantFromName(x.statusName);
       return { ...x, statusText: text, statusVariant: variant };
     });
   }, [listQ.data, statusNameById]);
@@ -87,16 +88,38 @@ export function useContractRequest(directoryCode: string) {
       if (payload.status == null) throw new Error("Seleccione el estado.");
 
       const people = Number(payload.numberOfPeopleToHire);
-      if (!Number.isFinite(people) || people < 1) {
-        throw new Error("El número de personas a contratar debe ser mayor o igual a 1.");
+      if (!Number.isFinite(people) || people < 1 || !Number.isInteger(people)) {
+        throw new Error("El número de personas debe ser un entero mayor a 0.");
       }
 
       const hours = Number(payload.numberHour);
-      if (!Number.isFinite(hours) || hours < 0) {
-        throw new Error("El número de horas no puede ser negativo.");
+      if (!Number.isFinite(hours) || hours <= 0) {
+        throw new Error("El número de horas debe ser mayor a 0.");
       }
 
       return contractRequestService.createAndGetId(payload);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: LIST_KEY });
+    },
+  });
+
+  const updateMut = useMutation({
+    mutationFn: async ({ id, payload }: { id: number; payload: ContractRequestCreate }) => {
+      if (!payload.workModalityId) throw new Error("Seleccione la modalidad de trabajo.");
+      if (!payload.departmentId) throw new Error("Seleccione el departamento.");
+
+      const people = Number(payload.numberOfPeopleToHire);
+      if (!Number.isFinite(people) || people < 1 || !Number.isInteger(people)) {
+        throw new Error("El número de personas debe ser un entero mayor a 0.");
+      }
+
+      const hours = Number(payload.numberHour);
+      if (!Number.isFinite(hours) || hours <= 0) {
+        throw new Error("El número de horas debe ser mayor a 0.");
+      }
+
+      return contractRequestService.update(id, payload);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: LIST_KEY });
@@ -123,5 +146,6 @@ export function useContractRequest(directoryCode: string) {
     directoryUi,
 
     createMut,
+    updateMut,
   };
 }

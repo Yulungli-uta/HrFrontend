@@ -15,6 +15,7 @@ interface DepartmentsTableProps {
   onEdit: (department: Department) => void;
   onRefetch: () => void;
   getDepartmentTypeName: (type?: number | string | null) => string;
+  getDepartmentScopeName: (scope?: number | null) => string;
 }
 
 export const DepartmentsTable = ({
@@ -27,7 +28,8 @@ export const DepartmentsTable = ({
   onToggleExpand,
   onEdit,
   onRefetch,
-  getDepartmentTypeName
+  getDepartmentTypeName,
+  getDepartmentScopeName,
 }: DepartmentsTableProps) => {
   if (loading) {
     return (
@@ -65,7 +67,7 @@ export const DepartmentsTable = ({
           <TableRow>
             <TableHead className="min-w-[200px]">Nombre</TableHead>
             <TableHead className="hidden sm:table-cell">Código</TableHead>
-            <TableHead className="hidden md:table-cell">Tipo</TableHead>
+            <TableHead className="hidden md:table-cell">Tipo / Ámbito</TableHead>
             <TableHead className="w-[100px]">Estado</TableHead>
             <TableHead className="w-[120px] text-right">Acciones</TableHead>
           </TableRow>
@@ -81,6 +83,7 @@ export const DepartmentsTable = ({
               onToggleExpand={onToggleExpand}
               onEdit={onEdit}
               getDepartmentTypeName={getDepartmentTypeName}
+              getDepartmentScopeName={getDepartmentScopeName}
             />
           ))}
         </TableBody>

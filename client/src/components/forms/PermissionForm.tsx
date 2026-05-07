@@ -716,8 +716,12 @@ export default function PermissionForm({
           if (selectedCount > 0) {
             const result = await docManagerRef.current?.uploadAll(String(editingId));
             await docManagerRef.current?.refresh(String(editingId));
-            if (!result?.success) {
-              throw new Error(result?.message ?? "Permiso actualizado, pero la carga de documentos falló.");
+            if (!result || result.uploaded === 0) {
+              const errMsg =
+                result?.items?.[0]?.message ??
+                result?.message ??
+                "La carga de documentos falló.";
+              throw new Error(`Permiso actualizado, pero los documentos no se cargaron: ${errMsg}`);
             }
             docManagerRef.current?.clearSelected();
           }
@@ -735,12 +739,24 @@ export default function PermissionForm({
         }
 
         const result = await docManagerRef.current?.uploadAll(createdId);
-        await docManagerRef.current?.refresh(createdId);
 
-        if (!result?.success) {
-          throw new Error(result?.message ?? "Permiso creado, pero la carga de documentos falló.");
+        if (!result || result.uploaded === 0) {
+          // Transacción compensatoria: revertir el permiso recién creado.
+          try {
+            await (PermisosAPI as any).delete(Number(createdId));
+          } catch {
+            throw new Error(
+              `La carga de documentos falló Y la reversión también. El permiso ID ${createdId} quedó sin documentos. Elimínelo manualmente.`
+            );
+          }
+          const errMsg =
+            result?.items?.[0]?.message ??
+            result?.message ??
+            "La carga de documentos falló.";
+          throw new Error(`El permiso no fue creado: ${errMsg}`);
         }
 
+        await docManagerRef.current?.refresh(createdId);
         docManagerRef.current?.clearSelected();
       }
 

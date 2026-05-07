@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { RolesAPI, UserRolesAPI } from "@/lib/api";
-import type { ApiResponse } from "@/lib/api";
+import type { ApiResponse, PagedResult } from "@/lib/api";
 import type { Role, CreateUserRoleDto } from "@/features/auth";
 import { parseApiError } from '@/lib/error-handling';
 
@@ -57,14 +57,14 @@ export default function AssignRoleForm({
 
   // Roles
   const { data: rolesResponse, isLoading: rolesLoading } = useQuery<
-    ApiResponse<Role[]>
+    ApiResponse<PagedResult<Role>>
   >({
     queryKey: ["roles"],
-    queryFn: () => RolesAPI.list(),
+    queryFn: () => RolesAPI.list(1, 10000),
   });
 
-  const roles = rolesResponse?.status === "success" ? rolesResponse.data : [];
-  const activeRoles = roles.filter((r) => r.isActive && !r.isDeleted);
+  const roles = rolesResponse?.status === "success" ? (rolesResponse.data?.items ?? []) : [];
+  const activeRoles = roles.filter((r: Role) => r.isActive && !r.isDeleted);
 
   // Mutación (usa assign, no create)
   const assignMutation = useMutation({

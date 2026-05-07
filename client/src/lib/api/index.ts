@@ -1,95 +1,42 @@
 /**
  * Punto de entrada centralizado para todas las APIs del sistema.
  *
- * ESTRUCTURA REFACTORIZADA:
+ * ESTRUCTURA ORGANIZADA POR REVISION FUNCIONAL
  *   src/lib/api/
- *   ├── index.ts              ← este archivo (barrel)
- *   ├── core/
- *   │   ├── config.ts         ← API_CONFIG, resolveBaseUrl
- *   │   ├── fetch.ts          ← apiFetch, ApiResponse, ApiError
- *   │   ├── logger.ts         ← ApiLogger (singleton)
- *   │   └── pagination.ts     ← PagedRequest, PagedResult, createApiService/createCrudService
- *   ├── services/
- *   │   ├── auth.ts           ← AuthAPI, AppAuthAPI, usuarios/roles/menús
- *   │   ├── employees.ts      ← PersonasAPI (PersonDto), EmpleadosAPI, Vistas, CV básico
- *   │   ├── attendance.ts     ← MarcacionesAPI, PermisosAPI, VacacionesAPI, etc.
- *   │   ├── contracts.ts      ← ContratosAPI, ContractsRHAPI, ContractTypeAPI
- *   │   ├── cv.ts             ← PublicacionesAPI, CapacitacionesAPI, etc.
- *   │   ├── planning.ts       ← TimePlanningsAPI, ScheduleChangePlansAPI
- *   │   ├── payroll.ts        ← NominaAPI, PayrollDiscountsAPI, etc.
- *   │   ├── files.ts          ← FileManagementAPI, DocumentsAPI
- *   │   ├── geo.ts            ← PaisesAPI, ProvinciasAPI, CantonesAPI
- *   │   └── system.ts         ← HealthAPI, SistemaAPI, AuditoriaAPI
- *   └── utils/
- *       ├── error-handling.ts ← handleApiError, parseApiError, unwrapApiResponse
- *       └── auth-token.ts     ← setAuthToken, getAuthToken, buildAuthHeader
- *
- * USO:
- *   import { PersonasAPI, PersonDto, setAuthToken } from '@/lib/api';
+ *   ├── index.ts                  ← barrel principal
+ *   ├── core/                     ← cliente HTTP, configuracion y paginacion
+ *   ├── utils/                    ← helpers de errores y token
+ *   └── services/
+ *       ├── security.ts           ← autenticacion, usuarios, roles, permisos, sesiones
+ *       ├── people.ts             ← persona, empleado, departamentos, facultades, vistas
+ *       ├── cv.ts                 ← hoja de vida, curriculum, expediente e instituciones
+ *       ├── contracts.ts          ← contratos y relaciones contractuales
+ *       ├── attendance.ts         ← asistencia, permisos, vacaciones, horarios y recuperacion
+ *       ├── planning.ts           ← planificaciones y cambios de horario
+ *       ├── payroll.ts            ← nomina y lineas de nomina
+ *       ├── calculations.ts       ← calculos de asistencia, descuentos, subsidios y recovery
+ *       ├── catalogs.ts           ← tipos de referencia y geografia maestra
+ *       ├── documents.ts          ← archivos y documentos
+ *       ├── holidays.ts           ← feriados
+ *       ├── views.ts              ← vistas SQL expuestas como API
+ *       ├── reports.ts            ← generacion/descarga de reportes
+ *       ├── system.ts             ← salud, sistema y auditoria
+ *       └── departmentAuthorities.ts ← autoridades de departamento
  */
-
-// =============================================================================
-// Core: cliente HTTP, tipos y configuración
-// =============================================================================
 
 export { apiFetch } from './core/fetch';
 export type { ApiResponse, ApiError } from './core/fetch';
-
 export { API_CONFIG, resolveBaseUrl } from './core/config';
-
-export {
-  createApiService,
-  createCrudService, // alias de compatibilidad
-} from './core/pagination';
+export { createApiService, createCrudService } from './core/pagination';
 export type { PagedRequest, PagedResult } from './core/pagination';
 
-// =============================================================================
-// Utils: manejo de errores y autenticación
-// =============================================================================
+export { handleApiError, parseApiError, unwrapApiResponse } from './utils/error-handling';
+export { setAuthToken, getAuthToken, buildAuthHeader } from './utils/auth-token';
 
-export {
-  handleApiError,
-  parseApiError,
-  unwrapApiResponse,
-} from './utils/error-handling';
+// Seguridad
+export * from './services/security';
 
-export {
-  setAuthToken,
-  getAuthToken,
-  buildAuthHeader,
-} from './utils/auth-token';
-
-// =============================================================================
-// Autenticación y gestión de usuarios/roles/menús
-// =============================================================================
-
-export {
-  AuthAPI,
-  AppAuthAPI,
-  AuthUsersAPI,
-  RolesAPI,
-  UserRolesAPI,
-  MenuItemsAPI,
-  RoleMenuItemsAPI,
-  PasswordAPI,
-} from './services/auth';
-
-export type {
-  LoginRequest,
-  RefreshRequest,
-  ValidateTokenRequest,
-  AppAuthRequest,
-  LegacyAuthRequest,
-  LoginResponse,
-  UserInfo,
-  AzureAuthUrlResponse,
-} from './services/auth';
-
-// =============================================================================
-// Recursos humanos: Personas, Empleados, Departamentos, Vistas
-// CORRECCIÓN: PersonDto es el tipo real del backend (incluye personId, identType)
-// =============================================================================
-
+// Personas y estructura organizacional
 export {
   PersonasAPI,
   EmpleadosAPI,
@@ -97,26 +44,20 @@ export {
   FacultadesAPI,
   VistaEmpleadosAPI,
   VistaDetallesEmpleadosAPI,
-  DireccionesAPI,
-  ContactosEmergenciaAPI,
-  CargasFamiliaresAPI,
-  CuentasBancariasAPI,
-  LibrosAPI,
-  EnfermedadesCatastroficasAPI,
-} from './services/employees';
-
+} from './services/people';
 export type {
   PersonDto,
   PersonCreateDto,
   ContractTypeStatDto,
   EmployeeCompleteStatsDto,
-} from './services/employees';
+} from './services/people';
 
-// =============================================================================
-// Asistencia, marcaciones, permisos y vacaciones
-// =============================================================================
+// Hoja de vida / curriculum
+export * from './services/cv';
+export type { AttendanceCalculationRequestDto as CvAttendanceRequestDto } from './services/cv';
 
-export {
+// Asistencia
+export { 
   MarcacionesAPI,
   MarcacionesEspecializadasAPI,
   JustificacionesMarcacionesAPI,
@@ -134,58 +75,19 @@ export {
   TimeBalanceAPI,
   TimeAPI,
 } from './services/attendance';
-
 export type { TimeResponse } from './services/attendance';
 
-// =============================================================================
-// Contratos, nómina y actividades
-// =============================================================================
+// Contratos y relaciones contractuales
+export * from './services/contracts';
+export type { PersonnelActionTypeDto } from './services/contracts';
 
-export {
-  ContratosAPI,
-  ContractsRHAPI,
-  ContractTypeAPI,
-  ContractRequestAPI,
-  HistorialSalarialAPI,
-  NominaAPI,
-  LineasNominaAPI,
-  MovimientosPersonalAPI,
-  FinancialCertificationAPI,
-  ActivityAPI,
-  AdditionalActivityAPI,
-  DegreeAPI,
-  JobActivityAPI,
-  OccupationalGroupAPI,
-} from './services/payroll';
-
-// =============================================================================
-// Hoja de vida, justificaciones, publicaciones y parámetros
-// =============================================================================
-
-export {
-  JustificationsAPI,
-  AreaConocimientoAPI,
-  PublicacionesAPI,
-  NivelesEducativosAPI,
-  CapacitacionesAPI,
-  ExperienciasLaboralesAPI,
-  DirectoryParametersAPI,
-  ParametersAPI,
-} from './services/cv';
-
-export type { AttendanceCalculationRequestDto as CvAttendanceRequestDto } from './services/cv';
-
-// =============================================================================
-// Planificación de tiempo y cambios de horario
-// =============================================================================
-
+// Planificacion
 export {
   TimePlanningsAPI,
   TimePlanningEmployeesAPI,
   TimePlanningExecutionsAPI,
   ScheduleChangePlansAPI,
 } from './services/planning';
-
 export type {
   TimePlanningCreateDTO,
   TimePlanningEmployeeCreateDTO,
@@ -194,10 +96,10 @@ export type {
   TimePlanningExecutionUpdateDTO,
 } from './services/planning';
 
-// =============================================================================
-// Cálculos de asistencia, nómina y recuperación
-// =============================================================================
+// Nomina
+export { NominaAPI, LineasNominaAPI } from './services/payroll';
 
+// Calculos
 export {
   AttendanceCalculationAPI,
   OvertimePriceAPI,
@@ -205,81 +107,64 @@ export {
   PayrollSubsidiesAPI,
   RecoveryAPI,
 } from './services/calculations';
+export type { AttendanceCalculationRequestDto, PayrollPeriodRequestDto } from './services/calculations';
 
-export type {
-  AttendanceCalculationRequestDto,
-  PayrollPeriodRequestDto,
-} from './services/calculations';
-
-// =============================================================================
-// Vistas SQL de asistencia y horarios
-// =============================================================================
-
+// Vistas
 export {
   VwAttendanceDayAPI,
   VwPunchDayAPI,
   VwLeaveWindowsAPI,
   VwEmployeeScheduleAtDateAPI,
+  VwDepartmentWithTypeAPI,
+  VwJobWithDegreeAndGroupAPI,
+  VwJobActivityAPI,
+} from './services/views';
+export type {
+  VwDepartmentWithType,
+  VwJobWithDegreeAndGroup,
+  VwJobActivity,
 } from './services/views';
 
-// =============================================================================
-// Gestión de archivos y documentos
-// =============================================================================
+// Documentos
+export { FileManagementAPI, DocumentsAPI } from './services/documents';
+export type { FileUploadResponseDto, FileDeleteResponseDto } from './services/documents';
 
-export { FileManagementAPI, DocumentsAPI } from './services/files';
-
-export type {
-  FileUploadResponseDto,
-  FileDeleteResponseDto,
-} from './services/files';
-
-// =============================================================================
 // Feriados
-// =============================================================================
-
 export { HolidaysAPI } from './services/holidays';
 export type { HolidayResponseDTO } from './services/holidays';
 
-// =============================================================================
-// Catálogos y datos de referencia
-// =============================================================================
+// Catalogos y geografia maestra
+export { TiposReferenciaAPI, PaisesAPI, ProvinciasAPI, CantonesAPI } from './services/catalogs';
+export type { RefType } from './services/catalogs';
 
-export {
-  TiposReferenciaAPI,
-  CargosAPI,
-  CargosEspecializadosAPI,
-  InstitucionesAPI,
-  PaisesAPI,
-  ProvinciasAPI,
-  CantonesAPI,
-} from './services/geo';
-
-export type { RefType } from './services/geo';
-
-// =============================================================================
-// Sistema, salud y auditoría
-// =============================================================================
-
+// Sistema y reportes
 export { HealthAPI, SistemaAPI, AuditoriaAPI } from './services/system';
-
 export type { StatsResponse } from './services/system';
-
-// =============================================================================
-// Reportes
-// =============================================================================
-
 export { reportService, downloadBlob, ReportError } from './services/reports';
 
-// =============================================================================
-// Gestión de UserEmployees (vinculación usuario-empleado)
-// =============================================================================
-export { UserEmployeesAPI } from './services/auth';
-export type { CreateUserEmployeeDto, UpdateUserEmployeeDto } from './services/auth';
-
-// =============================================================================
-// Autoridades de Departamento
-// =============================================================================
+// Autoridades de departamento
 export { DepartmentAuthoritiesAPI } from './services/departmentAuthorities';
+
+// Plantillas de documentos y documentos generados
+export {
+  PersonnelActionsAPI,
+  DocumentTemplatesAPI,
+  GeneratedDocumentsAPI,
+} from './services/documentTemplates';
+export type {
+  PersonnelActionDto,
+  PersonnelActionCreateDto,
+  PersonnelActionUpdateDto,
+  PersonnelActionApproveDto,
+  DocumentTemplateDto,
+  DocumentTemplateCreateDto,
+  DocumentTemplateUpdateDto,
+  DocumentTemplateFieldDto,
+  DocumentTemplateFieldCreateDto,
+  GeneratedDocumentDto,
+  GeneratedDocumentCreateDto,
+  GeneratedDocumentApproveDto,
+} from './services/documentTemplates';
 export type {
   DepartmentAuthorityDto,
   DepartmentAuthorityCreateDto,

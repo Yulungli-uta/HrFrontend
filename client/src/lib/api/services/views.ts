@@ -1,3 +1,12 @@
+/**
+ * Archivo: src/lib/api/services/views.ts
+ *
+ * DESCRIPCION ESTRUCTURAL
+ * - Archivo conservado dentro del bloque funcional correspondiente.
+ * - Se mantiene la implementacion original y solo se agrega esta cabecera descriptiva
+ *   para facilitar ubicacion y revision del servicio.
+ */
+
 // src/lib/api/services/views.ts
 
 /**
@@ -7,6 +16,65 @@
 
 import { apiFetch } from '../core/fetch';
 import type { ApiResponse } from '../core/fetch';
+
+// =============================================================================
+// Constantes de rutas base
+// =============================================================================
+
+const HR_VIEWS_BASE = {
+  departments: '/api/v1/rh/vw-departments',
+  jobActivities: '/api/v1/rh/vw-job-activities',
+  jobs: '/api/v1/rh/vw-jobs',
+} as const;
+
+// =============================================================================
+// Tipos
+// =============================================================================
+
+export interface VwDepartmentWithType {
+  departmentID: number;
+  code: string;
+  departmentName: string;
+  shortName?: string | null;
+  parentID?: number | null;
+  parentDepartmentName?: string | null;
+  departmentTypeID: number;
+  departmentTypeName: string;
+  departmentTypeDescription?: string | null;
+  departmentScopeID?: number | null;
+  departmentScopeName?: string | null;
+  departmentScopeDescription?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  location?: string | null;
+  deanDirector?: number | null;
+  budgetCode?: string | null;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface VwJobActivity {
+  jobID: number;
+  jobDescription?: string | null;
+  jobTypeName: string;
+  occupationalGroup: string;
+  activitiesID: number;
+  activityDescription?: string | null;
+  activitiesType: string;
+  activityAssignmentActive: boolean;
+}
+
+export interface VwJobWithDegreeAndGroup {
+  jobID: number;
+  jobDescription?: string | null;
+  jobTypeName?: string | null;
+  groupID?: number | null;
+  occupationalGroup?: string | null;
+  rmu?: number | null;
+  degreeID?: number | null;
+  degree?: string | null;
+  degreeIsActive?: boolean | null;
+}
 
 // =============================================================================
 // API de Vista de Días de Asistencia
@@ -75,4 +143,61 @@ export const VwEmployeeScheduleAtDateAPI = {
     apiFetch<any>(
       `/api/v1/rh/cv/vw-employee-schedule-at-date/by-date?date=${encodeURIComponent(date)}`
     ),
+};
+
+// =============================================================================
+// API de Vista de Departamentos con Tipo
+// =============================================================================
+
+export const VwDepartmentWithTypeAPI = {
+  getAll: (): Promise<ApiResponse<VwDepartmentWithType[]>> =>
+    apiFetch<VwDepartmentWithType[]>(HR_VIEWS_BASE.departments),
+
+  getActive: (): Promise<ApiResponse<VwDepartmentWithType[]>> =>
+    apiFetch<VwDepartmentWithType[]>(`${HR_VIEWS_BASE.departments}/active`),
+
+  getByType: (typeId: number): Promise<ApiResponse<VwDepartmentWithType[]>> =>
+    apiFetch<VwDepartmentWithType[]>(`${HR_VIEWS_BASE.departments}/by-type/${typeId}`),
+
+  getByScope: (scopeId: number): Promise<ApiResponse<VwDepartmentWithType[]>> =>
+    apiFetch<VwDepartmentWithType[]>(`${HR_VIEWS_BASE.departments}/by-scope/${scopeId}`),
+
+  getById: (id: number): Promise<ApiResponse<VwDepartmentWithType>> =>
+    apiFetch<VwDepartmentWithType>(`${HR_VIEWS_BASE.departments}/${id}`),
+};
+
+// =============================================================================
+// API de Vista de Actividades por Cargo
+// =============================================================================
+
+export const VwJobActivityAPI = {
+  getAll: (): Promise<ApiResponse<VwJobActivity[]>> =>
+    apiFetch<VwJobActivity[]>(HR_VIEWS_BASE.jobActivities),
+
+  getActiveAssignments: (): Promise<ApiResponse<VwJobActivity[]>> =>
+    apiFetch<VwJobActivity[]>(`${HR_VIEWS_BASE.jobActivities}/active`),
+
+  getByJob: (jobId: number): Promise<ApiResponse<VwJobActivity[]>> =>
+    apiFetch<VwJobActivity[]>(`${HR_VIEWS_BASE.jobActivities}/by-job/${jobId}`),
+
+  getActiveByJob: (jobId: number): Promise<ApiResponse<VwJobActivity[]>> =>
+    apiFetch<VwJobActivity[]>(`${HR_VIEWS_BASE.jobActivities}/by-job/${jobId}/active`),
+};
+
+// =============================================================================
+// API de Vista de Cargos con Título y Grupo
+// =============================================================================
+
+export const VwJobWithDegreeAndGroupAPI = {
+  getAll: (): Promise<ApiResponse<VwJobWithDegreeAndGroup[]>> =>
+    apiFetch<VwJobWithDegreeAndGroup[]>(HR_VIEWS_BASE.jobs),
+
+  getByGroup: (groupId: number): Promise<ApiResponse<VwJobWithDegreeAndGroup[]>> =>
+    apiFetch<VwJobWithDegreeAndGroup[]>(`${HR_VIEWS_BASE.jobs}/by-group/${groupId}`),
+
+  getWithActiveDegree: (): Promise<ApiResponse<VwJobWithDegreeAndGroup[]>> =>
+    apiFetch<VwJobWithDegreeAndGroup[]>(`${HR_VIEWS_BASE.jobs}/active-degree`),
+
+  getById: (id: number): Promise<ApiResponse<VwJobWithDegreeAndGroup>> =>
+    apiFetch<VwJobWithDegreeAndGroup>(`${HR_VIEWS_BASE.jobs}/${id}`),
 };

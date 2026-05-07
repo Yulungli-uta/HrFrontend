@@ -10,13 +10,20 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-import { FileText, Plus, Search, Calendar, Eye } from "lucide-react";
+import { FileText, Plus, Search, Calendar, Eye, Pencil, X, CheckCircle, Clock, XCircle } from "lucide-react";
 
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/features/auth";
@@ -34,6 +41,22 @@ import {
 
 import type { ReusableDocumentManagerHandle } from "@/components/ReusableDocumentManager";
 import { parseApiError } from '@/lib/error-handling';
+import { DataPagination } from "@/components/ui/DataPagination";
+import { ContractRequestAPI } from "@/lib/api";
+
+const EDITABLE_STATUS = "PENDIENTE_CERT_FINANCIERA";
+
+function buildEditForm(c: UIContractRequest, createdBy: number): ContractRequestCreate {
+  return {
+    workModalityId: c.workModalityId,
+    departmentId: c.departmentId,
+    numberOfPeopleToHire: c.numberOfPeopleToHire,
+    numberHour: c.numberHour,
+    observation: c.observation ?? "",
+    status: c.status ?? null,
+    createdBy,
+  };
+}
 
 export default function ContractRequestPage() {
   const { toast } = useToast();
@@ -45,7 +68,7 @@ export default function ContractRequestPage() {
     : (Number.isFinite(Number(user?.id)) ? Number(user?.id) : 0);
 
   const cr = useContractRequest(DIRECTORY_CODE);
-  const { contracts, listQ, createMut, directoryUi } = cr;
+  const { contracts, listQ, createMut, updateMut, directoryUi } = cr;
 
   const accept = directoryUi.accept ?? "*/*";
   const maxSizeMB = directoryUi.maxSizeMB ?? 20;
@@ -56,29 +79,36 @@ export default function ContractRequestPage() {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selected, setSelected] = useState<UIContractRequest | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+
+  // Paginación
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  useEffect(() => { setPage(1); }, [searchTerm, statusFilter]);
+
+  // Edición en detalle
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState<ContractRequestCreate | null>(null);
 
   // Create form
   const [form, setForm] = useState<ContractRequestCreate>({
     workModalityId: null,
     departmentId: null,
-    numberOfPeopleToHire: 1, // ✅ inicia en 1
+    numberOfPeopleToHire: 1,
     numberHour: 0,
     observation: "",
-    status: null, // ✅ se asigna por defecto desde catálogo ("GENERADO")
+    status: null,
     createdBy: ctxCreatedBy,
   });
 
-  // ✅ Estado por defecto: "GENERADO" (desde catálogo CONTRACT_REQUEST_STATUS)
+  // Estado por defecto "PENDIENTE_CERT_FINANCIERA" al crear
   useEffect(() => {
-    // no sobreescribir si el usuario ya seleccionó algo
     if (form.status != null) return;
-
-    const generated = cr.statuses.find(
-      (s) => (s.name ?? "").trim().toUpperCase() === "GENERADO"
+    const defaultStatus = cr.statuses.find(
+      (s) => (s.name ?? "").trim().toUpperCase() === "PENDIENTE_CERT_FINANCIERA"
     );
-
-    if (generated?.id) {
-      setForm((prev) => ({ ...prev, status: generated.id }));
+    if (defaultStatus?.id) {
+      setForm((prev) => ({ ...prev, status: defaultStatus.id }));
     }
   }, [cr.statuses, form.status]);
 
@@ -93,7 +123,7 @@ export default function ContractRequestPage() {
       numberOfPeopleToHire: 1,
       numberHour: 0,
       observation: "",
-      status: null, // ✅ vuelve a default por efecto ("GENERADO")
+      status: null,
       createdBy: ctxCreatedBy,
     });
     setAttachEnabled(false);
@@ -101,10 +131,20 @@ export default function ContractRequestPage() {
   };
 
   const filtered = useMemo(() => {
-    const q = searchTerm.trim().toLowerCase();
-    if (!q) return contracts;
+    let list = contracts;
 
-    return contracts.filter((c) => {
+    if (statusFilter !== "all") {
+      list = list.filter(
+        (c) =>
+          (c.statusName ?? "").toUpperCase() === statusFilter ||
+          (c.statusText ?? "").toUpperCase() === statusFilter
+      );
+    }
+
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return list;
+
+    return list.filter((c) => {
       const modalityName = c.workModalityId
         ? (cr.workModalityNameById.get(c.workModalityId) ?? "")
         : "";
@@ -129,72 +169,84 @@ export default function ContractRequestPage() {
     });
   }, [contracts, searchTerm, cr.workModalityNameById, cr.departmentNameById]);
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const paginated = useMemo(
+    () => filtered.slice((page - 1) * pageSize, page * pageSize),
+    [filtered, page, pageSize]
+  );
+
+  // ID del estado que habilita edición — comparar por ID es robusto aunque statusName llegue null
+  const editableStatusId = useMemo(
+    () => cr.statuses.find((s) => (s.name ?? "").trim().toUpperCase() === EDITABLE_STATUS)?.id ?? null,
+    [cr.statuses]
+  );
+
+  const statusCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const c of contracts) {
+      const name = (c.statusName ?? c.statusText ?? "").toUpperCase();
+      if (name) counts.set(name, (counts.get(name) ?? 0) + 1);
+    }
+    return counts;
+  }, [contracts]);
+
   const openDetails = (c: UIContractRequest) => {
     setSelected(c);
+    setIsEditing(false);
+    setEditForm(null);
     setIsDetailOpen(true);
     setTimeout(() => detailDocsRef.current?.refresh(c.requestId), 0);
   };
 
+  const startEditing = () => {
+    if (!selected) return;
+    setEditForm(buildEditForm(selected, ctxCreatedBy));
+    setIsEditing(true);
+  };
+
+  const cancelEditing = () => {
+    setIsEditing(false);
+    setEditForm(null);
+  };
+
   const handleCreate = async () => {
     if (!ctxCreatedBy || ctxCreatedBy <= 0) {
-      toast({
-        title: "❌ Usuario inválido",
-        description: "No se pudo determinar el solicitante.",
-        variant: "destructive",
-      });
+      toast({ title: "❌ Usuario inválido", description: "No se pudo determinar el solicitante.", variant: "destructive" });
       return;
     }
 
     if (!form.workModalityId) {
-      toast({
-        title: "❌ Campo requerido",
-        description: "Seleccione la modalidad de trabajo.",
-        variant: "destructive",
-      });
+      toast({ title: "❌ Campo requerido", description: "Seleccione la modalidad de trabajo.", variant: "destructive" });
       return;
     }
 
     if (!form.departmentId) {
-      toast({
-        title: "❌ Campo requerido",
-        description: "Seleccione el departamento.",
-        variant: "destructive",
-      });
+      toast({ title: "❌ Campo requerido", description: "Seleccione el departamento.", variant: "destructive" });
       return;
     }
 
     if (form.status == null) {
-      toast({
-        title: "❌ Campo requerido",
-        description: "Seleccione el estado.",
-        variant: "destructive",
-      });
+      toast({ title: "❌ Error de configuración", description: "No se pudo determinar el estado inicial. Espere a que carguen los catálogos.", variant: "destructive" });
       return;
     }
 
-    if (Number(form.numberOfPeopleToHire) < 1) {
-      toast({
-        title: "❌ Valor inválido",
-        description: "El número de personas debe ser ≥ 1.",
-        variant: "destructive",
-      });
+    const people = Number(form.numberOfPeopleToHire);
+    if (!Number.isFinite(people) || people < 1 || !Number.isInteger(people)) {
+      toast({ title: "❌ Valor inválido", description: "El número de personas debe ser un entero mayor a 0.", variant: "destructive" });
       return;
     }
 
-    if (Number(form.numberHour) < 0) {
-      toast({
-        title: "❌ Valor inválido",
-        description: "Las horas no pueden ser negativas.",
-        variant: "destructive",
-      });
+    const hours = Number(form.numberHour);
+    if (!Number.isFinite(hours) || hours <= 0) {
+      toast({ title: "❌ Valor inválido", description: "El número de horas debe ser mayor a 0.", variant: "destructive" });
       return;
     }
 
     const payload: ContractRequestCreate = {
       ...form,
       createdBy: ctxCreatedBy,
-      numberOfPeopleToHire: Math.max(1, Number(form.numberOfPeopleToHire || 1)),
-      numberHour: Math.max(0, Number(form.numberHour || 0)),
+      numberOfPeopleToHire: people,
+      numberHour: hours,
       observation: (form.observation ?? "").trim() || undefined,
     };
 
@@ -202,32 +254,86 @@ export default function ContractRequestPage() {
       const { id, resp } = await createMut.mutateAsync(payload);
 
       if (resp.status !== "success") {
-        toast({
-          title: "❌ Error",
-          description: resp.error.message,
-          variant: "destructive",
-        });
+        toast({ title: "❌ Error", description: resp.error.message, variant: "destructive" });
         return;
       }
 
       qc.invalidateQueries({ queryKey: ["/api/v1/rh/cv/contract-request"] });
 
-      // Adjuntos opcionales: crear -> subir
       const count = createDocsRef.current?.getSelectedCount() ?? 0;
       if (attachEnabled && id && count > 0) {
         const up = await createDocsRef.current?.uploadAll(id);
-        if (!up || (up as any).status === "error") {
+
+        if (!up || up.uploaded === 0) {
+          // Transacción compensatoria: revertir la solicitud recién creada.
+          try {
+            await ContractRequestAPI.delete(id);
+            qc.invalidateQueries({ queryKey: ["/api/v1/rh/cv/contract-request"] });
+          } catch {
+            toast({
+              title: "⚠️ Error grave",
+              description: `Falló la carga de documentos Y la reversión. La solicitud #${id} quedó registrada sin documentos. Elimínela manualmente.`,
+              variant: "destructive",
+            });
+            setIsFormOpen(false);
+            resetForm();
+            return;
+          }
+
           toast({
-            title: "⚠️ Creado con advertencia",
-            description: "Se creó la solicitud pero falló la subida. Puedes reintentar en Detalles.",
+            title: "❌ Solicitud no creada",
+            description: "La carga de documentos falló. La solicitud fue revertida. Intenta nuevamente.",
             variant: "destructive",
           });
+          return;
         }
       }
 
       toast({ title: "✅ Solicitud creada", description: "Se guardó correctamente." });
       setIsFormOpen(false);
       resetForm();
+    } catch (e: unknown) {
+      toast({ title: "❌ Error", description: parseApiError(e).message, variant: "destructive" });
+    }
+  };
+
+  const handleUpdate = async () => {
+    if (!selected || !editForm) return;
+
+    const people = Number(editForm.numberOfPeopleToHire);
+    if (!Number.isFinite(people) || people < 1 || !Number.isInteger(people)) {
+      toast({ title: "❌ Valor inválido", description: "El número de personas debe ser un entero mayor a 0.", variant: "destructive" });
+      return;
+    }
+
+    const hours = Number(editForm.numberHour);
+    if (!Number.isFinite(hours) || hours <= 0) {
+      toast({ title: "❌ Valor inválido", description: "El número de horas debe ser mayor a 0.", variant: "destructive" });
+      return;
+    }
+
+    if (!editForm.workModalityId) {
+      toast({ title: "❌ Campo requerido", description: "Seleccione la modalidad de trabajo.", variant: "destructive" });
+      return;
+    }
+
+    if (!editForm.departmentId) {
+      toast({ title: "❌ Campo requerido", description: "Seleccione el departamento.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      const resp = await updateMut.mutateAsync({ id: selected.requestId, payload: editForm });
+
+      if (resp.status !== "success") {
+        toast({ title: "❌ Error", description: (resp as any).error?.message ?? "Error al actualizar.", variant: "destructive" });
+        return;
+      }
+
+      toast({ title: "✅ Solicitud actualizada", description: "Se guardó correctamente." });
+      setIsEditing(false);
+      setIsDetailOpen(false);
+      setSelected(null);
     } catch (e: unknown) {
       toast({ title: "❌ Error", description: parseApiError(e).message, variant: "destructive" });
     }
@@ -275,6 +381,10 @@ export default function ContractRequestPage() {
   }
 
   const formDisabled = createMut.isPending;
+  const canEdit =
+    selected != null &&
+    editableStatusId != null &&
+    Number(selected.status) === editableStatusId;
 
   return (
     <div className="container mx-auto p-4 lg:p-6">
@@ -311,9 +421,9 @@ export default function ContractRequestPage() {
               value={form}
               onChange={setForm}
               workModalities={cr.workModalities}
-              departments={cr.departments}
               statuses={cr.statuses}
               disabled={formDisabled}
+              hideStatus={true}
             />
 
             <div className="mt-6">
@@ -345,22 +455,94 @@ export default function ContractRequestPage() {
         </Dialog>
       </div>
 
-      <div className="mb-6">
-        <div className="relative">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+      {/* Status count cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
+        <Card className="bg-primary/10 dark:bg-primary/15">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm lg:text-base flex items-center justify-between">
+              <span className="flex items-center">
+                <FileText className="h-4 w-4 text-primary mr-2" />
+                Total
+              </span>
+              <Badge variant="secondary" className="bg-blue-200 text-primary text-xs">
+                {contracts.length}
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-xs text-muted-foreground">Solicitudes registradas</div>
+          </CardContent>
+        </Card>
+
+        {cr.statuses.filter((s) => (statusCounts.get(s.name.toUpperCase()) ?? 0) > 0).map((s) => {
+          const count = statusCounts.get(s.name.toUpperCase()) ?? 0;
+          const pct = contracts.length > 0 ? ((count / contracts.length) * 100).toFixed(1) : "0";
+          const n = s.name.toUpperCase();
+          const cardCls = n.includes("PENDIENTE") ? "bg-warning/10 dark:bg-warning/15"
+            : n.includes("APROBAD") || n.includes("COMPLETAD") ? "bg-success/10 dark:bg-success/15"
+            : n.includes("RECHAZAD") || n.includes("CANCELAD") ? "bg-destructive/10 dark:bg-destructive/15"
+            : "";
+          const Icon = n.includes("PENDIENTE") ? Clock
+            : n.includes("APROBAD") || n.includes("COMPLETAD") ? CheckCircle
+            : n.includes("RECHAZAD") || n.includes("CANCELAD") ? XCircle
+            : FileText;
+          return (
+            <Card key={s.id} className={cardCls}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm lg:text-base flex items-center justify-between gap-1">
+                  <span className="flex items-center truncate text-sm">
+                    <Icon className="h-4 w-4 mr-2 shrink-0" />
+                    <span className="truncate">{s.name}</span>
+                  </span>
+                  <Badge variant="secondary" className="text-xs shrink-0">{count}</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-xs text-muted-foreground">{pct}% del total</div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      <div className="mb-6 flex flex-col sm:flex-row gap-3">
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-full sm:w-64">
+            <SelectValue placeholder="Filtrar por estado" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los estados</SelectItem>
+            {cr.statuses.map((s) => (
+              <SelectItem key={s.id} value={s.name.toUpperCase()}>{s.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Buscar por ID, modalidad, departamento, observación o estado..."
-            className="pl-10"
+            className="pl-10 pr-10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+              aria-label="Limpiar búsqueda"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle>Solicitudes</CardTitle>
-          <CardDescription>{filtered.length} mostradas</CardDescription>
+          <CardDescription>{filtered.length} registros</CardDescription>
         </CardHeader>
 
         <CardContent>
@@ -372,8 +554,8 @@ export default function ContractRequestPage() {
                   <TableHead>Modalidad</TableHead>
                   <TableHead>Departamento</TableHead>
                   <TableHead>Personas</TableHead>
-                  <TableHead>Horas</TableHead>
                   <TableHead>Contratadas</TableHead>
+                  <TableHead>Pendientes</TableHead>
                   <TableHead>Creado</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
@@ -381,7 +563,7 @@ export default function ContractRequestPage() {
               </TableHeader>
 
               <TableBody>
-                {filtered.map((c) => {
+                {paginated.map((c) => {
                   const modality = c.workModalityId
                     ? (cr.workModalityNameById.get(c.workModalityId) ?? `#${c.workModalityId}`)
                     : "—";
@@ -396,8 +578,12 @@ export default function ContractRequestPage() {
                       <TableCell>{modality}</TableCell>
                       <TableCell>{dept}</TableCell>
                       <TableCell>{c.numberOfPeopleToHire}</TableCell>
-                      <TableCell>{Number(c.numberHour).toFixed(2)}</TableCell>
                       <TableCell>{c.totalPeopleHired}</TableCell>
+                      <TableCell>
+                        <span className={c.pendingCount > 0 ? "text-primary font-medium" : "text-muted-foreground"}>
+                          {c.pendingCount}
+                        </span>
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <Calendar className="h-3 w-3 text-muted-foreground" />
@@ -416,7 +602,7 @@ export default function ContractRequestPage() {
                   );
                 })}
 
-                {filtered.length === 0 && (
+                {paginated.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={9}>
                       <div className="text-center py-10 text-sm text-muted-foreground">
@@ -428,87 +614,138 @@ export default function ContractRequestPage() {
               </TableBody>
             </Table>
           </div>
+
+          <DataPagination
+            page={page}
+            totalPages={totalPages}
+            totalCount={filtered.length}
+            pageSize={pageSize}
+            hasPreviousPage={page > 1}
+            hasNextPage={page < totalPages}
+            onPageChange={(p) => setPage(p)}
+            onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+            disabled={listQ.isLoading}
+          />
         </CardContent>
       </Card>
 
+      {/* Diálogo de detalle */}
       <Dialog
         open={isDetailOpen}
         onOpenChange={(open) => {
           setIsDetailOpen(open);
-          if (!open) setSelected(null);
+          if (!open) {
+            setSelected(null);
+            setIsEditing(false);
+            setEditForm(null);
+          }
         }}
       >
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Detalles</DialogTitle>
-            <DialogDescription>Información + documentos</DialogDescription>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <DialogTitle>
+                  {selected ? `Solicitud #${selected.requestId}` : "Detalles"}
+                </DialogTitle>
+                <DialogDescription>Información + documentos</DialogDescription>
+              </div>
+
+              {/* Botón Editar — visible solo cuando el estado lo permite */}
+              {canEdit && !isEditing && (
+                <Button variant="outline" size="sm" onClick={startEditing} className="shrink-0 mt-1">
+                  <Pencil className="h-3 w-3 mr-1" /> Editar
+                </Button>
+              )}
+            </div>
           </DialogHeader>
 
           {selected && (
             <div className="space-y-4">
-              <Card>
-                <CardContent className="pt-6 space-y-2 text-sm">
-                  <div>
-                    <b>ID:</b> #{selected.requestId}
-                  </div>
-                  <div>
-                    <b>Modalidad:</b>{" "}
-                    {selected.workModalityId
-                      ? (cr.workModalityNameById.get(selected.workModalityId) ?? `#${selected.workModalityId}`)
-                      : "—"}
-                  </div>
-                  <div>
-                    <b>Departamento:</b>{" "}
-                    {selected.departmentId
-                      ? (cr.departmentNameById.get(selected.departmentId) ?? `#${selected.departmentId}`)
-                      : "—"}
-                  </div>
-                  <div>
-                    <b>Personas a contratar:</b> {selected.numberOfPeopleToHire}
-                  </div>
-                  <div>
-                    <b>Horas:</b> {Number(selected.numberHour).toFixed(2)}
-                  </div>
-                  <div>
-                    <b>Observación:</b> {selected.observation ?? "—"}
-                  </div>
-                  <div>
-                    <b>Estado:</b> <Badge variant={selected.statusVariant}>{selected.statusText}</Badge>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between gap-2">
+              {/* Sección de información: lectura o edición */}
+              {isEditing && editForm ? (
+                <ContractRequestForm
+                  value={editForm}
+                  onChange={setEditForm}
+                  workModalities={cr.workModalities}
+                  statuses={cr.statuses}
+                  disabled={updateMut.isPending}
+                  hideStatus={true}
+                />
+              ) : (
+                <Card>
+                  <CardContent className="pt-6 space-y-2 text-sm">
+                    <div><b>ID:</b> #{selected.requestId}</div>
                     <div>
-                      <CardTitle className="text-base">Documentos</CardTitle>
-                      <CardDescription className="text-xs">directoryCode: {DIRECTORY_CODE}</CardDescription>
+                      <b>Modalidad:</b>{" "}
+                      {selected.workModalityId
+                        ? (cr.workModalityNameById.get(selected.workModalityId) ?? `#${selected.workModalityId}`)
+                        : "—"}
                     </div>
-                    <Button variant="outline" onClick={handleUploadDetail}>
-                      Subir seleccionados
-                    </Button>
-                  </div>
-                </CardHeader>
+                    <div>
+                      <b>Departamento:</b>{" "}
+                      {selected.departmentId
+                        ? (cr.departmentNameById.get(selected.departmentId) ?? `#${selected.departmentId}`)
+                        : "—"}
+                    </div>
+                    <div><b>Personas a contratar:</b> {selected.numberOfPeopleToHire}</div>
+                    <div><b>Horas:</b> {Number(selected.numberHour).toFixed(2)}</div>
+                    <div><b>Observación:</b> {selected.observation ?? "—"}</div>
+                    <div>
+                      <b>Estado:</b> <Badge variant={selected.statusVariant}>{selected.statusText}</Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
-                <CardContent>
-                  <AttachmentSection
-                    ref={detailDocsRef}
-                    enabled={true}
-                    onEnabledChange={() => void 0}
-                    label="Documentos"
-                    directoryCode={DIRECTORY_CODE}
-                    entityType={ENTITY_TYPE}
-                    entityId={selected.requestId}
-                    entityReady={true}
-                    accept={accept}
-                    maxSizeMB={maxSizeMB}
-                    relativePath={relativePath}
-                    disabled={cr.directoryQ.isLoading}
-                    showUploadButton={false}
-                  />
-                </CardContent>
-              </Card>
+              {/* Botones Guardar / Cancelar edición */}
+              {isEditing && (
+                <div className="flex gap-2 justify-end">
+                  <Button variant="outline" onClick={cancelEditing} disabled={updateMut.isPending}>
+                    Cancelar
+                  </Button>
+                  <Button onClick={handleUpdate} disabled={updateMut.isPending} className="bg-primary hover:bg-primary/90">
+                    {updateMut.isPending ? "Guardando..." : "Guardar cambios"}
+                  </Button>
+                </div>
+              )}
+
+              {/* Documentos — solo en modo lectura */}
+              {!isEditing && (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Documentos</CardTitle>
+                    <CardDescription className="text-xs">directoryCode: {DIRECTORY_CODE}</CardDescription>
+                  </CardHeader>
+
+                  <CardContent className="space-y-3">
+                    <AttachmentSection
+                      ref={detailDocsRef}
+                      enabled={true}
+                      onEnabledChange={() => void 0}
+                      label="Documentos"
+                      directoryCode={DIRECTORY_CODE}
+                      entityType={ENTITY_TYPE}
+                      entityId={selected.requestId}
+                      entityReady={true}
+                      accept={accept}
+                      maxSizeMB={maxSizeMB}
+                      relativePath={relativePath}
+                      disabled={cr.directoryQ.isLoading || !canEdit}
+                      showUploadButton={false}
+                    />
+                    {canEdit ? (
+                      <Button variant="outline" onClick={handleUploadDetail} disabled={cr.directoryQ.isLoading}>
+                        Subir seleccionados
+                      </Button>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Solo lectura — la solicitud no está en estado editable.
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
 
               <div className="flex justify-end">
                 <Button variant="outline" onClick={() => setIsDetailOpen(false)}>

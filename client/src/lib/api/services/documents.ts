@@ -1,3 +1,12 @@
+/**
+ * Archivo: src/lib/api/services/documents.ts
+ *
+ * DESCRIPCION ESTRUCTURAL
+ * - Bloque funcional: Gestion documental y archivos adjuntos del sistema.
+ * - Este archivo contiene la implementacion completa reubicada desde files.ts
+ *   sin recortar la logica ni alterar el comportamiento esperado.
+ */
+
 // src/lib/api/services/files.ts
 
 /**
@@ -210,6 +219,7 @@ export const DocumentsAPI = {
     return apiFetch<DocumentUploadResultDto>('/api/v1/rh/documents/upload', {
       method: 'POST',
       body: form,
+      timeoutMs: 120_000,
     });
   },
 
@@ -227,6 +237,7 @@ export const DocumentsAPI = {
     return apiFetch<DocumentUploadResultDto>('/api/v1/rh/documents/upload-single', {
       method: 'POST',
       body: form,
+      timeoutMs: 120_000,
     });
   },
 
@@ -247,6 +258,7 @@ export const DocumentsAPI = {
     return apiFetch<DocumentUploadResultDto>('/api/v1/rh/documents/upload-mapped', {
       method: 'POST',
       body: form,
+      timeoutMs: 120_000,
     });
   },
 

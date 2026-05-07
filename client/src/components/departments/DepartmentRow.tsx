@@ -13,6 +13,7 @@ interface DepartmentRowProps {
   onToggleExpand: (departmentId: number) => void;
   onEdit: (department: Department) => void;
   getDepartmentTypeName: (type?: number | string | null) => string;
+  getDepartmentScopeName: (scope?: number | null) => string;
 }
 
 export const DepartmentRow = ({
@@ -23,7 +24,8 @@ export const DepartmentRow = ({
   search,
   onToggleExpand,
   onEdit,
-  getDepartmentTypeName
+  getDepartmentTypeName,
+  getDepartmentScopeName,
 }: DepartmentRowProps) => {
   const hasChildren = (node.children?.length || 0) > 0;
   const isVisible = visibleIds.has(node.departmentId);
@@ -59,7 +61,12 @@ export const DepartmentRow = ({
           <span className="text-sm">{node.code || "-"}</span>
         </TableCell>
         <TableCell className="hidden md:table-cell py-3">
-          <span className="text-sm">{getDepartmentTypeName(node.departmentType) || "-"}</span>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-sm">{getDepartmentTypeName(node.departmentType) || "-"}</span>
+            <span className="text-xs text-muted-foreground">
+              {getDepartmentScopeName(node.departmentScope) || "Sin ámbito"}
+            </span>
+          </div>
         </TableCell>
         <TableCell className="py-3">
           <Badge variant={node.isActive ? "default" : "secondary"} className="text-xs">
@@ -90,6 +97,7 @@ export const DepartmentRow = ({
           onToggleExpand={onToggleExpand}
           onEdit={onEdit}
           getDepartmentTypeName={getDepartmentTypeName}
+          getDepartmentScopeName={getDepartmentScopeName}
         />
       ))}
     </>

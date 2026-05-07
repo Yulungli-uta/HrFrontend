@@ -1,17 +1,22 @@
 // src/utils/certificationFinance.ts
 import type { FinancialCertification, UIFinancialCertification } from "@/types/certificationFinance";
 
-export function getStatusInfo(
-  status?: number | null
-): { text: string; variant: UIFinancialCertification["statusVariant"] } {
-  switch (status ?? 0) {
-    case 1: return { text: "Activo", variant: "default" };
-    case 2: return { text: "Pendiente", variant: "secondary" };
-    case 3: return { text: "Aprobado", variant: "default" };
-    case 4: return { text: "Rechazado", variant: "destructive" };
-    case 0: return { text: "Inactivo", variant: "outline" };
-    default: return { text: "Desconocido", variant: "outline" };
-  }
+function statusVariantFromName(
+  statusName?: string | null
+): UIFinancialCertification["statusVariant"] {
+  const n = (statusName ?? "").toUpperCase();
+  if (n === "APROBADA") return "default";
+  if (n === "PENDIENTE_REVISION") return "secondary";
+  if (n === "RECHAZADA") return "destructive";
+  return "outline";
+}
+
+export function statusTextFromName(statusName?: string | null): string {
+  const n = (statusName ?? "").toUpperCase();
+  if (n === "APROBADA") return "Aprobada";
+  if (n === "PENDIENTE_REVISION") return "Pendiente de revisión";
+  if (n === "RECHAZADA") return "Rechazada";
+  return statusName ?? "Desconocido";
 }
 
 export function getDaysUntilExpiry(certBudgetDate?: string | null): number | undefined {
@@ -26,15 +31,14 @@ export function getDaysUntilExpiry(certBudgetDate?: string | null): number | und
 }
 
 export function toUI(cert: FinancialCertification): UIFinancialCertification {
-  const statusInfo = getStatusInfo(cert.status);
   const daysUntilExpiry = getDaysUntilExpiry(cert.certBudgetDate);
   return {
     ...cert,
-    isActive: cert.status === 1 || cert.status === 3,
-    totalAmount: Number(cert.rmuHour ?? 0) * Number(cert.rmuCon ?? 0),
+    isActive: cert.statusName === "APROBADA",
+    totalAmount: Number(cert.rmuCon ?? 0),
     daysUntilExpiry,
-    statusText: statusInfo.text,
-    statusVariant: statusInfo.variant,
+    statusText: statusTextFromName(cert.statusName),
+    statusVariant: statusVariantFromName(cert.statusName),
   };
 }
 
@@ -55,8 +59,8 @@ export function filterCerts(list: UIFinancialCertification[], term: string) {
 
 export function calcStats(list: UIFinancialCertification[]) {
   const total = list.length;
-  const approved = list.filter(c => c.status === 3).length;
-  const pending = list.filter(c => c.status === 2).length;
+  const approved = list.filter(c => c.statusName === "APROBADA").length;
+  const pending = list.filter(c => c.statusName === "PENDIENTE_REVISION").length;
   const totalBudget = list.reduce((sum, c) => sum + (c.totalAmount || 0), 0);
   const expiringSoon = list.filter(c => c.daysUntilExpiry && c.daysUntilExpiry < 30).length;
 

@@ -1,3 +1,13 @@
+/**
+ * Archivo: src/lib/api/services/people.ts
+ *
+ * DESCRIPCION ESTRUCTURAL
+ * - Bloque funcional de identidad organizacional y nucleo del empleado.
+ * - Ubicacion recomendada para revisar persona, empleado, departamentos, facultades
+ *   y vistas consolidadas de empleados.
+ * - El bloque de hoja de vida relacionado se movio a cv.ts.
+ */
+
 // src/lib/api/services/employees.ts
 import { createApiService } from '../core/pagination';
 import { apiFetch } from '../core/fetch';
@@ -101,7 +111,15 @@ export const PersonasAPI = createApiService<PersonDto, PersonCreateDto>('/api/v1
 // API de Empleados
 // =============================================================================
 
-export const EmpleadosAPI = createApiService<any, any>('/api/v1/rh/employees');
+export const EmpleadosAPI = {
+  ...createApiService<any, any>('/api/v1/rh/employees'),
+
+  byPersonId: (personId: number): Promise<ApiResponse<any[]>> =>
+    apiFetch<any[]>(`/api/v1/rh/employees/person/${personId}`),
+
+  subordinatesByBossId: (bossId: number): Promise<ApiResponse<any[]>> =>
+    apiFetch<any[]>(`/api/v1/rh/employees/boss/${bossId}/subordinates`),
+};
 
 // =============================================================================
 // API de Departamentos
@@ -166,45 +184,4 @@ export const VistaDetallesEmpleadosAPI = {
 
   getAvailableFaculties: (): Promise<ApiResponse<any[]>> =>
     apiFetch<any[]>('/api/v1/rh/vw/EmployeeDetails/available/faculties'),
-};
-
-// =============================================================================
-// APIs de CV asociadas a personas
-// =============================================================================
-
-export const DireccionesAPI = createApiService<any, any>('/api/v1/rh/cv/addresses');
-
-export const ContactosEmergenciaAPI = {
-  ...createApiService<any, any>('/api/v1/rh/cv/emergency-contacts'),
-
-  getByPersonId: (personId: number): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`/api/v1/rh/cv/emergency-contacts/person/${personId}`),
-};
-
-export const CargasFamiliaresAPI = {
-  ...createApiService<any, any>('/api/v1/rh/cv/family-burden'),
-
-  getByPersonId: (personId: number): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`/api/v1/rh/cv/family-burden/person/${personId}`),
-};
-
-export const CuentasBancariasAPI = {
-  ...createApiService<any, any>('/api/v1/rh/cv/bank-accounts'),
-
-  getByPersonId: (personId: number): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`/api/v1/rh/cv/bank-accounts/person/${personId}`),
-};
-
-export const LibrosAPI = {
-  ...createApiService<any, any>('/api/v1/rh/cv/books'),
-
-  getByPersonId: (personId: number): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`/api/v1/rh/cv/books/person/${personId}`),
-};
-
-export const EnfermedadesCatastroficasAPI = {
-  ...createApiService<any, any>('/api/v1/rh/cv/catastrophic-illnesses'),
-
-  getByPersonId: (personId: number): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`/api/v1/rh/cv/catastrophic-illnesses/person/${personId}`),
 };

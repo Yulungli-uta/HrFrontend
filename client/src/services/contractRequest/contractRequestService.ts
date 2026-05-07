@@ -93,6 +93,11 @@ export const contractRequestService = {
     return { id: id ?? 0, resp };
   },
 
+  async update(id: number, payload: ContractRequestCreate): Promise<ApiResponse<any>> {
+    const safe = normalizeCreatePayload(payload);
+    return ContractRequestAPI.update(id, safe as any);
+  },
+
   /** ===== Catálogos (combos) ===== */
   async listWorkModalities(): Promise<ApiResponse<SelectItem[]>> {
     const resp = await TiposReferenciaAPI.byCategory("WORK_MODALITY");

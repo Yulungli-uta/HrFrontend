@@ -53,6 +53,9 @@ import {
   Plus,
   ArrowLeft,
   ArrowRight,
+  ChevronDown,
+  ChevronUp,
+  Award,
 } from "lucide-react";
 
 import {
@@ -64,19 +67,33 @@ import {
   FinancialCertificationAPI,
   ContractTypeAPI,
   DepartamentosAPI,
-  CargosAPI,
   PersonasAPI,
   ContractsRHAPI,
+  ContractRequestAPI,
+  VwJobWithDegreeAndGroupAPI,
 } from "@/lib/api";
+import type { VwJobWithDegreeAndGroup } from "@/lib/api";
+import { JobSelect } from "@/components/ui/JobSelect";
+import { DepartmentSelect } from "@/components/departments/DepartmentSelect";
 
-import { CONTRACT_DIRECTORY_CODE, CONTRACT_ENTITY_TYPE } from "@/features/constants";
+import {
+  CONTRACT_DIRECTORY_CODE,
+  CONTRACT_ENTITY_TYPE,
+  FINANCE_CERTIFICATION_DIRECTORY_CODE,
+  FINANCE_CERTIFICATION_ENTITY_TYPE,
+  CONTRACT_REQUEST_DIRECTORY_CODE,
+  CONTRACT_REQUEST_ENTITY_TYPE,
+} from "@/features/constants";
 import { getEntityId, getEntityLabel } from "@/utils/options";
 
 import { useContractWorkflow } from "@/hooks/contracts/useContractWorkflow";
+import { useContractDetail } from "@/hooks/contracts/useContractDetail";
 import { usePaged } from "@/hooks/pagination/usePaged";
 import { ContractHistory } from "@/components/contracts/ContractHistory";
 import { AddendumList } from "@/components/contracts/AddendumList";
 import { StatusChangeDialog } from "@/components/contracts/StatusChangeDialog";
+import { ContractActions } from "@/components/contracts/ContractActions";
+import { DocumentPreviewPanel } from "@/components/personnelActions/DocumentPreviewPanel";
 
 type DialogMode = "create" | "view" | "edit";
 
@@ -276,6 +293,8 @@ export function ContractDialog(props: {
 
   const qc = useQueryClient();
   const docManagerRef = useRef<ReusableDocumentManagerHandle>(null);
+  const certDocManagerRef = useRef<ReusableDocumentManagerHandle>(null);
+  const requestDocManagerRef = useRef<ReusableDocumentManagerHandle>(null);
 
   const [form, setForm] = useState<ContractsCreateDto>(() =>
     buildEmptyForm(initial)
@@ -283,6 +302,9 @@ export function ContractDialog(props: {
   const [activeTab, setActiveTab] = useState<string>("info");
   const [wizardStep, setWizardStep] = useState(1);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [showCertDocs, setShowCertDocs] = useState(false);
+  const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null);
+  const [showRequestDocs, setShowRequestDocs] = useState(false);
 
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [pendingStatusId, setPendingStatusId] = useState<number | null>(null);
@@ -304,6 +326,9 @@ export function ContractDialog(props: {
     setActiveTab(isCreate ? "info" : "overview");
     setWizardStep(1);
     setValidationErrors([]);
+    setShowCertDocs(false);
+    setSelectedRequestId(null);
+    setShowRequestDocs(false);
     setPersonSearchInput("");
     setPersonSearch("");
     docManagerRef.current?.clearSelected();
@@ -318,9 +343,10 @@ export function ContractDialog(props: {
   }, [personSearchInput]);
 
   // Lookups normales
+  // Solo carga certificaciones APROBADAS para el selector de creación
   const qCerts = useQuery({
-    queryKey: ["financial-certifications"],
-    queryFn: () => FinancialCertificationAPI.list(),
+    queryKey: ["financial-certifications", "approved"],
+    queryFn: () => FinancialCertificationAPI.paged({ statusName: "APROBADA", pageSize: 200 }),
     enabled: open,
     staleTime: 5 * 60 * 1000,
   });
@@ -340,8 +366,8 @@ export function ContractDialog(props: {
   });
 
   const qJobs = useQuery({
-    queryKey: ["jobs"],
-    queryFn: () => CargosAPI.list(),
+    queryKey: ['vw-jobs-select', 'all'],
+    queryFn: () => VwJobWithDegreeAndGroupAPI.getAll(),
     enabled: open,
     staleTime: 5 * 60 * 1000,
   });
@@ -362,19 +388,25 @@ export function ContractDialog(props: {
     setPeoplePagedSearch(personSearch);
   }, [open, isCreate, personSearch, setPeoplePagedSearch]);
 
-  const certs =
-    qCerts.data?.status === "success" ? qCerts.data.data ?? [] : [];
+  // paged devuelve { items, page, ... }
+  const certs: any[] =
+    qCerts.data?.status === "success"
+      ? ((qCerts.data.data as any)?.items ?? [])
+      : [];
   const types =
     qTypes.data?.status === "success" ? qTypes.data.data ?? [] : [];
   const depts =
     qDepts.data?.status === "success" ? qDepts.data.data ?? [] : [];
-  const jobs =
+  const jobs: VwJobWithDegreeAndGroup[] =
     qJobs.data?.status === "success" ? qJobs.data.data ?? [] : [];
 
   const entityId = isCreate ? undefined : selectedId;
 
+  const docDetail = useContractDetail(entityId ?? null);
+  const docStatusCode = docDetail.docStatus?.documentStatus ?? "BORRADOR";
+
   const wf = useContractWorkflow({
-    enabled: open && !isCreate,
+    enabled: open,
     currentStatusTypeId: form.status,
   });
 
@@ -395,12 +427,7 @@ export function ContractDialog(props: {
   );
 
   const selectedJob = useMemo(
-    () =>
-      jobs.find(
-        (j: any) =>
-              extractNumericId(getEntityId(j) ?? j) ===
-          (form.jobID ?? undefined)
-      ),
+    () => jobs.find((j) => j.jobID === (form.jobID ?? undefined)),
     [jobs, form.jobID]
   );
 
@@ -410,9 +437,103 @@ export function ContractDialog(props: {
         (c: any) =>
               extractNumericId(getEntityId(c) ?? c) ===
           (form.certificationID ?? undefined)
-      ),
+      ) as any | undefined,
     [certs, form.certificationID]
   );
+
+  // requestId de la solicitud de contrato asociada a la certificación seleccionada
+  const certRequestId: number | null = useMemo(() => {
+    if (!selectedCert) return null;
+    const raw = selectedCert.requestId ?? selectedCert.RequestId ?? selectedCert.requestID ?? null;
+    const n = Number(raw);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }, [selectedCert]);
+
+  // Auto-vincula solicitud cuando la certificación tiene requestId
+  useEffect(() => {
+    if (!open || !form.certificationID) return;
+    if (certRequestId != null && certRequestId > 0) {
+      setSelectedRequestId(certRequestId);
+      setShowRequestDocs(false);
+    }
+  }, [open, form.certificationID, certRequestId]);
+
+  const isRootContract = !form.parentID;
+
+  const isCertApproved = useMemo(() => {
+    if (!form.certificationID) return true;
+    const name = (selectedCert?.statusName ?? selectedCert?.StatusName ?? "").toUpperCase();
+    return name === "APROBADA";
+  }, [form.certificationID, selectedCert]);
+
+  const isAdendumType = useMemo(() => {
+    if (!form.contractTypeID) return false;
+    const t = types.find(
+      (t: any) => extractNumericId(getEntityId(t) ?? t) === form.contractTypeID
+    ) as any;
+    const name = (t ? getEntityLabel(t) : "").toLowerCase().trim();
+    return name.includes("adendum") || name.includes("addendum");
+  }, [types, form.contractTypeID]);
+
+  const qParentContracts = useQuery({
+    queryKey: ["contracts-rh", "parents-select"],
+    queryFn: () => ContractsRHAPI.listPaged({ page: 1, pageSize: 200 }),
+    enabled: open && (isAdendumType || !!form.parentID),
+    staleTime: 60_000,
+  });
+
+
+  const qPendingCount = useQuery({
+    queryKey: ["contract-request-pending-count", certRequestId],
+    queryFn: () => ContractRequestAPI.pendingCount(certRequestId!),
+    enabled: open && isRootContract && certRequestId != null && certRequestId > 0,
+    staleTime: 30_000,
+  });
+
+  const pendingCount: number | null = useMemo(() => {
+    if (!isRootContract) return null;
+    if (qPendingCount.data?.status === "success") {
+      return qPendingCount.data.data.pendingCount ?? null;
+    }
+    return null;
+  }, [isRootContract, qPendingCount.data]);
+
+  // Items enriquecidos para el SearchableSelect de certificaciones
+  const certItems = useMemo<SearchItem[]>(() => {
+    return certs
+      .map((c: any) => {
+        const id = extractNumericId(getEntityId(c) ?? c);
+        if (!id) return null;
+        const code = c.certCode ?? c.CertCode ?? '';
+        const num = c.certNumber ?? c.CertNumber ?? '';
+        const budget = c.budget ?? c.Budget ?? '';
+        const parts = [code, num, budget].filter(Boolean);
+        const label = parts.length > 0
+          ? parts.join(' — ')
+          : `Certificación #${id}`;
+        return { value: String(id), label } as SearchItem;
+      })
+      .filter((x): x is SearchItem => x !== null);
+  }, [certs]);
+
+
+  const parentContractItems = useMemo<SearchItem[]>(() => {
+    const raw =
+      qParentContracts.data?.status === "success"
+        ? ((qParentContracts.data.data as any)?.items ?? [])
+        : [];
+    return (raw as any[])
+      .filter((c) => !c.parentID)
+      .map((c) => {
+        const id = c.contractID ?? c.ContractID;
+        const code = c.contractCode ?? "";
+        return {
+          value: String(id),
+          label: code ? `#${id} — ${code}` : `Contrato #${id}`,
+        } as SearchItem;
+      })
+      .filter((x) => !!x.value && x.value !== "undefined" && x.value !== "0");
+  }, [qParentContracts.data]);
 
   const personItems = useMemo<SearchItem[]>(() => {
     const items = (pagedPeople ?? []).map((p) => ({
@@ -438,6 +559,17 @@ export function ContractDialog(props: {
     const s = wf.statuses.find((x: any) => x.typeID === form.status);
     return s ? s.name : `Estado ${form.status}`;
   }, [wf.statuses, form.status]);
+
+  const borradorStatusId = useMemo(() => {
+    const s = wf.statuses.find((x: any) => x.name === "BORRADOR");
+    return s?.typeID ?? null;
+  }, [wf.statuses]);
+
+  // En create mode, fijar el estado inicial a BORRADOR cuando carguen los ref_types
+  useEffect(() => {
+    if (!isCreate || !open || !borradorStatusId) return;
+    setForm((f) => ({ ...f, status: borradorStatusId }));
+  }, [isCreate, open, borradorStatusId]);
 
   const createMut = useMutation({
     mutationFn: (dto: ContractsCreateDto) => ContractsRHAPI.create(dto),
@@ -516,6 +648,8 @@ export function ContractDialog(props: {
       errors.push("Debe seleccionar una persona");
     if (!form.contractTypeID || form.contractTypeID <= 0)
       errors.push("Debe seleccionar un tipo de contrato");
+    if (isAdendumType && !form.parentID)
+      errors.push("El adendum requiere seleccionar un contrato padre");
     if (!form.departmentID || form.departmentID <= 0)
       errors.push("Debe seleccionar un departamento");
     if (!form.startDate)
@@ -577,7 +711,10 @@ export function ContractDialog(props: {
 
   function canProceedStep(step: number): boolean {
     if (step === 1) {
-      return !!(form.personID && form.contractTypeID && form.departmentID);
+      const base = !!(form.personID && form.contractTypeID && form.departmentID);
+      if (isAdendumType && !form.parentID) return false;
+      if (!isCertApproved) return false;
+      return base;
     }
     if (step === 2) {
       return !!(form.contractCode && form.startDate && form.endDate);
@@ -772,7 +909,7 @@ export function ContractDialog(props: {
                               Cargo
                             </p>
                             <p className="font-medium">
-                              {getEntityLabel(selectedJob)}
+                              {selectedJob.jobDescription ?? `Cargo #${selectedJob.jobID}`}
                             </p>
                           </div>
                         </div>
@@ -848,6 +985,39 @@ export function ContractDialog(props: {
                   </Card>
                 )}
 
+                {entityId && isView && (
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm text-muted-foreground uppercase tracking-wider flex items-center justify-between">
+                        <span>Flujo Documental</span>
+                        <Badge variant="outline">{docStatusCode}</Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ContractActions
+                        contractId={entityId}
+                        status={docStatusCode}
+                        isBusy={docDetail.isBusy}
+                        onGenerateDocument={docDetail.generateDocument}
+                        onMarkPending={docDetail.markPending}
+                        onFinalize={docDetail.finalize}
+                        onCancel={docDetail.cancelContract}
+                        onUploadSuccess={docDetail.invalidate}
+                      />
+                    </CardContent>
+                  </Card>
+                )}
+
+                {entityId && (
+                  <DocumentPreviewPanel
+                    pdfBase64={docDetail.generatedPdfBase64 ?? undefined}
+                    fileName={(docDetail.generatedFileName ?? docDetail.docStatus?.fileName) ?? undefined}
+                    generatedDocumentId={docDetail.docStatus?.generatedDocumentId}
+                    onRegenerate={() => docDetail.generateDocument({ forceRegenerate: true })}
+                    isRegenerating={docDetail.isGeneratingDocument}
+                  />
+                )}
+
                 {entityId && !isView && wf.allowedNextStatuses.length > 0 && (
                   <Card>
                     <CardHeader>
@@ -903,21 +1073,17 @@ export function ContractDialog(props: {
                           <Input
                             id="contractCode"
                             value={form.contractCode}
-                            disabled={isView}
-                            onChange={(e) =>
-                              setForm((f) => ({
-                                ...f,
-                                contractCode: e.target.value,
-                              }))
-                            }
-                            placeholder="Ej: CONT-2024-001"
+                            readOnly
+                            disabled
+                            className="bg-muted"
+                            placeholder="Generado automáticamente"
                           />
                         </div>
 
                         <div className="space-y-2">
                           <Label htmlFor="status">Estado</Label>
                           <Select
-                            value={form.status ? String(form.status) : ""}
+                            value={form.status > 0 ? String(form.status) : undefined}
                             onValueChange={(v) =>
                               setForm((f) => ({
                                 ...f,
@@ -936,9 +1102,9 @@ export function ContractDialog(props: {
                               />
                             </SelectTrigger>
                             <SelectContent>
-                              {wf.statuses.map((s: any) => (
+                              {wf.statuses.map((s: any, i: number) => (
                                 <SelectItem
-                                  key={s.typeID}
+                                  key={`status-edit-${s.typeID ?? i}`}
                                   value={String(s.typeID)}
                                 >
                                   {s.name}
@@ -990,6 +1156,23 @@ export function ContractDialog(props: {
                               })}
                             </SelectContent>
                           </Select>
+
+                          {/* Cupo disponible para contratos raíz */}
+                          {isRootContract && form.certificationID && certRequestId && (
+                            <div className={`text-xs rounded p-2 ${
+                              pendingCount === null
+                                ? "text-muted-foreground"
+                                : pendingCount > 0
+                                ? "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300"
+                                : "bg-destructive/10 text-destructive"
+                            }`}>
+                              {pendingCount === null
+                                ? "Consultando cupo..."
+                                : pendingCount > 0
+                                ? `Cupo disponible: ${pendingCount} persona(s) pendiente(s)`
+                                : "Sin cupo — no se pueden crear más contratos para esta solicitud"}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1015,50 +1198,79 @@ export function ContractDialog(props: {
                             placeholder="Seleccione tipo"
                             searchPlaceholder="Buscar tipo..."
                             disabled={isView || qTypes.isLoading}
-                            onChange={(v) =>
+                            onChange={(v) => {
+                              const typeId = Number(v) || 0;
+                              const t = types.find(
+                                (t: any) => extractNumericId(getEntityId(t) ?? t) === typeId
+                              ) as any;
+                              const typeName = (t ? getEntityLabel(t) : "").toLowerCase();
+                              const newIsAdendum =
+                                typeName.includes("adendum") || typeName.includes("addendum");
                               setForm((f) => ({
                                 ...f,
-                                contractTypeID: Number(v) || 0,
-                              }))
-                            }
+                                contractTypeID: typeId,
+                                parentID: newIsAdendum ? f.parentID : null,
+                              }));
+                            }}
                           />
                         </div>
 
                         <div className="space-y-2">
                           <Label htmlFor="department">Departamento *</Label>
-                          <SearchableSelect
-                            value={
-                              form.departmentID
-                                ? String(form.departmentID)
-                                : null
+                          <DepartmentSelect
+                            value={form.departmentID || null}
+                            onChange={(id) =>
+                              setForm((f) => ({ ...f, departmentID: id ?? 0 }))
                             }
-                            items={toSearchItems(depts)}
+                            disabled={isView}
                             placeholder="Seleccione departamento"
-                            searchPlaceholder="Buscar departamento..."
-                            disabled={isView || qDepts.isLoading}
-                            onChange={(v) =>
-                              setForm((f) => ({
-                                ...f,
-                                departmentID: Number(v) || 0,
-                              }))
-                            }
                           />
                         </div>
 
+                        {(isAdendumType || !!form.parentID) && (
+                          <div className="space-y-2 md:col-span-2">
+                            <Label htmlFor="parentContract">Contrato Padre *</Label>
+                            {isView ? (
+                              <p className="text-sm py-2 font-medium">
+                                {form.parentID ? `Contrato #${form.parentID}` : "—"}
+                              </p>
+                            ) : (
+                              <>
+                                <SearchableSelect
+                                  value={form.parentID ? String(form.parentID) : null}
+                                  items={parentContractItems}
+                                  placeholder={
+                                    qParentContracts.isLoading
+                                      ? "Cargando..."
+                                      : "Seleccione contrato padre"
+                                  }
+                                  searchPlaceholder="Buscar por código..."
+                                  disabled={qParentContracts.isLoading}
+                                  isLoading={qParentContracts.isLoading}
+                                  onChange={(v) =>
+                                    setForm((f) => ({
+                                      ...f,
+                                      parentID: Number(v) || null,
+                                    }))
+                                  }
+                                />
+                                {isAdendumType && !form.parentID && (
+                                  <p className="text-xs text-destructive">
+                                    Seleccione el contrato que este adendum modifica.
+                                  </p>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        )}
+
                         <div className="space-y-2 md:col-span-2">
                           <Label htmlFor="job">Cargo (Opcional)</Label>
-                          <SearchableSelect
-                            value={form.jobID ? String(form.jobID) : null}
-                            items={toSearchItems(jobs)}
+                          <JobSelect
+                            value={form.jobID ?? null}
+                            onChange={(id) => setForm((f) => ({ ...f, jobID: id }))}
+                            disabled={isView}
                             placeholder="Seleccione cargo"
-                            searchPlaceholder="Buscar cargo..."
-                            disabled={isView || qJobs.isLoading}
-                            onChange={(v) =>
-                              setForm((f) => ({
-                                ...f,
-                                jobID: Number(v) || null,
-                              }))
-                            }
                           />
                         </div>
                       </div>
@@ -1093,6 +1305,7 @@ export function ContractDialog(props: {
                             id="endDate"
                             type="date"
                             value={form.endDate}
+                            min={form.startDate || undefined}
                             disabled={isView}
                             onChange={(e) =>
                               setForm((f) => ({
@@ -1190,11 +1403,220 @@ export function ContractDialog(props: {
                   <CardHeader>
                     <CardTitle>Paso 1: Datos Básicos</CardTitle>
                     <CardDescription>
-                      Seleccione la persona, tipo de contrato y departamento
+                      Seleccione el tipo de contrato, certificación financiera y datos del contratado
                     </CardDescription>
                   </CardHeader>
 
                   <CardContent className="space-y-4">
+                    {/* ── Tipo de Contrato (primero) ── */}
+                    <div className="space-y-2">
+                      <Label htmlFor="wizard-type">Tipo de Contrato *</Label>
+                      <SearchableSelect
+                        value={form.contractTypeID ? String(form.contractTypeID) : null}
+                        items={toSearchItems(types)}
+                        placeholder="Seleccione tipo"
+                        searchPlaceholder="Buscar tipo..."
+                        disabled={qTypes.isLoading}
+                        onChange={(v) => {
+                          const typeId = Number(v) || 0;
+                          const t = types.find(
+                            (t: any) => extractNumericId(getEntityId(t) ?? t) === typeId
+                          ) as any;
+                          const prefix = t?.numberingPrefix ?? '';
+                          const lastSeq = t?.numberingLastSequence ?? 0;
+                          const code = prefix
+                            ? `${prefix}-${String(lastSeq + 1).padStart(3, '0')}`
+                            : String(lastSeq + 1).padStart(3, '0');
+                          const typeName = (t ? getEntityLabel(t) : "").toLowerCase();
+                          const newIsAdendum =
+                            typeName.includes("adendum") || typeName.includes("addendum");
+                          setForm((f) => ({
+                            ...f,
+                            contractTypeID: typeId,
+                            contractCode: typeId > 0 ? code : f.contractCode,
+                            parentID: newIsAdendum ? f.parentID : null,
+                            certificationID: newIsAdendum ? f.certificationID : null,
+                          }));
+                          setShowCertDocs(false);
+                        }}
+                      />
+                    </div>
+
+                    {/* ── Contrato Padre (solo adendum, justo después del tipo) ── */}
+                    {isAdendumType && (
+                      <div className="space-y-2">
+                        <Label htmlFor="wizard-parent">
+                          Contrato Padre *
+                          <span className="text-xs font-normal text-muted-foreground ml-2">
+                            requerido para adendum
+                          </span>
+                        </Label>
+                        <SearchableSelect
+                          value={form.parentID ? String(form.parentID) : null}
+                          items={parentContractItems}
+                          placeholder={
+                            qParentContracts.isLoading
+                              ? "Cargando contratos..."
+                              : "Seleccione contrato padre"
+                          }
+                          searchPlaceholder="Buscar por código..."
+                          disabled={qParentContracts.isLoading}
+                          isLoading={qParentContracts.isLoading}
+                          onChange={(v) => {
+                            const parentId = Number(v) || null;
+                            const raw =
+                              qParentContracts.data?.status === "success"
+                                ? ((qParentContracts.data.data as any)?.items ?? [])
+                                : [];
+                            const parent = (raw as any[]).find(
+                              (c: any) => (c.contractID ?? c.ContractID) === parentId
+                            );
+                            const parentCertId =
+                              parent?.certificationID ?? parent?.CertificationID ?? null;
+                            setForm((f) => ({
+                              ...f,
+                              parentID: parentId,
+                              certificationID:
+                                parentCertId !== null ? parentCertId : f.certificationID,
+                            }));
+                            setShowCertDocs(false);
+                          }}
+                        />
+                        {!form.parentID && (
+                          <p className="text-xs text-destructive">
+                            Seleccione el contrato que este adendum modifica.
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* ── Certificación Financiera ── */}
+                    <div className="border rounded-lg p-4 space-y-3">
+                      <h4 className="text-sm font-semibold flex items-center gap-2">
+                        <Award className="h-4 w-4 text-muted-foreground" />
+                        Certificación Financiera
+                        <span className="font-normal text-muted-foreground">
+                          {isAdendumType ? "(del contrato padre)" : "(solo aprobadas)"}
+                        </span>
+                      </h4>
+
+                      {/* Adendum con padre seleccionado: muestra info de la cert auto-cargada */}
+                      {isAdendumType && form.parentID ? (
+                        form.certificationID ? (
+                          <p className="text-sm text-green-700 dark:text-green-300 flex items-center gap-1.5">
+                            <CheckCircle2 className="h-4 w-4 shrink-0" />
+                            Certificación <span className="font-medium">#{form.certificationID}</span> cargada desde el contrato padre.
+                          </p>
+                        ) : (
+                          <p className="text-xs text-amber-600 dark:text-amber-400">
+                            El contrato padre no tiene certificación financiera vinculada.
+                          </p>
+                        )
+                      ) : (
+                        <SearchableSelect
+                          value={form.certificationID ? String(form.certificationID) : null}
+                          items={certItems}
+                          placeholder={
+                            qCerts.isLoading ? "Cargando..." : "Seleccione certificación aprobada"
+                          }
+                          searchPlaceholder="Buscar por código o número..."
+                          disabled={qCerts.isLoading}
+                          onChange={(v) => {
+                            setForm((f) => ({
+                              ...f,
+                              certificationID: Number(v) || null,
+                            }));
+                            setShowCertDocs(false);
+                          }}
+                        />
+                      )}
+
+                      {form.certificationID && (
+                        <>
+                          {!isCertApproved && (
+                            <Alert variant="destructive" className="py-2">
+                              <AlertCircle className="h-4 w-4" />
+                              <AlertDescription className="text-xs">
+                                La certificación no está aprobada. Solo se pueden crear contratos con certificaciones en estado <strong>APROBADA</strong>.
+                              </AlertDescription>
+                            </Alert>
+                          )}
+
+                          {certRequestId ? (
+                            <p className="text-xs text-green-700 dark:text-green-300 flex items-center gap-1">
+                              <FileText className="h-3 w-3" />
+                              Solicitud <span className="font-medium">#{certRequestId}</span> vinculada automáticamente.
+                            </p>
+                          ) : (
+                            <Alert className="py-2">
+                              <AlertCircle className="h-4 w-4" />
+                              <AlertDescription className="text-xs">
+                                Esta certificación no tiene solicitud de contrato vinculada.
+                              </AlertDescription>
+                            </Alert>
+                          )}
+
+                          {isRootContract && certRequestId && (
+                            <div className={`text-xs rounded p-2 ${
+                              pendingCount === null
+                                ? "text-muted-foreground"
+                                : pendingCount > 0
+                                ? "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300"
+                                : "bg-destructive/10 text-destructive"
+                            }`}>
+                              {pendingCount === null
+                                ? "Consultando cupo..."
+                                : pendingCount > 0
+                                ? `Cupo disponible: ${pendingCount} persona(s) pendiente(s)`
+                                : "Sin cupo — no se pueden crear más contratos para esta solicitud"}
+                            </div>
+                          )}
+
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                            onClick={() => setShowCertDocs((v) => !v)}
+                          >
+                            <FolderOpen className="h-4 w-4 mr-2" />
+                            {showCertDocs
+                              ? "Ocultar archivos de certificación"
+                              : "Ver archivos de certificación"}
+                            {showCertDocs
+                              ? <ChevronUp className="h-4 w-4 ml-auto" />
+                              : <ChevronDown className="h-4 w-4 ml-auto" />}
+                          </Button>
+
+                          {showCertDocs && (
+                            <ReusableDocumentManager
+                              ref={certDocManagerRef}
+                              label=""
+                              directoryCode={FINANCE_CERTIFICATION_DIRECTORY_CODE}
+                              entityType={FINANCE_CERTIFICATION_ENTITY_TYPE}
+                              entityId={form.certificationID}
+                              entityReady={true}
+                              allowSelectWhenNotReady={false}
+                              showInternalUploadButton={false}
+                              relativePath=""
+                              accept="*/*"
+                              maxSizeMB={20}
+                              maxFiles={50}
+                              disabled={true}
+                              roles={{
+                                canUpload: false,
+                                canPreview: true,
+                                canDownload: true,
+                                canDelete: false,
+                              }}
+                              documentType={{ enabled: false }}
+                            />
+                          )}
+                        </>
+                      )}
+                    </div>
+
+                    {/* ── Persona ── */}
                     <div className="space-y-2">
                       <Label htmlFor="wizard-person">Persona *</Label>
                       <SearchableSelect
@@ -1221,66 +1643,79 @@ export function ContractDialog(props: {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="wizard-type">
-                          Tipo de Contrato *
-                        </Label>
-                        <SearchableSelect
-                          value={
-                            form.contractTypeID
-                              ? String(form.contractTypeID)
-                              : null
+                        <Label htmlFor="wizard-dept">Departamento *</Label>
+                        <DepartmentSelect
+                          value={form.departmentID || null}
+                          onChange={(id) =>
+                            setForm((f) => ({ ...f, departmentID: id ?? 0 }))
                           }
-                          items={toSearchItems(types)}
-                          placeholder="Seleccione tipo"
-                          searchPlaceholder="Buscar tipo..."
-                          disabled={qTypes.isLoading}
-                          onChange={(v) =>
-                            setForm((f) => ({
-                              ...f,
-                              contractTypeID: Number(v) || 0,
-                            }))
-                          }
+                          placeholder="Seleccione departamento"
                         />
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="wizard-dept">Departamento *</Label>
-                        <SearchableSelect
-                          value={
-                            form.departmentID
-                              ? String(form.departmentID)
-                              : null
-                          }
-                          items={toSearchItems(depts)}
-                          placeholder="Seleccione departamento"
-                          searchPlaceholder="Buscar departamento..."
-                          disabled={qDepts.isLoading}
-                          onChange={(v) =>
-                            setForm((f) => ({
-                              ...f,
-                              departmentID: Number(v) || 0,
-                            }))
-                          }
-                        />
-                      </div>
-
-                      <div className="space-y-2 md:col-span-2">
                         <Label htmlFor="wizard-job">Cargo (Opcional)</Label>
-                        <SearchableSelect
-                          value={form.jobID ? String(form.jobID) : null}
-                          items={toSearchItems(jobs)}
+                        <JobSelect
+                          value={form.jobID ?? null}
+                          onChange={(id) => setForm((f) => ({ ...f, jobID: id }))}
                           placeholder="Seleccione cargo"
-                          searchPlaceholder="Buscar cargo..."
-                          disabled={qJobs.isLoading}
-                          onChange={(v) =>
-                            setForm((f) => ({
-                              ...f,
-                              jobID: Number(v) || null,
-                            }))
-                          }
                         />
                       </div>
                     </div>
+
+                    {/* ── Archivos de Solicitud de Contrato (auto-vinculada desde la cert) ── */}
+                    {selectedRequestId && (
+                      <div className="border rounded-lg p-4 space-y-3">
+                        <h4 className="text-sm font-semibold flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-muted-foreground" />
+                          Solicitud de Contrato
+                          <span className="font-medium text-muted-foreground">
+                            #{selectedRequestId}
+                          </span>
+                        </h4>
+
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => setShowRequestDocs((v) => !v)}
+                        >
+                          <FolderOpen className="h-4 w-4 mr-2" />
+                          {showRequestDocs
+                            ? "Ocultar archivos de solicitud"
+                            : "Ver archivos de solicitud"}
+                          {showRequestDocs
+                            ? <ChevronUp className="h-4 w-4 ml-auto" />
+                            : <ChevronDown className="h-4 w-4 ml-auto" />}
+                        </Button>
+
+                        {showRequestDocs && (
+                          <ReusableDocumentManager
+                            ref={requestDocManagerRef}
+                            label=""
+                            directoryCode={CONTRACT_REQUEST_DIRECTORY_CODE}
+                            entityType={CONTRACT_REQUEST_ENTITY_TYPE}
+                            entityId={selectedRequestId}
+                            entityReady={true}
+                            allowSelectWhenNotReady={false}
+                            showInternalUploadButton={false}
+                            relativePath=""
+                            accept="*/*"
+                            maxSizeMB={20}
+                            maxFiles={50}
+                            disabled={true}
+                            roles={{
+                              canUpload: false,
+                              canPreview: true,
+                              canDownload: true,
+                              canDelete: false,
+                            }}
+                            documentType={{ enabled: false }}
+                          />
+                        )}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )}
@@ -1300,13 +1735,10 @@ export function ContractDialog(props: {
                       <Input
                         id="wizard-code"
                         value={form.contractCode}
-                        onChange={(e) =>
-                          setForm((f) => ({
-                            ...f,
-                            contractCode: e.target.value,
-                          }))
-                        }
-                        placeholder="Ej: CONT-2024-001"
+                        readOnly
+                        disabled
+                        className="bg-muted"
+                        placeholder="Seleccione tipo en paso 1"
                       />
                     </div>
 
@@ -1334,6 +1766,7 @@ export function ContractDialog(props: {
                           id="wizard-end"
                           type="date"
                           value={form.endDate}
+                          min={form.startDate || undefined}
                           onChange={(e) =>
                             setForm((f) => ({
                               ...f,
@@ -1345,37 +1778,44 @@ export function ContractDialog(props: {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="wizard-status">Estado Inicial</Label>
-                      <Select
-                        value={form.status ? String(form.status) : ""}
-                        onValueChange={(v) =>
-                          setForm((f) => ({
-                            ...f,
-                            status: Number(v),
-                          }))
-                        }
-                        disabled={wf.qStatuses.isLoading}
-                      >
-                        <SelectTrigger id="wizard-status">
-                          <SelectValue
-                            placeholder={
-                              wf.qStatuses.isLoading
-                                ? "Cargando..."
-                                : "Seleccione estado"
-                            }
-                          />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {wf.statuses.map((s: any) => (
-                            <SelectItem
-                              key={s.typeID}
-                              value={String(s.typeID)}
-                            >
-                              {s.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Label>Estado</Label>
+                      {isCreate ? (
+                        <div className="flex items-center gap-2 h-10 px-3 rounded-md border border-input bg-muted text-sm">
+                          <Badge variant="secondary">BORRADOR</Badge>
+                          <span className="text-muted-foreground text-xs">asignado automáticamente</span>
+                        </div>
+                      ) : (
+                        <Select
+                          value={form.status > 0 ? String(form.status) : undefined}
+                          onValueChange={(v) =>
+                            setForm((f) => ({
+                              ...f,
+                              status: Number(v),
+                            }))
+                          }
+                          disabled={wf.qStatuses.isLoading}
+                        >
+                          <SelectTrigger id="wizard-status">
+                            <SelectValue
+                              placeholder={
+                                wf.qStatuses.isLoading
+                                  ? "Cargando..."
+                                  : "Seleccione estado"
+                              }
+                            />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {wf.statuses.map((s: any, i: number) => (
+                              <SelectItem
+                                key={`status-wizard-${s.typeID ?? i}`}
+                                value={String(s.typeID)}
+                              >
+                                {s.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
                     </div>
 
                     <div className="space-y-2">
@@ -1464,7 +1904,8 @@ export function ContractDialog(props: {
                   ) : (
                     <Button
                       onClick={handleSave}
-                      disabled={createMut.isPending}
+                      disabled={createMut.isPending || (isRootContract && pendingCount !== null && pendingCount <= 0)}
+                      title={isRootContract && pendingCount === 0 ? "Sin cupo disponible para esta solicitud" : undefined}
                     >
                       {createMut.isPending ? (
                         <>Creando...</>

@@ -22,7 +22,8 @@ export function useContractWorkflow(params: { enabled: boolean; currentStatusTyp
     staleTime: 30 * 1000,
   });
 
-  const allowedNextIds = qAllowed.data ?? [];
+  const allowedNextIds: number[] =
+    qAllowed.data?.status === 'success' ? (qAllowed.data.data ?? []) : [];
 
   const allowedNextStatuses = statuses.filter((s) => allowedNextIds.includes(s.typeID));
 

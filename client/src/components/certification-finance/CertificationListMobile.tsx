@@ -1,12 +1,9 @@
 // src/components/certification-finance/CertificationListMobile.tsx
-import { useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, DollarSign, Download, Eye } from "lucide-react";
 import type { UIFinancialCertification } from "@/types/certificationFinance";
-
-type RefTypeItem = any;
 
 function formatECDate(input?: string | null): string {
   if (!input) return "-";
@@ -16,48 +13,21 @@ function formatECDate(input?: string | null): string {
   return new Intl.DateTimeFormat("es-EC", { timeZone: "America/Guayaquil" }).format(d);
 }
 
-function getRefId(rt: RefTypeItem): string {
-  return String(rt?.id ?? rt?.refTypeId ?? rt?.typeId ?? rt?.valueId ?? "");
-}
-
-function getRefLabel(rt: RefTypeItem, fallback: string): string {
-  return String(rt?.name ?? rt?.description ?? rt?.code ?? fallback);
-}
-
-function getStatusClass(rt: RefTypeItem): string {
-  const code = String(rt?.code ?? "").toUpperCase();
-  const name = String(rt?.name ?? rt?.description ?? "").toUpperCase();
-  const text = `${code} ${name}`;
-
-  if (text.includes("APROB") || text.includes("APPROV") || code.includes("APR")) {
-    return "bg-success/15 text-success hover:bg-success/15 border-success/30";
-  }
-  if (text.includes("PEND") || code.includes("PEN") || text.includes("EN PROCESO")) {
-    return "bg-secondary/15 text-secondary-foreground hover:bg-secondary/15 border-warning/30";
-  }
-  if (text.includes("RECH") || code.includes("REC") || text.includes("ANUL")) {
-    return "bg-destructive/15 text-destructive hover:bg-destructive/15 border-destructive/30";
-  }
+function statusBadgeCls(statusName?: string | null): string {
+  const n = (statusName ?? "").toUpperCase();
+  if (n === "APROBADA") return "bg-success/15 text-success hover:bg-success/15 border-success/30";
+  if (n === "PENDIENTE_REVISION") return "bg-amber-500/15 text-amber-700 dark:text-amber-400 hover:bg-amber-500/15 border-amber-500/30";
+  if (n === "RECHAZADA") return "bg-destructive/15 text-destructive hover:bg-destructive/15 border-destructive/30";
   return "bg-muted text-foreground hover:bg-muted border-border";
 }
 
 export function CertificationListMobile(props: {
   list: UIFinancialCertification[];
-  statusRefTypes: RefTypeItem[];
   directoryCode: string;
   onView: (c: UIFinancialCertification) => void;
   onDownloadLegacy: (directoryCode: string, filepath: string, filename: string) => void;
 }) {
-  const { list, statusRefTypes, directoryCode, onView, onDownloadLegacy } = props;
-
-  const statusMap = useMemo(() => {
-    const m = new Map<string, RefTypeItem>();
-    for (const rt of statusRefTypes || []) {
-      const id = getRefId(rt);
-      if (id) m.set(id, rt);
-    }
-    return m;
-  }, [statusRefTypes]);
+  const { list, directoryCode, onView, onDownloadLegacy } = props;
 
   return (
     <div className="md:hidden space-y-3">
@@ -70,17 +40,9 @@ export function CertificationListMobile(props: {
                 <div className="text-xs text-muted-foreground">Nro: {c.certNumber ?? "-"}</div>
               </div>
 
-              {(() => {
-                const id = c.status !== undefined && c.status !== null ? String(c.status) : "";
-                const rt = id ? statusMap.get(id) : undefined;
-                const label = getRefLabel(rt, id ? `Estado ${id}` : "-");
-                const cls = getStatusClass(rt);
-                return (
-                  <Badge variant="outline" className={cls}>
-                    {label}
-                  </Badge>
-                );
-              })()}
+              <Badge variant="outline" className={statusBadgeCls(c.statusName)}>
+                {c.statusText}
+              </Badge>
             </div>
 
             <div className="text-sm">

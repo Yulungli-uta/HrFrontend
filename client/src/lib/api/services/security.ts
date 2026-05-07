@@ -1,3 +1,12 @@
+/**
+ * Archivo: src/lib/api/services/security.ts
+ *
+ * DESCRIPCION ESTRUCTURAL
+ * - Bloque funcional: Seguridad, autenticacion, autorizacion, usuarios, roles, menus, sesiones y trazabilidad de acceso.
+ * - Este archivo contiene la implementacion completa reubicada desde auth.ts
+ *   sin recortar la logica ni alterar el comportamiento esperado.
+ */
+
 // src/lib/api/services/auth.ts
 /**
  * APIs relacionadas con autenticación y gestión de usuarios.
@@ -186,13 +195,6 @@ export const AuthAPI = {
       ...jsonBody(validateRequest),
     }),
 
-  /** Nota: este endpoint puede existir en tu backend además de PasswordAPI.change */
-  changePassword: (req: { currentPassword: string; newPassword: string }): Promise<ApiResponse<unknown>> =>
-    apiFetch<unknown>('/api/auth/change-password', {
-      method: 'POST',
-      ...jsonBody(req),
-    }),
-
   getAzureAuthUrl: (clientId?: string, browserId?: string): Promise<ApiResponse<AzureAuthUrlResponse>> =>
     apiFetch<AzureAuthUrlResponse>(
       `/api/auth/azure/url${serializeQuery({ clientId, browserId })}`,
@@ -238,12 +240,8 @@ export const AppAuthAPI = {
  * ========================================================================== */
 
 export const AuthUsersAPI = {
-  list: async (page: number = 1, size: number = 100): Promise<ApiResponse<User[]>> => {
-    const raw = await apiFetch<User[]>(`/api/users${serializeQuery({ page, size })}`, { method: 'GET' });
-    const res = ensureApiResponse<User[]>(raw);
-    if (res.status === 'success') res.data = coerceToArray<User>(res.data);
-    return res;
-  },
+  list: (page: number = 1, pageSize: number = 20): Promise<ApiResponse<PagedResult<User>>> =>
+    apiFetch<PagedResult<User>>(`/api/users${serializeQuery({ page, pageSize })}`, { method: 'GET' }),
 
   /**
    * Obtiene usuarios paginados, compatible con el hook usePaged.
@@ -290,22 +288,8 @@ export const AuthUsersAPI = {
  * ========================================================================== */
 
 export const RolesAPI = {
-  list: async (page: number = 1, size: number = 100): Promise<ApiResponse<Role[]>> => {
-    const raw = await apiFetch<Role[]>(`/api/roles${serializeQuery({ page, size })}`, { method: 'GET' });
-    const res = ensureApiResponse<Role[]>(raw);
-
-    if (res.status === 'success') {
-      const arr = coerceToArray<Role>(res.data).map((r: any) => ({
-        ...r,
-        id: typeof r.id === 'string' || typeof r.id === 'number' ? Number(r.id) : r.id,
-        isActive: toBool(r.isActive, true),
-        isDeleted: toBool(r.isDeleted, false),
-      }));
-      res.data = arr;
-    }
-
-    return res;
-  },
+  list: (page: number = 1, pageSize: number = 20): Promise<ApiResponse<PagedResult<Role>>> =>
+    apiFetch<PagedResult<Role>>(`/api/roles${serializeQuery({ page, pageSize })}`, { method: 'GET' }),
 
   get: (id: number): Promise<ApiResponse<Role>> =>
     apiFetch<Role>(`/api/roles/${toInt(id)}`, { method: 'GET' }),
@@ -316,15 +300,10 @@ export const RolesAPI = {
       ...jsonBody(data),
     }),
 
-  // update: (id: number, data: UpdateRoleDto): Promise<ApiResponse<Role>> =>
-  //   apiFetch<Role>(`/api/roles/${toInt(id)}`, {
-  //     method: 'PUT',
-  //     ...jsonBody(data),
-  //   }),
-  update: (id: string | number, data: UpdateRoleDto) =>
-    apiFetch<Role>(`/api/roles/${id}`, {
+  update: (id: number, data: UpdateRoleDto): Promise<ApiResponse<Role>> =>
+    apiFetch<Role>(`/api/roles/${toInt(id)}`, {
       method: 'PUT',
-      body: JSON.stringify(data),
+      ...jsonBody(data),
     }),
 
   delete: (id: number): Promise<ApiResponse<void>> =>
@@ -335,7 +314,7 @@ export const RolesAPI = {
    */
   listPaged: async (params: PagedRequest): Promise<ApiResponse<PagedResult<Role>>> => {
     const raw = await apiFetch<PagedResult<Role>>(
-      `/api/roles/paged${serializeQuery({
+      `/api/roles${serializeQuery({
         page: params.page,
         pageSize: params.pageSize,
         search: params.search?.trim() || undefined,
@@ -359,13 +338,8 @@ export const RolesAPI = {
  * ========================================================================== */
 
 export const UserRolesAPI = {
-  // Swagger: GET /api/user-roles?page&size
-  list: async (page: number = 1, size: number = 100): Promise<ApiResponse<UserRole[]>> => {
-    const raw = await apiFetch<UserRole[]>(`/api/user-roles${serializeQuery({ page, size })}`, { method: 'GET' });
-    const res = ensureApiResponse<UserRole[]>(raw);
-    if (res.status === 'success') res.data = coerceToArray<UserRole>(res.data);
-    return res;
-  },
+  list: (page: number = 1, pageSize: number = 20): Promise<ApiResponse<PagedResult<UserRole>>> =>
+    apiFetch<PagedResult<UserRole>>(`/api/user-roles${serializeQuery({ page, pageSize })}`, { method: 'GET' }),
 
   // Swagger: POST /api/user-roles
   assign: (data: CreateUserRoleDto): Promise<ApiResponse<UserRole>> =>
@@ -374,9 +348,9 @@ export const UserRolesAPI = {
       ...jsonBody(data),
     }),
 
-  // Swagger: PUT /api/user-roles?id=...
-  updateById: (id: number, data: UpdateUserRoleDto): Promise<ApiResponse<UserRole>> =>
-    apiFetch<UserRole>(`/api/user-roles${serializeQuery({ id })}`, {
+  // Swagger: PUT /api/user-roles (body only, sin query param)
+  updateById: (data: UpdateUserRoleDto): Promise<ApiResponse<UserRole>> =>
+    apiFetch<UserRole>('/api/user-roles', {
       method: 'PUT',
       ...jsonBody(data),
     }),
@@ -430,23 +404,32 @@ export const UserRolesAPI = {
  * ========================================================================== */
 
 export const MenuItemsAPI = {
-  list: async (page: number = 1, size: number = 100): Promise<ApiResponse<MenuItem[]>> => {
-    const raw = await apiFetch<MenuItem[]>(`/api/menu-items${serializeQuery({ page, size })}`, { method: 'GET' });
-    const res = ensureApiResponse<MenuItem[]>(raw);
-
-    if (res.status === 'success') {
-      const arr = coerceToArray<MenuItem>(res.data).map((m: any) => ({
-        ...m,
-        id: toInt(m.id),
-        parentId: m.parentId === null || m.parentId === undefined ? null : toInt(m.parentId),
-        order: Number(m.order ?? 0),
-        isVisible: toBool(m.isVisible, true),
-        isDeleted: toBool(m.isDeleted, false),
-      }));
-      res.data = arr;
+  list: (page: number = 1, pageSize: number = 20): Promise<ApiResponse<PagedResult<MenuItem>>> =>
+    apiFetch<PagedResult<MenuItem>>(`/api/menu-items${serializeQuery({ page, pageSize })}`, { method: 'GET' }),
+  
+  listPaged: async (
+    params: PagedRequest
+  ): Promise<ApiResponse<PagedResult<MenuItem>>> => {
+    const raw = await apiFetch<PagedResult<MenuItem>>(
+      `/api/menu-items${serializeQuery({
+        page: params.page,
+        pageSize: params.pageSize,
+        search: params.search?.trim() || undefined,
+        sortBy: params.sortBy,
+        sortDirection: params.sortDirection,
+      })}`,
+      { method: "GET" }
+    );
+    console.log("[MenuItemsAPI.listPaged] raw:", raw);
+    // apiFetch envuelve la respuesta del backend, así que aquí se normaliza
+    if (raw?.status === "success" && (raw.data as any)?.success && (raw.data as any)?.data) {
+      return {
+        status: "success",
+        data: (raw.data as any).data,
+      };
     }
 
-    return res;
+    return raw;
   },
 
   get: (id: number): Promise<ApiResponse<MenuItem>> =>
@@ -486,20 +469,8 @@ export const MenuAPI = {
  * ========================================================================== */
 
 export const RoleMenuItemsAPI = {
-  list: async (page: number = 1, size: number = 100): Promise<ApiResponse<RoleMenuItem[]>> => {
-    const raw = await apiFetch<RoleMenuItem[]>(`/api/role-menu-items${serializeQuery({ page, size })}`, { method: 'GET' });
-    const res = ensureApiResponse<RoleMenuItem[]>(raw);
-
-    if (res.status === 'success') {
-      res.data = coerceToArray<RoleMenuItem>(res.data).map((x: any) => ({
-        roleId: toInt(x.roleId),
-        menuItemId: toInt(x.menuItemId),
-        isVisible: toBool(x.isVisible, true),
-      }));
-    }
-
-    return res;
-  },
+  list: (page: number = 1, pageSize: number = 20): Promise<ApiResponse<PagedResult<RoleMenuItem>>> =>
+    apiFetch<PagedResult<RoleMenuItem>>(`/api/role-menu-items${serializeQuery({ page, pageSize })}`, { method: 'GET' }),
 
   // Swagger: GET /api/role-menu-items/{roleId}/{menuItemId}
   get: (roleId: number, menuItemId: number): Promise<ApiResponse<RoleMenuItem>> =>
@@ -568,10 +539,33 @@ export interface AzureChangePasswordDto {
   forceChangeNextSignIn: boolean;
 }
 
+export interface ChangePassword2faDto {
+  currentPassword: string;
+  newPassword: string;
+  otpCode: string;
+}
+
+export interface RequestPasswordChange2faResponse {
+  success: boolean;
+  message: string;
+  otpCodeDev?: string;
+}
+
 export const PasswordAPI = {
-  // Endpoint usado por la UI (compatible con tu tipado existente)
   change: (data: { currentPassword: string; newPassword: string }): Promise<ApiResponse<ChangePasswordResponse>> =>
     apiFetch<ChangePasswordResponse>('/api/auth/change-password', {
+      method: 'POST',
+      ...jsonBody(data),
+    }),
+
+  requestChange2fa: (): Promise<ApiResponse<RequestPasswordChange2faResponse>> =>
+    apiFetch<RequestPasswordChange2faResponse>('/api/auth/request-password-change-2fa', {
+      method: 'POST',
+      ...jsonBody({}),
+    }),
+
+  changePassword2fa: (data: ChangePassword2faDto): Promise<ApiResponse<ChangePasswordResponse>> =>
+    apiFetch<ChangePasswordResponse>('/api/auth/change-password-2fa', {
       method: 'POST',
       ...jsonBody(data),
     }),
@@ -838,8 +832,8 @@ export interface UpdateNotificationSubscriptionDto {
  * ========================================================================== */
 
 export const AppParamsAPI = {
-  list: (page: number = 1, size: number = 100) =>
-    apiFetch<unknown>(`/api/app-params${serializeQuery({ page, size })}`, { method: 'GET' }),
+  list: (page: number = 1, pageSize: number = 20) =>
+    apiFetch<unknown>(`/api/app-params${serializeQuery({ page, pageSize })}`, { method: 'GET' }),
 
   create: (data: CreateAppParamDto) =>
     apiFetch<unknown>('/api/app-params', { method: 'POST', ...jsonBody(data) }),
@@ -855,8 +849,8 @@ export const AppParamsAPI = {
 } as const;
 
 export const AuditLogAPI = {
-  list: (page: number = 1, size: number = 100) =>
-    apiFetch<unknown>(`/api/audit-log${serializeQuery({ page, size })}`, { method: 'GET' }),
+  list: (page: number = 1, pageSize: number = 20) =>
+    apiFetch<unknown>(`/api/audit-log${serializeQuery({ page, pageSize })}`, { method: 'GET' }),
 
   create: (data: CreateAuditLogDto) =>
     apiFetch<unknown>('/api/audit-log', { method: 'POST', ...jsonBody(data) }),
@@ -899,7 +893,7 @@ export const AzureManagementAPI = {
     apiFetch<unknown>(`/api/azure-management/users/${encodeURIComponent(id)}/change-password`, { method: 'POST', ...jsonBody(data) }),
 
   validatePassword: (password: string) =>
-    apiFetch<unknown>('/api/azure-management/validate-password', { method: 'POST', ...jsonBody(password) }),
+    apiFetch<unknown>('/api/azure-management/validate-password', { method: 'POST', ...jsonBody({ password }) }),
 
   generatePassword: () =>
     apiFetch<unknown>('/api/azure-management/generate-password', { method: 'GET' }),
@@ -957,8 +951,8 @@ export const AzureManagementAPI = {
 } as const;
 
 export const AzureSyncLogAPI = {
-  list: (page: number = 1, size: number = 100) =>
-    apiFetch<unknown>(`/api/azure-sync-log${serializeQuery({ page, size })}`, { method: 'GET' }),
+  list: (page: number = 1, pageSize: number = 20) =>
+    apiFetch<unknown>(`/api/azure-sync-log${serializeQuery({ page, pageSize })}`, { method: 'GET' }),
 
   create: (data: CreateAzureSyncLogDto) =>
     apiFetch<unknown>('/api/azure-sync-log', { method: 'POST', ...jsonBody(data) }),
@@ -971,8 +965,8 @@ export const AzureSyncLogAPI = {
 } as const;
 
 export const HRSyncLogAPI = {
-  list: (page: number = 1, size: number = 100) =>
-    apiFetch<unknown>(`/api/hr-sync-log${serializeQuery({ page, size })}`, { method: 'GET' }),
+  list: (page: number = 1, pageSize: number = 20) =>
+    apiFetch<unknown>(`/api/hr-sync-log${serializeQuery({ page, pageSize })}`, { method: 'GET' }),
 
   create: (data: CreateHRSyncLogDto) =>
     apiFetch<unknown>('/api/hr-sync-log', { method: 'POST', ...jsonBody(data) }),
@@ -985,8 +979,8 @@ export const HRSyncLogAPI = {
 } as const;
 
 export const FailedLoginsAPI = {
-  list: (page: number = 1, size: number = 100) =>
-    apiFetch<unknown>(`/api/failed-logins${serializeQuery({ page, size })}`, { method: 'GET' }),
+  list: (page: number = 1, pageSize: number = 20) =>
+    apiFetch<unknown>(`/api/failed-logins${serializeQuery({ page, pageSize })}`, { method: 'GET' }),
 
   create: (data: CreateFailedAttemptDto) =>
     apiFetch<unknown>('/api/failed-logins', { method: 'POST', ...jsonBody(data) }),
@@ -999,8 +993,8 @@ export const FailedLoginsAPI = {
 } as const;
 
 export const LocalCredentialsAPI = {
-  list: (page: number = 1, size: number = 100) =>
-    apiFetch<unknown>(`/api/local-credentials${serializeQuery({ page, size })}`, { method: 'GET' }),
+  list: (page: number = 1, pageSize: number = 20) =>
+    apiFetch<unknown>(`/api/local-credentials${serializeQuery({ page, pageSize })}`, { method: 'GET' }),
 
   create: (data: CreateLocalCredentialDto) =>
     apiFetch<unknown>('/api/local-credentials', { method: 'POST', ...jsonBody(data) }),
@@ -1016,8 +1010,8 @@ export const LocalCredentialsAPI = {
 } as const;
 
 export const LoginHistoryAPI = {
-  list: (page: number = 1, size: number = 100) =>
-    apiFetch<unknown>(`/api/login-history${serializeQuery({ page, size })}`, { method: 'GET' }),
+  list: (page: number = 1, pageSize: number = 20) =>
+    apiFetch<unknown>(`/api/login-history${serializeQuery({ page, pageSize })}`, { method: 'GET' }),
 
   create: (data: CreateLoginHistoryDto) =>
     apiFetch<unknown>('/api/login-history', { method: 'POST', ...jsonBody(data) }),
@@ -1056,8 +1050,8 @@ export const NotificationAPI = {
 } as const;
 
 export const PermissionChangeHistoryAPI = {
-  list: (page: number = 1, size: number = 100) =>
-    apiFetch<unknown>(`/api/permission-change-history${serializeQuery({ page, size })}`, { method: 'GET' }),
+  list: (page: number = 1, pageSize: number = 20) =>
+    apiFetch<unknown>(`/api/permission-change-history${serializeQuery({ page, pageSize })}`, { method: 'GET' }),
 
   create: (data: CreatePermissionChangeHistoryDto) =>
     apiFetch<unknown>('/api/permission-change-history', { method: 'POST', ...jsonBody(data) }),
@@ -1070,8 +1064,8 @@ export const PermissionChangeHistoryAPI = {
 } as const;
 
 export const PermissionsAPI = {
-  list: (page: number = 1, size: number = 100) =>
-    apiFetch<unknown>(`/api/permissions${serializeQuery({ page, size })}`, { method: 'GET' }),
+  list: (page: number = 1, pageSize: number = 20) =>
+    apiFetch<unknown>(`/api/permissions${serializeQuery({ page, pageSize })}`, { method: 'GET' }),
 
   create: (data: CreatePermissionDto) =>
     apiFetch<unknown>('/api/permissions', { method: 'POST', ...jsonBody(data) }),
@@ -1087,8 +1081,8 @@ export const PermissionsAPI = {
 } as const;
 
 export const RoleChangeHistoryAPI = {
-  list: (page: number = 1, size: number = 100) =>
-    apiFetch<unknown>(`/api/role-change-history${serializeQuery({ page, size })}`, { method: 'GET' }),
+  list: (page: number = 1, pageSize: number = 20) =>
+    apiFetch<unknown>(`/api/role-change-history${serializeQuery({ page, pageSize })}`, { method: 'GET' }),
 
   create: (data: CreateRoleChangeHistoryDto) =>
     apiFetch<unknown>('/api/role-change-history', { method: 'POST', ...jsonBody(data) }),
@@ -1101,8 +1095,8 @@ export const RoleChangeHistoryAPI = {
 } as const;
 
 export const SecurityTokensAPI = {
-  list: (page: number = 1, size: number = 100) =>
-    apiFetch<unknown>(`/api/security-tokens${serializeQuery({ page, size })}`, { method: 'GET' }),
+  list: (page: number = 1, pageSize: number = 20) =>
+    apiFetch<unknown>(`/api/security-tokens${serializeQuery({ page, pageSize })}`, { method: 'GET' }),
 
   create: (data: CreateSecurityTokenDto) =>
     apiFetch<unknown>('/api/security-tokens', { method: 'POST', ...jsonBody(data) }),
@@ -1118,8 +1112,8 @@ export const SecurityTokensAPI = {
 } as const;
 
 export const SessionsAPI = {
-  list: (page: number = 1, size: number = 100) =>
-    apiFetch<unknown>(`/api/sessions${serializeQuery({ page, size })}`, { method: 'GET' }),
+  list: (page: number = 1, pageSize: number = 20) =>
+    apiFetch<unknown>(`/api/sessions${serializeQuery({ page, pageSize })}`, { method: 'GET' }),
 
   create: (data: CreateUserSessionDto) =>
     apiFetch<unknown>('/api/sessions', { method: 'POST', ...jsonBody(data) }),
@@ -1135,8 +1129,8 @@ export const SessionsAPI = {
 } as const;
 
 export const UserActivityAPI = {
-  list: (page: number = 1, size: number = 100) =>
-    apiFetch<unknown>(`/api/user-activity${serializeQuery({ page, size })}`, { method: 'GET' }),
+  list: (page: number = 1, pageSize: number = 20) =>
+    apiFetch<unknown>(`/api/user-activity${serializeQuery({ page, pageSize })}`, { method: 'GET' }),
 
   create: (data: CreateUserActivityLogDto) =>
     apiFetch<unknown>('/api/user-activity', { method: 'POST', ...jsonBody(data) }),
@@ -1149,8 +1143,8 @@ export const UserActivityAPI = {
 } as const;
 
 export const UserEmployeesAPI = {
-  list: (page: number = 1, size: number = 100) =>
-    apiFetch<unknown>(`/api/user-employees${serializeQuery({ page, size })}`, { method: 'GET' }),
+  list: (page: number = 1, pageSize: number = 20) =>
+    apiFetch<unknown>(`/api/user-employees${serializeQuery({ page, pageSize })}`, { method: 'GET' }),
 
   create: (data: CreateUserEmployeeDto) =>
     apiFetch<unknown>('/api/user-employees', { method: 'POST', ...jsonBody(data) }),
@@ -1163,4 +1157,130 @@ export const UserEmployeesAPI = {
 
   remove: (id: number) =>
     apiFetch<unknown>(`/api/user-employees/${toInt(id)}`, { method: 'DELETE' }),
+} as const;
+
+/* =============================================================================
+ * DTOs — Local AD Management
+ * ========================================================================== */
+
+export interface LocalAdAuthRequest {
+  username: string;
+  password: string;
+}
+
+export interface LocalAdAuthResponse {
+  success: boolean;
+  email: string | null;
+  displayName: string | null;
+  failureReason: string | null;
+}
+
+export interface CreateLocalAdUserRequest {
+  email: string;
+  displayName: string;
+  givenName?: string | null;
+  surname?: string | null;
+  initialPassword: string;
+  forcePasswordChange: boolean;
+  jobTitle?: string | null;
+  department?: string | null;
+  accountEnabled: boolean;
+}
+
+export interface UpdateLocalAdUserRequest {
+  displayName?: string | null;
+  givenName?: string | null;
+  surname?: string | null;
+  jobTitle?: string | null;
+  department?: string | null;
+}
+
+export interface LocalAdUserResponse {
+  id: string;
+  email: string;
+  displayName: string;
+  givenName: string | null;
+  surname: string | null;
+  jobTitle: string | null;
+  department: string | null;
+  accountEnabled: boolean;
+}
+
+export interface LocalAdGroupResponse {
+  id: string;
+  name: string;
+  description: string | null;
+  email: string | null;
+}
+
+/* =============================================================================
+ * API de Active Directory Local — /api/local-ad
+ * authenticate es público; el resto requiere rol Administrador.
+ * ========================================================================== */
+
+async function fetchLocalAd<T>(url: string, init?: Parameters<typeof apiFetch>[1]): Promise<ApiResponse<T>> {
+  const raw = await apiFetch<any>(url, init);
+  if (raw.status === 'success' && raw.data && typeof raw.data === 'object' && 'success' in raw.data) {
+    if (raw.data.success === false) {
+      return { status: 'error', error: { code: 400, message: raw.data.message || 'Error en Active Directory' } };
+    }
+    return { status: 'success', data: raw.data.data as T };
+  }
+  return raw as ApiResponse<T>;
+}
+
+export const LocalAdManagementAPI = {
+  // Público — no requiere token JWT
+  authenticate: (data: LocalAdAuthRequest): Promise<ApiResponse<LocalAdAuthResponse>> =>
+    fetchLocalAd<LocalAdAuthResponse>('/api/local-ad/authenticate', { method: 'POST', ...jsonBody(data) }),
+
+  // Usuarios
+  // ⚠️ TotalCount refleja solo la página actual — LDAP no expone conteo total nativo.
+  // HasNextPage no es confiable: paginar hasta recibir items vacío.
+  listUsers: (page: number = 1, pageSize: number = 50, filter?: string): Promise<ApiResponse<PagedResult<LocalAdUserResponse>>> =>
+    fetchLocalAd<PagedResult<LocalAdUserResponse>>(`/api/local-ad/users${serializeQuery({ page, pageSize, filter })}`, { method: 'GET' }),
+
+  getUser: (id: string): Promise<ApiResponse<LocalAdUserResponse>> =>
+    fetchLocalAd<LocalAdUserResponse>(`/api/local-ad/users/${encodeURIComponent(id)}`, { method: 'GET' }),
+
+  getUserByEmail: (email: string): Promise<ApiResponse<LocalAdUserResponse>> =>
+    fetchLocalAd<LocalAdUserResponse>(`/api/local-ad/users/by-email/${encodeURIComponent(email)}`, { method: 'GET' }),
+
+  createUser: (data: CreateLocalAdUserRequest): Promise<ApiResponse<LocalAdUserResponse>> =>
+    fetchLocalAd<LocalAdUserResponse>('/api/local-ad/users', { method: 'POST', ...jsonBody(data) }),
+
+  updateUser: (id: string, data: UpdateLocalAdUserRequest): Promise<ApiResponse<LocalAdUserResponse>> =>
+    fetchLocalAd<LocalAdUserResponse>(`/api/local-ad/users/${encodeURIComponent(id)}`, { method: 'PUT', ...jsonBody(data) }),
+
+  enableUser: (id: string): Promise<ApiResponse<null>> =>
+    fetchLocalAd<null>(`/api/local-ad/users/${encodeURIComponent(id)}/enable`, { method: 'POST' }),
+
+  disableUser: (id: string): Promise<ApiResponse<null>> =>
+    fetchLocalAd<null>(`/api/local-ad/users/${encodeURIComponent(id)}/disable`, { method: 'POST' }),
+
+  deleteUser: (id: string): Promise<ApiResponse<null>> =>
+    fetchLocalAd<null>(`/api/local-ad/users/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+
+  // Grupos
+  // ⚠️ Misma limitación LDAP que listUsers — TotalCount no refleja el total real.
+  listGroups: (page: number = 1, pageSize: number = 50, filter?: string): Promise<ApiResponse<PagedResult<LocalAdGroupResponse>>> =>
+    fetchLocalAd<PagedResult<LocalAdGroupResponse>>(`/api/local-ad/groups${serializeQuery({ page, pageSize, filter })}`, { method: 'GET' }),
+
+  getGroup: (id: string): Promise<ApiResponse<LocalAdGroupResponse>> =>
+    fetchLocalAd<LocalAdGroupResponse>(`/api/local-ad/groups/${encodeURIComponent(id)}`, { method: 'GET' }),
+
+  addGroupMember: (groupId: string, userId: string): Promise<ApiResponse<null>> =>
+    fetchLocalAd<null>(`/api/local-ad/groups/${encodeURIComponent(groupId)}/members/${encodeURIComponent(userId)}`, { method: 'POST' }),
+
+  removeGroupMember: (groupId: string, userId: string): Promise<ApiResponse<null>> =>
+    fetchLocalAd<null>(`/api/local-ad/groups/${encodeURIComponent(groupId)}/members/${encodeURIComponent(userId)}`, { method: 'DELETE' }),
+
+  listGroupMembers: (groupId: string): Promise<ApiResponse<LocalAdGroupResponse[]>> =>
+    fetchLocalAd<LocalAdGroupResponse[]>(`/api/local-ad/groups/${encodeURIComponent(groupId)}/members`, { method: 'GET' }),
+
+  listUserGroups: (userId: string): Promise<ApiResponse<LocalAdGroupResponse[]>> =>
+    fetchLocalAd<LocalAdGroupResponse[]>(`/api/local-ad/users/${encodeURIComponent(userId)}/groups`, { method: 'GET' }),
+
+  checkUserMembership: (userId: string, groupId: string): Promise<ApiResponse<{ isMember: boolean }>> =>
+    fetchLocalAd<{ isMember: boolean }>(`/api/local-ad/users/${encodeURIComponent(userId)}/groups/${encodeURIComponent(groupId)}`, { method: 'GET' }),
 } as const;

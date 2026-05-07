@@ -1,3 +1,12 @@
+/**
+ * Archivo: src/lib/api/services/catalogs.ts
+ *
+ * DESCRIPCION ESTRUCTURAL
+ * - Bloque funcional de catalogos maestros y geografia reutilizable.
+ * - Se excluyen los catalogos relacionales de contrato y curriculum porque ya fueron
+ *   agrupados en contracts.ts y cv.ts para facilitar revision funcional.
+ */
+
 // src/lib/api/services/geo.ts
 
 /**
@@ -32,29 +41,6 @@ export const TiposReferenciaAPI = {
     apiFetch<any[]>(`/api/v1/rh/ref/types/category/${category}`),
 };
 
-// =============================================================================
-// API de Cargos
-// =============================================================================
-
-export const CargosAPI = createCrudService<any, any>('/api/v1/rh/jobs');
-
-// =============================================================================
-// API de Cargos Especializados
-// =============================================================================
-
-export const CargosEspecializadosAPI = {
-  getActiveJobs: (): Promise<ApiResponse<any>> =>
-    apiFetch<any>('/api/v1/rh/jobs/active'),
-
-  searchJobs: (title: string): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`/api/v1/rh/jobs/search?title=${encodeURIComponent(title)}`),
-};
-
-// =============================================================================
-// API de Instituciones
-// =============================================================================
-
-export const InstitucionesAPI = createCrudService<any, any>('/api/v1/rh/cv/institutions');
 
 // =============================================================================
 // API de Países

@@ -1,3 +1,4 @@
+// src/pages/admin/UserRoles.tsx
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo, useCallback, useEffect } from "react";
 
@@ -12,41 +13,82 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  UserCog, Plus, Trash2, Search, Filter, Loader2, AlertCircle, RefreshCw,
-  Users, Shield, Calendar, Eye, EyeOff, ChevronDown, ChevronUp,
-  Download, MoreHorizontal, CheckCircle, XCircle, Edit3,
+  UserCog,
+  Plus,
+  Trash2,
+  Search,
+  Filter,
+  Loader2,
+  AlertCircle,
+  RefreshCw,
+  Users,
+  Shield,
+  Calendar,
+  Eye,
+  EyeOff,
+  ChevronDown,
+  ChevronUp,
+  Download,
+  MoreHorizontal,
+  CheckCircle,
+  XCircle,
+  Edit3,
 } from "lucide-react";
 import { AuthUsersAPI, RolesAPI, UserRolesAPI } from "@/lib/api";
-import type { ApiResponse } from "@/lib/api";
+import type { ApiResponse, PagedResult } from "@/lib/api";
 import type { User, Role, UserRole } from "@/features/auth";
 import { useToast } from "@/hooks/use-toast";
 import AssignRoleForm from "@/components/forms/AssignRoleForm";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
-  DropdownMenuSeparator, DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
-import { parseApiError } from '@/lib/error-handling';
+import { parseApiError } from "@/lib/error-handling";
 
 /* =========================
-   Página principal
+   Helpers
 ========================= */
 
 interface FilterState {
@@ -56,23 +98,51 @@ interface FilterState {
   searchTerm: string;
 }
 
+function normalizePagedItems<T>(resp: any): T[] {
+  if (!resp) return [];
+
+  if (resp?.status === "success" && Array.isArray(resp?.data?.items)) {
+    return resp.data.items as T[];
+  }
+
+  if (resp?.success === true && Array.isArray(resp?.data?.items)) {
+    return resp.data.items as T[];
+  }
+
+  if (
+    resp?.status === "success" &&
+    resp?.data?.success === true &&
+    Array.isArray(resp?.data?.data?.items)
+  ) {
+    return resp.data.data.items as T[];
+  }
+
+  if (Array.isArray(resp?.data)) {
+    return resp.data as T[];
+  }
+
+  return [];
+}
+
+/* =========================
+   Página principal
+========================= */
+
 export default function UserRolesPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
-  // Eliminar asignación
   const [deleteAssignment, setDeleteAssignment] = useState<{
     userId: string;
     roleId: number;
     assignedAt?: string;
   } | null>(null);
 
-  // Editar asignación (incluye email para mostrar a quién pertenece)
   const [editAssignment, setEditAssignment] = useState<{
     userId: string;
     userEmail: string;
-    roleId: number;      // roleId actual
-    assignedAt?: string; // por si tu backend lo requiere
+    roleId: number;
+    assignedAt?: string;
     expiresAt?: string;
     reason?: string;
   } | null>(null);
@@ -92,15 +162,14 @@ export default function UserRolesPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Queries
   const {
     data: usersResponse,
     isLoading: isLoadingUsers,
     error: usersError,
     refetch: refetchUsers,
-  } = useQuery<ApiResponse<User[]>>({
+  } = useQuery<ApiResponse<PagedResult<User>>>({
     queryKey: ["auth-users"],
-    queryFn: () => AuthUsersAPI.list(),
+    queryFn: () => AuthUsersAPI.list(1, 10000),
     refetchOnWindowFocus: true,
   });
 
@@ -108,9 +177,9 @@ export default function UserRolesPage() {
     data: rolesResponse,
     isLoading: isLoadingRoles,
     error: rolesError,
-  } = useQuery<ApiResponse<Role[]>>({
+  } = useQuery<ApiResponse<PagedResult<Role>>>({
     queryKey: ["roles"],
-    queryFn: () => RolesAPI.list(),
+    queryFn: () => RolesAPI.list(1, 10000),
   });
 
   const {
@@ -118,31 +187,32 @@ export default function UserRolesPage() {
     isLoading: isLoadingUserRoles,
     error: userRolesError,
     refetch: refetchUserRoles,
-  } = useQuery<ApiResponse<UserRole[]>>({
+  } = useQuery<ApiResponse<PagedResult<UserRole>>>({
     queryKey: ["user-roles"],
-    queryFn: () => UserRolesAPI.list(),
+    queryFn: () => UserRolesAPI.list(1, 10000),
   });
 
-  // Mutación: eliminar asignación
   const deleteMutation = useMutation({
     mutationFn: async ({ userId, roleId }: { userId: string; roleId: number }) => {
       return UserRolesAPI.removeLegacy(userId, roleId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-roles"] });
-      toast({ title: "✅ Asignación removida", description: "El rol ha sido removido del usuario exitosamente" });
+      toast({
+        title: "Asignación removida",
+        description: "El rol ha sido removido del usuario exitosamente",
+      });
       setDeleteAssignment(null);
     },
     onError: (error: unknown) => {
       toast({
-        title: "❌ Error al remover asignación",
+        title: "Error al remover asignación",
         description: parseApiError(error).message,
         variant: "destructive",
       });
     },
   });
 
-  // Mutación: actualizar (PUT) o fallback (remove + assign)
   type UpdatePayload = {
     userId: string;
     oldRoleId: number;
@@ -151,12 +221,17 @@ export default function UserRolesPage() {
     reason?: string;
     assignedAt?: string;
   };
+
   const updateMutation = useMutation({
     mutationFn: async (payload: UpdatePayload) => {
       const { userId, oldRoleId, newRoleId, expiresAt, reason } = payload;
+
       try {
-        // Si tu backend NO permite cambiar roleId en update, comenta roleId y deja expiresAt/reason
-        await UserRolesAPI.update(userId, oldRoleId, { roleId: newRoleId as any, expiresAt, reason } as any);
+        await UserRolesAPI.update(
+          userId,
+          oldRoleId,
+          { roleId: newRoleId as any, expiresAt, reason } as any
+        );
         return "updated";
       } catch {
         await UserRolesAPI.removeLegacy(userId, oldRoleId);
@@ -167,35 +242,37 @@ export default function UserRolesPage() {
     onSuccess: (mode) => {
       queryClient.invalidateQueries({ queryKey: ["user-roles"] });
       toast({
-        title: "✅ Asignación actualizada",
-        description: mode === "updated"
-          ? "Se actualizó la asignación."
-          : "Se reemplazó la asignación (remove + assign).",
+        title: "Asignación actualizada",
+        description:
+          mode === "updated"
+            ? "Se actualizó la asignación."
+            : "Se reemplazó la asignación (remove + assign).",
       });
       setEditAssignment(null);
     },
     onError: (err: unknown) => {
       toast({
-        title: "❌ Error al actualizar",
+        title: "Error al actualizar",
         description: parseApiError(err).message,
         variant: "destructive",
       });
     },
   });
 
-  // Datos robustos
-  const users: User[] =
-    usersResponse?.status === "success" && Array.isArray(usersResponse.data)
-      ? usersResponse.data
-      : [];
-  const roles: Role[] =
-    rolesResponse?.status === "success" && Array.isArray(rolesResponse.data)
-      ? rolesResponse.data
-      : [];
-  const userRoles: UserRole[] =
-    userRolesResponse?.status === "success" && Array.isArray(userRolesResponse.data)
-      ? userRolesResponse.data
-      : [];
+  const users: User[] = useMemo(
+    () => normalizePagedItems<User>(usersResponse),
+    [usersResponse]
+  );
+
+  const roles: Role[] = useMemo(
+    () => normalizePagedItems<Role>(rolesResponse),
+    [rolesResponse]
+  );
+
+  const userRoles: UserRole[] = useMemo(
+    () => normalizePagedItems<UserRole>(userRolesResponse),
+    [userRolesResponse]
+  );
 
   const usersMap = useMemo(() => new Map(users.map((u) => [u.id, u])), [users]);
   const rolesMap = useMemo(() => new Map(roles.map((r) => [r.id, r])), [roles]);
@@ -209,7 +286,6 @@ export default function UserRolesPage() {
     return grouped;
   }, [userRoles]);
 
-  // Stats
   const stats = useMemo(() => {
     const totalUsers = users.length;
     const activeUsers = users.filter((u) => u.isActive).length;
@@ -218,13 +294,14 @@ export default function UserRolesPage() {
       return assignments.some((ur) => !ur.isDeleted);
     }).length;
     const totalAssignments = userRoles.filter((ur) => !ur.isDeleted).length;
+
     return { totalUsers, activeUsers, usersWithRoles, totalAssignments };
   }, [users, userRolesGrouped, userRoles]);
 
-  // Filtros
   const filteredUsers = useMemo(() => {
     return users.filter((user) => {
       const needle = filters.searchTerm.trim().toLowerCase();
+
       const matchesSearch =
         !needle ||
         user.email.toLowerCase().includes(needle) ||
@@ -236,7 +313,8 @@ export default function UserRolesPage() {
         (filters.status === "active" && user.isActive) ||
         (filters.status === "inactive" && !user.isActive);
 
-      const matchesUserType = filters.userType === "all" || user.userType === filters.userType;
+      const matchesUserType =
+        filters.userType === "all" || user.userType === filters.userType;
 
       const userAssignments = userRolesGrouped.get(user.id) || [];
       const hasRoles = userAssignments.some((ur) => !ur.isDeleted);
@@ -250,7 +328,6 @@ export default function UserRolesPage() {
     });
   }, [users, filters, userRolesGrouped]);
 
-  // Handlers
   const handleAssignRole = useCallback((userId: string) => {
     setSelectedUserId(userId);
     setIsFormOpen(true);
@@ -269,9 +346,22 @@ export default function UserRolesPage() {
   );
 
   const handleEditAssignment = useCallback(
-    (data: { userId: string; roleId: number; assignedAt?: string; expiresAt?: string; reason?: string }) => {
+    (data: {
+      userId: string;
+      roleId: number;
+      assignedAt?: string;
+      expiresAt?: string;
+      reason?: string;
+    }) => {
       const email = usersMap.get(data.userId)?.email || "";
-      setEditAssignment({ userId: data.userId, userEmail: email, roleId: data.roleId, assignedAt: data.assignedAt, expiresAt: data.expiresAt, reason: data.reason });
+      setEditAssignment({
+        userId: data.userId,
+        userEmail: email,
+        roleId: data.roleId,
+        assignedAt: data.assignedAt,
+        expiresAt: data.expiresAt,
+        reason: data.reason,
+      });
     },
     [usersMap]
   );
@@ -279,7 +369,10 @@ export default function UserRolesPage() {
   const handleRefresh = useCallback(() => {
     refetchUsers();
     refetchUserRoles();
-    toast({ title: "🔄 Actualizando datos", description: "Los datos se están actualizando..." });
+    toast({
+      title: "Actualizando datos",
+      description: "Los datos se están actualizando...",
+    });
   }, [refetchUsers, refetchUserRoles, toast]);
 
   const toggleUserExpansion = useCallback((userId: string) => {
@@ -336,7 +429,6 @@ export default function UserRolesPage() {
 
   return (
     <div className="container mx-auto p-4 lg:p-6 space-y-6">
-      {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="flex-1">
           <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
@@ -359,7 +451,12 @@ export default function UserRolesPage() {
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="outline" size="sm" onClick={handleRefresh} className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRefresh}
+                  className="flex items-center gap-2"
+                >
                   <RefreshCw className="h-4 w-4" />
                   <span className="hidden lg:inline">Actualizar</span>
                 </Button>
@@ -388,15 +485,36 @@ export default function UserRolesPage() {
         </div>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Total Usuarios" value={stats.totalUsers} icon={<Users className="h-5 w-5" />} color="blue" onClick={() => setFilters((p) => ({ ...p, status: "all" }))} />
-        <StatCard title="Usuarios Activos" value={stats.activeUsers} icon={<CheckCircle className="h-5 w-5" />} color="green" onClick={() => setFilters((p) => ({ ...p, status: "active" }))} />
-        <StatCard title="Con Roles" value={stats.usersWithRoles} icon={<Shield className="h-5 w-5" />} color="purple" onClick={() => setFilters((p) => ({ ...p, hasRoles: "with-roles" }))} />
-        <StatCard title="Asignaciones" value={stats.totalAssignments} icon={<Calendar className="h-5 w-5" />} color="orange" />
+        <StatCard
+          title="Total Usuarios"
+          value={stats.totalUsers}
+          icon={<Users className="h-5 w-5" />}
+          color="blue"
+          onClick={() => setFilters((p) => ({ ...p, status: "all" }))}
+        />
+        <StatCard
+          title="Usuarios Activos"
+          value={stats.activeUsers}
+          icon={<CheckCircle className="h-5 w-5" />}
+          color="green"
+          onClick={() => setFilters((p) => ({ ...p, status: "active" }))}
+        />
+        <StatCard
+          title="Con Roles"
+          value={stats.usersWithRoles}
+          icon={<Shield className="h-5 w-5" />}
+          color="purple"
+          onClick={() => setFilters((p) => ({ ...p, hasRoles: "with-roles" }))}
+        />
+        <StatCard
+          title="Asignaciones"
+          value={stats.totalAssignments}
+          icon={<Calendar className="h-5 w-5" />}
+          color="orange"
+        />
       </div>
 
-      {/* Filtros / búsqueda */}
       <Card className="border-l-4 border-l-blue-500">
         <CardContent className="p-6">
           <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
@@ -405,7 +523,9 @@ export default function UserRolesPage() {
               <Input
                 placeholder="Buscar usuarios, emails, IDs..."
                 value={filters.searchTerm}
-                onChange={(e) => setFilters((p) => ({ ...p, searchTerm: e.target.value }))}
+                onChange={(e) =>
+                  setFilters((p) => ({ ...p, searchTerm: e.target.value }))
+                }
                 className="pl-10 pr-4"
               />
             </div>
@@ -416,19 +536,38 @@ export default function UserRolesPage() {
                   Vista:
                 </Label>
                 <div className="flex bg-muted rounded-lg p-1">
-                  <Button size="sm" variant={viewMode === "cards" ? "default" : "ghost"} onClick={() => setViewMode("cards")} className="h-8 px-3">
+                  <Button
+                    size="sm"
+                    variant={viewMode === "cards" ? "default" : "ghost"}
+                    onClick={() => setViewMode("cards")}
+                    className="h-8 px-3"
+                  >
                     Tarjetas
                   </Button>
-                  <Button size="sm" variant={viewMode === "table" ? "default" : "ghost"} onClick={() => setViewMode("table")} className="h-8 px-3">
+                  <Button
+                    size="sm"
+                    variant={viewMode === "table" ? "default" : "ghost"}
+                    onClick={() => setViewMode("table")}
+                    className="h-8 px-3"
+                  >
                     Tabla
                   </Button>
                 </div>
               </div>
 
-              <Button variant="outline" size="sm" onClick={() => setShowFilters((v) => !v)} className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowFilters((v) => !v)}
+                className="flex items-center gap-2"
+              >
                 <Filter className="h-4 w-4" />
                 Filtros
-                {showFilters ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                {showFilters ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
               </Button>
             </div>
           </div>
@@ -440,7 +579,9 @@ export default function UserRolesPage() {
                   <Label className="text-sm font-medium mb-2 block">Estado</Label>
                   <select
                     value={filters.status}
-                    onChange={(e) => setFilters((p) => ({ ...p, status: e.target.value as any }))}
+                    onChange={(e) =>
+                      setFilters((p) => ({ ...p, status: e.target.value as any }))
+                    }
                     className="w-full border border-input rounded-md px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   >
                     <option value="all">Todos los estados</option>
@@ -450,10 +591,14 @@ export default function UserRolesPage() {
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium mb-2 block">Tipo de Usuario</Label>
+                  <Label className="text-sm font-medium mb-2 block">
+                    Tipo de Usuario
+                  </Label>
                   <select
                     value={filters.userType}
-                    onChange={(e) => setFilters((p) => ({ ...p, userType: e.target.value }))}
+                    onChange={(e) =>
+                      setFilters((p) => ({ ...p, userType: e.target.value }))
+                    }
                     className="w-full border border-input rounded-md px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   >
                     <option value="all">Todos los tipos</option>
@@ -464,10 +609,14 @@ export default function UserRolesPage() {
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium mb-2 block">Asignación de Roles</Label>
+                  <Label className="text-sm font-medium mb-2 block">
+                    Asignación de Roles
+                  </Label>
                   <select
                     value={filters.hasRoles}
-                    onChange={(e) => setFilters((p) => ({ ...p, hasRoles: e.target.value as any }))}
+                    onChange={(e) =>
+                      setFilters((p) => ({ ...p, hasRoles: e.target.value as any }))
+                    }
                     className="w-full border border-input rounded-md px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   >
                     <option value="all">Todos los usuarios</option>
@@ -482,7 +631,12 @@ export default function UserRolesPage() {
                   variant="outline"
                   size="sm"
                   onClick={() =>
-                    setFilters({ status: "all", userType: "all", hasRoles: "all", searchTerm: "" })
+                    setFilters({
+                      status: "all",
+                      userType: "all",
+                      hasRoles: "all",
+                      searchTerm: "",
+                    })
                   }
                 >
                   Limpiar Filtros
@@ -493,25 +647,39 @@ export default function UserRolesPage() {
         </CardContent>
       </Card>
 
-      {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid grid-cols-4 w-full max-w-md">
-          <TabsTrigger value="all" onClick={() => setFilters((p) => ({ ...p, status: "all", hasRoles: "all" }))}>
+          <TabsTrigger
+            value="all"
+            onClick={() =>
+              setFilters((p) => ({ ...p, status: "all", hasRoles: "all" }))
+            }
+          >
             Todos
           </TabsTrigger>
-          <TabsTrigger value="active" onClick={() => setFilters((p) => ({ ...p, status: "active" }))}>
+          <TabsTrigger
+            value="active"
+            onClick={() => setFilters((p) => ({ ...p, status: "active" }))}
+          >
             Activos
           </TabsTrigger>
-          <TabsTrigger value="no-roles" onClick={() => setFilters((p) => ({ ...p, hasRoles: "without-roles" }))}>
+          <TabsTrigger
+            value="no-roles"
+            onClick={() =>
+              setFilters((p) => ({ ...p, hasRoles: "without-roles" }))
+            }
+          >
             Sin Roles
           </TabsTrigger>
-          <TabsTrigger value="inactive" onClick={() => setFilters((p) => ({ ...p, status: "inactive" }))}>
+          <TabsTrigger
+            value="inactive"
+            onClick={() => setFilters((p) => ({ ...p, status: "inactive" }))}
+          >
             Inactivos
           </TabsTrigger>
         </TabsList>
       </Tabs>
 
-      {/* Vista principal */}
       {viewMode === "cards" ? (
         <CardView
           users={filteredUsers}
@@ -539,7 +707,6 @@ export default function UserRolesPage() {
         />
       )}
 
-      {/* Empty state */}
       {filteredUsers.length === 0 && (
         <Card className="text-center py-12">
           <CardContent>
@@ -547,7 +714,9 @@ export default function UserRolesPage() {
               <Users className="h-10 w-10 text-muted-foreground/70" />
             </div>
             <h3 className="text-lg font-semibold text-foreground mb-2">
-              {filters.searchTerm || showFilters ? "No se encontraron usuarios" : "No hay usuarios registrados"}
+              {filters.searchTerm || showFilters
+                ? "No se encontraron usuarios"
+                : "No hay usuarios registrados"}
             </h3>
             <p className="text-muted-foreground mb-4">
               {filters.searchTerm || showFilters
@@ -557,7 +726,14 @@ export default function UserRolesPage() {
             {(filters.searchTerm || showFilters) && (
               <Button
                 variant="outline"
-                onClick={() => setFilters({ status: "all", userType: "all", hasRoles: "all", searchTerm: "" })}
+                onClick={() =>
+                  setFilters({
+                    status: "all",
+                    userType: "all",
+                    hasRoles: "all",
+                    searchTerm: "",
+                  })
+                }
               >
                 Limpiar filtros
               </Button>
@@ -566,7 +742,6 @@ export default function UserRolesPage() {
         </Card>
       )}
 
-      {/* Confirmar eliminación */}
       <AlertDialog
         open={!!deleteAssignment}
         onOpenChange={(open) => {
@@ -576,21 +751,27 @@ export default function UserRolesPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Remover rol del usuario?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción removerá el rol del usuario. El usuario perderá los
+              permisos asociados a este rol. Esta acción no se puede deshacer.
+            </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="px-6">
+
+          <div className="px-1">
             {deleteAssignment && (
               <p className="text-sm text-muted-foreground">
-                Usuario: <span className="font-medium">{usersMap.get(deleteAssignment.userId)?.email}</span>
+                Usuario:{" "}
+                <span className="font-medium">
+                  {usersMap.get(deleteAssignment.userId)?.email}
+                </span>
               </p>
             )}
           </div>
-        </AlertDialogContent>
-        <AlertDialogContent>
-          <AlertDialogDescription>
-            Esta acción removerá el rol del usuario. El usuario perderá los permisos asociados a este rol. Esta acción no se puede deshacer.
-          </AlertDialogDescription>
+
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteMutation.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>
+              Cancelar
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (deleteAssignment) {
@@ -603,20 +784,21 @@ export default function UserRolesPage() {
               className="bg-destructive hover:bg-red-700 flex items-center gap-2"
               disabled={deleteMutation.isPending}
             >
-              {deleteMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              {deleteMutation.isPending && (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              )}
               {deleteMutation.isPending ? "Removiendo..." : "Remover Rol"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Dialog: asignar rol */}
       <Dialog open={isFormOpen} onOpenChange={(open) => !open && handleCloseForm()}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Asignar rol</DialogTitle>
             <DialogDescription>
-              Selecciona un rol y (opcionalmente) una fecha de expiración para el usuario.
+              Selecciona un rol y opcionalmente una fecha de expiración para el usuario.
             </DialogDescription>
           </DialogHeader>
 
@@ -624,9 +806,13 @@ export default function UserRolesPage() {
             <>
               <div className="bg-background border border-border rounded-lg p-3 mb-3">
                 <p className="text-sm text-muted-foreground">
-                  Usuario: <span className="font-medium">{usersMap.get(selectedUserId)?.email}</span>
+                  Usuario:{" "}
+                  <span className="font-medium">
+                    {usersMap.get(selectedUserId)?.email}
+                  </span>
                 </p>
               </div>
+
               <AssignRoleForm
                 userId={selectedUserId}
                 userEmail={usersMap.get(selectedUserId)?.email || ""}
@@ -638,8 +824,10 @@ export default function UserRolesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog: editar asignación */}
-      <Dialog open={!!editAssignment} onOpenChange={(open) => !open && setEditAssignment(null)}>
+      <Dialog
+        open={!!editAssignment}
+        onOpenChange={(open) => !open && setEditAssignment(null)}
+      >
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar asignación de rol</DialogTitle>
@@ -652,9 +840,11 @@ export default function UserRolesPage() {
             <>
               <div className="bg-background border border-border rounded-lg p-3 mb-3">
                 <p className="text-sm text-muted-foreground">
-                  Usuario: <span className="font-medium">{editAssignment.userEmail}</span>
+                  Usuario:{" "}
+                  <span className="font-medium">{editAssignment.userEmail}</span>
                 </p>
               </div>
+
               <EditUserRoleForm
                 userId={editAssignment.userId}
                 oldRoleId={editAssignment.roleId}
@@ -694,7 +884,9 @@ function StatCard({ title, value, icon, color, onClick }: any) {
 
   return (
     <Card
-      className={`border-l-4 cursor-pointer transition-all hover:shadow-md hover:scale-105 ${colorClasses[color as keyof typeof colorClasses]}`}
+      className={`border-l-4 cursor-pointer transition-all hover:shadow-md hover:scale-105 ${
+        colorClasses[color as keyof typeof colorClasses]
+      }`}
       onClick={onClick}
     >
       <CardContent className="p-6">
@@ -703,7 +895,11 @@ function StatCard({ title, value, icon, color, onClick }: any) {
             <p className="text-sm font-medium text-muted-foreground">{title}</p>
             <p className="text-2xl font-bold mt-1">{value}</p>
           </div>
-          <div className={`p-3 rounded-full ${colorClasses[color as keyof typeof colorClasses].split(" ")[0]}`}>
+          <div
+            className={`p-3 rounded-full ${
+              colorClasses[color as keyof typeof colorClasses].split(" ")[0]
+            }`}
+          >
             {icon}
           </div>
         </div>
@@ -735,10 +931,15 @@ function CardView({
         return (
           <Card
             key={user.id}
-            className={`relative transition-all hover:shadow-lg border-2 ${isSelected ? "border-blue-500 bg-primary/10" : "border-border"}`}
+            className={`relative transition-all hover:shadow-lg border-2 ${
+              isSelected ? "border-blue-500 bg-primary/10" : "border-border"
+            }`}
           >
             <div className="absolute top-3 right-3">
-              <Switch checked={isSelected} onCheckedChange={() => onToggleSelect(user.id)} />
+              <Switch
+                checked={isSelected}
+                onCheckedChange={() => onToggleSelect(user.id)}
+              />
             </div>
 
             <CardHeader className="pb-3">
@@ -752,7 +953,9 @@ function CardView({
                       <XCircle className="h-4 w-4 text-destructive" />
                     )}
                   </CardTitle>
-                  <p className="text-sm text-muted-foreground truncate">{user.displayName || "Sin nombre"}</p>
+                  <p className="text-sm text-muted-foreground truncate">
+                    {user.displayName || "Sin nombre"}
+                  </p>
                   <div className="flex flex-wrap gap-1 mt-2">
                     <Badge variant={user.isActive ? "default" : "destructive"}>
                       {user.isActive ? "Activo" : "Inactivo"}
@@ -773,25 +976,44 @@ function CardView({
                     {activeRoles.slice(0, 3).map((ur) => {
                       const role = rolesMap.get(ur.roleId);
                       return (
-                        <Badge key={`${ur.userId}-${ur.roleId}`} variant="outline" className="text-xs">
+                        <Badge
+                          key={`${ur.userId}-${ur.roleId}`}
+                          variant="outline"
+                          className="text-xs"
+                        >
                           {role?.name || `Rol ${ur.roleId}`}
                         </Badge>
                       );
                     })}
                     {activeRoles.length > 3 && (
-                      <Badge variant="secondary" className="text-xs">+{activeRoles.length - 3} más</Badge>
+                      <Badge variant="secondary" className="text-xs">
+                        +{activeRoles.length - 3} más
+                      </Badge>
                     )}
                   </div>
                 </div>
               )}
 
               <div className="flex items-center justify-between mt-4">
-                <Button size="sm" variant="outline" onClick={() => onToggleExpand(user.id)} className="flex items-center gap-1">
-                  {isExpanded ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onToggleExpand(user.id)}
+                  className="flex items-center gap-1"
+                >
+                  {isExpanded ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                   {isExpanded ? "Ocultar" : "Detalles"}
                 </Button>
 
-                <Button size="sm" onClick={() => onAssignRole(user.id)} className="bg-primary hover:bg-primary/90 flex items-center gap-1">
+                <Button
+                  size="sm"
+                  onClick={() => onAssignRole(user.id)}
+                  className="bg-primary hover:bg-primary/90 flex items-center gap-1"
+                >
                   <Plus className="h-4 w-4" />
                   Asignar Rol
                 </Button>
@@ -812,9 +1034,13 @@ function CardView({
                         const role = rolesMap.get(ur.roleId);
                         return (
                           <TableRow key={`${ur.userId}-${ur.roleId}-${ur.assignedAt}`}>
-                            <TableCell className="font-medium">{role?.name || `Rol #${ur.roleId}`}</TableCell>
+                            <TableCell className="font-medium">
+                              {role?.name || `Rol #${ur.roleId}`}
+                            </TableCell>
                             <TableCell className="text-sm">
-                              {ur.assignedAt ? new Date(ur.assignedAt).toLocaleDateString() : "-"}
+                              {ur.assignedAt
+                                ? new Date(ur.assignedAt).toLocaleDateString()
+                                : "-"}
                             </TableCell>
                             <TableCell className="text-right flex items-center gap-2 justify-end">
                               <Button
@@ -825,6 +1051,8 @@ function CardView({
                                     userId: ur.userId,
                                     roleId: ur.roleId,
                                     assignedAt: ur.assignedAt,
+                                    expiresAt: ur.expiresAt,
+                                    reason: ur.reason,
                                   })
                                 }
                                 className="h-8"
@@ -835,7 +1063,9 @@ function CardView({
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => onDeleteAssignment(ur.userId, ur.roleId, ur.assignedAt)}
+                                onClick={() =>
+                                  onDeleteAssignment(ur.userId, ur.roleId, ur.assignedAt)
+                                }
                                 className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8 p-0"
                               >
                                 <Trash2 className="h-4 w-4" />
@@ -874,7 +1104,10 @@ function TableView({
           <TableHeader>
             <TableRow>
               <TableHead className="w-12">
-                <Switch checked={selectedUsers.size === users.length && users.length > 0} onCheckedChange={onSelectAll} />
+                <Switch
+                  checked={selectedUsers.size === users.length && users.length > 0}
+                  onCheckedChange={onSelectAll}
+                />
               </TableHead>
               <TableHead>Usuario</TableHead>
               <TableHead>Estado</TableHead>
@@ -892,12 +1125,17 @@ function TableView({
               return (
                 <TableRow key={user.id} className={isSelected ? "bg-primary/10" : ""}>
                   <TableCell>
-                    <Switch checked={isSelected} onCheckedChange={() => onToggleSelect(user.id)} />
+                    <Switch
+                      checked={isSelected}
+                      onCheckedChange={() => onToggleSelect(user.id)}
+                    />
                   </TableCell>
                   <TableCell>
                     <div>
                       <div className="font-medium">{user.email}</div>
-                      <div className="text-sm text-muted-foreground">{user.displayName || "Sin nombre"}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {user.displayName || "Sin nombre"}
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -910,7 +1148,11 @@ function TableView({
                       {activeRoles.slice(0, 2).map((ur) => {
                         const role = rolesMap.get(ur.roleId);
                         return (
-                          <Badge key={`${ur.userId}-${ur.roleId}`} variant="outline" className="text-xs">
+                          <Badge
+                            key={`${ur.userId}-${ur.roleId}`}
+                            variant="outline"
+                            className="text-xs"
+                          >
                             {role?.name || `Rol ${ur.roleId}`}
                           </Badge>
                         );
@@ -920,17 +1162,30 @@ function TableView({
                           +{activeRoles.length - 2}
                         </Badge>
                       )}
-                      {activeRoles.length === 0 && <span className="text-sm text-muted-foreground/70">Sin roles</span>}
+                      {activeRoles.length === 0 && (
+                        <span className="text-sm text-muted-foreground/70">
+                          Sin roles
+                        </span>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell>
-                    {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : <span className="text-muted-foreground/70">Nunca</span>}
+                    {user.lastLogin ? (
+                      new Date(user.lastLogin).toLocaleDateString()
+                    ) : (
+                      <span className="text-muted-foreground/70">Nunca</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <Button size="sm" onClick={() => onAssignRole(user.id)} className="bg-primary hover:bg-primary/90">
+                      <Button
+                        size="sm"
+                        onClick={() => onAssignRole(user.id)}
+                        className="bg-primary hover:bg-primary/90"
+                      >
                         <Plus className="h-4 w-4" />
                       </Button>
+
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="outline" size="sm">
@@ -942,15 +1197,26 @@ function TableView({
                             <Plus className="h-4 w-4 mr-2" />
                             Asignar Rol
                           </DropdownMenuItem>
+
                           <DropdownMenuSeparator />
-                          <DropdownMenuLabel className="text-xs">Asignaciones</DropdownMenuLabel>
+                          <DropdownMenuLabel className="text-xs">
+                            Asignaciones
+                          </DropdownMenuLabel>
+
                           {activeRoles.length === 0 && (
-                            <DropdownMenuItem disabled className="text-muted-foreground/70">
+                            <DropdownMenuItem
+                              disabled
+                              className="text-muted-foreground/70"
+                            >
                               No hay roles
                             </DropdownMenuItem>
                           )}
+
                           {activeRoles.map((ur) => (
-                            <div key={`${ur.userId}-${ur.roleId}`} className="flex items-center justify-between px-2 py-1">
+                            <div
+                              key={`${ur.userId}-${ur.roleId}`}
+                              className="flex items-center justify-between px-2 py-1"
+                            >
                               <span className="text-sm">
                                 {rolesMap.get(ur.roleId)?.name || `Rol ${ur.roleId}`}
                               </span>
@@ -963,6 +1229,8 @@ function TableView({
                                       userId: ur.userId,
                                       roleId: ur.roleId,
                                       assignedAt: ur.assignedAt,
+                                      expiresAt: ur.expiresAt,
+                                      reason: ur.reason,
                                     })
                                   }
                                   className="h-7 px-2"
@@ -972,7 +1240,9 @@ function TableView({
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => onDeleteAssignment(ur.userId, ur.roleId, ur.assignedAt)}
+                                  onClick={() =>
+                                    onDeleteAssignment(ur.userId, ur.roleId, ur.assignedAt)
+                                  }
                                   className="h-7 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
@@ -994,10 +1264,6 @@ function TableView({
   );
 }
 
-/* =========================
-   Formulario de edición
-========================= */
-
 function EditUserRoleForm({
   userId,
   oldRoleId,
@@ -1013,14 +1279,18 @@ function EditUserRoleForm({
   onCancel: () => void;
   onSubmit: (data: { newRoleId: number; expiresAt?: string; reason?: string }) => void;
 }) {
-  const { data: rolesResponse, isLoading: rolesLoading } = useQuery<ApiResponse<Role[]>>({
+  const { data: rolesResponse, isLoading: rolesLoading } = useQuery<
+    ApiResponse<PagedResult<Role>>
+  >({
     queryKey: ["roles"],
-    queryFn: () => RolesAPI.list(),
+    queryFn: () => RolesAPI.list(1, 10000),
   });
-  const rolesForDialog: Role[] =
-    rolesResponse?.status === "success" && Array.isArray(rolesResponse.data)
-      ? rolesResponse.data
-      : [];
+
+  const rolesForDialog: Role[] = useMemo(
+    () => normalizePagedItems<Role>(rolesResponse),
+    [rolesResponse]
+  );
+
   const activeRoles = rolesForDialog.filter((r: Role) => r.isActive && !r.isDeleted);
 
   const [newRoleId, setNewRoleId] = useState<string>(String(oldRoleId));
@@ -1057,7 +1327,9 @@ function EditUserRoleForm({
             </SelectTrigger>
             <SelectContent>
               {activeRoles.length === 0 ? (
-                <div className="p-2 text-sm text-muted-foreground">No hay roles disponibles</div>
+                <div className="p-2 text-sm text-muted-foreground">
+                  No hay roles disponibles
+                </div>
               ) : (
                 activeRoles.map((role: Role) => (
                   <SelectItem key={role.id} value={String(role.id)}>
@@ -1077,7 +1349,9 @@ function EditUserRoleForm({
             onChange={(e) => setExpiresAt(e.target.value)}
             min={new Date().toISOString().split("T")[0]}
           />
-          <p className="text-sm text-muted-foreground">Si no se especifica, el rol no expirará.</p>
+          <p className="text-sm text-muted-foreground">
+            Si no se especifica, el rol no expirará.
+          </p>
         </div>
 
         <div className="space-y-2">
@@ -1095,17 +1369,17 @@ function EditUserRoleForm({
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancelar
         </Button>
-        <Button type="submit" disabled={!isDirty} className="bg-primary hover:bg-primary/90">
+        <Button
+          type="submit"
+          disabled={!isDirty}
+          className="bg-primary hover:bg-primary/90"
+        >
           Guardar cambios
         </Button>
       </div>
     </form>
   );
 }
-
-/* =========================
-   Skeleton
-========================= */
 
 function LoadingSkeleton() {
   return (

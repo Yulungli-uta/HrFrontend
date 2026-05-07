@@ -14,6 +14,7 @@ import { DepartamentosAPI, handleApiError } from "@/lib/api";
 import {
   useDepartments,
   useReferenceTypes,
+  useReferenceScopeTypes,
   useDepartmentVisibility,
 } from "@/hooks/departments";
 import {
@@ -36,6 +37,7 @@ const INITIAL_FORM_DATA: DepartmentFormData = {
   code: "",
   shortName: "",
   type: "",
+  scope: "",
   isActive: true,
   parentId: "",
 };
@@ -68,6 +70,7 @@ export default function DepartmentsPage() {
     loading: loadingTypes,
     refetch: refetchTypes,
   } = useReferenceTypes();
+  const { scopeTypes } = useReferenceScopeTypes();
 
   // Visibility hook
   const { visibleIds, matchIds } = useDepartmentVisibility(
@@ -80,8 +83,6 @@ export default function DepartmentsPage() {
 
   // Computed values
   const tree = useMemo(() => buildTree(departments), [departments]);
-  const flatDepartments = departments;
-
   const typeIdToName = useMemo(() => {
     const map = new Map<number, string>();
     refTypes.forEach((t) => map.set(t.typeId, t.name));
@@ -95,6 +96,20 @@ export default function DepartmentsPage() {
       return type;
     },
     [typeIdToName]
+  );
+
+  const scopeIdToName = useMemo(() => {
+    const map = new Map<number, string>();
+    scopeTypes.forEach((t) => map.set(t.typeId, t.name));
+    return map;
+  }, [scopeTypes]);
+
+  const getDepartmentScopeName = useCallback(
+    (scope?: number | null) => {
+      if (scope == null) return "";
+      return scopeIdToName.get(scope) ?? String(scope);
+    },
+    [scopeIdToName]
   );
 
   // Handlers
@@ -129,6 +144,7 @@ export default function DepartmentsPage() {
         code: department.code || "",
         shortName: department.shortName || "",
         type: initialType,
+        scope: department.departmentScope ? String(department.departmentScope) : "",
         isActive: department.isActive,
         parentId: department.parentId ? String(department.parentId) : "",
       });
@@ -163,14 +179,13 @@ export default function DepartmentsPage() {
 
         const payload = {
           name,
-          code,               // 👈 siempre string no vacío
-          shortName,          // 👈 string (puede ser "" si tu columna lo permite)
+          code,
+          shortName,
           departmentType: formData.type ? Number(formData.type) : null,
+          departmentScope: formData.scope ? Number(formData.scope) : null,
           isActive: formData.isActive,
           parentId: formData.parentId ? Number(formData.parentId) : null,
         };
-
-        console.log("🔹 DepartmentsPage handleSave payload:", payload);
 
         let res;
         if (modalState.mode === "create") {
@@ -295,6 +310,7 @@ export default function DepartmentsPage() {
             onEdit={handleOpenEdit}
             onRefetch={refetch}
             getDepartmentTypeName={getDepartmentTypeName}
+          getDepartmentScopeName={getDepartmentScopeName}
           />
         </CardContent>
       </Card>
@@ -307,7 +323,7 @@ export default function DepartmentsPage() {
         loading={saving}
         formData={formData}
         refTypes={refTypes}
-        departments={flatDepartments}
+        refScopeTypes={scopeTypes}
         onOpenChange={(open) =>
           setModalState((prev) => ({ ...prev, open }))
         }

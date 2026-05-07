@@ -26,6 +26,8 @@ export interface ContractRequestDto {
   updatedBy?: number | null;
 
   status?: number | null;
+  statusName?: string | null;
+  pendingCount: number;
 }
 
 export type StatusVariant = "default" | "secondary" | "destructive" | "outline";

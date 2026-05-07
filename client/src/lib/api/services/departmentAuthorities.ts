@@ -1,3 +1,12 @@
+/**
+ * Archivo: src/lib/api/services/departmentAuthorities.ts
+ *
+ * DESCRIPCION ESTRUCTURAL
+ * - Archivo conservado dentro del bloque funcional correspondiente.
+ * - Se mantiene la implementacion original y solo se agrega esta cabecera descriptiva
+ *   para facilitar ubicacion y revision del servicio.
+ */
+
 // src/lib/api/services/departmentAuthorities.ts
 /**
  * Servicio API para la gestión de Autoridades de Departamento.
