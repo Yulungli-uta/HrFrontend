@@ -118,6 +118,29 @@ export function ContractRequestForm({
         </div>
       )}
 
+      <div>
+        <Label>Fecha inicio del período *</Label>
+        <Input
+          type="date"
+          value={value.startDate ?? ""}
+          disabled={disabled}
+          onChange={(e) => onChange({ ...value, startDate: e.target.value || null })}
+        />
+      </div>
+
+      <div>
+        <Label>Fecha fin del período *</Label>
+        <Input
+          type="date"
+          value={value.endDate ?? ""}
+          disabled={disabled}
+          onChange={(e) => onChange({ ...value, endDate: e.target.value || null })}
+        />
+        {value.startDate && value.endDate && value.endDate < value.startDate && (
+          <p className="text-xs text-destructive mt-1">La fecha fin debe ser mayor o igual a la fecha inicio.</p>
+        )}
+      </div>
+
       <div className="md:col-span-2">
         <Label>Observación</Label>
         <Textarea

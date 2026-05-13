@@ -17,6 +17,7 @@ import { VistaDetallesEmpleadosAPI } from '@/lib/api';
 type Props = {
   value: number | null;
   onSelect: (employeeId: number | null) => void;
+  onSelectEmployee?: (emp: any) => void;
   disabled?: boolean;
   placeholder?: string;
 };
@@ -29,6 +30,7 @@ type Props = {
 export function EmployeeCombobox({
   value,
   onSelect,
+  onSelectEmployee,
   disabled,
   placeholder = '— Sin especificar —',
 }: Props) {
@@ -65,6 +67,7 @@ export function EmployeeCombobox({
     const name: string = emp.fullName ?? `Empleado #${id}`;
     setSelectedLabel(name);
     onSelect(id);
+    onSelectEmployee?.(emp);
     setOpen(false);
     setSearch('');
     setDebouncedSearch('');
@@ -161,7 +164,7 @@ export function EmployeeCombobox({
                     <div className="min-w-0">
                       <p className="font-medium truncate">{emp.fullName}</p>
                       <p className="text-xs text-muted-foreground truncate">
-                        {[emp.idCard, emp.jobName].filter(Boolean).join(' · ')}
+                        {[emp.idCard, emp.email].filter(Boolean).join(' · ')}
                       </p>
                     </div>
                   </CommandItem>

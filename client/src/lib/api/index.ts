@@ -118,11 +118,13 @@ export {
   VwDepartmentWithTypeAPI,
   VwJobWithDegreeAndGroupAPI,
   VwJobActivityAPI,
+  VwAuthorityAPI,
 } from './services/views';
 export type {
   VwDepartmentWithType,
   VwJobWithDegreeAndGroup,
   VwJobActivity,
+  VwAuthority,
 } from './services/views';
 
 // Documentos
@@ -144,6 +146,32 @@ export { reportService, downloadBlob, ReportError } from './services/reports';
 
 // Autoridades de departamento
 export { DepartmentAuthoritiesAPI } from './services/departmentAuthorities';
+
+// Guardias Rotativos
+export {
+  GuardServiceLocationsAPI,
+  GuardRotationGroupsAPI,
+  RotationPatternsAPI,
+  GuardCoverageRequirementsAPI,
+  GuardShiftPlanningAPI,
+  GuardShiftChangesAPI,
+  EmployeeAvailabilityAPI,
+  GuardAssignmentValidationsAPI,
+} from './services/guards';
+export type {
+  GuardServiceLocationDto,
+  GuardServiceLocationTreeDto,
+  GuardRotationGroupDto,
+  GuardRotationGroupEmployeeDto,
+  RotationPatternDto,
+  GuardShiftCoverageRequirementDto,
+  GuardShiftPlanningDto,
+  GuardShiftCalendarItemDto,
+  GuardDashboardDto,
+  GuardShiftChangeDto,
+  EmployeeAvailabilityBlockDto,
+  GuardAssignmentValidationDto,
+} from '@/types/guards';
 
 // Plantillas de documentos y documentos generados
 export {

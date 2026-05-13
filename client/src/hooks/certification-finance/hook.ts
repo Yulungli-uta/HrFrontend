@@ -146,5 +146,60 @@ export function useCertificationMutations() {
     },
   });
 
-  return { createMutation, updateMutation, approveMutation, rejectMutation };
+  const rejectTemporaryMutation = useMutation({
+    mutationFn: ({ id, reason }: { id: number; reason: string }) =>
+      FinancialCertificationAPI.rejectTemporary(id, reason),
+    onSuccess: (resp: any) => {
+      if (resp?.status === "success") {
+        invalidateAll();
+        qc.invalidateQueries({ queryKey: ["/api/v1/rh/cv/contract-request"] });
+        toast({
+          title: "Rechazo temporal registrado",
+          description: "El solicitante puede corregir y reenviar la solicitud.",
+        });
+      } else {
+        toast({
+          title: "Error al rechazar temporalmente",
+          description: resp?.error?.message ?? "No se pudo registrar el rechazo temporal.",
+          variant: "destructive",
+        });
+      }
+    },
+    onError: (e: unknown) => {
+      toast({
+        title: "Error de conexión",
+        description: parseApiError(e).message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const resendMutation = useMutation({
+    mutationFn: (certificationId: number) => FinancialCertificationAPI.resend(certificationId),
+    onSuccess: (resp: any) => {
+      if (resp?.status === "success") {
+        invalidateAll();
+        qc.invalidateQueries({ queryKey: ["/api/v1/rh/cv/contract-request"] });
+        toast({
+          title: "Certificación reenviada",
+          description: "La certificación volvió a Pendiente de revisión.",
+        });
+      } else {
+        toast({
+          title: "Error al reenviar",
+          description: resp?.error?.message ?? "No se pudo reenviar la certificación.",
+          variant: "destructive",
+        });
+      }
+    },
+    onError: (e: unknown) => {
+      toast({
+        title: "Error de conexión",
+        description: parseApiError(e).message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  return { createMutation, updateMutation, approveMutation, rejectMutation, rejectTemporaryMutation, resendMutation };
 }

@@ -48,8 +48,9 @@ import {
   type DepartmentAuthorityCreateDto,
   type DepartmentAuthorityUpdateDto,
 } from "@/lib/api";
-import { DepartamentosAPI, VistaDetallesEmpleadosAPI } from "@/lib/api";
+import { VistaDetallesEmpleadosAPI } from "@/lib/api";
 import { TiposReferenciaAPI, CargosAPI } from "@/lib/api";
+import { DepartmentSelect } from "@/components/departments/DepartmentSelect";
 
 // =============================================================================
 // Tipos internos
@@ -245,16 +246,9 @@ export function DepartmentAuthorityForm({
     },
   });
 
-  const watchedDeptId = watch("departmentId");
+  const startDateValue = watch("startDate");
 
   // ── Carga de datos para los Comboboxes ──────────────────────────────────────
-
-  /** Departamentos */
-  const { data: deptData, isLoading: loadingDepts } = useQuery({
-    queryKey: ["departments-list"],
-    queryFn:  () => DepartamentosAPI.list(),
-    staleTime: 5 * 60 * 1000,
-  });
 
   /** Empleados — lista completa paginada (se filtra en cliente) */
   const { data: empData, isLoading: loadingEmps } = useQuery({
@@ -278,16 +272,6 @@ export function DepartmentAuthorityForm({
   });
 
   // ── Normalización de opciones ────────────────────────────────────────────────
-
-  const deptOptions = useMemo((): OptionItem[] => {
-    const raw = (deptData as any)?.data ?? deptData ?? [];
-    const arr = Array.isArray(raw) ? raw : raw?.items ?? [];
-    return arr.map((d: any) => ({
-      value:    d.departmentId ?? d.DepartmentId ?? d.id,
-      label:    d.name ?? d.Name ?? d.departmentName ?? "—",
-      sublabel: d.code ?? d.Code ?? d.alias ?? undefined,
-    }));
-  }, [deptData]);
 
   const empOptions = useMemo((): OptionItem[] => {
     const raw = (empData as any)?.data ?? empData ?? [];
@@ -313,8 +297,8 @@ export function DepartmentAuthorityForm({
     const raw = (jobData as any)?.data ?? jobData ?? [];
     const arr = Array.isArray(raw) ? raw : raw?.items ?? [];
     return arr.map((j: any) => ({
-      value:    j.jobId ?? j.JobId ?? j.id,
-      label:    j.name ?? j.Name ?? j.description ?? "—",
+      value:    j.jobID ?? j.jobId ?? j.JobId ?? j.id,
+      label:    j.name ?? j.Name ?? j.description ?? j.jobDescription ?? "—",
       sublabel: j.code ?? j.Code ?? undefined,
     }));
   }, [jobData]);
@@ -416,17 +400,15 @@ export function DepartmentAuthorityForm({
           rules={{ required: "El departamento es requerido" }}
           render={({ field }) => (
             <div className="space-y-1">
-              <SearchCombobox
-                label="Departamento"
-                placeholder="Seleccione un departamento..."
-                searchPlaceholder="Buscar por nombre o código..."
-                emptyMessage="No se encontraron departamentos."
-                options={deptOptions}
+              <Label>
+                <Building2 className="inline h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+                Departamento
+                <span className="text-destructive ml-1">*</span>
+              </Label>
+              <DepartmentSelect
                 value={field.value}
-                onChange={field.onChange}
-                isLoading={loadingDepts}
-                required
-                icon={Building2}
+                onChange={(id) => field.onChange(id)}
+                placeholder="Seleccione un departamento..."
               />
               {errors.departmentId && (
                 <p className="text-xs text-destructive flex items-center gap-1">
@@ -589,9 +571,18 @@ export function DepartmentAuthorityForm({
             <Input
               id="endDate"
               type="date"
-              {...register("endDate")}
+              {...register("endDate", {
+                validate: (val) => {
+                  if (!val || !startDateValue) return true;
+                  return val >= startDateValue || "La fecha de fin no puede ser anterior a la fecha de inicio";
+                },
+              })}
+              min={startDateValue || undefined}
               className="bg-background text-foreground"
             />
+            {errors.endDate && (
+              <p className="text-xs text-destructive">{errors.endDate.message}</p>
+            )}
           </div>
         </div>
       </div>

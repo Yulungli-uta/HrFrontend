@@ -62,7 +62,7 @@ export default function FinancialCertificationPage() {
 
   const { data: apiResponse, isLoading, error } = useCertifications();
   const { data: certStatusTypesResp } = useCertStatusTypes();
-  const { createMutation, updateMutation, approveMutation, rejectMutation } = useCertificationMutations();
+  const { createMutation, updateMutation, approveMutation, rejectMutation, rejectTemporaryMutation, resendMutation } = useCertificationMutations();
 
   // Mapa typeId → name para resolver statusName cuando el backend lo omite
   const statusById = useMemo(() => {
@@ -101,7 +101,12 @@ export default function FinancialCertificationPage() {
     if (statusFilter !== "all") {
       list = list.filter((c) => (c.statusName ?? "").toUpperCase() === statusFilter);
     }
-    return filterCerts(list, searchTerm);
+    const filteredList = filterCerts(list, searchTerm);
+    return [...filteredList].sort((a, b) => {
+      const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return tb - ta;
+    });
   }, [allCerts, searchTerm, statusFilter]);
 
   // Stats siempre sobre todos los certs sin filtro
@@ -220,6 +225,10 @@ export default function FinancialCertificationPage() {
         onReject={(id, reason) => rejectMutation.mutate({ id, reason })}
         isApprovePending={approveMutation.isPending}
         isRejectPending={rejectMutation.isPending}
+        onRejectTemporary={(id, reason) => rejectTemporaryMutation.mutate({ id, reason })}
+        isRejectTemporaryPending={rejectTemporaryMutation.isPending}
+        onResend={(id) => resendMutation.mutate(id)}
+        isResendPending={resendMutation.isPending}
       />
 
       <CertificationStats

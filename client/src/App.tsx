@@ -113,6 +113,16 @@ const AttendanceCrossReportPage = lazy(
 const PersonnelActionsPage = lazy(() => import("@/pages/PersonnelActions"));
 const PersonnelActionDetailPage = lazy(() => import("@/pages/PersonnelActionDetail"));
 
+// Módulo: Guardias Rotativos
+const GuardDashboardPage = lazy(() => import("@/pages/guards/GuardDashboard"));
+const GuardServiceLocationsPage = lazy(() => import("@/pages/guards/GuardServiceLocations"));
+const GuardRotationGroupsPage = lazy(() => import("@/pages/guards/GuardRotationGroups"));
+const RotationPatternsPage = lazy(() => import("@/pages/guards/RotationPatterns"));
+const GuardCoverageRequirementsPage = lazy(() => import("@/pages/guards/GuardCoverageRequirements"));
+const GuardShiftPlanningPage = lazy(() => import("@/pages/guards/GuardShiftPlanning"));
+const GuardShiftChangesPage = lazy(() => import("@/pages/guards/GuardShiftChanges"));
+const EmployeeAvailabilityPage = lazy(() => import("@/pages/guards/EmployeeAvailability"));
+
 // Detalle de Contrato
 const ContractDetailPage = lazy(() => import("@/pages/ContractDetail"));
 
@@ -621,6 +631,64 @@ function AppRouter() {
             {() => (
               <ProtectedRoute requiredPath="/admin/Jobexecution">
                 <JobexecutionPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+
+          {/* ===== Guardias Rotativos ===== */}
+          <Route path="/guards">
+            {() => (
+              <ProtectedRoute requiredPath="/guards">
+                <GuardDashboardPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+          <Route path="/guards/locations">
+            {() => (
+              <ProtectedRoute requiredPath="/guards/locations">
+                <GuardServiceLocationsPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+          <Route path="/guards/groups">
+            {() => (
+              <ProtectedRoute requiredPath="/guards/groups">
+                <GuardRotationGroupsPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+          <Route path="/guards/patterns">
+            {() => (
+              <ProtectedRoute requiredPath="/guards/patterns">
+                <RotationPatternsPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+          <Route path="/guards/coverage">
+            {() => (
+              <ProtectedRoute requiredPath="/guards/coverage">
+                <GuardCoverageRequirementsPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+          <Route path="/guards/planning">
+            {() => (
+              <ProtectedRoute requiredPath="/guards/planning">
+                <GuardShiftPlanningPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+          <Route path="/guards/changes">
+            {() => (
+              <ProtectedRoute requiredPath="/guards/changes">
+                <GuardShiftChangesPage />
+              </ProtectedRoute>
+            )}
+          </Route>
+          <Route path="/guards/availability">
+            {() => (
+              <ProtectedRoute requiredPath="/guards/availability">
+                <EmployeeAvailabilityPage />
               </ProtectedRoute>
             )}
           </Route>

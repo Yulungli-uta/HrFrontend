@@ -24,6 +24,12 @@ export interface FinancialCertification {
   filename?: string | null;
   filepath?: string | null;
 
+  /** Motivo del rechazo temporal (RECHAZADA_TEMPORAL). */
+  rejectionReason?: string | null;
+  rejectedAt?: string | null;
+  rejectedBy?: number | null;
+  rejectionTypeId?: number | null;
+
   createdAt: string;
   createdBy: number;
   updatedAt?: string | null;

@@ -183,7 +183,8 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onLogout }) => {
     const current = normalizePath(location);
     const target  = normalizePath(path);
     if (target === "/") return current === "/";
-    return current === target || current.startsWith(target + "/");
+    const depth = target.split("/").filter(Boolean).length;
+    return current === target || (depth >= 2 && current.startsWith(target + "/"));
   };
 
   /* ── Filtro de búsqueda ── */

@@ -104,6 +104,10 @@ export function useContractDetail(contractId: number | null) {
       ContractsRHAPI.cancelDocument(contractId!, payload),
     onSuccess: () => {
       invalidate();
+      queryClient.invalidateQueries({ queryKey: ['contract-request-pending-count'] });
+      queryClient.invalidateQueries({ queryKey: ['contract-request-pending-people'] });
+      queryClient.invalidateQueries({ queryKey: ['contract-request-slots'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v1/rh/cv/contract-request'] });
       toast({ title: 'Contrato anulado.' });
     },
     onError: () => toast({ variant: 'destructive', title: 'Error al anular el contrato.' }),

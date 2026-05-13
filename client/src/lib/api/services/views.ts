@@ -16,6 +16,7 @@
 
 import { apiFetch } from '../core/fetch';
 import type { ApiResponse } from '../core/fetch';
+import type { PagedResult } from '../core/pagination';
 
 // =============================================================================
 // Constantes de rutas base
@@ -200,4 +201,84 @@ export const VwJobWithDegreeAndGroupAPI = {
 
   getById: (id: number): Promise<ApiResponse<VwJobWithDegreeAndGroup>> =>
     apiFetch<VwJobWithDegreeAndGroup>(`${HR_VIEWS_BASE.jobs}/${id}`),
+};
+
+// =============================================================================
+// Tipos — Vista vw_Authority
+// =============================================================================
+
+/** DTO de solo lectura que mapea la vista HR.vw_Authority */
+export interface VwAuthority {
+  authorityID: number;
+  departmentID: number;
+  departmentCode: string;
+  departmentName: string;
+  employeeID: number;
+  employeeIDCard: string;
+  employeeFullName: string;
+  authorityTypeID: number;
+  authorityTypeName: string;
+  authorityTypeDescription?: string | null;
+  jobID?: number | null;
+  jobDescription?: string | null;
+  denomination?: string | null;
+  startDate: string;         // ISO date "YYYY-MM-DD"
+  endDate?: string | null;
+  resolutionCode?: string | null;
+  notes?: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt?: string | null;
+}
+
+// =============================================================================
+// API de Vista de Autoridades (vw_Authority)
+// =============================================================================
+
+const VW_AUTHORITY_BASE = '/api/v1/rh/vw-authority';
+
+/**
+ * VwAuthorityAPI — Acceso de solo lectura a la vista HR.vw_Authority.
+ *
+ * La vista desnormaliza los joins de DepartmentAuthorities con:
+ * Departments, Employees → People, ref_Types (tipo de autoridad) y Jobs.
+ *
+ * Métodos:
+ *  - getAll()                    → GET /vw-authority
+ *  - getActive()                 → GET /vw-authority/active
+ *  - getPaged(params)            → GET /vw-authority/paged
+ *  - getByDepartment(id)         → GET /vw-authority/by-department/:id
+ *  - getByEmployee(id)           → GET /vw-authority/by-employee/:id
+ *  - getById(id)                 → GET /vw-authority/:id
+ */
+export const VwAuthorityAPI = {
+  getAll: (): Promise<ApiResponse<VwAuthority[]>> =>
+    apiFetch<VwAuthority[]>(VW_AUTHORITY_BASE),
+
+  getActive: (): Promise<ApiResponse<VwAuthority[]>> =>
+    apiFetch<VwAuthority[]>(`${VW_AUTHORITY_BASE}/active`),
+
+  getPaged: (params: {
+    page?: number;
+    pageSize?: number;
+    search?: string;
+    onlyActive?: boolean;
+  }): Promise<ApiResponse<PagedResult<VwAuthority>>> => {
+    const qs = new URLSearchParams({
+      page:     String(params.page ?? 1),
+      pageSize: String(params.pageSize ?? 20),
+      ...(params.search?.trim() ? { search: params.search.trim() } : {}),
+      ...(params.onlyActive !== undefined ? { onlyActive: String(params.onlyActive) } : {}),
+    });
+    return apiFetch<PagedResult<VwAuthority>>(`${VW_AUTHORITY_BASE}/paged?${qs.toString()}`);
+  },
+
+  getByDepartment: (departmentId: number): Promise<ApiResponse<VwAuthority[]>> =>
+    apiFetch<VwAuthority[]>(`${VW_AUTHORITY_BASE}/by-department/${departmentId}`),
+
+  getByEmployee: (employeeId: number): Promise<ApiResponse<VwAuthority[]>> =>
+    apiFetch<VwAuthority[]>(`${VW_AUTHORITY_BASE}/by-employee/${employeeId}`),
+
+  getById: (id: number): Promise<ApiResponse<VwAuthority>> =>
+    apiFetch<VwAuthority>(`${VW_AUTHORITY_BASE}/${id}`),
 };

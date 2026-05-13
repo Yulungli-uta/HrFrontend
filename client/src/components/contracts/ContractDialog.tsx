@@ -1,3 +1,4 @@
+// src/components/contracts/ContractDialog.tsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -63,14 +64,16 @@ import {
   type ReusableDocumentManagerHandle,
 } from "@/components/ReusableDocumentManager";
 
+import { PersonSearchCombobox } from "@/components/personnelActions/PersonSearchCombobox";
+
 import {
   FinancialCertificationAPI,
   ContractTypeAPI,
   DepartamentosAPI,
-  PersonasAPI,
   ContractsRHAPI,
   ContractRequestAPI,
   VwJobWithDegreeAndGroupAPI,
+  VistaDetallesEmpleadosAPI,
 } from "@/lib/api";
 import type { VwJobWithDegreeAndGroup } from "@/lib/api";
 import { JobSelect } from "@/components/ui/JobSelect";
@@ -86,14 +89,19 @@ import {
 } from "@/features/constants";
 import { getEntityId, getEntityLabel } from "@/utils/options";
 
+import { useToast } from "@/hooks/use-toast";
+import { parseApiError } from "@/lib/error-handling";
 import { useContractWorkflow } from "@/hooks/contracts/useContractWorkflow";
 import { useContractDetail } from "@/hooks/contracts/useContractDetail";
-import { usePaged } from "@/hooks/pagination/usePaged";
 import { ContractHistory } from "@/components/contracts/ContractHistory";
 import { AddendumList } from "@/components/contracts/AddendumList";
 import { StatusChangeDialog } from "@/components/contracts/StatusChangeDialog";
 import { ContractActions } from "@/components/contracts/ContractActions";
 import { DocumentPreviewPanel } from "@/components/personnelActions/DocumentPreviewPanel";
+import {
+  RequestPeoplePicker,
+  type RequestPersonItem,
+} from "@/components/contracts/RequestPeoplePicker";
 
 type DialogMode = "create" | "view" | "edit";
 
@@ -109,6 +117,8 @@ type ContractsCreateDto = {
   endDate: string;
   status: number;
   contractDescription?: string | null;
+  authorityNominatorId?: number | null;
+  dthDirectorId?: number | null;
 };
 
 type ContractsUpdateDto = ContractsCreateDto & {
@@ -132,15 +142,8 @@ type ContractLike = {
   endDate?: string;
   status?: number;
   contractDescription?: string | null;
-};
-
-type Person = {
-  personId: number;
-  firstName?: string;
-  lastName?: string;
-  idCard?: string;
-  email?: string;
-  isActive?: boolean;
+  authorityNominatorId?: number | null;
+  dthDirectorId?: number | null;
 };
 
 function getContractId(x?: ContractLike | null): number | undefined {
@@ -163,6 +166,8 @@ function buildEmptyForm(
     endDate: "",
     status: 0,
     contractDescription: null,
+    authorityNominatorId: null,
+    dthDirectorId: null,
     ...initial,
   };
 }
@@ -183,6 +188,8 @@ function buildFormFromSelected(
     endDate: (selected?.endDate ?? "").slice(0, 10),
     status: selected?.status ?? 0,
     contractDescription: selected?.contractDescription ?? null,
+    authorityNominatorId: selected?.authorityNominatorId ?? null,
+    dthDirectorId: selected?.dthDirectorId ?? null,
     ...initial,
   };
 }
@@ -268,15 +275,6 @@ function toSearchItems(items: any[]): SearchItem[] {
   return out;
 }
 
-function buildPersonLabel(p: Person): string {
-  const fullName = `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim();
-  const idCard = p.idCard?.trim();
-  const email = p.email?.trim();
-
-  const extra = [idCard, email].filter(Boolean).join(" · ");
-
-  return extra ? `${fullName} — ${extra}` : fullName || `ID ${p.personId}`;
-}
 
 export function ContractDialog(props: {
   open: boolean;
@@ -292,9 +290,11 @@ export function ContractDialog(props: {
   const isView = mode === "view";
 
   const qc = useQueryClient();
+  const { toast } = useToast();
   const docManagerRef = useRef<ReusableDocumentManagerHandle>(null);
   const certDocManagerRef = useRef<ReusableDocumentManagerHandle>(null);
   const requestDocManagerRef = useRef<ReusableDocumentManagerHandle>(null);
+  const autoSwitchedToEditRef = useRef(false);
 
   const [form, setForm] = useState<ContractsCreateDto>(() =>
     buildEmptyForm(initial)
@@ -308,15 +308,20 @@ export function ContractDialog(props: {
 
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [pendingStatusId, setPendingStatusId] = useState<number | null>(null);
+  const [isReservingCode, setIsReservingCode] = useState(false);
 
-  // búsqueda remota personas
-  const [personSearchInput, setPersonSearchInput] = useState("");
-  const [personSearch, setPersonSearch] = useState("");
+  // persona del detalle de solicitud seleccionada para pre-completar el form
+  const [selectedRequestPersonId, setSelectedRequestPersonId] = useState<number | null>(null);
+  const [isPersonFromDetail, setIsPersonFromDetail] = useState(false);
+  const [selectedPersonLabel, setSelectedPersonLabel] = useState<string | null>(null);
 
   const selectedId = useMemo(() => getContractId(selected), [selected]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      autoSwitchedToEditRef.current = false;
+      return;
+    }
 
     setForm(
       isCreate
@@ -329,18 +334,11 @@ export function ContractDialog(props: {
     setShowCertDocs(false);
     setSelectedRequestId(null);
     setShowRequestDocs(false);
-    setPersonSearchInput("");
-    setPersonSearch("");
+    setSelectedRequestPersonId(null);
+    setIsPersonFromDetail(false);
+    setSelectedPersonLabel(null);
     docManagerRef.current?.clearSelected();
   }, [open, isCreate, selectedId, selected, initial]);
-
-  useEffect(() => {
-    const t = window.setTimeout(() => {
-      setPersonSearch(personSearchInput.trim());
-    }, 350);
-
-    return () => window.clearTimeout(t);
-  }, [personSearchInput]);
 
   // Lookups normales
   // Solo carga certificaciones APROBADAS para el selector de creación
@@ -372,21 +370,12 @@ export function ContractDialog(props: {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Personas paginadas para CREATE
-  const {
-    items: pagedPeople,
-    isLoading: isLoadingPeoplePaged,
-    setSearch: setPeoplePagedSearch,
-  } = usePaged<Person>({
-    queryKey: "people-contract-select",
-    queryFn: (params) => PersonasAPI.listPaged(params),
-    initialPageSize: 20,
+  const qEmployees = useQuery({
+    queryKey: ["employees-details-all"],
+    queryFn: () => VistaDetallesEmpleadosAPI.list(),
+    enabled: open,
+    staleTime: 5 * 60 * 1000,
   });
-
-  useEffect(() => {
-    if (!open || !isCreate) return;
-    setPeoplePagedSearch(personSearch);
-  }, [open, isCreate, personSearch, setPeoplePagedSearch]);
 
   // paged devuelve { items, page, ... }
   const certs: any[] =
@@ -431,11 +420,28 @@ export function ContractDialog(props: {
     [jobs, form.jobID]
   );
 
+  const employeeItems: SearchItem[] = useMemo(() => {
+    const raw = (qEmployees.data as any)?.data ?? qEmployees.data ?? [];
+    const arr = Array.isArray(raw) ? raw : raw?.items ?? [];
+    return arr
+      .map((e: any) => {
+        const id = e.employeeID ?? e.EmployeeID ?? e.employeeId;
+        if (!id) return null;
+        const name = `${e.firstName ?? e.FirstName ?? ""} ${e.lastName ?? e.LastName ?? ""}`.trim();
+        const idCard = e.idCard ?? e.IDCard ?? "";
+        return {
+          value: String(id),
+          label: idCard ? `${name} — ${idCard}` : name,
+        } as SearchItem;
+      })
+      .filter(Boolean) as SearchItem[];
+  }, [qEmployees.data]);
+
   const selectedCert = useMemo(
     () =>
       certs.find(
         (c: any) =>
-              extractNumericId(getEntityId(c) ?? c) ===
+          extractNumericId(getEntityId(c) ?? c) ===
           (form.certificationID ?? undefined)
       ) as any | undefined,
     [certs, form.certificationID]
@@ -535,26 +541,6 @@ export function ContractDialog(props: {
       .filter((x) => !!x.value && x.value !== "undefined" && x.value !== "0");
   }, [qParentContracts.data]);
 
-  const personItems = useMemo<SearchItem[]>(() => {
-    const items = (pagedPeople ?? []).map((p) => ({
-      value: String(p.personId),
-      label: buildPersonLabel(p),
-    }));
-
-    // si ya hay seleccionado y no vino en esta página, lo mostramos igual
-    if (
-      form.personID > 0 &&
-      !items.some((x) => x.value === String(form.personID))
-    ) {
-      items.unshift({
-        value: String(form.personID),
-        label: `Persona seleccionada (ID ${form.personID})`,
-      });
-    }
-
-    return items;
-  }, [pagedPeople, form.personID]);
-
   const statusPreview = useMemo(() => {
     const s = wf.statuses.find((x: any) => x.typeID === form.status);
     return s ? s.name : `Estado ${form.status}`;
@@ -571,30 +557,31 @@ export function ContractDialog(props: {
     setForm((f) => ({ ...f, status: borradorStatusId }));
   }, [isCreate, open, borradorStatusId]);
 
+  // Auto-switch a modo edición cuando el contrato está en BORRADOR
+  useEffect(() => {
+    if (!open || isCreate || autoSwitchedToEditRef.current || !borradorStatusId) return;
+    if (mode === "view" && form.status === borradorStatusId) {
+      autoSwitchedToEditRef.current = true;
+      setMode("edit");
+    }
+  }, [open, isCreate, mode, form.status, borradorStatusId, setMode]);
+
+  function handleSelectRequestPerson(person: RequestPersonItem) {
+    setSelectedRequestPersonId(person.requestPersonId);
+    setIsPersonFromDetail(person.personId != null);
+    setSelectedPersonLabel(person.personFullName ?? null);
+
+    setForm((f) => ({
+      ...f,
+      ...(person.personId != null ? { personID: person.personId } : {}),
+      ...(person.jobId > 0 ? { jobID: person.jobId } : {}),
+      ...(person.startDate ? { startDate: person.startDate.slice(0, 10) } : {}),
+      ...(person.endDate ? { endDate: person.endDate.slice(0, 10) } : {}),
+    }));
+  }
+
   const createMut = useMutation({
     mutationFn: (dto: ContractsCreateDto) => ContractsRHAPI.create(dto),
-    onSuccess: async (res) => {
-      await qc.invalidateQueries({ queryKey: ["contracts-rh"] });
-
-      if ((res as any).status === "success" && (res as any).data?.contractID) {
-        const newId = (res as any).data.contractID;
-
-        const selCount = docManagerRef.current?.getSelectedCount() ?? 0;
-        if (selCount > 0) {
-          try {
-            await docManagerRef.current?.uploadAll(newId);
-          } catch (err) {
-            console.error("Error subiendo documentos:", err);
-          }
-        }
-
-        // setMode("view");
-        qc.setQueryData(["contracts-rh"], (old: any) => {
-          if (!old || old.status !== "success") return old;
-          return { ...old, data: [...old.data, (res as any).data] };
-        });
-      }
-    },
   });
 
   const updateMut = useMutation({
@@ -608,11 +595,22 @@ export function ContractDialog(props: {
         try {
           await docManagerRef.current?.uploadAll(entityId);
         } catch (err) {
-          console.error("Error subiendo documentos:", err);
+          toast({
+            title: "⚠️ Contrato guardado",
+            description: `Los datos se guardaron pero falló la subida de documentos. ${parseApiError(err).message}`,
+            variant: "destructive",
+          });
         }
       }
 
       setMode("view");
+    },
+    onError: (err: unknown) => {
+      toast({
+        title: "❌ Error al guardar",
+        description: parseApiError(err).message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -670,18 +668,111 @@ export function ContractDialog(props: {
     return errors;
   }
 
-  function handleSave() {
+  async function handleSave() {
     const errors = validateForm();
     if (errors.length > 0) {
       setValidationErrors(errors);
       setActiveTab("info");
       return;
     }
-
     setValidationErrors([]);
 
     if (isCreate) {
-      createMut.mutate(form);
+      // Reservar el código correlativo en el backend antes de crear
+      let finalContractCode = form.contractCode;
+      if (form.contractTypeID > 0) {
+        setIsReservingCode(true);
+        try {
+          const numRes = await ContractTypeAPI.getNextNumber(form.contractTypeID);
+          if (numRes.status === "success" && numRes.data) {
+            const d = numRes.data;
+            finalContractCode = d.documentNumber?.trim()
+              || (d.prefix
+                ? `${d.prefix}-${d.year}-${String(d.sequence).padStart(3, '0')}`
+                : `${d.year}-${String(d.sequence).padStart(3, '0')}`);
+            setForm((f) => ({ ...f, contractCode: finalContractCode }));
+          }
+        } catch (e: unknown) {
+          toast({ title: "❌ Error al reservar código de contrato", description: parseApiError(e).message, variant: "destructive" });
+          setIsReservingCode(false);
+          return;
+        } finally {
+          setIsReservingCode(false);
+        }
+      }
+
+      let newContractId: number | undefined;
+      try {
+        const res = await createMut.mutateAsync({ ...form, contractCode: finalContractCode });
+        if ((res as any).status !== "success") {
+          toast({ title: "❌ Error al crear contrato", description: (res as any).error?.message ?? "Error desconocido.", variant: "destructive" });
+          return;
+        }
+        newContractId = (res as any).data?.contract?.contractID ?? (res as any).data?.contractID;
+      } catch (e: unknown) {
+        toast({ title: "❌ Error al crear contrato", description: parseApiError(e).message, variant: "destructive" });
+        return;
+      }
+
+      if (!newContractId) {
+        toast({ title: "❌ Error", description: "No se pudo obtener el ID del contrato creado.", variant: "destructive" });
+        return;
+      }
+
+      // Subida de documentos — transacción compensatoria si falla
+      const selCount = docManagerRef.current?.getSelectedCount() ?? 0;
+      if (selCount > 0) {
+        try {
+          await docManagerRef.current?.uploadAll(newContractId);
+        } catch (err: unknown) {
+          try {
+            await ContractsRHAPI.delete(newContractId);
+            qc.invalidateQueries({ queryKey: ["contracts-rh"] });
+          } catch {
+            toast({
+              title: "⚠️ Error grave",
+              description: `Falló la subida de documentos Y la reversión. El contrato #${newContractId} quedó sin documentos. Elimínelo manualmente.`,
+              variant: "destructive",
+            });
+            onOpenChange(false);
+            return;
+          }
+          toast({
+            title: "❌ Contrato no creado",
+            description: `No se pudo subir los documentos. El contrato fue revertido. ${parseApiError(err).message}`,
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
+      // Vincular con detalle de solicitud (best-effort)
+      if (isRootContract && certRequestId && certRequestId > 0) {
+        try {
+          if (selectedRequestPersonId != null) {
+            await ContractRequestAPI.generateContractFromPerson(
+              certRequestId, selectedRequestPersonId, { contractId: newContractId }
+            );
+          } else {
+            await ContractRequestAPI.generateContractFromAvailablePerson(certRequestId, {
+              personId: form.personID,
+              contractId: newContractId,
+              jobId: form.jobID ?? null,
+            });
+          }
+          qc.invalidateQueries({ queryKey: ["contract-request-pending-count", certRequestId] });
+          qc.invalidateQueries({ queryKey: ["contract-request-pending-people", certRequestId] });
+          qc.invalidateQueries({ queryKey: ["contract-request-slots", certRequestId] });
+          qc.invalidateQueries({ queryKey: ["/api/v1/rh/cv/contract-request"] });
+        } catch (err) {
+          console.error("Error al vincular persona con la solicitud:", err);
+        }
+      }
+
+      qc.invalidateQueries({ queryKey: ["contracts-rh"] });
+      toast({ title: "✅ Contrato creado", description: `Contrato #${newContractId} guardado correctamente.` });
+      onOpenChange(false);
+
     } else if (selectedId) {
       const dto: ContractsUpdateDto = {
         ...form,
@@ -714,6 +805,8 @@ export function ContractDialog(props: {
       const base = !!(form.personID && form.contractTypeID && form.departmentID);
       if (isAdendumType && !form.parentID) return false;
       if (!isCertApproved) return false;
+      // Bloquear si ya no hay cupos disponibles en la solicitud
+      if (isRootContract && pendingCount !== null && pendingCount <= 0) return false;
       return base;
     }
     if (step === 2) {
@@ -753,8 +846,8 @@ export function ContractDialog(props: {
                   {isCreate
                     ? "Complete la información del contrato en los pasos siguientes"
                     : isView
-                    ? "Consulte los detalles del contrato"
-                    : "Edite la información del contrato"}
+                      ? "Consulte los detalles del contrato"
+                      : "Edite la información del contrato"}
                 </p>
               </div>
 
@@ -792,13 +885,12 @@ export function ContractDialog(props: {
                   <div key={step} className="flex items-center flex-1">
                     <div className="flex items-center gap-2 flex-1">
                       <div
-                        className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
-                          wizardStep > step
-                            ? "bg-success text-white"
-                            : wizardStep === step
+                        className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${wizardStep > step
+                          ? "bg-success text-white"
+                          : wizardStep === step
                             ? "bg-primary text-primary-foreground"
                             : "bg-muted text-muted-foreground"
-                        }`}
+                          }`}
                       >
                         {wizardStep > step ? (
                           <CheckCircle2 className="h-4 w-4" />
@@ -811,8 +903,8 @@ export function ContractDialog(props: {
                           {step === 1
                             ? "Datos básicos"
                             : step === 2
-                            ? "Fechas y código"
-                            : "Documentos"}
+                              ? "Fechas y código"
+                              : "Documentos"}
                         </div>
                       </div>
                     </div>
@@ -985,7 +1077,7 @@ export function ContractDialog(props: {
                   </Card>
                 )}
 
-                {entityId && isView && (
+                {entityId && (
                   <Card>
                     <CardHeader className="pb-3">
                       <CardTitle className="text-sm text-muted-foreground uppercase tracking-wider flex items-center justify-between">
@@ -1159,18 +1251,17 @@ export function ContractDialog(props: {
 
                           {/* Cupo disponible para contratos raíz */}
                           {isRootContract && form.certificationID && certRequestId && (
-                            <div className={`text-xs rounded p-2 ${
-                              pendingCount === null
-                                ? "text-muted-foreground"
-                                : pendingCount > 0
+                            <div className={`text-xs rounded p-2 ${pendingCount === null
+                              ? "text-muted-foreground"
+                              : pendingCount > 0
                                 ? "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300"
                                 : "bg-destructive/10 text-destructive"
-                            }`}>
+                              }`}>
                               {pendingCount === null
                                 ? "Consultando cupo..."
                                 : pendingCount > 0
-                                ? `Cupo disponible: ${pendingCount} persona(s) pendiente(s)`
-                                : "Sin cupo — no se pueden crear más contratos para esta solicitud"}
+                                  ? `Cupo disponible: ${pendingCount} persona(s) pendiente(s)`
+                                  : "Sin cupo — no se pueden crear más contratos para esta solicitud"}
                             </div>
                           )}
                         </div>
@@ -1271,6 +1362,32 @@ export function ContractDialog(props: {
                             onChange={(id) => setForm((f) => ({ ...f, jobID: id }))}
                             disabled={isView}
                             placeholder="Seleccione cargo"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Autoridad Nominadora</Label>
+                          <SearchableSelect
+                            value={form.authorityNominatorId ? String(form.authorityNominatorId) : null}
+                            items={employeeItems}
+                            placeholder="Seleccione autoridad..."
+                            searchPlaceholder="Buscar por nombre o cédula..."
+                            isLoading={qEmployees.isLoading}
+                            disabled={isView}
+                            onChange={(v) => setForm((f) => ({ ...f, authorityNominatorId: Number(v) || null }))}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Director DTH</Label>
+                          <SearchableSelect
+                            value={form.dthDirectorId ? String(form.dthDirectorId) : null}
+                            items={employeeItems}
+                            placeholder="Seleccione director..."
+                            searchPlaceholder="Buscar por nombre o cédula..."
+                            isLoading={qEmployees.isLoading}
+                            disabled={isView}
+                            onChange={(v) => setForm((f) => ({ ...f, dthDirectorId: Number(v) || null }))}
                           />
                         </div>
                       </div>
@@ -1422,18 +1539,19 @@ export function ContractDialog(props: {
                           const t = types.find(
                             (t: any) => extractNumericId(getEntityId(t) ?? t) === typeId
                           ) as any;
-                          const prefix = t?.numberingPrefix ?? '';
-                          const lastSeq = t?.numberingLastSequence ?? 0;
-                          const code = prefix
-                            ? `${prefix}-${String(lastSeq + 1).padStart(3, '0')}`
-                            : String(lastSeq + 1).padStart(3, '0');
+                          const numberingPrefix = (t?.numberingPrefix ?? '') as string;
+                          const year = (t?.numberingYear as number | undefined) ?? new Date().getFullYear();
+                          const nextSeq = ((t?.numberingLastSequence as number | undefined) ?? 0) + 1;
+                          const previewCode = numberingPrefix
+                            ? `${numberingPrefix}-${year}-${String(nextSeq).padStart(3, '0')}`
+                            : `${year}-${String(nextSeq).padStart(3, '0')}`;
                           const typeName = (t ? getEntityLabel(t) : "").toLowerCase();
                           const newIsAdendum =
                             typeName.includes("adendum") || typeName.includes("addendum");
                           setForm((f) => ({
                             ...f,
                             contractTypeID: typeId,
-                            contractCode: typeId > 0 ? code : f.contractCode,
+                            contractCode: typeId > 0 ? previewCode : f.contractCode,
                             parentID: newIsAdendum ? f.parentID : null,
                             certificationID: newIsAdendum ? f.certificationID : null,
                           }));
@@ -1557,18 +1675,17 @@ export function ContractDialog(props: {
                           )}
 
                           {isRootContract && certRequestId && (
-                            <div className={`text-xs rounded p-2 ${
-                              pendingCount === null
-                                ? "text-muted-foreground"
-                                : pendingCount > 0
+                            <div className={`text-xs rounded p-2 ${pendingCount === null
+                              ? "text-muted-foreground"
+                              : pendingCount > 0
                                 ? "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300"
                                 : "bg-destructive/10 text-destructive"
-                            }`}>
+                              }`}>
                               {pendingCount === null
                                 ? "Consultando cupo..."
                                 : pendingCount > 0
-                                ? `Cupo disponible: ${pendingCount} persona(s) pendiente(s)`
-                                : "Sin cupo — no se pueden crear más contratos para esta solicitud"}
+                                  ? `Cupo disponible: ${pendingCount} persona(s) pendiente(s)`
+                                  : "Sin cupo — no se pueden crear más contratos para esta solicitud"}
                             </div>
                           )}
 
@@ -1614,53 +1731,6 @@ export function ContractDialog(props: {
                           )}
                         </>
                       )}
-                    </div>
-
-                    {/* ── Persona ── */}
-                    <div className="space-y-2">
-                      <Label htmlFor="wizard-person">Persona *</Label>
-                      <SearchableSelect
-                        value={form.personID ? String(form.personID) : null}
-                        items={personItems}
-                        placeholder="Seleccione una persona"
-                        searchPlaceholder="Buscar por nombre, cédula o email..."
-                        emptyText={
-                          personSearchInput.trim()
-                            ? "No se encontraron personas"
-                            : "Escriba para buscar personas"
-                        }
-                        disabled={false}
-                        isLoading={isLoadingPeoplePaged}
-                        onSearchChange={setPersonSearchInput}
-                        onChange={(v) =>
-                          setForm((f) => ({
-                            ...f,
-                            personID: Number(v) || 0,
-                          }))
-                        }
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="wizard-dept">Departamento *</Label>
-                        <DepartmentSelect
-                          value={form.departmentID || null}
-                          onChange={(id) =>
-                            setForm((f) => ({ ...f, departmentID: id ?? 0 }))
-                          }
-                          placeholder="Seleccione departamento"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="wizard-job">Cargo (Opcional)</Label>
-                        <JobSelect
-                          value={form.jobID ?? null}
-                          onChange={(id) => setForm((f) => ({ ...f, jobID: id }))}
-                          placeholder="Seleccione cargo"
-                        />
-                      </div>
                     </div>
 
                     {/* ── Archivos de Solicitud de Contrato (auto-vinculada desde la cert) ── */}
@@ -1716,6 +1786,88 @@ export function ContractDialog(props: {
                         )}
                       </div>
                     )}
+
+                    {/* ── Personas sugeridas del detalle de solicitud ── */}
+                    {isRootContract && certRequestId && certRequestId > 0 && (
+                      <RequestPeoplePicker
+                        requestId={certRequestId}
+                        selectedRequestPersonId={selectedRequestPersonId}
+                        onSelect={(person) => {
+                          handleSelectRequestPerson(person);
+                        }}
+                      />
+                    )}
+
+                    {/* ── Persona ── */}
+                    <div className="space-y-2">
+                      <Label htmlFor="wizard-person">
+                        Persona *
+                        {isPersonFromDetail && (
+                          <span className="ml-2 text-xs text-green-600 dark:text-green-400 font-normal">
+                            (pre-completada desde el detalle)
+                          </span>
+                        )}
+                      </Label>
+                      <PersonSearchCombobox
+                        value={form.personID || null}
+                        staticLabel={isPersonFromDetail ? (selectedPersonLabel ?? undefined) : undefined}
+                        onSelect={(personId) => {
+                          setForm((f) => ({ ...f, personID: personId }));
+                          setSelectedRequestPersonId(null);
+                          setIsPersonFromDetail(false);
+                          setSelectedPersonLabel(null);
+                        }}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="wizard-dept">Departamento *</Label>
+                        <DepartmentSelect
+                          value={form.departmentID || null}
+                          onChange={(id) =>
+                            setForm((f) => ({ ...f, departmentID: id ?? 0 }))
+                          }
+                          placeholder="Seleccione departamento"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="wizard-job">Cargo (Opcional)</Label>
+                        <JobSelect
+                          value={form.jobID ?? null}
+                          onChange={(id) => setForm((f) => ({ ...f, jobID: id }))}
+                          placeholder="Seleccione cargo"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Autoridad Nominadora <span className="text-destructive">*</span></Label>
+                        <SearchableSelect
+                          value={form.authorityNominatorId ? String(form.authorityNominatorId) : null}
+                          items={employeeItems}
+                          placeholder="Seleccione autoridad..."
+                          searchPlaceholder="Buscar por nombre o cédula..."
+                          isLoading={qEmployees.isLoading}
+                          onChange={(v) => setForm((f) => ({ ...f, authorityNominatorId: Number(v) || null }))}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Director DTH <span className="text-destructive">*</span></Label>
+                        <SearchableSelect
+                          value={form.dthDirectorId ? String(form.dthDirectorId) : null}
+                          items={employeeItems}
+                          placeholder="Seleccione director..."
+                          searchPlaceholder="Buscar por nombre o cédula..."
+                          isLoading={qEmployees.isLoading}
+                          onChange={(v) => setForm((f) => ({ ...f, dthDirectorId: Number(v) || null }))}
+                        />
+                      </div>
+                    </div>
+
                   </CardContent>
                 </Card>
               )}
@@ -1904,10 +2056,12 @@ export function ContractDialog(props: {
                   ) : (
                     <Button
                       onClick={handleSave}
-                      disabled={createMut.isPending || (isRootContract && pendingCount !== null && pendingCount <= 0)}
+                      disabled={createMut.isPending || isReservingCode || (isRootContract && pendingCount !== null && pendingCount <= 0)}
                       title={isRootContract && pendingCount === 0 ? "Sin cupo disponible para esta solicitud" : undefined}
                     >
-                      {createMut.isPending ? (
+                      {isReservingCode ? (
+                        <>Generando código...</>
+                      ) : createMut.isPending ? (
                         <>Creando...</>
                       ) : (
                         <>

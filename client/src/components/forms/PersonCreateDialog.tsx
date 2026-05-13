@@ -1,4 +1,5 @@
 // src/components/forms/PersonCreateDialog.tsx
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -26,7 +27,9 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Checkbox } from '@/components/ui/checkbox';
+import { AlertCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { PersonasAPI } from '@/lib/api';
 import type { PersonDto } from '@/lib/api';
@@ -58,6 +61,10 @@ type Props = {
 export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
   const { toast } = useToast();
 
+  const [duplicateFound, setDuplicateFound] = useState<{ name: string; idCard: string } | null>(null);
+  const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false);
+  const [acknowledgedDuplicate, setAcknowledgedDuplicate] = useState(false);
+
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -70,6 +77,43 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
       birthDate: '',
     },
   });
+
+  // Limpiar estado al cerrar
+  useEffect(() => {
+    if (!open) {
+      form.reset();
+      setDuplicateFound(null);
+      setAcknowledgedDuplicate(false);
+    }
+  }, [open, form]);
+
+  async function checkDuplicate(idCardValue: string) {
+    if (!idCardValue.trim() || idCardValue.trim().length < 3) {
+      setDuplicateFound(null);
+      return;
+    }
+    setIsCheckingDuplicate(true);
+    try {
+      const resp = await PersonasAPI.listPaged({ page: 1, pageSize: 5, search: idCardValue.trim() });
+      if (resp.status === 'success') {
+        const items: PersonDto[] = resp.data?.items ?? [];
+        const exact = items.find(
+          (p) => p.idCard?.trim().toLowerCase() === idCardValue.trim().toLowerCase()
+        );
+        if (exact) {
+          setDuplicateFound({
+            name: `${exact.firstName ?? ''} ${exact.lastName ?? ''}`.trim(),
+            idCard: exact.idCard ?? '',
+          });
+          setAcknowledgedDuplicate(false);
+        } else {
+          setDuplicateFound(null);
+        }
+      }
+    } finally {
+      setIsCheckingDuplicate(false);
+    }
+  }
 
   const mutation = useMutation({
     mutationFn: (values: FormValues) =>
@@ -95,6 +139,8 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
     },
     onError: () => toast({ variant: 'destructive', title: 'Error al registrar la persona.' }),
   });
+
+  const submitDisabled = mutation.isPending || (duplicateFound !== null && !acknowledgedDuplicate);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -146,7 +192,12 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
                     <FormLabel>Tipo de documento *</FormLabel>
                     <Select
                       value={String(field.value)}
-                      onValueChange={(v) => field.onChange(Number(v))}
+                      onValueChange={(v) => {
+                        field.onChange(Number(v));
+                        // Al cambiar tipo, limpiar resultado de duplicado
+                        setDuplicateFound(null);
+                        setAcknowledgedDuplicate(false);
+                      }}
                       disabled={mutation.isPending}
                     >
                       <FormControl>
@@ -173,13 +224,56 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
                   <FormItem>
                     <FormLabel>N° Documento *</FormLabel>
                     <FormControl>
-                      <Input {...field} disabled={mutation.isPending} />
+                      <Input
+                        {...field}
+                        disabled={mutation.isPending}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          // Limpiar duplicado al editar
+                          setDuplicateFound(null);
+                          setAcknowledgedDuplicate(false);
+                        }}
+                        onBlur={(e) => {
+                          field.onBlur();
+                          checkDuplicate(e.target.value);
+                        }}
+                      />
                     </FormControl>
                     <FormMessage />
+                    {isCheckingDuplicate && (
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        Verificando duplicado…
+                      </p>
+                    )}
                   </FormItem>
                 )}
               />
             </div>
+
+            {/* Alerta de duplicado */}
+            {duplicateFound && (
+              <Alert variant="destructive" className="py-3">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="text-xs space-y-2">
+                  <p>
+                    Ya existe una persona registrada con este documento:{' '}
+                    <strong>{duplicateFound.name}</strong> — {duplicateFound.idCard}.
+                    Busca esa persona en el buscador en lugar de crear un duplicado.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="ack-dup"
+                      checked={acknowledgedDuplicate}
+                      onCheckedChange={(v) => setAcknowledgedDuplicate(!!v)}
+                    />
+                    <label htmlFor="ack-dup" className="cursor-pointer text-xs font-medium">
+                      Es una persona diferente con el mismo documento (continuar de todas formas)
+                    </label>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
 
             <FormField
               control={form.control}
@@ -233,7 +327,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={mutation.isPending}>
+              <Button type="submit" disabled={submitDisabled}>
                 {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Registrar
               </Button>

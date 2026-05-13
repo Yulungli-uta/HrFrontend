@@ -1,6 +1,6 @@
 // src/pages/ContractRequest.tsx
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   Dialog,
@@ -23,7 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-import { FileText, Plus, Search, Calendar, Eye, Pencil, X, CheckCircle, Clock, XCircle } from "lucide-react";
+import { FileText, Plus, Search, Calendar, Eye, Pencil, X, CheckCircle, Clock, XCircle, AlertTriangle, Users } from "lucide-react";
 
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/features/auth";
@@ -42,9 +42,16 @@ import {
 import type { ReusableDocumentManagerHandle } from "@/components/ReusableDocumentManager";
 import { parseApiError } from '@/lib/error-handling';
 import { DataPagination } from "@/components/ui/DataPagination";
-import { ContractRequestAPI } from "@/lib/api";
+import { ContractRequestAPI, FinancialCertificationAPI } from "@/lib/api";
+import {
+  ContractRequestPersonSection,
+  type ContractRequestPersonSectionHandle,
+} from "@/components/contractRequest/ContractRequestPersonSection";
+import { ContractDialog } from "@/components/contracts/ContractDialog";
 
 const EDITABLE_STATUS = "PENDIENTE_CERT_FINANCIERA";
+const CORRECTION_STATUS = "PENDIENTE_CORRECCION";
+const HIRING_STATUS = "PENDIENTE_CONTRATACION";
 
 function buildEditForm(c: UIContractRequest, createdBy: number): ContractRequestCreate {
   return {
@@ -52,6 +59,8 @@ function buildEditForm(c: UIContractRequest, createdBy: number): ContractRequest
     departmentId: c.departmentId,
     numberOfPeopleToHire: c.numberOfPeopleToHire,
     numberHour: c.numberHour,
+    startDate: c.startDate ?? null,
+    endDate: c.endDate ?? null,
     observation: c.observation ?? "",
     status: c.status ?? null,
     createdBy,
@@ -96,6 +105,8 @@ export default function ContractRequestPage() {
     departmentId: null,
     numberOfPeopleToHire: 1,
     numberHour: 0,
+    startDate: null,
+    endDate: null,
     observation: "",
     status: null,
     createdBy: ctxCreatedBy,
@@ -115,6 +126,7 @@ export default function ContractRequestPage() {
   const [attachEnabled, setAttachEnabled] = useState(false);
   const createDocsRef = useRef<ReusableDocumentManagerHandle | null>(null);
   const detailDocsRef = useRef<ReusableDocumentManagerHandle | null>(null);
+  const personSectionRef = useRef<ContractRequestPersonSectionHandle | null>(null);
 
   const resetForm = () => {
     setForm({
@@ -122,6 +134,8 @@ export default function ContractRequestPage() {
       departmentId: null,
       numberOfPeopleToHire: 1,
       numberHour: 0,
+      startDate: null,
+      endDate: null,
       observation: "",
       status: null,
       createdBy: ctxCreatedBy,
@@ -131,7 +145,11 @@ export default function ContractRequestPage() {
   };
 
   const filtered = useMemo(() => {
-    let list = contracts;
+    let list = [...contracts].sort((a, b) => {
+      const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return tb - ta;
+    });
 
     if (statusFilter !== "all") {
       list = list.filter(
@@ -167,7 +185,7 @@ export default function ContractRequestPage() {
 
       return hay.includes(q);
     });
-  }, [contracts, searchTerm, cr.workModalityNameById, cr.departmentNameById]);
+  }, [contracts, searchTerm, statusFilter, cr.workModalityNameById, cr.departmentNameById]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paginated = useMemo(
@@ -175,9 +193,15 @@ export default function ContractRequestPage() {
     [filtered, page, pageSize]
   );
 
-  // ID del estado que habilita edición — comparar por ID es robusto aunque statusName llegue null
+  // ID del estado que habilita edición
   const editableStatusId = useMemo(
     () => cr.statuses.find((s) => (s.name ?? "").trim().toUpperCase() === EDITABLE_STATUS)?.id ?? null,
+    [cr.statuses]
+  );
+
+  // ID del estado PENDIENTE_CORRECCION (también editable)
+  const correctionStatusId = useMemo(
+    () => cr.statuses.find((s) => (s.name ?? "").trim().toUpperCase() === CORRECTION_STATUS)?.id ?? null,
     [cr.statuses]
   );
 
@@ -242,6 +266,11 @@ export default function ContractRequestPage() {
       return;
     }
 
+    if (form.startDate && form.endDate && form.endDate < form.startDate) {
+      toast({ title: "❌ Fechas inválidas", description: "La fecha fin del período debe ser mayor o igual a la fecha inicio.", variant: "destructive" });
+      return;
+    }
+
     const payload: ContractRequestCreate = {
       ...form,
       createdBy: ctxCreatedBy,
@@ -283,6 +312,50 @@ export default function ContractRequestPage() {
           toast({
             title: "❌ Solicitud no creada",
             description: "La carga de documentos falló. La solicitud fue revertida. Intenta nuevamente.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
+      // Registrar personas sugeridas — si alguna falla, revertir la solicitud completa
+      const personRows = personSectionRef.current?.getLocalRows() ?? [];
+      if (id && personRows.length > 0) {
+        try {
+          await Promise.all(
+            personRows.map((row) =>
+              ContractRequestAPI.addPerson(id, {
+                personId: row.personId ?? null,
+                requestPersonTypeId: row.requestPersonType,
+                jobId: row.jobId,
+                startDate: row.startDate ?? null,
+                endDate: row.endDate ?? null,
+                weeklyClassHours: row.weeklyClassHours ?? null,
+                hourValue: row.hourValue ?? null,
+                observation: row.observation ?? null,
+                createdBy: ctxCreatedBy,
+              })
+            )
+          );
+        } catch (personErr: unknown) {
+          // Transacción compensatoria: revertir la solicitud recién creada.
+          try {
+            await ContractRequestAPI.delete(id);
+            qc.invalidateQueries({ queryKey: ["/api/v1/rh/cv/contract-request"] });
+          } catch {
+            toast({
+              title: "⚠️ Error grave",
+              description: `Falló el registro de personas Y la reversión. La solicitud #${id} quedó registrada sin personas. Elimínela manualmente.`,
+              variant: "destructive",
+            });
+            setIsFormOpen(false);
+            resetForm();
+            return;
+          }
+
+          toast({
+            title: "❌ Solicitud no creada",
+            description: `No se pudo registrar a las personas sugeridas. La solicitud fue revertida. ${parseApiError(personErr).message}`,
             variant: "destructive",
           });
           return;
@@ -358,6 +431,41 @@ export default function ContractRequestPage() {
     await detailDocsRef.current?.refresh(selected.requestId);
   };
 
+  const hiringStatusId = useMemo(
+    () => cr.statuses.find((s) => (s.name ?? "").trim().toUpperCase() === HIRING_STATUS)?.id ?? null,
+    [cr.statuses]
+  );
+
+  const isHiringStatus =
+    selected != null &&
+    hiringStatusId != null &&
+    Number(selected.status) === hiringStatusId;
+
+  // Panel de contratación: cupos y certificación aprobada vinculada
+  const qSlots = useQuery({
+    queryKey: ["contractRequestSlots", selected?.requestId],
+    queryFn: () => ContractRequestAPI.getSlots(selected!.requestId),
+    enabled: isDetailOpen && selected != null && isHiringStatus,
+    select: (res: any) => (res?.status === "success" ? res.data : null),
+  });
+
+  const qLinkedCert = useQuery({
+    queryKey: ["linkedCert", selected?.requestId],
+    queryFn: () =>
+      FinancialCertificationAPI.paged({ requestId: selected!.requestId, statusName: "APROBADA", pageSize: 1 }),
+    enabled: isDetailOpen && selected != null && isHiringStatus,
+    select: (res: any) => {
+      const items: any[] = res?.status === "success" ? (res.data?.items ?? res.data ?? []) : [];
+      return items[0] ?? null;
+    },
+  });
+
+  const linkedCertId = qLinkedCert.data?.certificationId ?? null;
+
+  // Diálogo de nuevo contrato
+  const [contractOpen, setContractOpen] = useState(false);
+  const [contractMode, setContractMode] = useState<"create" | "view" | "edit">("create");
+
   if (listQ.isLoading) {
     return (
       <div className="container mx-auto p-4 lg:p-6">
@@ -383,8 +491,15 @@ export default function ContractRequestPage() {
   const formDisabled = createMut.isPending;
   const canEdit =
     selected != null &&
-    editableStatusId != null &&
-    Number(selected.status) === editableStatusId;
+    (
+      (editableStatusId != null && Number(selected.status) === editableStatusId) ||
+      (correctionStatusId != null && Number(selected.status) === correctionStatusId)
+    );
+
+  const isInCorrectionMode =
+    selected != null &&
+    correctionStatusId != null &&
+    Number(selected.status) === correctionStatusId;
 
   return (
     <div className="container mx-auto p-4 lg:p-6">
@@ -425,6 +540,17 @@ export default function ContractRequestPage() {
               disabled={formDisabled}
               hideStatus={true}
             />
+
+            <div className="mt-6">
+              <ContractRequestPersonSection
+                ref={personSectionRef}
+                requestId={null}
+                headerStartDate={form.startDate}
+                headerEndDate={form.endDate}
+                readOnly={formDisabled}
+                createdBy={ctxCreatedBy}
+              />
+            </div>
 
             <div className="mt-6">
               <AttachmentSection
@@ -673,29 +799,112 @@ export default function ContractRequestPage() {
                   hideStatus={true}
                 />
               ) : (
-                <Card>
-                  <CardContent className="pt-6 space-y-2 text-sm">
-                    <div><b>ID:</b> #{selected.requestId}</div>
-                    <div>
-                      <b>Modalidad:</b>{" "}
-                      {selected.workModalityId
-                        ? (cr.workModalityNameById.get(selected.workModalityId) ?? `#${selected.workModalityId}`)
-                        : "—"}
+                <>
+                  {/* Banner de rechazo temporal */}
+                  {isInCorrectionMode && selected.pendingCorrectionReason && (
+                    <div className="flex items-start gap-3 rounded-lg border border-warning/50 bg-warning/10 p-4">
+                      <AlertTriangle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-warning">Solicitud pendiente de corrección</p>
+                        <p className="text-sm text-muted-foreground mt-1">{selected.pendingCorrectionReason}</p>
+                      </div>
                     </div>
-                    <div>
-                      <b>Departamento:</b>{" "}
-                      {selected.departmentId
-                        ? (cr.departmentNameById.get(selected.departmentId) ?? `#${selected.departmentId}`)
-                        : "—"}
-                    </div>
-                    <div><b>Personas a contratar:</b> {selected.numberOfPeopleToHire}</div>
-                    <div><b>Horas:</b> {Number(selected.numberHour).toFixed(2)}</div>
-                    <div><b>Observación:</b> {selected.observation ?? "—"}</div>
-                    <div>
-                      <b>Estado:</b> <Badge variant={selected.statusVariant}>{selected.statusText}</Badge>
-                    </div>
-                  </CardContent>
-                </Card>
+                  )}
+
+                  <Card>
+                    <CardContent className="pt-6 space-y-2 text-sm">
+                      <div><b>ID:</b> #{selected.requestId}</div>
+                      <div>
+                        <b>Modalidad:</b>{" "}
+                        {selected.workModalityId
+                          ? (cr.workModalityNameById.get(selected.workModalityId) ?? `#${selected.workModalityId}`)
+                          : "—"}
+                      </div>
+                      <div>
+                        <b>Departamento:</b>{" "}
+                        {selected.departmentId
+                          ? (cr.departmentNameById.get(selected.departmentId) ?? `#${selected.departmentId}`)
+                          : "—"}
+                      </div>
+                      <div><b>Personas a contratar:</b> {selected.numberOfPeopleToHire}</div>
+                      <div><b>Horas:</b> {Number(selected.numberHour).toFixed(2)}</div>
+                      {selected.startDate && (
+                        <div><b>Período:</b> {selected.startDate.slice(0, 10)} → {selected.endDate?.slice(0, 10) ?? "—"}</div>
+                      )}
+                      <div><b>Observación:</b> {selected.observation ?? "—"}</div>
+                      <div>
+                        <b>Estado:</b> <Badge variant={selected.statusVariant}>{selected.statusText}</Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Personas sugeridas (solo lectura) */}
+                  <ContractRequestPersonSection
+                    requestId={selected.requestId}
+                    headerStartDate={selected.startDate ?? null}
+                    headerEndDate={selected.endDate ?? null}
+                    readOnly={true}
+                    createdBy={ctxCreatedBy}
+                  />
+
+                  {/* Panel de contratación — solo en PENDIENTE_CONTRATACION */}
+                  {isHiringStatus && (
+                    <Card className="border-primary/30 bg-primary/5">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <Users className="h-4 w-4 text-primary" />
+                          Panel de Contratación
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {qSlots.isLoading ? (
+                          <p className="text-sm text-muted-foreground">Cargando cupos...</p>
+                        ) : qSlots.data ? (
+                          <div className="grid grid-cols-3 gap-3 text-center">
+                            <div className="bg-background rounded-lg p-3 border">
+                              <p className="text-xs text-muted-foreground mb-1">Requeridos</p>
+                              <p className="text-2xl font-bold">{qSlots.data.numberOfPeopleToHire ?? selected.numberOfPeopleToHire}</p>
+                            </div>
+                            <div className="bg-background rounded-lg p-3 border">
+                              <p className="text-xs text-muted-foreground mb-1">Contratados</p>
+                              <p className="text-2xl font-bold text-green-600">{qSlots.data.totalPeopleHired ?? selected.totalPeopleHired}</p>
+                            </div>
+                            <div className="bg-background rounded-lg p-3 border">
+                              <p className="text-xs text-muted-foreground mb-1">Cupos libres</p>
+                              <p className="text-2xl font-bold text-primary">{qSlots.data.availableSlots ?? Math.max(0, (qSlots.data.numberOfPeopleToHire ?? selected.numberOfPeopleToHire) - (qSlots.data.totalPeopleHired ?? selected.totalPeopleHired))}</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-3 gap-3 text-center">
+                            <div className="bg-background rounded-lg p-3 border">
+                              <p className="text-xs text-muted-foreground mb-1">Requeridos</p>
+                              <p className="text-2xl font-bold">{selected.numberOfPeopleToHire}</p>
+                            </div>
+                            <div className="bg-background rounded-lg p-3 border">
+                              <p className="text-xs text-muted-foreground mb-1">Contratados</p>
+                              <p className="text-2xl font-bold text-green-600">{selected.totalPeopleHired}</p>
+                            </div>
+                            <div className="bg-background rounded-lg p-3 border">
+                              <p className="text-xs text-muted-foreground mb-1">Cupos libres</p>
+                              <p className="text-2xl font-bold text-primary">{Math.max(0, selected.numberOfPeopleToHire - selected.totalPeopleHired)}</p>
+                            </div>
+                          </div>
+                        )}
+
+                        <Button
+                          className="w-full sm:w-auto bg-primary hover:bg-primary/90"
+                          onClick={() => {
+                            setContractMode("create");
+                            setContractOpen(true);
+                          }}
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Nuevo Contrato
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  )}
+                </>
               )}
 
               {/* Botones Guardar / Cancelar edición */}
@@ -756,6 +965,16 @@ export default function ContractRequestPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Diálogo de nuevo contrato — abierto desde el panel de contratación */}
+      <ContractDialog
+        open={contractOpen}
+        onOpenChange={setContractOpen}
+        mode={contractMode}
+        setMode={setContractMode}
+        selected={null}
+        initial={linkedCertId != null ? { certificationID: linkedCertId } : undefined}
+      />
     </div>
   );
 }

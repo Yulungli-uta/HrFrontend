@@ -17,6 +17,7 @@ import { createApiService } from '../core/pagination';
 import { apiFetch } from '../core/fetch';
 import type { ApiResponse } from '../core/fetch';
 import type { PagedRequest, PagedResult } from '../core/pagination';
+import type { VwAuthority } from './views';
 
 // =============================================================================
 // DTOs — espejo del backend (DepartmentAuthorityDto.cs)
@@ -221,5 +222,46 @@ export const DepartmentAuthoritiesAPI = {
       `${BASE_PATH}/${id}/status?isActive=${isActive}`,
       { method: 'PATCH' }
     );
+  },
+
+  /**
+   * Listado paginado usando la vista HR.vw_Authority (datos desnormalizados).
+   * Permite búsqueda en campos ya resueltos: nombre del empleado, cédula,
+   * departamento, tipo de autoridad y denominación.
+   */
+  listPagedFromView(params: DepartmentAuthorityPagedRequest): Promise<ApiResponse<PagedResult<VwAuthority>>> {
+    const qs = new URLSearchParams({
+      page:     String(params.page ?? 1),
+      pageSize: String(params.pageSize ?? 20),
+      ...(params.search        ? { search:    params.search }              : {}),
+      ...(params.onlyActive !== undefined
+        ? { onlyActive: String(params.onlyActive) }
+        : {}),
+    });
+    return apiFetch<PagedResult<VwAuthority>>(
+      `/api/v1/rh/vw-authority/paged?${qs.toString()}`
+    );
+  },
+
+  /**
+   * Retorna todas las autoridades activas y vigentes desde la vista.
+   * Equivalente a GET /vw-authority/active — sin paginación.
+   */
+  listActiveFromView(): Promise<ApiResponse<VwAuthority[]>> {
+    return apiFetch<VwAuthority[]>('/api/v1/rh/vw-authority/active');
+  },
+
+  /**
+   * Retorna las autoridades de un departamento desde la vista (con joins resueltos).
+   */
+  listByDepartmentFromView(departmentId: number): Promise<ApiResponse<VwAuthority[]>> {
+    return apiFetch<VwAuthority[]>(`/api/v1/rh/vw-authority/by-department/${departmentId}`);
+  },
+
+  /**
+   * Retorna el historial de autoridades de un empleado desde la vista.
+   */
+  listByEmployeeFromView(employeeId: number): Promise<ApiResponse<VwAuthority[]>> {
+    return apiFetch<VwAuthority[]>(`/api/v1/rh/vw-authority/by-employee/${employeeId}`);
   },
 };

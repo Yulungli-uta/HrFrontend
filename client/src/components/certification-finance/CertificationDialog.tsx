@@ -175,6 +175,14 @@ export function CertificationDialog(props: {
   onReject?: (certificationId: number, reason: string) => void;
   isApprovePending?: boolean;
   isRejectPending?: boolean;
+
+  // rechazo temporal (permite al solicitante corregir y reenviar)
+  onRejectTemporary?: (certificationId: number, reason: string) => void;
+  isRejectTemporaryPending?: boolean;
+
+  // reenvío tras corrección (el solicitante reenvía a revisión)
+  onResend?: (certificationId: number) => void;
+  isResendPending?: boolean;
 }) {
   const {
     open, onOpenChange,
@@ -187,10 +195,14 @@ export function CertificationDialog(props: {
     approveAsync, rejectAsync,
     onDownloadLegacy,
     onApprove, onReject, isApprovePending, isRejectPending,
+    onRejectTemporary, isRejectTemporaryPending,
+    onResend, isResendPending,
   } = props;
 
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectInput, setShowRejectInput] = useState(false);
+  const [rejectTempReason, setRejectTempReason] = useState("");
+  const [showRejectTempInput, setShowRejectTempInput] = useState(false);
 
   const { toast } = useToast();
 
@@ -234,6 +246,18 @@ export function CertificationDialog(props: {
     selected != null &&
     pendingRevisionStatusId != null &&
     Number(selected.status) === pendingRevisionStatusId;
+
+  const pendingCorrectionStatusId = useMemo(() => {
+    const found = refTypes.find((rt: any) => (rt.name ?? "").toUpperCase() === "PENDIENTE_CORRECCION");
+    if (!found) return null;
+    const id = found.id ?? found.refTypeId ?? found.typeId ?? found.valueId;
+    return id != null ? Number(id) : null;
+  }, [refTypes]);
+
+  const isPendingCorrection =
+    selected != null &&
+    pendingCorrectionStatusId != null &&
+    Number(selected.status) === pendingCorrectionStatusId;
 
   // =========================
   // 2) ContractRequest: lista + mapeos + preview (requestId)
@@ -413,6 +437,8 @@ export function CertificationDialog(props: {
     setShowContractRequestDocs(false);
     setRejectReason("");
     setShowRejectInput(false);
+    setRejectTempReason("");
+    setShowRejectTempInput(false);
   };
 
   // =========================================
@@ -1002,8 +1028,45 @@ export function CertificationDialog(props: {
 
             <p className="text-sm font-medium">Decisión del Financiero</p>
 
-            {showRejectInput ? (
+            {showRejectTempInput ? (
+              /* Rechazo temporal */
               <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  El solicitante podrá corregir la solicitud y reenviarla a certificación.
+                </p>
+                <Textarea
+                  placeholder="Motivo del rechazo temporal (requerido)"
+                  value={rejectTempReason}
+                  onChange={(e) => setRejectTempReason(e.target.value)}
+                  rows={3}
+                />
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1 border-amber-500 text-amber-700 hover:bg-amber-50"
+                    disabled={!rejectTempReason.trim() || isRejectTemporaryPending}
+                    onClick={() => {
+                      if (!selected.certificationId || !rejectTempReason.trim()) return;
+                      onRejectTemporary?.(selected.certificationId, rejectTempReason.trim());
+                      setShowRejectTempInput(false);
+                      setRejectTempReason("");
+                      close();
+                    }}
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    {isRejectTemporaryPending ? "Enviando..." : "Confirmar rechazo temporal"}
+                  </Button>
+                  <Button variant="outline" onClick={() => { setShowRejectTempInput(false); setRejectTempReason(""); }}>
+                    Cancelar
+                  </Button>
+                </div>
+              </div>
+            ) : showRejectInput ? (
+              /* Rechazo definitivo */
+              <div className="space-y-2">
+                <p className="text-xs text-destructive font-medium">
+                  Rechazo definitivo — la solicitud pasará a CERT_RECHAZADA y no podrá ser reenviada.
+                </p>
                 <Textarea
                   placeholder="Motivo del rechazo (requerido)"
                   value={rejectReason}
@@ -1024,7 +1087,7 @@ export function CertificationDialog(props: {
                     }}
                   >
                     <XCircle className="h-4 w-4 mr-2" />
-                    {isRejectPending ? "Rechazando..." : "Confirmar rechazo"}
+                    {isRejectPending ? "Rechazando..." : "Confirmar rechazo definitivo"}
                   </Button>
                   <Button variant="outline" onClick={() => { setShowRejectInput(false); setRejectReason(""); }}>
                     Cancelar
@@ -1032,11 +1095,12 @@ export function CertificationDialog(props: {
                 </div>
               </div>
             ) : (
-              <div className="flex gap-2">
+              /* Botones principales */
+              <div className="flex flex-wrap gap-2">
                 {onApprove && (
                   <Button
                     className="flex-1 bg-green-600 hover:bg-green-700"
-                    disabled={isApprovePending || isRejectPending}
+                    disabled={isApprovePending || isRejectPending || isRejectTemporaryPending}
                     onClick={() => {
                       if (!selected.certificationId) return;
                       onApprove(selected.certificationId);
@@ -1047,11 +1111,22 @@ export function CertificationDialog(props: {
                     {isApprovePending ? "Aprobando..." : "Aprobar"}
                   </Button>
                 )}
+                {onRejectTemporary && (
+                  <Button
+                    variant="outline"
+                    className="flex-1 border-amber-500 text-amber-700 hover:bg-amber-50"
+                    disabled={isApprovePending || isRejectPending || isRejectTemporaryPending}
+                    onClick={() => setShowRejectTempInput(true)}
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Rechazar temporalmente
+                  </Button>
+                )}
                 {onReject && (
                   <Button
                     variant="destructive"
                     className="flex-1"
-                    disabled={isApprovePending || isRejectPending}
+                    disabled={isApprovePending || isRejectPending || isRejectTemporaryPending}
                     onClick={() => setShowRejectInput(true)}
                   >
                     <XCircle className="h-4 w-4 mr-2" />
@@ -1060,6 +1135,28 @@ export function CertificationDialog(props: {
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Panel de Reenviar — solo en vista y cuando está PENDIENTE_CORRECCION */}
+        {isView && selected && isPendingCorrection && onResend && (
+          <div className="mt-6 border rounded-lg p-4 space-y-3 bg-amber-50/50 border-amber-200">
+            <p className="text-sm font-medium text-amber-800">Certificación con corrección pendiente</p>
+            <p className="text-xs text-muted-foreground">
+              El financiero solicitó correcciones. Una vez corregida la información, reenvía para revisión.
+            </p>
+            <Button
+              className="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white"
+              disabled={isResendPending}
+              onClick={() => {
+                if (!selected.certificationId) return;
+                onResend(selected.certificationId);
+                close();
+              }}
+            >
+              <CheckCircle className="h-4 w-4 mr-2" />
+              {isResendPending ? "Reenviando..." : "Reenviar a revisión"}
+            </Button>
           </div>
         )}
 

@@ -30,7 +30,15 @@ import {
   XCircle,
   ChevronDown,
   ChevronUp,
+  Filter,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -266,7 +274,7 @@ export default function DepartmentAuthoritiesPage() {
   const [page, setPage]           = useState(1);
   const [pageSize, setPageSize]   = useState(20);
   const [search, setSearch]       = useState("");
-  const [onlyActive, setOnlyActive] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<DepartmentAuthorityDto | null>(null);
   const [deleteId, setDeleteId]   = useState<number | null>(null);
@@ -276,7 +284,8 @@ export default function DepartmentAuthoritiesPage() {
   const queryClient      = useQueryClient();
 
   // ── Query paginada ────────────────────────────────────────────────────────────
-  const queryKey = ["department-authorities", page, pageSize, search, onlyActive];
+  const onlyActive = statusFilter === "active" ? true : statusFilter === "inactive" ? false : undefined;
+  const queryKey = ["department-authorities", page, pageSize, search, statusFilter];
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey,
@@ -285,7 +294,7 @@ export default function DepartmentAuthoritiesPage() {
         page,
         pageSize,
         search:     search.trim() || undefined,
-        onlyActive: onlyActive || undefined,
+        onlyActive,
       });
       return normalizePagedResponse(res);
     },
@@ -473,19 +482,23 @@ export default function DepartmentAuthoritiesPage() {
                 />
               </div>
               <div className="flex items-center gap-2">
-                <Button
-                  variant={onlyActive ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => { setOnlyActive((v) => !v); setPage(1); }}
-                  className={onlyActive ? "bg-success/15 text-success border-success/30 hover:bg-success/25" : ""}
+                <Select
+                  value={statusFilter}
+                  onValueChange={(v) => {
+                    setStatusFilter(v as "all" | "active" | "inactive");
+                    setPage(1);
+                  }}
                 >
-                  {onlyActive ? (
-                    <ToggleRight className="h-4 w-4 mr-1.5" />
-                  ) : (
-                    <ToggleLeft className="h-4 w-4 mr-1.5" />
-                  )}
-                  {onlyActive ? "Solo activas" : "Todos los estados"}
-                </Button>
+                  <SelectTrigger className="w-[180px] bg-background">
+                    <Filter className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos los estados</SelectItem>
+                    <SelectItem value="active">Solo activas</SelectItem>
+                    <SelectItem value="inactive">Solo inactivas</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </CardContent>

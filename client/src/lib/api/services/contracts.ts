@@ -63,10 +63,10 @@ export const ContractsRHAPI = {
       page: String(params.page),
       pageSize: String(params.pageSize),
       sortDirection: params.sortDirection ?? "desc",
-      ...(params.search?.trim()  ? { search:          params.search.trim() }             : {}),
-      ...(params.statusTypeId   != null ? { statusTypeId:  String(params.statusTypeId) } : {}),
+      ...(params.search?.trim() ? { search: params.search.trim() } : {}),
+      ...(params.statusTypeId != null ? { statusTypeId: String(params.statusTypeId) } : {}),
       ...(params.certificationId != null ? { certificationId: String(params.certificationId) } : {}),
-      ...(params.year            != null && params.year > 0 ? { year: String(params.year) } : {}),
+      ...(params.year != null && params.year > 0 ? { year: String(params.year) } : {}),
     });
     return apiFetch<PagedResult<any>>(`${CONTRACTS_BASE}/paged?${qs.toString()}`);
   },
@@ -299,7 +299,7 @@ export const PersonnelActionTypeAPI = {
 // API de Solicitudes de Contrato
 // =============================================================================
 
-const CONTRACT_REQUEST_BASE = '/api/v1/rh/cv/contract-request';
+const CONTRACT_REQUEST_BASE = '/api/v1/rh/contract-request';
 
 export const ContractRequestAPI = {
   ...createCrudService<any, any>(CONTRACT_REQUEST_BASE),
@@ -331,6 +331,52 @@ export const ContractRequestAPI = {
   /** Cantidad pendiente de contratar para una solicitud. */
   pendingCount: (requestId: number): Promise<ApiResponse<{ requestId: number; pendingCount: number }>> =>
     apiFetch(`${CONTRACT_REQUEST_BASE}/${requestId}/pending-count`),
+
+  /** Todas las personas registradas en el detalle de la solicitud. */
+  getPeople: (requestId: number): Promise<ApiResponse<any[]>> =>
+    apiFetch<any[]>(`${CONTRACT_REQUEST_BASE}/${requestId}/people`),
+
+  /** Personas del detalle en estado PENDIENTE (sin contrato aún). */
+  getPendingPeople: (requestId: number): Promise<ApiResponse<any[]>> =>
+    apiFetch<any[]>(`${CONTRACT_REQUEST_BASE}/${requestId}/pending-people`),
+
+  /** Personas disponibles desde HR.tbl_People para completar cupos. */
+  getAvailablePeople: (requestId: number, search?: string): Promise<ApiResponse<any[]>> => {
+    const qs = search?.trim() ? `?search=${encodeURIComponent(search.trim())}` : '';
+    return apiFetch<any[]>(`${CONTRACT_REQUEST_BASE}/${requestId}/available-people${qs}`);
+  },
+
+  /** Cupos disponibles de la solicitud. */
+  getSlots: (requestId: number): Promise<ApiResponse<any>> =>
+    apiFetch<any>(`${CONTRACT_REQUEST_BASE}/${requestId}/slots`),
+
+  /** Agrega una persona al detalle de la solicitud. */
+  addPerson: (requestId: number, payload: object): Promise<ApiResponse<any>> =>
+    apiFetch<any>(`${CONTRACT_REQUEST_BASE}/${requestId}/people`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  /** Actualiza una persona del detalle. */
+  updatePerson: (requestId: number, requestPersonId: number, payload: object): Promise<ApiResponse<void>> =>
+    apiFetch<void>(`${CONTRACT_REQUEST_BASE}/${requestId}/people/${requestPersonId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+
+  /** Genera contrato desde una persona del detalle de la solicitud. */
+  generateContractFromPerson: (requestId: number, requestPersonId: number, payload?: object): Promise<ApiResponse<any>> =>
+    apiFetch<any>(`${CONTRACT_REQUEST_BASE}/${requestId}/people/${requestPersonId}/generate-contract`, {
+      method: 'POST',
+      body: JSON.stringify(payload ?? {}),
+    }),
+
+  /** Genera contrato para una persona nueva desde HR.tbl_People (completa cupos). */
+  generateContractFromAvailablePerson: (requestId: number, payload: object): Promise<ApiResponse<any>> =>
+    apiFetch<any>(`${CONTRACT_REQUEST_BASE}/${requestId}/available-people/generate-contract`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
 };
 
 // =============================================================================
@@ -394,6 +440,25 @@ export const FinancialCertificationAPI = {
     apiFetch<void>(`${FINANCIAL_CERT_BASE}/${id}/reject`, {
       method: 'POST',
       body: JSON.stringify({ reason }),
+    }),
+
+  /**
+   * Rechazo temporal → solicitud pasa a PENDIENTE_CORRECCION.
+   * Permite al solicitante corregir y reenviar.
+   */
+  rejectTemporary: (id: number, reason: string): Promise<ApiResponse<void>> =>
+    apiFetch<void>(`${FINANCIAL_CERT_BASE}/${id}/reject-temporary`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    }),
+
+  /**
+   * Reenvía la certificación corregida a revisión financiera.
+   * Certificación → PENDIENTE_REVISION; solicitud → PENDIENTE_CERT_FINANCIERA.
+   */
+  resend: (id: number): Promise<ApiResponse<void>> =>
+    apiFetch<void>(`${FINANCIAL_CERT_BASE}/${id}/resend`, {
+      method: 'POST',
     }),
 };
 

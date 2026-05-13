@@ -6,6 +6,8 @@ export interface ContractRequestCreate {
   departmentId: number | null;
   numberOfPeopleToHire: number;
   numberHour: number;
+  startDate?: string | null;
+  endDate?: string | null;
   observation?: string;
   status?: number | null;
   createdBy: number;
@@ -18,7 +20,10 @@ export interface ContractRequestDto {
   numberOfPeopleToHire: number;
   numberHour: number;
   totalPeopleHired: number;
+  startDate?: string | null;
+  endDate?: string | null;
   observation?: string | null;
+  pendingCorrectionReason?: string | null;
 
   createdAt: string;
   createdBy: number;
