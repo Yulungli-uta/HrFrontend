@@ -21,10 +21,12 @@ import {
   XCircle,
   Loader2,
   Upload,
+  Eye,
 } from 'lucide-react';
 import { ContractUploadSignedDialog } from './ContractUploadSignedDialog';
+import { DocumentsAPI } from '@/lib/api';
 
-type ContractStatus = 'BORRADOR' | 'GENERADO' | 'PENDIENTE_FIRMAS' | 'FIRMADO_CARGADO' | 'FINALIZADO' | 'ANULADO';
+type ContractStatus = 'BORRADOR' | 'GENERADO' | 'PENDIENTE_FIRMAS' | 'FIRMADO_CARGADO' | 'VIGENTE' | 'FINALIZADO' | 'ANULADO';
 type DialogType = 'generate' | 'markPending' | 'uploadSigned' | 'finalize' | 'cancel';
 
 type Props = {
@@ -37,6 +39,8 @@ type Props = {
   onCancel: (payload: { reason: string }) => void;
   documentOverrides?: Record<string, string>;
   onUploadSuccess?: () => void;
+  /** ID numérico del archivo firmado (signedDocumentStoredFileId del contrato) */
+  signedDocumentStoredFileId?: number | null;
 };
 
 export function ContractActions({
@@ -49,10 +53,44 @@ export function ContractActions({
   onCancel,
   documentOverrides,
   onUploadSuccess,
+  signedDocumentStoredFileId,
 }: Props) {
   const [activeDialog, setActiveDialog] = useState<DialogType | null>(null);
   const [comment, setComment] = useState('');
   const [cancelReason, setCancelReason] = useState('');
+  const [isOpeningSignedDoc, setIsOpeningSignedDoc] = useState(false);
+
+  async function handleViewSignedDocument() {
+    if (!signedDocumentStoredFileId) return;
+    setIsOpeningSignedDoc(true);
+    try {
+      const res = await DocumentsAPI.listByEntity({
+        directoryCode: 'HRCONTRACT',
+        entityType: 'HRCONTRACT',
+        entityId: String(contractId),
+        status: 1,
+      });
+      const files = res.status === 'success' ? res.data : [];
+      const file = files.find(f => f.fileId === signedDocumentStoredFileId);
+      if (!file) {
+        const latest = files.sort((a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        )[0];
+        if (!latest) return;
+        const blob = await DocumentsAPI.download(latest.fileGuid);
+        if (blob.status !== 'success') return;
+        const url = URL.createObjectURL(blob.data);
+        window.open(url, '_blank');
+        return;
+      }
+      const blob = await DocumentsAPI.download(file.fileGuid);
+      if (blob.status !== 'success') return;
+      const url = URL.createObjectURL(blob.data);
+      window.open(url, '_blank');
+    } finally {
+      setIsOpeningSignedDoc(false);
+    }
+  }
 
   const s = status as ContractStatus;
   const isTerminal = s === 'FINALIZADO' || s === 'ANULADO';
@@ -110,6 +148,21 @@ export function ContractActions({
         {s === 'PENDIENTE_FIRMAS' && (
           <Button size="sm" onClick={() => openDialog('uploadSigned')} disabled={isBusy}>
             <Upload className="mr-2 h-4 w-4" /> Cargar Documento Firmado
+          </Button>
+        )}
+
+        {/* FIRMADO_CARGADO / VIGENTE / FINALIZADO: ver documento firmado */}
+        {(s === 'FIRMADO_CARGADO' || s === 'VIGENTE' || s === 'FINALIZADO') && signedDocumentStoredFileId && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleViewSignedDocument}
+            disabled={isOpeningSignedDoc}
+          >
+            {isOpeningSignedDoc
+              ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              : <Eye className="mr-2 h-4 w-4" />}
+            Ver Documento Firmado
           </Button>
         )}
 

@@ -1,6 +1,7 @@
 // features/auth/services/authService.ts
 import { ApiResponse } from "@/lib/api";
 import { TokenPair, UserSession, LoginRequest } from "../types/authTypes";
+import { tokenService } from "./tokenService";
 import { getBrowserId } from "@/utils/browserId";
 import { parseApiError } from '@/lib/error-handling';
 
@@ -166,8 +167,15 @@ export const authService = {
     }
 
     if (res.data?.success && res.data?.data) {
+      const user: UserSession = res.data.data;
+      const adGroups = tokenService.extractAdGroups(accessToken);
+      if (adGroups.length > 0) {
+        console.log("[AUTH-AD] Grupos AD recibidos en JWT:", adGroups);
+      } else {
+        DEBUG && console.log("[AUTH-AD] No hay grupos AD en el JWT (AD inactivo o usuario sin grupos)");
+      }
       DEBUG && console.log("[AUTH] getCurrentUser OK");
-      return res.data.data;
+      return { ...user, adGroups };
     }
 
     throw new Error("Estructura de respuesta inválida");

@@ -9,9 +9,9 @@ import {
   CommandEmpty,
 } from '@/components/ui/command';
 import { Button } from '@/components/ui/button';
-import { Check, ChevronsUpDown, X, Loader2 } from 'lucide-react';
+import { Check, ChevronsUpDown, X, Loader2, RotateCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { HorariosAPI } from '@/lib/api';
+import { apiFetch } from '@/lib/api';
 
 type Props = {
   value: number | null;
@@ -19,6 +19,7 @@ type Props = {
   label?: string | null;
   disabled?: boolean;
   placeholder?: string;
+  onlyRotating?: boolean;
 };
 
 function fmtTime(t: string | null | undefined) {
@@ -36,6 +37,7 @@ export function ScheduleCombobox({
   label,
   disabled,
   placeholder = '— Sin horario —',
+  onlyRotating = false,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -52,9 +54,13 @@ export function ScheduleCombobox({
   useEffect(() => { if (!value) setInternalLabel(null); }, [value]);
 
   const { data, isFetching } = useQuery({
-    queryKey: ['schedules-combobox', debouncedSearch],
-    queryFn: () =>
-      HorariosAPI.listPaged({ page: 1, pageSize: 20, search: debouncedSearch || undefined }),
+    queryKey: ['schedules-combobox', debouncedSearch, onlyRotating],
+    queryFn: () => {
+      const qs = new URLSearchParams({ page: '1', pageSize: '20' });
+      if (debouncedSearch) qs.set('search', debouncedSearch);
+      if (onlyRotating) qs.set('isRotating', 'true');
+      return apiFetch<any>(`/api/v1/rh/schedules/paged?${qs.toString()}`);
+    },
     enabled: open,
     staleTime: 60_000,
   });
@@ -111,6 +117,12 @@ export function ScheduleCombobox({
 
       <PopoverContent className="w-80 p-0" align="start" side="bottom">
         <Command shouldFilter={false}>
+          {onlyRotating && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 border-b bg-blue-50 text-blue-700 text-xs">
+              <RotateCw className="h-3 w-3 shrink-0" />
+              Solo horarios rotativos
+            </div>
+          )}
           <CommandInput
             placeholder="Buscar por descripción…"
             value={search}

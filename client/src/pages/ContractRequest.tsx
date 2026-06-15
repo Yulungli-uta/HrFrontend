@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ActionIconButton } from "@/components/ui/action-icon-button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -720,9 +721,12 @@ export default function ContractRequestPage() {
                         <Badge variant={c.statusVariant}>{c.statusText}</Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="outline" size="sm" onClick={() => openDetails(c)}>
-                          <Eye className="h-3 w-3 mr-1" /> Detalles
-                        </Button>
+                        <ActionIconButton
+                          icon={Eye}
+                          label="Ver detalles"
+                          tone="primary"
+                          onClick={() => openDetails(c)}
+                        />
                       </TableCell>
                     </TableRow>
                   );

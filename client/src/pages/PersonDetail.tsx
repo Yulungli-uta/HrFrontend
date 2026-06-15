@@ -1,15 +1,10 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/features/auth";
 
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { usePersonData, usePersonMutations } from "@/hooks/personDetails/usePersonData";
 import {
@@ -30,11 +25,11 @@ import { EmergencyContactsTab } from "@/components/person-detail/tabs/EmergencyC
 import { StatsDashboard } from "@/components/person-detail/StatsDashboard";
 import { PersonFormDialog } from "@/components/person-detail/PersonFormDialog";
 import { DynamicFormDialog } from "@/components/person-detail/DynamicFormDialog";
+import { ConfirmDeleteDialog } from "@/components/person-detail/ConfirmDeleteDialog";
 
 import {
   ArrowLeft,
   Edit,
-  MoreHorizontal,
   RefreshCw,
   User,
   FileText,
@@ -76,6 +71,12 @@ interface RefType {
   isActive?: boolean;
 }
 
+interface DeleteConfirmState {
+  open: boolean;
+  description: string;
+  action: (() => void) | null;
+}
+
 const REF_CATEGORIES = [
   "IDENTITY_TYPE",
   "MARITAL_STATUS",
@@ -88,22 +89,16 @@ const REF_CATEGORIES = [
 
 function buildNameMap(items: any[], idKeys: string[], nameKeys: string[]) {
   const map: Record<number, string> = {};
-
   items.forEach((item) => {
     const rawId = idKeys
       .map((k) => item?.[k])
       .find((v) => v !== undefined && v !== null);
-
     const rawName = nameKeys
       .map((k) => item?.[k])
       .find((v) => typeof v === "string" && v.trim());
-
     const id = Number(rawId);
-    if (!Number.isNaN(id) && rawName) {
-      map[id] = rawName;
-    }
+    if (!Number.isNaN(id) && rawName) map[id] = rawName;
   });
-
   return map;
 }
 
@@ -111,25 +106,33 @@ export default function PersonDetail() {
   const { id } = useParams();
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const { user, employeeDetails } = useAuth();
 
-  const personId = Number(id);
+  const hasPeoplePermission = user?.permissions?.some((p) => p === "/people") ?? false;
+  const urlId = id ? Number(id) : null;
 
-  const {
-    person,
-    isLoading,
-    hasError,
-    data,
-    refetch,
-  } = usePersonData(personId);
+  // Administrador (tiene /people): usa el ID de la URL.
+  // Empleado regular o ruta /perfil sin parámetro: usa el personId del contexto de autenticación.
+  const personId = (hasPeoplePermission && urlId && !isNaN(urlId))
+    ? urlId
+    : (employeeDetails?.personId ?? 0);
 
+  // No disparar APIs hasta tener el personId resuelto
+  const fetchEnabled = personId > 0;
+
+  const { person, isLoading, hasError, data, refetch } = usePersonData(personId, { enabled: fetchEnabled });
   const mutations = usePersonMutations(personId);
 
   const [isEditFormOpen, setIsEditFormOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("personal");
-  const [formState, setFormState] = useState<FormState>({
-    type: null,
-    item: null,
+  const [formState, setFormState] = useState<FormState>({ type: null, item: null });
+  const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirmState>({
+    open: false,
+    description: "",
+    action: null,
   });
+
+  // ── Lookups remotos ──────────────────────────────────────────────────────────
 
   const { data: refTypesResponse } = useQuery({
     queryKey: ["person-detail-ref-types"],
@@ -159,121 +162,131 @@ export default function PersonDetail() {
     refetchOnWindowFocus: false,
   });
 
-  const refTypesByCategory = useMemo(() => {
-    if (
-      refTypesResponse?.status === "success" &&
-      Array.isArray(refTypesResponse.data)
-    ) {
-      return refTypesResponse.data.reduce(
-        (acc: Record<string, RefType[]>, ref: ApiRefType) => {
-          if (!REF_CATEGORIES.includes(ref.category)) {
-            return acc;
-          }
+  // ── Mapas derivados ──────────────────────────────────────────────────────────
 
-          const normalized: RefType = {
-            id: Number(ref.typeId ?? ref.typeID ?? 0),
-            category: ref.category,
-            name: ref.name,
-            description: ref.description ?? undefined,
-            isActive: ref.isActive,
-          };
-
-          if (!acc[ref.category]) {
-            acc[ref.category] = [];
-          }
-
-          acc[ref.category].push(normalized);
-          return acc;
-        },
-        {}
-      );
+  /**
+   * Mapa global id → nombre que cubre TODOS los ref_types del API.
+   * Los tabs reciben este mapa (DIP) en lugar de llamar al API directamente.
+   */
+  const allRefTypesById = useMemo<Record<number, string>>(() => {
+    if (refTypesResponse?.status !== "success" || !Array.isArray(refTypesResponse.data)) {
+      return {};
     }
+    const map: Record<number, string> = {};
+    (refTypesResponse.data as ApiRefType[]).forEach((ref) => {
+      const id = Number(ref.typeId ?? ref.typeID ?? 0);
+      if (id > 0) map[id] = ref.name;
+    });
+    return map;
+  }, [refTypesResponse]);
 
-    return {} as Record<string, RefType[]>;
+  /** Subconjunto filtrado por categoría, para PersonalInfoTab que lo necesita así */
+  const refTypesByCategory = useMemo(() => {
+    if (refTypesResponse?.status !== "success" || !Array.isArray(refTypesResponse.data)) {
+      return {} as Record<string, RefType[]>;
+    }
+    return (refTypesResponse.data as ApiRefType[]).reduce(
+      (acc: Record<string, RefType[]>, ref) => {
+        if (!REF_CATEGORIES.includes(ref.category)) return acc;
+        const normalized: RefType = {
+          id: Number(ref.typeId ?? ref.typeID ?? 0),
+          category: ref.category,
+          name: ref.name,
+          description: ref.description ?? undefined,
+          isActive: ref.isActive,
+        };
+        if (!acc[ref.category]) acc[ref.category] = [];
+        acc[ref.category].push(normalized);
+        return acc;
+      },
+      {}
+    );
   }, [refTypesResponse]);
 
   const countryMap = useMemo(() => {
     if (countriesResponse?.status === "success" && Array.isArray(countriesResponse.data)) {
-      return buildNameMap(
-        countriesResponse.data,
-        ["countryId", "id"],
-        ["name", "countryName"]
-      );
+      return buildNameMap(countriesResponse.data, ["countryId", "id"], ["name", "countryName"]);
     }
     return {};
   }, [countriesResponse]);
 
   const provinceMap = useMemo(() => {
     if (provincesResponse?.status === "success" && Array.isArray(provincesResponse.data)) {
-      return buildNameMap(
-        provincesResponse.data,
-        ["provinceId", "id"],
-        ["name", "provinceName"]
-      );
+      return buildNameMap(provincesResponse.data, ["provinceId", "id"], ["name", "provinceName"]);
     }
     return {};
   }, [provincesResponse]);
 
   const cantonMap = useMemo(() => {
     if (cantonsResponse?.status === "success" && Array.isArray(cantonsResponse.data)) {
-      return buildNameMap(
-        cantonsResponse.data,
-        ["cantonId", "id"],
-        ["name", "cantonName"]
-      );
+      return buildNameMap(cantonsResponse.data, ["cantonId", "id"], ["name", "cantonName"]);
     }
     return {};
   }, [cantonsResponse]);
+
+  // ── Confirmación de eliminación ──────────────────────────────────────────────
+
+  const confirmDelete = (description: string, action: () => void) => {
+    setDeleteConfirm({ open: true, description, action });
+  };
+
+  const handleDeleteConfirm = () => {
+    deleteConfirm.action?.();
+    setDeleteConfirm({ open: false, description: "", action: null });
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteConfirm({ open: false, description: "", action: null });
+  };
+
+  // ── Formularios ──────────────────────────────────────────────────────────────
 
   const openForm = (type: FormType, item?: unknown) => {
     setFormState({ type, item: item ?? null });
   };
 
-  const closeForm = () => {
-    setFormState({ type: null, item: null });
-  };
+  const closeForm = () => setFormState({ type: null, item: null });
 
   const handleFormSuccess = () => {
     closeForm();
     refetch();
+    toast({ title: "✅ Éxito", description: "Datos guardados correctamente" });
+  };
+
+  // ── Errores y carga ──────────────────────────────────────────────────────────
+
+  // Mientras el personId del contexto todavía no está disponible, mostrar spinner
+  if (personId === 0 && !fetchEnabled) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto" />
+          <p className="text-sm text-muted-foreground">Cargando perfil...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (hasError && !person) {
     toast({
-      title: "✅ Éxito",
-      description: "Datos guardados correctamente",
+      title: "⚠️ Aviso",
+      description:
+        "Hubo un problema obteniendo algunos datos relacionados. Puedes seguir editando y agregando información.",
+      variant: "destructive",
     });
-  };
-
-  const handleBack = () => {
-    navigate("/people");
-  };
-
-  const handleRefresh = () => {
-    refetch();
-  };
-
-  useEffect(() => {
-    if (hasError) {
-      toast({
-        title: "⚠️ Aviso",
-        description:
-          "Hubo un problema obteniendo algunos datos relacionados. Puedes seguir editando y agregando información.",
-        variant: "destructive",
-      });
-    }
-  }, [hasError, toast]);
+  }
 
   if (isLoading && !person) {
     return (
       <div className="min-h-screen bg-background p-4 sm:p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col space-y-4">
-            <div className="h-8 bg-muted rounded w-1/3 animate-pulse" />
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="h-20 bg-muted rounded animate-pulse" />
-              ))}
-            </div>
-            <div className="h-64 bg-muted rounded animate-pulse" />
+        <div className="max-w-7xl mx-auto space-y-4">
+          <div className="h-8 bg-muted rounded w-1/3 animate-pulse" />
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="h-20 bg-muted rounded animate-pulse" />
+            ))}
           </div>
+          <div className="h-64 bg-muted rounded animate-pulse" />
         </div>
       </div>
     );
@@ -288,31 +301,33 @@ export default function PersonDetail() {
           <p className="text-muted-foreground mb-4">
             La persona que buscas no existe o no tienes permisos para verla.
           </p>
-          <Button onClick={handleBack}>Volver al listado</Button>
+          <Button onClick={() => navigate("/people")}>Volver al listado</Button>
         </div>
       </div>
     );
   }
 
   const safeData = {
-    publications: data?.publications ?? [],
-    familyMembers: data?.familyMembers ?? [],
-    workExperiences: data?.workExperiences ?? [],
-    trainings: data?.trainings ?? [],
-    books: data?.books ?? [],
-    emergencyContacts: data?.emergencyContacts ?? [],
-    stats: (data as any)?.stats ?? null,
+    publications:      data?.publications      ?? [],
+    familyMembers:     data?.familyMembers      ?? [],
+    workExperiences:   data?.workExperiences    ?? [],
+    trainings:         data?.trainings          ?? [],
+    books:             data?.books              ?? [],
+    emergencyContacts: data?.emergencyContacts  ?? [],
+    stats:             (data as any)?.stats     ?? null,
   };
 
   return (
     <div className="min-h-screen bg-background p-3 sm:p-4 lg:p-6">
       <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
+
+        {/* ── Cabecera ── */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 sm:gap-4">
           <div className="flex items-center space-x-3">
             <Button
               variant="ghost"
               size="sm"
-              onClick={handleBack}
+              onClick={() => navigate("/people")}
               className="hidden sm:flex"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
@@ -321,7 +336,7 @@ export default function PersonDetail() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={handleBack}
+              onClick={() => navigate("/people")}
               className="sm:hidden"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -340,7 +355,7 @@ export default function PersonDetail() {
             <Button
               variant="outline"
               size="sm"
-              onClick={handleRefresh}
+              onClick={() => refetch()}
               className="flex-1 sm:flex-none"
             >
               <RefreshCw className="mr-2 h-4 w-4" />
@@ -349,73 +364,47 @@ export default function PersonDetail() {
             </Button>
             <Button
               onClick={() => setIsEditFormOpen(true)}
-              className="bg-uta-blue hover:bg-uta-blue/90 flex-1 sm:flex-none"
+              className="bg-primary hover:bg-primary/90 flex-1 sm:flex-none"
             >
               <Edit className="mr-2 h-4 w-4" />
-              <span className="hidden sm:inline">Editar</span>
-              <span className="sm:hidden">Editar</span>
+              Editar
             </Button>
           </div>
         </div>
 
         <StatsDashboard data={safeData} />
 
-        <Tabs
-          value={activeTab}
-          onValueChange={setActiveTab}
-          className="space-y-4 sm:space-y-6"
-        >
-          <TabsList className="w-full grid grid-cols-4 gap-1 h-auto p-1 bg-muted rounded-lg">
-            <TabsTrigger value="personal" className="text-xs px-2 py-2 data-[state=active]:bg-card">
-              <User className="h-3 w-3 sm:mr-1" />
-              <span className="hidden sm:inline">Personal</span>
-            </TabsTrigger>
-            <TabsTrigger value="publications" className="text-xs px-2 py-2 data-[state=active]:bg-card">
-              <FileText className="h-3 w-3 sm:mr-1" />
-              <span className="hidden sm:inline">Publicaciones</span>
-            </TabsTrigger>
-            <TabsTrigger value="family" className="text-xs px-2 py-2 data-[state=active]:bg-card">
-              <Users className="h-3 w-3 sm:mr-1" />
-              <span className="hidden sm:inline">Familia</span>
-            </TabsTrigger>
-            <TabsTrigger value="experience" className="text-xs px-2 py-2 data-[state=active]:bg-card">
-              <Briefcase className="h-3 w-3 sm:mr-1" />
-              <span className="hidden sm:inline">Experiencia</span>
-            </TabsTrigger>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs px-2 py-2 h-auto col-span-4 sm:col-span-1 mt-1 sm:mt-0"
+        {/* ── Tabs — todos visibles, scroll horizontal en mobile ── */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
+          <div className="overflow-x-auto pb-0.5">
+            <TabsList className="inline-flex h-auto p-1 bg-muted rounded-lg gap-0.5 min-w-max w-full sm:w-auto">
+              {([
+                { value: "personal",     icon: User,          label: "Personal"       },
+                { value: "publications", icon: FileText,      label: "Publicaciones"  },
+                { value: "family",       icon: Users,         label: "Familia"        },
+                { value: "experience",   icon: Briefcase,     label: "Experiencia"    },
+                { value: "trainings",    icon: GraduationCap, label: "Capacitaciones" },
+                { value: "books",        icon: BookOpen,      label: "Libros"         },
+                { value: "emergency",    icon: Phone,         label: "Contactos"      },
+              ] as const).map(({ value, icon: Icon, label }) => (
+                <TabsTrigger
+                  key={value}
+                  value={value}
+                  className="shrink-0 text-xs sm:text-sm px-2 sm:px-3 py-2 data-[state=active]:bg-card flex items-center gap-1"
                 >
-                  <MoreHorizontal className="h-3 w-3 mr-1" />
-                  <span>Más</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={() => setActiveTab("trainings")}>
-                  <GraduationCap className="h-4 w-4 mr-2" />
-                  Capacitaciones
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setActiveTab("books")}>
-                  <BookOpen className="h-4 w-4 mr-2" />
-                  Libros
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setActiveTab("emergency")}>
-                  <Phone className="h-4 w-4 mr-2" />
-                  Contactos
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </TabsList>
+                  <Icon className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
+                  <span className="hidden xs:inline sm:inline">{label}</span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
 
           <TabsContent value="personal" className="space-y-4">
             <PersonalInfoTab
               person={person!}
               onEdit={() => setIsEditFormOpen(true)}
               refTypesByCategory={refTypesByCategory}
+              refTypesMap={allRefTypesById}
               countryMap={countryMap}
               provinceMap={provinceMap}
               cantonMap={cantonMap}
@@ -426,11 +415,12 @@ export default function PersonDetail() {
             <PublicationsTab
               publications={safeData.publications}
               onEdit={openForm as any}
-              onDelete={(id) => {
-                if (confirm("¿Está seguro de que desea eliminar esta publicación?")) {
-                  mutations.publications.delete.mutate(id);
-                }
-              }}
+              onDelete={(id) =>
+                confirmDelete(
+                  "¿Está seguro de que desea eliminar esta publicación?",
+                  () => mutations.publications.delete.mutate(id)
+                )
+              }
             />
           </TabsContent>
 
@@ -438,11 +428,13 @@ export default function PersonDetail() {
             <FamilyMembersTab
               familyMembers={safeData.familyMembers}
               onEdit={openForm as any}
-              onDelete={(id) => {
-                if (confirm("¿Está seguro de que desea eliminar esta carga familiar?")) {
-                  mutations.familyMembers.delete.mutate(id);
-                }
-              }}
+              onDelete={(id) =>
+                confirmDelete(
+                  "¿Está seguro de que desea eliminar esta carga familiar?",
+                  () => mutations.familyMembers.delete.mutate(id)
+                )
+              }
+              refTypesMap={allRefTypesById}
             />
           </TabsContent>
 
@@ -450,11 +442,14 @@ export default function PersonDetail() {
             <WorkExperiencesTab
               workExperiences={safeData.workExperiences}
               onEdit={openForm as any}
-              onDelete={(id) => {
-                if (confirm("¿Está seguro de que desea eliminar esta experiencia laboral?")) {
-                  mutations.workExperiences.delete.mutate(id);
-                }
-              }}
+              onDelete={(id) =>
+                confirmDelete(
+                  "¿Está seguro de que desea eliminar esta experiencia laboral?",
+                  () => mutations.workExperiences.delete.mutate(id)
+                )
+              }
+              refTypesMap={allRefTypesById}
+              countryMap={countryMap}
             />
           </TabsContent>
 
@@ -462,11 +457,13 @@ export default function PersonDetail() {
             <TrainingsTab
               trainings={safeData.trainings}
               onEdit={openForm as any}
-              onDelete={(id) => {
-                if (confirm("¿Está seguro de que desea eliminar esta capacitación?")) {
-                  mutations.trainings.delete.mutate(id);
-                }
-              }}
+              onDelete={(id) =>
+                confirmDelete(
+                  "¿Está seguro de que desea eliminar esta capacitación?",
+                  () => mutations.trainings.delete.mutate(id)
+                )
+              }
+              refTypesMap={allRefTypesById}
             />
           </TabsContent>
 
@@ -474,11 +471,13 @@ export default function PersonDetail() {
             <BooksTab
               books={safeData.books}
               onEdit={openForm as any}
-              onDelete={(id) => {
-                if (confirm("¿Está seguro de que desea eliminar este libro?")) {
-                  mutations.books.delete.mutate(id);
-                }
-              }}
+              onDelete={(id) =>
+                confirmDelete(
+                  "¿Está seguro de que desea eliminar este libro?",
+                  () => mutations.books.delete.mutate(id)
+                )
+              }
+              countryMap={countryMap}
             />
           </TabsContent>
 
@@ -486,15 +485,18 @@ export default function PersonDetail() {
             <EmergencyContactsTab
               emergencyContacts={safeData.emergencyContacts}
               onEdit={openForm as any}
-              onDelete={(id) => {
-                if (confirm("¿Está seguro de que desea eliminar este contacto de emergencia?")) {
-                  mutations.emergencyContacts.delete.mutate(id);
-                }
-              }}
+              onDelete={(id) =>
+                confirmDelete(
+                  "¿Está seguro de que desea eliminar este contacto de emergencia?",
+                  () => mutations.emergencyContacts.delete.mutate(id)
+                )
+              }
+              refTypesMap={allRefTypesById}
             />
           </TabsContent>
         </Tabs>
 
+        {/* ── Dialogs ── */}
         <PersonFormDialog
           open={isEditFormOpen}
           onOpenChange={setIsEditFormOpen}
@@ -511,6 +513,13 @@ export default function PersonDetail() {
           onSuccess={handleFormSuccess}
           personId={personId}
           mutations={mutations}
+        />
+
+        <ConfirmDeleteDialog
+          open={deleteConfirm.open}
+          description={deleteConfirm.description}
+          onConfirm={handleDeleteConfirm}
+          onCancel={handleDeleteCancel}
         />
       </div>
     </div>

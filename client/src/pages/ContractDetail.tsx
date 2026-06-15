@@ -1,5 +1,5 @@
 // src/pages/ContractDetail.tsx
-import { useMemo } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useParams, Link } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
@@ -12,13 +12,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { useState } from 'react';
-import { Loader2, ArrowLeft, History, CheckCircle2, Clock, XCircle } from 'lucide-react';
+import { Loader2, ArrowLeft, History, CheckCircle2, Clock, XCircle, Edit3, FolderOpen, Lock } from 'lucide-react';
 import { useContractDetail } from '@/hooks/contracts/useContractDetail';
 import { useContractLookups } from '@/hooks/contracts/useContractLookups';
+import { useAuth } from '@/features/auth';
 import { TiposReferenciaAPI } from '@/lib/api';
 import { ContractActions } from '@/components/contracts/ContractActions';
 import { DocumentPreviewPanel } from '@/components/personnelActions/DocumentPreviewPanel';
+import { ContractDialog } from '@/components/contracts/ContractDialog';
+import {
+  ReusableDocumentManager,
+  type ReusableDocumentManagerHandle,
+} from '@/components/ReusableDocumentManager';
+import {
+  CONTRACT_DIRECTORY_CODE,
+  CONTRACT_ENTITY_TYPE,
+} from '@/features/constants';
 import type { ContractStatusHistoryEntry } from '@/types/contractDetail';
 
 const STATUS_BADGE: Record<string, string> = {
@@ -27,6 +36,9 @@ const STATUS_BADGE: Record<string, string> = {
   PENDIENTE_FIRMAS: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
   FIRMADO_CARGADO: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
   FINALIZADO: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+  VIGENTE: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200',
+  VENCIDO: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+  RENUNCIA: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
   ANULADO: 'bg-destructive/10 text-destructive',
 };
 
@@ -36,6 +48,9 @@ const STATUS_LABEL: Record<string, string> = {
   PENDIENTE_FIRMAS: 'Pendiente de firmas',
   FIRMADO_CARGADO: 'Firmado cargado',
   FINALIZADO: 'Finalizado',
+  VIGENTE: 'Vigente',
+  VENCIDO: 'Vencido',
+  RENUNCIA: 'Renuncia',
   ANULADO: 'Anulado',
 };
 
@@ -79,11 +94,17 @@ function HistoryEntry({ entry }: { entry: ContractStatusHistoryEntry }) {
   );
 }
 
+type DialogMode = 'create' | 'view' | 'edit';
+
 export default function ContractDetail() {
   const { id } = useParams<{ id: string }>();
   const contractId = Number(id);
+  const { user, employeeDetails } = useAuth();
 
-  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyOpen, setHistoryOpen]   = useState(false);
+  const [editOpen, setEditOpen]         = useState(false);
+  const [editMode, setEditMode]         = useState<DialogMode>('edit');
+  const docManagerRef = useRef<ReusableDocumentManagerHandle>(null);
 
   const {
     contract,
@@ -165,6 +186,9 @@ export default function ContractDetail() {
     ? (statusById.get(Number(contract.status)) ?? 'BORRADOR')
     : 'BORRADOR';
 
+  // Solo BORRADOR y GENERADO permiten edición de datos
+  const isEditable = ['BORRADOR', 'GENERADO'].includes(contractStatusName);
+
   const pdfToShow = generatedPdfBase64 ?? undefined;
   const fileNameToShow = generatedFileName ?? docStatus?.fileName ?? undefined;
 
@@ -189,6 +213,28 @@ export default function ContractDetail() {
     );
   }
 
+  // Guard de acceso: solo el creador del contrato o administrador HR (permiso /people)
+  const isOwner = Number(contract.createdBy) === employeeDetails?.employeeID;
+  const isAdmin = user?.permissions?.some((p) => p === '/people') ?? false;
+  if (employeeDetails !== null && !isOwner && !isAdmin) {
+    return (
+      <div className="container mx-auto p-6 flex items-center justify-center min-h-[400px]">
+        <div className="text-center max-w-md">
+          <Lock className="mx-auto h-16 w-16 text-muted-foreground/70 mb-4" />
+          <h2 className="text-xl font-bold text-foreground mb-2">Acceso denegado</h2>
+          <p className="text-muted-foreground mb-4">
+            No tienes permiso para ver este contrato.
+          </p>
+          <Link href="/contracts">
+            <Button variant="outline">
+              <ArrowLeft className="mr-2 h-4 w-4" /> Volver al listado
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto p-4 md:p-6 space-y-6 max-w-5xl">
 
@@ -208,10 +254,18 @@ export default function ContractDetail() {
           )}
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-3 shrink-0 flex-wrap justify-end">
           <Badge className={STATUS_BADGE[contractStatusName] ?? 'bg-secondary text-secondary-foreground'}>
             {STATUS_LABEL[contractStatusName] ?? contractStatusName}
           </Badge>
+          {isEditable && (
+            <Button
+              size="sm"
+              onClick={() => { setEditMode('edit'); setEditOpen(true); }}
+            >
+              <Edit3 className="mr-2 h-4 w-4" /> Editar datos
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -287,6 +341,29 @@ export default function ContractDetail() {
               label="Estado"
               value={STATUS_LABEL[contractStatusName] ?? contractStatusName}
             />
+            <Separator className="my-2" />
+            <InfoRow
+              label="Régimen laboral"
+              value={
+                (contract as any).laborRegimeName
+                ?? ({ 57: "LOSEP", 58: "LOES", 59: "Código Trabajo" } as any)[(contract as any).laborRegimeID]
+                ?? null
+              }
+            />
+            <InfoRow
+              label="Modalidad"
+              value={
+                (contract as any).workModalityName
+                ?? ({ 143: "Medio Día", 144: "Día Completo", 145: "Por Horas" } as any)[(contract as any).workModalityID]
+                ?? null
+              }
+            />
+            <InfoRow
+              label="Horas contratadas"
+              value={(contract as any).contractedHours != null && (contract as any).contractedHours > 0
+                ? `${(contract as any).contractedHours}h`
+                : null}
+            />
           </CardContent>
         </Card>
 
@@ -335,6 +412,51 @@ export default function ContractDetail() {
           </CardContent>
         </Card>
       )}
+
+      {/* ── Archivos adjuntos ─────────────────────────────── */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+            <FolderOpen className="h-4 w-4" />
+            Archivos adjuntos del contrato
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ReusableDocumentManager
+            ref={docManagerRef}
+            label=""
+            directoryCode={CONTRACT_DIRECTORY_CODE}
+            entityType={CONTRACT_ENTITY_TYPE}
+            entityId={contractId}
+            entityReady={true}
+            relativePath=""
+            accept="*/*"
+            maxSizeMB={20}
+            maxFiles={10}
+            showInternalUploadButton={true}
+            disabled={!isEditable}
+            roles={{
+              canUpload: isEditable,
+              canPreview: true,
+              canDownload: true,
+              canDelete: isEditable,
+            }}
+            documentType={{ enabled: isEditable, required: false }}
+          />
+        </CardContent>
+      </Card>
+
+      {/* ── Dialog de edición ────────────────────────────── */}
+      <ContractDialog
+        open={editOpen}
+        onOpenChange={(v) => {
+          setEditOpen(v);
+          if (!v) invalidate();
+        }}
+        mode={editMode}
+        setMode={setEditMode}
+        selected={contract}
+      />
 
       {/* ── Dialog Historial ──────────────────────────────── */}
       <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>

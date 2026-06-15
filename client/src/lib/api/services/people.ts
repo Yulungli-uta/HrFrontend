@@ -12,6 +12,7 @@
 import { createApiService } from '../core/pagination';
 import { apiFetch } from '../core/fetch';
 import type { ApiResponse } from '../core/fetch';
+import type { BulkVerifyResponse } from '@/types/contractRequestPerson';
 
 // =============================================================================
 // DTO de Persona (contrato real del backend)
@@ -105,7 +106,16 @@ export interface EmployeeCompleteStatsDto {
 // Person de Drizzle para resolver el error TS2322 en ContractDialog y People.tsx
 // =============================================================================
 
-export const PersonasAPI = createApiService<PersonDto, PersonCreateDto>('/api/v1/rh/people');
+export const PersonasAPI = {
+  ...createApiService<PersonDto, PersonCreateDto>('/api/v1/rh/people'),
+
+  verifyBulk: (identifications: string[]): Promise<ApiResponse<BulkVerifyResponse>> =>
+    apiFetch<BulkVerifyResponse>('/api/v1/rh/people/verify-bulk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identifications }),
+    }),
+};
 
 // =============================================================================
 // API de Empleados
@@ -184,4 +194,5 @@ export const VistaDetallesEmpleadosAPI = {
 
   getAvailableFaculties: (): Promise<ApiResponse<any[]>> =>
     apiFetch<any[]>('/api/v1/rh/vw/EmployeeDetails/available/faculties'),
+
 };

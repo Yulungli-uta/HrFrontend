@@ -75,7 +75,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -157,8 +156,6 @@ export default function UserRolesPage() {
     hasRoles: "all",
     searchTerm: "",
   });
-  const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
-
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -193,8 +190,8 @@ export default function UserRolesPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async ({ userId, roleId }: { userId: string; roleId: number }) => {
-      return UserRolesAPI.removeLegacy(userId, roleId);
+    mutationFn: async ({ userId, roleId, assignedAt }: { userId: string; roleId: number; assignedAt: string }) => {
+      return UserRolesAPI.remove(userId, roleId, assignedAt);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-roles"] });
@@ -382,21 +379,6 @@ export default function UserRolesPage() {
       return next;
     });
   }, []);
-
-  const toggleUserSelection = useCallback((userId: string) => {
-    setSelectedUsers((prev) => {
-      const next = new Set(prev);
-      next.has(userId) ? next.delete(userId) : next.add(userId);
-      return next;
-    });
-  }, []);
-
-  const selectAllUsers = useCallback(() => {
-    setSelectedUsers((prev) => {
-      if (prev.size === filteredUsers.length) return new Set();
-      return new Set(filteredUsers.map((u) => u.id));
-    });
-  }, [filteredUsers]);
 
   useEffect(() => {
     if (filters.status === "active") setActiveTab("active");
@@ -690,8 +672,6 @@ export default function UserRolesPage() {
           onAssignRole={handleAssignRole}
           onDeleteAssignment={handleDeleteAssignment}
           onEditAssignment={handleEditAssignment}
-          selectedUsers={selectedUsers}
-          onToggleSelect={toggleUserSelection}
         />
       ) : (
         <TableView
@@ -701,9 +681,6 @@ export default function UserRolesPage() {
           onAssignRole={handleAssignRole}
           onDeleteAssignment={handleDeleteAssignment}
           onEditAssignment={handleEditAssignment}
-          selectedUsers={selectedUsers}
-          onToggleSelect={toggleUserSelection}
-          onSelectAll={selectAllUsers}
         />
       )}
 
@@ -778,6 +755,7 @@ export default function UserRolesPage() {
                   deleteMutation.mutate({
                     userId: deleteAssignment.userId,
                     roleId: deleteAssignment.roleId,
+                    assignedAt: deleteAssignment.assignedAt ?? new Date().toISOString(),
                   });
                 }
               }}
@@ -917,8 +895,6 @@ function CardView({
   onAssignRole,
   onDeleteAssignment,
   onEditAssignment,
-  selectedUsers,
-  onToggleSelect,
 }: any) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -926,22 +902,12 @@ function CardView({
         const userAssignments: UserRole[] = userRolesGrouped.get(user.id) || [];
         const activeRoles = userAssignments.filter((ur) => !ur.isDeleted);
         const isExpanded = expandedUsers.has(user.id);
-        const isSelected = selectedUsers.has(user.id);
 
         return (
           <Card
             key={user.id}
-            className={`relative transition-all hover:shadow-lg border-2 ${
-              isSelected ? "border-blue-500 bg-primary/10" : "border-border"
-            }`}
+            className="relative transition-all hover:shadow-lg border-2 border-border"
           >
-            <div className="absolute top-3 right-3">
-              <Switch
-                checked={isSelected}
-                onCheckedChange={() => onToggleSelect(user.id)}
-              />
-            </div>
-
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
@@ -1093,9 +1059,6 @@ function TableView({
   onAssignRole,
   onDeleteAssignment,
   onEditAssignment,
-  selectedUsers,
-  onToggleSelect,
-  onSelectAll,
 }: any) {
   return (
     <Card>
@@ -1103,12 +1066,6 @@ function TableView({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-12">
-                <Switch
-                  checked={selectedUsers.size === users.length && users.length > 0}
-                  onCheckedChange={onSelectAll}
-                />
-              </TableHead>
               <TableHead>Usuario</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead>Roles</TableHead>
@@ -1120,16 +1077,9 @@ function TableView({
             {users.map((user: User) => {
               const userAssignments: UserRole[] = userRolesGrouped.get(user.id) || [];
               const activeRoles = userAssignments.filter((ur) => !ur.isDeleted);
-              const isSelected = selectedUsers.has(user.id);
 
               return (
-                <TableRow key={user.id} className={isSelected ? "bg-primary/10" : ""}>
-                  <TableCell>
-                    <Switch
-                      checked={isSelected}
-                      onCheckedChange={() => onToggleSelect(user.id)}
-                    />
-                  </TableCell>
+                <TableRow key={user.id}>
                   <TableCell>
                     <div>
                       <div className="font-medium">{user.email}</div>
@@ -1193,12 +1143,6 @@ function TableView({
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => onAssignRole(user.id)}>
-                            <Plus className="h-4 w-4 mr-2" />
-                            Asignar Rol
-                          </DropdownMenuItem>
-
-                          <DropdownMenuSeparator />
                           <DropdownMenuLabel className="text-xs">
                             Asignaciones
                           </DropdownMenuLabel>

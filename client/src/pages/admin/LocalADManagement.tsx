@@ -26,14 +26,16 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from "@/components/ui/sheet";
 
+import { Textarea } from "@/components/ui/textarea";
 import {
   Server, Users, FolderOpen, Plus, Search, MoreHorizontal,
   Edit, Trash2, UserCheck, UserX, RefreshCw, Loader2,
-  UserPlus, UserMinus, AlertTriangle, ChevronDown,
+  UserPlus, UserMinus, AlertTriangle, ChevronDown, Cloud, CloudOff, HelpCircle,
+  LogOut,
 } from "lucide-react";
 
-import { LocalAdManagementAPI } from "@/lib/api";
-import type { LocalAdUserResponse, LocalAdGroupResponse } from "@/lib/api";
+import { LocalAdManagementAPI, ProvisioningAPI } from "@/lib/api";
+import type { LocalAdUserResponse, LocalAdGroupResponse, EntraSyncResult } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { parseApiError } from "@/lib/error-handling";
 import LocalAdUserForm from "@/components/forms/LocalAdUserForm";
@@ -46,6 +48,39 @@ function StatusBadge({ enabled }: { enabled: boolean }) {
   return (
     <Badge variant={enabled ? "default" : "destructive"} className="text-xs">
       {enabled ? "Habilitado" : "Deshabilitado"}
+    </Badge>
+  );
+}
+
+function EntraSyncBadge({ sync }: { sync: EntraSyncResult | null }) {
+  if (!sync) return null;
+  if (sync.status === "Synced")
+    return (
+      <Badge variant="outline" className="text-xs text-green-700 border-green-300 bg-green-50 flex items-center gap-1">
+        <Cloud className="h-3 w-3" /> Sincronizado
+      </Badge>
+    );
+  if (sync.status === "Disabled")
+    return (
+      <Badge variant="outline" className="text-xs text-amber-700 border-amber-300 bg-amber-50 flex items-center gap-1">
+        <CloudOff className="h-3 w-3" /> Entra deshabilitado
+      </Badge>
+    );
+  if (sync.status === "PendingSync")
+    return (
+      <Badge variant="outline" className="text-xs text-blue-700 border-blue-300 bg-blue-50 flex items-center gap-1">
+        <Cloud className="h-3 w-3" /> Pendiente sync
+      </Badge>
+    );
+  if (sync.status === "SyncError")
+    return (
+      <Badge variant="outline" className="text-xs text-destructive border-destructive/30 flex items-center gap-1">
+        <AlertTriangle className="h-3 w-3" /> Error sync
+      </Badge>
+    );
+  return (
+    <Badge variant="outline" className="text-xs flex items-center gap-1">
+      <HelpCircle className="h-3 w-3" /> Desconocido
     </Badge>
   );
 }
@@ -67,7 +102,9 @@ function UsersTab() {
   const [editingUser, setEditingUser] = useState<LocalAdUserResponse | null>(null);
   const [deleteUser, setDeleteUser] = useState<LocalAdUserResponse | null>(null);
   const [toggleUser, setToggleUser] = useState<LocalAdUserResponse | null>(null);
+  const [moveToInactiveUser, setMoveToInactiveUser] = useState<LocalAdUserResponse | null>(null);
   const [userGroupsUser, setUserGroupsUser] = useState<LocalAdUserResponse | null>(null);
+  const [syncCheckingId, setSyncCheckingId] = useState<string | null>(null);
 
   // Carga inicial / al cambiar filtro
   const { isLoading, isFetching, refetch } = useQuery({
@@ -139,6 +176,55 @@ function UsersTab() {
     },
   });
 
+  // Mover a OU Inactivos (full flow: deshabilitar + quitar grupo + mover OU)
+  const moveToInactiveMut = useMutation({
+    mutationFn: (user: LocalAdUserResponse) => ProvisioningAPI.disableByAdId(user.id),
+    onSuccess: (res, user) => {
+      if (res.status === "error") {
+        toast({ title: "Error", description: res.error.message, variant: "destructive" });
+        return;
+      }
+      toast({
+        title: "Cuenta movida a Inactivos",
+        description: `${user.displayName} fue deshabilitado, removido del grupo activo y movido a OU Inactivos.`,
+      });
+      setMoveToInactiveUser(null);
+      refetch();
+    },
+    onError: (err: unknown) => {
+      toast({ title: "Error al mover a inactivos", description: parseApiError(err).message, variant: "destructive" });
+    },
+  });
+
+  const handleCheckEntraSync = useCallback(async (user: LocalAdUserResponse) => {
+    setSyncCheckingId(user.id);
+    try {
+      const res = await LocalAdManagementAPI.checkEntraSync(user.id);
+      if (res.status === "success") {
+        const sync = res.data;
+        const messages: Record<string, string> = {
+          Synced: "El usuario está sincronizado y habilitado en Microsoft Entra.",
+          Disabled: "El usuario existe en Microsoft Entra pero está deshabilitado. Espere la sincronización.",
+          PendingSync: "El usuario aún no aparece en Microsoft Entra. Pendiente de Entra Connect.",
+          SyncError: sync.message ?? "Error al verificar sincronización.",
+          Unknown: "No se pudo determinar el estado de sincronización.",
+        };
+        const isOk = sync.status === "Synced";
+        toast({
+          title: `Sincronización Entra: ${user.displayName}`,
+          description: messages[sync.status] ?? sync.message ?? "",
+          variant: isOk ? "default" : "destructive",
+        });
+      } else {
+        toast({ title: "Error", description: parseApiError(res.error).message, variant: "destructive" });
+      }
+    } catch (err) {
+      toast({ title: "Error al verificar", description: parseApiError(err).message, variant: "destructive" });
+    } finally {
+      setSyncCheckingId(null);
+    }
+  }, [toast]);
+
   const handleFormSuccess = useCallback(() => {
     setIsFormOpen(false);
     setEditingUser(null);
@@ -186,7 +272,8 @@ function UsersTab() {
                 <TableHead className="hidden md:table-cell">Email</TableHead>
                 <TableHead className="hidden lg:table-cell">Cargo</TableHead>
                 <TableHead className="hidden lg:table-cell">Departamento</TableHead>
-                <TableHead>Estado</TableHead>
+                <TableHead>Estado AD</TableHead>
+                <TableHead className="hidden xl:table-cell">Entra</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -216,6 +303,11 @@ function UsersTab() {
                     <TableCell className="hidden lg:table-cell text-sm">{user.jobTitle || "-"}</TableCell>
                     <TableCell className="hidden lg:table-cell text-sm">{user.department || "-"}</TableCell>
                     <TableCell><StatusBadge enabled={user.accountEnabled} /></TableCell>
+                    <TableCell className="hidden xl:table-cell">
+                      {syncCheckingId === user.id
+                        ? <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                        : null}
+                    </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -230,12 +322,30 @@ function UsersTab() {
                           <DropdownMenuItem onClick={() => setUserGroupsUser(user)}>
                             <FolderOpen className="h-4 w-4 mr-2" />Ver grupos
                           </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleCheckEntraSync(user)}
+                            disabled={syncCheckingId === user.id}
+                          >
+                            {syncCheckingId === user.id
+                              ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              : <Cloud className="h-4 w-4 mr-2" />}
+                            Verificar Entra
+                          </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => setToggleUser(user)}>
                             {user.accountEnabled
                               ? <><UserX className="h-4 w-4 mr-2" />Deshabilitar</>
                               : <><UserCheck className="h-4 w-4 mr-2" />Habilitar</>}
                           </DropdownMenuItem>
+                          {user.accountEnabled && (
+                            <DropdownMenuItem
+                              className="text-amber-700 focus:text-amber-700 focus:bg-amber-50"
+                              onClick={() => setMoveToInactiveUser(user)}
+                            >
+                              <LogOut className="h-4 w-4 mr-2" />
+                              Mover a OU Inactivos
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             className="text-destructive focus:text-destructive"
@@ -342,6 +452,35 @@ function UsersTab() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Confirmar mover a OU Inactivos */}
+      <AlertDialog open={!!moveToInactiveUser} onOpenChange={(open) => !open && setMoveToInactiveUser(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-amber-700">
+              <LogOut className="h-5 w-5" />
+              Mover a OU Inactivos
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              La cuenta de <strong>"{moveToInactiveUser?.displayName}"</strong> será deshabilitada en Active Directory,
+              removida del grupo activo (UActivos / EActivos) y movida a la OU de Inactivos.
+              El usuario no se elimina y puede reactivarse si es necesario.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={moveToInactiveMut.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => moveToInactiveUser && moveToInactiveMut.mutate(moveToInactiveUser)}
+              disabled={moveToInactiveMut.isPending}
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              {moveToInactiveMut.isPending
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : "Mover a Inactivos"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Sheet: grupos del usuario */}
       {userGroupsUser && (
         <UserGroupsSheet
@@ -434,6 +573,7 @@ function UserGroupsSheet({ user, onClose }: { user: LocalAdUserResponse; onClose
 
 function GroupsTab() {
   const { toast } = useToast();
+  const qc = useQueryClient();
 
   const [filter, setFilter] = useState("");
   const [committedFilter, setCommittedFilter] = useState("");
@@ -442,6 +582,9 @@ function GroupsTab() {
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<LocalAdGroupResponse | null>(null);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [newGroupName, setNewGroupName] = useState("");
+  const [newGroupDesc, setNewGroupDesc] = useState("");
 
   const { isLoading, isFetching, refetch } = useQuery({
     queryKey: ["local-ad-groups", committedFilter],
@@ -456,6 +599,27 @@ function GroupsTab() {
       return res;
     },
     staleTime: 30_000,
+  });
+
+  const createGroupMutation = useMutation({
+    mutationFn: async () => {
+      const res = await LocalAdManagementAPI.createGroup({
+        groupName: newGroupName.trim(),
+        description: newGroupDesc.trim() || null,
+      });
+      if (res.status === "error") throw new Error(res.error.message);
+      return res.data;
+    },
+    onSuccess: () => {
+      toast({ title: "Grupo creado", description: `El grupo "${newGroupName}" fue creado en Active Directory.` });
+      setIsCreateOpen(false);
+      setNewGroupName("");
+      setNewGroupDesc("");
+      refetch();
+    },
+    onError: (err: unknown) => {
+      toast({ title: "Error al crear grupo", description: parseApiError(err).message, variant: "destructive" });
+    },
   });
 
   const handleSearch = useCallback(() => {
@@ -483,24 +647,76 @@ function GroupsTab() {
   return (
     <div className="space-y-4">
       {/* Barra de búsqueda */}
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
-          <Input
-            placeholder="Buscar grupo por nombre..."
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            className="pl-10"
-          />
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex gap-2 flex-1">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
+            <Input
+              placeholder="Buscar grupo por nombre..."
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              className="pl-10"
+            />
+          </div>
+          <Button variant="outline" onClick={handleSearch} disabled={isFetching}>
+            {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+          </Button>
+          <Button variant="outline" size="icon" onClick={() => refetch()} title="Actualizar">
+            <RefreshCw className="h-4 w-4" />
+          </Button>
         </div>
-        <Button variant="outline" onClick={handleSearch} disabled={isFetching}>
-          {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-        </Button>
-        <Button variant="outline" size="icon" onClick={() => refetch()} title="Actualizar">
-          <RefreshCw className="h-4 w-4" />
+        <Button
+          className="bg-primary hover:bg-primary/90 shrink-0"
+          onClick={() => setIsCreateOpen(true)}
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Nuevo grupo
         </Button>
       </div>
+
+      {/* Diálogo crear grupo */}
+      <Dialog open={isCreateOpen} onOpenChange={(open) => { if (!open) { setIsCreateOpen(false); setNewGroupName(""); setNewGroupDesc(""); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Nuevo grupo de seguridad</DialogTitle>
+            <DialogDescription>Crea un grupo Global Security en Active Directory local.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="g-name">Nombre del grupo *</Label>
+              <Input
+                id="g-name"
+                value={newGroupName}
+                onChange={(e) => setNewGroupName(e.target.value)}
+                placeholder="Ej: GRP_RRHH_Lectores"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="g-desc">Descripción</Label>
+              <Textarea
+                id="g-desc"
+                value={newGroupDesc}
+                onChange={(e) => setNewGroupDesc(e.target.value)}
+                placeholder="Descripción opcional del grupo"
+                rows={2}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancelar</Button>
+            <Button
+              onClick={() => createGroupMutation.mutate()}
+              disabled={!newGroupName.trim() || createGroupMutation.isPending}
+              className="bg-primary hover:bg-primary/90"
+            >
+              {createGroupMutation.isPending
+                ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creando...</>
+                : "Crear grupo"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Tabla */}
       <Card>

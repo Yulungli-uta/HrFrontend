@@ -32,7 +32,9 @@ import { cn } from "@/lib/utils";
 import type { ReportFilter, ReportType, PageOrientation } from "@/types/reports";
 import { REPORT_CONFIGS } from "@/types/reports";
 
-import { DepartamentosAPI, FacultadesAPI, TiposReferenciaAPI, VistaEmpleadosAPI } from "@/lib/api";
+import { ContractTypeAPI, DepartamentosAPI, TiposReferenciaAPI, VistaEmpleadosAPI } from "@/lib/api";
+import { PersonnelActionTypeAPI } from "@/lib/api/services/contracts";
+import { GuardServiceLocationsAPI, GuardRotationGroupsAPI } from "@/lib/api/services/guards";
 
 /* ---------------------------------- Types --------------------------------- */
 
@@ -44,10 +46,13 @@ type LoadState<T> = {
   error?: string;
 };
 
-type Department = { departmentId: number; name: string };
-type Faculty = { facultyId: number; name: string };
-type EmployeeView = { employeeID: number; fullName: string };
-type RefType = { typeId: number; name: string; category?: string };
+type Department    = { departmentId: number; name: string };
+type EmployeeView  = { employeeID: number; fullName: string };
+type RefType       = { typeId: number; name: string; category?: string };
+type ContractKind      = { contractTypeId?: number; contractTypeID?: number; id?: number; name: string };
+type ActionTypeOption  = { personnelActionTypeId: number; name: string; code: string };
+type GuardLocation    = { locationId: number; locationName: string; locationCode?: string };
+type GuardGroup       = { groupId: number; name: string };
 
 /* ------------------------------ Small helpers ------------------------------ */
 
@@ -80,17 +85,6 @@ function mapDepartmentOptions(raw: any[]): Option[] {
     .filter(Boolean) as Option[];
 }
 
-function mapFacultyOptions(raw: any[]): Option[] {
-  return raw
-    .map((f) => {
-      const id = toNum(f.facultyId ?? f.facultyID ?? f.id);
-      const name = toStr(f.name);
-      if (id == null || !name) return null;
-      return { value: String(id), label: name };
-    })
-    .filter(Boolean) as Option[];
-}
-
 function mapEmployeeOptions(raw: any[]): Option[] {
   return raw
     .map((e) => {
@@ -111,6 +105,21 @@ function mapContractTypeOptions(raw: any[]): Option[] {
       return { value: String(id), label: name };
     })
     .filter(Boolean) as Option[];
+}
+
+function mapContractKindOptions(raw: any[]): Option[] {
+  return raw
+    .map((t) => {
+      const id = toNum(t.contractTypeId ?? t.contractTypeID ?? t.id);
+      const name = toStr(t.name);
+      if (id == null || !name) return null;
+      return { value: String(id), label: name };
+    })
+    .filter(Boolean) as Option[];
+}
+
+function formatStatusLabel(name: string): string {
+  return name.replace(/_/g, ' ').toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
 }
 
 /* -------------------------- Searchable Combobox ---------------------------- */
@@ -220,9 +229,14 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
 
   // estados de catálogos
   const [departments, setDepartments] = React.useState<LoadState<Department>>({ loading: false, items: [] });
-  const [faculties, setFaculties] = React.useState<LoadState<Faculty>>({ loading: false, items: [] });
+  const [guardLocations, setGuardLocations] = React.useState<LoadState<GuardLocation>>({ loading: false, items: [] });
+  const [guardGroups, setGuardGroups] = React.useState<LoadState<GuardGroup>>({ loading: false, items: [] });
   const [employees, setEmployees] = React.useState<LoadState<EmployeeView>>({ loading: false, items: [] });
   const [contractTypes, setContractTypes] = React.useState<LoadState<RefType>>({ loading: false, items: [] });
+  const [contractKinds, setContractKinds] = React.useState<LoadState<ContractKind>>({ loading: false, items: [] });
+  const [laborRegimes, setLaborRegimes] = React.useState<LoadState<RefType>>({ loading: false, items: [] });
+  const [dynamicStatuses, setDynamicStatuses] = React.useState<LoadState<RefType>>({ loading: false, items: [] });
+  const [actionTypes, setActionTypes] = React.useState<LoadState<ActionTypeOption>>({ loading: false, items: [] });
 
   const setFilterValue = React.useCallback((key: keyof ReportFilter, value: any) => {
     setFilter((prev) => ({
@@ -254,22 +268,65 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
       }
     };
 
-    const loadFaculties = async () => {
-      if (!hasFilter("facultyId", "facultyID")) return;
-      setFaculties({ loading: true, items: [] });
+    const loadContractKinds = async () => {
+      if (!hasFilter("contractTypeId")) return;
+      setContractKinds({ loading: true, items: [] });
       try {
-        const res = await FacultadesAPI.list();
+        const res = await ContractTypeAPI.list();
         const arr = extractArray(res);
         if (!alive) return;
-        setFaculties({ loading: false, items: arr as any[] });
+        setContractKinds({ loading: false, items: arr as any[] });
       } catch {
         if (!alive) return;
-        setFaculties({ loading: false, items: [], error: "No se pudieron cargar facultades" });
+        setContractKinds({ loading: false, items: [], error: "No se pudieron cargar tipos de contrato" });
+      }
+    };
+
+    const loadLaborRegimes = async () => {
+      if (!hasFilter("laborRegimeId")) return;
+      setLaborRegimes({ loading: true, items: [] });
+      try {
+        // Los contratos usan CONTRACT_TYPE para LaborRegimeID (LOES, LOSEP, etc.)
+        const res = await TiposReferenciaAPI.byCategory("CONTRACT_TYPE");
+        const arr = extractArray(res);
+        if (!alive) return;
+        setLaborRegimes({ loading: false, items: arr as any[] });
+      } catch {
+        if (!alive) return;
+        setLaborRegimes({ loading: false, items: [], error: "No se pudieron cargar regímenes" });
+      }
+    };
+
+    const loadActionTypes = async () => {
+      if (!hasFilter("actionTypeId")) return;
+      setActionTypes({ loading: true, items: [] });
+      try {
+        const res = await PersonnelActionTypeAPI.getAll();
+        const arr = extractArray(res);
+        if (!alive) return;
+        setActionTypes({ loading: false, items: arr as any[] });
+      } catch {
+        if (!alive) return;
+        setActionTypes({ loading: false, items: [], error: "No se pudieron cargar tipos de acción" });
+      }
+    };
+
+    const loadDynamicStatuses = async () => {
+      if (!hasFilter("status") || !reportConfig.statusCategory) return;
+      setDynamicStatuses({ loading: true, items: [] });
+      try {
+        const res = await TiposReferenciaAPI.byCategory(reportConfig.statusCategory);
+        const arr = extractArray(res);
+        if (!alive) return;
+        setDynamicStatuses({ loading: false, items: arr as any[] });
+      } catch {
+        if (!alive) return;
+        setDynamicStatuses({ loading: false, items: [], error: "No se pudieron cargar estados" });
       }
     };
 
     const loadEmployees = async () => {
-      if (!hasFilter("employeeId", "employeeID")) return;
+      if (!hasFilter("employeeId", "employeeID", "createdByEmployeeId")) return;
       setEmployees({ loading: true, items: [] });
       try {
         // En tu app, la vista completa devuelve employeeID y fullName (ver EmployeesPage.tsx)
@@ -297,10 +354,43 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
       }
     };
 
+    const loadGuardLocations = async () => {
+      if (!hasFilter("locationId")) return;
+      setGuardLocations({ loading: true, items: [] });
+      try {
+        const res = await GuardServiceLocationsAPI.getAssignable();
+        const arr = extractArray(res);
+        if (!alive) return;
+        setGuardLocations({ loading: false, items: arr as any[] });
+      } catch {
+        if (!alive) return;
+        setGuardLocations({ loading: false, items: [], error: "No se pudieron cargar ubicaciones" });
+      }
+    };
+
+    const loadGuardGroups = async () => {
+      if (!hasFilter("groupId")) return;
+      setGuardGroups({ loading: true, items: [] });
+      try {
+        const res = await GuardRotationGroupsAPI.getAll();
+        const arr = extractArray(res);
+        if (!alive) return;
+        setGuardGroups({ loading: false, items: arr as any[] });
+      } catch {
+        if (!alive) return;
+        setGuardGroups({ loading: false, items: [], error: "No se pudieron cargar grupos" });
+      }
+    };
+
     void loadDepartments();
-    void loadFaculties();
     void loadEmployees();
     void loadContractTypes();
+    void loadContractKinds();
+    void loadLaborRegimes();
+    void loadActionTypes();
+    void loadDynamicStatuses();
+    void loadGuardLocations();
+    void loadGuardGroups();
 
     return () => {
       alive = false;
@@ -313,11 +403,6 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
     [departments.items]
   );
 
-  const facultyOptions = React.useMemo<Option[]>(
-    () => mapFacultyOptions(faculties.items as any[]),
-    [faculties.items]
-  );
-
   const employeeOptions = React.useMemo<Option[]>(
     () => mapEmployeeOptions(employees.items as any[]),
     [employees.items]
@@ -326,6 +411,37 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
   const contractTypeOptions = React.useMemo<Option[]>(
     () => mapContractTypeOptions(contractTypes.items as any[]),
     [contractTypes.items]
+  );
+
+  const contractKindOptions = React.useMemo<Option[]>(
+    () => mapContractKindOptions(contractKinds.items as any[]),
+    [contractKinds.items]
+  );
+
+  const laborRegimeOptions = React.useMemo<Option[]>(
+    () => mapContractTypeOptions(laborRegimes.items as any[]),
+    [laborRegimes.items]
+  );
+
+  const actionTypeOptions = React.useMemo<Option[]>(
+    () => actionTypes.items.map((t) => ({ value: String(t.personnelActionTypeId), label: t.name })),
+    [actionTypes.items]
+  );
+
+  const guardLocationOptions = React.useMemo<Option[]>(
+    () => (guardLocations.items as GuardLocation[]).map((l) => ({
+      value: String(l.locationId),
+      label: l.locationCode ? `[${l.locationCode}] ${l.locationName}` : l.locationName,
+    })),
+    [guardLocations.items]
+  );
+
+  const guardGroupOptions = React.useMemo<Option[]>(
+    () => (guardGroups.items as GuardGroup[]).map((g) => ({
+      value: String(g.groupId),
+      label: g.name,
+    })),
+    [guardGroups.items]
   );
 
   return (
@@ -379,23 +495,6 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
                 disabled={departments.loading}
               />
               {departments.error && <p className="text-xs text-destructive">{departments.error}</p>}
-            </div>
-          )}
-
-          {/* Facultad (buscable) */}
-          {hasFilter("facultyId", "facultyID") && (
-            <div className="space-y-2">
-              <Label>Facultad</Label>
-              <SearchableCombobox
-                value={filter.facultyId != null ? String(filter.facultyId) : "all"}
-                onChange={(v) => setFilterValue("facultyId", v === "all" ? undefined : Number(v))}
-                options={facultyOptions}
-                placeholder="Todas las facultades"
-                searchPlaceholder="Buscar facultad..."
-                emptyText={faculties.loading ? "Cargando..." : "Sin resultados"}
-                disabled={faculties.loading}
-              />
-              {faculties.error && <p className="text-xs text-destructive">{faculties.error}</p>}
             </div>
           )}
 
@@ -490,6 +589,138 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
                   <SelectItem value="true">Incluir Inactivos</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+          )}
+
+          {/* Tipo de Contrato (tbl_ContractType) — contratos vigentes */}
+          {hasFilter("contractTypeId") && (
+            <div className="space-y-2">
+              <Label>Tipo de Contrato</Label>
+              <SearchableCombobox
+                value={filter.contractTypeId != null ? String(filter.contractTypeId) : "all"}
+                onChange={(v) => setFilterValue("contractTypeId", v === "all" ? undefined : Number(v))}
+                options={contractKindOptions}
+                placeholder="Todos los tipos"
+                searchPlaceholder="Buscar tipo..."
+                emptyText={contractKinds.loading ? "Cargando..." : "Sin resultados"}
+                disabled={contractKinds.loading}
+              />
+              {contractKinds.error && <p className="text-xs text-destructive">{contractKinds.error}</p>}
+            </div>
+          )}
+
+          {/* Régimen Laboral (ref_Types LABOR_REGIME) */}
+          {hasFilter("laborRegimeId") && (
+            <div className="space-y-2">
+              <Label>Régimen Laboral</Label>
+              <SearchableCombobox
+                value={filter.laborRegimeId != null ? String(filter.laborRegimeId) : "all"}
+                onChange={(v) => setFilterValue("laborRegimeId", v === "all" ? undefined : Number(v))}
+                options={laborRegimeOptions}
+                placeholder="Todos los regímenes"
+                searchPlaceholder="Buscar régimen..."
+                emptyText={laborRegimes.loading ? "Cargando..." : "Sin resultados"}
+                disabled={laborRegimes.loading}
+              />
+              {laborRegimes.error && <p className="text-xs text-destructive">{laborRegimes.error}</p>}
+            </div>
+          )}
+
+          {/* Creado Por — empleado que generó el contrato */}
+          {hasFilter("createdByEmployeeId") && (
+            <div className="space-y-2">
+              <Label>Creado Por</Label>
+              <SearchableCombobox
+                value={filter.createdByEmployeeId != null ? String(filter.createdByEmployeeId) : "all"}
+                onChange={(v) => setFilterValue("createdByEmployeeId", v === "all" ? undefined : Number(v))}
+                options={employeeOptions}
+                placeholder="Todos"
+                searchPlaceholder="Buscar empleado..."
+                emptyText={employees.loading ? "Cargando..." : "Sin resultados"}
+                disabled={employees.loading}
+              />
+              {employees.error && <p className="text-xs text-destructive">{employees.error}</p>}
+            </div>
+          )}
+
+          {/* Tipo de Acción de Personal */}
+          {hasFilter("actionTypeId") && (
+            <div className="space-y-2">
+              <Label>Tipo de Acción</Label>
+              <SearchableCombobox
+                value={filter.actionTypeId != null ? String(filter.actionTypeId) : "all"}
+                onChange={(v) => setFilterValue("actionTypeId", v === "all" ? undefined : Number(v))}
+                options={actionTypeOptions}
+                placeholder="Todos los tipos"
+                searchPlaceholder="Buscar tipo..."
+                emptyText={actionTypes.loading ? "Cargando..." : "Sin resultados"}
+                disabled={actionTypes.loading}
+              />
+              {actionTypes.error && <p className="text-xs text-destructive">{actionTypes.error}</p>}
+            </div>
+          )}
+
+          {/* Estado — dinámico desde ref_Types (statusCategory) o estático (statusOptions) */}
+          {hasFilter("status") && (reportConfig.statusCategory || (reportConfig.statusOptions && reportConfig.statusOptions.length > 0)) && (
+            <div className="space-y-2">
+              <Label htmlFor="status">Estado</Label>
+              <Select
+                value={filter.status ?? "all"}
+                onValueChange={(value) => setFilterValue("status", value === "all" ? undefined : value)}
+                disabled={!!reportConfig.statusCategory && dynamicStatuses.loading}
+              >
+                <SelectTrigger id="status">
+                  <SelectValue placeholder={dynamicStatuses.loading ? "Cargando..." : "Todos los estados"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los estados</SelectItem>
+                  {reportConfig.statusCategory
+                    ? dynamicStatuses.items.map((s) => (
+                        <SelectItem key={s.typeId} value={s.name}>
+                          {formatStatusLabel(s.name)}
+                        </SelectItem>
+                      ))
+                    : reportConfig.statusOptions?.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      ))
+                  }
+                </SelectContent>
+              </Select>
+              {dynamicStatuses.error && <p className="text-xs text-destructive">{dynamicStatuses.error}</p>}
+            </div>
+          )}
+
+          {/* Ubicación de servicio de guardias */}
+          {hasFilter("locationId") && (
+            <div className="space-y-2">
+              <Label>Ubicación</Label>
+              <SearchableCombobox
+                value={filter.locationId != null ? String(filter.locationId) : "all"}
+                onChange={(v) => setFilterValue("locationId", v === "all" ? undefined : Number(v))}
+                options={guardLocationOptions}
+                placeholder="Todas las ubicaciones"
+                searchPlaceholder="Buscar ubicación..."
+                emptyText={guardLocations.loading ? "Cargando..." : "Sin resultados"}
+                disabled={guardLocations.loading}
+              />
+              {guardLocations.error && <p className="text-xs text-destructive">{guardLocations.error}</p>}
+            </div>
+          )}
+
+          {/* Grupo de rotación de guardias */}
+          {hasFilter("groupId") && (
+            <div className="space-y-2">
+              <Label>Grupo</Label>
+              <SearchableCombobox
+                value={filter.groupId != null ? String(filter.groupId) : "all"}
+                onChange={(v) => setFilterValue("groupId", v === "all" ? undefined : Number(v))}
+                options={guardGroupOptions}
+                placeholder="Todos los grupos"
+                searchPlaceholder="Buscar grupo..."
+                emptyText={guardGroups.loading ? "Cargando..." : "Sin resultados"}
+                disabled={guardGroups.loading}
+              />
+              {guardGroups.error && <p className="text-xs text-destructive">{guardGroups.error}</p>}
             </div>
           )}
 

@@ -100,7 +100,7 @@ export function useNotificationWebSocket(
       //   .build();
 
       const hub = new signalR.HubConnectionBuilder()
-        .withUrl(url /*, aquí luego metes accessTokenFactory si lo necesitas */)
+        .withUrl(url)
         .withAutomaticReconnect()
         .configureLogging(DEBUG ? signalR.LogLevel.Information : signalR.LogLevel.None)
         .build();

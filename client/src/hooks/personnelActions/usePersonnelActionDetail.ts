@@ -10,6 +10,9 @@ import type {
   CreatePersonnelActionResponse,
 } from '@/types/personnel-actions';
 
+// Statuses que representan que una acción ya cerró su ciclo de vida
+const TERMINAL_STATUSES = ['FINALIZADO', 'ANULADO'];
+
 export function usePersonnelActionDetail(actionId: number | null) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -82,6 +85,34 @@ export function usePersonnelActionDetail(actionId: number | null) {
     onError: () => toast({ variant: 'destructive', title: 'Error al anular la acción.' }),
   });
 
+  // ── Finalizar la acción previa vigente del empleado ──────────────────────────
+  // Servicio: HrBackend — GET /api/v1/rh/personnel-actions/by-employee/{employeeId}
+  //           HrBackend — POST /api/v1/rh/personnel-actions/{id}/finalize
+  // Busca la acción no-terminal más reciente del empleado (distinta a la actual)
+  // y la finaliza. Se usa cuando requiresAdUserCreation = true al cargar el firmado.
+  const finalizePreviousVigente = async (employeeId: number) => {
+    try {
+      const resp = await PersonnelActionsAPI.getByEmployee(employeeId);
+      if (resp.status !== 'success') return;
+
+      const previous = (resp.data ?? [])
+        .filter(a => a.actionId !== actionId && !TERMINAL_STATUSES.includes(a.status))
+        .sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime())[0];
+
+      if (!previous) return;
+
+      const finalizeResp = await PersonnelActionsAPI.finalize(previous.actionId);
+      if (finalizeResp.status === 'success') {
+        toast({ title: 'Acción anterior finalizada.', description: `Acción #${previous.actionId} cerrada como vigente anterior.` });
+        invalidate();
+      } else {
+        toast({ variant: 'destructive', title: 'No se pudo finalizar la acción anterior.', description: finalizeResp.error?.message });
+      }
+    } catch {
+      toast({ variant: 'destructive', title: 'Error al buscar la acción anterior del empleado.' });
+    }
+  };
+
   const isBusy =
     updateMutation.isPending ||
     generateDocumentMutation.isPending ||
@@ -112,6 +143,8 @@ export function usePersonnelActionDetail(actionId: number | null) {
       generateDocumentMutation.mutate(overrides),
     markPending: markPendingMutation.mutate,
     finalize: finalizeMutation.mutate,
+    finalizeAsync: finalizeMutation.mutateAsync,
+    finalizePreviousVigente,
     cancelAction: cancelMutation.mutate,
   };
 }

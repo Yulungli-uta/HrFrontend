@@ -152,14 +152,23 @@ export function usePaged<T>(options: UsePagedOptions<T>): UsePagedResult<T> {
   }, []);
 
   /**
-   * Envía el término de búsqueda al servidor y resetea a página 1.
-   * Si el término está vacío, elimina el filtro de búsqueda.
+   * Guarda el término de búsqueda tal como lo escribe el usuario (sin trim)
+   * para que los espacios intermedios sean válidos al buscar por nombre completo.
+   *
+   * El trim() se aplica únicamente al construir la query string hacia el backend
+   * (en pagination.ts / createApiService), por lo que espacios al inicio/fin
+   * se limpian antes de llegar al servidor pero no afectan lo que ve el input.
+   *
+   * Si el término resultante (tras trim) es vacío, se elimina el filtro.
+   * Resetea a página 1 para evitar páginas inexistentes.
    */
   const setSearch = useCallback((term: string) => {
     setParams(prev => ({
       ...prev,
-      search: term.trim() || undefined,
-      page: 1, // Siempre volver a página 1 al buscar
+      // Guardamos el valor sin trim para que el input pueda mostrar espacios
+      // (ej: "María Lozano"). El factory de API hace trim antes de enviar.
+      search: term,
+      page: 1,
     }));
   }, []);
 

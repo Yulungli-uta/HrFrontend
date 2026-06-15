@@ -318,14 +318,27 @@
 
   /* ── Botones de acción en tabla ── */
   .btn-table-action {
-    @apply inline-flex items-center justify-center h-8 w-8 rounded-md
-           border border-border bg-background text-foreground
+    @apply inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md
+           bg-transparent text-foreground transition-colors
            hover:bg-accent hover:text-accent-foreground
-           transition-colors text-sm;
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
+           disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .btn-table-primary {
+    @apply btn-table-action text-primary hover:bg-primary/10 hover:text-primary;
+  }
+
+  .btn-table-success {
+    @apply btn-table-action text-success hover:bg-success/10 hover:text-success;
+  }
+
+  .btn-table-warning {
+    @apply btn-table-action text-warning hover:bg-warning/10 hover:text-warning;
   }
 
   .btn-table-danger {
-    @apply btn-table-action text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/30;
+    @apply btn-table-action text-destructive hover:bg-destructive/10 hover:text-destructive;
   }
 
   /* ── Empty state ── */
@@ -416,4 +429,23 @@ aside .uta-logo {
 
 .animate-fade-in {
   animation: fade-in 0.2s ease-out;
+}
+
+/* =============================================================================
+ * DATE / TIME INPUTS — dark mode
+ * Nota: color-scheme NO acepta custom properties, por eso se usan dos reglas
+ * explícitas. html.dark garantiza especificidad suficiente sobre estilos nativos.
+ * ============================================================================= */
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"],
+input[type="month"] {
+  color-scheme: light;
+}
+
+html.dark input[type="date"],
+html.dark input[type="time"],
+html.dark input[type="datetime-local"],
+html.dark input[type="month"] {
+  color-scheme: dark;
 }

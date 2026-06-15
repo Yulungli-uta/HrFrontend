@@ -57,8 +57,9 @@ function transformWorkExperienceFormData(formData: any, personId: number, isUpda
   return transformed;
 }
 
-export function usePersonData(personId: number) {
+export function usePersonData(personId: number, options?: { enabled?: boolean }) {
   const queryClient = useQueryClient();
+  const fetchEnabled = (options?.enabled ?? true) && !!personId && personId > 0;
 
   //console\.log("[usePersonData] INIT", { personId });
 
@@ -73,7 +74,7 @@ export function usePersonData(personId: number) {
       //console\.log("[usePersonData] fetching person", { personId });
       return PersonasAPI.get(personId);
     },
-    enabled: !!personId && personId > 0,
+    enabled: fetchEnabled,
     select: (response) => {
       //console\.log("[usePersonData] person RAW response", response);
 
@@ -100,7 +101,7 @@ export function usePersonData(personId: number) {
           //console\.log("[usePersonData] fetching publications", { personId });
           return PublicacionesAPI.getByPersonId(personId);
         },
-        enabled: !!personId,
+        enabled: fetchEnabled,
         select: (response: ApiResponse<Publication[]>) => {
           //console\.log("[usePersonData] publications RAW response", { personId, response });
 
@@ -125,7 +126,7 @@ export function usePersonData(personId: number) {
           //console\.log("[usePersonData] fetching familyMembers", { personId });
           return CargasFamiliaresAPI.getByPersonId(personId);
         },
-        enabled: !!personId,
+        enabled: fetchEnabled,
         select: (response: ApiResponse<FamilyMember[]>) => {
           //console\.log("[usePersonData] familyMembers RAW response", { personId, response });
 
@@ -148,7 +149,7 @@ export function usePersonData(personId: number) {
           //console\.log("[usePersonData] fetching workExperiences", { personId });
           return ExperienciasLaboralesAPI.getByPersonId(personId);
         },
-        enabled: !!personId,
+        enabled: fetchEnabled,
         select: (response: ApiResponse<WorkExperience[]>) => {
           //console\.log("[usePersonData] workExperiences RAW response", { personId, response });
 
@@ -171,7 +172,7 @@ export function usePersonData(personId: number) {
           //console\.log("[usePersonData] fetching trainings", { personId });
           return CapacitacionesAPI.getByPersonId(personId);
         },
-        enabled: !!personId,
+        enabled: fetchEnabled,
         select: (response: ApiResponse<Training[]>) => {
           //console\.log("[usePersonData] trainings RAW response", { personId, response });
 
@@ -194,7 +195,7 @@ export function usePersonData(personId: number) {
           //console\.log("[usePersonData] fetching books", { personId });
           return LibrosAPI.getByPersonId(personId);
         },
-        enabled: !!personId,
+        enabled: fetchEnabled,
         select: (response: ApiResponse<Book[]>) => {
           //console\.log("[usePersonData] books RAW response", { personId, response });
 
@@ -217,7 +218,7 @@ export function usePersonData(personId: number) {
           //console\.log("[usePersonData] fetching emergencyContacts", { personId });
           return ContactosEmergenciaAPI.getByPersonId(personId);
         },
-        enabled: !!personId,
+        enabled: fetchEnabled,
         select: (response: ApiResponse<EmergencyContact[]>) => {
           //console\.log("[usePersonData] emergencyContacts RAW response", { personId, response });
 

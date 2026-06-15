@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -63,7 +64,15 @@ export default function AssignRoleForm({
     queryFn: () => RolesAPI.list(1, 10000),
   });
 
-  const roles = rolesResponse?.status === "success" ? (rolesResponse.data?.items ?? []) : [];
+  const roles: Role[] = useMemo(() => {
+    const resp = rolesResponse as any;
+    if (resp?.status === "success") {
+      if (Array.isArray(resp?.data?.items))       return resp.data.items;
+      if (Array.isArray(resp?.data?.data?.items)) return resp.data.data.items;
+      if (Array.isArray(resp?.data))              return resp.data;
+    }
+    return [];
+  }, [rolesResponse]);
   const activeRoles = roles.filter((r: Role) => r.isActive && !r.isDeleted);
 
   // Mutación (usa assign, no create)
@@ -99,13 +108,6 @@ export default function AssignRoleForm({
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       <div className="space-y-4">
         <h2 className="text-2xl font-bold">Asignar Rol a Usuario</h2>
-
-        {/* Información del usuario */}
-        <div className="bg-background border border-border rounded-lg p-4">
-          <p className="text-sm text-muted-foreground">
-            <strong>Usuario:</strong> {userEmail}
-          </p>
-        </div>
 
         {/* Selección de rol */}
         <div className="space-y-2">

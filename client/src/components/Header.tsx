@@ -36,13 +36,7 @@ export default function Header({
    * Manejar navegación a perfil
    * -------------------------------------------- */
   const handleUpdateData = () => {
-    if (typeof currentUserId === "number") {
-      navigate(`/people/${currentUserId}`);
-    } else {
-      if (DEBUG) {
-        console.warn("[HEADER] No user ID available for profile update");
-      }
-    }
+    navigate("/perfil");
   };
 
   /* --------------------------------------------

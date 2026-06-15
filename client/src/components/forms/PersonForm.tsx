@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -387,68 +387,68 @@ export default function PersonForm({
 
   const initialHasDisability = Boolean(
     person?.disability ||
-      (person?.disabilityPercentage && person.disabilityPercentage > 0) ||
-      person?.conadisCard ||
-      person?.specialNeedsTypeId
+    (person?.disabilityPercentage && person.disabilityPercentage > 0) ||
+    person?.conadisCard ||
+    person?.specialNeedsTypeId
   );
 
   const defaultValues: PersonFormData = person
     ? {
-        firstName: person.firstName ?? "",
-        lastName: person.lastName ?? "",
-        identType: (person as any).identType ?? identityTypes[0]?.id ?? 0,
-        idCard: person.idCard ?? "",
-        email: person.email ?? "",
-        phone: person.phone || "",
-        birthDate: person.birthDate
-          ? new Date(person.birthDate).toISOString().split("T")[0]
-          : "",
-        sex: person.sex || undefined,
-        gender: person.gender || undefined,
-        disability: person.disability || "",
-        address: person.address || "",
-        maritalStatusTypeId: person.maritalStatusTypeId || undefined,
-        militaryCard: person.militaryCard || "",
-        motherName: person.motherName || "",
-        fatherName: person.fatherName || "",
-        countryId: person.countryId || "",
-        provinceId: person.provinceId || "",
-        cantonId: person.cantonId || "",
-        yearsOfResidence: person.yearsOfResidence || undefined,
-        ethnicityTypeId: person.ethnicityTypeId || undefined,
-        bloodTypeTypeId: person.bloodTypeTypeId || undefined,
-        specialNeedsTypeId: person.specialNeedsTypeId || undefined,
-        disabilityPercentage: person.disabilityPercentage || undefined,
-        conadisCard: person.conadisCard || "",
-        hasDisability: initialHasDisability,
-      }
+      firstName: person.firstName ?? "",
+      lastName: person.lastName ?? "",
+      identType: (person as any).identType ?? identityTypes[0]?.id ?? 0,
+      idCard: person.idCard ?? "",
+      email: person.email ?? "",
+      phone: person.phone || "",
+      birthDate: person.birthDate
+        ? new Date(person.birthDate).toISOString().split("T")[0]
+        : "",
+      sex: person.sex || undefined,
+      gender: person.gender || undefined,
+      disability: person.disability || "",
+      address: person.address || "",
+      maritalStatusTypeId: person.maritalStatusTypeId || undefined,
+      militaryCard: person.militaryCard || "",
+      motherName: person.motherName || "",
+      fatherName: person.fatherName || "",
+      countryId: person.countryId ? String(person.countryId) : "",
+      provinceId: person.provinceId ? String(person.provinceId) : "",
+      cantonId: person.cantonId ? String(person.cantonId) : "",
+      yearsOfResidence: person.yearsOfResidence || undefined,
+      ethnicityTypeId: person.ethnicityTypeId || undefined,
+      bloodTypeTypeId: person.bloodTypeTypeId || undefined,
+      specialNeedsTypeId: person.specialNeedsTypeId || undefined,
+      disabilityPercentage: person.disabilityPercentage || undefined,
+      conadisCard: person.conadisCard || "",
+      hasDisability: initialHasDisability,
+    }
     : {
-        firstName: "",
-        lastName: "",
-        identType: identityTypes[0]?.id || 0,
-        idCard: "",
-        email: "",
-        phone: "",
-        birthDate: "",
-        sex: undefined,
-        gender: undefined,
-        disability: "",
-        address: "",
-        maritalStatusTypeId: undefined,
-        militaryCard: "",
-        motherName: "",
-        fatherName: "",
-        countryId: "",
-        provinceId: "",
-        cantonId: "",
-        yearsOfResidence: undefined,
-        ethnicityTypeId: undefined,
-        bloodTypeTypeId: undefined,
-        specialNeedsTypeId: undefined,
-        disabilityPercentage: undefined,
-        conadisCard: "",
-        hasDisability: false,
-      };
+      firstName: "",
+      lastName: "",
+      identType: identityTypes[0]?.id || 0,
+      idCard: "",
+      email: "",
+      phone: "",
+      birthDate: "",
+      sex: undefined,
+      gender: undefined,
+      disability: "",
+      address: "",
+      maritalStatusTypeId: undefined,
+      militaryCard: "",
+      motherName: "",
+      fatherName: "",
+      countryId: "",
+      provinceId: "",
+      cantonId: "",
+      yearsOfResidence: undefined,
+      ethnicityTypeId: undefined,
+      bloodTypeTypeId: undefined,
+      specialNeedsTypeId: undefined,
+      disabilityPercentage: undefined,
+      conadisCard: "",
+      hasDisability: false,
+    };
 
   const {
     register,
@@ -539,12 +539,23 @@ export default function PersonForm({
     [allCantons, watchProvinceId]
   );
 
+  const countryInitialized = useRef(false);
+  const provinceInitialized = useRef(false);
+
   useEffect(() => {
+    if (!countryInitialized.current) {
+      countryInitialized.current = true;
+      return;
+    }
     setValue("provinceId", "", { shouldValidate: true });
     setValue("cantonId", "", { shouldValidate: true });
   }, [watchCountryId, setValue]);
 
   useEffect(() => {
+    if (!provinceInitialized.current) {
+      provinceInitialized.current = true;
+      return;
+    }
     setValue("cantonId", "", { shouldValidate: true });
   }, [watchProvinceId, setValue]);
 
@@ -605,12 +616,12 @@ export default function PersonForm({
         birthDate: data.birthDate || undefined,
         isActive: true,
 
-        sex: data.sex || 0,
-        gender: data.gender || 0,
+        sex: data.sex || null,
+        gender: data.gender || null,
         disability: hasDisability ? data.disability || undefined : undefined,
         address: data.address || undefined,
 
-        maritalStatusTypeId: data.maritalStatusTypeId || 0,
+        maritalStatusTypeId: data.maritalStatusTypeId || null,
         militaryCard: data.militaryCard || undefined,
         motherName: data.motherName || undefined,
         fatherName: data.fatherName || undefined,
@@ -618,10 +629,10 @@ export default function PersonForm({
         countryId: data.countryId || undefined,
         provinceId: data.provinceId || undefined,
         cantonId: data.cantonId || undefined,
-        yearsOfResidence: data.yearsOfResidence || 0,
+        yearsOfResidence: data.yearsOfResidence || null,
 
-        ethnicityTypeId: data.ethnicityTypeId || 0,
-        bloodTypeTypeId: data.bloodTypeTypeId || 0,
+        ethnicityTypeId: data.ethnicityTypeId || null,
+        bloodTypeTypeId: data.bloodTypeTypeId || null,
         specialNeedsTypeId: hasDisability
           ? data.specialNeedsTypeId ?? null
           : null,
@@ -769,11 +780,10 @@ export default function PersonForm({
                     }
                     disabled={isEditing}
                     data-testid="input-idCard"
-                    className={`${fieldClassName} ${
-                      errors.idCard
-                        ? "border-destructive focus-visible:ring-destructive/20"
-                        : ""
-                    }`}
+                    className={`${fieldClassName} ${errors.idCard
+                      ? "border-destructive focus-visible:ring-destructive/20"
+                      : ""
+                      }`}
                   />
                   {errors.idCard && (
                     <p className="text-sm text-destructive">
@@ -793,11 +803,10 @@ export default function PersonForm({
                     {...register("firstName")}
                     placeholder="Juan Carlos"
                     data-testid="input-firstName"
-                    className={`${fieldClassName} ${
-                      errors.firstName
-                        ? "border-destructive focus-visible:ring-destructive/20"
-                        : ""
-                    }`}
+                    className={`${fieldClassName} ${errors.firstName
+                      ? "border-destructive focus-visible:ring-destructive/20"
+                      : ""
+                      }`}
                   />
                   {errors.firstName && (
                     <p className="text-sm text-destructive">
@@ -815,11 +824,10 @@ export default function PersonForm({
                     {...register("lastName")}
                     placeholder="Pérez González"
                     data-testid="input-lastName"
-                    className={`${fieldClassName} ${
-                      errors.lastName
-                        ? "border-destructive focus-visible:ring-destructive/20"
-                        : ""
-                    }`}
+                    className={`${fieldClassName} ${errors.lastName
+                      ? "border-destructive focus-visible:ring-destructive/20"
+                      : ""
+                      }`}
                   />
                   {errors.lastName && (
                     <p className="text-sm text-destructive">
@@ -832,7 +840,7 @@ export default function PersonForm({
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="email">
-                    Email Institucional{" "}
+                    Email {" "}
                     <span className="text-destructive">*</span>
                   </Label>
                   <Input
@@ -841,11 +849,10 @@ export default function PersonForm({
                     {...register("email")}
                     placeholder="usuario@universidad.edu.ec"
                     data-testid="input-email"
-                    className={`${fieldClassName} ${
-                      errors.email
-                        ? "border-destructive focus-visible:ring-destructive/20"
-                        : ""
-                    }`}
+                    className={`${fieldClassName} ${errors.email
+                      ? "border-destructive focus-visible:ring-destructive/20"
+                      : ""
+                      }`}
                   />
                   {errors.email && (
                     <p className="text-sm text-destructive">
@@ -861,11 +868,10 @@ export default function PersonForm({
                     {...register("phone")}
                     placeholder="+593 99 123 4567"
                     data-testid="input-phone"
-                    className={`${fieldClassName} ${
-                      errors.phone
-                        ? "border-destructive focus-visible:ring-destructive/20"
-                        : ""
-                    }`}
+                    className={`${fieldClassName} ${errors.phone
+                      ? "border-destructive focus-visible:ring-destructive/20"
+                      : ""
+                      }`}
                   />
                   {errors.phone && (
                     <p className="text-sm text-destructive">
@@ -1142,6 +1148,7 @@ export default function PersonForm({
 
           <TabsContent value="health" className="space-y-6">
             <SectionCard title="Información de Salud">
+              {/* Checkbox: tiene discapacidad */}
               <div className="rounded-xl border border-border bg-muted/40 p-4 dark:border-slate-800 dark:bg-slate-900/70">
                 <Controller
                   control={control}
@@ -1175,6 +1182,7 @@ export default function PersonForm({
                 </p>
               </div>
 
+              {/* Tipo de sangre — siempre visible */}
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="bloodTypeTypeId">Tipo de Sangre</Label>
@@ -1190,130 +1198,168 @@ export default function PersonForm({
                     id="bloodTypeTypeId"
                   />
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="disabilityPercentage">
-                    Porcentaje de Discapacidad
-                  </Label>
-                  <Input
-                    id="disabilityPercentage"
-                    type="number"
-                    {...register("disabilityPercentage", {
-                      setValueAs: (value) =>
-                        value === "" || value == null ? undefined : Number(value),
-                    })}
-                    placeholder="0"
-                    min="0"
-                    max="100"
-                    step="0.01"
-                    disabled={!disabilityEnabled}
-                    className={fieldClassName}
-                  />
-                </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="disability">Tipo de Discapacidad</Label>
-                  {disabilityTypes.length === 0 ? (
-                    <Input
-                      value="No hay tipos de discapacidad configurados"
-                      disabled
-                      className={disabledFieldClassName}
-                    />
-                  ) : (
-                    <Select
-                      value={watchDisability || ""}
-                      onValueChange={(value) =>
-                        setValue("disability", value, {
-                          shouldValidate: true,
-                          shouldDirty: true,
-                        })
-                      }
-                      disabled={!disabilityEnabled}
-                    >
-                      <SelectTrigger id="disability" className={fieldClassName}>
-                        <SelectValue placeholder="Seleccione tipo de discapacidad" />
-                      </SelectTrigger>
-                      <SelectContent className="border-border bg-popover text-popover-foreground dark:border-slate-800 dark:bg-slate-950">
-                        {disabilityTypes.map((option) => (
-                          <SelectItem key={option.id} value={option.name}>
-                            {option.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="conadisCard">Carnet CONADIS</Label>
-                  <Input
-                    id="conadisCard"
-                    {...register("conadisCard")}
-                    placeholder="Número de carnet CONADIS"
-                    disabled={!disabilityEnabled}
-                    className={fieldClassName}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="specialNeedsTypeId">
-                    Necesidades Especiales
-                  </Label>
-                  {specialNeedsTypes.length === 0 ? (
-                    <Input
-                      value="No hay necesidades especiales configuradas"
-                      disabled
-                      className={disabledFieldClassName}
-                    />
-                  ) : (
-                    <Select
-                      value={
-                        watchSpecialNeedsId
-                          ? watchSpecialNeedsId.toString()
-                          : "none"
-                      }
-                      onValueChange={(value) => {
-                        if (value === "none") {
-                          setValue("specialNeedsTypeId", undefined, {
+              {/* Campos de discapacidad: visibles pero atenuados cuando no aplica */}
+              <div
+                className={
+                  disabilityEnabled
+                    ? "space-y-4"
+                    : "space-y-4 opacity-40 pointer-events-none select-none"
+                }
+              >
+                {/* Fila 1: Tipo de discapacidad + Porcentaje */}
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="disability">
+                      Tipo de Discapacidad
+                      {disabilityEnabled && (
+                        <span className="text-destructive ml-1">*</span>
+                      )}
+                    </Label>
+                    {disabilityTypes.length === 0 ? (
+                      <Input
+                        value="No hay tipos de discapacidad configurados"
+                        disabled
+                        className={disabledFieldClassName}
+                      />
+                    ) : (
+                      <Select
+                        value={watchDisability || ""}
+                        onValueChange={(value) =>
+                          setValue("disability", value, {
                             shouldValidate: true,
                             shouldDirty: true,
-                          });
-                        } else {
-                          setValue(
-                            "specialNeedsTypeId",
-                            parseInt(value, 10),
-                            {
+                          })
+                        }
+                        disabled={!disabilityEnabled}
+                      >
+                        <SelectTrigger
+                          id="disability"
+                          className={[
+                            fieldClassName,
+                            disabilityEnabled && !watchDisability
+                              ? "border-destructive"
+                              : "",
+                          ].join(" ")}
+                        >
+                          <SelectValue placeholder="Seleccione tipo de discapacidad" />
+                        </SelectTrigger>
+                        <SelectContent className="border-border bg-popover text-popover-foreground dark:border-slate-800 dark:bg-slate-950">
+                          {disabilityTypes.map((option) => (
+                            <SelectItem key={option.id} value={option.name}>
+                              {option.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                    {disabilityEnabled && !watchDisability && (
+                      <p className="text-sm text-destructive">
+                        Seleccione el tipo de discapacidad
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="disabilityPercentage">
+                      Porcentaje de Discapacidad
+                      {disabilityEnabled && (
+                        <span className="text-destructive ml-1">*</span>
+                      )}
+                    </Label>
+                    <Input
+                      id="disabilityPercentage"
+                      type="number"
+                      {...register("disabilityPercentage", {
+                        setValueAs: (value) =>
+                          value === "" || value == null ? undefined : Number(value),
+                      })}
+                      placeholder="0"
+                      min="0"
+                      max="100"
+                      step="1"
+                      disabled={!disabilityEnabled}
+                      className={[
+                        fieldClassName,
+                        errors.disabilityPercentage
+                          ? "border-destructive focus-visible:ring-destructive/20"
+                          : "",
+                      ].join(" ")}
+                    />
+                    {errors.disabilityPercentage && (
+                      <p className="text-sm text-destructive">
+                        {errors.disabilityPercentage.message}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Fila 2: Carnet CONADIS + Necesidades especiales */}
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="conadisCard">Carnet CONADIS</Label>
+                    <Input
+                      id="conadisCard"
+                      {...register("conadisCard")}
+                      placeholder="Número de carnet CONADIS"
+                      disabled={!disabilityEnabled}
+                      className={fieldClassName}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="specialNeedsTypeId">
+                      Necesidades Especiales
+                    </Label>
+                    {specialNeedsTypes.length === 0 ? (
+                      <Input
+                        value="No hay necesidades especiales configuradas"
+                        disabled
+                        className={disabledFieldClassName}
+                      />
+                    ) : (
+                      <Select
+                        value={
+                          watchSpecialNeedsId
+                            ? watchSpecialNeedsId.toString()
+                            : "none"
+                        }
+                        onValueChange={(value) => {
+                          if (value === "none") {
+                            setValue("specialNeedsTypeId", undefined, {
                               shouldValidate: true,
                               shouldDirty: true,
-                            }
-                          );
-                        }
-                      }}
-                      disabled={!disabilityEnabled}
-                    >
-                      <SelectTrigger
-                        id="specialNeedsTypeId"
-                        className={fieldClassName}
+                            });
+                          } else {
+                            setValue("specialNeedsTypeId", parseInt(value, 10), {
+                              shouldValidate: true,
+                              shouldDirty: true,
+                            });
+                          }
+                        }}
+                        disabled={!disabilityEnabled}
                       >
-                        <SelectValue placeholder="Seleccione necesidades especiales" />
-                      </SelectTrigger>
-                      <SelectContent className="border-border bg-popover text-popover-foreground dark:border-slate-800 dark:bg-slate-950">
-                        <SelectItem value="none">Ninguna</SelectItem>
-                        {specialNeedsTypes.map((option) => (
-                          <SelectItem
-                            key={option.id}
-                            value={option.id.toString()}
-                          >
-                            {option.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
+                        <SelectTrigger
+                          id="specialNeedsTypeId"
+                          className={fieldClassName}
+                        >
+                          <SelectValue placeholder="Seleccione necesidades especiales" />
+                        </SelectTrigger>
+                        <SelectContent className="border-border bg-popover text-popover-foreground dark:border-slate-800 dark:bg-slate-950">
+                          <SelectItem value="none">Ninguna</SelectItem>
+                          {specialNeedsTypes.map((option) => (
+                            <SelectItem
+                              key={option.id}
+                              value={option.id.toString()}
+                            >
+                              {option.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
                 </div>
               </div>
             </SectionCard>
@@ -1358,7 +1404,7 @@ export default function PersonForm({
                 disabled={
                   isLoading || isSubmitting || !isValid || !hasIdentityTypes
                 }
-                className="w-full rounded-full border border-primary/20 bg-primary text-primary-foreground shadow-sm transition-all hover:bg-primary/90 hover:shadow-md disabled:opacity-60 sm:w-auto"
+                className="w-full rounded-full bg-uta-blue text-white shadow-sm transition-all hover:bg-uta-blue/90 hover:shadow-md disabled:opacity-60 sm:w-auto"
                 data-testid="button-submit-person"
               >
                 {isLoading ? (

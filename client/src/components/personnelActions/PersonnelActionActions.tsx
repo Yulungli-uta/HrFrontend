@@ -22,9 +22,12 @@ import {
   XCircle,
   Loader2,
   Upload,
+  Eye,
 } from 'lucide-react';
 import { UploadSignedDocumentDialog } from './UploadSignedDocumentDialog';
+import { DocumentsAPI } from '@/lib/api';
 import type { CommentRequest, CancelPersonnelActionRequest } from '@/types/personnel-actions';
+import { PERSONNEL_ACTION_DIRECTORY_CODE, PERSONNEL_ACTION_ENTITY_TYPE } from '@/features/constants';
 
 type Status =
   | 'BORRADOR'
@@ -43,6 +46,14 @@ type Props = {
   onMarkPending: (payload?: CommentRequest) => void;
   onFinalize: (payload?: CommentRequest) => void;
   onCancel: (payload: CancelPersonnelActionRequest) => void;
+  /** ID numérico del archivo firmado (signedDocumentStoredFileId de la acción) */
+  signedDocumentStoredFileId?: number | null;
+  // Flags del tipo de acción para comportamiento automático al cargar el firmado
+  requiresAdUserDisable?: boolean;
+  requiresAdUserCreation?: boolean;
+  employeeId?: number;
+  onAutoFinalize?: () => Promise<void>;
+  onFinalizePreviousAction?: () => Promise<void>;
 };
 
 type DialogType = 'generate' | 'markPending' | 'finalize' | 'cancel' | 'uploadSigned';
@@ -56,10 +67,39 @@ export function PersonnelActionActions({
   onMarkPending,
   onFinalize,
   onCancel,
+  signedDocumentStoredFileId,
+  requiresAdUserDisable = false,
+  requiresAdUserCreation = false,
+  employeeId,
+  onAutoFinalize,
+  onFinalizePreviousAction,
 }: Props) {
   const [activeDialog, setActiveDialog] = useState<DialogType | null>(null);
   const [comment, setComment] = useState('');
   const [cancelReason, setCancelReason] = useState('');
+  const [isOpeningSignedDoc, setIsOpeningSignedDoc] = useState(false);
+
+  async function handleViewSignedDocument() {
+    if (!signedDocumentStoredFileId) return;
+    setIsOpeningSignedDoc(true);
+    try {
+      const res = await DocumentsAPI.listByEntity({
+        directoryCode: PERSONNEL_ACTION_DIRECTORY_CODE,
+        entityType: PERSONNEL_ACTION_ENTITY_TYPE,
+        entityId: String(actionId),
+        status: 1,
+      });
+      const files = res.status === 'success' ? res.data : [];
+      const file = files.find(f => f.fileId === signedDocumentStoredFileId)
+        ?? files.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+      if (!file) return;
+      const blob = await DocumentsAPI.download(file.fileGuid);
+      if (blob.status !== 'success') return;
+      window.open(URL.createObjectURL(blob.data), '_blank');
+    } finally {
+      setIsOpeningSignedDoc(false);
+    }
+  }
 
   const s = status as Status;
   const isTerminal = s === 'FINALIZADO' || s === 'ANULADO';
@@ -134,6 +174,16 @@ export function PersonnelActionActions({
         {s === 'PENDIENTE_FIRMAS' && (
           <Button size="sm" onClick={() => openDialog('uploadSigned')} disabled={isBusy}>
             <Upload className="mr-2 h-4 w-4" /> Cargar Documento Firmado
+          </Button>
+        )}
+
+        {/* FIRMADO_CARGADO / FINALIZADO: ver documento firmado */}
+        {(s === 'FIRMADO_CARGADO' || s === 'FINALIZADO') && signedDocumentStoredFileId && (
+          <Button variant="outline" size="sm" onClick={handleViewSignedDocument} disabled={isOpeningSignedDoc}>
+            {isOpeningSignedDoc
+              ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              : <Eye className="mr-2 h-4 w-4" />}
+            Ver Documento Firmado
           </Button>
         )}
 
@@ -289,6 +339,11 @@ export function PersonnelActionActions({
         open={activeDialog === 'uploadSigned'}
         onOpenChange={(v) => { if (!v) closeDialog(); }}
         actionId={actionId}
+        requiresAdUserDisable={requiresAdUserDisable}
+        requiresAdUserCreation={requiresAdUserCreation}
+        employeeId={employeeId}
+        onAutoFinalize={onAutoFinalize}
+        onFinalizePreviousAction={onFinalizePreviousAction}
       />
     </>
   );

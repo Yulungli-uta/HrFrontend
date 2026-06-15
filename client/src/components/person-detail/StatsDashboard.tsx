@@ -61,20 +61,20 @@ const stats: Array<{
 
 export function StatsDashboard({ data }: StatsDashboardProps) {
   const colorClasses: Record<StatColor, string> = {
-    blue: "border-l-blue-500 bg-primary/10",
-    green: "border-l-green-500 bg-success/10",
-    orange: "border-l-orange-500 bg-secondary/10",
-    purple: "border-l-purple-500 bg-accent/50",
-    red: "border-l-red-500 bg-destructive/10",
-    yellow: "border-l-yellow-500 bg-warning/10",
+    blue:   "border-l-primary bg-primary/10",
+    green:  "border-l-success bg-success/10",
+    orange: "border-l-uta-orange bg-uta-orange/10",
+    purple: "border-l-purple-500 bg-purple-500/10",
+    red:    "border-l-destructive bg-destructive/10",
+    yellow: "border-l-warning bg-warning/10",
   };
 
   const iconColors: Record<StatColor, string> = {
-    blue: "text-primary",
-    green: "text-success",
-    orange: "text-secondary-foreground",
-    purple: "text-secondary-foreground",
-    red: "text-destructive",
+    blue:   "text-primary",
+    green:  "text-success",
+    orange: "text-uta-orange",
+    purple: "text-purple-500",
+    red:    "text-destructive",
     yellow: "text-warning",
   };
 

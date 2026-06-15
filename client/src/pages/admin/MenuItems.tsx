@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ActionIconButton } from "@/components/ui/action-icon-button";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -265,19 +266,20 @@ export default function MenuItemsPage() {
             </Badge>
           </TableCell>
           <TableCell className="text-right">
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => handleEdit(item)}>
-                <Edit className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
+            <div className="flex justify-end gap-1">
+              <ActionIconButton
+                icon={Edit}
+                label="Editar item de menú"
+                tone="primary"
+                onClick={() => handleEdit(item)}
+              />
+              <ActionIconButton
+                icon={Trash2}
+                label="Eliminar item de menú"
+                tone="destructive"
                 onClick={() => handleDelete(Number(item.id))}
-                className="text-destructive hover:text-destructive"
                 disabled={deleteMutation.isPending}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              />
             </div>
           </TableCell>
         </TableRow>
@@ -428,19 +430,20 @@ export default function MenuItemsPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="outline" size="sm" onClick={() => handleEdit(item)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
+                        <div className="flex justify-end gap-1">
+                          <ActionIconButton
+                            icon={Edit}
+                            label="Editar item de menú"
+                            tone="primary"
+                            onClick={() => handleEdit(item)}
+                          />
+                          <ActionIconButton
+                            icon={Trash2}
+                            label="Eliminar item de menú"
+                            tone="destructive"
                             onClick={() => handleDelete(Number(item.id))}
-                            className="text-destructive hover:text-destructive"
                             disabled={deleteMutation.isPending}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          />
                         </div>
                       </TableCell>
                     </TableRow>

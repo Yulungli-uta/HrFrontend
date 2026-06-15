@@ -5,6 +5,7 @@ import {
   DepartamentosAPI,
   CargosAPI,
   PersonasAPI,
+  VistaDetallesEmpleadosAPI,
 } from "@/lib/api";
 
 export function useContractLookups(params?: { enabled?: boolean }) {
@@ -45,11 +46,19 @@ export function useContractLookups(params?: { enabled?: boolean }) {
     staleTime: 5 * 60 * 1000,
   });
 
+  const qEmployees = useQuery({
+    queryKey: ["employee-details-all"],
+    queryFn: () => VistaDetallesEmpleadosAPI.list(),
+    enabled,
+    staleTime: 5 * 60 * 1000,
+  });
+
   const certs = qCerts.data?.status === "success" ? (qCerts.data.data ?? []) : [];
   const types = qTypes.data?.status === "success" ? (qTypes.data.data ?? []) : [];
   const depts = qDepts.data?.status === "success" ? (qDepts.data.data ?? []) : [];
   const jobs = qJobs.data?.status === "success" ? (qJobs.data.data ?? []) : [];
   const people = qPeople.data?.status === "success" ? (qPeople.data.data ?? []) : [];
+  const employees = qEmployees.data?.status === "success" ? (qEmployees.data.data ?? []) : [];
 
-  return { qCerts, qTypes, qDepts, qJobs, qPeople, certs, types, depts, jobs, people };
+  return { qCerts, qTypes, qDepts, qJobs, qPeople, qEmployees, certs, types, depts, jobs, people, employees };
 }

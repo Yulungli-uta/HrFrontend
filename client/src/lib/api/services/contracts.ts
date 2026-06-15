@@ -72,6 +72,26 @@ export const ContractsRHAPI = {
   },
 
   /**
+   * Retorna los contratos creados por el usuario autenticado (paginado).
+   * El servidor usa el JWT para filtrar — no se envía el employeeId en la URL.
+   */
+  listMyPaged: (params: PagedRequest & {
+    statusTypeId?: number | null;
+    year?: number | null;
+    sortDirection?: "asc" | "desc";
+  }): Promise<ApiResponse<PagedResult<any>>> => {
+    const qs = new URLSearchParams({
+      page: String(params.page),
+      pageSize: String(params.pageSize),
+      sortDirection: params.sortDirection ?? "desc",
+      ...(params.search?.trim() ? { search: params.search.trim() } : {}),
+      ...(params.statusTypeId != null ? { statusTypeId: String(params.statusTypeId) } : {}),
+      ...(params.year != null && params.year > 0 ? { year: String(params.year) } : {}),
+    });
+    return apiFetch<PagedResult<any>>(`${CONTRACTS_BASE}/my/paged?${qs.toString()}`);
+  },
+
+  /**
    * Obtiene los estados permitidos para la siguiente transición del contrato.
    */
   allowedNextStatuses: (currentStatusTypeId: number): Promise<ApiResponse<number[]>> =>
@@ -243,7 +263,11 @@ export interface PersonnelActionTypeDto {
   numberingYear: number;
   numberingLastSequence: number;
   templateCode?: string | null;
+  actionCategory?: string | null;
   isActive: boolean;
+  requiresAdUserCreation: boolean;
+  requiresAdUserDisable: boolean;
+  requiresAdGroupAssignment: boolean;
 }
 
 export const PersonnelActionTypeAPI = {
@@ -271,7 +295,11 @@ export const PersonnelActionTypeAPI = {
     description?: string;
     numberingPrefix: string;
     templateCode?: string;
+    actionCategory?: string;
     isActive?: boolean;
+    requiresAdUserCreation?: boolean;
+    requiresAdUserDisable?: boolean;
+    requiresAdGroupAssignment?: boolean;
   }): Promise<ApiResponse<PersonnelActionTypeDto>> =>
     apiFetch<PersonnelActionTypeDto>(PERSONNEL_ACTION_TYPE_BASE, {
       method: 'POST',
@@ -284,7 +312,11 @@ export const PersonnelActionTypeAPI = {
     description?: string;
     numberingPrefix: string;
     templateCode?: string;
+    actionCategory?: string;
     isActive?: boolean;
+    requiresAdUserCreation?: boolean;
+    requiresAdUserDisable?: boolean;
+    requiresAdGroupAssignment?: boolean;
   }): Promise<ApiResponse<void>> =>
     apiFetch<void>(`${PERSONNEL_ACTION_TYPE_BASE}/${id}`, {
       method: 'PUT',

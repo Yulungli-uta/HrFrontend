@@ -551,7 +551,112 @@ export default function DepartmentAuthoritiesPage() {
                 )}
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <>
+              {/* ── MOBILE: cards ─────────────────────────────────── */}
+              <div className="flex flex-col gap-2 p-3 md:hidden">
+                {items.map((item: DepartmentAuthorityDto) => (
+                  <div
+                    key={item.authorityId}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => handleOpenEdit(item)}
+                    onKeyDown={(e) => e.key === "Enter" && handleOpenEdit(item)}
+                    className="rounded-lg border bg-card p-3 space-y-2 cursor-pointer
+                               hover:border-primary/40 hover:bg-muted/20
+                               active:bg-muted/40 transition-colors select-none"
+                  >
+                    {/* Fila 1: nombre empleado + badge estado */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-sm leading-snug break-words">
+                          {item.employeeFullName}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          CI: {item.employeeIdCard}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <Badge
+                          variant={item.isActive ? "default" : "secondary"}
+                          className={`text-xs px-1.5 h-5 ${
+                            item.isActive
+                              ? "bg-success/15 text-success border-success/30"
+                              : ""
+                          }`}
+                        >
+                          {item.isActive ? "Activa" : "Inactiva"}
+                        </Badge>
+                        {/* Toggle estado inline */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            statusMutation.mutate({ id: item.authorityId, isActive: !item.isActive });
+                          }}
+                          title={item.isActive ? "Desactivar" : "Activar"}
+                          disabled={statusMutation.isPending}
+                          className={`h-7 w-7 shrink-0 flex items-center justify-center
+                                      rounded-md border transition-colors
+                                      ${item.isActive
+                                        ? "border-warning/40 text-warning hover:bg-warning/10"
+                                        : "border-success/40 text-success hover:bg-success/10"}`}
+                        >
+                          {item.isActive
+                            ? <ToggleRight className="h-3.5 w-3.5" />
+                            : <ToggleLeft  className="h-3.5 w-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Fila 2: departamento */}
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Building2 className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">
+                        {item.departmentName}
+                        {item.departmentCode && (
+                          <span className="ml-1 font-mono opacity-70">({item.departmentCode})</span>
+                        )}
+                      </span>
+                    </div>
+
+                    {/* Fila 3: tipo · denominación */}
+                    <div className="flex items-start gap-1.5 text-xs">
+                      <Shield className="h-3.5 w-3.5 shrink-0 text-primary mt-0.5" />
+                      <div className="min-w-0">
+                        <Badge variant="outline" className="text-xs border-primary/30 text-primary bg-primary/5 mb-0.5">
+                          {item.authorityTypeName}
+                        </Badge>
+                        {item.denomination && (
+                          <p className="text-muted-foreground truncate">{item.denomination}</p>
+                        )}
+                        {item.jobName && (
+                          <p className="text-muted-foreground/70 italic truncate">{item.jobName}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Fila 4: vigencia · resolución */}
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground pl-5">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {formatDate(item.startDate)}
+                        {item.endDate
+                          ? <span> → {formatDate(item.endDate)}</span>
+                          : <span className="text-success font-medium ml-1">Indefinida</span>}
+                      </span>
+                      {item.resolutionCode && (
+                        <span className="flex items-center gap-1">
+                          <FileText className="h-3 w-3" />
+                          {item.resolutionCode}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* ── DESKTOP: tabla ─────────────────────────────────── */}
+              <div className="hidden md:block overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="border-border hover:bg-transparent">
@@ -753,6 +858,7 @@ export default function DepartmentAuthoritiesPage() {
                   </TableBody>
                 </Table>
               </div>
+              </>
             )}
 
             {/* Paginación */}
@@ -776,7 +882,7 @@ export default function DepartmentAuthoritiesPage() {
 
         {/* ── Dialog: Formulario Crear / Editar ── */}
         <Dialog open={isFormOpen} onOpenChange={(open) => { if (!open) handleFormCancel(); }}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border">
+          <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-foreground">
                 <Shield className="h-5 w-5 text-primary" />
@@ -788,7 +894,10 @@ export default function DepartmentAuthoritiesPage() {
                   : "Complete la información para registrar una nueva autoridad."}
               </DialogDescription>
             </DialogHeader>
+            {/* key fuerza remontaje cuando cambia el registro editado,
+                garantizando que useForm aplique los defaultValues correctos */}
             <DepartmentAuthorityForm
+              key={editingItem?.authorityId ?? "new"}
               authority={editingItem}
               onSuccess={handleFormSuccess}
               onCancel={handleFormCancel}

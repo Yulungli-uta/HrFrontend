@@ -136,9 +136,9 @@ export default function EmergencyContactForm({
       lastName: emergencyContact?.lastName ?? "",
       relationshipTypeId:
         (emergencyContact as any)?.relationshipTypeId != null &&
-        !Number.isNaN(
-          Number((emergencyContact as any).relationshipTypeId)
-        )
+          !Number.isNaN(
+            Number((emergencyContact as any).relationshipTypeId)
+          )
           ? Number((emergencyContact as any).relationshipTypeId)
           : 0,
       phone: emergencyContact?.phone ?? "",
@@ -156,9 +156,9 @@ export default function EmergencyContactForm({
         lastName: emergencyContact.lastName ?? "",
         relationshipTypeId:
           (emergencyContact as any)?.relationshipTypeId != null &&
-          !Number.isNaN(
-            Number((emergencyContact as any).relationshipTypeId)
-          )
+            !Number.isNaN(
+              Number((emergencyContact as any).relationshipTypeId)
+            )
             ? Number((emergencyContact as any).relationshipTypeId)
             : 0,
         phone: emergencyContact.phone ?? "",
@@ -306,7 +306,7 @@ export default function EmergencyContactForm({
                       if (id == null) return null;
                       return (
                         <SelectItem key={id} value={String(id)}>
-                          {t.description ?? t.code ?? `Relación ${id}`}
+                          {t.name ?? t.code ?? `Relación ${id}`}
                         </SelectItem>
                       );
                     })}
@@ -395,8 +395,8 @@ export default function EmergencyContactForm({
             {saving
               ? "Guardando..."
               : emergencyContact
-              ? "Actualizar"
-              : "Crear"}
+                ? "Actualizar"
+                : "Crear"}
           </Button>
         </div>
       </form>

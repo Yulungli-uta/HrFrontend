@@ -1,5 +1,5 @@
 // src/pages/EmployeesPage.tsx
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Card,
@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { DataPagination } from "@/components/ui/DataPagination";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import {
   UserCog,
   Building2,
@@ -188,8 +189,16 @@ function formatDate(value?: string | null) {
 export default function EmployeesPage() {
   const { toast } = useToast();
 
+  const isMobile = useMediaQuery("(max-width: 639px)");
+
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<"grid" | "table">("table");
+  const [viewMode, setViewMode] = useState<"grid" | "table">(() =>
+    typeof window !== "undefined" && window.innerWidth < 640 ? "grid" : "table"
+  );
+
+  useEffect(() => {
+    if (isMobile) setViewMode("grid");
+  }, [isMobile]);
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeView | null>(
     null
   );
@@ -279,11 +288,15 @@ const contractStatsMap = useMemo(() => {
 }, [statsData.byContractType, contractTypeMap]);
 
 const employeeStats = useMemo(() => {
+  const byContractType = contractStatsMap;
+  const assigned = Object.values(byContractType).reduce((s, n) => s + n, 0);
+  const total = statsData.total ?? totalCount;
   return {
-    total: statsData.total ?? totalCount,
-    active: statsData.active ?? 0,
-    inactive: statsData.inactive ?? 0,
-    byContractType: contractStatsMap,
+    total,
+    active:          statsData.active   ?? 0,
+    inactive:        statsData.inactive ?? 0,
+    byContractType,
+    unassigned:      Math.max(0, total - assigned),
   };
 }, [statsData, contractStatsMap, totalCount]);
 
@@ -291,34 +304,35 @@ const employeeStats = useMemo(() => {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-2">
-            <div className="h-10 w-64 bg-muted rounded animate-pulse" />
-            <div className="h-5 w-80 bg-muted rounded animate-pulse" />
+            <div className="h-8 w-56 bg-muted rounded animate-pulse" />
+            <div className="h-4 w-72 bg-muted rounded animate-pulse" />
           </div>
-          <div className="h-10 w-44 bg-muted rounded animate-pulse" />
+          <div className="h-9 w-full sm:w-40 bg-muted rounded animate-pulse" />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {Array.from({ length: 3 }).map((_, i) => (
-            <Card key={i} className="animate-pulse border-0 shadow-md">
-              <CardHeader className="space-y-2 pb-3">
-                <div className="h-5 w-32 bg-muted rounded" />
-                <div className="h-4 w-24 bg-muted rounded" />
-              </CardHeader>
-              <CardContent>
-                <div className="h-8 w-16 bg-muted rounded" />
+            <Card key={i} className="animate-pulse">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="h-9 w-9 bg-muted rounded-full shrink-0" />
+                <div className="space-y-2">
+                  <div className="h-3.5 w-24 bg-muted rounded" />
+                  <div className="h-7 w-14 bg-muted rounded" />
+                  <div className="h-3 w-16 bg-muted rounded" />
+                </div>
               </CardContent>
             </Card>
           ))}
         </div>
 
-        <div className="bg-card rounded-lg shadow-md p-4 animate-pulse">
-          <div className="h-10 w-full bg-muted rounded mb-4" />
-          <div className="space-y-3">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-12 w-full bg-muted rounded" />
+        <div className="bg-card rounded-lg border border-border animate-pulse">
+          <div className="h-10 w-full bg-muted rounded-t-lg" />
+          <div className="p-4 space-y-2">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="h-10 w-full bg-muted rounded" />
             ))}
           </div>
         </div>
@@ -328,7 +342,7 @@ const employeeStats = useMemo(() => {
 
   if (isError) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="flex flex-col h-full justify-center">
         <Card className="border-destructive/30 dark:border-red-800/40 bg-destructive/10 shadow-md">
           <CardContent className="pt-6">
             <p className="text-destructive dark:text-destructive/80 font-medium">
@@ -341,10 +355,10 @@ const employeeStats = useMemo(() => {
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
             Gestión de Empleados
           </h1>
           <p className="text-muted-foreground mt-2">
@@ -370,7 +384,7 @@ const employeeStats = useMemo(() => {
             </Button>
           </DialogTrigger>
 
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-full max-w-[calc(100vw-2rem)] sm:max-w-2xl md:max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editSeed ? "Editar Empleado" : "Agregar Nuevo Empleado"}
@@ -404,107 +418,92 @@ const employeeStats = useMemo(() => {
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
-        <Card className="border-0 shadow-md bg-primary/10 dark:bg-primary/15 dark:from-blue-950/50 dark:to-blue-900/30">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-medium text-primary dark:text-primary/70">
-              Total Empleados
-            </CardTitle>
-            <Users className="h-5 w-5 text-primary dark:text-primary/70" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-primary dark:text-blue-200">
-              {employeeStats.total}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <Card className="bg-primary/10 border-primary/30">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="bg-primary p-2 rounded-full shrink-0">
+              <Users className="h-5 w-5 text-white" />
             </div>
-            <p className="text-xs text-primary dark:text-primary/70 mt-1">Total general</p>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-primary">Total Empleados</p>
+              <p className="text-2xl font-bold text-primary">{employeeStats.total}</p>
+              <p className="text-xs text-muted-foreground">Total general</p>
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-md bg-success/10 dark:bg-success/15 dark:from-green-950/50 dark:to-green-900/30">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-medium text-success">
-              Activos
-            </CardTitle>
-            <UserCheck className="h-5 w-5 text-success dark:text-success/80" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-success dark:text-green-200">
-              {employeeStats.active}
+        <Card className="bg-success/10 border-success/30">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="bg-success p-2 rounded-full shrink-0">
+              <UserCheck className="h-5 w-5 text-white" />
             </div>
-            <p className="text-xs text-success dark:text-success/80 mt-1">Total general</p>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-success">Activos</p>
+              <p className="text-2xl font-bold text-success">{employeeStats.active}</p>
+              <p className="text-xs text-muted-foreground">Total general</p>
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-md bg-destructive/10 dark:bg-destructive/15 dark:from-red-950/50 dark:to-red-900/30">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-medium text-destructive dark:text-red-300">
-              Inactivos
-            </CardTitle>
-            <UserX className="h-5 w-5 text-destructive dark:text-destructive/80" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-destructive dark:text-red-200">
-              {employeeStats.inactive}
+        <Card className="bg-destructive/10 border-destructive/30">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="bg-destructive p-2 rounded-full shrink-0">
+              <UserX className="h-5 w-5 text-white" />
             </div>
-            <p className="text-xs text-destructive dark:text-destructive/80 mt-1">Total general</p>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-destructive">Inactivos</p>
+              <p className="text-2xl font-bold text-destructive">{employeeStats.inactive}</p>
+              <p className="text-xs text-muted-foreground">Total general</p>
+            </div>
           </CardContent>
         </Card>
       </div>
 
       {Object.keys(employeeStats.byContractType).length > 0 && (
-        <>
-          <h2 className="text-xl font-semibold text-foreground mb-4">
-            Distribución por Tipo de Contrato
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
-            {Object.entries(employeeStats.byContractType).map(
-              ([typeId, count]) => (
-                <Card key={typeId} className="border-0 shadow-md">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                    <CardTitle className="text-sm font-medium">
-                      {contractTypeMap[Number(typeId)] ?? `Tipo #${typeId}`}
-                    </CardTitle>
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+            Distribución por régimen laboral
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {Object.entries(employeeStats.byContractType).map(([typeId, count]) => (
+              <Card key={typeId} className="border-border/50">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="bg-muted p-2 rounded-full shrink-0">
                     <Briefcase className="h-5 w-5 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{count}</div>
-                    <p className="text-xs text-muted-foreground mt-1">Empleados con este tipo de contrato</p>
-                  </CardContent>
-                </Card>
-              )
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">
+                      {contractTypeMap[Number(typeId)] ?? `Tipo #${typeId}`}
+                    </p>
+                    <p className="text-2xl font-bold text-foreground">{count}</p>
+                    <p className="text-xs text-muted-foreground">empleados</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+
+            {employeeStats.unassigned > 0 && (
+              <Card className="border-warning/30 bg-warning/10">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="bg-warning p-2 rounded-full shrink-0">
+                    <UserX className="h-5 w-5 text-white" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-warning">Sin régimen</p>
+                    <p className="text-2xl font-bold text-warning">{employeeStats.unassigned}</p>
+                    <p className="text-xs text-muted-foreground">empleados</p>
+                  </div>
+                </CardContent>
+              </Card>
             )}
           </div>
-        </>
+        </div>
       )}
 
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-4">
-        <h2 className="text-xl font-semibold text-foreground">
-          Lista de Empleados
-        </h2>
-
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <div className="relative flex-1 md:flex-initial">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
-            <Input
-              placeholder="Buscar por nombre, cédula, email o dependencia..."
-              value={currentParams.search ?? ""}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-10 pr-10 py-2 w-full md:w-64"
-              aria-label="Buscar empleados"
-            />
-            {hasSearch && (
-              <button
-                type="button"
-                onClick={() => clearSearch()}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                aria-label="Limpiar búsqueda"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-
-          <div className="flex gap-2">
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-base font-semibold text-foreground">Lista de Empleados</h2>
+          <div className="flex gap-2 shrink-0">
             <Button
               variant={viewMode === "table" ? "default" : "outline"}
               size="sm"
@@ -523,13 +522,34 @@ const employeeStats = useMemo(() => {
             </Button>
           </div>
         </div>
+
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Input
+            placeholder="Buscar por nombre, cédula, email o dependencia..."
+            value={currentParams.search ?? ""}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10 pr-10 w-full"
+            aria-label="Buscar empleados"
+          />
+          {hasSearch && (
+            <button
+              type="button"
+              onClick={() => clearSearch()}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Limpiar búsqueda"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
       </div>
 
+      <div className="w-full">
       {viewMode === "table" ? (
-        <div className="bg-card rounded-lg shadow-md overflow-hidden border border-border">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[980px]">
-              <thead className="bg-muted">
+        <div className="rounded-lg border border-border bg-card shadow-sm overflow-x-auto">
+            <table className="w-full min-w-[700px]">
+              <thead className="sticky top-0 z-10 bg-muted">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
                     Nombre Completo
@@ -611,7 +631,6 @@ const employeeStats = useMemo(() => {
                 ))}
               </tbody>
             </table>
-          </div>
 
           {employees.length === 0 && (
             <div className="text-center py-12">
@@ -642,110 +661,96 @@ const employeeStats = useMemo(() => {
           )}
         </div>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {employees.map((employee) => (
-            <Card
-              key={employee.employeeID}
-              className="border-0 shadow-md hover:shadow-lg transition-all duration-200"
-            >
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between gap-3">
-                  <span className="text-lg line-clamp-2">{employee.fullName}</span>
-                  <Badge
-                    className={
-                      employee.employeeIsActive
-                        ? "bg-success/15 text-success"
-                        : "bg-destructive/15 text-destructive dark:text-red-300"
-                    }
-                  >
-                    {employee.employeeIsActive ? "Activo" : "Inactivo"}
-                  </Badge>
-                </CardTitle>
-                <CardDescription>
-                  {employee.idCard && (
-                    <div className="text-sm">Cédula: {employee.idCard}</div>
-                  )}
-                  {employee.employeeTypeName && (
-                    <div className="text-sm mt-1">
-                      Tipo: {employee.employeeTypeName}
+        <div className="grid w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {employees.map((employee) => (
+              <Card
+                key={employee.employeeID}
+                className="border-0 shadow-md hover:shadow-lg transition-all duration-200"
+              >
+                <CardHeader className="p-4 pb-2">
+                  <CardTitle className="flex items-start justify-between gap-2">
+                    <span className="text-sm font-semibold line-clamp-2 leading-snug">{employee.fullName}</span>
+                    <Badge
+                      className={
+                        employee.employeeIsActive
+                          ? "bg-success/15 text-success shrink-0 text-xs"
+                          : "bg-destructive/15 text-destructive dark:text-red-300 shrink-0 text-xs"
+                      }
+                    >
+                      {employee.employeeIsActive ? "Activo" : "Inactivo"}
+                    </Badge>
+                  </CardTitle>
+                  <CardDescription className="mt-1 space-y-0.5">
+                    {employee.idCard && (
+                      <div className="text-xs">CI: {employee.idCard}</div>
+                    )}
+                    {employee.employeeTypeName && (
+                      <div className="text-xs truncate">
+                        {employee.employeeTypeName}
+                      </div>
+                    )}
+                  </CardDescription>
+                </CardHeader>
+
+                <CardContent className="p-4 pt-0 space-y-1.5">
+                  {employee.email && (
+                    <div className="text-xs text-muted-foreground truncate">
+                      {employee.email}
                     </div>
                   )}
-                </CardDescription>
-              </CardHeader>
 
-              <CardContent className="space-y-3">
-                {employee.email && (
-                  <div className="text-sm text-muted-foreground truncate">
-                    Email: {employee.email}
+                  {employee.department && (
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Building2 className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">{employee.department}</span>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Calendar className="h-3.5 w-3.5 shrink-0" />
+                    <span>{formatDate(employee.hireDate)}</span>
                   </div>
-                )}
 
-                {employee.department && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Building2 className="h-4 w-4" />
-                    <span className="truncate">
-                      Departamento: {employee.department}
-                    </span>
-                  </div>
-                )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full mt-2 h-8 text-xs"
+                    onClick={() => setSelectedEmployee(employee)}
+                  >
+                    <Eye className="h-3.5 w-3.5 mr-1" />
+                    Ver detalle
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
 
-                {employee.faculty && (
-                  <div className="text-sm text-muted-foreground">
-                    Facultad: {employee.faculty}
-                  </div>
-                )}
-
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Calendar className="h-4 w-4" />
-                  <span>Ingreso: {formatDate(employee.hireDate)}</span>
-                </div>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full mt-3"
-                  onClick={() => setSelectedEmployee(employee)}
-                >
-                  <Eye className="h-4 w-4 mr-1" />
-                  Ver detalle
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-
-          {employees.length === 0 && (
-            <Card className="text-center py-12 border-0 shadow-md col-span-full">
-              <CardContent>
-                <UserCog className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold text-foreground mb-2">
-                  {hasSearch
-                    ? "No se encontraron empleados"
-                    : "No hay empleados registrados"}
+            {employees.length === 0 && (
+              <div className="col-span-full text-center py-12">
+                <UserCog className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
+                <h3 className="text-base font-semibold text-foreground mb-1">
+                  {hasSearch ? "No se encontraron empleados" : "No hay empleados registrados"}
                 </h3>
-                <p className="text-muted-foreground mb-4">
+                <p className="text-sm text-muted-foreground mb-4">
                   {hasSearch
                     ? "Intente con otro término de búsqueda"
                     : "Comience agregando el primer empleado al sistema"}
                 </p>
                 {!hasSearch && (
                   <Button
-                    onClick={() => {
-                      setEditSeed(null);
-                      setIsFormOpen(true);
-                    }}
-                    className="bg-primary hover:bg-primary/90 dark:bg-primary/90 dark:hover:bg-primary/80"
+                    onClick={() => { setEditSeed(null); setIsFormOpen(true); }}
+                    className="bg-primary hover:bg-primary/90"
                   >
                     <UserCog className="mr-2 h-4 w-4" />
                     Agregar Primer Empleado
                   </Button>
                 )}
-              </CardContent>
-            </Card>
-          )}
+              </div>
+            )}
         </div>
       )}
+      </div>
 
-      <div className="mt-6">
+      <div className="border-t border-border/40 pt-2">
         <DataPagination
           page={page}
           totalPages={totalPages}
@@ -763,7 +768,7 @@ const employeeStats = useMemo(() => {
         open={!!selectedEmployee}
         onOpenChange={(open) => !open && setSelectedEmployee(null)}
       >
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-full max-w-[calc(100vw-2rem)] sm:max-w-2xl md:max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Detalle del Empleado</DialogTitle>
             <DialogDescription>
@@ -778,7 +783,7 @@ const employeeStats = useMemo(() => {
                   <UserCog className="h-8 w-8 text-primary dark:text-primary/70" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-foreground">
+                  <h2 className="text-xl sm:text-2xl font-bold text-foreground">
                     {selectedEmployee.fullName}
                   </h2>
                   <p className="text-muted-foreground">
@@ -795,8 +800,8 @@ const employeeStats = useMemo(() => {
                     Información Laboral
                   </h3>
                   <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Estado:</span>
+                    <div className="flex flex-wrap justify-between gap-x-2 gap-y-1">
+                      <span className="text-muted-foreground shrink-0">Estado:</span>
                       <Badge
                         className={
                           selectedEmployee.employeeIsActive
@@ -810,9 +815,9 @@ const employeeStats = useMemo(() => {
                       </Badge>
                     </div>
 
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Tipo de empleado:</span>
-                      <span className="font-medium">
+                    <div className="flex flex-wrap justify-between gap-x-2 gap-y-1">
+                      <span className="text-muted-foreground shrink-0">Tipo de empleado:</span>
+                      <span className="font-medium text-right">
                         {selectedEmployee.employeeTypeName ??
                           (selectedEmployee.employeeType != null
                             ? `#${selectedEmployee.employeeType}`
@@ -820,37 +825,37 @@ const employeeStats = useMemo(() => {
                       </span>
                     </div>
 
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Departamento:</span>
-                      <span className="font-medium">
+                    <div className="flex flex-wrap justify-between gap-x-2 gap-y-1">
+                      <span className="text-muted-foreground shrink-0">Departamento:</span>
+                      <span className="font-medium text-right">
                         {selectedEmployee.department || "—"}
                       </span>
                     </div>
 
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Facultad:</span>
-                      <span className="font-medium">
+                    <div className="flex flex-wrap justify-between gap-x-2 gap-y-1">
+                      <span className="text-muted-foreground shrink-0">Facultad:</span>
+                      <span className="font-medium text-right">
                         {selectedEmployee.faculty || "—"}
                       </span>
                     </div>
 
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Fecha de ingreso:</span>
-                      <span className="font-medium">
+                    <div className="flex flex-wrap justify-between gap-x-2 gap-y-1">
+                      <span className="text-muted-foreground shrink-0">Fecha de ingreso:</span>
+                      <span className="font-medium text-right">
                         {formatDate(selectedEmployee.hireDate)}
                       </span>
                     </div>
 
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Años de servicio:</span>
-                      <span className="font-medium">
+                    <div className="flex flex-wrap justify-between gap-x-2 gap-y-1">
+                      <span className="text-muted-foreground shrink-0">Años de servicio:</span>
+                      <span className="font-medium text-right">
                         {selectedEmployee.yearsOfService ?? 0}
                       </span>
                     </div>
 
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Jefe inmediato:</span>
-                      <span className="font-medium">
+                    <div className="flex flex-wrap justify-between gap-x-2 gap-y-1">
+                      <span className="text-muted-foreground shrink-0">Jefe inmediato:</span>
+                      <span className="font-medium text-right">
                         {selectedEmployee.immediateBoss || "—"}
                       </span>
                     </div>
@@ -862,58 +867,58 @@ const employeeStats = useMemo(() => {
                     Información Personal
                   </h3>
                   <div className="space-y-3">
-                    <div className="flex justify-between gap-4">
-                      <span className="text-muted-foreground">Email:</span>
-                      <span className="font-medium text-right break-all">
+                    <div className="flex flex-wrap justify-between gap-x-2 gap-y-1">
+                      <span className="text-muted-foreground shrink-0">Email:</span>
+                      <span className="font-medium text-right break-all min-w-0">
                         {selectedEmployee.email || "—"}
                       </span>
                     </div>
 
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Teléfono:</span>
-                      <span className="font-medium">
+                    <div className="flex flex-wrap justify-between gap-x-2 gap-y-1">
+                      <span className="text-muted-foreground shrink-0">Teléfono:</span>
+                      <span className="font-medium text-right">
                         {selectedEmployee.phone || "—"}
                       </span>
                     </div>
 
-                    <div className="flex justify-between gap-4">
-                      <span className="text-muted-foreground">Dirección:</span>
-                      <span className="font-medium text-right max-w-xs">
+                    <div className="flex flex-wrap justify-between gap-x-2 gap-y-1">
+                      <span className="text-muted-foreground shrink-0">Dirección:</span>
+                      <span className="font-medium text-right">
                         {selectedEmployee.address || "—"}
                       </span>
                     </div>
 
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Fecha de nacimiento:</span>
-                      <span className="font-medium">
+                    <div className="flex flex-wrap justify-between gap-x-2 gap-y-1">
+                      <span className="text-muted-foreground shrink-0">Fecha de nacimiento:</span>
+                      <span className="font-medium text-right">
                         {formatDate(selectedEmployee.birthDate)}
                       </span>
                     </div>
 
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Sexo:</span>
-                      <span className="font-medium">
+                    <div className="flex flex-wrap justify-between gap-x-2 gap-y-1">
+                      <span className="text-muted-foreground shrink-0">Sexo:</span>
+                      <span className="font-medium text-right">
                         {resolveSexName(selectedEmployee.sex, sexTypeMap)}
                       </span>
                     </div>
 
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Estado civil:</span>
-                      <span className="font-medium">
+                    <div className="flex flex-wrap justify-between gap-x-2 gap-y-1">
+                      <span className="text-muted-foreground shrink-0">Estado civil:</span>
+                      <span className="font-medium text-right">
                         {selectedEmployee.maritalStatus || "—"}
                       </span>
                     </div>
 
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Etnia:</span>
-                      <span className="font-medium">
+                    <div className="flex flex-wrap justify-between gap-x-2 gap-y-1">
+                      <span className="text-muted-foreground shrink-0">Etnia:</span>
+                      <span className="font-medium text-right">
                         {selectedEmployee.ethnicity || "—"}
                       </span>
                     </div>
 
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Tipo de sangre:</span>
-                      <span className="font-medium">
+                    <div className="flex flex-wrap justify-between gap-x-2 gap-y-1">
+                      <span className="text-muted-foreground shrink-0">Tipo de sangre:</span>
+                      <span className="font-medium text-right">
                         {selectedEmployee.bloodType || "—"}
                       </span>
                     </div>
@@ -921,15 +926,17 @@ const employeeStats = useMemo(() => {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 mt-6">
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6">
                 <Button
                   variant="outline"
+                  className="w-full sm:w-auto"
                   onClick={() => setSelectedEmployee(null)}
                 >
                   Cerrar
                 </Button>
 
                 <Button
+                  className="w-full sm:w-auto"
                   onClick={() => {
                     const seed = selectedEmployee;
                     setSelectedEmployee(null);

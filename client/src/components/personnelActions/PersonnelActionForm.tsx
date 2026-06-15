@@ -30,7 +30,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Loader2, Save, FileText, Eye, Download } from 'lucide-react';
+import { Loader2, Save, FileText, Eye, Download, AlertCircle, CheckCircle2, ArrowLeft, ArrowRight } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
@@ -86,7 +86,7 @@ function base64ToBlob(base64: string): Blob {
 }
 
 const schema = z.object({
-  employeeId:   z.coerce.number().positive('Requerido'),
+  employeeId:   z.coerce.number().nonnegative(),
   actionTypeId: z.coerce.number().positive('Requerido'),
   actionNumber: z.string().optional(),
   actionDate:   z.string().min(1, 'Requerido'),
@@ -103,6 +103,8 @@ const schema = z.object({
   legalBasis:   z.string().optional(),
   reason:       z.string().optional(),
   observations: z.string().optional(),
+  // Régimen laboral para nuevo ingreso
+  employeeTypeId: z.coerce.number().optional().nullable(),
   // Clasificación de la acción
   swornDeclaration:     z.boolean().default(false),
   institutionalProcess: z.coerce.number().optional().nullable(),
@@ -261,6 +263,21 @@ export function PersonnelActionForm({
   const [employeeCandidates, setEmployeeCandidates] = useState<any[]>([]);
   const [employeeSelectOpen, setEmployeeSelectOpen] = useState(false);
   const [resolvingEmployee, setResolvingEmployee] = useState(false);
+  // true cuando la persona seleccionada no tiene registro de empleado activo
+  const [personHasNoEmployee, setPersonHasNoEmployee] = useState(false);
+  // true cuando el tipo de acción seleccionado requiere crear usuario (ingreso nuevo)
+  const [actionRequiresUserCreation, setActionRequiresUserCreation] = useState(false);
+
+  const { data: contractTypeData } = useQuery({
+    queryKey: ['ref-types', 'CONTRACT_TYPE'],
+    queryFn: () => TiposReferenciaAPI.byCategory('CONTRACT_TYPE'),
+    staleTime: STALE,
+    enabled: actionRequiresUserCreation && personHasNoEmployee,
+  });
+  const contractTypeOptions: RefType[] =
+    contractTypeData?.status === 'success' ? (contractTypeData.data ?? []) : [];
+  // paso actual del wizard (solo en modo creación)
+  const [wizardStep, setWizardStep] = useState(1);
 
   // Controla si el submit debe incluir generateDocument: true
   const generateOnSaveRef = useRef(false);
@@ -292,6 +309,7 @@ export function PersonnelActionForm({
       swornDeclaration:     defaultValues?.swornDeclaration ?? false,
       institutionalProcess: defaultValues?.institutionalProcess ?? null,
       managementLevel:      defaultValues?.managementLevel ?? null,
+      employeeTypeId:       defaultValues?.employeeTypeId ?? null,
       dthDirectorId:        defaultValues?.dthDirectorId ?? null,
       authorityNominatorId: defaultValues?.authorityNominatorId ?? null,
       elaboratorId:         defaultValues?.elaboratorId ?? null,
@@ -324,6 +342,7 @@ export function PersonnelActionForm({
       swornDeclaration:     defaultValues.swornDeclaration ?? false,
       institutionalProcess: defaultValues.institutionalProcess ?? null,
       managementLevel:      defaultValues.managementLevel ?? null,
+      employeeTypeId:       defaultValues.employeeTypeId ?? null,
       dthDirectorId:        defaultValues.dthDirectorId ?? null,
       authorityNominatorId: defaultValues.authorityNominatorId ?? null,
       elaboratorId:         defaultValues.elaboratorId ?? null,
@@ -332,9 +351,12 @@ export function PersonnelActionForm({
     });
   }, [defaultValues, form]);
 
-  // Auto-llenar RMU cuando cambia el cargo origen/destino o cuando los cargos terminan de cargar
-  const watchedOriginJobId = form.watch('originJobId');
+  // Valores reactivos para validación del wizard y efectos secundarios
+  const watchedOriginJobId      = form.watch('originJobId');
   const watchedDestinationJobId = form.watch('destinationJobId');
+  const watchedActionTypeId     = form.watch('actionTypeId');
+  const watchedEmployeeId       = form.watch('employeeId');
+  const watchedActionDate       = form.watch('actionDate');
 
   useEffect(() => {
     if (!watchedOriginJobId || jobs.length === 0) return;
@@ -350,6 +372,7 @@ export function PersonnelActionForm({
 
   // Aplica el empleado seleccionado al formulario y auto-rellena campos de origen
   const applyEmployee = (emp: any) => {
+    setPersonHasNoEmployee(false);
     const empId = getNumberId(emp, ['employeeID', 'employeeId', 'EmployeeID']);
     if (empId) form.setValue('employeeId', empId, { shouldValidate: true });
 
@@ -361,6 +384,7 @@ export function PersonnelActionForm({
 
   const handlePersonSelect = async (personId: number, _person: PersonDto) => {
     setSelectedPersonId(personId);
+    setPersonHasNoEmployee(false);
     form.setValue('originDepartmentId', null);
     form.setValue('originJobId', null);
     form.setValue('originBudgetCode', '');
@@ -371,12 +395,23 @@ export function PersonnelActionForm({
       const employees: any[] = resp.status === 'success' ? (resp.data ?? []) : [];
 
       if (employees.length === 0) {
-        toast({
-          variant: 'destructive',
-          title: 'Sin registro de empleado',
-          description: 'Esta persona no tiene un registro de empleado activo. Selecciona otra persona o crea primero su registro de empleado.',
-        });
-        setSelectedPersonId(null);
+        form.setValue('employeeId', 0, { shouldValidate: false });
+        setPersonHasNoEmployee(true);
+
+        const currentActionTypeId = form.getValues('actionTypeId');
+        const currentActionType = actionTypeOptions.find(({ id }) => id === currentActionTypeId)?.item;
+
+        if (currentActionType?.requiresAdUserCreation) {
+          toast({
+            title: 'Persona sin empleado activo',
+            description: 'El empleado y usuario se crearán automáticamente al cargar el documento firmado.',
+          });
+        } else {
+          toast({
+            title: 'Sin registro de empleado',
+            description: 'Esta persona no tiene empleado activo. Solo podrás crear la acción si el tipo de acción requiere creación de usuario.',
+          });
+        }
         return;
       }
 
@@ -387,7 +422,7 @@ export function PersonnelActionForm({
         setEmployeeSelectOpen(true);
       }
     } catch {
-      // La validación Zod bloqueará el submit si employeeId no está establecido
+      // La validación bloqueará el submit si employeeId no está establecido
     } finally {
       setResolvingEmployee(false);
     }
@@ -403,6 +438,7 @@ export function PersonnelActionForm({
     setEmployeeSelectOpen(false);
     setEmployeeCandidates([]);
     setSelectedPersonId(null);
+    setPersonHasNoEmployee(false);
   };
 
   const buildPayload = (values: FormValues, generateDocument: boolean): CreatePersonnelActionRequest => ({
@@ -424,6 +460,7 @@ export function PersonnelActionForm({
     legalBasis:   values.legalBasis   || null,
     reason:       values.reason       || null,
     observations: values.observations || null,
+    employeeTypeId:       values.employeeTypeId ?? null,
     swornDeclaration:     values.swornDeclaration ?? false,
     institutionalProcess: values.institutionalProcess ?? null,
     managementLevel:      values.managementLevel ?? null,
@@ -436,7 +473,35 @@ export function PersonnelActionForm({
   });
 
   const handleFormSubmit = (values: FormValues) => {
+    if (values.employeeId === 0) {
+      const selectedType = actionTypeOptions.find(({ id }) => id === values.actionTypeId)?.item;
+      if (!selectedType?.requiresAdUserCreation) {
+        form.setError('employeeId', {
+          type: 'manual',
+          message: 'El tipo de acción seleccionado requiere un empleado activo.',
+        });
+        return;
+      }
+      if (!(values.employeeTypeId ?? 0)) {
+        form.setError('employeeTypeId', {
+          type: 'manual',
+          message: 'Selecciona el Régimen Laboral para crear la cuenta institucional.',
+        });
+        return;
+      }
+    }
     onSubmit(buildPayload(values, generateOnSaveRef.current));
+  };
+
+  // Validación de pasos del wizard: solo verifica que los campos mínimos de navegación
+  // estén presentes. La validación de negocio completa ocurre al hacer submit.
+  const step1Valid = (watchedActionTypeId ?? 0) > 0 && !resolvingEmployee && selectedPersonId != null;
+  const step2Valid = true; // todos los campos del paso 2 son opcionales
+
+  const canProceedStep = (step: number): boolean => {
+    if (step === 1) return step1Valid;
+    if (step === 2) return step2Valid;
+    return true;
   };
 
   const submitDraft = () => {
@@ -449,6 +514,12 @@ export function PersonnelActionForm({
     form.handleSubmit(handleFormSubmit)();
   };
 
+  const STEPS = [
+    { label: 'Tipo y Persona' },
+    { label: 'Posición y Sustento' },
+    { label: 'Responsables' },
+  ];
+
   return (
     <>
       <Form {...form}>
@@ -460,40 +531,37 @@ export function PersonnelActionForm({
           }}
           className="space-y-6"
         >
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* ── Indicador de pasos (solo en creación) ── */}
+          {!isEdit && (
+            <div className="flex items-center gap-2">
+              {STEPS.map((s, i) => {
+                const step = i + 1;
+                return (
+                  <div key={step} className="flex items-center flex-1">
+                    <div className="flex items-center gap-2 flex-1">
+                      <div className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-semibold transition-colors shrink-0 ${
+                        wizardStep > step ? 'bg-primary text-primary-foreground' :
+                        wizardStep === step ? 'bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2' :
+                        'bg-muted text-muted-foreground'
+                      }`}>
+                        {wizardStep > step ? <CheckCircle2 className="h-4 w-4" /> : step}
+                      </div>
+                      <span className={`text-xs font-medium hidden sm:block ${wizardStep === step ? 'text-primary' : 'text-muted-foreground'}`}>
+                        {s.label}
+                      </span>
+                    </div>
+                    {step < STEPS.length && <div className="w-8 h-px bg-border mx-1 shrink-0" />}
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
-            {/* ── Selector de Persona / Empleado ── */}
-            <FormField
-              control={form.control}
-              name="employeeId"
-              render={({ fieldState }) => (
-                <FormItem className="sm:col-span-2">
-                  <FormLabel>Persona / Empleado *</FormLabel>
-                  <FormControl>
-                    {isEdit ? (
-                      <Input
-                        value={defaultValues?.employeeFullName ?? ''}
-                        disabled
-                        className="bg-muted"
-                      />
-                    ) : (
-                      <PersonSearchCombobox
-                        value={selectedPersonId}
-                        onSelect={handlePersonSelect}
-                        disabled={isBusy || resolvingEmployee}
-                      />
-                    )}
-                  </FormControl>
-                  {resolvingEmployee && (
-                    <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      Buscando registro de empleado…
-                    </p>
-                  )}
-                  {fieldState.error && <FormMessage />}
-                </FormItem>
-              )}
-            />
+          {/* ══════════════════════════════════════════
+              PASO 1: Tipo, Persona y Fechas
+          ══════════════════════════════════════════ */}
+          {(isEdit || wizardStep === 1) && <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
             {/* ── Tipo de Acción ── */}
             <FormField
@@ -508,13 +576,12 @@ export function PersonnelActionForm({
                     onValueChange={(v) => {
                       const typeId = Number(v);
                       field.onChange(typeId);
-                      if (!isEdit) {
-                        const selectedType = actionTypeOptions.find(({ id }) => id === typeId)?.item;
-                        if (selectedType) {
-                          const nextSeq = selectedType.numberingLastSequence + 1;
-                          const formatted = `${selectedType.numberingPrefix}-${String(nextSeq).padStart(3, '0')}`;
-                          form.setValue('actionNumber', formatted);
-                        }
+                      const selectedType = actionTypeOptions.find(({ id }) => id === typeId)?.item;
+                      setActionRequiresUserCreation(selectedType?.requiresAdUserCreation ?? false);
+                      if (!isEdit && selectedType) {
+                        const nextSeq = selectedType.numberingLastSequence + 1;
+                        const formatted = `${selectedType.numberingPrefix}-${String(nextSeq).padStart(3, '0')}`;
+                        form.setValue('actionNumber', formatted);
                       }
                     }}
                   >
@@ -557,6 +624,85 @@ export function PersonnelActionForm({
                 </FormItem>
               )}
             />
+
+            {/* ── Selector de Persona / Empleado ── */}
+            <FormField
+              control={form.control}
+              name="employeeId"
+              render={({ fieldState }) => (
+                <FormItem className="sm:col-span-2">
+                  <FormLabel>Persona / Empleado *</FormLabel>
+                  <FormControl>
+                    {isEdit ? (
+                      <Input
+                        value={defaultValues?.employeeFullName ?? ''}
+                        disabled
+                        className="bg-muted"
+                      />
+                    ) : (
+                      <PersonSearchCombobox
+                        value={selectedPersonId}
+                        onSelect={handlePersonSelect}
+                        disabled={isBusy || resolvingEmployee}
+                      />
+                    )}
+                  </FormControl>
+                  {resolvingEmployee && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Buscando registro de empleado…
+                    </p>
+                  )}
+                  {!resolvingEmployee && personHasNoEmployee && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1 mt-1">
+                      <AlertCircle className="h-3 w-3 shrink-0" />
+                      Sin empleado activo. El empleado y usuario se crearán al cargar el documento firmado (requiere que el tipo de acción lo permita).
+                    </p>
+                  )}
+                  {fieldState.error && <FormMessage />}
+                </FormItem>
+              )}
+            />
+
+            {/* ── Régimen Laboral (solo para nuevo ingreso con creación de usuario) ── */}
+            {personHasNoEmployee && actionRequiresUserCreation && (
+              <FormField
+                control={form.control}
+                name="employeeTypeId"
+                render={({ field }) => (
+                  <FormItem className="sm:col-span-2">
+                    <FormLabel>
+                      Régimen Laboral <span className="text-destructive">*</span>
+                    </FormLabel>
+                    <Select
+                      disabled={isBusy}
+                      value={field.value ? String(field.value) : ''}
+                      onValueChange={(v) => field.onChange(Number(v))}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar régimen…" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {contractTypeOptions.map((t) => {
+                          const id = String(t.typeID ?? (t as any).typeId);
+                          return (
+                            <SelectItem key={id} value={id}>
+                              {t.name}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Determina el régimen bajo el que se creará el empleado y la cuenta institucional.
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             {/* ── Fechas ── */}
             <FormField
@@ -630,8 +776,110 @@ export function PersonnelActionForm({
             />
           </div>
 
-          {/* ── Posición Origen ── */}
+          {/* ── Clasificación de la Acción ── */}
           <fieldset className="border rounded-lg p-4 space-y-4">
+            <legend className="text-sm font-semibold px-1">Clasificación de la Acción</legend>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+              {/* Proceso Institucional */}
+              <FormField
+                control={form.control}
+                name="institutionalProcess"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Proceso Institucional</FormLabel>
+                    <Select
+                      disabled={isBusy}
+                      value={field.value ? String(field.value) : 'none'}
+                      onValueChange={(v) => field.onChange(v === 'none' ? null : Number(v))}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="— Sin categoría —" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">— Sin categoría —</SelectItem>
+                        {institutionalProcessOptions.map((t) => {
+                          const id = String(t.typeID ?? (t as any).typeId);
+                          return (
+                            <SelectItem key={id} value={id}>
+                              {t.name}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Nivel de Gestión */}
+              <FormField
+                control={form.control}
+                name="managementLevel"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nivel de Gestión</FormLabel>
+                    <Select
+                      disabled={isBusy}
+                      value={field.value ? String(field.value) : 'none'}
+                      onValueChange={(v) => field.onChange(v === 'none' ? null : Number(v))}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="— Sin categoría —" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">— Sin categoría —</SelectItem>
+                        {managementLevelOptions.map((t) => {
+                          const id = String(t.typeID ?? (t as any).typeId);
+                          return (
+                            <SelectItem key={id} value={id}>
+                              {t.name}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Declaración Juramentada */}
+              <FormField
+                control={form.control}
+                name="swornDeclaration"
+                render={({ field }) => (
+                  <FormItem className="sm:col-span-2 flex items-center gap-3 pt-1">
+                    <FormControl>
+                      <Checkbox
+                        id="sworn-declaration"
+                        checked={field.value ?? false}
+                        disabled={isBusy}
+                        onCheckedChange={(v) => field.onChange(!!v)}
+                      />
+                    </FormControl>
+                    <FormLabel htmlFor="sworn-declaration" className="cursor-pointer select-none font-normal">
+                      Incluye Declaración Juramentada
+                    </FormLabel>
+                  </FormItem>
+                )}
+              />
+            </div>
+          </fieldset>
+          </>}
+
+          {/* ══════════════════════════════════════════
+              PASO 2: Posición y Sustento
+          ══════════════════════════════════════════ */}
+          {(isEdit || wizardStep === 2) && <>
+
+          {/* ── Posición Origen ── */}
+          {!actionRequiresUserCreation && <fieldset className="border rounded-lg p-4 space-y-4">
             <legend className="text-sm font-semibold px-1">Posición Origen</legend>
             <div className="grid grid-cols-1 grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
@@ -705,7 +953,7 @@ export function PersonnelActionForm({
                 )}
               />
             </div>
-          </fieldset>
+          </fieldset>}
 
           {/* ── Posición Destino ── */}
           <fieldset className="border rounded-lg p-4 space-y-4">
@@ -827,101 +1075,12 @@ export function PersonnelActionForm({
             />
           </div>
 
-          {/* ── Clasificación de la Acción ── */}
-          <fieldset className="border rounded-lg p-4 space-y-4">
-            <legend className="text-sm font-semibold px-1">Clasificación de la Acción</legend>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          </>}
 
-              {/* Proceso Institucional */}
-              <FormField
-                control={form.control}
-                name="institutionalProcess"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Proceso Institucional</FormLabel>
-                    <Select
-                      disabled={isBusy}
-                      value={field.value ? String(field.value) : 'none'}
-                      onValueChange={(v) => field.onChange(v === 'none' ? null : Number(v))}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="— Sin categoría —" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="none">— Sin categoría —</SelectItem>
-                        {institutionalProcessOptions.map((t) => {
-                          const id = String(t.typeID ?? (t as any).typeId);
-                          return (
-                            <SelectItem key={id} value={id}>
-                              {t.name}
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Nivel de Gestión */}
-              <FormField
-                control={form.control}
-                name="managementLevel"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nivel de Gestión</FormLabel>
-                    <Select
-                      disabled={isBusy}
-                      value={field.value ? String(field.value) : 'none'}
-                      onValueChange={(v) => field.onChange(v === 'none' ? null : Number(v))}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="— Sin categoría —" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="none">— Sin categoría —</SelectItem>
-                        {managementLevelOptions.map((t) => {
-                          const id = String(t.typeID ?? (t as any).typeId);
-                          return (
-                            <SelectItem key={id} value={id}>
-                              {t.name}
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Declaración Juramentada */}
-              <FormField
-                control={form.control}
-                name="swornDeclaration"
-                render={({ field }) => (
-                  <FormItem className="sm:col-span-2 flex items-center gap-3 pt-1">
-                    <FormControl>
-                      <Checkbox
-                        id="sworn-declaration"
-                        checked={field.value ?? false}
-                        disabled={isBusy}
-                        onCheckedChange={(v) => field.onChange(!!v)}
-                      />
-                    </FormControl>
-                    <FormLabel htmlFor="sworn-declaration" className="cursor-pointer select-none font-normal">
-                      Incluye Declaración Juramentada
-                    </FormLabel>
-                  </FormItem>
-                )}
-              />
-            </div>
-          </fieldset>
+          {/* ══════════════════════════════════════════
+              PASO 3: Responsables del Documento
+          ══════════════════════════════════════════ */}
+          {(isEdit || wizardStep === 3) && <>
 
           {/* ── Responsables del Documento ── */}
           <fieldset className="border rounded-lg p-4 space-y-4">
@@ -961,40 +1120,66 @@ export function PersonnelActionForm({
             </div>
           </fieldset>
 
-          {/* ── Botones de acción ── */}
-          <div className="flex justify-end gap-3 flex-wrap">
-            <Button type="button" variant="outline" onClick={onCancel} disabled={isBusy}>
-              Cancelar
-            </Button>
+          </>}
 
-            {isEdit ? (
-              <Button type="submit" disabled={isBusy || isLoading}>
-                {isBusy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Guardar Cambios
+          {/* ── Botones de acción ── */}
+          <div className="flex justify-between gap-3 flex-wrap pt-2 border-t">
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={onCancel} disabled={isBusy}>
+                Cancelar
               </Button>
-            ) : (
-              <>
+              {!isEdit && wizardStep > 1 && (
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={submitDraft}
-                  disabled={isBusy || isLoading}
+                  onClick={() => setWizardStep((s) => s - 1)}
+                  disabled={isBusy}
                 >
-                  {isBusy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  <Save className="mr-2 h-4 w-4" />
-                  Guardar Borrador
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Anterior
                 </Button>
+              )}
+            </div>
+
+            <div className="flex gap-2">
+              {isEdit ? (
+                <Button type="submit" disabled={isBusy || isLoading}>
+                  {isBusy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Guardar Cambios
+                </Button>
+              ) : wizardStep < STEPS.length ? (
                 <Button
                   type="button"
-                  onClick={submitAndGenerate}
-                  disabled={isBusy || isLoading}
+                  onClick={() => setWizardStep((s) => s + 1)}
+                  disabled={isBusy || isLoading || !canProceedStep(wizardStep)}
                 >
-                  {isBusy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  <FileText className="mr-2 h-4 w-4" />
-                  Crear y Generar Documento
+                  Siguiente
+                  <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
-              </>
-            )}
+              ) : (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={submitDraft}
+                    disabled={isBusy || isLoading}
+                  >
+                    {isBusy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    <Save className="mr-2 h-4 w-4" />
+                    Guardar Borrador
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={submitAndGenerate}
+                    disabled={isBusy || isLoading}
+                  >
+                    {isBusy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    <FileText className="mr-2 h-4 w-4" />
+                    Crear y Generar Documento
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
         </form>
       </Form>

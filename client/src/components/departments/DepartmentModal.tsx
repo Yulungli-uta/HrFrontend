@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { RefreshCw, AlertCircle, CheckCircle2, Building2 } from "lucide-react";
 import type { Department, ReferenceType, DepartmentFormData } from "@/types/department";
@@ -113,7 +114,7 @@ export const DepartmentModal = ({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
             <Building2 className="h-5 w-5" />
@@ -231,20 +232,27 @@ export const DepartmentModal = ({
             <p className="text-xs text-muted-foreground mt-1">Jerarquía organizacional</p>
           </div>
 
-          {/* Estado Activo */}
-          <div className="flex items-center space-x-3 sm:col-span-2 pt-4 pb-2 border-t">
-            <input
-              id="active"
-              type="checkbox"
-              className="h-4 w-4 rounded border-border focus:ring-blue-500 text-primary"
-              checked={formData.isActive}
-              onChange={(e) => updateField('isActive', e.target.checked)}
-              disabled={loading || isSubmitting}
-            />
-            <Label htmlFor="active" className="text-sm font-medium flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${formData.isActive ? 'bg-success' : 'bg-gray-400'}`}></div>
-              Departamento Activo
-            </Label>
+          {/* Estado Activo — Switch responsive */}
+          <div className="sm:col-span-2 pt-4 pb-2 border-t">
+            <div className="flex items-center justify-between gap-4 rounded-lg bg-muted/40 px-4 py-3">
+              <div>
+                <Label htmlFor="active" className="text-sm font-medium cursor-pointer">
+                  Departamento activo
+                </Label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {formData.isActive
+                    ? "El departamento está habilitado y visible en el sistema"
+                    : "El departamento está deshabilitado"}
+                </p>
+              </div>
+              <Switch
+                id="active"
+                checked={formData.isActive}
+                onCheckedChange={(checked) => updateField('isActive', checked)}
+                disabled={loading || isSubmitting}
+                aria-label="Activar / desactivar departamento"
+              />
+            </div>
           </div>
         </div>
 
@@ -296,26 +304,8 @@ export const DepartmentModal = ({
           </div>
         )}
 
-        {/* Info del Departamento (solo edición) */}
-        {mode === 'edit' && department && (
-          <div className="bg-background border border-border rounded-lg p-3">
-            <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-              <div><span className="font-medium">ID:</span> {department.departmentId}</div>
-              {department.createdAt && (
-                <div>
-                  <span className="font-medium">Creado:</span>{' '}
-                  {new Date(department.createdAt).toLocaleDateString()}
-                </div>
-              )}
-              {department.updatedAt && (
-                <div className="col-span-2">
-                  <span className="font-medium">Última modificación:</span>{' '}
-                  {new Date(department.updatedAt).toLocaleString()}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+        {/* Sección de información de edición eliminada — el ID y fechas
+            no son relevantes para el usuario final que edita un departamento */}
 
         <DialogFooter className="mt-6 flex flex-col sm:flex-row gap-3">
           <Button

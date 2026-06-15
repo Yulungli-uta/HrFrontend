@@ -32,8 +32,8 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 
-// ⬅️ Cambia esto por la categoría real de tu tabla reftype
-const PERSONAL_CONTRACT_TYPE_CATEGORY = "PERSONAL_CONTRACT_TYPE";
+// Categoría unificada en ref_Types — ya no existe PERSONAL_CONTRACT_TYPE
+const PERSONAL_CONTRACT_TYPE_CATEGORY = "CONTRACT_TYPE";
 
 // ---------------- Esquema Zod ----------------
 
@@ -44,6 +44,9 @@ const contractTypeSchema = z.object({
   description: z.string().optional(),
   contractText: z.string().optional(),
   isActive: z.boolean().optional(),
+  requiresAdUserCreation: z.boolean(),
+  requiresAdUserDisable: z.boolean(),
+  requiresAdGroupAssignment: z.boolean(),
 
   personalContractTypeId: z
     .string({
@@ -71,6 +74,9 @@ interface ContractTypeCreateDTO {
   contractText?: string;
   status: string;
   personalContractTypeId: number;
+  requiresAdUserCreation: boolean;
+  requiresAdUserDisable: boolean;
+  requiresAdGroupAssignment: boolean;
 }
 
 interface ContractTypeUpdateDTO {
@@ -80,6 +86,9 @@ interface ContractTypeUpdateDTO {
   contractText?: string;
   status?: string;
   personalContractTypeId?: number;
+  requiresAdUserCreation: boolean;
+  requiresAdUserDisable: boolean;
+  requiresAdGroupAssignment: boolean;
 }
 
 function ensureSuccess<T>(res: ApiResponse<T>, defaultMessage: string): T {
@@ -123,6 +132,9 @@ export function ContractTypeForm({
       description: initialValues?.description ?? "",
       contractText: initialValues?.contractText ?? "",
       isActive: initialValues?.isActive ?? true,
+      requiresAdUserCreation: (initialValues as any)?.requiresAdUserCreation ?? false,
+      requiresAdUserDisable: (initialValues as any)?.requiresAdUserDisable ?? false,
+      requiresAdGroupAssignment: (initialValues as any)?.requiresAdGroupAssignment ?? false,
       personalContractTypeId: initialValues?.personalContractTypeId ?? "",
     },
   });
@@ -137,6 +149,9 @@ export function ContractTypeForm({
         contractText: values.contractText || "",
         status: values.isActive ? "1" : "0",
         personalContractTypeId: Number(values.personalContractTypeId),
+        requiresAdUserCreation: values.requiresAdUserCreation,
+        requiresAdUserDisable: values.requiresAdUserDisable,
+        requiresAdGroupAssignment: values.requiresAdGroupAssignment,
       };
 
       const res = await ContractTypeAPI.create(payload as any);
@@ -161,6 +176,9 @@ export function ContractTypeForm({
         contractText: values.contractText || "",
         status: values.isActive ? "1" : "0",
         personalContractTypeId: Number(values.personalContractTypeId),
+        requiresAdUserCreation: values.requiresAdUserCreation,
+        requiresAdUserDisable: values.requiresAdUserDisable,
+        requiresAdGroupAssignment: values.requiresAdGroupAssignment,
       };
 
       const res = await ContractTypeAPI.update(contractId, payload as any);
@@ -346,6 +364,60 @@ export function ContractTypeForm({
                 </FormItem>
               )}
             />
+
+            {/* Integración Active Directory */}
+            <div className="rounded-lg border p-4 space-y-3 bg-muted/30">
+              <p className="text-sm font-semibold text-foreground">Integración Active Directory</p>
+              <p className="text-xs text-muted-foreground">Define qué operaciones en AD local se deben ejecutar al vincular este tipo de contrato.</p>
+
+              <FormField
+                control={form.control}
+                name="requiresAdUserCreation"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between py-1">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-sm">Crear usuario en AD</FormLabel>
+                      <FormDescription className="text-xs">Se creará una cuenta en Active Directory local para el empleado.</FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch checked={field.value} onCheckedChange={field.onChange} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="requiresAdUserDisable"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between py-1">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-sm">Deshabilitar usuario en AD</FormLabel>
+                      <FormDescription className="text-xs">Se deshabilitará la cuenta en AD al finalizar o revocar el contrato.</FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch checked={field.value} onCheckedChange={field.onChange} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="requiresAdGroupAssignment"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between py-1">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-sm">Asignar grupos/roles AD</FormLabel>
+                      <FormDescription className="text-xs">Se asignarán los grupos de AD correspondientes al empleado.</FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch checked={field.value} onCheckedChange={field.onChange} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            </div>
 
             {/* Mensaje de error API */}
             {apiError && (

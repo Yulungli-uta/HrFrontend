@@ -303,7 +303,7 @@ function CreateScheduleChangePlanDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
-        <Button className="bg-uta-blue hover:bg-uta-blue/90" disabled={!bossId}>
+        <Button className="bg-primary hover:bg-primary/90" disabled={!bossId}>
           <FilePlus2 className="mr-2 h-4 w-4" />
           Nueva planificación
         </Button>
@@ -651,7 +651,7 @@ function CreateScheduleChangePlanDialog({
                   </Button>
 
                   <Button
-                    className="bg-uta-blue hover:bg-uta-blue/90"
+                    className="bg-primary hover:bg-primary/90"
                     onClick={() => createMutation.mutate()}
                     disabled={createMutation.isPending}
                   >

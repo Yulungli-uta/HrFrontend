@@ -7,7 +7,7 @@
  *  - OCP: los Comboboxes son reutilizables sin modificar el componente base.
  *  - DRY: el componente SearchCombobox encapsula el patrón Command+Popover.
  */
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -225,26 +225,39 @@ export function DepartmentAuthorityForm({
   const queryClient = useQueryClient();
 
   // ── Formulario ──────────────────────────────────────────────────────────────
+  // Valores iniciales derivados de authority — usados tanto en defaultValues como en reset()
+  const buildDefaults = (auth: DepartmentAuthorityDto | null | undefined): FormData => ({
+    departmentId:    auth?.departmentId    ?? null,
+    employeeId:      auth?.employeeId      ?? null,
+    authorityTypeId: auth?.authorityTypeId ?? null,
+    jobId:           auth?.jobId           ?? null,
+    denomination:    auth?.denomination    ?? "",
+    startDate:       auth?.startDate       ?? "",
+    endDate:         auth?.endDate         ?? "",
+    resolutionCode:  auth?.resolutionCode  ?? "",
+    notes:           auth?.notes           ?? "",
+    isActive:        auth?.isActive        ?? true,
+  });
+
   const {
     register,
     handleSubmit,
     control,
+    reset,
     formState: { errors },
     watch,
   } = useForm<FormData>({
-    defaultValues: {
-      departmentId:    authority?.departmentId    ?? null,
-      employeeId:      authority?.employeeId      ?? null,
-      authorityTypeId: authority?.authorityTypeId ?? null,
-      jobId:           authority?.jobId           ?? null,
-      denomination:    authority?.denomination    ?? "",
-      startDate:       authority?.startDate       ?? "",
-      endDate:         authority?.endDate         ?? "",
-      resolutionCode:  authority?.resolutionCode  ?? "",
-      notes:           authority?.notes           ?? "",
-      isActive:        authority?.isActive        ?? true,
-    },
+    defaultValues: buildDefaults(authority),
   });
+
+  // ── Resincronizar formulario cuando cambia el registro a editar ────────────
+  // useForm solo aplica defaultValues en el primer montaje. Si el Dialog
+  // reutiliza el componente entre distintos registros (sin desmontarlo),
+  // este efecto garantiza que los campos se limpien/rellenan correctamente.
+  useEffect(() => {
+    reset(buildDefaults(authority));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authority?.authorityId]);
 
   const startDateValue = watch("startDate");
 

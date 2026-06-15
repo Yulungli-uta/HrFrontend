@@ -640,7 +640,7 @@ export default function EmployeeForm({
   const currentBossId = form.watch("immediateBossId");
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
+    <Card className="w-full max-w-full sm:max-w-2xl mx-auto">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <UserCog className="h-5 w-5" />

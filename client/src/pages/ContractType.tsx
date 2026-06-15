@@ -1,3 +1,4 @@
+// src/pages/ContractType.tsx
 import { useQuery } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 
@@ -51,6 +52,9 @@ interface ContractType {
   status: string; // "1" activo, "0" inactivo
   contractText: string;
   contractCode: string;
+  requiresAdUserCreation?: boolean;
+  requiresAdUserDisable?: boolean;
+  requiresAdGroupAssignment?: boolean;
 }
 
 interface UIContractType {
@@ -70,6 +74,9 @@ interface UIContractType {
   contractText?: string;
   personalContractTypeId?: number;
   status?: string;
+  requiresAdUserCreation?: boolean;
+  requiresAdUserDisable?: boolean;
+  requiresAdGroupAssignment?: boolean;
 }
 
 // --------------- PAGE -------------------
@@ -139,6 +146,9 @@ export default function ContractTypesPage() {
       contractText: contract.contractText,
       personalContractTypeId: contract.personalContractTypeId,
       status: contract.status,
+      requiresAdUserCreation: contract.requiresAdUserCreation ?? false,
+      requiresAdUserDisable: contract.requiresAdUserDisable ?? false,
+      requiresAdGroupAssignment: contract.requiresAdGroupAssignment ?? false,
     }));
   }, [apiResponse]);
 
@@ -178,11 +188,11 @@ export default function ContractTypesPage() {
     const avg =
       total > 0
         ? Math.round(
-            contractTypes.reduce(
-              (sum, ct) => sum + (ct.durationDays || 0),
-              0
-            ) / total
-          )
+          contractTypes.reduce(
+            (sum, ct) => sum + (ct.durationDays || 0),
+            0
+          ) / total
+        )
         : 0;
 
     return {
@@ -306,15 +316,18 @@ export default function ContractTypesPage() {
                 initialValues={
                   editingContract
                     ? {
-                        name: editingContract.name,
-                        code: editingContract.code,
-                        description: editingContract.description,
-                        contractText: editingContract.contractText,
-                        isActive: editingContract.isActive,
-                        personalContractTypeId: editingContract.personalContractTypeId
-                          ? String(editingContract.personalContractTypeId)
-                          : "",
-                      }
+                      name: editingContract.name,
+                      code: editingContract.code,
+                      description: editingContract.description,
+                      contractText: editingContract.contractText,
+                      isActive: editingContract.isActive,
+                      personalContractTypeId: editingContract.personalContractTypeId
+                        ? String(editingContract.personalContractTypeId)
+                        : "",
+                      requiresAdUserCreation: editingContract.requiresAdUserCreation ?? false,
+                      requiresAdUserDisable: editingContract.requiresAdUserDisable ?? false,
+                      requiresAdGroupAssignment: editingContract.requiresAdGroupAssignment ?? false,
+                    }
                     : undefined
                 }
                 onCancel={() => setIsFormOpen(false)}
@@ -386,8 +399,8 @@ export default function ContractTypesPage() {
             <div className="text-xs lg:text-sm text-muted-foreground">
               {totalContractTypes > 0
                 ? ((renewableContractTypes / totalContractTypes) * 100).toFixed(
-                    1
-                  )
+                  1
+                )
                 : 0}
               % del total
             </div>
@@ -447,13 +460,121 @@ export default function ContractTypesPage() {
         </div>
       </div>
 
-      {/* Tabla */}
-      <Card>
+      {/* ── Tarjetas — móvil ── */}
+      <div className="md:hidden space-y-3">
+        {filteredContractTypes.length === 0 ? (
+          <div className="text-center py-12">
+            <FileText className="mx-auto h-12 w-12 text-muted-foreground/70 mb-4" />
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              {searchTerm ? "No se encontraron tipos de contrato" : "No hay tipos de contrato registrados"}
+            </h3>
+            <p className="text-muted-foreground mb-4">
+              {searchTerm ? "Intente con otros términos de búsqueda" : "Comience agregando el primer tipo de contrato"}
+            </p>
+            {!searchTerm && (
+              <Button onClick={() => { setFormMode("create"); setEditingContract(null); setIsFormOpen(true); }}>
+                <Plus className="mr-2 h-4 w-4" /> Agregar Primer Tipo de Contrato
+              </Button>
+            )}
+          </div>
+        ) : (
+          filteredContractTypes.map((contractType) => (
+            <Card key={contractType.contractTypeId} className="border border-border">
+              <CardContent className="pt-4 pb-3 px-4 space-y-3">
+                {/* Cabecera de tarjeta */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p
+                      className="font-semibold text-sm leading-tight truncate"
+                      data-testid={`text-contract-type-name-${contractType.contractTypeId}`}
+                    >
+                      {contractType.name}
+                    </p>
+                    {contractType.description && (
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                        {contractType.description}
+                      </p>
+                    )}
+                  </div>
+                  <Badge
+                    variant={contractType.isActive ? "default" : "secondary"}
+                    className={
+                      contractType.isActive
+                        ? "bg-success/15 text-success hover:bg-success/15 shrink-0"
+                        : "bg-muted text-foreground hover:bg-muted shrink-0"
+                    }
+                    data-testid={`status-active-${contractType.contractTypeId}`}
+                  >
+                    {contractType.isActive ? "Activo" : "Inactivo"}
+                  </Badge>
+                </div>
+
+                {/* Detalles en grid 2 columnas */}
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                  <div>
+                    <span className="text-muted-foreground">Código</span>
+                    <p
+                      className="font-mono font-medium"
+                      data-testid={`text-contract-type-code-${contractType.contractTypeId}`}
+                    >
+                      {contractType.code}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Categoría</span>
+                    <p className="font-medium">{contractType.category ?? "—"}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Duración</span>
+                    <p className="font-medium flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {contractType.durationDays ? `${contractType.durationDays} días` : "Indefinido"}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Renovable</span>
+                    <p className={`font-medium ${contractType.isRenewable ? "text-success" : ""}`}>
+                      {contractType.isRenewable ? "Sí" : "No"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* AD flags */}
+                {(contractType.requiresAdUserCreation || contractType.requiresAdUserDisable || contractType.requiresAdGroupAssignment) && (
+                  <div className="flex flex-wrap gap-1">
+                    {contractType.requiresAdUserCreation && (
+                      <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200">Crea AD</Badge>
+                    )}
+                    {contractType.requiresAdUserDisable && (
+                      <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200">Deshabilita AD</Badge>
+                    )}
+                    {contractType.requiresAdGroupAssignment && (
+                      <Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-200">Grupos AD</Badge>
+                    )}
+                  </div>
+                )}
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => handleViewDetails(contractType)}
+                  data-testid={`button-view-contract-type-${contractType.contractTypeId}`}
+                >
+                  <Eye className="h-3 w-3 mr-2" /> Ver Detalles
+                </Button>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
+
+      {/* ── Tabla — desktop ── */}
+      <Card className="hidden md:block">
         <CardHeader>
           <CardTitle>Lista de Tipos de Contrato</CardTitle>
           <CardDescription>
-            {filteredContractTypes.length} de {totalContractTypes} tipos
-            mostrados
+            {filteredContractTypes.length} de {totalContractTypes} tipos mostrados
             {searchTerm && ` - Filtrado por: "${searchTerm}"`}
           </CardDescription>
         </CardHeader>
@@ -462,37 +583,21 @@ export default function ContractTypesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[200px]">
-                    Tipo de Contrato
-                  </TableHead>
+                  <TableHead className="min-w-[200px]">Tipo de Contrato</TableHead>
                   <TableHead className="min-w-[120px]">Código</TableHead>
-                  <TableHead className="min-w-[150px] hidden md:table-cell">
-                    Categoría
-                  </TableHead>
-                  <TableHead className="min-w-[120px] hidden md:table-cell">
-                    Duración
-                  </TableHead>
-                  <TableHead className="min-w-[120px] hidden md:table-cell">
-                    Renovable
-                  </TableHead>
+                  <TableHead className="min-w-[150px]">Categoría</TableHead>
+                  <TableHead className="min-w-[120px]">Duración</TableHead>
+                  <TableHead className="min-w-[100px]">Renovable</TableHead>
                   <TableHead className="min-w-[100px]">Estado</TableHead>
-                  <TableHead className="text-right min-w-[140px]">
-                    Acciones
-                  </TableHead>
+                  <TableHead className="text-right min-w-[140px]">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredContractTypes.map((contractType) => (
-                  <TableRow
-                    key={contractType.contractTypeId}
-                    className="group"
-                  >
+                  <TableRow key={contractType.contractTypeId} className="group">
                     <TableCell>
                       <div>
-                        <div
-                          className="font-medium"
-                          data-testid={`text-contract-type-name-${contractType.contractTypeId}`}
-                        >
+                        <div className="font-medium" data-testid={`text-contract-type-name-${contractType.contractTypeId}`}>
                           {contractType.name}
                         </div>
                         {contractType.description && (
@@ -503,42 +608,27 @@ export default function ContractTypesPage() {
                       </div>
                     </TableCell>
 
-                    <TableCell
-                      className="font-mono font-medium"
-                      data-testid={`text-contract-type-code-${contractType.contractTypeId}`}
-                    >
+                    <TableCell className="font-mono font-medium" data-testid={`text-contract-type-code-${contractType.contractTypeId}`}>
                       {contractType.code}
                     </TableCell>
 
-                    <TableCell className="hidden md:table-cell">
+                    <TableCell>
                       {contractType.category ? (
-                        <Badge variant="outline" className="bg-background">
-                          {contractType.category}
-                        </Badge>
-                      ) : (
-                        "-"
-                      )}
+                        <Badge variant="outline" className="bg-background">{contractType.category}</Badge>
+                      ) : "—"}
                     </TableCell>
 
-                    <TableCell className="hidden md:table-cell">
+                    <TableCell>
                       <div className="flex items-center gap-1">
                         <Clock className="h-3 w-3 text-muted-foreground" />
-                        <span>
-                          {contractType.durationDays
-                            ? `${contractType.durationDays} días`
-                            : "Indefinido"}
-                        </span>
+                        <span>{contractType.durationDays ? `${contractType.durationDays} días` : "Indefinido"}</span>
                       </div>
                     </TableCell>
 
-                    <TableCell className="hidden md:table-cell">
+                    <TableCell>
                       <Badge
                         variant="outline"
-                        className={
-                          contractType.isRenewable
-                            ? "bg-success/10 text-success border-success/30"
-                            : "bg-background text-foreground border-border"
-                        }
+                        className={contractType.isRenewable ? "bg-success/10 text-success border-success/30" : "bg-background text-foreground border-border"}
                       >
                         {contractType.isRenewable ? "Sí" : "No"}
                       </Badge>
@@ -547,11 +637,7 @@ export default function ContractTypesPage() {
                     <TableCell>
                       <Badge
                         variant={contractType.isActive ? "default" : "secondary"}
-                        className={
-                          contractType.isActive
-                            ? "bg-success/15 text-success hover:bg-success/15"
-                            : "bg-muted text-foreground hover:bg-muted"
-                        }
+                        className={contractType.isActive ? "bg-success/15 text-success hover:bg-success/15" : "bg-muted text-foreground hover:bg-muted"}
                         data-testid={`status-active-${contractType.contractTypeId}`}
                       >
                         {contractType.isActive ? "Activo" : "Inactivo"}
@@ -567,8 +653,7 @@ export default function ContractTypesPage() {
                         className="inline-flex items-center gap-1"
                       >
                         <Eye className="h-3 w-3" />
-                        <span className="hidden sm:inline">Ver Detalles</span>
-                        <span className="sm:hidden">Ver</span>
+                        Ver Detalles
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -581,26 +666,14 @@ export default function ContractTypesPage() {
             <div className="text-center py-12">
               <FileText className="mx-auto h-12 w-12 text-muted-foreground/70 mb-4" />
               <h3 className="text-lg font-semibold text-foreground mb-2">
-                {searchTerm
-                  ? "No se encontraron tipos de contrato"
-                  : "No hay tipos de contrato registrados"}
+                {searchTerm ? "No se encontraron tipos de contrato" : "No hay tipos de contrato registrados"}
               </h3>
               <p className="text-muted-foreground mb-4">
-                {searchTerm
-                  ? "Intente con otros términos de búsqueda"
-                  : "Comience agregando el primer tipo de contrato al sistema"}
+                {searchTerm ? "Intente con otros términos de búsqueda" : "Comience agregando el primer tipo de contrato al sistema"}
               </p>
               {!searchTerm && (
-                <Button
-                  data-testid="button-add-first-contract-type"
-                  onClick={() => {
-                    setFormMode("create");
-                    setEditingContract(null);
-                    setIsFormOpen(true);
-                  }}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Agregar Primer Tipo de Contrato
+                <Button data-testid="button-add-first-contract-type" onClick={() => { setFormMode("create"); setEditingContract(null); setIsFormOpen(true); }}>
+                  <Plus className="mr-2 h-4 w-4" /> Agregar Primer Tipo de Contrato
                 </Button>
               )}
             </div>
@@ -715,9 +788,8 @@ export default function ContractTypesPage() {
                       </label>
                       <p className="font-medium">
                         {selectedContractType.requiresProbation
-                          ? `${
-                              selectedContractType.probationDays || 30
-                            } días`
+                          ? `${selectedContractType.probationDays || 30
+                          } días`
                           : "No requiere"}
                       </p>
                     </div>
@@ -740,39 +812,39 @@ export default function ContractTypesPage() {
 
                 {(selectedContractType.minSalary ||
                   selectedContractType.maxSalary) && (
-                  <Card className="md:col-span-2">
-                    <CardHeader>
-                      <CardTitle className="text-base lg:text-lg flex items-center gap-2">
-                        <DollarSign className="h-4 w-4" />
-                        Rango Salarial
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">
-                            Salario Mínimo
-                          </label>
-                          <p className="font-medium">
-                            {selectedContractType.minSalary
-                              ? `$${selectedContractType.minSalary.toLocaleString()}`
-                              : "No definido"}
-                          </p>
+                    <Card className="md:col-span-2">
+                      <CardHeader>
+                        <CardTitle className="text-base lg:text-lg flex items-center gap-2">
+                          <DollarSign className="h-4 w-4" />
+                          Rango Salarial
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sm font-medium text-muted-foreground">
+                              Salario Mínimo
+                            </label>
+                            <p className="font-medium">
+                              {selectedContractType.minSalary
+                                ? `$${selectedContractType.minSalary.toLocaleString()}`
+                                : "No definido"}
+                            </p>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-muted-foreground">
+                              Salario Máximo
+                            </label>
+                            <p className="font-medium">
+                              {selectedContractType.maxSalary
+                                ? `$${selectedContractType.maxSalary.toLocaleString()}`
+                                : "No definido"}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">
-                            Salario Máximo
-                          </label>
-                          <p className="font-medium">
-                            {selectedContractType.maxSalary
-                              ? `$${selectedContractType.maxSalary.toLocaleString()}`
-                              : "No definido"}
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
+                      </CardContent>
+                    </Card>
+                  )}
 
                 {selectedContractType.legalRequirements && (
                   <Card className="md:col-span-2">
@@ -812,6 +884,55 @@ export default function ContractTypesPage() {
                     </CardContent>
                   </Card>
                 )}
+
+                <Card className="md:col-span-2">
+                  <CardHeader>
+                    <CardTitle className="text-base lg:text-lg">
+                      Integración Active Directory
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span>Crear usuario en AD</span>
+                      <Badge
+                        variant="outline"
+                        className={
+                          selectedContractType.requiresAdUserCreation
+                            ? "bg-blue-50 text-blue-700 border-blue-200"
+                            : "text-muted-foreground"
+                        }
+                      >
+                        {selectedContractType.requiresAdUserCreation ? "Sí" : "No"}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Deshabilitar usuario en AD</span>
+                      <Badge
+                        variant="outline"
+                        className={
+                          selectedContractType.requiresAdUserDisable
+                            ? "bg-amber-50 text-amber-700 border-amber-200"
+                            : "text-muted-foreground"
+                        }
+                      >
+                        {selectedContractType.requiresAdUserDisable ? "Sí" : "No"}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Asignar grupos/roles AD</span>
+                      <Badge
+                        variant="outline"
+                        className={
+                          selectedContractType.requiresAdGroupAssignment
+                            ? "bg-green-50 text-green-700 border-green-200"
+                            : "text-muted-foreground"
+                        }
+                      >
+                        {selectedContractType.requiresAdGroupAssignment ? "Sí" : "No"}
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
 
               <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4">

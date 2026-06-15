@@ -69,3 +69,67 @@ export const CantonesAPI = {
   getByProvince: (provinceId: number): Promise<ApiResponse<any[]>> =>
     apiFetch<any[]>(`/api/v1/rh/geo/cantons/province/${provinceId}`),
 };
+
+// =============================================================================
+// DTOs de Escalafón Docente
+// =============================================================================
+
+export interface AcademicLadderDto {
+  ladderId: number;
+  code: string;
+  name: string;
+  categoryTypeId: number | null;
+  categoryName: string | null;
+  levelTypeId: number | null;
+  levelName: string | null;
+  dedicationTypeId: number | null;
+  dedicationName: string | null;
+  baseRmu: number | null;
+  sequence: number;
+  nextLadderId: number | null;
+  nextLadderName: string | null;
+  minYearsService: number | null;
+  isActive: boolean;
+  isTitular: boolean;
+}
+
+export interface AcademicLadderCreateDto {
+  code: string;
+  name: string;
+  categoryTypeId?: number | null;
+  levelTypeId?: number | null;
+  dedicationTypeId?: number | null;
+  baseRmu?: number | null;
+  sequence: number;
+  nextLadderId?: number | null;
+  minYearsService?: number | null;
+}
+
+export interface AcademicLadderUpdateDto {
+  name: string;
+  categoryTypeId?: number | null;
+  levelTypeId?: number | null;
+  dedicationTypeId?: number | null;
+  baseRmu?: number | null;
+  sequence: number;
+  nextLadderId?: number | null;
+  minYearsService?: number | null;
+  isActive: boolean;
+}
+
+export const AcademicLadderAPI = {
+  getAll: (): Promise<ApiResponse<AcademicLadderDto[]>> =>
+    apiFetch<AcademicLadderDto[]>('/api/v1/rh/academic-ladder'),
+
+  getById: (id: number): Promise<ApiResponse<AcademicLadderDto>> =>
+    apiFetch<AcademicLadderDto>(`/api/v1/rh/academic-ladder/${id}`),
+
+  getNext: (id: number): Promise<ApiResponse<AcademicLadderDto | null>> =>
+    apiFetch<AcademicLadderDto | null>(`/api/v1/rh/academic-ladder/${id}/next`),
+
+  create: (dto: AcademicLadderCreateDto): Promise<ApiResponse<AcademicLadderDto>> =>
+    apiFetch<AcademicLadderDto>('/api/v1/rh/academic-ladder', { method: 'POST', body: JSON.stringify(dto) }),
+
+  update: (id: number, dto: AcademicLadderUpdateDto): Promise<ApiResponse<AcademicLadderDto>> =>
+    apiFetch<AcademicLadderDto>(`/api/v1/rh/academic-ladder/${id}`, { method: 'PUT', body: JSON.stringify(dto) }),
+};

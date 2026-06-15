@@ -247,15 +247,19 @@ export const AuthUsersAPI = {
    * Obtiene usuarios paginados, compatible con el hook usePaged.
    * Mapea PagedRequest al formato que ya acepta el endpoint /api/users/paged.
    */
-  listPaged: async (params: PagedRequest): Promise<ApiResponse<PagedResult<User>>> => {
+  listPaged: async (params: PagedRequest & { isActive?: boolean; userType?: string }): Promise<ApiResponse<PagedResult<User>>> => {
+    const query: Record<string, any> = {
+      page: params.page,
+      pageSize: params.pageSize,
+      sortBy: params.sortBy,
+      sortDirection: params.sortDirection,
+    };
+    if (params.search?.trim()) query.search = params.search.trim();
+    if (params.isActive !== undefined) query.isActive = params.isActive;
+    if (params.userType)              query.userType  = params.userType;
+
     const raw = await apiFetch<PagedResult<User>>(
-      `/api/users/paged${serializeQuery({
-        page: params.page,
-        pageSize: params.pageSize,
-        search: params.search,
-        sortBy: params.sortBy,
-        sortDirection: params.sortDirection,
-      })}`,
+      `/api/users/paged${serializeQuery(query)}`,
       { method: 'GET' }
     );
     return ensureApiResponse<PagedResult<User>>(raw);
@@ -551,7 +555,14 @@ export interface RequestPasswordChange2faResponse {
   otpCodeDev?: string;
 }
 
+export interface PasswordChangeMethodResponse {
+  method: 'LocalAd' | 'AzureWriteback';
+}
+
 export const PasswordAPI = {
+  getChangeMethod: (): Promise<ApiResponse<PasswordChangeMethodResponse>> =>
+    apiFetch<PasswordChangeMethodResponse>('/api/auth/password-change-method', { method: 'GET' }),
+
   change: (data: { currentPassword: string; newPassword: string }): Promise<ApiResponse<ChangePasswordResponse>> =>
     apiFetch<ChangePasswordResponse>('/api/auth/change-password', {
       method: 'POST',
@@ -1213,6 +1224,19 @@ export interface LocalAdGroupResponse {
   email: string | null;
 }
 
+export type EntraSyncStatus = 'Unknown' | 'PendingSync' | 'Synced' | 'Disabled' | 'SyncError';
+
+export interface EntraSyncResult {
+  status: EntraSyncStatus;
+  accountEnabled: boolean | null;
+  azureObjectId: string | null;
+  message: string | null;
+}
+
+export interface LocalAdUserWithSyncResponse extends LocalAdUserResponse {
+  entraSync: EntraSyncResult | null;
+}
+
 /* =============================================================================
  * API de Active Directory Local — /api/local-ad
  * authenticate es público; el resto requiere rol Administrador.
@@ -1246,8 +1270,8 @@ export const LocalAdManagementAPI = {
   getUserByEmail: (email: string): Promise<ApiResponse<LocalAdUserResponse>> =>
     fetchLocalAd<LocalAdUserResponse>(`/api/local-ad/users/by-email/${encodeURIComponent(email)}`, { method: 'GET' }),
 
-  createUser: (data: CreateLocalAdUserRequest): Promise<ApiResponse<LocalAdUserResponse>> =>
-    fetchLocalAd<LocalAdUserResponse>('/api/local-ad/users', { method: 'POST', ...jsonBody(data) }),
+  createUser: (data: CreateLocalAdUserRequest): Promise<ApiResponse<LocalAdUserWithSyncResponse>> =>
+    fetchLocalAd<LocalAdUserWithSyncResponse>('/api/local-ad/users', { method: 'POST', ...jsonBody(data) }),
 
   updateUser: (id: string, data: UpdateLocalAdUserRequest): Promise<ApiResponse<LocalAdUserResponse>> =>
     fetchLocalAd<LocalAdUserResponse>(`/api/local-ad/users/${encodeURIComponent(id)}`, { method: 'PUT', ...jsonBody(data) }),
@@ -1283,4 +1307,94 @@ export const LocalAdManagementAPI = {
 
   checkUserMembership: (userId: string, groupId: string): Promise<ApiResponse<{ isMember: boolean }>> =>
     fetchLocalAd<{ isMember: boolean }>(`/api/local-ad/users/${encodeURIComponent(userId)}/groups/${encodeURIComponent(groupId)}`, { method: 'GET' }),
+
+  createGroup: (data: { groupName: string; description?: string | null }): Promise<ApiResponse<LocalAdGroupResponse>> =>
+    fetchLocalAd<LocalAdGroupResponse>('/api/local-ad/groups', { method: 'POST', ...jsonBody(data) }),
+
+  changeUserPassword: (id: string, data: { newPassword: string; forcePasswordChange: boolean }): Promise<ApiResponse<null>> =>
+    fetchLocalAd<null>(`/api/local-ad/users/${encodeURIComponent(id)}/change-password`, { method: 'POST', ...jsonBody(data) }),
+
+  checkEntraSync: (id: string): Promise<ApiResponse<EntraSyncResult>> =>
+    fetchLocalAd<EntraSyncResult>(`/api/local-ad/users/${encodeURIComponent(id)}/entra-sync`, { method: 'GET' }),
+} as const;
+
+/* =============================================================================
+ * API de Gestión de Sesiones Activas y Clientes API
+ * ========================================================================== */
+
+export interface ActiveSessionDto {
+  sessionId: string;
+  userId: string;
+  email: string;
+  displayName?: string;
+  userType: string;
+  ipAddress?: string;
+  userAgent?: string;
+  browserId?: string;
+  loginAt: string;
+  lastActivityAt?: string;
+  expiresAt: string;
+  status: string;
+  isWebSocketConnected: boolean;
+  wsLastPing?: string;
+}
+
+export interface RevokeSessionResultDto {
+  sessionId: string;
+  wasNotified: boolean;
+  message: string;
+}
+
+export interface ActiveApiClientDto {
+  id: string;
+  name: string;
+  clientId: string;
+  description?: string;
+  isActive: boolean;
+  createdAt: string;
+  createdBy?: string;
+  lastUsedAt?: string;
+  secretRotatedAt?: string;
+  secretRotatedBy?: string;
+  suspendedAt?: string;
+  suspendedBy?: string;
+  callsLast24h: number;
+  lastIpAddress?: string;
+  lastUserAgent?: string;
+}
+
+export interface RotateSecretResultDto {
+  applicationId: string;
+  clientId: string;
+  newClientSecret: string;
+  rotatedAt: string;
+}
+
+export interface ToggleClientResultDto {
+  applicationId: string;
+  clientId: string;
+  isActive: boolean;
+  message: string;
+}
+
+export const SessionManagementAPI = {
+  // ── Sesiones de usuario ──────────────────────────────────────────────────
+  getActiveSessions: (): Promise<ApiResponse<ActiveSessionDto[]>> =>
+    apiFetch<ActiveSessionDto[]>('/api/session-management/sessions', { method: 'GET' }),
+
+  revokeSession: (sessionId: string): Promise<ApiResponse<RevokeSessionResultDto>> =>
+    apiFetch<RevokeSessionResultDto>(`/api/session-management/sessions/${encodeURIComponent(sessionId)}/revoke`, { method: 'POST' }),
+
+  revokeAllUserSessions: (userId: string): Promise<ApiResponse<{ revokedCount: number }>> =>
+    apiFetch<{ revokedCount: number }>(`/api/session-management/sessions/user/${encodeURIComponent(userId)}/revoke-all`, { method: 'POST' }),
+
+  // ── Clientes API ─────────────────────────────────────────────────────────
+  getApiClients: (): Promise<ApiResponse<ActiveApiClientDto[]>> =>
+    apiFetch<ActiveApiClientDto[]>('/api/session-management/api-clients', { method: 'GET' }),
+
+  toggleClient: (applicationId: string): Promise<ApiResponse<ToggleClientResultDto>> =>
+    apiFetch<ToggleClientResultDto>(`/api/session-management/api-clients/${encodeURIComponent(applicationId)}/toggle`, { method: 'POST' }),
+
+  rotateSecret: (applicationId: string): Promise<ApiResponse<RotateSecretResultDto>> =>
+    apiFetch<RotateSecretResultDto>(`/api/session-management/api-clients/${encodeURIComponent(applicationId)}/rotate-secret`, { method: 'POST' }),
 } as const;

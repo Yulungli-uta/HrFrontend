@@ -6,16 +6,20 @@ import { apiFetch } from '../core/fetch';
 import type { ApiResponse } from '../core/fetch';
 import type { PagedRequest, PagedResult } from '../core/pagination';
 import type {
+  RefTypeDto,
   GuardServiceLocationDto,
   GuardServiceLocationTreeDto,
   CreateGuardServiceLocationDto,
   UpdateGuardServiceLocationDto,
   GuardRotationGroupDto,
+  GuardRotationGroupWithSubgroupsDto,
   GuardRotationGroupEmployeeDto,
   CreateGuardRotationGroupDto,
   UpdateGuardRotationGroupDto,
   AssignEmployeeToRotationGroupDto,
   RemoveEmployeeFromRotationGroupDto,
+  GuardGroupRotationPatternDto,
+  AssignPatternToGroupDto,
   LocationSummaryDto,
   LocationGroupDetailDto,
   RotationPatternDto,
@@ -48,6 +52,26 @@ import type {
   ScheduleBoardFilterDto,
   ScheduleBoardResponseDto,
   GuardShiftPlanningDetailDto,
+  GuardLocationRotationPeriodDto,
+  CreateGuardLocationRotationPeriodDto,
+  UpdateGuardLocationRotationPeriodDto,
+  GuardLocationRotationAssignmentDto,
+  CreateGuardLocationRotationAssignmentDto,
+  UpdateGuardLocationRotationAssignmentDto,
+  GuardEmployeeSpecialRuleDto,
+  CreateGuardEmployeeSpecialRuleDto,
+  UpdateGuardEmployeeSpecialRuleDto,
+  GuardVacationPlanDto,
+  CreateGuardVacationPlanDto,
+  UpdateGuardVacationPlanDto,
+  ApproveGuardVacationPlanDto,
+  RejectGuardVacationPlanDto,
+  GuardVacationRequestDto,
+  CreateChangeDatesRequestDto,
+  CreateAccumulateRequestDto,
+  ApproveGuardVacationRequestDto,
+  RejectGuardVacationRequestDto,
+  SubmitToDirectionDto,
 } from '@/types/guards';
 
 const BASE = '/api/v1/rh';
@@ -128,6 +152,29 @@ export const GuardRotationGroupsAPI = {
 
   getByLocationKey: (locationKey: string): Promise<ApiResponse<LocationGroupDetailDto[]>> =>
     apiFetch<LocationGroupDetailDto[]>(`${BASE}/guard-rotation-groups/by-location/${encodeURIComponent(locationKey)}`),
+
+  getPatterns: (groupId: number): Promise<ApiResponse<GuardGroupRotationPatternDto[]>> =>
+    apiFetch<GuardGroupRotationPatternDto[]>(`${BASE}/guard-rotation-groups/${groupId}/patterns`),
+
+  assignPattern: (groupId: number, dto: AssignPatternToGroupDto): Promise<ApiResponse<GuardGroupRotationPatternDto>> =>
+    apiFetch<GuardGroupRotationPatternDto>(`${BASE}/guard-rotation-groups/${groupId}/patterns`, {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    }),
+
+  removePattern: (groupId: number, groupPatternId: number): Promise<ApiResponse<void>> =>
+    apiFetch<void>(`${BASE}/guard-rotation-groups/${groupId}/patterns/${groupPatternId}`, {
+      method: 'DELETE',
+    }),
+
+  getGeneralGroups: (): Promise<ApiResponse<GuardRotationGroupDto[]>> =>
+    apiFetch<GuardRotationGroupDto[]>(`${BASE}/guard-rotation-groups/general`),
+
+  getGeneralGroupsWithSubgroups: (): Promise<ApiResponse<GuardRotationGroupWithSubgroupsDto[]>> =>
+    apiFetch<GuardRotationGroupWithSubgroupsDto[]>(`${BASE}/guard-rotation-groups/general/with-subgroups`),
+
+  getSubgroups: (groupId: number): Promise<ApiResponse<GuardRotationGroupDto[]>> =>
+    apiFetch<GuardRotationGroupDto[]>(`${BASE}/guard-rotation-groups/${groupId}/subgroups`),
 };
 
 // =============================================================================
@@ -263,6 +310,9 @@ export const GuardShiftPlanningAPI = {
 
   getPlanningDetail: (id: number): Promise<ApiResponse<GuardShiftPlanningDetailDto>> =>
     apiFetch<GuardShiftPlanningDetailDto>(`${BASE}/guard-shift-planning/${id}/detail`),
+
+  readinessCheck: (targetDate: string): Promise<ApiResponse<import('@/types/guards').GuardReadinessCheckDto>> =>
+    apiFetch(`${BASE}/guard-shift-planning/readiness-check?targetDate=${targetDate}`),
 };
 
 // =============================================================================
@@ -276,6 +326,12 @@ export const GuardShiftChangesAPI = {
   getPendingPaged: (params: PagedRequest): Promise<ApiResponse<PagedResult<GuardShiftChangeDto>>> => {
     const qs = new URLSearchParams({ page: String(params.page), pageSize: String(params.pageSize) });
     return apiFetch<PagedResult<GuardShiftChangeDto>>(`${BASE}/guard-shift-changes/pending/paged?${qs}`);
+  },
+
+  getAllPaged: (params: PagedRequest & { status?: string }): Promise<ApiResponse<PagedResult<GuardShiftChangeDto>>> => {
+    const qs = new URLSearchParams({ page: String(params.page), pageSize: String(params.pageSize) });
+    if (params.status) qs.set('status', params.status);
+    return apiFetch<PagedResult<GuardShiftChangeDto>>(`${BASE}/guard-shift-changes/all/paged?${qs}`);
   },
 
   getByPlanning: (planningId: number): Promise<ApiResponse<GuardShiftChangeDto[]>> =>
@@ -361,4 +417,189 @@ export const GuardAssignmentValidationsAPI = {
 
   getByEmployee: (employeeId: number, limit = 50): Promise<ApiResponse<GuardAssignmentValidationDto[]>> =>
     apiFetch<GuardAssignmentValidationDto[]>(`${BASE}/guard-assignment-validations/by-employee/${employeeId}?limit=${limit}`),
+};
+
+// =============================================================================
+// Rotación de Ubicaciones
+// =============================================================================
+
+export const GuardLocationRotationAPI = {
+  getPeriods: (): Promise<ApiResponse<GuardLocationRotationPeriodDto[]>> =>
+    apiFetch<GuardLocationRotationPeriodDto[]>(`${BASE}/guard-location-rotation/periods`),
+
+  getPeriodsPaged: (params: PagedRequest): Promise<ApiResponse<PagedResult<GuardLocationRotationPeriodDto>>> => {
+    const qs = new URLSearchParams({ page: String(params.page), pageSize: String(params.pageSize) });
+    return apiFetch<PagedResult<GuardLocationRotationPeriodDto>>(`${BASE}/guard-location-rotation/periods/paged?${qs}`);
+  },
+
+  getPeriodById: (id: number): Promise<ApiResponse<GuardLocationRotationPeriodDto>> =>
+    apiFetch<GuardLocationRotationPeriodDto>(`${BASE}/guard-location-rotation/periods/${id}`),
+
+  createPeriod: (dto: CreateGuardLocationRotationPeriodDto): Promise<ApiResponse<GuardLocationRotationPeriodDto>> =>
+    apiFetch<GuardLocationRotationPeriodDto>(`${BASE}/guard-location-rotation/periods`, {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    }),
+
+  updatePeriod: (id: number, dto: UpdateGuardLocationRotationPeriodDto): Promise<ApiResponse<void>> =>
+    apiFetch<void>(`${BASE}/guard-location-rotation/periods/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(dto),
+    }),
+
+  getAssignmentsByPeriod: (periodId: number): Promise<ApiResponse<GuardLocationRotationAssignmentDto[]>> =>
+    apiFetch<GuardLocationRotationAssignmentDto[]>(`${BASE}/guard-location-rotation/periods/${periodId}/assignments`),
+
+  getAssignmentsByEmployee: (employeeId: number): Promise<ApiResponse<GuardLocationRotationAssignmentDto[]>> =>
+    apiFetch<GuardLocationRotationAssignmentDto[]>(`${BASE}/guard-location-rotation/assignments/by-employee/${employeeId}`),
+
+  createAssignment: (dto: CreateGuardLocationRotationAssignmentDto): Promise<ApiResponse<GuardLocationRotationAssignmentDto>> =>
+    apiFetch<GuardLocationRotationAssignmentDto>(`${BASE}/guard-location-rotation/assignments`, {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    }),
+
+  updateAssignment: (id: number, dto: UpdateGuardLocationRotationAssignmentDto): Promise<ApiResponse<void>> =>
+    apiFetch<void>(`${BASE}/guard-location-rotation/assignments/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(dto),
+    }),
+
+  deleteAssignment: (id: number): Promise<ApiResponse<void>> =>
+    apiFetch<void>(`${BASE}/guard-location-rotation/assignments/${id}`, { method: 'DELETE' }),
+};
+
+// =============================================================================
+// Reglas Especiales de Guardias
+// =============================================================================
+
+export const GuardEmployeeSpecialRulesAPI = {
+  getByEmployee: (employeeId: number): Promise<ApiResponse<GuardEmployeeSpecialRuleDto[]>> =>
+    apiFetch<GuardEmployeeSpecialRuleDto[]>(`${BASE}/guard-employee-special-rules/by-employee/${employeeId}`),
+
+  listPaged: (params: PagedRequest): Promise<ApiResponse<PagedResult<GuardEmployeeSpecialRuleDto>>> => {
+    const qs = new URLSearchParams({ page: String(params.page), pageSize: String(params.pageSize) });
+    if (params.search?.trim()) qs.set('search', params.search.trim());
+    return apiFetch<PagedResult<GuardEmployeeSpecialRuleDto>>(`${BASE}/guard-employee-special-rules/paged?${qs}`);
+  },
+
+  getById: (id: number): Promise<ApiResponse<GuardEmployeeSpecialRuleDto>> =>
+    apiFetch<GuardEmployeeSpecialRuleDto>(`${BASE}/guard-employee-special-rules/${id}`),
+
+  create: (dto: CreateGuardEmployeeSpecialRuleDto): Promise<ApiResponse<GuardEmployeeSpecialRuleDto>> =>
+    apiFetch<GuardEmployeeSpecialRuleDto>(`${BASE}/guard-employee-special-rules`, {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    }),
+
+  update: (id: number, dto: UpdateGuardEmployeeSpecialRuleDto): Promise<ApiResponse<void>> =>
+    apiFetch<void>(`${BASE}/guard-employee-special-rules/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(dto),
+    }),
+};
+
+// =============================================================================
+// Planes de Vacaciones de Guardias
+// =============================================================================
+
+export const GuardVacationPlansAPI = {
+  getByEmployee: (employeeId: number, year?: number): Promise<ApiResponse<GuardVacationPlanDto[]>> => {
+    const qs = year ? `?year=${year}` : '';
+    return apiFetch<GuardVacationPlanDto[]>(`${BASE}/guard-vacation-plans/by-employee/${employeeId}${qs}`);
+  },
+
+  listPaged: (params: PagedRequest, filters?: { year?: number; status?: string; employeeId?: number; startDate?: string; endDate?: string }): Promise<ApiResponse<PagedResult<GuardVacationPlanDto>>> => {
+    const qs = new URLSearchParams({ page: String(params.page), pageSize: String(params.pageSize) });
+    if (filters?.year)       qs.set('year',       String(filters.year));
+    if (filters?.status)     qs.set('status',     filters.status);
+    if (filters?.employeeId) qs.set('employeeId', String(filters.employeeId));
+    if (filters?.startDate)  qs.set('startDate',  filters.startDate);
+    if (filters?.endDate)    qs.set('endDate',     filters.endDate);
+    return apiFetch<PagedResult<GuardVacationPlanDto>>(`${BASE}/guard-vacation-plans/paged?${qs}`);
+  },
+
+  getById: (id: number): Promise<ApiResponse<GuardVacationPlanDto>> =>
+    apiFetch<GuardVacationPlanDto>(`${BASE}/guard-vacation-plans/${id}`),
+
+  create: (dto: CreateGuardVacationPlanDto): Promise<ApiResponse<GuardVacationPlanDto>> =>
+    apiFetch<GuardVacationPlanDto>(`${BASE}/guard-vacation-plans`, {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    }),
+
+  update: (id: number, dto: UpdateGuardVacationPlanDto): Promise<ApiResponse<void>> =>
+    apiFetch<void>(`${BASE}/guard-vacation-plans/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(dto),
+    }),
+
+  submitToDirection: (id: number, dto: SubmitToDirectionDto): Promise<ApiResponse<GuardVacationPlanDto>> =>
+    apiFetch<GuardVacationPlanDto>(`${BASE}/guard-vacation-plans/${id}/submit-to-direction`, {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    }),
+
+  approve: (id: number, dto: ApproveGuardVacationPlanDto): Promise<ApiResponse<GuardVacationPlanDto>> =>
+    apiFetch<GuardVacationPlanDto>(`${BASE}/guard-vacation-plans/${id}/approve`, {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    }),
+
+  reject: (id: number, dto: RejectGuardVacationPlanDto): Promise<ApiResponse<GuardVacationPlanDto>> =>
+    apiFetch<GuardVacationPlanDto>(`${BASE}/guard-vacation-plans/${id}/reject`, {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    }),
+};
+
+// =============================================================================
+// Solicitudes de Vacaciones de Guardias
+// =============================================================================
+
+export const GuardVacationRequestsAPI = {
+  getByEmployee: (employeeId: number): Promise<ApiResponse<GuardVacationRequestDto[]>> =>
+    apiFetch<GuardVacationRequestDto[]>(`${BASE}/guard-vacation-requests/by-employee/${employeeId}`),
+
+  listPaged: (params: PagedRequest, filters?: { status?: string; employeeId?: number; startDate?: string; endDate?: string }): Promise<ApiResponse<PagedResult<GuardVacationRequestDto>>> => {
+    const qs = new URLSearchParams({ page: String(params.page), pageSize: String(params.pageSize) });
+    if (filters?.status)     qs.set('status',     filters.status);
+    if (filters?.employeeId) qs.set('employeeId', String(filters.employeeId));
+    if (filters?.startDate)  qs.set('startDate',  filters.startDate);
+    if (filters?.endDate)    qs.set('endDate',     filters.endDate);
+    return apiFetch<PagedResult<GuardVacationRequestDto>>(`${BASE}/guard-vacation-requests/paged?${qs}`);
+  },
+
+  getById: (id: number): Promise<ApiResponse<GuardVacationRequestDto>> =>
+    apiFetch<GuardVacationRequestDto>(`${BASE}/guard-vacation-requests/${id}`),
+
+  createChangeDates: (dto: CreateChangeDatesRequestDto): Promise<ApiResponse<GuardVacationRequestDto>> =>
+    apiFetch<GuardVacationRequestDto>(`${BASE}/guard-vacation-requests/change-dates`, {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    }),
+
+  createAccumulate: (dto: CreateAccumulateRequestDto): Promise<ApiResponse<GuardVacationRequestDto>> =>
+    apiFetch<GuardVacationRequestDto>(`${BASE}/guard-vacation-requests/accumulate`, {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    }),
+
+  submitToDirection: (id: number, dto: SubmitToDirectionDto): Promise<ApiResponse<GuardVacationRequestDto>> =>
+    apiFetch<GuardVacationRequestDto>(`${BASE}/guard-vacation-requests/${id}/submit-to-direction`, {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    }),
+
+  approve: (id: number, dto: ApproveGuardVacationRequestDto): Promise<ApiResponse<GuardVacationRequestDto>> =>
+    apiFetch<GuardVacationRequestDto>(`${BASE}/guard-vacation-requests/${id}/approve`, {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    }),
+
+  reject: (id: number, dto: RejectGuardVacationRequestDto): Promise<ApiResponse<GuardVacationRequestDto>> =>
+    apiFetch<GuardVacationRequestDto>(`${BASE}/guard-vacation-requests/${id}/reject`, {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    }),
 };

@@ -1,3 +1,4 @@
+//src/pages/Login.tsx
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -155,9 +156,8 @@ export default function LoginPage() {
         <CardContent>
           {/* Estado WebSocket */}
           <div
-            className={`mb-4 text-sm text-center ${
-              isWebSocketConnected ? "text-success" : "text-warning"
-            }`}
+            className={`mb-4 text-sm text-center ${isWebSocketConnected ? "text-success" : "text-warning"
+              }`}
           >
             WebSocket: {isWebSocketConnected ? "✓ Conectado" : "○ Desconectado"}
           </div>

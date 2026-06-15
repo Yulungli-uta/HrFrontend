@@ -1,3 +1,4 @@
+//src/pages/Schedules.tsx
 import { useMemo, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useMediaQuery } from "@/hooks/use-media-query";
@@ -12,6 +13,7 @@ import {
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ActionIconButton } from "@/components/ui/action-icon-button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
@@ -291,7 +293,7 @@ export default function SchedulesPage() {
                 <Settings className="h-5 w-5 text-white" />
               </div>
               <div>
-                <p className="text-sm font-medium text-purple-900">Rotativos</p>
+                <p className="text-sm font-medium text-foreground">Rotativos</p>
                 <p className="text-2xl font-bold text-accent-foreground">{stats.rotating}</p>
               </div>
             </CardContent>
@@ -303,8 +305,8 @@ export default function SchedulesPage() {
                 <Calendar className="h-5 w-5 text-white" />
               </div>
               <div>
-                <p className="text-sm font-medium text-orange-900">Con Almuerzo</p>
-                <p className="text-2xl font-bold text-secondary-foreground">{stats.withLunch}</p>
+                <p className="text-sm font-medium text-warning">Con Almuerzo</p>
+                <p className="text-2xl font-bold text-warning">{stats.withLunch}</p>
               </div>
             </CardContent>
           </Card>
@@ -336,14 +338,17 @@ export default function SchedulesPage() {
               className="pl-10 pr-10"
             />
             {hasSearch && (
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="iconSm"
                 onClick={() => clearSearch()}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 aria-label="Limpiar búsqueda"
+                title="Limpiar búsqueda"
               >
                 <X className="h-4 w-4" />
-              </button>
+              </Button>
             )}
           </div>
         </CardContent>
@@ -433,37 +438,19 @@ export default function SchedulesPage() {
                               )}
                             </TableCell>
                             <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="hidden sm:flex"
+                              <div className="flex justify-end gap-1">
+                                <ActionIconButton
+                                  icon={Edit}
+                                  label="Editar horario"
+                                  tone="primary"
                                   onClick={() => openEdit(s)}
-                                >
-                                  <Edit className="h-4 w-4 mr-1" />
-                                  Editar
-                                </Button>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                      <MoreVertical className="h-4 w-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={() => openEdit(s)}>
-                                      <Edit className="h-4 w-4 mr-2" />
-                                      Editar
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                      onClick={() => handleDelete(s)}
-                                      className="text-destructive"
-                                    >
-                                      <Trash2 className="h-4 w-4 mr-2" />
-                                      Eliminar
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
+                                />
+                                <ActionIconButton
+                                  icon={Trash2}
+                                  label="Eliminar horario"
+                                  tone="destructive"
+                                  onClick={() => handleDelete(s)}
+                                />
                               </div>
                             </TableCell>
                           </TableRow>

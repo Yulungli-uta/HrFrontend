@@ -101,9 +101,12 @@ export function resolveBaseUrl(path: string): string {
     '/api/role-change-history',
     '/api/security-tokens',
     '/api/sessions',
+    '/api/session-management',
     '/api/user-activity',
     '/api/user-employees',
     '/api/local-ad',
+    '/api/provisioning',
+    '/api/licenses',
   ];
 
   if (AUTH_PREFIXES.some((p) => path.startsWith(p))) {

@@ -189,8 +189,7 @@ export default function CreatePlanningDialog({
 
   const ensureTime = (val: string) => (val?.length === 5 ? `${val}:00` : val);
 
-  const dateInputClass =
-    "h-10 [color-scheme:light] dark:[color-scheme:dark] dark:[&::-webkit-calendar-picker-indicator]:invert dark:[&::-webkit-calendar-picker-indicator]:opacity-100";
+  const dateInputClass = "h-10";
 
   const parseHM = (t: string) => {
     const [h, m] = (t || "00:00").slice(0, 5).split(":").map(Number);

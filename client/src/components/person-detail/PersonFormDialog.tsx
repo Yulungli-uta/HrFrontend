@@ -38,6 +38,7 @@ const REF_CATEGORIES = [
   "SPECIAL_NEEDS",
   "GENDER_TYPE",
   "SEX_TYPE",
+  "DISABILITY_TYPE",
 ];
 
 export function PersonFormDialog({ open, onOpenChange, person, onSuccess }: PersonFormDialogProps) {
@@ -84,6 +85,48 @@ export function PersonFormDialog({ open, onOpenChange, person, onSuccess }: Pers
     return {} as Record<string, RefType[]>;
   }, [refTypesResponse]);
 
+  const FIELD_LABELS: Record<string, string> = {
+    FirstName: "Nombres",
+    LastName: "Apellidos",
+    Email: "Email",
+    IdCard: "Identificación",
+    IdentType: "Tipo de Identificación",
+    Phone: "Teléfono",
+    BirthDate: "Fecha de Nacimiento",
+    Sex: "Sexo",
+    Gender: "Género",
+    Address: "Dirección",
+    MaritalStatusTypeId: "Estado Civil",
+    MilitaryCard: "Cartilla Militar",
+    MotherName: "Nombre de la Madre",
+    FatherName: "Nombre del Padre",
+    CountryId: "País",
+    ProvinceId: "Provincia",
+    CantonId: "Cantón",
+    YearsOfResidence: "Años de Residencia",
+    EthnicityTypeId: "Etnia",
+    BloodTypeTypeId: "Tipo de Sangre",
+    SpecialNeedsTypeId: "Necesidades Especiales",
+    DisabilityPercentage: "Porcentaje de Discapacidad",
+    ConadisCard: "Carnet CONADIS",
+  };
+
+  function buildErrorDescription(apiError: { message: string; details?: unknown }): string {
+    const details = apiError.details as any;
+    const fieldErrors: Record<string, string[]> | undefined = details?.errors ?? details?.Errors;
+
+    if (fieldErrors && typeof fieldErrors === "object") {
+      const fieldList = Object.keys(fieldErrors)
+        .map((key) => FIELD_LABELS[key] ?? key)
+        .join(", ");
+      if (fieldList) {
+        return `Campos con errores: ${fieldList}`;
+      }
+    }
+
+    return apiError.message || "Error desconocido al guardar";
+  }
+
   const saveMutation = useMutation({
     mutationFn: async (data: any) => {
       const personId =
@@ -95,14 +138,18 @@ export function PersonFormDialog({ open, onOpenChange, person, onSuccess }: Pers
       if (personId != null) {
         const response = await PersonasAPI.update(personId, data);
         if (response.status === "error") {
-          throw new Error(response.error.message);
+          const err = new Error(buildErrorDescription(response.error)) as any;
+          err.apiError = response.error;
+          throw err;
         }
         return response.data;
       }
 
       const response = await PersonasAPI.create(data);
       if (response.status === "error") {
-        throw new Error(response.error.message);
+        const err = new Error(buildErrorDescription(response.error)) as any;
+        err.apiError = response.error;
+        throw err;
       }
       return response.data;
     },

@@ -1,7 +1,6 @@
-// client/src/components/person-detail/tabs/EmergencyContactsTab.tsx
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ActionIconButton } from "@/components/ui/action-icon-button";
 import { Badge } from "@/components/ui/badge";
 import { Phone, Plus, Edit, Trash2, MapPin, User, IdCard } from "lucide-react";
 import type { EmergencyContact } from "@/types/person";
@@ -10,19 +9,26 @@ interface EmergencyContactsTabProps {
   emergencyContacts: EmergencyContact[];
   onEdit: (type: string, item: any) => void;
   onDelete: (id: number) => void;
+  /** Mapa id → nombre para resolver tipo de relación desde ref_types */
+  refTypesMap?: Record<number, string>;
 }
 
 export function EmergencyContactsTab({
   emergencyContacts,
   onEdit,
   onDelete,
+  refTypesMap = {},
 }: EmergencyContactsTabProps) {
-  const handleDelete = (contact: EmergencyContact | any) => {
-    const id =
-      (contact as any).contactId ??
-      (contact as any).emergencyContactId ??
-      0;
-    onDelete(id);
+  const resolveId = (contact: EmergencyContact | any): number =>
+    contact.contactId ?? contact.emergencyContactId ?? 0;
+
+  const resolveRelationship = (contact: any): string | null => {
+    const typeId = contact.relationshipTypeId ?? contact.relationshipType ?? null;
+    if (!typeId) return contact.relationship ?? null;
+    if (typeof typeId === "number" || !isNaN(Number(typeId))) {
+      return refTypesMap[Number(typeId)] ?? contact.relationship ?? null;
+    }
+    return String(typeId);
   };
 
   return (
@@ -38,7 +44,7 @@ export function EmergencyContactsTab({
 
         <Button
           size="sm"
-          className="bg-uta-blue hover:bg-uta-blue/90"
+          className="bg-primary hover:bg-primary/90"
           onClick={() => onEdit("emergency", null)}
         >
           <Plus className="mr-2 h-4 w-4" />
@@ -56,80 +62,79 @@ export function EmergencyContactsTab({
             </p>
           </div>
         ) : (
-          <ScrollArea className="h-[400px] pr-2">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {emergencyContacts.map((contact, index) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {emergencyContacts.map((contact, index) => {
+              const relationship = resolveRelationship(contact);
+              return (
                 <Card
-                  key={
-                    (contact as any).contactId ??
-                    (contact as any).emergencyContactId ??
-                    index
-                  }
+                  key={resolveId(contact) || index}
                   className="hover:shadow-md transition-shadow"
                 >
                   <CardContent className="p-4 flex flex-col gap-3">
-                    {/* Cabecera: nombre + botones */}
                     <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <div className="flex items-center gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-semibold text-sm sm:text-base">
                             {contact.firstName} {contact.lastName}
                           </span>
+                          {relationship && (
+                            <Badge variant="secondary" className="text-xs">
+                              {relationship}
+                            </Badge>
+                          )}
                         </div>
-                        { (contact as any).identification && (
+                        {(contact as any).identification && (
                           <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                             <IdCard className="h-3 w-3" />
-                            <span>
-                              {(contact as any).identification}
-                            </span>
+                            <span>{(contact as any).identification}</span>
                           </div>
                         )}
                       </div>
 
-                      <div className="flex gap-1">
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          className="h-8 w-8"
+                      <div className="flex gap-1 shrink-0">
+                        <ActionIconButton
+                          icon={Edit}
+                          label="Editar contacto"
+                          tone="primary"
                           onClick={() => onEdit("emergency", contact)}
-                        >
-                          <Edit className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          className="h-8 w-8 text-destructive hover:text-destructive"
-                          onClick={() => handleDelete(contact)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                          touch
+                        />
+                        <ActionIconButton
+                          icon={Trash2}
+                          label="Eliminar contacto"
+                          tone="destructive"
+                          onClick={() => onDelete(resolveId(contact))}
+                          disabled={resolveId(contact) === 0}
+                          touch
+                        />
                       </div>
                     </div>
 
-                    {/* Datos de contacto */}
                     <div className="space-y-1 text-xs sm:text-sm text-muted-foreground">
-                      <div className="flex items-center gap-2">
-                        <Phone className="h-3.5 w-3.5" />
-                        <span>Teléfono: {contact.phone}</span>
-                      </div>
+                      {contact.phone && (
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-3.5 w-3.5 shrink-0" />
+                          <span>Tel: {contact.phone}</span>
+                        </div>
+                      )}
                       {contact.mobile && (
                         <div className="flex items-center gap-2">
-                          <Phone className="h-3.5 w-3.5" />
+                          <Phone className="h-3.5 w-3.5 shrink-0" />
                           <span>Móvil: {contact.mobile}</span>
                         </div>
                       )}
                       {contact.address && (
                         <div className="flex items-center gap-2">
-                          <MapPin className="h-3.5 w-3.5" />
-                          <span>{contact.address}</span>
+                          <MapPin className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">{contact.address}</span>
                         </div>
                       )}
                     </div>
                   </CardContent>
                 </Card>
-              ))}
-            </div>
-          </ScrollArea>
+              );
+            })}
+          </div>
         )}
       </CardContent>
     </Card>

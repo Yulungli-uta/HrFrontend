@@ -136,8 +136,8 @@ export { HolidaysAPI } from './services/holidays';
 export type { HolidayResponseDTO } from './services/holidays';
 
 // Catalogos y geografia maestra
-export { TiposReferenciaAPI, PaisesAPI, ProvinciasAPI, CantonesAPI } from './services/catalogs';
-export type { RefType } from './services/catalogs';
+export { TiposReferenciaAPI, PaisesAPI, ProvinciasAPI, CantonesAPI, AcademicLadderAPI } from './services/catalogs';
+export type { RefType, AcademicLadderDto, AcademicLadderCreateDto, AcademicLadderUpdateDto } from './services/catalogs';
 
 // Sistema y reportes
 export { HealthAPI, SistemaAPI, AuditoriaAPI } from './services/system';
@@ -146,6 +146,16 @@ export { reportService, downloadBlob, ReportError } from './services/reports';
 
 // Autoridades de departamento
 export { DepartmentAuthoritiesAPI } from './services/departmentAuthorities';
+
+// Aprovisionamiento de Empleados (AD Local → Entra → O365)
+export { ProvisioningAPI, LicensesAPI, PROVISIONING_STATUS_ID } from './services/provisioning';
+export type {
+  UserProvisioningDto,
+  CompletePendingResult,
+  PasswordResetResult,
+  SubscribedSkuDto,
+  ProvisioningStatus,
+} from './services/provisioning';
 
 // Guardias Rotativos
 export {
@@ -200,3 +210,10 @@ export type {
   DepartmentAuthorityDenominationDto,
   DepartmentAuthorityPagedRequest,
 } from './services/departmentAuthorities';
+
+// Jobs programados (ejecución manual)
+export { ScheduledJobsAPI } from './services/jobs';
+export type { ContractExpirationResult, StudentEnrollmentSyncResult } from './services/jobs';
+
+// Aprovisionamiento académico (estudiantes)
+export { StudentProvisioningAPI } from './services/academic/studentProvisioning';

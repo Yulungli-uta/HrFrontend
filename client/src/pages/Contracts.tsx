@@ -33,16 +33,26 @@ import { DataPagination } from "@/components/ui/DataPagination";
 import type { ContractDto } from "@/types/contract";
 import { ContractDialog } from "@/components/contracts/ContractDialog";
 import { useContractLookups } from "@/hooks/contracts/useContractLookups";
+import { useAuth } from "@/features/auth";
 
 const CURRENT_YEAR = new Date().getFullYear();
 
 export default function ContractsPage() {
   const [, navigate] = useLocation();
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"create" | "view" | "edit">("create");
   const [selected, setSelected] = useState<ContractDto | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [yearFilter, setYearFilter] = useState<number>(CURRENT_YEAR);
+
+  // Administrador HR (tiene permiso /people): ve todos los contratos.
+  // Empleado regular: ve solo los contratos que él elaboró (filtrado en servidor via JWT).
+  const isAdmin = user?.permissions?.some((p) => p === "/people") ?? false;
+
+  const contractsQueryKey = isAdmin
+    ? ["contracts-rh", statusFilter, String(yearFilter)]
+    : ["my-contracts", statusFilter, String(yearFilter)];
 
   const {
     items: contracts,
@@ -61,14 +71,21 @@ export default function ContractsPage() {
     clearSearch,
     currentParams,
   } = usePaged<ContractDto>({
-    queryKey: ["contracts-rh", statusFilter, yearFilter],
+    queryKey: contractsQueryKey,
     queryFn: (params) =>
-      ContractsRHAPI.listPaged({
-        ...params,
-        sortDirection: "desc",
-        statusTypeId: statusFilter !== "all" ? Number(statusFilter) : undefined,
-        year: yearFilter > 0 ? yearFilter : undefined,
-      }),
+      isAdmin
+        ? ContractsRHAPI.listPaged({
+            ...params,
+            sortDirection: "desc",
+            statusTypeId: statusFilter !== "all" ? Number(statusFilter) : undefined,
+            year: yearFilter > 0 ? yearFilter : undefined,
+          })
+        : ContractsRHAPI.listMyPaged({
+            ...params,
+            sortDirection: "desc",
+            statusTypeId: statusFilter !== "all" ? Number(statusFilter) : undefined,
+            year: yearFilter > 0 ? yearFilter : undefined,
+          }),
     initialPageSize: 20,
   });
 
@@ -134,6 +151,19 @@ export default function ContractsPage() {
     }
     return m;
   }, [lookups.people]);
+
+  const employeesById = useMemo(() => {
+    const m = new Map<number, string>();
+    for (const e of lookups.employees ?? []) {
+      const id = (e as any).employeeID ?? (e as any).employeeId;
+      if (id != null) {
+        const name = (e as any).fullName
+          ?? `${(e as any).firstName ?? ""} ${(e as any).lastName ?? ""}`.trim();
+        m.set(Number(id), name || `Empleado ${id}`);
+      }
+    }
+    return m;
+  }, [lookups.employees]);
 
   const typeById = useMemo(() => {
     const m = new Map<number, string>();
@@ -466,7 +496,7 @@ export default function ContractsPage() {
                       <td className="p-4">
                         <span className="text-sm text-muted-foreground">
                           {c.createdBy != null
-                            ? (peopleById.get(Number(c.createdBy)) ?? `#${c.createdBy}`)
+                            ? (employeesById.get(Number(c.createdBy)) ?? `#${c.createdBy}`)
                             : "—"}
                         </span>
                       </td>
@@ -558,7 +588,7 @@ export default function ContractsPage() {
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <User className="h-4 w-4" />
                       <span className="text-xs">
-                        Elaborado por: {peopleById.get(Number(c.createdBy)) ?? `#${c.createdBy}`}
+                        Elaborado por: {employeesById.get(Number(c.createdBy)) ?? `#${c.createdBy}`}
                       </span>
                     </div>
                   )}

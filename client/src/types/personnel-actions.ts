@@ -46,6 +46,8 @@ export interface PersonnelActionDetail extends PersonnelActionSummary {
     swornDeclaration?: boolean | null;
     institutionalProcess?: number | null;
     managementLevel?: number | null;
+    employeeTypeId?: number | null;
+    employeeTypeName?: string | null;
 
     dthDirectorId?: number | null;
     dthDirectorName?: string | null;
@@ -66,6 +68,10 @@ export interface PersonnelActionDetail extends PersonnelActionSummary {
     createdBy?: number | null;
     updatedAt?: string | null;
     updatedBy?: number | null;
+
+    // Flags del tipo de acción incluidos por el backend al devolver el detalle
+    actionTypeRequiresAdUserDisable?: boolean;
+    actionTypeRequiresAdUserCreation?: boolean;
 }
 
 export interface CreatePersonnelActionRequest {
@@ -94,6 +100,7 @@ export interface CreatePersonnelActionRequest {
 
     contractId?: number | null;
     movementId?: number | null;
+    employeeTypeId?: number | null;
 
     swornDeclaration?: boolean | null;
     institutionalProcess?: number | null;

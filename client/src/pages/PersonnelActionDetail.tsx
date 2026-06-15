@@ -12,18 +12,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Loader2, ArrowLeft, History } from 'lucide-react';
+import { Loader2, ArrowLeft, History, FolderOpen, FileIcon, Eye, Download } from 'lucide-react';
 import { usePersonnelActionDetail } from '@/hooks/personnelActions/usePersonnelActionDetail';
 import { usePersonnelActionLookups } from '@/hooks/personnelActions/usePersonnelActionLookups';
 import { PersonnelActionActions } from '@/components/personnelActions/PersonnelActionActions';
 import { PersonnelActionForm } from '@/components/personnelActions/PersonnelActionForm';
 import { DocumentPreviewPanel } from '@/components/personnelActions/DocumentPreviewPanel';
 import { StatusHistoryTimeline } from '@/components/personnelActions/StatusHistoryTimeline';
-import { DepartmentAuthoritiesAPI, TiposReferenciaAPI, VistaDetallesEmpleadosAPI } from '@/lib/api';
+import { DepartmentAuthoritiesAPI, TiposReferenciaAPI, VistaDetallesEmpleadosAPI, DocumentsAPI } from '@/lib/api';
 import type { DepartmentAuthorityDto } from '@/lib/api/services/departmentAuthorities';
 import type { VwJobWithDegreeAndGroup, VwDepartmentWithType } from '@/lib/api/services/views';
 import type { RefType } from '@/lib/api';
 import type { CreatePersonnelActionRequest, UpdatePersonnelActionRequest, PersonnelActionDetail } from '@/types/personnel-actions';
+import { PERSONNEL_ACTION_DIRECTORY_CODE, PERSONNEL_ACTION_ENTITY_TYPE } from '@/features/constants';
+import { useQuery as useTanstackQuery } from '@tanstack/react-query';
 
 function formatCurrency(value: number): string {
   return value.toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -187,6 +189,8 @@ export default function PersonnelActionDetail() {
     generateDocument,
     markPending,
     finalize,
+    finalizeAsync,
+    finalizePreviousVigente,
     cancelAction,
   } = usePersonnelActionDetail(actionId);
 
@@ -347,6 +351,12 @@ export default function PersonnelActionDetail() {
             onMarkPending={markPending}
             onFinalize={finalize}
             onCancel={cancelAction}
+            signedDocumentStoredFileId={(action as any).signedDocumentStoredFileId ?? null}
+            requiresAdUserDisable={action.actionTypeRequiresAdUserDisable ?? false}
+            requiresAdUserCreation={action.actionTypeRequiresAdUserCreation ?? false}
+            employeeId={action.employeeId}
+            onAutoFinalize={async () => { await finalizeAsync(); }}
+            onFinalizePreviousAction={async () => { await finalizePreviousVigente(action.employeeId); }}
           />
         </CardContent>
       </Card>
@@ -359,6 +369,9 @@ export default function PersonnelActionDetail() {
         onRegenerate={handleGenerateDocument}
         isRegenerating={isGeneratingDocument}
       />
+
+      {/* ── Documentos del trámite ───────────────────────── */}
+      <ActionDocumentsPanel actionId={actionId} />
 
       {/* ── Información del trámite ───────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -394,6 +407,12 @@ export default function PersonnelActionDetail() {
               label="Decl. Juramentada"
               value={action.swornDeclaration != null ? (action.swornDeclaration ? 'Sí' : 'No') : undefined}
             />
+            {action.employeeTypeId && (
+              <InfoRow
+                label="Régimen Laboral"
+                value={action.employeeTypeName ?? String(action.employeeTypeId)}
+              />
+            )}
           </CardContent>
         </Card>
 
@@ -475,5 +494,96 @@ export default function PersonnelActionDetail() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+// ── Panel de documentos adjuntos a la acción de personal ─────────────────────
+function ActionDocumentsPanel({ actionId }: { actionId: number }) {
+  const { data, isLoading } = useTanstackQuery({
+    queryKey: ['personnel-action-docs', actionId],
+    queryFn: () => DocumentsAPI.listByEntity({
+      directoryCode: PERSONNEL_ACTION_DIRECTORY_CODE,
+      entityType: PERSONNEL_ACTION_ENTITY_TYPE,
+      entityId: String(actionId),
+      status: 1,
+    }),
+    enabled: actionId > 0,
+    staleTime: 30_000,
+  });
+
+  const files = data?.status === 'success' ? data.data : [];
+
+  async function openFile(fileGuid: string) {
+    const resp = await DocumentsAPI.download(fileGuid);
+    if (resp.status !== 'success') return;
+    const url = URL.createObjectURL(resp.data);
+    window.open(url, '_blank');
+  }
+
+  async function downloadFile(fileGuid: string, name: string) {
+    const resp = await DocumentsAPI.download(fileGuid);
+    if (resp.status !== 'success') return;
+    const url = URL.createObjectURL(resp.data);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+          <FolderOpen className="h-4 w-4" />
+          Documentos del Trámite
+          {files.length > 0 && (
+            <span className="ml-auto text-xs font-normal bg-muted rounded px-2 py-0.5">{files.length}</span>
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" /> Cargando documentos…
+          </p>
+        ) : files.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Sin documentos adjuntos.</p>
+        ) : (
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {files.map((file, idx) => {
+              const name = file.originalFileName ?? file.storedFileName ?? `Documento ${idx + 1}`;
+              const isPdf = name.toLowerCase().endsWith('.pdf');
+              const isImg = /\.(png|jpg|jpeg|gif|webp)$/i.test(name);
+              return (
+                <div key={file.fileGuid ?? idx} className="flex items-center justify-between gap-2 border rounded-lg px-3 py-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <FileIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <div className="min-w-0">
+                      <p className="text-sm truncate font-medium">{name}</p>
+                      {file.sizeBytes && (
+                        <p className="text-xs text-muted-foreground">{(file.sizeBytes / 1024).toFixed(1)} KB</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {(isPdf || isImg) && (
+                      <Button variant="ghost" size="icon" title="Vista previa" onClick={() => openFile(file.fileGuid)}>
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <Button variant="ghost" size="icon" title="Descargar" onClick={() => downloadFile(file.fileGuid, name)}>
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

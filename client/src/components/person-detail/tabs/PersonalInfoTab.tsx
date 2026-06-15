@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { User, Edit, Mail, Phone, Calendar, MapPin, Heart } from "lucide-react";
+import { User, Edit, Mail, Phone, Calendar, MapPin, Heart, Users } from "lucide-react";
 import { Person } from "@/types/person";
 
 interface RefType {
@@ -17,6 +17,8 @@ interface PersonalInfoTabProps {
   person: Person;
   onEdit: () => void;
   refTypesByCategory?: Record<string, RefType[]>;
+  /** Mapa plano id → nombre para todos los ref_types (fallback robusto) */
+  refTypesMap?: Record<number, string>;
   countryMap?: Record<number, string>;
   provinceMap?: Record<number, string>;
   cantonMap?: Record<number, string>;
@@ -32,22 +34,28 @@ function buildRefMap(refs?: RefType[]) {
 
 function resolveRefName(
   value: string | number | null | undefined,
-  map: Record<number, string>
-) {
-  if (value === null || value === undefined || value === "") return "—";
-
+  categoryMap: Record<number, string>,
+  fallbackMap?: Record<number, string>
+): string | null {
+  if (value === null || value === undefined || value === "" || value === 0) return null;
   const numericValue = Number(value);
-  if (!Number.isNaN(numericValue)) {
-    return map[numericValue] ?? String(value);
+  if (!Number.isNaN(numericValue) && numericValue > 0) {
+    return categoryMap[numericValue] ?? fallbackMap?.[numericValue] ?? null;
   }
+  return typeof value === "string" ? value : null;
+}
 
-  return String(value);
+function isValidId(value: string | number | null | undefined): boolean {
+  if (value === null || value === undefined || value === "") return false;
+  const n = Number(value);
+  return !Number.isNaN(n) && n > 0;
 }
 
 export function PersonalInfoTab({
   person,
   onEdit,
   refTypesByCategory = {},
+  refTypesMap = {},
   countryMap = {},
   provinceMap = {},
   cantonMap = {},
@@ -80,6 +88,8 @@ export function PersonalInfoTab({
     [refTypesByCategory]
   );
 
+  const hasFamilyInfo = Boolean(person.motherName || person.fatherName);
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
       <div className="lg:col-span-1">
@@ -89,7 +99,11 @@ export function PersonalInfoTab({
               <User className="mr-2 h-5 w-5" />
               Información Personal
             </CardTitle>
-            <Button variant="outline" size="sm" onClick={onEdit}>
+            <Button
+              size="sm"
+              className="bg-primary hover:bg-primary/90"
+              onClick={onEdit}
+            >
               <Edit className="h-4 w-4 mr-2" />
               Editar
             </Button>
@@ -164,93 +178,92 @@ export function PersonalInfoTab({
 
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {person.sex !== null && person.sex !== undefined && person.sex !== "" && (
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Sexo</label>
-                  <p className="mt-1 text-foreground">
-                    {resolveRefName(person.sex, sexMap)}
-                  </p>
-                </div>
-              )}
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Sexo</label>
+                <p className="mt-1 text-foreground">
+                  {resolveRefName(person.sex, sexMap, refTypesMap) ?? "—"}
+                </p>
+              </div>
 
-              {person.gender !== null && person.gender !== undefined && person.gender !== "" && (
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Género</label>
-                  <p className="mt-1 text-foreground">
-                    {resolveRefName(person.gender, genderMap)}
-                  </p>
-                </div>
-              )}
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Género</label>
+                <p className="mt-1 text-foreground">
+                  {resolveRefName(person.gender, genderMap, refTypesMap) ?? "—"}
+                </p>
+              </div>
 
-              {person.maritalStatusTypeId && (
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Estado Civil</label>
-                  <p className="mt-1 text-foreground">
-                    {resolveRefName(person.maritalStatusTypeId, maritalStatusMap)}
-                  </p>
-                </div>
-              )}
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Estado Civil</label>
+                <p className="mt-1 text-foreground">
+                  {resolveRefName(person.maritalStatusTypeId, maritalStatusMap, refTypesMap) ?? "—"}
+                </p>
+              </div>
 
-              {person.countryId && (
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">País</label>
-                  <p className="mt-1 text-foreground">
-                    {resolveRefName(person.countryId, countryMap)}
-                  </p>
-                </div>
-              )}
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Etnia</label>
+                <p className="mt-1 text-foreground">
+                  {resolveRefName(person.ethnicityTypeId, ethnicityMap, refTypesMap) ?? "—"}
+                </p>
+              </div>
 
-              {person.provinceId && (
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Provincia</label>
-                  <p className="mt-1 text-foreground">
-                    {resolveRefName(person.provinceId, provinceMap)}
-                  </p>
-                </div>
-              )}
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">País</label>
+                <p className="mt-1 text-foreground">
+                  {(isValidId(person.countryId) && countryMap[Number(person.countryId)]) || "—"}
+                </p>
+              </div>
 
-              {person.cantonId && (
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Cantón</label>
-                  <p className="mt-1 text-foreground">
-                    {resolveRefName(person.cantonId, cantonMap)}
-                  </p>
-                </div>
-              )}
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Provincia</label>
+                <p className="mt-1 text-foreground">
+                  {(isValidId(person.provinceId) && provinceMap[Number(person.provinceId)]) || "—"}
+                </p>
+              </div>
 
-              {person.ethnicityTypeId && (
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Etnia</label>
-                  <p className="mt-1 text-foreground">
-                    {resolveRefName(person.ethnicityTypeId, ethnicityMap)}
-                  </p>
-                </div>
-              )}
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Cantón</label>
+                <p className="mt-1 text-foreground">
+                  {(isValidId(person.cantonId) && cantonMap[Number(person.cantonId)]) || "—"}
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Información Familiar</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Información Familiar
+            </CardTitle>
           </CardHeader>
 
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {person.motherName && (
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Nombre de la Madre</label>
-                  <p className="mt-1 text-foreground">{person.motherName}</p>
-                </div>
-              )}
+            {hasFamilyInfo ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {person.motherName && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Nombre de la Madre</label>
+                    <p className="mt-1 text-foreground">{person.motherName}</p>
+                  </div>
+                )}
 
-              {person.fatherName && (
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Nombre del Padre</label>
-                  <p className="mt-1 text-foreground">{person.fatherName}</p>
-                </div>
-              )}
-            </div>
+                {person.fatherName && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Nombre del Padre</label>
+                    <p className="mt-1 text-foreground">{person.fatherName}</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-6 text-muted-foreground">
+                <Users className="mx-auto h-10 w-10 mb-2 opacity-40" />
+                <p className="text-sm">No hay información familiar registrada</p>
+                <p className="text-xs mt-1">
+                  Edita el perfil para agregar nombres de los padres
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -57,6 +57,9 @@ import {
   ChevronDown,
   ChevronUp,
   Award,
+  Download,
+  File as FileIcon,
+  Loader2,
 } from "lucide-react";
 
 import {
@@ -74,6 +77,8 @@ import {
   ContractRequestAPI,
   VwJobWithDegreeAndGroupAPI,
   VistaDetallesEmpleadosAPI,
+  DocumentsAPI,
+  AcademicLadderAPI,
 } from "@/lib/api";
 import type { VwJobWithDegreeAndGroup } from "@/lib/api";
 import { JobSelect } from "@/components/ui/JobSelect";
@@ -119,6 +124,10 @@ type ContractsCreateDto = {
   contractDescription?: string | null;
   authorityNominatorId?: number | null;
   dthDirectorId?: number | null;
+  /** Auto-poblado desde solicitud al crear. Solo lectura. */
+  laborRegimeID?: number | null;
+  workModalityID?: number | null;
+  contractedHours?: number | null;
 };
 
 type ContractsUpdateDto = ContractsCreateDto & {
@@ -144,6 +153,11 @@ type ContractLike = {
   contractDescription?: string | null;
   authorityNominatorId?: number | null;
   dthDirectorId?: number | null;
+  laborRegimeID?: number | null;
+  laborRegimeName?: string | null;
+  workModalityID?: number | null;
+  workModalityName?: string | null;
+  contractedHours?: number | null;
 };
 
 function getContractId(x?: ContractLike | null): number | undefined {
@@ -168,6 +182,9 @@ function buildEmptyForm(
     contractDescription: null,
     authorityNominatorId: null,
     dthDirectorId: null,
+    laborRegimeID: null,
+    workModalityID: null,
+    contractedHours: null,
     ...initial,
   };
 }
@@ -190,6 +207,14 @@ function buildFormFromSelected(
     contractDescription: selected?.contractDescription ?? null,
     authorityNominatorId: selected?.authorityNominatorId ?? null,
     dthDirectorId: selected?.dthDirectorId ?? null,
+    laborRegimeID: (() => {
+      const v = selected?.laborRegimeID ?? null;
+      if (!v) return null;
+      const legacyMap: Record<number, number> = { 2008: 57, 2009: 59, 2010: 58 };
+      return legacyMap[v] ?? v;
+    })(),
+    workModalityID: selected?.workModalityID ?? null,
+    contractedHours: selected?.contractedHours ?? null,
     ...initial,
   };
 }
@@ -338,6 +363,12 @@ export function ContractDialog(props: {
     setIsPersonFromDetail(false);
     setSelectedPersonLabel(null);
     docManagerRef.current?.clearSelected();
+    // Forzar carga de archivos cuando se abre un contrato existente
+    if (!isCreate && selectedId) {
+      setTimeout(() => {
+        docManagerRef.current?.refresh(selectedId);
+      }, 150);
+    }
   }, [open, isCreate, selectedId, selected, initial]);
 
   // Lookups normales
@@ -370,6 +401,19 @@ export function ContractDialog(props: {
     staleTime: 5 * 60 * 1000,
   });
 
+  const qAcademicLadder = useQuery({
+    queryKey: ['academic-ladder', 'all'],
+    queryFn: () => AcademicLadderAPI.getAll(),
+    enabled: open,
+    staleTime: 10 * 60 * 1000,
+  });
+  const academicLadders: any[] = (() => {
+    const d = qAcademicLadder.data as any;
+    if (d?.status === "success") return Array.isArray(d.data) ? d.data : [];
+    if (d?.success) return Array.isArray(d.data) ? d.data : [];
+    return [];
+  })();
+
   const qEmployees = useQuery({
     queryKey: ["employees-details-all"],
     queryFn: () => VistaDetallesEmpleadosAPI.list(),
@@ -398,6 +442,21 @@ export function ContractDialog(props: {
     enabled: open,
     currentStatusTypeId: form.status,
   });
+
+  const qAttachments = useQuery({
+    queryKey: ["contract-attachments", entityId],
+    queryFn: () =>
+      DocumentsAPI.listByEntity({
+        directoryCode: CONTRACT_DIRECTORY_CODE,
+        entityType: CONTRACT_ENTITY_TYPE,
+        entityId: String(entityId!),
+        status: 1,
+      }),
+    enabled: open && !!entityId,
+    staleTime: 30_000,
+  });
+  const attachments: any[] =
+    qAttachments.data?.status === "success" ? qAttachments.data.data ?? [] : [];
 
   const selectedType = useMemo(
     () =>
@@ -496,6 +555,63 @@ export function ContractDialog(props: {
     staleTime: 30_000,
   });
 
+  // Fetch de la solicitud para obtener WorkModalityID y NumberHour (solo lectura en contratos)
+  const qRequest = useQuery({
+    queryKey: ["contract-request-detail", certRequestId],
+    queryFn: () => ContractRequestAPI.get(certRequestId!),
+    enabled: open && isRootContract && certRequestId != null && certRequestId > 0,
+    staleTime: 60_000,
+  });
+
+  const requestDetail: any = (() => {
+    const d = qRequest.data as any;
+    if (d?.status === "success") return d.data;
+    if (d?.success) return d.data;
+    return null;
+  })();
+
+  // Auto-poblar laborRegimeID, workModalityID y contractedHours desde la solicitud
+  useEffect(() => {
+    if (!isCreate || !requestDetail) return;
+    setForm((f) => ({
+      ...f,
+      workModalityID: f.workModalityID ?? (requestDetail.workModalityId ?? requestDetail.WorkModalityId ?? null),
+      contractedHours: f.contractedHours ?? (requestDetail.numberHour ?? requestDetail.NumberHour ?? null),
+    }));
+  }, [isCreate, requestDetail]);
+
+  // Normalizar valores legacy LABOR_REGIME (2008/2009/2010) → CONTRACT_TYPE (57/58/59)
+  useEffect(() => {
+    const legacyMap: Record<number, number> = { 2008: 57, 2009: 59, 2010: 58 };
+    if (form.laborRegimeID && legacyMap[form.laborRegimeID]) {
+      setForm((f) => ({ ...f, laborRegimeID: legacyMap[f.laborRegimeID!] }));
+    }
+  }, [form.laborRegimeID]);
+
+  // Auto-derivar laborRegimeID desde PersonalContractTypeId del tipo seleccionado
+  // PersonalContractTypeId ya migrado a CONTRACT_TYPE: 57=LOSEP, 58=LOES, 59=CT
+  useEffect(() => {
+    if (!form.contractTypeID || form.laborRegimeID) return;
+    const selectedType = types.find((t: any) => extractNumericId(getEntityId(t) ?? t) === form.contractTypeID) as any;
+    const pct = selectedType?.personalContractTypeId ?? selectedType?.PersonalContractTypeId ?? selectedType?.personalContractTypeID;
+    if (!pct) return;
+    const derived = pct === 57 ? 57 : pct === 58 ? 58 : pct === 59 ? 59 : null;
+    if (derived && form.laborRegimeID !== derived) {
+      setForm((f) => ({ ...f, laborRegimeID: derived }));
+    }
+  }, [form.contractTypeID, types]);
+
+  // Nombres legibles para régimen y modalidad
+  // Nombres exactos de ref_Types CONTRACT_TYPE
+  const LABOR_REGIME_NAMES: Record<number, string> = { 57: "LOSEP", 58: "LOES", 59: "Código Trabajo" };
+  const WORK_MODALITY_NAMES: Record<number, string> = { 143: "Medio Día", 144: "Día Completo", 145: "Por Horas" };
+
+  const laborRegimeName  = form.laborRegimeID  ? (LABOR_REGIME_NAMES[form.laborRegimeID]  ?? `Régimen ${form.laborRegimeID}`)  : null;
+  const workModalityName = form.workModalityID ? (WORK_MODALITY_NAMES[form.workModalityID] ?? `Modalidad ${form.workModalityID}`) : null;
+
+  // ¿El contrato es régimen LOES (58)? → cargo desde AcademicLadder. LOSEP(57)/CT(59) → JobSelect
+  const isLoesContract = form.laborRegimeID === 58;
+
   const pendingCount: number | null = useMemo(() => {
     if (!isRootContract) return null;
     if (qPendingCount.data?.status === "success") {
@@ -551,20 +667,31 @@ export function ContractDialog(props: {
     return s?.typeID ?? null;
   }, [wf.statuses]);
 
+  const generadoStatusId = useMemo(() => {
+    const s = wf.statuses.find((x: any) => x.name === "GENERADO");
+    return s?.typeID ?? null;
+  }, [wf.statuses]);
+
+  const isEditableStatus = useMemo(() => {
+    if (!form.status) return false;
+    return form.status === borradorStatusId || form.status === generadoStatusId;
+  }, [form.status, borradorStatusId, generadoStatusId]);
+
   // En create mode, fijar el estado inicial a BORRADOR cuando carguen los ref_types
   useEffect(() => {
     if (!isCreate || !open || !borradorStatusId) return;
     setForm((f) => ({ ...f, status: borradorStatusId }));
   }, [isCreate, open, borradorStatusId]);
 
-  // Auto-switch a modo edición cuando el contrato está en BORRADOR
+  // Auto-switch a modo edición cuando el contrato está en BORRADOR o GENERADO
   useEffect(() => {
-    if (!open || isCreate || autoSwitchedToEditRef.current || !borradorStatusId) return;
-    if (mode === "view" && form.status === borradorStatusId) {
+    if (!open || isCreate || autoSwitchedToEditRef.current) return;
+    if (!borradorStatusId && !generadoStatusId) return;
+    if (mode === "view" && isEditableStatus) {
       autoSwitchedToEditRef.current = true;
       setMode("edit");
     }
-  }, [open, isCreate, mode, form.status, borradorStatusId, setMode]);
+  }, [open, isCreate, mode, isEditableStatus, borradorStatusId, generadoStatusId, setMode]);
 
   function handleSelectRequestPerson(person: RequestPersonItem) {
     setSelectedRequestPersonId(person.requestPersonId);
@@ -1059,6 +1186,35 @@ export function ContractDialog(props: {
                         </div>
                       </div>
                     </div>
+
+                    {/* Régimen / Modalidad / Horas — siempre visibles en overview */}
+                    <div className="md:col-span-2 border-t pt-4">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                        Régimen y modalidad laboral
+                      </p>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Régimen</p>
+                          <p className="text-sm font-medium mt-0.5">
+                            {laborRegimeName ?? <span className="text-muted-foreground">—</span>}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Modalidad</p>
+                          <p className="text-sm font-medium mt-0.5">
+                            {workModalityName ?? <span className="text-muted-foreground">—</span>}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Horas contratadas</p>
+                          <p className="text-sm font-medium mt-0.5">
+                            {form.contractedHours != null && form.contractedHours > 0
+                              ? `${form.contractedHours}h`
+                              : <span className="text-muted-foreground">—</span>}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
 
@@ -1095,6 +1251,7 @@ export function ContractDialog(props: {
                         onFinalize={docDetail.finalize}
                         onCancel={docDetail.cancelContract}
                         onUploadSuccess={docDetail.invalidate}
+                        signedDocumentStoredFileId={docDetail.docStatus?.storedFileId}
                       />
                     </CardContent>
                   </Card>
@@ -1108,6 +1265,103 @@ export function ContractDialog(props: {
                     onRegenerate={() => docDetail.generateDocument({ forceRegenerate: true })}
                     isRegenerating={docDetail.isGeneratingDocument}
                   />
+                )}
+
+                {/* Archivos adjuntos — visibles siempre que exista el contrato */}
+                {entityId && (
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm text-muted-foreground uppercase tracking-wider flex items-center justify-between">
+                        <span className="flex items-center gap-2">
+                          <FolderOpen className="h-4 w-4" />
+                          Archivos adjuntos
+                        </span>
+                        {attachments.length > 0 && (
+                          <Badge variant="secondary">{attachments.length}</Badge>
+                        )}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {qAttachments.isLoading ? (
+                        <p className="text-sm text-muted-foreground flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" /> Cargando archivos…
+                        </p>
+                      ) : attachments.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">Sin archivos adjuntos.</p>
+                      ) : (
+                        <div className="space-y-2 max-h-56 overflow-y-auto">
+                          {attachments.map((file: any, idx: number) => {
+                            const name = file.originalFileName ?? file.storedFileName ?? `Archivo ${idx + 1}`;
+                            const isPdf = name.toLowerCase().endsWith(".pdf");
+                            const isImg = /\.(png|jpg|jpeg|gif|webp|bmp)$/i.test(name);
+                            const canShowPreview = isPdf || isImg;
+                            return (
+                              <div
+                                key={file.fileGuid ?? idx}
+                                className="flex items-center justify-between gap-2 border rounded-lg px-3 py-2"
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <FileIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                                  <div className="min-w-0">
+                                    <p className="text-sm truncate font-medium">{name}</p>
+                                    {file.sizeBytes && (
+                                      <p className="text-xs text-muted-foreground">
+                                        {(file.sizeBytes / 1024).toFixed(1)} KB
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  {canShowPreview && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      title="Vista previa"
+                                      onClick={async () => {
+                                        const resp = await DocumentsAPI.download(file.fileGuid);
+                                        if (resp.status !== "success") return;
+                                        const url = URL.createObjectURL(resp.data);
+                                        window.open(url, "_blank");
+                                      }}
+                                    >
+                                      <Eye className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    title="Descargar"
+                                    onClick={async () => {
+                                      const resp = await DocumentsAPI.download(file.fileGuid);
+                                      if (resp.status !== "success") return;
+                                      const url = URL.createObjectURL(resp.data);
+                                      const a = document.createElement("a");
+                                      a.href = url;
+                                      a.download = name;
+                                      document.body.appendChild(a);
+                                      a.click();
+                                      a.remove();
+                                      URL.revokeObjectURL(url);
+                                    }}
+                                  >
+                                    <Download className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                      <Button
+                        variant="link"
+                        size="sm"
+                        className="mt-2 px-0 text-xs"
+                        onClick={() => setActiveTab("documents")}
+                      >
+                        {isView ? "Ver gestión de archivos →" : "Ir a gestión de archivos →"}
+                      </Button>
+                    </CardContent>
+                  </Card>
                 )}
 
                 {entityId && !isView && wf.allowedNextStatuses.length > 0 && (
@@ -1174,80 +1428,102 @@ export function ContractDialog(props: {
 
                         <div className="space-y-2">
                           <Label htmlFor="status">Estado</Label>
-                          <Select
-                            value={form.status > 0 ? String(form.status) : undefined}
-                            onValueChange={(v) =>
-                              setForm((f) => ({
-                                ...f,
-                                status: Number(v),
-                              }))
-                            }
-                            disabled={isView || wf.qStatuses.isLoading}
-                          >
-                            <SelectTrigger id="status">
-                              <SelectValue
-                                placeholder={
-                                  wf.qStatuses.isLoading
-                                    ? "Cargando..."
-                                    : "Seleccione estado"
-                                }
-                              />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {wf.statuses.map((s: any, i: number) => (
-                                <SelectItem
-                                  key={`status-edit-${s.typeID ?? i}`}
-                                  value={String(s.typeID)}
-                                >
-                                  {s.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          {!isCreate ? (
+                            <div className="flex items-center gap-2 h-10 px-3 rounded-md border border-input bg-muted text-sm">
+                              {wf.qStatuses.isLoading
+                                ? <span className="text-muted-foreground">Cargando...</span>
+                                : <Badge variant="secondary">{statusPreview}</Badge>
+                              }
+                            </div>
+                          ) : (
+                            <Select
+                              value={form.status > 0 ? String(form.status) : undefined}
+                              onValueChange={(v) =>
+                                setForm((f) => ({
+                                  ...f,
+                                  status: Number(v),
+                                }))
+                              }
+                              disabled={wf.qStatuses.isLoading}
+                            >
+                              <SelectTrigger id="status">
+                                <SelectValue
+                                  placeholder={
+                                    wf.qStatuses.isLoading
+                                      ? "Cargando..."
+                                      : "Seleccione estado"
+                                  }
+                                />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {wf.statuses.map((s: any, i: number) => (
+                                  <SelectItem
+                                    key={`status-edit-${s.typeID ?? i}`}
+                                    value={String(s.typeID)}
+                                  >
+                                    {s.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
                         </div>
 
                         <div className="space-y-2">
                           <Label htmlFor="certification">
                             Certificación Financiera
                           </Label>
-                          <Select
-                            value={
-                              form.certificationID
-                                ? String(form.certificationID)
-                                : ""
-                            }
-                            onValueChange={(v) =>
-                              setForm((f) => ({
-                                ...f,
-                                certificationID: Number(v),
-                              }))
-                            }
-                            disabled={isView || qCerts.isLoading}
-                          >
-                            <SelectTrigger id="certification">
-                              <SelectValue
-                                placeholder={
-                                  qCerts.isLoading
-                                    ? "Cargando..."
-                                    : "Seleccione"
-                                }
-                              />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {certs.map((c: any) => {
-                                const id = extractNumericId(
-                                  getEntityId(c) ?? c
-                                );
-                                if (!id) return null;
+                          {!isCreate ? (
+                            <div className="flex items-center h-10 px-3 rounded-md border border-input bg-muted text-sm">
+                              {form.certificationID ? (
+                                <span className="font-medium">
+                                  {certItems.find(c => c.value === String(form.certificationID))?.label
+                                    ?? `Certificación #${form.certificationID}`}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground">Sin certificación financiera</span>
+                              )}
+                            </div>
+                          ) : (
+                            <Select
+                              value={
+                                form.certificationID
+                                  ? String(form.certificationID)
+                                  : ""
+                              }
+                              onValueChange={(v) =>
+                                setForm((f) => ({
+                                  ...f,
+                                  certificationID: Number(v),
+                                }))
+                              }
+                              disabled={qCerts.isLoading}
+                            >
+                              <SelectTrigger id="certification">
+                                <SelectValue
+                                  placeholder={
+                                    qCerts.isLoading
+                                      ? "Cargando..."
+                                      : "Seleccione"
+                                  }
+                                />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {certs.map((c: any) => {
+                                  const id = extractNumericId(
+                                    getEntityId(c) ?? c
+                                  );
+                                  if (!id) return null;
 
-                                return (
-                                  <SelectItem key={id} value={String(id)}>
-                                    {getEntityLabel(c)}
-                                  </SelectItem>
-                                );
-                              })}
-                            </SelectContent>
-                          </Select>
+                                  return (
+                                    <SelectItem key={id} value={String(id)}>
+                                      {getEntityLabel(c)}
+                                    </SelectItem>
+                                  );
+                                })}
+                              </SelectContent>
+                            </Select>
+                          )}
 
                           {/* Cupo disponible para contratos raíz */}
                           {isRootContract && form.certificationID && certRequestId && (
@@ -1355,14 +1631,97 @@ export function ContractDialog(props: {
                           </div>
                         )}
 
+                        {/* Régimen / Modalidad / Horas */}
+                        <div className="md:col-span-2 rounded-lg border border-border bg-muted/30 p-3 space-y-3">
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                            Régimen y modalidad laboral
+                          </p>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+
+                            {/* Régimen: editable si vacío y no es view */}
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">
+                                Régimen laboral {!isView && !form.laborRegimeID && <span className="text-destructive">*</span>}
+                              </Label>
+                              {(isView || form.laborRegimeID) ? (
+                                <div className="flex items-center gap-1 h-9 px-3 rounded-md border border-input bg-background text-sm">
+                                  {laborRegimeName
+                                    ? <><span className="font-medium flex-1">{laborRegimeName}</span><span className="text-[10px] text-muted-foreground shrink-0">(auto)</span></>
+                                    : <span className="italic text-muted-foreground">No especificado</span>}
+                                </div>
+                              ) : (
+                                <Select
+                                  value={form.laborRegimeID ? String(form.laborRegimeID) : ""}
+                                  onValueChange={(v) => setForm((f) => ({ ...f, laborRegimeID: Number(v) || null, jobID: null }))}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Seleccione régimen..." />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="57">LOSEP</SelectItem>
+                                    <SelectItem value="58">LOES</SelectItem>
+                                    <SelectItem value="59">Código Trabajo</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            </div>
+
+                            {/* Modalidad: siempre solo lectura */}
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Modalidad</Label>
+                              <div className="flex items-center gap-1 h-9 px-3 rounded-md border border-input bg-background text-sm">
+                                {workModalityName
+                                  ? <><span className="font-medium flex-1">{workModalityName}</span><span className="text-[10px] text-muted-foreground shrink-0">(auto)</span></>
+                                  : <span className="italic text-muted-foreground">No especificada</span>}
+                              </div>
+                            </div>
+
+                            {/* Horas: siempre solo lectura */}
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Horas contratadas</Label>
+                              <div className="flex items-center gap-1 h-9 px-3 rounded-md border border-input bg-background text-sm">
+                                {form.contractedHours != null && form.contractedHours > 0
+                                  ? <><span className="font-medium flex-1">{form.contractedHours}h</span><span className="text-[10px] text-muted-foreground shrink-0">(auto)</span></>
+                                  : <span className="italic text-muted-foreground">No especificadas</span>}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Cargo: condicional según régimen */}
                         <div className="space-y-2 md:col-span-2">
-                          <Label htmlFor="job">Cargo (Opcional)</Label>
-                          <JobSelect
-                            value={form.jobID ?? null}
-                            onChange={(id) => setForm((f) => ({ ...f, jobID: id }))}
-                            disabled={isView}
-                            placeholder="Seleccione cargo"
-                          />
+                          <Label htmlFor="job">
+                            {isLoesContract ? "Cargo docente (LOES)" : "Cargo (Opcional)"}
+                          </Label>
+                          {isLoesContract ? (
+                            <Select
+                              value={form.jobID != null ? String(form.jobID) : ""}
+                              onValueChange={(v) => setForm((f) => ({ ...f, jobID: v ? Number(v) : null }))}
+                              disabled={isView}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Seleccione cargo docente..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {academicLadders
+                                  .filter((al) => al.isActive)
+                                  .sort((a: any, b: any) => a.sequence - b.sequence)
+                                  .map((al: any) => (
+                                    <SelectItem key={al.ladderId} value={String(al.ladderId)}>
+                                      {al.name}
+                                      {al.baseRmu ? ` — $${Number(al.baseRmu).toLocaleString("es-EC", { minimumFractionDigits: 2 })}` : ""}
+                                    </SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <JobSelect
+                              value={form.jobID ?? null}
+                              onChange={(id) => setForm((f) => ({ ...f, jobID: id }))}
+                              disabled={isView}
+                              placeholder="Seleccione cargo"
+                            />
+                          )}
                         </div>
 
                         <div className="space-y-2">
@@ -1525,90 +1884,7 @@ export function ContractDialog(props: {
                   </CardHeader>
 
                   <CardContent className="space-y-4">
-                    {/* ── Tipo de Contrato (primero) ── */}
-                    <div className="space-y-2">
-                      <Label htmlFor="wizard-type">Tipo de Contrato *</Label>
-                      <SearchableSelect
-                        value={form.contractTypeID ? String(form.contractTypeID) : null}
-                        items={toSearchItems(types)}
-                        placeholder="Seleccione tipo"
-                        searchPlaceholder="Buscar tipo..."
-                        disabled={qTypes.isLoading}
-                        onChange={(v) => {
-                          const typeId = Number(v) || 0;
-                          const t = types.find(
-                            (t: any) => extractNumericId(getEntityId(t) ?? t) === typeId
-                          ) as any;
-                          const numberingPrefix = (t?.numberingPrefix ?? '') as string;
-                          const year = (t?.numberingYear as number | undefined) ?? new Date().getFullYear();
-                          const nextSeq = ((t?.numberingLastSequence as number | undefined) ?? 0) + 1;
-                          const previewCode = numberingPrefix
-                            ? `${numberingPrefix}-${year}-${String(nextSeq).padStart(3, '0')}`
-                            : `${year}-${String(nextSeq).padStart(3, '0')}`;
-                          const typeName = (t ? getEntityLabel(t) : "").toLowerCase();
-                          const newIsAdendum =
-                            typeName.includes("adendum") || typeName.includes("addendum");
-                          setForm((f) => ({
-                            ...f,
-                            contractTypeID: typeId,
-                            contractCode: typeId > 0 ? previewCode : f.contractCode,
-                            parentID: newIsAdendum ? f.parentID : null,
-                            certificationID: newIsAdendum ? f.certificationID : null,
-                          }));
-                          setShowCertDocs(false);
-                        }}
-                      />
-                    </div>
-
-                    {/* ── Contrato Padre (solo adendum, justo después del tipo) ── */}
-                    {isAdendumType && (
-                      <div className="space-y-2">
-                        <Label htmlFor="wizard-parent">
-                          Contrato Padre *
-                          <span className="text-xs font-normal text-muted-foreground ml-2">
-                            requerido para adendum
-                          </span>
-                        </Label>
-                        <SearchableSelect
-                          value={form.parentID ? String(form.parentID) : null}
-                          items={parentContractItems}
-                          placeholder={
-                            qParentContracts.isLoading
-                              ? "Cargando contratos..."
-                              : "Seleccione contrato padre"
-                          }
-                          searchPlaceholder="Buscar por código..."
-                          disabled={qParentContracts.isLoading}
-                          isLoading={qParentContracts.isLoading}
-                          onChange={(v) => {
-                            const parentId = Number(v) || null;
-                            const raw =
-                              qParentContracts.data?.status === "success"
-                                ? ((qParentContracts.data.data as any)?.items ?? [])
-                                : [];
-                            const parent = (raw as any[]).find(
-                              (c: any) => (c.contractID ?? c.ContractID) === parentId
-                            );
-                            const parentCertId =
-                              parent?.certificationID ?? parent?.CertificationID ?? null;
-                            setForm((f) => ({
-                              ...f,
-                              parentID: parentId,
-                              certificationID:
-                                parentCertId !== null ? parentCertId : f.certificationID,
-                            }));
-                            setShowCertDocs(false);
-                          }}
-                        />
-                        {!form.parentID && (
-                          <p className="text-xs text-destructive">
-                            Seleccione el contrato que este adendum modifica.
-                          </p>
-                        )}
-                      </div>
-                    )}
-
-                    {/* ── Certificación Financiera ── */}
+                    {/* ── 1. CERTIFICACIÓN FINANCIERA (primero) ── */}
                     <div className="border rounded-lg p-4 space-y-3">
                       <h4 className="text-sm font-semibold flex items-center gap-2">
                         <Award className="h-4 w-4 text-muted-foreground" />
@@ -1798,6 +2074,167 @@ export function ContractDialog(props: {
                       />
                     )}
 
+                    {/* ── 2. RÉGIMEN Y MODALIDAD (después de certificación) ── */}
+                    <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        Régimen y modalidad laboral
+                      </p>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+
+                        {/* Régimen: editable si vacío, solo lectura si viene de solicitud */}
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">
+                            Régimen laboral {!form.laborRegimeID && <span className="text-destructive">*</span>}
+                          </Label>
+                          {form.laborRegimeID ? (
+                            <div className="flex items-center gap-1 h-9 px-3 rounded-md border border-input bg-background text-sm">
+                              <span className="font-medium flex-1">{laborRegimeName}</span>
+                              <button
+                                type="button"
+                                className="text-[10px] text-muted-foreground underline shrink-0 hover:text-foreground"
+                                onClick={() => setForm((f) => ({ ...f, laborRegimeID: null, contractTypeID: 0, jobID: null }))}
+                              >
+                                cambiar
+                              </button>
+                            </div>
+                          ) : (
+                            <Select
+                              value=""
+                              onValueChange={(v) => setForm((f) => ({ ...f, laborRegimeID: Number(v) || null, contractTypeID: 0, jobID: null }))}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Seleccione régimen..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="2008">LOSEP</SelectItem>
+                                <SelectItem value="2010">LOES / Académico</SelectItem>
+                                <SelectItem value="2009">Código del Trabajo</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </div>
+
+                        {/* Modalidad: editable si vacía, solo lectura si viene de solicitud */}
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">Modalidad</Label>
+                          {form.workModalityID ? (
+                            <div className="flex items-center gap-1 h-9 px-3 rounded-md border border-input bg-background text-sm">
+                              <span className="font-medium flex-1">{workModalityName}</span>
+                              <button
+                                type="button"
+                                className="text-[10px] text-muted-foreground underline shrink-0 hover:text-foreground"
+                                onClick={() => setForm((f) => ({ ...f, workModalityID: null }))}
+                              >
+                                cambiar
+                              </button>
+                            </div>
+                          ) : (
+                            <Select
+                              value=""
+                              onValueChange={(v) => setForm((f) => ({ ...f, workModalityID: Number(v) || null }))}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Seleccione modalidad..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="143">Medio Día</SelectItem>
+                                <SelectItem value="144">Día Completo</SelectItem>
+                                <SelectItem value="145">Por Horas</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </div>
+
+                        {/* Horas: siempre solo lectura */}
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">Horas contratadas</Label>
+                          <div className="flex items-center gap-1 h-9 px-3 rounded-md border border-input bg-background text-sm">
+                            {form.contractedHours != null && form.contractedHours > 0
+                              ? <><span className="font-medium flex-1">{form.contractedHours}h</span><span className="text-[10px] text-muted-foreground shrink-0">(auto)</span></>
+                              : <span className="italic text-muted-foreground">No especificadas</span>}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* ── 3. TIPO DE CONTRATO (filtrado por régimen, aparece después de elegir régimen) ── */}
+                    {form.laborRegimeID && (
+                      <div className="space-y-2">
+                        <Label htmlFor="wizard-type">Tipo de Contrato *</Label>
+                        <SearchableSelect
+                          value={form.contractTypeID ? String(form.contractTypeID) : null}
+                          items={toSearchItems(
+                            types.filter((t: any) => {
+                              const pct = t.personalContractTypeId ?? t.PersonalContractTypeId ?? t.personalContractTypeID;
+                              // PersonalContractTypeId ya migrado a CONTRACT_TYPE: 57=LOSEP, 58=LOES, 59=CT
+                              if (form.laborRegimeID === 57) return pct === 57;
+                              if (form.laborRegimeID === 58) return pct === 58;
+                              if (form.laborRegimeID === 59) return pct === 59;
+                              return true;
+                            })
+                          )}
+                          placeholder={qTypes.isLoading ? "Cargando..." : "Seleccione tipo de contrato"}
+                          searchPlaceholder="Buscar tipo..."
+                          disabled={qTypes.isLoading}
+                          onChange={(v) => {
+                            const typeId = Number(v) || 0;
+                            const t = types.find(
+                              (t: any) => extractNumericId(getEntityId(t) ?? t) === typeId
+                            ) as any;
+                            const numberingPrefix = (t?.numberingPrefix ?? '') as string;
+                            const year = (t?.numberingYear as number | undefined) ?? new Date().getFullYear();
+                            const nextSeq = ((t?.numberingLastSequence as number | undefined) ?? 0) + 1;
+                            const previewCode = numberingPrefix
+                              ? `${numberingPrefix}-${year}-${String(nextSeq).padStart(3, '0')}`
+                              : `${year}-${String(nextSeq).padStart(3, '0')}`;
+                            const typeName = (t ? getEntityLabel(t) : "").toLowerCase();
+                            const newIsAdendum = typeName.includes("adendum") || typeName.includes("addendum");
+                            setForm((f) => ({
+                              ...f,
+                              contractTypeID: typeId,
+                              contractCode: typeId > 0 ? previewCode : f.contractCode,
+                              parentID: newIsAdendum ? f.parentID : null,
+                              // NO limpiar certificationID al cambiar tipo de contrato
+                            }));
+                            setShowCertDocs(false);
+                          }}
+                        />
+                        {/* Contrato Padre solo para adendum */}
+                        {isAdendumType && (
+                          <div className="space-y-2 mt-2">
+                            <Label htmlFor="wizard-parent">
+                              Contrato Padre *
+                              <span className="text-xs font-normal text-muted-foreground ml-2">requerido para adendum</span>
+                            </Label>
+                            <SearchableSelect
+                              value={form.parentID ? String(form.parentID) : null}
+                              items={parentContractItems}
+                              placeholder={qParentContracts.isLoading ? "Cargando contratos..." : "Seleccione contrato padre"}
+                              searchPlaceholder="Buscar por código..."
+                              disabled={qParentContracts.isLoading}
+                              isLoading={qParentContracts.isLoading}
+                              onChange={(v) => {
+                                const parentId = Number(v) || null;
+                                const raw = qParentContracts.data?.status === "success"
+                                  ? ((qParentContracts.data.data as any)?.items ?? []) : [];
+                                const parent = (raw as any[]).find((c: any) => (c.contractID ?? c.ContractID) === parentId);
+                                const parentCertId = parent?.certificationID ?? parent?.CertificationID ?? null;
+                                setForm((f) => ({
+                                  ...f,
+                                  parentID: parentId,
+                                  certificationID: parentCertId !== null ? parentCertId : f.certificationID,
+                                }));
+                                setShowCertDocs(false);
+                              }}
+                            />
+                            {!form.parentID && (
+                              <p className="text-xs text-destructive">Seleccione el contrato que este adendum modifica.</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {/* ── Persona ── */}
                     <div className="space-y-2">
                       <Label htmlFor="wizard-person">
@@ -1833,12 +2270,36 @@ export function ContractDialog(props: {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="wizard-job">Cargo (Opcional)</Label>
-                        <JobSelect
-                          value={form.jobID ?? null}
-                          onChange={(id) => setForm((f) => ({ ...f, jobID: id }))}
-                          placeholder="Seleccione cargo"
-                        />
+                        <Label htmlFor="wizard-job">
+                          {isLoesContract ? "Cargo docente (LOES)" : "Cargo (Opcional)"}
+                        </Label>
+                        {isLoesContract ? (
+                          <Select
+                            value={form.jobID != null ? String(form.jobID) : ""}
+                            onValueChange={(v) => setForm((f) => ({ ...f, jobID: v ? Number(v) : null }))}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Seleccione cargo docente..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {academicLadders
+                                .filter((al) => al.isActive)
+                                .sort((a: any, b: any) => a.sequence - b.sequence)
+                                .map((al: any) => (
+                                  <SelectItem key={al.ladderId} value={String(al.ladderId)}>
+                                    {al.name}
+                                    {al.baseRmu ? ` — $${Number(al.baseRmu).toLocaleString("es-EC", { minimumFractionDigits: 2 })}` : ""}
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <JobSelect
+                            value={form.jobID ?? null}
+                            onChange={(id) => setForm((f) => ({ ...f, jobID: id }))}
+                            placeholder="Seleccione cargo"
+                          />
+                        )}
                       </div>
                     </div>
 

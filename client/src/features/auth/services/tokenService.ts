@@ -89,6 +89,22 @@ export const tokenService = {
     }
   },
 
+  extractAdGroups(token: string): string[] {
+    try {
+      const payloadB64 = token.split(".")[1];
+      if (!payloadB64) return [];
+      const payload = JSON.parse(atob(payloadB64)) as Record<string, unknown>;
+      const raw = payload["ad_group"];
+      if (!raw) return [];
+      const groups = Array.isArray(raw) ? raw : [raw];
+      logToken("extractAdGroups →", groups);
+      return groups.filter((g): g is string => typeof g === "string");
+    } catch (e) {
+      console.error("[TOKEN] Error extrayendo ad_group del JWT:", e);
+      return [];
+    }
+  },
+
   isTokenExpired(token: string): boolean {
     try {
       const payloadPart = token.split(".")[1];

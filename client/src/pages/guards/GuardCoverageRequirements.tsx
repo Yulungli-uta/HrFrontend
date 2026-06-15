@@ -10,7 +10,11 @@ import { Switch } from '@/components/ui/switch';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { useCoverageRequirementsPaged, useCoverageMutations } from '@/hooks/guards/useGuards';
+import { ScheduleCombobox } from '@/components/ui/ScheduleCombobox';
+import {
+  useCoverageRequirementsPaged, useCoverageMutations,
+  useGuardLocationsAssignable,
+} from '@/hooks/guards/useGuards';
 import { DataPagination } from '@/components/ui/DataPagination';
 import type {
   GuardShiftCoverageRequirementDto,
@@ -28,13 +32,17 @@ export default function GuardCoverageRequirementsPage() {
     totalPages, hasPreviousPage, hasNextPage, goToPage, setPageSize,
   } = useCoverageRequirementsPaged(20);
   const { create, update } = useCoverageMutations();
+  const { data: locResp } = useGuardLocationsAssignable();
+
+  const locations = locResp?.status === 'success' ? locResp.data : [];
 
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<DialogMode>('create');
   const [selected, setSelected] = useState<GuardShiftCoverageRequirementDto | null>(null);
   const [form, setForm] = useState({
-    locationId: '',
-    scheduleId: '',
+    locationId: 0,
+    scheduleId: null as number | null,
+    scheduleLabel: '',
     dayOfWeek: 1,
     requiredGuards: 1,
     validFrom: new Date().toISOString().split('T')[0],
@@ -45,9 +53,10 @@ export default function GuardCoverageRequirementsPage() {
 
   const openCreate = () => {
     setForm({
-      locationId: '', scheduleId: '', dayOfWeek: 1, requiredGuards: 1,
-      validFrom: new Date().toISOString().split('T')[0], validTo: '',
-      isActive: true, notes: '',
+      locationId: 0, scheduleId: null, scheduleLabel: '',
+      dayOfWeek: 1, requiredGuards: 1,
+      validFrom: new Date().toISOString().split('T')[0],
+      validTo: '', isActive: true, notes: '',
     });
     setMode('create');
     setSelected(null);
@@ -56,8 +65,9 @@ export default function GuardCoverageRequirementsPage() {
 
   const openEdit = (r: GuardShiftCoverageRequirementDto) => {
     setForm({
-      locationId: String(r.locationId),
-      scheduleId: String(r.scheduleId),
+      locationId: r.locationId,
+      scheduleId: r.scheduleId,
+      scheduleLabel: r.scheduleDescription,
       dayOfWeek: r.dayOfWeek,
       requiredGuards: r.requiredGuards,
       validFrom: r.validFrom,
@@ -74,8 +84,8 @@ export default function GuardCoverageRequirementsPage() {
     if (!form.locationId || !form.scheduleId) return;
     if (mode === 'create') {
       const dto: CreateCoverageRequirementDto = {
-        locationId: Number(form.locationId),
-        scheduleId: Number(form.scheduleId),
+        locationId: form.locationId,
+        scheduleId: form.scheduleId,
         dayOfWeek: form.dayOfWeek,
         requiredGuards: form.requiredGuards,
         validFrom: form.validFrom,
@@ -105,12 +115,10 @@ export default function GuardCoverageRequirementsPage() {
           <ClipboardList className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-bold">Requisitos de Cobertura</h1>
         </div>
-        <div className="flex gap-2">
-          <Button size="sm" onClick={openCreate}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nuevo requisito
-          </Button>
-        </div>
+        <Button size="sm" onClick={openCreate}>
+          <Plus className="h-4 w-4 mr-2" />
+          Nuevo requisito
+        </Button>
       </div>
 
       <Card>
@@ -144,7 +152,7 @@ export default function GuardCoverageRequirementsPage() {
               <TableBody>
                 {requirements.map(r => (
                   <TableRow key={r.requirementId}>
-                    <TableCell>{r.locationName}</TableCell>
+                    <TableCell className="font-medium text-sm">{r.locationName}</TableCell>
                     <TableCell className="text-sm">{r.scheduleDescription}</TableCell>
                     <TableCell>{DAY_NAMES[r.dayOfWeek] ?? r.dayOfWeekName}</TableCell>
                     <TableCell className="text-center font-bold">{r.requiredGuards}</TableCell>
@@ -188,14 +196,42 @@ export default function GuardCoverageRequirementsPage() {
             {mode === 'create' && (
               <>
                 <div>
-                  <Label>ID Ubicación *</Label>
-                  <Input type="number" value={form.locationId} onChange={e => setForm(f => ({ ...f, locationId: e.target.value }))} />
+                  <Label>Ubicación *</Label>
+                  <select
+                    className="w-full h-9 border rounded-md px-3 text-sm bg-background mt-1"
+                    value={form.locationId || ''}
+                    onChange={e => setForm(f => ({ ...f, locationId: Number(e.target.value) }))}
+                  >
+                    <option value="">Seleccionar ubicación…</option>
+                    {locations.map(l => (
+                      <option key={l.locationId} value={l.locationId}>
+                        {l.locationCode ? `[${l.locationCode}] ` : ''}{l.locationName}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
-                  <Label>ID Horario *</Label>
-                  <Input type="number" value={form.scheduleId} onChange={e => setForm(f => ({ ...f, scheduleId: e.target.value }))} />
+                  <Label>Horario *</Label>
+                  <div className="mt-1">
+                    <ScheduleCombobox
+                      value={form.scheduleId}
+                      label={form.scheduleLabel || null}
+                      placeholder="Buscar horario…"
+                      onSelect={(id, s) => setForm(f => ({
+                        ...f,
+                        scheduleId: id,
+                        scheduleLabel: s ? `${s.description}` : '',
+                      }))}
+                    />
+                  </div>
                 </div>
               </>
+            )}
+            {mode === 'edit' && selected && (
+              <div className="bg-muted rounded p-3 text-sm space-y-0.5">
+                <p><span className="text-muted-foreground">Ubicación:</span> {selected.locationName}</p>
+                <p><span className="text-muted-foreground">Horario:</span> {selected.scheduleDescription}</p>
+              </div>
             )}
             <div>
               <Label>Día de la semana</Label>
@@ -209,7 +245,11 @@ export default function GuardCoverageRequirementsPage() {
             </div>
             <div>
               <Label>Guardias requeridos</Label>
-              <Input type="number" min={1} value={form.requiredGuards} onChange={e => setForm(f => ({ ...f, requiredGuards: Number(e.target.value) }))} />
+              <Input
+                type="number" min={1}
+                value={form.requiredGuards}
+                onChange={e => setForm(f => ({ ...f, requiredGuards: Number(e.target.value) }))}
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -234,7 +274,10 @@ export default function GuardCoverageRequirementsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)} disabled={isSaving}>Cancelar</Button>
-            <Button onClick={handleSubmit} disabled={isSaving}>
+            <Button
+              onClick={handleSubmit}
+              disabled={isSaving || !form.locationId || !form.scheduleId}
+            >
               {isSaving ? 'Guardando…' : 'Guardar'}
             </Button>
           </DialogFooter>

@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2, Cloud, Info } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 
 import { LocalAdManagementAPI } from "@/lib/api";
-import type { LocalAdUserResponse } from "@/lib/api";
+import type { LocalAdUserResponse, EntraSyncResult } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { parseApiError } from "@/lib/error-handling";
 
@@ -28,8 +28,8 @@ const passwordRules = z
 const createSchema = z.object({
   email: z.string().min(1, "El email es requerido").email("Email inválido"),
   displayName: z.string().min(1, "El nombre de pantalla es requerido"),
-  givenName: z.string().optional(),
-  surname: z.string().optional(),
+  givenName: z.string().min(1, "El nombre (givenName) es requerido para AD"),
+  surname: z.string().min(1, "El apellido (surname) es requerido para AD"),
   initialPassword: passwordRules,
   forcePasswordChange: z.boolean(),
   jobTitle: z.string().optional(),
@@ -63,6 +63,7 @@ export default function LocalAdUserForm({ user, onSuccess, onCancel }: Props) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [showPassword, setShowPassword] = useState(false);
+  const [lastSync, setLastSync] = useState<EntraSyncResult | null>(null);
 
   // ── Formulario CREATE ──
   const createForm = useForm<CreateFormData>({
@@ -94,8 +95,8 @@ export default function LocalAdUserForm({ user, onSuccess, onCancel }: Props) {
 
   // ── Mutations ──
   const createMutation = useMutation({
-    mutationFn: (data: CreateFormData) =>
-      LocalAdManagementAPI.createUser({
+    mutationFn: async (data: CreateFormData) => {
+      const res = await LocalAdManagementAPI.createUser({
         email: data.email,
         displayName: data.displayName,
         givenName: data.givenName || null,
@@ -105,10 +106,17 @@ export default function LocalAdUserForm({ user, onSuccess, onCancel }: Props) {
         jobTitle: data.jobTitle || null,
         department: data.department || null,
         accountEnabled: data.accountEnabled,
-      }),
-    onSuccess: () => {
+      });
+      if (res.status === "error") throw new Error(res.error.message);
+      return res.data;
+    },
+    onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["local-ad-users"] });
-      toast({ title: "Usuario creado", description: "El usuario fue creado en el Active Directory local." });
+      if (data?.entraSync) setLastSync(data.entraSync);
+      const syncMsg = data?.entraSync?.status === "Synced"
+        ? " Ya aparece en Microsoft Entra."
+        : " Pendiente de sincronización con Microsoft Entra (puede tardar hasta 30 min para Office 365).";
+      toast({ title: "Usuario creado", description: `El usuario fue creado en Active Directory local.${syncMsg}` });
       onSuccess();
     },
     onError: (err: unknown) => {
@@ -117,14 +125,17 @@ export default function LocalAdUserForm({ user, onSuccess, onCancel }: Props) {
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data: EditFormData) =>
-      LocalAdManagementAPI.updateUser(user!.id, {
+    mutationFn: async (data: EditFormData) => {
+      const res = await LocalAdManagementAPI.updateUser(user!.id, {
         displayName: data.displayName,
         givenName: data.givenName || null,
         surname: data.surname || null,
         jobTitle: data.jobTitle || null,
         department: data.department || null,
-      }),
+      });
+      if (res.status === "error") throw new Error(res.error.message);
+      return res.data;
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["local-ad-users"] });
       toast({ title: "Usuario actualizado", description: "Los datos del usuario fueron actualizados." });
@@ -198,14 +209,16 @@ export default function LocalAdUserForm({ user, onSuccess, onCancel }: Props) {
           {errors.displayName && <p className="text-sm text-destructive">{errors.displayName.message}</p>}
         </div>
 
-        {/* givenName + surname */}
+        {/* givenName + surname — requeridos para AD */}
         <div className="space-y-2">
-          <Label htmlFor="c-givenName">Nombre</Label>
+          <Label htmlFor="c-givenName">Nombre <span className="text-destructive">*</span></Label>
           <Input id="c-givenName" {...register("givenName")} placeholder="Juan" />
+          {errors.givenName && <p className="text-sm text-destructive">{errors.givenName.message}</p>}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="c-surname">Apellido</Label>
+          <Label htmlFor="c-surname">Apellido <span className="text-destructive">*</span></Label>
           <Input id="c-surname" {...register("surname")} placeholder="Pérez" />
+          {errors.surname && <p className="text-sm text-destructive">{errors.surname.message}</p>}
         </div>
 
         {/* Contraseña inicial */}
@@ -263,12 +276,21 @@ export default function LocalAdUserForm({ user, onSuccess, onCancel }: Props) {
         </div>
       </div>
 
+      <div className="flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 p-3">
+        <Cloud className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+        <p className="text-xs text-blue-700 dark:text-blue-300">
+          El usuario se creará en <strong>Active Directory local</strong>. La sincronización
+          con <strong>Microsoft Entra ID / Office 365</strong> ocurre automáticamente vía Entra Connect
+          (puede tardar hasta 30 minutos).
+        </p>
+      </div>
+
       <div className="flex justify-end gap-3 pt-2">
         <Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button>
         <Button type="submit" disabled={createMutation.isPending} className="bg-primary hover:bg-primary/90">
           {createMutation.isPending
             ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creando...</>
-            : "Crear usuario"}
+            : "Crear usuario en AD"}
         </Button>
       </div>
     </form>

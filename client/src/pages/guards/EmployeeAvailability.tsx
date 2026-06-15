@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Ban, RefreshCw, Plus, ArrowLeftRight } from 'lucide-react';
+import { Ban, RefreshCw, Plus, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,7 +9,11 @@ import { Label } from '@/components/ui/label';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { useAvailabilityBlocksPaged, useAvailabilityMutations } from '@/hooks/guards/useGuards';
+import { EmployeeCombobox } from '@/components/ui/EmployeeCombobox';
+import {
+  useAvailabilityBlocksPaged, useAvailabilityMutations,
+  useGuardRefTypes,
+} from '@/hooks/guards/useGuards';
 import { DataPagination } from '@/components/ui/DataPagination';
 import type {
   EmployeeAvailabilityFilterDto,
@@ -17,10 +21,13 @@ import type {
 } from '@/types/guards';
 
 const SOURCE_LABEL: Record<string, string> = {
-  PERMISSION: 'Permiso',
-  VACATION:   'Vacación',
-  MANUAL:     'Manual',
-  MEDICAL:    'Médico',
+  PERMISSION:   'Permiso',
+  VACATION:     'Vacación',
+  MANUAL_BLOCK: 'Bloqueo manual',
+  SUSPENSION:   'Suspensión',
+  TRAINING:     'Capacitación',
+  MEDICAL:      'Médico',
+  MANUAL:       'Manual',
 };
 
 function todayStr() { return new Date().toISOString().split('T')[0]; }
@@ -36,6 +43,7 @@ export default function EmployeeAvailabilityPage() {
     endDate: addDays(today, 30),
     status: 'ACTIVE',
   });
+  const [filterEmployeeId, setFilterEmployeeId] = useState<number | null>(null);
   const updateFilter = (updater: (f: EmployeeAvailabilityFilterDto) => EmployeeAvailabilityFilterDto) => {
     setFilter(updater);
     setPage(1);
@@ -48,22 +56,49 @@ export default function EmployeeAvailabilityPage() {
   const [openSync, setOpenSync] = useState(false);
   const [syncDateRange, setSyncDateRange] = useState({ startDate: today, endDate: addDays(today, 30) });
 
-  const [manualForm, setManualForm] = useState<Partial<CreateManualAvailabilityBlockDto>>({
+  const [manualForm, setManualForm] = useState<{
+    employeeId: number | null;
+    sourceTypeId: number | null;
+    startDateTime: string;
+    endDateTime: string;
+    reason: string;
+  }>({
+    employeeId: null,
+    sourceTypeId: null,
     startDateTime: today + 'T00:00',
     endDateTime: today + 'T23:59',
-    sourceTypeId: 0,
+    reason: '',
   });
 
   const { data: resp, isLoading } = useAvailabilityBlocksPaged(filter, page, pageSize, true);
+  const { data: blockSourceResp } = useGuardRefTypes('GUARD_BLOCK_SOURCE');
   const { createManual, syncPermissions, syncVacations } = useAvailabilityMutations();
 
   const pagedData = resp?.status === 'success' ? resp.data : null;
   const blocks = pagedData?.items ?? [];
+  const blockSourceTypes = blockSourceResp?.status === 'success' ? blockSourceResp.data : [];
+
+  const handleEmployeeFilterChange = (id: number | null) => {
+    setFilterEmployeeId(id);
+    updateFilter(f => ({ ...f, employeeId: id ?? undefined }));
+  };
 
   const handleManualCreate = () => {
-    if (!manualForm.employeeId || !manualForm.startDateTime || !manualForm.endDateTime) return;
-    createManual.mutate(manualForm as CreateManualAvailabilityBlockDto, {
-      onSuccess: (r) => { if (r.status === 'success') setOpenManual(false); },
+    if (!manualForm.employeeId || !manualForm.sourceTypeId || !manualForm.startDateTime || !manualForm.endDateTime) return;
+    const dto: CreateManualAvailabilityBlockDto = {
+      employeeId: manualForm.employeeId,
+      sourceTypeId: manualForm.sourceTypeId,
+      startDateTime: manualForm.startDateTime,
+      endDateTime: manualForm.endDateTime,
+      reason: manualForm.reason || undefined,
+    };
+    createManual.mutate(dto, {
+      onSuccess: (r) => {
+        if (r.status === 'success') {
+          setOpenManual(false);
+          setManualForm({ employeeId: null, sourceTypeId: null, startDateTime: today + 'T00:00', endDateTime: today + 'T23:59', reason: '' });
+        }
+      },
     });
   };
 
@@ -80,6 +115,8 @@ export default function EmployeeAvailabilityPage() {
   };
 
   const isSyncing = syncPermissions.isPending || syncVacations.isPending;
+  const canCreateManual = !!manualForm.employeeId && !!manualForm.sourceTypeId &&
+    !!manualForm.startDateTime && !!manualForm.endDateTime;
 
   return (
     <div className="p-6 space-y-5">
@@ -107,14 +144,15 @@ export default function EmployeeAvailabilityPage() {
       <Card>
         <CardContent className="pt-4">
           <div className="flex flex-wrap gap-4 items-end">
-            <div>
-              <Label className="text-xs">ID Empleado</Label>
-              <Input
-                type="number" className="w-28"
-                value={filter.employeeId ?? ''}
-                onChange={e => updateFilter(f => ({ ...f, employeeId: e.target.value ? Number(e.target.value) : undefined }))}
-                placeholder="Todos"
-              />
+            <div className="w-64">
+              <Label className="text-xs">Empleado</Label>
+              <div className="mt-1">
+                <EmployeeCombobox
+                  value={filterEmployeeId}
+                  onSelect={handleEmployeeFilterChange}
+                  placeholder="Todos los empleados"
+                />
+              </div>
             </div>
             <div>
               <Label className="text-xs">Desde</Label>
@@ -134,7 +172,7 @@ export default function EmployeeAvailabilityPage() {
                 <option value="">Todas</option>
                 <option value="PERMISSION">Permiso</option>
                 <option value="VACATION">Vacación</option>
-                <option value="MANUAL">Manual</option>
+                <option value="MANUAL_BLOCK">Bloqueo manual</option>
                 <option value="MEDICAL">Médico</option>
               </select>
             </div>
@@ -227,18 +265,35 @@ export default function EmployeeAvailabilityPage() {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
-              <Label>ID Empleado *</Label>
-              <Input
-                type="number"
-                value={manualForm.employeeId ?? ''}
-                onChange={e => setManualForm(f => ({ ...f, employeeId: Number(e.target.value) }))}
-              />
+              <Label>Empleado *</Label>
+              <div className="mt-1">
+                <EmployeeCombobox
+                  value={manualForm.employeeId}
+                  onSelect={id => setManualForm(f => ({ ...f, employeeId: id }))}
+                  placeholder="Buscar empleado…"
+                />
+              </div>
+            </div>
+            <div>
+              <Label>Tipo de bloqueo *</Label>
+              <select
+                className="w-full h-9 border rounded-md px-3 text-sm bg-background mt-1"
+                value={manualForm.sourceTypeId ?? ''}
+                onChange={e => setManualForm(f => ({ ...f, sourceTypeId: e.target.value ? Number(e.target.value) : null }))}
+              >
+                <option value="">Seleccionar tipo…</option>
+                {blockSourceTypes.map(t => (
+                  <option key={t.typeId} value={t.typeId}>
+                    {SOURCE_LABEL[t.name] ?? t.name}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <Label>Inicio *</Label>
               <Input
                 type="datetime-local"
-                value={manualForm.startDateTime ?? ''}
+                value={manualForm.startDateTime}
                 onChange={e => setManualForm(f => ({ ...f, startDateTime: e.target.value }))}
               />
             </div>
@@ -246,14 +301,14 @@ export default function EmployeeAvailabilityPage() {
               <Label>Fin *</Label>
               <Input
                 type="datetime-local"
-                value={manualForm.endDateTime ?? ''}
+                value={manualForm.endDateTime}
                 onChange={e => setManualForm(f => ({ ...f, endDateTime: e.target.value }))}
               />
             </div>
             <div>
               <Label>Motivo</Label>
               <Input
-                value={manualForm.reason ?? ''}
+                value={manualForm.reason}
                 onChange={e => setManualForm(f => ({ ...f, reason: e.target.value }))}
                 placeholder="Ej: Suspensión administrativa"
               />
@@ -261,11 +316,10 @@ export default function EmployeeAvailabilityPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpenManual(false)} disabled={createManual.isPending}>Cancelar</Button>
-            <Button
-              onClick={handleManualCreate}
-              disabled={createManual.isPending || !manualForm.employeeId}
-            >
-              {createManual.isPending ? 'Creando…' : 'Crear bloqueo'}
+            <Button onClick={handleManualCreate} disabled={createManual.isPending || !canCreateManual}>
+              {createManual.isPending
+                ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />Creando…</>
+                : 'Crear bloqueo'}
             </Button>
           </DialogFooter>
         </DialogContent>

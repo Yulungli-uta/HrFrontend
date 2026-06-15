@@ -19,7 +19,10 @@ import {
   type ReusableDocumentManagerHandle,
 } from '@/components/ReusableDocumentManager';
 import { useDirectoryParams } from '@/hooks/directoryParams/useDirectoryParams';
+// Servicio: HrBackend — POST /api/v1/rh/personnel-actions/{id}/upload-signed-document
 import { PersonnelActionsAPI } from '@/lib/api/services/contracts';
+// Servicio: RepositoryUta — POST /api/provisioning/employees/by-hr-id/{hrEmployeeId}/disable
+import { ProvisioningAPI } from '@/lib/api/services/provisioning';
 import type { DocumentUploadResultDto } from '@/types/documents';
 import { PERSONNEL_ACTION_DIRECTORY_CODE, PERSONNEL_ACTION_ENTITY_TYPE } from '@/features/constants';
 
@@ -31,40 +34,45 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   actionId: number;
   onSuccess?: () => void;
+  // Comportamiento automático post-carga según el tipo de acción
+  requiresAdUserDisable?: boolean;  // Baja/Renuncia: auto-finaliza + deshabilita cuenta AD
+  requiresAdUserCreation?: boolean; // Ingreso: auto-finaliza + finaliza acción vigente anterior
+  employeeId?: number;              // Necesario para llamar disableByHrEmployeeId
+  onAutoFinalize?: () => Promise<void>;
+  onFinalizePreviousAction?: () => Promise<void>;
 };
 
-export function UploadSignedDocumentDialog({ open, onOpenChange, actionId, onSuccess }: Props) {
+export function UploadSignedDocumentDialog({
+  open,
+  onOpenChange,
+  actionId,
+  onSuccess,
+  requiresAdUserDisable = false,
+  requiresAdUserCreation = false,
+  employeeId,
+  onAutoFinalize,
+  onFinalizePreviousAction,
+}: Props) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const managerRef = useRef<ReusableDocumentManagerHandle>(null);
 
   const [comment, setComment] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const [isPostProcessing, setIsPostProcessing] = useState(false);
 
   const { directory, params } = useDirectoryParams(DIR_CODE);
 
+  // Servicio: HrBackend — POST /api/v1/rh/personnel-actions/{id}/upload-signed-document
   const registerMutation = useMutation({
     mutationFn: (storedFileId: number) =>
       PersonnelActionsAPI.uploadSignedDocument(actionId, {
         storedFileId,
         comment: comment.trim() || undefined,
       }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['personnel-action', actionId] });
-      queryClient.invalidateQueries({ queryKey: ['personnel-actions'] });
-      queryClient.invalidateQueries({ queryKey: ['personnel-action-history', actionId] });
-      toast({ title: 'Documento firmado registrado', description: 'La acción pasó a FIRMADO_CARGADO.' });
-      setComment('');
-      onSuccess?.();
-      onOpenChange(false);
-    },
-    onError: (err: unknown) => {
-      const detail = err instanceof Error ? err.message : 'Error inesperado al registrar el documento.';
-      toast({ variant: 'destructive', title: 'Error al registrar', description: detail });
-    },
   });
 
-  const isBusy = isUploading || registerMutation.isPending;
+  const isBusy = isUploading || registerMutation.isPending || isPostProcessing;
 
   const handleConfirm = async () => {
     if (!managerRef.current) return;
@@ -78,6 +86,7 @@ export function UploadSignedDocumentDialog({ open, onOpenChange, actionId, onSuc
       return;
     }
 
+    // ── 1. Subir el archivo al gestor documental ─────────────────────────────
     setIsUploading(true);
     const result: DocumentUploadResultDto | null = await managerRef.current.uploadAll(actionId);
     setIsUploading(false);
@@ -94,7 +103,73 @@ export function UploadSignedDocumentDialog({ open, onOpenChange, actionId, onSuc
       return;
     }
 
-    registerMutation.mutate(storedFileId);
+    // ── 2. Registrar el documento firmado en la acción de personal ────────────
+    // Servicio: HrBackend — POST /api/v1/rh/personnel-actions/{id}/upload-signed-document
+    try {
+      await registerMutation.mutateAsync(storedFileId);
+    } catch (err: unknown) {
+      const detail = err instanceof Error ? err.message : 'Error inesperado al registrar el documento.';
+      toast({ variant: 'destructive', title: 'Error al registrar', description: detail });
+      return;
+    }
+
+    queryClient.invalidateQueries({ queryKey: ['personnel-action', actionId] });
+    queryClient.invalidateQueries({ queryKey: ['personnel-actions'] });
+    queryClient.invalidateQueries({ queryKey: ['personnel-action-history', actionId] });
+    toast({ title: 'Documento firmado registrado', description: 'La acción pasó a FIRMADO_CARGADO.' });
+
+    // ── 3. Acciones post-carga según el tipo de acción ───────────────────────
+    setIsPostProcessing(true);
+    try {
+      if (requiresAdUserDisable) {
+        // Tipo con requiresAdUserDisable: auto-finaliza la acción y deshabilita la cuenta AD.
+        // Servicio: HrBackend — POST /api/v1/rh/personnel-actions/{id}/finalize
+        if (onAutoFinalize) {
+          try {
+            await onAutoFinalize();
+          } catch {
+            toast({ variant: 'destructive', title: 'Error al finalizar la acción automáticamente.' });
+          }
+        }
+
+        // Servicio: RepositoryUta — POST /api/provisioning/employees/by-hr-id/{hrEmployeeId}/disable
+        // Quita al empleado del grupo activo y mueve su cuenta a OU Inactivos.
+        if (employeeId) {
+          const disableResp = await ProvisioningAPI.disableByHrEmployeeId(employeeId);
+          if (disableResp.status === 'success') {
+            toast({ title: 'Cuenta AD deshabilitada', description: 'Usuario removido del grupo activo y movido a OU Inactivos.' });
+          } else {
+            toast({ variant: 'destructive', title: 'No se pudo deshabilitar la cuenta AD', description: disableResp.error?.message });
+          }
+        }
+      } else if (requiresAdUserCreation) {
+        // Tipo con requiresAdUserCreation: auto-finaliza la acción actual y cierra la vigente anterior.
+        // Servicio: HrBackend — POST /api/v1/rh/personnel-actions/{id}/finalize
+        if (onAutoFinalize) {
+          try {
+            await onAutoFinalize();
+          } catch {
+            toast({ variant: 'destructive', title: 'Error al finalizar la acción automáticamente.' });
+          }
+        }
+
+        // Servicio: HrBackend — GET /api/v1/rh/personnel-actions/by-employee/{employeeId}
+        //           HrBackend — POST /api/v1/rh/personnel-actions/{prevId}/finalize
+        if (onFinalizePreviousAction) {
+          try {
+            await onFinalizePreviousAction();
+          } catch {
+            toast({ variant: 'destructive', title: 'Error al finalizar la acción vigente anterior.' });
+          }
+        }
+      }
+    } finally {
+      setIsPostProcessing(false);
+    }
+
+    setComment('');
+    onSuccess?.();
+    onOpenChange(false);
   };
 
   return (
@@ -107,6 +182,13 @@ export function UploadSignedDocumentDialog({ open, onOpenChange, actionId, onSuc
           </DialogTitle>
           <DialogDescription>
             Sube el documento con las firmas manuales para continuar el trámite.
+            {(requiresAdUserDisable || requiresAdUserCreation) && (
+              <span className="block mt-1 text-amber-500 text-xs font-medium">
+                {requiresAdUserDisable
+                  ? 'Al confirmar, la acción se finalizará automáticamente y se deshabilitará la cuenta AD del empleado.'
+                  : 'Al confirmar, la acción se finalizará automáticamente y se cerrará la acción de personal vigente anterior.'}
+              </span>
+            )}
           </DialogDescription>
         </DialogHeader>
 

@@ -2,7 +2,15 @@
 import { useState, useCallback, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, ChevronsUpDown, Loader2, User2, AlertCircle } from "lucide-react";
+import {
+  Check,
+  ChevronsUpDown,
+  Loader2,
+  User2,
+  AlertCircle,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,8 +38,9 @@ import {
 } from "@/components/ui/command";
 
 import {
-  AuthUsersAPI, //UserEmployeesAPI, 
-  VistaDetallesEmpleadosAPI
+  AuthUsersAPI,
+  LocalCredentialsAPI,
+  VistaDetallesEmpleadosAPI,
 } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -49,9 +58,11 @@ interface FormData {
   displayName: string;
   userType: string;
   isActive: boolean;
+  password: string;
+  confirmPassword: string;
+  mustChangePassword: boolean;
 }
 
-/** Estructura mínima que necesitamos de VistaDetallesEmpleadosAPI */
 interface EmployeeOption {
   email: string;
   displayName: string;
@@ -71,17 +82,9 @@ type CreateUserWithEmployeePayload = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/**
- * Normaliza la respuesta del API de empleados a un array plano de EmployeeOption.
- * El endpoint puede devolver un array directo, un objeto paginado o un ApiResponse.
- */
 function normalizeEmployees(raw: unknown): EmployeeOption[] {
   if (!raw) return [];
-
-  // ApiResponse wrapper
   const data = (raw as any)?.data ?? raw;
-
-  // PagedResult
   const items: any[] = Array.isArray(data)
     ? data
     : Array.isArray(data?.items)
@@ -106,6 +109,13 @@ function normalizeEmployees(raw: unknown): EmployeeOption[] {
     }));
 }
 
+async function sha256hex(text: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
@@ -113,12 +123,12 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // ── Estado del Combobox ──────────────────────────────────────────────────
   const [comboOpen, setComboOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeOption | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
-  // ── Formulario ───────────────────────────────────────────────────────────
   const {
     register,
     handleSubmit,
@@ -132,24 +142,26 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
       displayName: user?.displayName ?? "",
       userType: user?.userType ?? "Local",
       isActive: user?.isActive ?? true,
+      password: "",
+      confirmPassword: "",
+      mustChangePassword: true,
     },
   });
 
   const userType = watch("userType");
+  const passwordValue = watch("password");
   const displayName = watch("displayName");
 
-  // ── Carga de empleados (solo en modo creación) ───────────────────────────
-  const {
-    data: employeesRaw,
-    isLoading: isLoadingEmployees,
-  } = useQuery({
+  const isLocal = userType === "Local";
+
+  // ── Carga de empleados (solo en creación de AzureAD) ───────────────────────
+  const { data: employeesRaw, isLoading: isLoadingEmployees } = useQuery({
     queryKey: ["employee-details-for-user-form"],
     queryFn: () => VistaDetallesEmpleadosAPI.list(),
-    enabled: !isEditing,
-    staleTime: 5 * 60 * 1000, // 5 min — la lista de empleados no cambia frecuentemente
+    enabled: !isEditing && !isLocal,
+    staleTime: 5 * 60 * 1000,
   });
 
-  /** Lista normalizada y filtrada por el texto de búsqueda del Combobox */
   const employeeOptions = useMemo<EmployeeOption[]>(() => {
     const all = normalizeEmployees(employeesRaw);
     if (!searchQuery.trim()) return all;
@@ -162,7 +174,6 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
     );
   }, [employeesRaw, searchQuery]);
 
-  // ── Selección de empleado ────────────────────────────────────────────────
   const handleSelectEmployee = useCallback(
     (emp: EmployeeOption) => {
       setSelectedEmployee(emp);
@@ -173,7 +184,8 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
     [setValue]
   );
 
-  // ── Mutation: crear usuario (Paso 1) ─────────────────────────────────────
+  // ── Mutations ─────────────────────────────────────────────────────────────
+
   const createUserMutation = useMutation({
     mutationFn: (data: CreateUserDto) => AuthUsersAPI.create(data),
     onError: (error: unknown) => {
@@ -182,63 +194,33 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
     },
   });
 
-  // ── Mutation: crear UserEmployee (Paso 2) ────────────────────────────────
-  // const createUserEmployeeMutation = useMutation({
-  //   mutationFn: (payload: { userId: string; employeeEmail: string }) =>
-  //     UserEmployeesAPI.create({
-  //       userId:        payload.userId,
-  //       employeeEmail: payload.employeeEmail,
-  //       isActive:      true,
-  //       syncDate:      new Date().toISOString(),
-  //       notes:         "Creado manualmente desde el panel de administración",
-  //     }),
-  //   onError: (error: unknown) => {
-  //     const msg = (error as any)?.message ?? "Error al vincular empleado";
-  //     // El usuario ya fue creado; notificamos pero no revertimos (idempotente).
-  //     toast({
-  //       title:       "Advertencia: usuario creado pero sin vínculo de empleado",
-  //       description: msg,
-  //       variant:     "destructive",
-  //     });
-  //   },
-  // });
-
-  // ── Mutation: actualizar usuario ─────────────────────────────────────────
   const updateUserMutation = useMutation({
-  mutationFn: ({ id, data }: { id: string; data: UpdateUserDto }) =>
-    AuthUsersAPI.update(id, data),
-  onSuccess: (response) => {
-    if (response.status === "error") {
-      toast({
-        title: "Error al actualizar usuario",
-        description: response.error?.message ?? "Error desconocido",
-        variant: "destructive",
-      });
-      return;
-    }
+    mutationFn: ({ id, data }: { id: string; data: UpdateUserDto }) =>
+      AuthUsersAPI.update(id, data),
+    onSuccess: (response) => {
+      if (response.status === "error") {
+        toast({
+          title: "Error al actualizar usuario",
+          description: response.error?.message ?? "Error desconocido",
+          variant: "destructive",
+        });
+        return;
+      }
+      queryClient.invalidateQueries({ queryKey: ["auth-users"] });
+      toast({ title: "Usuario actualizado exitosamente" });
+      onSuccess?.();
+    },
+    onError: (error: unknown) => {
+      const msg = (error as any)?.message ?? "Error desconocido";
+      toast({ title: "Error al actualizar usuario", description: msg, variant: "destructive" });
+    },
+  });
 
-    queryClient.invalidateQueries({ queryKey: ["auth-users"] });
-    toast({ title: "Usuario actualizado exitosamente" });
-    onSuccess?.();
-  },
-  onError: (error: unknown) => {
-    const msg = (error as any)?.message ?? "Error desconocido";
-    toast({
-      title: "Error al actualizar usuario",
-      description: msg,
-      variant: "destructive",
-    });
-  },
-});
+  const isLoading = createUserMutation.isPending || updateUserMutation.isPending;
 
-  const isLoading =
-    createUserMutation.isPending ||
-    // createUserEmployeeMutation.isPending ||
-    updateUserMutation.isPending;
+  // ── Submit ────────────────────────────────────────────────────────────────
 
-  // ── Submit ───────────────────────────────────────────────────────────────
   const onSubmit = async (data: FormData) => {
-    // ── EDICIÓN ──────────────────────────────────────────────────────────
     if (isEditing && user) {
       updateUserMutation.mutate({
         id: user.id,
@@ -251,60 +233,104 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
       return;
     }
 
-    // ── CREACIÓN (2 pasos) ────────────────────────────────────────────────
-    // Paso 1: Crear usuario en auth.tbl_Users
+    // Paso 1: crear usuario en auth.tbl_Users
     const createResponse = await createUserMutation.mutateAsync({
-  email: data.email,
-  displayName: data.displayName || undefined,
-  userType: data.userType,
-});
+      email: data.email,
+      displayName: data.displayName || undefined,
+      userType: data.userType,
+    });
 
-console.log("Respuesta de creación de usuario:", createResponse);
+    if (createResponse.status === "error") {
+      toast({
+        title: "Error al crear usuario",
+        description: createResponse.error?.message ?? "Error inesperado",
+        variant: "destructive",
+      });
+      return;
+    }
 
-if (createResponse.status === "error") {
-  toast({
-    title: "Error al crear usuario",
-    description: createResponse.error?.message ?? "Error inesperado",
-    variant: "destructive",
-  });
-  return;
-}
+    const payload = createResponse.data as unknown as CreateUserWithEmployeePayload;
+    const createdUser = payload?.data?.user;
 
-const payload = createResponse.data as unknown as CreateUserWithEmployeePayload;
-const createdUser = payload?.data?.user;
+    if (!payload?.success || !createdUser?.id) {
+      toast({
+        title: "Error al crear usuario",
+        description: payload?.message ?? "Respuesta inesperada del servidor",
+        variant: "destructive",
+      });
+      return;
+    }
 
-if (!payload?.success || !createdUser?.id) {
-  toast({
-    title: "Error al crear usuario",
-    description: payload?.message ?? "Respuesta inesperada del servidor",
-    variant: "destructive",
-  });
-  return;
-}
+    // Paso 2: guardar credenciales si es usuario Local
+    if (isLocal && data.password) {
+      try {
+        const hash = await sha256hex(data.password);
+        const credResponse = await LocalCredentialsAPI.create({
+          userId: createdUser.id,
+          passwordHash: hash,
+          mustChangePassword: data.mustChangePassword,
+        });
+        if ((credResponse as any)?.status === "error") {
+          toast({
+            title: "Usuario creado, pero sin credenciales",
+            description:
+              "No se pudieron guardar las credenciales locales. Asígnelas manualmente.",
+            variant: "destructive",
+          });
+        }
+      } catch {
+        toast({
+          title: "Usuario creado, pero sin credenciales",
+          description: "Error al guardar la contraseña. Asígnela manualmente.",
+          variant: "destructive",
+        });
+      }
+    }
 
-    // const newUserId = createResponse.data.id;
-
-    // Paso 2: Registrar UserEmployee si hay un empleado seleccionado
-    // if (selectedEmployee?.email) {
-    //   await createUserEmployeeMutation.mutateAsync({
-    //     userId:        newUserId,
-    //     employeeEmail: selectedEmployee.email,
-    //   });
-    // }
-
-    // Invalidar y notificar éxito
     queryClient.invalidateQueries({ queryKey: ["auth-users"] });
     toast({ title: "Usuario creado exitosamente" });
     reset();
     onSuccess?.();
   };
 
-  // ─── Render ──────────────────────────────────────────────────────────────
+  // ─── Render ───────────────────────────────────────────────────────────────
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
 
-      {/* ── Selector de empleado (solo en creación) ── */}
-      {!isEditing && (
+      {/* 1. Tipo de usuario — SIEMPRE PRIMERO */}
+      <div className="space-y-2">
+        <Label htmlFor="userType">
+          Tipo de Usuario <span className="text-destructive">*</span>
+        </Label>
+        <Select
+          value={userType}
+          onValueChange={(value) => {
+            setValue("userType", value);
+            // limpiar campos al cambiar de tipo
+            setValue("email", "");
+            setValue("displayName", "");
+            setSelectedEmployee(null);
+          }}
+          disabled={isEditing}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Seleccione tipo de usuario" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Local">Local</SelectItem>
+            <SelectItem value="AzureAD">Azure AD</SelectItem>
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">
+          {isLocal
+            ? "Usuario con credenciales locales (email y contraseña)."
+            : "Usuario autenticado mediante Azure Active Directory."}
+        </p>
+      </div>
+
+      {/* 2a. AzureAD → combobox empleado (solo creación) */}
+      {!isEditing && !isLocal && (
         <div className="space-y-2">
           <Label>
             Empleado <span className="text-destructive">*</span>
@@ -377,7 +403,6 @@ if (!payload?.success || !createdUser?.id) {
                           onSelect={() => handleSelectEmployee(emp)}
                           className="flex items-start gap-3 py-2 cursor-pointer"
                         >
-                          {/* Indicador de selección */}
                           <Check
                             className={cn(
                               "mt-0.5 h-4 w-4 shrink-0 text-primary",
@@ -386,7 +411,6 @@ if (!payload?.success || !createdUser?.id) {
                                 : "opacity-0"
                             )}
                           />
-                          {/* Info del empleado */}
                           <div className="flex flex-col min-w-0">
                             <span className="font-medium text-sm text-foreground truncate">
                               {emp.displayName}
@@ -412,7 +436,6 @@ if (!payload?.success || !createdUser?.id) {
             </PopoverContent>
           </Popover>
 
-          {/* Aviso si no se seleccionó empleado */}
           {!selectedEmployee && (
             <p className="flex items-center gap-1 text-xs text-warning">
               <AlertCircle className="h-3.5 w-3.5 shrink-0" />
@@ -422,7 +445,7 @@ if (!payload?.success || !createdUser?.id) {
         </div>
       )}
 
-      {/* ── Email ── */}
+      {/* 2b. Email */}
       <div className="space-y-2">
         <Label htmlFor="email">
           Email <span className="text-destructive">*</span>
@@ -437,28 +460,30 @@ if (!payload?.success || !createdUser?.id) {
               message: "Formato de email inválido",
             },
           })}
-          // En creación: se llena automáticamente desde el empleado seleccionado.
-          // En edición: no se puede modificar.
-          readOnly={!isEditing}
+          readOnly={!isEditing && !isLocal}
           disabled={isEditing}
-          placeholder={isEditing ? undefined : "Se completa al seleccionar empleado"}
-          className={cn(!isEditing && "bg-muted cursor-default")}
+          placeholder={
+            isEditing
+              ? undefined
+              : isLocal
+                ? "usuario@dominio.com"
+                : "Se completa al seleccionar empleado"
+          }
+          className={cn(!isEditing && !isLocal && "bg-muted cursor-default")}
         />
         {errors.email && (
           <p className="text-sm text-destructive">{errors.email.message}</p>
         )}
         {isEditing && (
-          <p className="text-xs text-muted-foreground">
-            El email no puede ser modificado.
-          </p>
+          <p className="text-xs text-muted-foreground">El email no puede ser modificado.</p>
         )}
       </div>
 
-      {/* ── Nombre para mostrar ── */}
+      {/* 3. Nombre para mostrar */}
       <div className="space-y-2">
         <Label htmlFor="displayName">
           Nombre para mostrar
-          {!isEditing && (
+          {!isEditing && !isLocal && (
             <span className="ml-2 text-xs font-normal text-muted-foreground">
               (autocompletado desde el empleado)
             </span>
@@ -467,17 +492,15 @@ if (!payload?.success || !createdUser?.id) {
         <Input
           id="displayName"
           {...register("displayName")}
-          // En creación: solo lectura, proviene del empleado.
-          // En edición: editable.
-          readOnly={!isEditing}
+          readOnly={!isEditing && !isLocal}
           placeholder={
-            isEditing
+            isEditing || isLocal
               ? "Juan Pérez"
               : "Se completa al seleccionar empleado"
           }
-          className={cn(!isEditing && "bg-muted cursor-default")}
+          className={cn(!isEditing && !isLocal && "bg-muted cursor-default")}
         />
-        {!isEditing && displayName && (
+        {!isEditing && !isLocal && displayName && (
           <p className="text-xs text-success flex items-center gap-1">
             <Check className="h-3.5 w-3.5" />
             Nombre obtenido del empleado seleccionado.
@@ -485,31 +508,95 @@ if (!payload?.success || !createdUser?.id) {
         )}
       </div>
 
-      {/* ── Tipo de usuario ── */}
-      <div className="space-y-2">
-        <Label htmlFor="userType">
-          Tipo de Usuario <span className="text-destructive">*</span>
-        </Label>
-        <Select
-          value={userType}
-          onValueChange={(value) => setValue("userType", value)}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Seleccione tipo de usuario" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="Local">Local</SelectItem>
-            <SelectItem value="AzureAD">Azure AD</SelectItem>
-          </SelectContent>
-        </Select>
-        <p className="text-xs text-muted-foreground">
-          {userType === "Local"
-            ? "Usuario con credenciales locales (email y contraseña)."
-            : "Usuario autenticado mediante Azure Active Directory."}
-        </p>
-      </div>
+      {/* 4. Contraseña — solo Local + creación */}
+      {!isEditing && isLocal && (
+        <>
+          <div className="space-y-2">
+            <Label htmlFor="password">
+              Contraseña <span className="text-destructive">*</span>
+            </Label>
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                {...register("password", {
+                  required: "La contraseña es requerida",
+                  minLength: { value: 8, message: "Mínimo 8 caracteres" },
+                  validate: {
+                    uppercase: (v) =>
+                      /[A-Z]/.test(v) || "Debe incluir al menos una mayúscula",
+                    number: (v) =>
+                      /[0-9]/.test(v) || "Debe incluir al menos un número",
+                  },
+                })}
+                placeholder="Mín. 8 caracteres, mayúscula y número"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+            {errors.password && (
+              <p className="text-sm text-destructive">{errors.password.message}</p>
+            )}
+          </div>
 
-      {/* ── Estado activo (solo en edición) ── */}
+          <div className="space-y-2">
+            <Label htmlFor="confirmPassword">
+              Confirmar contraseña <span className="text-destructive">*</span>
+            </Label>
+            <div className="relative">
+              <Input
+                id="confirmPassword"
+                type={showConfirm ? "text" : "password"}
+                {...register("confirmPassword", {
+                  required: "Confirme la contraseña",
+                  validate: (v) =>
+                    v === passwordValue || "Las contraseñas no coinciden",
+                })}
+                placeholder="Repita la contraseña"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirm((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showConfirm ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+            {errors.confirmPassword && (
+              <p className="text-sm text-destructive">
+                {errors.confirmPassword.message}
+              </p>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/40 px-4 py-3">
+            <input
+              type="checkbox"
+              id="mustChangePassword"
+              {...register("mustChangePassword")}
+              className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
+            />
+            <Label htmlFor="mustChangePassword" className="cursor-pointer select-none text-sm">
+              Forzar cambio de contraseña en el primer ingreso
+            </Label>
+          </div>
+        </>
+      )}
+
+      {/* 5. Estado activo — solo edición */}
       {isEditing && (
         <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/40 px-4 py-3">
           <input
@@ -524,39 +611,7 @@ if (!payload?.success || !createdUser?.id) {
         </div>
       )}
 
-      {/* ── Resumen del flujo (solo en creación) ── */}
-      {!isEditing //&& (
-        // <div className="rounded-lg border border-primary/30 bg-primary/10 p-4 space-y-2">
-        //   <p className="text-sm font-medium text-primary">Flujo de creación (2 pasos)</p>
-        //   <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
-        //     <li
-        //       className={cn(
-        //         "transition-colors",
-        //         selectedEmployee ? "text-success font-medium" : ""
-        //       )}
-        //     >
-        //       Crear usuario en <code className="font-mono">auth.tbl_Users</code>
-        //     </li>
-        //     <li
-        //       className={cn(
-        //         "transition-colors",
-        //         selectedEmployee ? "text-success font-medium" : "text-muted-foreground/60"
-        //       )}
-        //     >
-        //       Registrar vínculo en{" "}
-        //       <code className="font-mono">auth.tbl_UserEmployees</code>
-        //       {selectedEmployee && (
-        //         <span className="ml-1">
-        //           → <span className="text-foreground">{selectedEmployee.email}</span>
-        //         </span>
-        //       )}
-        //     </li>
-        //   </ol>
-        // </div>
-        //)
-      }
-
-      {/* ── Botones de acción ── */}
+      {/* Botones */}
       <div className="flex justify-end gap-3 pt-2">
         <Button
           type="button"
@@ -574,11 +629,7 @@ if (!payload?.success || !createdUser?.id) {
           {isLoading ? (
             <span className="flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" />
-              {createUserMutation.isPending
-                ? "Creando usuario..."
-                // : createUserEmployeeMutation.isPending
-                //   ? "Vinculando empleado..."
-                : "Guardando..."}
+              {createUserMutation.isPending ? "Creando usuario..." : "Guardando..."}
             </span>
           ) : isEditing ? (
             "Actualizar Usuario"

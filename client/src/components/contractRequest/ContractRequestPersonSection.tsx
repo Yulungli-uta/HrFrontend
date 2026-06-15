@@ -1,7 +1,7 @@
 // src/components/contractRequest/ContractRequestPersonSection.tsx
 import { useState, useMemo, useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Trash2, UserCheck, Check, ChevronsUpDown, Loader2 } from "lucide-react";
+import { Plus, Trash2, UserCheck, Check, ChevronsUpDown, Loader2, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,9 +23,10 @@ import {
 import { cn } from "@/lib/utils";
 
 import { TiposReferenciaAPI, ContractRequestAPI, type ApiResponse } from "@/lib/api";
-import type { CreateContractRequestPersonDto, ContractRequestPersonDto } from "@/types/contractRequestPerson";
+import type { CreateContractRequestPersonDto, ContractRequestPersonDto, BulkValidatedRow } from "@/types/contractRequestPerson";
 import { CargosEspecializadosAPI } from "@/lib/api/services/contracts";
 import { PersonSearchCombobox } from "@/components/personnelActions/PersonSearchCombobox";
+import { BulkPersonUploadDialog } from "@/components/contractRequest/BulkPersonUploadDialog";
 
 const JOB_TYPE_CATEGORY = "JOB_TYPE";
 
@@ -73,6 +74,7 @@ export const ContractRequestPersonSection = forwardRef<ContractRequestPersonSect
     ref
   ) {
     const [dialogOpen, setDialogOpen] = useState(false);
+    const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
     const [localRows, setLocalRows] = useState<PersonRow[]>([]);
     const [jobSearch, setJobSearch] = useState("");
     const [debouncedJobSearch, setDebouncedJobSearch] = useState("");
@@ -204,6 +206,30 @@ export const ContractRequestPersonSection = forwardRef<ContractRequestPersonSect
       setLocalRows((prev) => prev.filter((r) => r._tempId !== tempId));
     };
 
+    const handleBulkConfirm = (bulkRows: BulkValidatedRow[]) => {
+      const tipoMap = new Map(
+        jobTypes.map((t: any) => [
+          (t.name ?? "").toUpperCase(),
+          Number(t.id ?? t.typeId ?? t.refTypeId),
+        ])
+      );
+      const newRows: PersonRow[] = bulkRows.map((r) => ({
+        _tempId: `bulk-${Date.now()}-${r._rowIndex}`,
+        _jobLabel: `Cargo #${r.jobId}`,
+        _personLabel: r.personFullName ?? undefined,
+        requestPersonType: tipoMap.get(r.tipo.toUpperCase()) ?? 0,
+        jobId: r.jobId,
+        startDate: r.startDate ?? null,
+        endDate: r.endDate ?? null,
+        weeklyClassHours: r.weeklyClassHours ?? null,
+        hourValue: r.hourValue ?? null,
+        observation: r.observation ?? null,
+        createdBy,
+        personId: r.personId ?? null,
+      }));
+      setLocalRows((prev) => [...prev, ...newRows]);
+    };
+
     const getTypeName = (typeId: number) => {
       const t = jobTypes.find((x: any) => Number(x.id ?? x.typeId ?? x.refTypeId) === typeId);
       return t?.name ?? `#${typeId}`;
@@ -226,10 +252,16 @@ export const ContractRequestPersonSection = forwardRef<ContractRequestPersonSect
               Personas sugeridas
             </CardTitle>
             {!readOnly && (
-              <Button variant="outline" size="sm" onClick={() => setDialogOpen(true)}>
-                <Plus className="h-3 w-3 mr-1" />
-                Agregar persona
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setBulkDialogOpen(true)}>
+                  <Upload className="h-3 w-3 mr-1" />
+                  Carga masiva
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setDialogOpen(true)}>
+                  <Plus className="h-3 w-3 mr-1" />
+                  Agregar persona
+                </Button>
+              </div>
             )}
           </div>
           <p className="text-xs text-muted-foreground">
@@ -365,6 +397,13 @@ export const ContractRequestPersonSection = forwardRef<ContractRequestPersonSect
             )
           )}
         </CardContent>
+
+        {/* Diálogo de carga masiva */}
+        <BulkPersonUploadDialog
+          open={bulkDialogOpen}
+          onOpenChange={setBulkDialogOpen}
+          onConfirm={handleBulkConfirm}
+        />
 
         {/* Diálogo para agregar persona (solo modo local/crear) */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

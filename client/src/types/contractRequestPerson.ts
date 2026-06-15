@@ -91,3 +91,46 @@ export interface AvailablePersonForContractDto {
   identification: string;
   email?: string | null;
 }
+
+// ─── Carga masiva desde Excel ──────────────────────────────────────────────
+
+/** Fila parseada desde el Excel de carga masiva. */
+export interface BulkUploadRow {
+  identification: string;
+  tipo: string;
+  jobId: number;
+  startDate?: string | null;
+  endDate?: string | null;
+  weeklyClassHours?: number | null;
+  hourValue?: number | null;
+  observation?: string | null;
+}
+
+/** Fila con resultado de la validación contra backend. */
+export interface BulkValidatedRow extends BulkUploadRow {
+  _rowIndex: number;
+  status: 'valid' | 'not_found' | 'parse_error';
+  personId?: number | null;
+  personFullName?: string | null;
+  errorMessage?: string | null;
+}
+
+/** Respuesta del endpoint POST /people/verify-bulk. */
+export interface BulkVerifyResultItem {
+  identification: string;
+  exists: boolean;
+  person?: {
+    personId: number;
+    firstName: string;
+    lastName: string;
+    idCard: string;
+    email?: string | null;
+  } | null;
+}
+
+export interface BulkVerifyResponse {
+  results: BulkVerifyResultItem[];
+  totalRequested: number;
+  found: number;
+  notFound: number;
+}

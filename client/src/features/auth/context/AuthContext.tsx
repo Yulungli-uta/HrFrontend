@@ -32,7 +32,7 @@ import {
 } from "../constants/sessionConstants";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { VistaDetallesEmpleadosAPI } from "@/lib/api";
+import { VistaDetallesEmpleadosAPI, EmpleadosAPI } from "@/lib/api";
 import {
   useNotificationWebSocket,
   WebSocketMessage,
@@ -69,6 +69,7 @@ export interface EmployeeDetails {
   hireDate: string;
   fullName: string;
   hasActiveSalary: boolean;
+  personId?: number;
 }
 
 export interface AuthContextType {
@@ -104,7 +105,8 @@ const equalEmployeeDetails = (
     a.department === b.department &&
     a.scheduleID === b.scheduleID &&
     a.faculty === b.faculty &&
-    a.hasActiveSalary === b.hasActiveSalary
+    a.hasActiveSalary === b.hasActiveSalary &&
+    a.personId === b.personId
   );
 };
 
@@ -159,7 +161,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
         const response = await VistaDetallesEmpleadosAPI.byEmail(email);
         if (response.status === "success" && response.data) {
-          persistEmployeeDetails(response.data);
+          const empDetails = { ...response.data };
+          try {
+            const empResponse = await EmpleadosAPI.get(empDetails.employeeID);
+            if (empResponse.status === "success" && empResponse.data) {
+              const rawId = empResponse.data.personID ?? empResponse.data.personId;
+              empDetails.personId = rawId != null ? Number(rawId) : undefined;
+            }
+          } catch {
+            // personId queda undefined — no bloquea el flujo principal
+          }
+          persistEmployeeDetails(empDetails);
           logAuth("FETCH EMPLOYEE DETAILS OK", { email });
         } else {
           console.error(
@@ -258,6 +270,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setEmployeeDetails(null);
     tokenService.clearTokens();
 
+    // Limpiar estado de deduplicación para que el próximo login Azure funcione
+    processedLoginEventsRef.current.clear();
+    isProcessingLoginRef.current = false;
+
     try {
       CacheService.clearAll();
     } catch (error) {
@@ -336,10 +352,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             })();
             if (savedDetailsStr) {
               const parsed = JSON.parse(savedDetailsStr) as EmployeeDetails;
-              setEmployeeDetails((prev) =>
-                equalEmployeeDetails(prev, parsed) ? prev : parsed
-              );
-              logAuth("REFRESH AUTH / SESSION + CACHED DETAILS");
+              if (parsed.personId != null) {
+                setEmployeeDetails((prev) =>
+                  equalEmployeeDetails(prev, parsed) ? prev : parsed
+                );
+                logAuth("REFRESH AUTH / SESSION + CACHED DETAILS");
+              } else {
+                await fetchEmployeeDetails(userSession.email);
+                logAuth("REFRESH AUTH / SESSION + API DETAILS (personId missing)");
+              }
             } else {
               await fetchEmployeeDetails(userSession.email);
               logAuth("REFRESH AUTH / SESSION + API DETAILS");
@@ -357,6 +378,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [logout, doLoginState, fetchEmployeeDetails]);
 
+  // ─── WebSocket: ForceLogout → expulsión de sesión por administrador ─────────
+
+  useEffect(() => {
+    if (!lastMessage || lastMessage.eventType !== "ForceLogout") return;
+    logAuth("FORCE LOGOUT VIA WS — sesión revocada por administrador", { msg: lastMessage });
+
+    toast({
+      title: "Sesión cerrada por administrador",
+      description: "Su sesión ha sido revocada. Por favor inicie sesión nuevamente.",
+      variant: "destructive",
+    });
+
+    setTimeout(() => logoutRef.current(), 300);
+  }, [lastMessage, toast]);
+
   // ─── WebSocket: LoginNotification → completar login AzureAD ──────────────
 
   useEffect(() => {
@@ -369,6 +405,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       JSON.stringify({
         t: lastMessage.eventType,
         u: (lastMessage as any)?.data?.email,
+        ts: (lastMessage as any)?.timestamp ?? Date.now(),
       });
 
     if (processedLoginEventsRef.current.has(eventKey)) return;
@@ -381,6 +418,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const { data, pair } = lastMessage as WebSocketMessage;
         if (!pair) return;
         tokenService.setTokens(pair);
+        const adGroups = tokenService.extractAdGroups(pair.accessToken);
+        if (adGroups.length > 0) {
+          console.log("[AUTH-AD] Grupos AD recibidos vía WS notification:", adGroups);
+        } else {
+          logAuth("[AUTH-AD] No hay grupos AD en el JWT de notificación WS");
+        }
         const wsUser: UserSession = {
           id: (data as any).userId,
           email: (data as any).email,
@@ -390,6 +433,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           displayName: (data as any).displayName,
           userType: "AzureAD",
           roles: (data as any).roles ?? [],
+          adGroups,
         };
         await doLoginStateRef.current(wsUser, true);
         setTimeout(() => setLocation("/"), 300);
@@ -455,10 +499,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               })();
               if (savedDetailsStr) {
                 const parsed = JSON.parse(savedDetailsStr) as EmployeeDetails;
-                setEmployeeDetails((prev) =>
-                  equalEmployeeDetails(prev, parsed) ? prev : parsed
-                );
-                logAuth("CHECK AUTH / SESSION + CACHED DETAILS");
+                if (parsed.personId != null) {
+                  setEmployeeDetails((prev) =>
+                    equalEmployeeDetails(prev, parsed) ? prev : parsed
+                  );
+                  logAuth("CHECK AUTH / SESSION + CACHED DETAILS");
+                } else {
+                  await fetchEmployeeDetailsRef.current(userSession.email);
+                  logAuth("CHECK AUTH / SESSION + API DETAILS (personId missing)");
+                }
               } else {
                 await fetchEmployeeDetailsRef.current(userSession.email);
                 logAuth("CHECK AUTH / SESSION + API DETAILS");

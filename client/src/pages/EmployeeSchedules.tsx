@@ -1,3 +1,4 @@
+//src/pages/EmployeeSchedules.tsx
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePaged } from "@/hooks/pagination/usePaged";
@@ -45,7 +46,6 @@ import {
   Trash2,
   Building,
   Users,
-  BarChart3,
 } from "lucide-react";
 import AssignScheduleForm from "@/components/forms/AssignScheduleForm";
 import EditScheduleForm from "@/components/forms/EditScheduleForm";
@@ -53,7 +53,6 @@ import type {
   Schedule,
   EmployeeSchedule,
   Employee,
-  ScheduleCount,
 } from "@/types/schedule";
 
 /* -------------------- Helpers -------------------- */
@@ -283,6 +282,25 @@ export default function EmployeeSchedules() {
     retry: 2,
   });
 
+  const { data: globalStats } = useQuery({
+    queryKey: ["employee-details-schedule-stats"],
+    queryFn: () => VistaDetallesEmpleadosAPI.list(),
+    staleTime: 5 * 60 * 1000,
+    select: (res) => {
+      const all: any[] = res?.status === "success" ? (res.data ?? []) : [];
+      const withSchedule = all.filter((e) => {
+        const id   = e?.scheduleID   ?? e?.ScheduleID   ?? e?.scheduleId   ?? e?.ScheduleId;
+        const name = e?.scheduleName ?? e?.ScheduleName ?? e?.schedule     ?? e?.Schedule;
+        return Boolean(id || (typeof name === "string" && name.trim()));
+      }).length;
+      return {
+        total:           all.length,
+        withSchedule,
+        withoutSchedule: all.length - withSchedule,
+      };
+    },
+  });
+
   const allSchedules: Schedule[] = useMemo(() => {
     const data = getArray<any>(schedulesRes);
     return data.map(normalizeSchedule).filter((s) => s.scheduleId != null);
@@ -339,46 +357,6 @@ export default function EmployeeSchedules() {
     };
   };
 
-  const scheduleCounts: ScheduleCount[] = useMemo(() => {
-    const counts: Record<number, ScheduleCount> = {};
-
-    employees.forEach((emp) => {
-      const scheduleInfo = getEmployeeScheduleInfo(emp);
-      const scheduleId =
-        scheduleInfo.employeeSchedule?.scheduleId ?? emp.scheduleID;
-      const scheduleName =
-        scheduleInfo.employeeSchedule?.schedule?.name || emp.scheduleName;
-
-      if (!scheduleId || !scheduleName) return;
-
-      if (!counts[scheduleId]) {
-        counts[scheduleId] = {
-          schedule: {
-            scheduleId,
-            name: scheduleName,
-            startTime:
-              scheduleInfo.employeeSchedule?.schedule?.startTime ||
-              (emp as any).startTime ||
-              "",
-            endTime:
-              scheduleInfo.employeeSchedule?.schedule?.endTime ||
-              (emp as any).endTime ||
-              "",
-            description: scheduleName,
-            isActive: true,
-          },
-          count: 0,
-          employees: [],
-        };
-      }
-
-      counts[scheduleId].count += 1;
-      counts[scheduleId].employees.push(emp);
-    });
-
-    return Object.values(counts).sort((a, b) => b.count - a.count);
-  }, [employees, schedulesByEmployee]);
-
   const departments = useMemo(() => {
     const unique = new Map<string, string>();
 
@@ -416,15 +394,6 @@ export default function EmployeeSchedules() {
       return matchesDepartment && matchesStatus;
     });
   }, [employees, filters, schedulesByEmployee]);
-
-  // const stats = useMemo(() => {
-  //   const total = employees.length;
-  //   const withSchedule = employees.filter(
-  //     (e) => getEmployeeScheduleInfo(e).hasAssignedSchedule
-  //   ).length;
-  //   const withoutSchedule = total - withSchedule;
-  //   return { total, withSchedule, withoutSchedule };
-  // }, [employees, schedulesByEmployee]);
 
   const handleAssignSchedule = (employee: Employee) => {
     setSelectedEmployee(employee);
@@ -520,121 +489,53 @@ export default function EmployeeSchedules() {
         </div>
       </div>
 
-      {/* <div className="grid gap-6 md:grid-cols-3">
-        <Card className="transition-shadow hover:shadow-md">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-primary" />
-              Total Empleados
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-primary">
-              {stats.total}
-            </div>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Empleados en el sistema
-            </p>
-          </CardContent>
-        </Card>
+      {totalCount > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="bg-primary/10 border-primary/30">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="bg-primary p-2 rounded-full">
+                <Users className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-primary">Total Empleados</p>
+                <p className="text-2xl font-bold text-primary">
+                  {globalStats?.total ?? totalCount}
+                </p>
+                <p className="text-xs text-muted-foreground">En el sistema</p>
+              </div>
+            </CardContent>
+          </Card>
 
-        <Card className="transition-shadow hover:shadow-md">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-success" />
-              Con Horario
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-success">
-              {stats.withSchedule}
-            </div>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Empleados con horario asignado
-            </p>
-          </CardContent>
-        </Card>
+          <Card className="bg-success/10 border-success/30">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="bg-success p-2 rounded-full">
+                <Clock className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-success">Con Horario</p>
+                <p className="text-2xl font-bold text-success">
+                  {globalStats?.withSchedule ?? "—"}
+                </p>
+                <p className="text-xs text-muted-foreground">Empleados asignados</p>
+              </div>
+            </CardContent>
+          </Card>
 
-        <Card className="transition-shadow hover:shadow-md">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-secondary-foreground" />
-              Sin Horario
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-secondary-foreground">
-              {stats.withoutSchedule}
-            </div>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Empleados sin horario asignado
-            </p>
-          </CardContent>
-        </Card>
-      </div> */}
-
-      {scheduleCounts.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-secondary-foreground" />
-              Distribución por Horario
-            </CardTitle>
-            <CardDescription>
-              Conteo de empleados por nombre de horario reportado en la vista
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {scheduleCounts.map(({ schedule, count, employees }) => (
-                <Card
-                  key={schedule.scheduleId ?? schedule.name}
-                  className="border-l-4 border-l-purple-500"
-                >
-                  <CardContent className="p-4">
-                    <div className="mb-2 flex items-start justify-between">
-                      <div>
-                        <h3 className="text-lg font-semibold">{schedule.name}</h3>
-                        {(schedule.startTime || schedule.endTime) && (
-                          <p className="text-sm text-muted-foreground">
-                            {fmtTime(schedule.startTime)} -{" "}
-                            {fmtTime(schedule.endTime)}
-                          </p>
-                        )}
-                      </div>
-                      <Badge className="bg-accent px-3 py-1 text-lg text-accent-foreground">
-                        {count}
-                      </Badge>
-                    </div>
-
-                    {employees.length > 0 && (
-                      <div className="mt-2">
-                        <p className="mb-1 text-xs font-medium text-muted-foreground">
-                          Empleados:
-                        </p>
-                        <div className="max-h-20 space-y-1 overflow-y-auto">
-                          {employees.slice(0, 5).map((emp) => (
-                            <div
-                              key={emp.employeeID}
-                              className="truncate text-xs text-muted-foreground"
-                            >
-                              {emp.fullName}
-                            </div>
-                          ))}
-                          {employees.length > 5 && (
-                            <div className="text-xs text-muted-foreground">
-                              +{employees.length - 5} más...
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+          <Card className="bg-warning/10 border-warning/30">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="bg-warning p-2 rounded-full">
+                <Calendar className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-warning">Sin Horario</p>
+                <p className="text-2xl font-bold text-warning">
+                  {globalStats?.withoutSchedule ?? "—"}
+                </p>
+                <p className="text-xs text-muted-foreground">Sin asignación</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       <Card>

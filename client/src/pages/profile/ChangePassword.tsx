@@ -1,17 +1,18 @@
 // src/pages/profile/ChangePassword.tsx
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { KeyRound, Eye, EyeOff, ShieldCheck, Mail, Loader2, CheckCircle2 } from "lucide-react";
+import { KeyRound, Eye, EyeOff, ShieldCheck, Mail, Loader2, CheckCircle2, Cloud, Server } from "lucide-react";
 import { PasswordAPI } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { parseApiError } from "@/lib/error-handling";
+import { useAuth } from "@/features/auth";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -79,14 +80,13 @@ function PasswordInput({
 
 function PasswordRequirements() {
   return (
-    <div className="bg-primary/10 border border-primary/30 rounded-lg p-4">
-      <p className="text-sm font-semibold text-primary mb-2">Requisitos de contraseña:</p>
-      <ul className="text-sm text-primary space-y-1 list-disc list-inside">
+    <div className="bg-muted/50 rounded-lg p-3 space-y-1">
+      <p className="text-xs font-medium text-muted-foreground">Requisitos de contraseña:</p>
+      <ul className="text-xs text-muted-foreground space-y-0.5 list-disc list-inside">
         <li>Mínimo 8 caracteres</li>
         <li>Al menos una letra mayúscula</li>
         <li>Al menos una letra minúscula</li>
         <li>Al menos un número</li>
-        <li>Diferente a la contraseña actual</li>
       </ul>
     </div>
   );
@@ -94,16 +94,23 @@ function PasswordRequirements() {
 
 // ─── Tab Simple ───────────────────────────────────────────────────────────────
 
-function SimpleTab() {
+function SimpleTab({ isAzureAD, method }: { isAzureAD: boolean; method: string }) {
   const { toast } = useToast();
+  const requiresCurrentPwd = !isAzureAD || method === "LocalAd";
   const { register, handleSubmit, formState: { errors }, watch, reset } = useForm<SimpleFormData>({
     defaultValues: { currentPassword: "", newPassword: "", confirmPassword: "" },
   });
   const newPassword = watch("newPassword");
 
   const mutation = useMutation({
-    mutationFn: (data: SimpleFormData) =>
-      PasswordAPI.change({ currentPassword: data.currentPassword, newPassword: data.newPassword }),
+    mutationFn: async (data: SimpleFormData) => {
+      const res = await PasswordAPI.change({
+        currentPassword: data.currentPassword,
+        newPassword: data.newPassword,
+      });
+      if (res.status === "error") throw new Error(res.error.message);
+      return res.data;
+    },
     onSuccess: () => {
       toast({ title: "Contraseña cambiada", description: "Su contraseña fue actualizada exitosamente." });
       reset();
@@ -115,12 +122,34 @@ function SimpleTab() {
 
   return (
     <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="space-y-5">
-      <PasswordInput
-        id="s-current"
-        label="Contraseña actual"
-        registration={register("currentPassword", { required: "La contraseña actual es requerida" })}
-        error={errors.currentPassword?.message}
-      />
+      {isAzureAD && method === "LocalAd" && (
+        <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-3">
+          <Server className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+          <p className="text-sm text-amber-700 dark:text-amber-300">
+            Su cuenta es de <strong>Office 365</strong>. La contraseña se cambiará en el
+            <strong> Active Directory local</strong>. Se requiere su contraseña actual para verificación.
+          </p>
+        </div>
+      )}
+      {isAzureAD && method !== "LocalAd" && (
+        <div className="flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 p-3">
+          <Cloud className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+          <p className="text-sm text-blue-700 dark:text-blue-300">
+            Su cuenta es de <strong>Office 365</strong>. La nueva contraseña se aplicará directamente en Azure AD.
+            No se requiere contraseña actual.
+          </p>
+        </div>
+      )}
+
+      {requiresCurrentPwd && (
+        <PasswordInput
+          id="s-current"
+          label="Contraseña actual"
+          registration={register("currentPassword", { required: "La contraseña actual es requerida" })}
+          error={errors.currentPassword?.message}
+        />
+      )}
+
       <PasswordInput
         id="s-new"
         label="Nueva contraseña"
@@ -153,9 +182,9 @@ function SimpleTab() {
   );
 }
 
-// ─── Tab 2FA ──────────────────────────────────────────────────────────────────
+// ─── Tab 2FA (usuarios locales y Office 365) ──────────────────────────────────
 
-function TwoFaTab() {
+function TwoFaTab({ isAzureAD, method }: { isAzureAD: boolean; method: string }) {
   const { toast } = useToast();
   const [step, setStep] = useState<"request" | "verify">("request");
   const [otpDevCode, setOtpDevCode] = useState<string | null>(null);
@@ -165,11 +194,14 @@ function TwoFaTab() {
   });
   const newPassword = watch("newPassword");
 
-  // Paso 1: solicitar OTP
   const requestMutation = useMutation({
-    mutationFn: () => PasswordAPI.requestChange2fa(),
-    onSuccess: (res) => {
-      const devCode = (res as any)?.data?.otpCodeDev ?? null;
+    mutationFn: async () => {
+      const res = await PasswordAPI.requestChange2fa();
+      if (res.status === "error") throw new Error(res.error.message);
+      return res.data;
+    },
+    onSuccess: (data) => {
+      const devCode = (data as any)?.otpCodeDev ?? null;
       setOtpDevCode(devCode);
       setStep("verify");
       toast({ title: "Código enviado", description: "Revise su correo electrónico para obtener el código OTP." });
@@ -179,16 +211,21 @@ function TwoFaTab() {
     },
   });
 
-  // Paso 2: cambio con OTP
   const verifyMutation = useMutation({
-    mutationFn: (data: TwoFaFormData) =>
-      PasswordAPI.changePassword2fa({
-        currentPassword: data.currentPassword,
+    mutationFn: async (data: TwoFaFormData) => {
+      const res = await PasswordAPI.changePassword2fa({
+        currentPassword: isAzureAD ? "" : data.currentPassword,
         newPassword: data.newPassword,
         otpCode: data.otpCode,
-      }),
+      });
+      if (res.status === "error") throw new Error(res.error.message);
+      return res.data;
+    },
     onSuccess: () => {
-      toast({ title: "Contraseña cambiada", description: "Su contraseña fue actualizada exitosamente con verificación 2FA." });
+      const desc = isAzureAD
+        ? "Su contraseña de Office 365 fue actualizada exitosamente con verificación 2FA."
+        : "Su contraseña fue actualizada exitosamente con verificación 2FA.";
+      toast({ title: "Contraseña cambiada", description: desc });
       reset();
       setStep("request");
       setOtpDevCode(null);
@@ -206,7 +243,6 @@ function TwoFaTab() {
 
   return (
     <div className="space-y-5">
-      {/* Indicador de pasos */}
       <div className="flex items-center gap-3">
         <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold border-2 ${step === "request" ? "bg-primary text-primary-foreground border-primary" : "bg-success/20 text-success border-success"}`}>
           {step === "verify" ? <CheckCircle2 className="h-4 w-4" /> : "1"}
@@ -219,6 +255,25 @@ function TwoFaTab() {
 
       {step === "request" ? (
         <div className="space-y-4">
+          {isAzureAD && method === "LocalAd" && (
+            <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-3">
+              <Server className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+              <p className="text-sm text-amber-700 dark:text-amber-300">
+                Su cuenta es de <strong>Office 365</strong>. El código OTP verificará su identidad y la
+                contraseña se cambiará en el <strong>Active Directory local</strong>. Se requerirá su
+                contraseña actual.
+              </p>
+            </div>
+          )}
+          {isAzureAD && method !== "LocalAd" && (
+            <div className="flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 p-3">
+              <Cloud className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                Su cuenta es de <strong>Office 365</strong>. El código OTP verificará su identidad
+                antes de aplicar el cambio en Azure AD. No se requiere contraseña actual.
+              </p>
+            </div>
+          )}
           <div className="bg-muted/50 rounded-lg p-4 flex items-start gap-3">
             <Mail className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
             <p className="text-sm text-muted-foreground">
@@ -238,13 +293,11 @@ function TwoFaTab() {
         </div>
       ) : (
         <form onSubmit={handleSubmit((d) => verifyMutation.mutate(d))} className="space-y-5">
-          {/* Badge de confirmación de envío */}
           <div className="flex items-center gap-2 p-3 rounded-lg bg-success/10 border border-success/30">
             <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
             <p className="text-sm text-success font-medium">Código enviado a su correo electrónico</p>
           </div>
 
-          {/* Código OTP (dev) */}
           {otpDevCode && (
             <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
               <p className="text-xs text-amber-700 dark:text-amber-400 font-medium mb-1">Código de desarrollo (solo visible en entorno DEV):</p>
@@ -254,7 +307,6 @@ function TwoFaTab() {
             </div>
           )}
 
-          {/* Código OTP */}
           <div className="space-y-2">
             <Label htmlFor="otp">Código de verificación (6 dígitos) <span className="text-destructive">*</span></Label>
             <Input
@@ -270,12 +322,14 @@ function TwoFaTab() {
             {errors.otpCode && <p className="text-sm text-destructive">{errors.otpCode.message}</p>}
           </div>
 
-          <PasswordInput
-            id="2fa-current"
-            label="Contraseña actual"
-            registration={register("currentPassword", { required: "La contraseña actual es requerida" })}
-            error={errors.currentPassword?.message}
-          />
+          {(!isAzureAD || method === "LocalAd") && (
+            <PasswordInput
+              id="2fa-current"
+              label="Contraseña actual"
+              registration={register("currentPassword", { required: "La contraseña actual es requerida" })}
+              error={errors.currentPassword?.message}
+            />
+          )}
           <PasswordInput
             id="2fa-new"
             label="Nueva contraseña"
@@ -313,6 +367,19 @@ function TwoFaTab() {
 // ─── Página principal ─────────────────────────────────────────────────────────
 
 export default function ChangePasswordPage() {
+  const { user } = useAuth();
+  const isAzureAD = user?.userType?.toLowerCase() === "azuread";
+
+  const { data: methodData } = useQuery({
+    queryKey: ["password-change-method"],
+    queryFn: async () => {
+      const res = await PasswordAPI.getChangeMethod();
+      return res.status === "ok" ? res.data.method : "AzureWriteback";
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  const method = methodData ?? "AzureWriteback";
+
   return (
     <div className="container mx-auto p-6 max-w-2xl">
       <div className="mb-6">
@@ -327,7 +394,12 @@ export default function ChangePasswordPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Seguridad de la cuenta</CardTitle>
+          <CardTitle className="flex items-center justify-between">
+            Seguridad de la cuenta
+            <Badge variant="outline" className={isAzureAD ? "text-blue-600 border-blue-300 bg-blue-50" : "text-green-700 border-green-300 bg-green-50"}>
+              {isAzureAD ? "Office 365" : "Cuenta local"}
+            </Badge>
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="simple">
@@ -343,11 +415,11 @@ export default function ChangePasswordPage() {
             </TabsList>
 
             <TabsContent value="simple">
-              <SimpleTab />
+              <SimpleTab isAzureAD={isAzureAD} method={method} />
             </TabsContent>
 
             <TabsContent value="2fa">
-              <TwoFaTab />
+              <TwoFaTab isAzureAD={isAzureAD} method={method} />
             </TabsContent>
           </Tabs>
         </CardContent>

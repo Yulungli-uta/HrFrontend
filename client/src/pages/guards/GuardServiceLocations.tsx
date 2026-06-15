@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MapPin, Plus, RefreshCw, ChevronRight, ChevronDown, Pencil } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useGuardLocationsTree, useGuardLocationMutations } from '@/hooks/guards/useGuards';
 import type { GuardServiceLocationTreeDto, CreateGuardServiceLocationDto, UpdateGuardServiceLocationDto } from '@/types/guards';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { GUARD_KEYS } from '@/hooks/guards/useGuards';
 import { GuardServiceLocationsAPI } from '@/lib/api/services/guards';
 
@@ -36,15 +36,22 @@ const DEFAULT_FORM: LocationFormState = {
   isActive: true,
 };
 
-function LocationTreeNode({ node, depth = 0 }: { node: GuardServiceLocationTreeDto; depth?: number }) {
+function LocationTreeNode({
+  node,
+  depth = 0,
+  onEdit,
+}: {
+  node: GuardServiceLocationTreeDto;
+  depth?: number;
+  onEdit: (node: GuardServiceLocationTreeDto) => void;
+}) {
   const [expanded, setExpanded] = useState(true);
   const hasChildren = node.children.length > 0;
 
   return (
     <div>
       <div
-        className={`flex items-center gap-2 py-2 px-3 rounded-md hover:bg-muted/50 group
-          ${depth > 0 ? 'ml-' + (depth * 4) : ''}`}
+        className="flex items-center gap-2 py-2 px-3 rounded-md hover:bg-muted/50 group"
         style={{ marginLeft: depth * 16 }}
       >
         <button
@@ -61,16 +68,22 @@ function LocationTreeNode({ node, depth = 0 }: { node: GuardServiceLocationTreeD
         {node.locationCode && (
           <span className="text-xs text-muted-foreground font-mono">{node.locationCode}</span>
         )}
-        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           {node.isAssignable && <Badge variant="outline" className="text-xs">Asignable</Badge>}
           {node.requiresCoverage && <Badge variant="secondary" className="text-xs">Cobertura</Badge>}
           {!node.isActive && <Badge variant="destructive" className="text-xs">Inactivo</Badge>}
+          <Button
+            variant="ghost" size="icon" className="h-6 w-6 ml-1"
+            onClick={e => { e.stopPropagation(); onEdit(node); }}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
         </div>
       </div>
       {hasChildren && expanded && (
         <div>
           {node.children.map(child => (
-            <LocationTreeNode key={child.locationId} node={child} depth={depth + 1} />
+            <LocationTreeNode key={child.locationId} node={child} depth={depth + 1} onEdit={onEdit} />
           ))}
         </div>
       )}
@@ -89,10 +102,47 @@ export default function GuardServiceLocationsPage() {
 
   const tree = resp?.status === 'success' ? resp.data : [];
 
+  const { data: detailResp } = useQuery({
+    queryKey: [...GUARD_KEYS.locationsTree, 'detail', editId],
+    queryFn: () => GuardServiceLocationsAPI.getById(editId!),
+    enabled: !!editId && mode === 'edit',
+    staleTime: 0,
+  });
+
+  useEffect(() => {
+    if (mode === 'edit' && detailResp?.status === 'success') {
+      const loc = detailResp.data;
+      setForm({
+        locationName: loc.locationName,
+        locationCode: loc.locationCode ?? '',
+        description: loc.description ?? '',
+        locationTypeId: loc.locationTypeId ?? 1,
+        requiresCoverage: loc.requiresCoverage,
+        isAssignable: loc.isAssignable,
+        isActive: loc.isActive,
+      });
+    }
+  }, [detailResp, mode]);
+
   const openCreate = () => {
     setForm(DEFAULT_FORM);
     setMode('create');
     setEditId(null);
+    setOpen(true);
+  };
+
+  const openEdit = (node: GuardServiceLocationTreeDto) => {
+    setForm({
+      locationName: node.locationName,
+      locationCode: node.locationCode ?? '',
+      description: '',
+      locationTypeId: 1,
+      requiresCoverage: node.requiresCoverage,
+      isAssignable: node.isAssignable,
+      isActive: node.isActive,
+    });
+    setMode('edit');
+    setEditId(node.locationId);
     setOpen(true);
   };
 
@@ -156,7 +206,7 @@ export default function GuardServiceLocationsPage() {
           ) : (
             <div className="space-y-1">
               {tree.map(node => (
-                <LocationTreeNode key={node.locationId} node={node} />
+                <LocationTreeNode key={node.locationId} node={node} onEdit={openEdit} />
               ))}
             </div>
           )}
@@ -191,6 +241,7 @@ export default function GuardServiceLocationsPage() {
               <Input
                 value={form.description}
                 onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                placeholder="Descripción opcional"
               />
             </div>
             <div className="flex items-center justify-between">

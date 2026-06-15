@@ -80,7 +80,7 @@ export function DataPagination({
   return (
     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-2 py-3">
       {/* Información de registros */}
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <p className="text-sm text-muted-foreground">
           {totalCount === 0
             ? 'Sin registros'
@@ -89,7 +89,7 @@ export function DataPagination({
 
         {/* Selector de tamaño de página */}
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground whitespace-nowrap">
+          <span className="hidden sm:inline text-sm text-muted-foreground whitespace-nowrap">
             Filas por página
           </span>
           <Select

@@ -48,6 +48,8 @@ export interface UserSession {
   lastLogin?: string;
   /** Lista de roles del usuario */
   roles?: string[];
+  /** Grupos del Active Directory local */
+  adGroups?: string[];
   /** Menús completos asignados al usuario */
   menuItems?: MenuItem[];
 }

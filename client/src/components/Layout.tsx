@@ -20,7 +20,7 @@ export default function Layout({ children }: LayoutProps) {
   const toggleSidebar = () => setSidebarCollapsed(prev => !prev);
 
   const currentUserName = user?.displayName || user?.email || "Usuario";
-  const currentUserId   = employeeDetails?.employeeID ?? null;
+  const currentUserId   = employeeDetails?.personId ?? null;
 
   /* ── Control de acceso ── */
   useEffect(() => {
@@ -65,8 +65,8 @@ export default function Layout({ children }: LayoutProps) {
         />
 
         {/* Área de contenido principal */}
-        <main className="flex-1 overflow-y-auto bg-background">
-          <div className="p-4 sm:p-6 animate-fade-in">
+        <main className="flex-1 overflow-hidden bg-background flex flex-col">
+          <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 animate-fade-in">
             {children}
           </div>
         </main>

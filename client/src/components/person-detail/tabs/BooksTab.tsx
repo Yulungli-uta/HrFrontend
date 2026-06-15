@@ -1,7 +1,6 @@
-// client/src/components/person-detail/tabs/BooksTab.tsx
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ActionIconButton } from "@/components/ui/action-icon-button";
 import { Badge } from "@/components/ui/badge";
 import { BookOpen, Plus, Edit, Trash2, Calendar, User, Book } from "lucide-react";
 import { Book as BookType } from "@/types/person";
@@ -10,14 +9,16 @@ interface BooksTabProps {
   books: BookType[];
   onEdit: (type: string, item: any) => void;
   onDelete: (id: number) => void;
+  /** Mapa id → nombre para resolver país de publicación */
+  countryMap?: Record<number, string>;
 }
 
-export function BooksTab({ books, onEdit, onDelete }: BooksTabProps) {
+export function BooksTab({ books, onEdit, onDelete, countryMap = {} }: BooksTabProps) {
   const formatDate = (dateString: string) => {
-    if (!dateString) return 'No especificada';
-    return new Date(dateString).toLocaleDateString('es-EC', {
-      year: 'numeric',
-      month: 'long'
+    if (!dateString) return "No especificada";
+    return new Date(dateString).toLocaleDateString("es-EC", {
+      year: "numeric",
+      month: "long",
     });
   };
 
@@ -31,120 +32,128 @@ export function BooksTab({ books, onEdit, onDelete }: BooksTabProps) {
             {books.length}
           </Badge>
         </CardTitle>
-        <Button 
-          size="sm" 
-          className="bg-uta-blue hover:bg-uta-blue/90"
-          onClick={() => onEdit('book', null)}
+        <Button
+          size="sm"
+          className="bg-primary hover:bg-primary/90"
+          onClick={() => onEdit("book", null)}
         >
           <Plus className="mr-2 h-4 w-4" />
           Nuevo Libro
         </Button>
       </CardHeader>
+
       <CardContent>
         {books.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <BookOpen className="mx-auto h-12 w-12 mb-3 opacity-50" />
             <p className="text-base mb-1">No hay libros registrados</p>
-            <p className="text-sm">Agrega el primer libro haciendo clic en el botón "Nuevo Libro"</p>
+            <p className="text-sm">
+              Agrega el primer libro haciendo clic en el botón "Nuevo Libro"
+            </p>
           </div>
         ) : (
-          <ScrollArea className="h-[600px] pr-4">
-            <div className="space-y-4">
-              {books.map((book) => (
-                <Card key={book.bookId} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-4">
-                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                      <div className="flex-1 space-y-3">
-                        <div className="flex items-start justify-between">
-                          <h4 className="font-semibold text-foreground text-lg leading-tight">
-                            {book.title}
-                          </h4>
-                          <div className="flex gap-2 ml-4 flex-shrink-0">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => onEdit('book', book)}
-                              className="h-8 w-8 p-0"
-                            >
-                              <Edit className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => onDelete(book.bookId)}
-                              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
+          <div className="space-y-4">
+            {books.map((book) => (
+              <Card key={book.bookId} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-4">
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                    <div className="flex-1 space-y-3 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <h4 className="font-semibold text-foreground text-lg leading-tight">
+                          {book.title}
+                        </h4>
+                        <div className="flex gap-2 shrink-0">
+                          <ActionIconButton
+                            icon={Edit}
+                            label="Editar libro"
+                            tone="primary"
+                            onClick={() => onEdit("book", book)}
+                            touch
+                          />
+                          <ActionIconButton
+                            icon={Trash2}
+                            label="Eliminar libro"
+                            tone="destructive"
+                            onClick={() => onDelete(book.bookId)}
+                            touch
+                          />
                         </div>
+                      </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-muted-foreground">
-                          {book.publisher && (
-                            <div className="flex items-center gap-2">
-                              <Book className="h-4 w-4 text-muted-foreground/70" />
-                              <span>
-                                <strong>Editorial:</strong> {book.publisher}
-                              </span>
-                            </div>
-                          )}
-
-                          {book.publicationDate && (
-                            <div className="flex items-center gap-2">
-                              <Calendar className="h-4 w-4 text-muted-foreground/70" />
-                              <span>
-                                <strong>Fecha de publicación:</strong> {formatDate(book.publicationDate)}
-                              </span>
-                            </div>
-                          )}
-
-                          {book.isbn && (
-                            <div className="flex items-center gap-2">
-                              <BookOpen className="h-4 w-4 text-muted-foreground/70" />
-                              <span>
-                                <strong>ISBN:</strong> {book.isbn}
-                              </span>
-                            </div>
-                          )}
-
-                          {book.peerReviewed && (
-                            <div className="flex items-center gap-2">
-                              <Badge variant="default" className="text-xs">
-                                Revisado por pares
-                              </Badge>
-                            </div>
-                          )}
-                        </div>
-
-                        {book.coAuthors && (
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <User className="h-4 w-4 text-muted-foreground/70" />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-muted-foreground">
+                        {book.publisher && (
+                          <div className="flex items-center gap-2">
+                            <Book className="h-4 w-4 shrink-0 text-muted-foreground/70" />
                             <span>
-                              <strong>Coautores:</strong> {book.coAuthors}
+                              <strong>Editorial:</strong> {book.publisher}
                             </span>
                           </div>
                         )}
 
-                        {book.category && (
-                          <div>
-                            <Badge variant="outline" className="text-xs">
-                              {book.category}
-                            </Badge>
+                        {book.publicationDate && (
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 shrink-0 text-muted-foreground/70" />
+                            <span>
+                              <strong>Publicación:</strong>{" "}
+                              {formatDate(book.publicationDate)}
+                            </span>
                           </div>
                         )}
 
-                        {book.description && (
-                          <div className="text-sm text-muted-foreground">
-                            <p className="line-clamp-2">{book.description}</p>
+                        {book.isbn && (
+                          <div className="flex items-center gap-2">
+                            <BookOpen className="h-4 w-4 shrink-0 text-muted-foreground/70" />
+                            <span>
+                              <strong>ISBN:</strong> {book.isbn}
+                            </span>
+                          </div>
+                        )}
+
+                        {(book as any).countryId && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground/70">🌍</span>
+                            <span>
+                              <strong>País:</strong>{" "}
+                              {countryMap[Number((book as any).countryId)] ??
+                                `País #${(book as any).countryId}`}
+                            </span>
                           </div>
                         )}
                       </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        {book.peerReviewed && (
+                          <Badge variant="default" className="text-xs">
+                            Revisado por pares
+                          </Badge>
+                        )}
+                        {book.category && (
+                          <Badge variant="outline" className="text-xs">
+                            {book.category}
+                          </Badge>
+                        )}
+                      </div>
+
+                      {book.coAuthors && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <User className="h-4 w-4 shrink-0 text-muted-foreground/70" />
+                          <span>
+                            <strong>Coautores:</strong> {book.coAuthors}
+                          </span>
+                        </div>
+                      )}
+
+                      {book.description && (
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {book.description}
+                        </p>
+                      )}
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </ScrollArea>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         )}
       </CardContent>
     </Card>

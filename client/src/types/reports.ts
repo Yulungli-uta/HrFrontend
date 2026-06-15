@@ -19,7 +19,22 @@ export type ReportType =
   // Reportes v2 — AttendanceCalculations
   | 'lateness'
   | 'overtime'
-  | 'attendance-cross';
+  | 'attendance-cross'
+  // Reportes v2 — Gestión RH
+  | 'contracts'
+  | 'active-contracts'
+  | 'personnel-actions'
+  | 'active-personnel-actions'
+  | 'employee-history'
+  | 'granted-permissions'
+  | 'contract-requests'
+  | 'certifications'
+  // Reportes v2 — Guardias
+  | 'guard-shift-planning'
+  | 'guard-location-coverage'
+  | 'guard-shift-changes'
+  | 'guard-group-roster'
+  | 'guard-schedule-matrix';
 
 export type ReportFormat = 'pdf' | 'excel';
 
@@ -38,21 +53,26 @@ export interface ReportFilter {
   startDate?: string;
   endDate?: string;
   departmentId?: number;
-  facultyId?: number;
   employeeId?: number;
   employeeType?: string;
-  /**
-   * ID del tipo de empleado (relación con la tabla de tipos de empleado).
-   * Usado por los reportes de estructura organizacional.
-   */
+  /** ID del tipo de empleado (relación con la tabla de tipos de empleado). */
   employeeTypeId?: number;
+  /** ID del tipo de contrato (tbl_ContractType). Filtro para contratos vigentes. */
+  contractTypeId?: number;
+  /** TypeId del régimen laboral (ref_Types categoría LABOR_REGIME). */
+  laborRegimeId?: number;
+  /** EmployeeId del empleado que creó el contrato. */
+  createdByEmployeeId?: number;
+  /** ID del tipo de acción de personal (tbl_PersonnelActionTypes). */
+  actionTypeId?: number;
   isActive?: boolean;
   includeInactive?: boolean;
-  /**
-   * Orientación de página del PDF.
-   * Si no se envía, el backend usa el valor por defecto definido en el `IReportSource`.
-   * (p.ej. `attendancesumary` usa `landscape` por defecto al tener 15 columnas)
-   */
+  /** Filtra por estado (contratos, acciones, permisos, solicitudes, certificaciones). */
+  status?: string;
+  /** ID de la ubicación de servicio de guardias (tbl_GuardServiceLocations). */
+  locationId?: number;
+  /** ID del grupo de rotación de guardias (tbl_GuardRotationGroups). */
+  groupId?: number;
   orientation?: PageOrientation;
 }
 
@@ -67,6 +87,14 @@ export interface ReportConfig {
   icon: string;
   availableFormats: ReportFormat[];
   availableFilters: (keyof ReportFilter)[];
+  /** Opciones estáticas de estado (se usa cuando los valores no están en ref_Types). */
+  statusOptions?: { value: string; label: string }[];
+  /**
+   * Categoría de ref_Types para cargar opciones de estado dinámicamente.
+   * Cuando está presente, tiene prioridad sobre statusOptions.
+   * Ej: 'CONTRACT_STATUS', 'PERSONNEL_ACTION_STATUS'.
+   */
+  statusCategory?: string;
 }
 
 // Configuraciones predefinidas de reportes
@@ -78,7 +106,7 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
     description: 'Información completa de empleados, salarios y contratos',
     icon: 'Users',
     availableFormats: ['pdf', 'excel'],
-    availableFilters: ['startDate', 'endDate', 'departmentId', 'facultyId', 'employeeType', 'isActive']
+    availableFilters: ['startDate', 'endDate', 'departmentId', 'employeeType', 'isActive']
   },
   attendance: {
     type: 'attendance',
@@ -86,7 +114,7 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
     description: 'Registros de entrada/salida y horas trabajadas',
     icon: 'Clock',
     availableFormats: ['pdf', 'excel'],
-    availableFilters: ['startDate', 'endDate', 'employeeId', 'departmentId', 'facultyId']
+    availableFilters: ['startDate', 'endDate', 'employeeId', 'departmentId']
   },
   departments: {
     type: 'departments',
@@ -94,7 +122,7 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
     description: 'Estadísticas y resumen por departamento',
     icon: 'Building',
     availableFormats: ['pdf', 'excel'],
-    availableFilters: ['facultyId', 'includeInactive']
+    availableFilters: ['includeInactive']
   },
   attendancesumary: {
     type: 'attendancesumary',
@@ -157,7 +185,136 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
     icon: 'LayoutGrid',
     availableFormats: ['pdf', 'excel'],
     availableFilters: ['startDate', 'endDate', 'employeeId', 'departmentId', 'orientation']
-  }
+  },
+
+  // ── Gestión RH ────────────────────────────────────────────────────────────
+  contracts: {
+    type: 'contracts',
+    title: 'Reporte de Contratos',
+    description: 'Contratos de personal con filtro por estado, departamento y período',
+    icon: 'FileText',
+    availableFormats: ['pdf', 'excel'],
+    availableFilters: ['startDate', 'endDate', 'departmentId', 'status', 'orientation'],
+    statusCategory: 'CONTRACT_STATUS',
+  },
+  'active-contracts': {
+    type: 'active-contracts',
+    title: 'Contratos Vigentes',
+    description: 'Contratos activos a la fecha actual con filtro por tipo, régimen y creador',
+    icon: 'FileCheck',
+    availableFormats: ['pdf', 'excel'],
+    availableFilters: ['departmentId', 'contractTypeId', 'laborRegimeId', 'createdByEmployeeId', 'status', 'orientation'],
+    statusCategory: 'CONTRACT_STATUS',
+  },
+  'personnel-actions': {
+    type: 'personnel-actions',
+    title: 'Reporte de Acciones de Personal',
+    description: 'Todas las acciones de personal con filtro por estado y período',
+    icon: 'ClipboardSignature',
+    availableFormats: ['pdf', 'excel'],
+    availableFilters: ['startDate', 'endDate', 'employeeId', 'status', 'orientation'],
+    statusCategory: 'PERSONNEL_ACTION_STATUS',
+  },
+  'active-personnel-actions': {
+    type: 'active-personnel-actions',
+    title: 'Acciones de Personal Vigentes',
+    description: 'Acciones de movimiento, ingreso y económicas vigentes con filtro por período y empleado',
+    icon: 'ClipboardCheck',
+    availableFormats: ['pdf', 'excel'],
+    availableFilters: ['startDate', 'endDate', 'employeeId', 'departmentId', 'actionTypeId', 'status', 'orientation'],
+    statusCategory: 'PERSONNEL_ACTION_STATUS',
+  },
+  'employee-history': {
+    type: 'employee-history',
+    title: 'Historial del Empleado',
+    description: 'Contratos y acciones de cambio de puesto por empleado (excluye disciplinarias)',
+    icon: 'History',
+    availableFormats: ['pdf', 'excel'],
+    availableFilters: ['employeeId', 'departmentId', 'orientation'],
+  },
+  'granted-permissions': {
+    type: 'granted-permissions',
+    title: 'Reporte de Permisos Otorgados',
+    description: 'Permisos de personal con filtro por estado, período y departamento',
+    icon: 'CalendarCheck',
+    availableFormats: ['pdf', 'excel'],
+    availableFilters: ['startDate', 'endDate', 'employeeId', 'departmentId', 'status', 'orientation'],
+    statusOptions: [
+      { value: 'APPROVED', label: 'Aprobados' },
+      { value: 'PENDING', label: 'Pendientes' },
+      { value: 'REJECTED', label: 'Rechazados' },
+    ]
+  },
+  'contract-requests': {
+    type: 'contract-requests',
+    title: 'Reporte de Solicitudes de Contrato',
+    description: 'Solicitudes de contratación por departamento con avance de cumplimiento',
+    icon: 'FilePlus',
+    availableFormats: ['pdf', 'excel'],
+    availableFilters: ['startDate', 'endDate', 'departmentId', 'status', 'orientation'],
+    statusCategory: 'CONTRACT_REQUEST_STATUS',
+  },
+  certifications: {
+    type: 'certifications',
+    title: 'Reporte de Certificaciones Financieras',
+    description: 'Certificaciones de disponibilidad presupuestaria con selección de estado',
+    icon: 'BadgeCheck',
+    availableFormats: ['pdf', 'excel'],
+    availableFilters: ['startDate', 'endDate', 'status', 'orientation'],
+    statusCategory: 'FIN_CERT_STATUS',
+  },
+
+  // ── Reportes v2 — Guardias ────────────────────────────────────────────────
+  'guard-shift-planning': {
+    type: 'guard-shift-planning',
+    title: 'Planificación de Turnos de Guardias',
+    description: 'Detalle de turnos asignados por guardia, grupo y ubicación en un período',
+    icon: 'CalendarRange',
+    availableFormats: ['pdf', 'excel'],
+    availableFilters: ['startDate', 'endDate', 'groupId', 'locationId', 'employeeId', 'status', 'orientation'],
+    statusOptions: [
+      { value: 'Activo', label: 'Activo' },
+      { value: 'Reemplazado', label: 'Reemplazado' },
+      { value: 'Ausente', label: 'Ausente' },
+    ],
+  },
+  'guard-location-coverage': {
+    type: 'guard-location-coverage',
+    title: 'Cobertura de Guardias por Ubicación',
+    description: 'Cantidad de guardias asignados por ubicación, fecha y turno; resalta ubicaciones sin cobertura',
+    icon: 'MapPin',
+    availableFormats: ['pdf', 'excel'],
+    availableFilters: ['startDate', 'endDate', 'locationId', 'orientation'],
+  },
+  'guard-shift-changes': {
+    type: 'guard-shift-changes',
+    title: 'Cambios de Turno y Reemplazos',
+    description: 'Intercambios, ausencias y reemplazos de guardias con estado de aprobación',
+    icon: 'ArrowLeftRight',
+    availableFormats: ['pdf', 'excel'],
+    availableFilters: ['startDate', 'endDate', 'groupId', 'locationId', 'employeeId', 'status', 'orientation'],
+    statusOptions: [
+      { value: 'Pendiente', label: 'Pendiente' },
+      { value: 'Aprobado', label: 'Aprobado' },
+      { value: 'Rechazado', label: 'Rechazado' },
+    ],
+  },
+  'guard-group-roster': {
+    type: 'guard-group-roster',
+    title: 'Guardias por Grupo y Ubicación',
+    description: 'Listado de guardias activos con su grupo, ubicación asignada y período de rotación vigente',
+    icon: 'Users',
+    availableFormats: ['pdf', 'excel'],
+    availableFilters: ['groupId', 'locationId', 'orientation'],
+  },
+  'guard-schedule-matrix': {
+    type: 'guard-schedule-matrix',
+    title: 'Cronograma Matricial de Guardias',
+    description: 'Cronograma imprimible: filas = guardias, columnas = fechas, celdas = turno (M/T/N/L)',
+    icon: 'LayoutGrid',
+    availableFormats: ['pdf', 'excel'],
+    availableFilters: ['startDate', 'endDate', 'groupId', 'locationId', 'orientation'],
+  },
 };
 
 // ============================================
@@ -233,7 +390,8 @@ export interface UseReportState {
  */
 export function getReportFileName(type: ReportType, format: ReportFormat): string {
   const date = new Date().toISOString().split('T')[0];
-  return `reporte-${type}-${date}.${format}`;
+  const ext = format === 'excel' ? 'xlsx' : format;
+  return `reporte-${type}-${date}.${ext}`;
 }
 
 /**
