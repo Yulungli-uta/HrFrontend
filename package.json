@@ -1,5 +1,8 @@
 {
   "devDependencies": {
     "baseline-browser-mapping": "^2.8.31"
+  },
+  "dependencies": {
+    "xlsx": "^0.18.5"
   }
 }

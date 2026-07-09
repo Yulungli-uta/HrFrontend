@@ -61,3 +61,12 @@ dist/
 
 client/.env*
 !client/.env.example
+
+# Claude local config
+.claude/
+.claude/*
+!.claude/settings.local.json
+
+# Archivos de Claude
+CLAUDE.md
+.claudeignore
