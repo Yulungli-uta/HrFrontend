@@ -14,6 +14,7 @@ import {
   useAvailabilityBlocksPaged, useAvailabilityMutations,
   useGuardRefTypes,
 } from '@/hooks/guards/useGuards';
+import { REF_TYPE_CATEGORIES } from '@/features/refTypeCategories';
 import { DataPagination } from '@/components/ui/DataPagination';
 import type {
   EmployeeAvailabilityFilterDto,
@@ -71,7 +72,7 @@ export default function EmployeeAvailabilityPage() {
   });
 
   const { data: resp, isLoading } = useAvailabilityBlocksPaged(filter, page, pageSize, true);
-  const { data: blockSourceResp } = useGuardRefTypes('GUARD_BLOCK_SOURCE');
+  const { data: blockSourceResp } = useGuardRefTypes(REF_TYPE_CATEGORIES.GUARD_BLOCK_SOURCE);
   const { createManual, syncPermissions, syncVacations } = useAvailabilityMutations();
 
   const pagedData = resp?.status === 'success' ? resp.data : null;

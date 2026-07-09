@@ -20,6 +20,16 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   FileText,
   Plus,
   Search,
@@ -30,6 +40,13 @@ import {
   Eye,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -87,10 +104,14 @@ export default function ContractTypesPage() {
   const [selectedContractType, setSelectedContractType] =
     useState<UIContractType | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
 
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
   const [editingContract, setEditingContract] =
     useState<UIContractType | null>(null);
+
+  const [isFormDirty, setIsFormDirty] = useState(false);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
 
   const {
     data: apiResponse,
@@ -154,9 +175,13 @@ export default function ContractTypesPage() {
 
   const filteredContractTypes = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
-    if (!term) return contractTypes;
 
     return contractTypes.filter((contractType) => {
+      if (statusFilter === "active" && !contractType.isActive) return false;
+      if (statusFilter === "inactive" && contractType.isActive) return false;
+
+      if (!term) return true;
+
       const name = contractType.name.toLowerCase();
       const code = contractType.code.toLowerCase();
       const description = contractType.description?.toLowerCase() ?? "";
@@ -169,7 +194,7 @@ export default function ContractTypesPage() {
         category.includes(term)
       );
     });
-  }, [contractTypes, searchTerm]);
+  }, [contractTypes, searchTerm, statusFilter]);
 
   const {
     totalContractTypes,
@@ -204,6 +229,21 @@ export default function ContractTypesPage() {
       avgDuration: avg,
     };
   }, [contractTypes]);
+
+  const hasActiveFilters = searchTerm.trim() !== "" || statusFilter !== "all";
+
+  const closeFormClean = () => {
+    setIsFormDirty(false);
+    setIsFormOpen(false);
+  };
+
+  const handleFormOpenChange = (open: boolean) => {
+    if (!open && isFormDirty) {
+      setShowExitConfirm(true);
+    } else {
+      setIsFormOpen(open);
+    }
+  };
 
   const handleViewDetails = (contractType: UIContractType) => {
     setSelectedContractType(contractType);
@@ -280,7 +320,7 @@ export default function ContractTypesPage() {
         </div>
 
         {/* Dialog de creación / edición */}
-        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+        <Dialog open={isFormOpen} onOpenChange={handleFormOpenChange}>
           <DialogTrigger asChild>
             <Button
               className="bg-primary hover:bg-primary/90 w-full sm:w-auto"
@@ -330,8 +370,9 @@ export default function ContractTypesPage() {
                     }
                     : undefined
                 }
-                onCancel={() => setIsFormOpen(false)}
-                onSuccess={() => setIsFormOpen(false)}
+                onDirtyChange={setIsFormDirty}
+                onCancel={closeFormClean}
+                onSuccess={closeFormClean}
               />
             </div>
           </DialogContent>
@@ -446,9 +487,9 @@ export default function ContractTypesPage() {
         </Card>
       </div>
 
-      {/* Búsqueda */}
-      <div className="mb-6">
-        <div className="relative">
+      {/* Búsqueda y filtros */}
+      <div className="mb-6 flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Buscar tipo de contrato por nombre, código, descripción o categoría..."
@@ -458,6 +499,20 @@ export default function ContractTypesPage() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
+
+        <Select
+          value={statusFilter}
+          onValueChange={(v) => setStatusFilter(v as "all" | "active" | "inactive")}
+        >
+          <SelectTrigger className="w-full sm:w-[180px]" aria-label="Filtrar por estado">
+            <SelectValue placeholder="Estado" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los estados</SelectItem>
+            <SelectItem value="active">Activos</SelectItem>
+            <SelectItem value="inactive">Inactivos</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* ── Tarjetas — móvil ── */}
@@ -466,12 +521,12 @@ export default function ContractTypesPage() {
           <div className="text-center py-12">
             <FileText className="mx-auto h-12 w-12 text-muted-foreground/70 mb-4" />
             <h3 className="text-lg font-semibold text-foreground mb-2">
-              {searchTerm ? "No se encontraron tipos de contrato" : "No hay tipos de contrato registrados"}
+              {hasActiveFilters ? "No se encontraron tipos de contrato" : "No hay tipos de contrato registrados"}
             </h3>
             <p className="text-muted-foreground mb-4">
-              {searchTerm ? "Intente con otros términos de búsqueda" : "Comience agregando el primer tipo de contrato"}
+              {hasActiveFilters ? "Intente con otros términos de búsqueda o ajuste el filtro de estado" : "Comience agregando el primer tipo de contrato"}
             </p>
-            {!searchTerm && (
+            {!hasActiveFilters && (
               <Button onClick={() => { setFormMode("create"); setEditingContract(null); setIsFormOpen(true); }}>
                 <Plus className="mr-2 h-4 w-4" /> Agregar Primer Tipo de Contrato
               </Button>
@@ -576,6 +631,8 @@ export default function ContractTypesPage() {
           <CardDescription>
             {filteredContractTypes.length} de {totalContractTypes} tipos mostrados
             {searchTerm && ` - Filtrado por: "${searchTerm}"`}
+            {statusFilter !== "all" &&
+              ` - Estado: ${statusFilter === "active" ? "Activos" : "Inactivos"}`}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -666,12 +723,12 @@ export default function ContractTypesPage() {
             <div className="text-center py-12">
               <FileText className="mx-auto h-12 w-12 text-muted-foreground/70 mb-4" />
               <h3 className="text-lg font-semibold text-foreground mb-2">
-                {searchTerm ? "No se encontraron tipos de contrato" : "No hay tipos de contrato registrados"}
+                {hasActiveFilters ? "No se encontraron tipos de contrato" : "No hay tipos de contrato registrados"}
               </h3>
               <p className="text-muted-foreground mb-4">
-                {searchTerm ? "Intente con otros términos de búsqueda" : "Comience agregando el primer tipo de contrato al sistema"}
+                {hasActiveFilters ? "Intente con otros términos de búsqueda o ajuste el filtro de estado" : "Comience agregando el primer tipo de contrato al sistema"}
               </p>
-              {!searchTerm && (
+              {!hasActiveFilters && (
                 <Button data-testid="button-add-first-contract-type" onClick={() => { setFormMode("create"); setEditingContract(null); setIsFormOpen(true); }}>
                   <Plus className="mr-2 h-4 w-4" /> Agregar Primer Tipo de Contrato
                 </Button>
@@ -680,6 +737,30 @@ export default function ContractTypesPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Confirmación de salida sin guardar */}
+      <AlertDialog open={showExitConfirm} onOpenChange={setShowExitConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Salir sin guardar?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tiene cambios sin guardar. Si sale ahora, se perderán.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Continuar editando</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+              onClick={() => {
+                setShowExitConfirm(false);
+                closeFormClean();
+              }}
+            >
+              Salir sin guardar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Diálogo de detalles */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>

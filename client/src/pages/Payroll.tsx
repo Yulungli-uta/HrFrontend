@@ -8,6 +8,8 @@ import type { Payroll } from "@/shared/schema";
 import PayrollForm from "@/components/forms/PayrollForm";
 import { useState } from "react";
 import { NominaAPI, type ApiResponse } from "@/lib/api"; // Importamos desde lib/api
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
+import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
 
 const statusLabels: Record<string, string> = {
   "Pending": "Pendiente",
@@ -23,6 +25,8 @@ const statusColors: Record<string, string> = {
 
 export default function PayrollPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const { setIsFormDirty, handleOpenChange, close, confirmOpen, confirmExit, closeConfirm } =
+    useUnsavedChangesGuard(setIsFormOpen);
   
   // Usamos el servicio específico de nómina
   const { data: apiResponse, isLoading, error } = useQuery<ApiResponse<Payroll[]>>({
@@ -90,9 +94,9 @@ export default function PayrollPage() {
           <h1 className="text-3xl font-bold text-foreground">Gestión de Nómina</h1>
           <p className="text-muted-foreground mt-2">Administre los pagos y salarios del personal universitario</p>
         </div>
-        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+        <Dialog open={isFormOpen} onOpenChange={handleOpenChange}>
           <DialogTrigger asChild>
-            <Button 
+            <Button
               data-testid="button-add-payroll"
               className="bg-primary hover:bg-primary/90"
             >
@@ -105,9 +109,10 @@ export default function PayrollPage() {
             <DialogDescription>
               Complete la información para procesar una nueva nómina
             </DialogDescription>
-            <PayrollForm 
-              onSuccess={() => setIsFormOpen(false)}
-              onCancel={() => setIsFormOpen(false)}
+            <PayrollForm
+              onSuccess={close}
+              onCancel={close}
+              onDirtyChange={setIsFormDirty}
             />
           </DialogContent>
         </Dialog>
@@ -124,11 +129,11 @@ export default function PayrollPage() {
                     Nómina #{payroll.id}
                   </span>
                 </div>
-                <Badge 
-                  className={statusColors[payroll.status] || "bg-muted text-foreground"}
+                <Badge
+                  className={statusColors[payroll.status ?? ""] || "bg-muted text-foreground"}
                   data-testid={`status-${payroll.id}`}
                 >
-                  {statusLabels[payroll.status] || payroll.status}
+                  {statusLabels[payroll.status ?? ""] || payroll.status || "—"}
                 </Badge>
               </CardTitle>
               <CardDescription>
@@ -149,7 +154,7 @@ export default function PayrollPage() {
                 <div className="flex items-center space-x-2 text-lg font-bold text-success">
                   <DollarSign className="h-5 w-5" />
                   <span data-testid={`text-salary-${payroll.id}`}>
-                    ${parseFloat(payroll.baseSalary).toLocaleString()}
+                    ${parseFloat(payroll.baseSalary ?? "0").toLocaleString()}
                   </span>
                 </div>
                 <p className="text-sm text-success mt-1">Salario base</p>
@@ -204,6 +209,7 @@ export default function PayrollPage() {
           </CardContent>
         </Card>
       )}
+      <UnsavedChangesDialog open={confirmOpen} onClose={closeConfirm} onConfirmExit={confirmExit} />
     </div>
   );
 }

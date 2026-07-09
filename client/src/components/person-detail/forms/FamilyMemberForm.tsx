@@ -1,5 +1,5 @@
 // client/src/components/person-detail/forms/FamilyMemberForm.tsx
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -51,6 +51,7 @@ interface FamilyMemberFormProps {
   onSubmit: (data: FamilyMemberFormData) => Promise<void>;
   onCancel: () => void;
   isLoading?: boolean;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 export default function FamilyMemberForm({
@@ -59,6 +60,7 @@ export default function FamilyMemberForm({
   onSubmit,
   onCancel,
   isLoading = false,
+  onDirtyChange,
 }: FamilyMemberFormProps) {
   const form = useForm<FamilyMemberFormData>({
     resolver: zodResolver(familyMemberFormSchema) as any,
@@ -80,6 +82,13 @@ export default function FamilyMemberForm({
       educationInstitution: familyMember?.educationInstitution || "",
     },
   });
+
+  const _onDirtyChangeRef = useRef(onDirtyChange);
+  _onDirtyChangeRef.current = onDirtyChange;
+  const _isDirty = form.formState.isDirty;
+  useEffect(() => {
+    _onDirtyChangeRef.current?.(_isDirty);
+  }, [_isDirty]);
 
   const hasDisability = form.watch("hasDisability");
   const isStudying = form.watch("isStudying");

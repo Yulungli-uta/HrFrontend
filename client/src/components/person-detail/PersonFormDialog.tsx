@@ -5,6 +5,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import PersonForm from "@/components/forms/PersonForm";
 import { TiposReferenciaAPI, PersonasAPI, type ApiResponse } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
+import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
 
 interface PersonFormDialogProps {
   open: boolean;
@@ -44,6 +46,8 @@ const REF_CATEGORIES = [
 export function PersonFormDialog({ open, onOpenChange, person, onSuccess }: PersonFormDialogProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { setIsFormDirty, handleOpenChange, confirmOpen, confirmExit, closeConfirm } =
+    useUnsavedChangesGuard(onOpenChange);
 
   const {
     data: refTypesResponse,
@@ -173,23 +177,31 @@ export function PersonFormDialog({ open, onOpenChange, person, onSuccess }: Pers
   });
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-lg sm:text-xl">
-            Modificar Información Personal
-          </DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg sm:text-xl">
+              Modificar Información Personal
+            </DialogTitle>
+          </DialogHeader>
 
-        <PersonForm
-          person={person}
-          onSubmit={(data) => saveMutation.mutate(data)}
-          onCancel={() => onOpenChange(false)}
-          isLoading={saveMutation.isPending || isLoadingRefTypes}
-          refTypesByCategory={refTypesByCategory}
-          isRefTypesError={isErrorRefTypes}
-        />
-      </DialogContent>
-    </Dialog>
+          <PersonForm
+            person={person}
+            onSubmit={(data) => saveMutation.mutate(data)}
+            onCancel={() => handleOpenChange(false)}
+            isLoading={saveMutation.isPending || isLoadingRefTypes}
+            refTypesByCategory={refTypesByCategory}
+            isRefTypesError={isErrorRefTypes}
+            onDirtyChange={setIsFormDirty}
+          />
+        </DialogContent>
+      </Dialog>
+      <UnsavedChangesDialog
+        open={confirmOpen}
+        onClose={closeConfirm}
+        onConfirmExit={confirmExit}
+      />
+    </>
   );
 }

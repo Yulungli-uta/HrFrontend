@@ -48,6 +48,7 @@ import {
   ContractRequestPersonSection,
   type ContractRequestPersonSectionHandle,
 } from "@/components/contractRequest/ContractRequestPersonSection";
+import { FinancialCertificationSection } from "@/components/contractRequest/FinancialCertificationSection";
 import { ContractDialog } from "@/components/contracts/ContractDialog";
 
 const EDITABLE_STATUS = "PENDIENTE_CERT_FINANCIERA";
@@ -848,6 +849,13 @@ export default function ContractRequestPage() {
                     headerStartDate={selected.startDate ?? null}
                     headerEndDate={selected.endDate ?? null}
                     readOnly={true}
+                    createdBy={ctxCreatedBy}
+                  />
+
+                  {/* Certificación Financiera — embebida para no depender de la pantalla dedicada */}
+                  <FinancialCertificationSection
+                    requestId={selected.requestId}
+                    readOnly={!canEdit}
                     createdBy={ctxCreatedBy}
                   />
 

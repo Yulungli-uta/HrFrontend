@@ -92,6 +92,17 @@ export const CapacitacionesAPI = {
 };
 
 // =============================================================================
+// API de Idiomas
+// =============================================================================
+
+export const IdiomasAPI = {
+  ...createApiService<any, any>('/api/v1/rh/cv/languages'),
+
+  getByPersonId: (personId: number): Promise<ApiResponse<any>> =>
+    apiFetch<any>(`/api/v1/rh/cv/languages/person/${personId}`),
+};
+
+// =============================================================================
 // API de Experiencias Laborales
 // =============================================================================
 

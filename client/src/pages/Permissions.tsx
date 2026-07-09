@@ -311,8 +311,8 @@ export default function PermissionsPage() {
    * - llenar el select de filtro por tipo
    */
   const { data: typesResp, isLoading: typesLoading } = useQuery<ApiResponse<PermissionType[]>>({
-    queryKey: ["/api/v1/rh/permission-types"],
-    queryFn: () => TiposPermisosAPI.list(),
+    queryKey: ["/api/v1/rh/permission-types/available"],
+    queryFn: () => TiposPermisosAPI.getAvailable(),
     refetchOnWindowFocus: false,
     staleTime: 10 * 60 * 1000,
   });

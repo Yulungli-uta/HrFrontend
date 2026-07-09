@@ -121,6 +121,22 @@ export interface Training {
   endDate?: string;
   hours?: number;
   approvalTypeId?: number;
+  trainingDirectionTypeId?: number;
+  modalityTypeId?: number;
+  countryId?: string;
+  createdAt?: string;
+}
+
+export interface Language {
+  languageId: number;
+  personId: number;
+  languageTypeId: number;
+  levelTypeId: number;
+  referenceFramework?: string;
+  certifyingInstitution?: string;
+  countryId?: string;
+  issueDate: string;
+  expirationDate?: string;
   createdAt?: string;
 }
 
@@ -169,7 +185,7 @@ export interface EmergencyContact {
  * Normaliza datos crudos del backend a la interfaz `Person`.
  * Maneja tanto `personId` (backend) como `id` (Drizzle) como clave primaria.
  */
-export const normalizePerson = (data: Record<string, unknown>): Person => ({
+export const normalizePerson = (data: any): Person => ({
   id: (data.id as number) || (data.personId as number) || 0,
   personId: (data.personId as number) || (data.id as number) || 0,
   firstName: (data.firstName as string) || '',
@@ -205,7 +221,7 @@ export const normalizePerson = (data: Record<string, unknown>): Person => ({
   updatedAt: data.updatedAt as string | null,
 });
 
-export const normalizePublication = (data: Record<string, unknown>): Publication => ({
+export const normalizePublication = (data: any): Publication => ({
   publicationId: (data.publicationId as number) || (data.id as number) || 0,
   personId: (data.personId as number) || 0,
   title: (data.title as string) || '',

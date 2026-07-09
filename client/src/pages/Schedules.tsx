@@ -1,5 +1,5 @@
 //src/pages/Schedules.tsx
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { usePaged } from "@/hooks/pagination/usePaged";
@@ -41,6 +41,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { DataPagination } from "@/components/ui/DataPagination";
 import ScheduleForm from "@/components/forms/ScheduleForm";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
+import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
 
 import {
   Clock,
@@ -60,6 +62,13 @@ import {
 export default function SchedulesPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selected, setSelected] = useState<FrontendSchedule | undefined>(undefined);
+
+  const _setFormOpen = useCallback((open: boolean) => {
+    setIsFormOpen(open);
+    if (!open) setSelected(undefined);
+  }, []);
+  const { setIsFormDirty, handleOpenChange, close, confirmOpen, confirmExit, closeConfirm } =
+    useUnsavedChangesGuard(_setFormOpen);
 
   const { toast } = useToast();
   const isMobile = useMediaQuery("(max-width: 768px)");
@@ -116,10 +125,7 @@ export default function SchedulesPage() {
     setIsFormOpen(true);
   };
 
-  const closeForm = () => {
-    setIsFormOpen(false);
-    setSelected(undefined);
-  };
+  const closeForm = close;
 
   const handleDelete = async (schedule: FrontendSchedule) => {
     const scheduleId = schedule.id ?? schedule.scheduleId;
@@ -234,7 +240,7 @@ export default function SchedulesPage() {
             <span>Móvil</span>
           </div>
 
-          <Dialog open={isFormOpen} onOpenChange={(o) => (o ? setIsFormOpen(true) : closeForm())}>
+          <Dialog open={isFormOpen} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>
               <Button className="bg-primary hover:bg-primary/90 w-full sm:w-auto" onClick={openCreate}>
                 <Plus className="mr-2 h-4 w-4" />
@@ -255,7 +261,7 @@ export default function SchedulesPage() {
                 </DialogDescription>
               </DialogHeader>
 
-              <ScheduleForm schedule={selected} onSuccess={closeForm} onCancel={closeForm} />
+              <ScheduleForm schedule={selected} onSuccess={closeForm} onCancel={closeForm} onDirtyChange={setIsFormDirty} />
             </DialogContent>
           </Dialog>
         </div>
@@ -597,6 +603,7 @@ export default function SchedulesPage() {
           </CardContent>
         </Card>
       )}
+      <UnsavedChangesDialog open={confirmOpen} onClose={closeConfirm} onConfirmExit={confirmExit} />
     </div>
   );
 }

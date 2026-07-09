@@ -8,9 +8,13 @@ import type { Faculty } from "@/shared/schema";
 import FacultyForm from "@/components/forms/FacultyForm";
 import { useState } from "react";
 import { FacultadesAPI, type ApiResponse } from "@/lib/api"; // Cambiamos la importación
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
+import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
 
 export default function FacultiesPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const { setIsFormDirty, handleOpenChange, close, confirmOpen, confirmExit, closeConfirm } =
+    useUnsavedChangesGuard(setIsFormOpen);
   
   // Usamos el servicio específico de facultades
   const { data: apiResponse, isLoading, error } = useQuery<ApiResponse<Faculty[]>>({
@@ -78,9 +82,9 @@ export default function FacultiesPage() {
           <h1 className="text-3xl font-bold text-foreground">Gestión de Facultades</h1>
           <p className="text-muted-foreground mt-2">Administre las facultades de la Universidad Técnica de Ambato</p>
         </div>
-        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+        <Dialog open={isFormOpen} onOpenChange={handleOpenChange}>
           <DialogTrigger asChild>
-            <Button 
+            <Button
               data-testid="button-add-faculty"
               className="bg-primary hover:bg-primary/90"
             >
@@ -89,9 +93,10 @@ export default function FacultiesPage() {
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <FacultyForm 
-              onSuccess={() => setIsFormOpen(false)}
-              onCancel={() => setIsFormOpen(false)}
+            <FacultyForm
+              onSuccess={close}
+              onCancel={close}
+              onDirtyChange={setIsFormDirty}
             />
           </DialogContent>
         </Dialog>
@@ -164,6 +169,7 @@ export default function FacultiesPage() {
           </CardContent>
         </Card>
       )}
+      <UnsavedChangesDialog open={confirmOpen} onClose={closeConfirm} onConfirmExit={confirmExit} />
     </div>
   );
 }

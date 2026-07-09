@@ -5,6 +5,7 @@ import type { DirectoryParameter } from "@/types/directoryParameter";
 import { DirectoryParametersAPI, FinancialCertificationAPI, TiposReferenciaAPI, type ApiResponse } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { parseApiError } from '@/lib/error-handling';
+import { REF_TYPE_CATEGORIES } from '@/features/refTypeCategories';
 
 const CERT_LIST_KEY = ["/api/v1/rh/financial-certification"];
 const CERT_PENDING_KEY = ["/api/v1/rh/financial-certification/pending"];
@@ -34,8 +35,8 @@ export function usePendingCertifications() {
 
 export function useCertStatusTypes() {
   return useQuery<ApiResponse<any[]>>({
-    queryKey: ["ref-types", "FIN_CERT_STATUS"],
-    queryFn: () => TiposReferenciaAPI.byCategory("FIN_CERT_STATUS"),
+    queryKey: ["ref-types", REF_TYPE_CATEGORIES.FIN_CERT_STATUS],
+    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.FIN_CERT_STATUS),
     staleTime: 10 * 60 * 1000,
   });
 }

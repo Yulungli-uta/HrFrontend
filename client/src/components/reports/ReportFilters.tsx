@@ -34,6 +34,7 @@ import { REPORT_CONFIGS } from "@/types/reports";
 
 import { ContractTypeAPI, DepartamentosAPI, TiposReferenciaAPI, VistaEmpleadosAPI } from "@/lib/api";
 import { PersonnelActionTypeAPI } from "@/lib/api/services/contracts";
+import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { GuardServiceLocationsAPI, GuardRotationGroupsAPI } from "@/lib/api/services/guards";
 
 /* ---------------------------------- Types --------------------------------- */
@@ -287,7 +288,7 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
       setLaborRegimes({ loading: true, items: [] });
       try {
         // Los contratos usan CONTRACT_TYPE para LaborRegimeID (LOES, LOSEP, etc.)
-        const res = await TiposReferenciaAPI.byCategory("CONTRACT_TYPE");
+        const res = await TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CONTRACT_TYPE);
         const arr = extractArray(res);
         if (!alive) return;
         setLaborRegimes({ loading: false, items: arr as any[] });
@@ -344,7 +345,7 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
       if (!hasFilter("employeeType") && !hasFilter("employeeTypeId")) return;
       setContractTypes({ loading: true, items: [] });
       try {
-        const res = await TiposReferenciaAPI.byCategory("CONTRACT_TYPE");
+        const res = await TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CONTRACT_TYPE);
         const arr = extractArray(res);
         if (!alive) return;
         setContractTypes({ loading: false, items: arr as any[] });

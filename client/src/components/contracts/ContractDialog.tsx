@@ -79,7 +79,9 @@ import {
   VistaDetallesEmpleadosAPI,
   DocumentsAPI,
   AcademicLadderAPI,
+  VwAuthorityAPI,
 } from "@/lib/api";
+import { Switch } from "@/components/ui/switch";
 import type { VwJobWithDegreeAndGroup } from "@/lib/api";
 import { JobSelect } from "@/components/ui/JobSelect";
 import { DepartmentSelect } from "@/components/departments/DepartmentSelect";
@@ -93,6 +95,10 @@ import {
   CONTRACT_REQUEST_ENTITY_TYPE,
 } from "@/features/constants";
 import { getEntityId, getEntityLabel } from "@/utils/options";
+
+// HR.ref_Types (Category=DOCUMENT_TYPE): RESOLUCION_CAU=2061, MEMORANDO_RECTORADO=2062.
+// Documentos cuyo número/fecha de referencia alimentan placeholders de las plantillas de contrato.
+const CONTRACT_REFERENCE_DOC_TYPE_IDS = ["2061", "2062"];
 
 import { useToast } from "@/hooks/use-toast";
 import { parseApiError } from "@/lib/error-handling";
@@ -124,6 +130,8 @@ type ContractsCreateDto = {
   contractDescription?: string | null;
   authorityNominatorId?: number | null;
   dthDirectorId?: number | null;
+  /** Indica si la firma se realiza por delegación (la autoridad nominadora es el delegado, no la Rectora). */
+  isDelegation?: boolean;
   /** Auto-poblado desde solicitud al crear. Solo lectura. */
   laborRegimeID?: number | null;
   workModalityID?: number | null;
@@ -153,6 +161,7 @@ type ContractLike = {
   contractDescription?: string | null;
   authorityNominatorId?: number | null;
   dthDirectorId?: number | null;
+  isDelegation?: boolean;
   laborRegimeID?: number | null;
   laborRegimeName?: string | null;
   workModalityID?: number | null;
@@ -182,6 +191,7 @@ function buildEmptyForm(
     contractDescription: null,
     authorityNominatorId: null,
     dthDirectorId: null,
+    isDelegation: false,
     laborRegimeID: null,
     workModalityID: null,
     contractedHours: null,
@@ -207,6 +217,7 @@ function buildFormFromSelected(
     contractDescription: selected?.contractDescription ?? null,
     authorityNominatorId: selected?.authorityNominatorId ?? null,
     dthDirectorId: selected?.dthDirectorId ?? null,
+    isDelegation: selected?.isDelegation ?? false,
     laborRegimeID: (() => {
       const v = selected?.laborRegimeID ?? null;
       if (!v) return null;
@@ -420,6 +431,26 @@ export function ContractDialog(props: {
     enabled: open,
     staleTime: 5 * 60 * 1000,
   });
+
+  // Autoridad activa vigente del departamento del contrato (ej. Decano de la facultad),
+  // usada para preseleccionar la autoridad nominadora cuando el contrato es por delegación.
+  const qDeptAuthority = useQuery({
+    queryKey: ["dept-authority", form.departmentID],
+    queryFn: () => VwAuthorityAPI.getByDepartment(form.departmentID),
+    enabled: open && !!form.isDelegation && !!form.departmentID,
+    staleTime: 60_000,
+  });
+
+  // Al activar "Es por delegación" en un contrato sin autoridad nominadora asignada,
+  // preseleccionar automáticamente la autoridad activa del departamento (editable después).
+  useEffect(() => {
+    if (!form.isDelegation || form.authorityNominatorId || isView) return;
+    const rows = qDeptAuthority.data?.status === "success" ? qDeptAuthority.data.data ?? [] : [];
+    const active = rows.find((a) => a.isActive && !a.endDate) ?? rows[0];
+    if (active) {
+      setForm((f) => ({ ...f, authorityNominatorId: active.employeeID }));
+    }
+  }, [form.isDelegation, form.departmentID, qDeptAuthority.data, isView]);
 
   // paged devuelve { items, page, ... }
   const certs: any[] =
@@ -1724,6 +1755,20 @@ export function ContractDialog(props: {
                           )}
                         </div>
 
+                        <div className="space-y-2 md:col-span-2 flex items-center justify-between rounded-md border p-3">
+                          <div>
+                            <Label>¿Es por delegación?</Label>
+                            <p className="text-xs text-muted-foreground">
+                              Activar si el contrato lo firma un delegado (ej. Decano) en vez de la Rectora.
+                            </p>
+                          </div>
+                          <Switch
+                            checked={!!form.isDelegation}
+                            disabled={isView}
+                            onCheckedChange={(checked) => setForm((f) => ({ ...f, isDelegation: checked }))}
+                          />
+                        </div>
+
                         <div className="space-y-2">
                           <Label>Autoridad Nominadora</Label>
                           <SearchableSelect
@@ -1731,7 +1776,7 @@ export function ContractDialog(props: {
                             items={employeeItems}
                             placeholder="Seleccione autoridad..."
                             searchPlaceholder="Buscar por nombre o cédula..."
-                            isLoading={qEmployees.isLoading}
+                            isLoading={qEmployees.isLoading || qDeptAuthority.isLoading}
                             disabled={isView}
                             onChange={(v) => setForm((f) => ({ ...f, authorityNominatorId: Number(v) || null }))}
                           />
@@ -1840,6 +1885,12 @@ export function ContractDialog(props: {
                     canDelete: !isView,
                   }}
                   documentType={{ enabled: true, required: true }}
+                  referenceFields={{
+                    enabled: true,
+                    appliesToDocTypeIds: CONTRACT_REFERENCE_DOC_TYPE_IDS,
+                    numberLabel: "Número de resolución/oficio",
+                    dateLabel: "Fecha de resolución/oficio",
+                  }}
                 />
               </TabsContent>
 
@@ -2303,6 +2354,19 @@ export function ContractDialog(props: {
                       </div>
                     </div>
 
+                    <div className="flex items-center justify-between rounded-md border p-3">
+                      <div>
+                        <Label>¿Es por delegación?</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Activar si el contrato lo firma un delegado (ej. Decano) en vez de la Rectora.
+                        </p>
+                      </div>
+                      <Switch
+                        checked={!!form.isDelegation}
+                        onCheckedChange={(checked) => setForm((f) => ({ ...f, isDelegation: checked }))}
+                      />
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Autoridad Nominadora <span className="text-destructive">*</span></Label>
@@ -2311,7 +2375,7 @@ export function ContractDialog(props: {
                           items={employeeItems}
                           placeholder="Seleccione autoridad..."
                           searchPlaceholder="Buscar por nombre o cédula..."
-                          isLoading={qEmployees.isLoading}
+                          isLoading={qEmployees.isLoading || qDeptAuthority.isLoading}
                           onChange={(v) => setForm((f) => ({ ...f, authorityNominatorId: Number(v) || null }))}
                         />
                       </div>
@@ -2483,6 +2547,12 @@ export function ContractDialog(props: {
                         canDelete: true,
                       }}
                       documentType={{ enabled: true, required: true }}
+                      referenceFields={{
+                        enabled: true,
+                        appliesToDocTypeIds: CONTRACT_REFERENCE_DOC_TYPE_IDS,
+                        numberLabel: "Número de resolución/oficio",
+                        dateLabel: "Fecha de resolución/oficio",
+                      }}
                     />
                   </CardContent>
                 </Card>

@@ -18,7 +18,12 @@ export interface UseBulkPersonUploadReturn {
 }
 
 const REQUIRED_COLS = ['identificacion', 'tipo', 'job_id'] as const;
+const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
+const MAX_ROWS = 2000;
+const ALLOWED_EXTENSIONS = ['.xlsx', '.xls'];
 
+// Solo se leen claves fijas conocidas de `raw` (nunca se hace spread del objeto completo)
+// para no propagar claves arbitrarias del archivo hacia el estado de la app.
 function parseRow(raw: Record<string, unknown>, index: number): BulkValidatedRow | null {
   const identification = String(raw['identificacion'] ?? '').trim();
   const tipo = String(raw['tipo'] ?? '').trim().toUpperCase();
@@ -91,6 +96,19 @@ export function useBulkPersonUpload(): UseBulkPersonUploadReturn {
       setParseError(null);
       setStep('parsing');
 
+      const extension = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
+      if (!ALLOWED_EXTENSIONS.includes(extension)) {
+        setParseError('Formato no soportado. Suba un archivo Excel (.xlsx o .xls).');
+        setStep('error');
+        return;
+      }
+
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        setParseError('El archivo supera el tamaño máximo permitido (5MB).');
+        setStep('error');
+        return;
+      }
+
       try {
         const buffer = await file.arrayBuffer();
         const wb = XLSX.read(buffer, { type: 'array' });
@@ -99,6 +117,12 @@ export function useBulkPersonUpload(): UseBulkPersonUploadReturn {
 
         if (raw.length === 0) {
           setParseError('El archivo no contiene filas de datos.');
+          setStep('error');
+          return;
+        }
+
+        if (raw.length > MAX_ROWS) {
+          setParseError(`El archivo supera el máximo de ${MAX_ROWS} filas permitidas.`);
           setStep('error');
           return;
         }

@@ -16,6 +16,8 @@ export interface StoredFileDto {
   sizeBytes: number;
   status: number;
   createdAt: string;
+  documentReferenceNumber?: string | null;
+  documentReferenceDate?: string | null;
 }
 
 // ✅ Respuesta del orquestador al subir múltiples
@@ -43,11 +45,15 @@ export interface UploadSingleArgs  {
   relativePath: string;
   file: File;
   documentTypeId: string;
+  documentReferenceNumber?: string;
+  documentReferenceDate?: string;
 };
 
 export interface UploadMappedItem  {
   file: File;
   documentTypeId: string;
+  documentReferenceNumber?: string;
+  documentReferenceDate?: string;
 };
 
 export interface UploadMappedArgs  {

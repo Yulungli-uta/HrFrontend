@@ -8,7 +8,7 @@ import type { PagedRequest, PagedResult, ApiResponse } from '@/lib/api';
 
 export interface UsePagedOptions<T> {
   /** Clave única para React Query (se combina con los parámetros de paginación). */
-  queryKey: string | string[];
+  queryKey: string | readonly unknown[];
   /** Función que llama al backend con los parámetros de paginación. */
   queryFn: (params: PagedRequest) => Promise<ApiResponse<PagedResult<T>>>;
   /** Tamaño de página inicial. Por defecto: 20. */

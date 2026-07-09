@@ -15,6 +15,7 @@ import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { TiposReferenciaAPI, JustificationsAPI } from "@/lib/api";
 import { useAuth } from "@/features/auth";
+import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import JustificationForm from "@/components/justifications/JustificationForm";
 
 type Status = "PENDING" | "APPROVED" | "REJECTED" | "APPLIED";
@@ -107,7 +108,7 @@ export default function JustificationsPage() {
   const { data: types } = useQuery({
     queryKey: ["justificationTypes"],
     queryFn: async () => {
-      const resp = await TiposReferenciaAPI.byCategory("JUSTIFICATION");
+      const resp = await TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.JUSTIFICATION);
       if (resp.status === "error") throw new Error(resp.error.message);
       return resp.data || [];
     },

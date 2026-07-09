@@ -1,5 +1,4 @@
-// src/components/schedules/AssignScheduleForm.tsx
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
@@ -10,101 +9,136 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/features/auth";
-import { HorariosEmpleadosAPI, handleApiError, type ApiResponse } from "@/lib/api";
-import type { Employee, Schedule } from "@/types/schedule";
+import { HorariosEmpleadosAPI } from "@/lib/api";
+import type { Employee, Schedule, EmployeeSchedule } from "@/types/schedule";
 import { parseApiError } from "@/lib/error-handling";
+import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
 
-interface AssignScheduleFormProps {
+interface EditScheduleFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   employee: Employee | null;
+  employeeSchedule: EmployeeSchedule | null;
   schedules: Schedule[];
-  onScheduleAssigned: () => void;
+  onScheduleUpdated: () => void;
 }
 
-function getArray<T>(resp: any): T[] {
-  if (!resp) return [];
-  if (Array.isArray(resp)) return resp;
-  if (resp.status === "success") return resp.data ?? [];
-  if (resp?.data && Array.isArray(resp.data)) return resp.data;
-  if (resp?.results && Array.isArray(resp.results)) return resp.results;
-  return [];
-}
+const fmtDate = (s?: string) => (s ? s.substring(0, 10) : "");
 
-const fmtTime = (s?: string) => {
-  if (!s) return "—";
-  if (s.includes(':')) {
-    return s.substring(0, 5);
-  }
-  return s;
-};
-
-export default function AssignScheduleForm({
+export default function EditScheduleForm({
   open,
   onOpenChange,
   employee,
+  employeeSchedule,
   schedules,
-  onScheduleAssigned,
-}: AssignScheduleFormProps) {
+  onScheduleUpdated,
+}: EditScheduleFormProps) {
   const { toast } = useToast();
   const { employeeDetails } = useAuth();
   const queryClient = useQueryClient();
-  
+
   const [formData, setFormData] = useState({
     scheduleId: "",
-    validFrom: new Date().toISOString().split('T')[0],
-    validTo: "9999-12-31",
+    validFrom: "",
+    validTo: "",
   });
 
-  const resetForm = () => {
-    setFormData({
-      scheduleId: "",
-      validFrom: new Date().toISOString().split('T')[0],
-      validTo: "9999-12-31",
-    });
+  const [isDirty, setIsDirty] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const initialDataRef = useRef({ scheduleId: "", validFrom: "", validTo: "" });
+
+  useEffect(() => {
+    if (open && employeeSchedule) {
+      const initial = {
+        scheduleId: employeeSchedule.scheduleId?.toString() ?? "",
+        validFrom: fmtDate(employeeSchedule.validFrom),
+        validTo: fmtDate(employeeSchedule.validTo),
+      };
+      setFormData(initial);
+      initialDataRef.current = initial;
+      setIsDirty(false);
+    }
+  }, [open, employeeSchedule]);
+
+  const checkDirty = (updated: typeof formData) => {
+    const ref = initialDataRef.current;
+    setIsDirty(
+      updated.scheduleId !== ref.scheduleId ||
+        updated.validFrom !== ref.validFrom ||
+        updated.validTo !== ref.validTo
+    );
   };
 
-  const assignScheduleMutation = useMutation({
-    mutationFn: async (data: any) => {
+  const handleField = (field: keyof typeof formData, value: string) => {
+    const updated = { ...formData, [field]: value };
+    setFormData(updated);
+    checkDirty(updated);
+  };
+
+  const handleOpenChange = (next: boolean) => {
+    if (!next && isDirty) {
+      setConfirmOpen(true);
+      return;
+    }
+    onOpenChange(next);
+  };
+
+  const closeClean = () => {
+    setIsDirty(false);
+    setConfirmOpen(false);
+    onOpenChange(false);
+  };
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: typeof formData) => {
+      if (!employeeSchedule?.empScheduleId) {
+        throw new Error("No se encontró el ID de la asignación de horario");
+      }
       const currentUser = employeeDetails;
       if (!currentUser?.employeeID) {
         throw new Error("Usuario no autenticado");
       }
 
       const payload = {
-        employeeId: employee!.employeeID,
         scheduleId: parseInt(data.scheduleId),
         validFrom: data.validFrom,
         validTo: data.validTo || "9999-12-31",
-        createdBy: currentUser.employeeID,
-        createdAt: new Date().toISOString(),
         updatedBy: currentUser.employeeID,
         updatedAt: new Date().toISOString(),
       };
 
-      console.log("Creando nuevo horario:", payload);
-      const res = await HorariosEmpleadosAPI.create(payload);
+      const res = await HorariosEmpleadosAPI.update(
+        employeeSchedule.empScheduleId,
+        payload
+      );
       if (res.status === "error") {
-        throw new Error(handleApiError(res.error));
+        throw new Error(parseApiError(res.error).message);
       }
       return res.data;
     },
     onSuccess: () => {
       toast({
-        title: "Horario asignado exitosamente",
-        description: "El horario ha sido asignado al empleado",
+        title: "Horario actualizado",
+        description: "La asignación de horario fue modificada correctamente.",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/v1/rh/employee-schedules"] });
-      resetForm();
-      onScheduleAssigned();
+      queryClient.invalidateQueries({ queryKey: ["employee-details"] });
+      queryClient.invalidateQueries({ queryKey: ["employee-schedules"] });
+      setIsDirty(false);
+      onScheduleUpdated();
     },
     onError: (error: unknown) => {
       toast({
-        title: "Error al asignar horario",
+        title: "Error al actualizar horario",
         description: parseApiError(error).message,
         variant: "destructive",
       });
@@ -113,167 +147,110 @@ export default function AssignScheduleForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!employee || !formData.scheduleId) {
       toast({
-        title: "Error",
-        description: "Por favor complete todos los campos requeridos",
+        title: "Campos requeridos",
+        description: "Seleccione un horario antes de guardar.",
         variant: "destructive",
       });
       return;
     }
-
-    const selectedSchedule = schedules.find(s => s.scheduleId?.toString() === formData.scheduleId);
-    if (!selectedSchedule) {
-      toast({
-        title: "Error",
-        description: "Horario seleccionado no válido",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    assignScheduleMutation.mutate(formData);
+    updateMutation.mutate(formData);
   };
 
-  const selectedSchedule = schedules.find(s => s.scheduleId?.toString() === formData.scheduleId);
+  const activeSchedules = schedules.filter((s) => s.isActive !== false);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>Asignar Horario</DialogTitle>
-          <DialogDescription>
-            Asigne un horario a {employee?.fullName}
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar asignación de horario</DialogTitle>
+            <DialogDescription>
+              {employee?.fullName
+                ? `Modifique los datos de la asignación de horario para ${employee.fullName}.`
+                : "Modifique los datos de la asignación de horario."}
+            </DialogDescription>
+          </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Información del empleado */}
-          <div className="grid grid-cols-2 gap-4 p-4 bg-background rounded-lg">
-            <div>
-              <Label className="text-sm font-medium">Empleado</Label>
-              <div className="text-sm text-muted-foreground mt-1">{employee?.fullName}</div>
-            </div>
-            <div>
-              <Label className="text-sm font-medium">Departamento</Label>
-              <div className="text-sm text-muted-foreground mt-1">{employee?.departmentName || "—"}</div>
-            </div>
-            <div>
-              <Label className="text-sm font-medium">Email</Label>
-              <div className="text-sm text-muted-foreground mt-1">{employee?.email || "—"}</div>
-            </div>
-            <div>
-              <Label className="text-sm font-medium">Tipo</Label>
-              <div className="text-sm text-muted-foreground mt-1">{employee?.employeeType || "—"}</div>
-            </div>
-          </div>
-
-          {/* Selección de horario */}
-          <div className="space-y-2">
-            <Label htmlFor="scheduleId">Horario *</Label>
-            <Select 
-              value={formData.scheduleId} 
-              onValueChange={(value) => setFormData(f => ({ ...f, scheduleId: value }))}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccione un horario" />
-              </SelectTrigger>
-              <SelectContent>
-                {schedules
-                  .filter(schedule => schedule.isActive)
-                  .map(schedule => (
-                    <SelectItem key={schedule.scheduleId} value={schedule.scheduleId!.toString()}>
-                      {schedule.name} ({fmtTime(schedule.startTime)} - {fmtTime(schedule.endTime)})
+          <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label htmlFor="edit-scheduleId">
+                Horario <span className="text-destructive">*</span>
+              </Label>
+              <Select
+                value={formData.scheduleId}
+                onValueChange={(v) => handleField("scheduleId", v)}
+              >
+                <SelectTrigger id="edit-scheduleId">
+                  <SelectValue placeholder="Seleccione un horario" />
+                </SelectTrigger>
+                <SelectContent>
+                  {activeSchedules.map((s) => (
+                    <SelectItem
+                      key={s.scheduleId}
+                      value={s.scheduleId!.toString()}
+                    >
+                      {s.name}
+                      {s.startTime && s.endTime
+                        ? ` (${s.startTime.substring(0, 5)} – ${s.endTime.substring(0, 5)})`
+                        : ""}
                     </SelectItem>
                   ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Detalles del horario seleccionado */}
-          {selectedSchedule && (
-            <div className="p-3 bg-primary/10 rounded-lg">
-              <h4 className="font-medium text-sm mb-2">Detalles del Horario:</h4>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Nombre:</span>
-                  <div className="font-medium">{selectedSchedule.name}</div>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Horario:</span>
-                  <div className="font-medium">
-                    {fmtTime(selectedSchedule.startTime)} - {fmtTime(selectedSchedule.endTime)}
-                  </div>
-                </div>
-                {selectedSchedule.description && (
-                  <div className="col-span-2">
-                    <span className="text-muted-foreground">Descripción:</span>
-                    <div className="font-medium">{selectedSchedule.description}</div>
-                  </div>
-                )}
-              </div>
+                </SelectContent>
+              </Select>
             </div>
-          )}
 
-          {/* Fechas */}
-          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="validFrom">Válido Desde *</Label>
+              <Label htmlFor="edit-validFrom">
+                Vigente desde <span className="text-destructive">*</span>
+              </Label>
               <Input
-                id="validFrom"
+                id="edit-validFrom"
                 type="date"
                 value={formData.validFrom}
-                onChange={(e) => setFormData(f => ({ ...f, validFrom: e.target.value }))}
-                required
+                onChange={(e) => handleField("validFrom", e.target.value)}
               />
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="validTo">Válido Hasta</Label>
+              <Label htmlFor="edit-validTo">Vigente hasta</Label>
               <Input
-                id="validTo"
+                id="edit-validTo"
                 type="date"
-                value={formData.validTo}
-                onChange={(e) => setFormData(f => ({ ...f, validTo: e.target.value }))}
-                min={formData.validFrom}
+                value={formData.validTo === "9999-12-31" ? "" : formData.validTo}
+                onChange={(e) =>
+                  handleField("validTo", e.target.value || "9999-12-31")
+                }
+                placeholder="Sin fecha de fin (indefinido)"
               />
-              <p className="text-xs text-muted-foreground">Deje en 31/12/9999 para horario permanente</p>
+              <p className="text-xs text-muted-foreground">
+                Dejar vacío para asignación indefinida.
+              </p>
             </div>
-          </div>
 
-          {/* Campos de auditoría (solo lectura) */}
-          <div className="grid grid-cols-2 gap-4 p-3 bg-background rounded-lg">
-            <div>
-              <Label className="text-xs text-muted-foreground">Creado Por</Label>
-              <div className="text-sm">{employeeDetails?.fullName || "—"}</div>
+            <div className="flex justify-end gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handleOpenChange(false)}
+                disabled={updateMutation.isPending}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={updateMutation.isPending}>
+                {updateMutation.isPending ? "Guardando..." : "Guardar cambios"}
+              </Button>
             </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">Fecha de Creación</Label>
-              <div className="text-sm">{new Date().toLocaleDateString('es-ES')}</div>
-            </div>
-          </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
-          {/* Acciones */}
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                resetForm();
-                onOpenChange(false);
-              }}
-            >
-              Cancelar
-            </Button>
-            <Button 
-              type="submit" 
-              disabled={assignScheduleMutation.isPending}
-            >
-              {assignScheduleMutation.isPending ? "Asignando..." : "Asignar Horario"}
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+      <UnsavedChangesDialog
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        onConfirmExit={closeClean}
+      />
+    </>
   );
 }

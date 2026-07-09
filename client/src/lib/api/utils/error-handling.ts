@@ -60,7 +60,7 @@ export function parseApiError(error: unknown, defaultMsg = 'Error desconocido'):
 
   // Formato ApiError del cliente refactorizado
   if (typeof e.code === 'number' && typeof e.message === 'string') {
-    return handleApiError(e as ApiError, defaultMsg);
+    return handleApiError(e as unknown as ApiError, defaultMsg);
   }
 
   // Formato axios: { response: { data: { message } } }

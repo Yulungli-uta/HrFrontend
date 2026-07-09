@@ -51,14 +51,14 @@ export const useDepartmentMutation = (onSuccess: () => void) => {
 
       if (res?.status === "error") {
         // Manejo específico de errores
-        if (res.error?.status === 400) {
-          setError("Error de validación: " + (res.error.detail || "Verifique los datos ingresados"));
-        } else if (res.error?.status === 409) {
+        if (res.error?.code === 400) {
+          setError("Error de validación: " + (res.error.message || "Verifique los datos ingresados"));
+        } else if (res.error?.code === 409) {
           setError("El departamento fue modificado por otro usuario. Los datos se actualizarán automáticamente.");
           setTimeout(() => onSuccess(), 2000);
           return false;
         } else {
-          setError(res.error?.detail || res.error?.title || "Error desconocido");
+          setError(res.error?.message || "Error desconocido");
         }
         return false;
       }
@@ -67,7 +67,7 @@ export const useDepartmentMutation = (onSuccess: () => void) => {
       return true;
     } catch (e: unknown) {
       console.error('Error en mutación:', e);
-      setError(e?.message || `Error al ${mode === 'create' ? 'crear' : 'actualizar'}`);
+      setError(e instanceof Error ? e.message : `Error al ${mode === 'create' ? 'crear' : 'actualizar'}`);
       return false;
     } finally {
       setSaving(false);

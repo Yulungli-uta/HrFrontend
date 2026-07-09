@@ -1,26 +1,28 @@
 // client/src/hooks/personDetails/usePersonData.ts
 import { useQuery, useMutation, useQueryClient, useQueries } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  PersonasAPI, 
-  PublicacionesAPI, 
-  CargasFamiliaresAPI, 
-  ExperienciasLaboralesAPI, 
-  CapacitacionesAPI, 
-  LibrosAPI, 
+import {
+  PersonasAPI,
+  PublicacionesAPI,
+  CargasFamiliaresAPI,
+  ExperienciasLaboralesAPI,
+  CapacitacionesAPI,
+  IdiomasAPI,
+  LibrosAPI,
   ContactosEmergenciaAPI,
-  type ApiResponse 
+  type ApiResponse
 } from "@/lib/api";
-import { 
-  Person, 
-  Publication, 
-  FamilyMember, 
-  WorkExperience, 
-  Training, 
-  Book, 
+import {
+  Person,
+  Publication,
+  FamilyMember,
+  WorkExperience,
+  Training,
+  Language,
+  Book,
   EmergencyContact,
   normalizePerson,
-  normalizePublication 
+  normalizePublication
 } from "@/types/person";
 
 // Helper para manejar respuestas de API
@@ -68,7 +70,7 @@ export function usePersonData(personId: number, options?: { enabled?: boolean })
     data: personResponse,
     isLoading: isLoadingPerson,
     error: personError
-  } = useQuery<ApiResponse<Person>>({
+  } = useQuery({
     queryKey: ['person', String(personId)],
     queryFn: () => {
       //console\.log("[usePersonData] fetching person", { personId });
@@ -190,6 +192,22 @@ export function usePersonData(personId: number, options?: { enabled?: boolean })
         },
       },
       {
+        queryKey: ['languages', String(personId)],
+        queryFn: () => {
+          return IdiomasAPI.getByPersonId(personId);
+        },
+        enabled: fetchEnabled,
+        select: (response: ApiResponse<Language[]>) => {
+          if (response.status === 'success') {
+            const data = response.data || [];
+            return { ...response, data };
+          }
+
+          console.error("[usePersonData] languages ERROR status", { personId, response });
+          return response;
+        },
+      },
+      {
         queryKey: ['books', String(personId)],
         queryFn: () => {
           //console\.log("[usePersonData] fetching books", { personId });
@@ -249,16 +267,18 @@ export function usePersonData(personId: number, options?: { enabled?: boolean })
     "familyMembers",
     "workExperiences",
     "trainings",
+    "languages",
     "books",
     "emergencyContacts",
   ] as const;
-  
+
   const [
-    publications, 
-    familyMembers, 
-    workExperiences, 
-    trainings, 
-    books, 
+    publications,
+    familyMembers,
+    workExperiences,
+    trainings,
+    languages,
+    books,
     emergencyContacts
   ] = relatedQueries.map((q, index) => {
     const label = labels[index];
@@ -312,6 +332,7 @@ export function usePersonData(personId: number, options?: { enabled?: boolean })
       familyMembers,
       workExperiences,
       trainings,
+      languages,
       books,
       emergencyContacts,
     },
@@ -594,6 +615,26 @@ export function usePersonMutations(personId: number) {
         apiCall: CapacitacionesAPI.remove,
         successMessage: "La capacitación se ha eliminado correctamente",
         errorMessage: "No se pudo eliminar la capacitación"
+      }),
+    },
+    languages: {
+      create: createMutation({
+        queryKey: ['languages', String(personId)],
+        apiCall: IdiomasAPI.create,
+        successMessage: "El idioma se ha creado correctamente",
+        errorMessage: "No se pudo crear el idioma"
+      }),
+      update: updateMutation({
+        queryKey: ['languages', String(personId)],
+        apiCall: IdiomasAPI.update,
+        successMessage: "El idioma se ha actualizado correctamente",
+        errorMessage: "No se pudo actualizar el idioma"
+      }),
+      delete: deleteMutation({
+        queryKey: ['languages', String(personId)],
+        apiCall: IdiomasAPI.remove,
+        successMessage: "El idioma se ha eliminado correctamente",
+        errorMessage: "No se pudo eliminar el idioma"
       }),
     },
     books: {

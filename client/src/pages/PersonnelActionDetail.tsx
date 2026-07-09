@@ -21,6 +21,7 @@ import { DocumentPreviewPanel } from '@/components/personnelActions/DocumentPrev
 import { StatusHistoryTimeline } from '@/components/personnelActions/StatusHistoryTimeline';
 import { DepartmentAuthoritiesAPI, TiposReferenciaAPI, VistaDetallesEmpleadosAPI, DocumentsAPI } from '@/lib/api';
 import type { DepartmentAuthorityDto } from '@/lib/api/services/departmentAuthorities';
+import { REF_TYPE_CATEGORIES } from '@/features/refTypeCategories';
 import type { VwJobWithDegreeAndGroup, VwDepartmentWithType } from '@/lib/api/services/views';
 import type { RefType } from '@/lib/api';
 import type { CreatePersonnelActionRequest, UpdatePersonnelActionRequest, PersonnelActionDetail } from '@/types/personnel-actions';
@@ -82,8 +83,10 @@ function buildDocumentOverrides(
     ov['CURRENT_MANAGEMENT_LEVEL'] = originDept.departmentTypeDescription;
   }
 
-  // Declaración juramentada: marca para la plantilla
-  ov['DECLARACION_JURADA_MARK'] = action.swornDeclaration ? 'X' : '';
+  // Declaración juramentada: marca para la plantilla.
+  // swornDeclaration=true → presentó la declaración (marca en SI); false → marca en NO APLICA.
+  ov['DECLARACION_JURADA_SI_MARK'] = action.swornDeclaration ? 'X' : '';
+  ov['DECLARACION_JURADA_MARK'] = action.swornDeclaration ? '' : 'X';
 
   const destJob = jobs.find(j => j.jobID === action.destinationJobId);
   if (destJob) {
@@ -206,7 +209,7 @@ export default function PersonnelActionDetail() {
 
   const { data: instProcResp } = useQuery({
     queryKey: ['ref-types', 'AP_PROCESO_INSTITUCIONAL'],
-    queryFn: () => TiposReferenciaAPI.byCategory('AP_PROCESO_INSTITUCIONAL'),
+    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.AP_PROCESO_INSTITUCIONAL),
     staleTime: 10 * 60 * 1000,
   });
   const institutionalProcessTypes: RefType[] =
@@ -214,7 +217,7 @@ export default function PersonnelActionDetail() {
 
   const { data: mgmtLevelResp } = useQuery({
     queryKey: ['ref-types', 'AP_NIVEL_GESTION'],
-    queryFn: () => TiposReferenciaAPI.byCategory('AP_NIVEL_GESTION'),
+    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.AP_NIVEL_GESTION),
     staleTime: 10 * 60 * 1000,
   });
   const managementLevelTypes: RefType[] =
@@ -355,8 +358,9 @@ export default function PersonnelActionDetail() {
             requiresAdUserDisable={action.actionTypeRequiresAdUserDisable ?? false}
             requiresAdUserCreation={action.actionTypeRequiresAdUserCreation ?? false}
             employeeId={action.employeeId}
-            onAutoFinalize={async () => { await finalizeAsync(); }}
+            onAutoFinalize={async () => { await finalizeAsync(undefined); }}
             onFinalizePreviousAction={async () => { await finalizePreviousVigente(action.employeeId); }}
+            reachesVigente={action.actionTypeReachesVigente ?? false}
           />
         </CardContent>
       </Card>

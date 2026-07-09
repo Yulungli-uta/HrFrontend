@@ -34,6 +34,7 @@ type Status =
   | 'GENERADO'
   | 'PENDIENTE_FIRMAS'
   | 'FIRMADO_CARGADO'
+  | 'VIGENTE'
   | 'FINALIZADO'
   | 'ANULADO';
 
@@ -54,6 +55,9 @@ type Props = {
   employeeId?: number;
   onAutoFinalize?: () => Promise<void>;
   onFinalizePreviousAction?: () => Promise<void>;
+  /** 2026-07-06: si el tipo participa en la cadena de "vigente" — pasa a VIGENTE
+   * automáticamente al cargar el firmado, sin botón manual de "Finalizar". */
+  reachesVigente?: boolean;
 };
 
 type DialogType = 'generate' | 'markPending' | 'finalize' | 'cancel' | 'uploadSigned';
@@ -73,6 +77,7 @@ export function PersonnelActionActions({
   employeeId,
   onAutoFinalize,
   onFinalizePreviousAction,
+  reachesVigente = false,
 }: Props) {
   const [activeDialog, setActiveDialog] = useState<DialogType | null>(null);
   const [comment, setComment] = useState('');
@@ -102,7 +107,10 @@ export function PersonnelActionActions({
   }
 
   const s = status as Status;
-  const isTerminal = s === 'FINALIZADO' || s === 'ANULADO';
+  // 2026-07-06: VIGENTE también es un estado "cerrado" para efectos de Anular —
+  // no tiene sentido anular una acción que representa el estado actual de la
+  // persona; para reemplazarla se crea una acción nueva, no se anula esta.
+  const isTerminal = s === 'FINALIZADO' || s === 'ANULADO' || s === 'VIGENTE';
 
   const openDialog = (type: DialogType) => {
     setComment('');
@@ -177,8 +185,8 @@ export function PersonnelActionActions({
           </Button>
         )}
 
-        {/* FIRMADO_CARGADO / FINALIZADO: ver documento firmado */}
-        {(s === 'FIRMADO_CARGADO' || s === 'FINALIZADO') && signedDocumentStoredFileId && (
+        {/* FIRMADO_CARGADO / VIGENTE / FINALIZADO: ver documento firmado */}
+        {(s === 'FIRMADO_CARGADO' || s === 'VIGENTE' || s === 'FINALIZADO') && signedDocumentStoredFileId && (
           <Button variant="outline" size="sm" onClick={handleViewSignedDocument} disabled={isOpeningSignedDoc}>
             {isOpeningSignedDoc
               ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -187,8 +195,10 @@ export function PersonnelActionActions({
           </Button>
         )}
 
-        {/* FIRMADO_CARGADO: finalizar */}
-        {s === 'FIRMADO_CARGADO' && (
+        {/* FIRMADO_CARGADO: finalizar (manual) — solo para tipos que NO llegan a
+            VIGENTE automáticamente. Los que sí (reachesVigente=true) ya pasaron
+            solos al cargar el documento firmado, sin este paso. */}
+        {s === 'FIRMADO_CARGADO' && !reachesVigente && (
           <Button
             size="sm"
             className="bg-green-600 hover:bg-green-700 text-white"
@@ -197,6 +207,14 @@ export function PersonnelActionActions({
           >
             <CheckCircle2 className="mr-2 h-4 w-4" /> Finalizar
           </Button>
+        )}
+
+        {/* VIGENTE: indicador informativo, sin acción — el estado ya representa
+            que esta acción es la actual del empleado. */}
+        {s === 'VIGENTE' && (
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-green-50 px-2.5 py-1.5 text-sm font-medium text-green-700 border border-green-200">
+            <CheckCircle2 className="h-4 w-4" /> Vigente
+          </span>
         )}
 
         {/* Anular (cualquier estado no terminal) */}
@@ -344,6 +362,7 @@ export function PersonnelActionActions({
         employeeId={employeeId}
         onAutoFinalize={onAutoFinalize}
         onFinalizePreviousAction={onFinalizePreviousAction}
+        reachesVigente={reachesVigente}
       />
     </>
   );

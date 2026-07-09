@@ -62,6 +62,8 @@ import type { User } from "@/features/auth";
 import { useToast } from "@/hooks/use-toast";
 import UserForm from "@/components/forms/UserForm";
 import { parseApiError } from "@/lib/error-handling";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
+import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -137,6 +139,12 @@ export default function UsersPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
+
+  const { setIsFormDirty, handleOpenChange, close: _closeForm, confirmOpen, confirmExit, closeConfirm } =
+    useUnsavedChangesGuard((open) => {
+      setIsFormOpen(open);
+      if (!open) setEditingUser(null);
+    });
   const [resetPasswordUser, setResetPasswordUser] = useState<User | null>(null);
 
   const [page, setPage] = useState(1);
@@ -240,10 +248,7 @@ export default function UsersPage() {
     setIsFormOpen(true);
   };
 
-  const handleCloseForm = () => {
-    setIsFormOpen(false);
-    setEditingUser(null);
-  };
+  const handleCloseForm = _closeForm;
 
   const goToPage = (newPage: number) => setPage(newPage);
 
@@ -319,10 +324,7 @@ export default function UsersPage() {
 
         <Dialog
           open={isFormOpen}
-          onOpenChange={(open) => {
-            setIsFormOpen(open);
-            if (!open) setEditingUser(null);
-          }}
+          onOpenChange={handleOpenChange}
         >
           <DialogTrigger asChild>
             <Button
@@ -348,6 +350,7 @@ export default function UsersPage() {
               user={editingUser}
               onSuccess={handleCloseForm}
               onCancel={handleCloseForm}
+              onDirtyChange={setIsFormDirty}
             />
           </DialogContent>
         </Dialog>
@@ -590,6 +593,12 @@ export default function UsersPage() {
       <ResetPasswordDialog
         user={resetPasswordUser}
         onClose={() => setResetPasswordUser(null)}
+      />
+
+      <UnsavedChangesDialog
+        open={confirmOpen}
+        onClose={closeConfirm}
+        onConfirmExit={confirmExit}
       />
     </div>
   );

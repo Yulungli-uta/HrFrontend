@@ -4,7 +4,7 @@
  * DESCRIPCION ESTRUCTURAL
  * - APIs del módulo de documentos generados por plantilla (base URL: api/v1/documents/).
  * - PersonnelActionsAPI   → acciones de personal que desencadenan documentos
- * - DocumentTemplatesAPI  → plantillas Word/HTML con campos dinámicos
+ * - DocumentTemplatesAPI  → plantillas HTML con tokens {{CAMPO}}, versionamiento e importación
  * - GeneratedDocumentsAPI → documentos generados a partir de plantillas
  *
  * NOTA: Este archivo es distinto de documents.ts que gestiona archivos adjuntos (FileManagementAPI / DocumentsAPI).
@@ -16,7 +16,7 @@ import type { ApiResponse } from '../core/fetch';
 import type { PagedRequest, PagedResult } from '../core/pagination';
 
 // =============================================================================
-// DTOs
+// DTOs — Acciones de Personal
 // =============================================================================
 
 export interface PersonnelActionDto {
@@ -49,49 +49,173 @@ export interface PersonnelActionApproveDto {
   comment?: string | null;
 }
 
-export interface DocumentTemplateDto {
+// =============================================================================
+// DTOs — Plantillas Documentales (sincronizados con backend)
+// =============================================================================
+
+export type DocumentTemplateStatus = 'Draft' | 'Published' | 'Archived';
+export type LayoutType = 'A4Portrait' | 'A4Landscape' | 'LetterPortrait' | 'LetterLandscape';
+export type FieldSourceType = 'Employee' | 'Contract' | 'Movement' | 'System' | 'Manual';
+
+export interface DocumentTemplateSummaryDto {
   templateId: number;
+  templateCode: string;
   name: string;
   description?: string | null;
-  actionTypeId?: number | null;
-  actionTypeName?: string | null;
-  status: string;
-  createdAt: string;
+  templateType: string;
+  version: string;
+  layoutType: LayoutType;
+  status: DocumentTemplateStatus;
+  requiresSignature: boolean;
+  requiresApproval: boolean;
+  fieldCount: number;
+  createdAt?: string | null;
   updatedAt?: string | null;
-}
-
-export interface DocumentTemplateCreateDto {
-  name: string;
-  description?: string | null;
-  actionTypeId?: number | null;
-  content: string;
-}
-
-export interface DocumentTemplateUpdateDto {
-  name?: string;
-  description?: string | null;
-  content?: string;
+  /** True si está vinculada a algún tipo de contrato o de acción de personal activo. */
+  isInUse: boolean;
+  /** Nombres de los tipos de contrato/acción de personal activos que usan esta plantilla. */
+  usedBy: string[];
 }
 
 export interface DocumentTemplateFieldDto {
   fieldId: number;
   templateId: number;
   fieldName: string;
-  displayName?: string | null;
+  label: string;
+  sourceType: FieldSourceType;
+  sourceProperty?: string | null;
   dataType: string;
-  sourceExpression?: string | null;
+  formatPattern?: string | null;
   defaultValue?: string | null;
-  required: boolean;
+  isRequired: boolean;
+  isEditable: boolean;
+  sortOrder: number;
+  helpText?: string | null;
 }
 
-export interface DocumentTemplateFieldCreateDto {
-  fieldName: string;
-  displayName?: string | null;
-  dataType: string;
-  sourceExpression?: string | null;
-  defaultValue?: string | null;
-  required?: boolean;
+export interface DocumentTemplateDetailDto extends DocumentTemplateSummaryDto {
+  htmlContent: string;
+  cssStyles?: string | null;
+  metaJson?: string | null;
+  fields: DocumentTemplateFieldDto[];
+  createdBy?: number | null;
+  updatedBy?: number | null;
 }
+
+export interface CreateDocumentTemplateRequest {
+  templateCode: string;
+  name: string;
+  description?: string | null;
+  templateType: string;
+  version: string;
+  layoutType: LayoutType;
+  htmlContent: string;
+  cssStyles?: string | null;
+  metaJson?: string | null;
+  requiresSignature: boolean;
+  requiresApproval: boolean;
+  fields?: CreateDocumentTemplateFieldRequest[] | null;
+}
+
+export interface UpdateDocumentTemplateRequest {
+  name: string;
+  description?: string | null;
+  version: string;
+  layoutType: LayoutType;
+  status: DocumentTemplateStatus;
+  htmlContent: string;
+  cssStyles?: string | null;
+  metaJson?: string | null;
+  requiresSignature: boolean;
+  requiresApproval: boolean;
+}
+
+export interface CreateDocumentTemplateFieldRequest {
+  fieldName: string;
+  label: string;
+  sourceType: FieldSourceType;
+  sourceProperty?: string | null;
+  dataType: string;
+  formatPattern?: string | null;
+  defaultValue?: string | null;
+  isRequired: boolean;
+  isEditable: boolean;
+  sortOrder: number;
+  helpText?: string | null;
+}
+
+export interface PreviewTemplateRequest {
+  templateId: number;
+  employeeId?: number | null;
+  entityId?: number | null;
+  manualOverrides?: Record<string, string> | null;
+}
+
+export interface UnresolvedFieldDto {
+  fieldName: string;
+  label: string;
+  reason: string;
+}
+
+export interface PreviewTemplateResponse {
+  htmlContent: string;
+  unresolvedFields: UnresolvedFieldDto[];
+}
+
+export interface TemplateVersionSummaryDto {
+  templateId: number;
+  templateCode: string;
+  version: string;
+  status: DocumentTemplateStatus;
+  name: string;
+  createdAt?: string | null;
+  createdBy?: number | null;
+  updatedAt?: string | null;
+  updatedBy?: number | null;
+}
+
+export interface CreateVersionResponse {
+  newTemplateId: number;
+  newVersion: string;
+  templateCode: string;
+}
+
+export interface LegacyPlaceholderDto {
+  placeholder: string;
+  occurrences: number;
+  context: string;
+}
+
+export interface ImportContractTextResponse {
+  contractTypeId: number;
+  contractTypeName: string;
+  rawText: string;
+  placeholders: LegacyPlaceholderDto[];
+}
+
+export interface TemplateContractTypeOptionDto {
+  contractTypeId: number;
+  name: string;
+  isDefault: boolean;
+}
+
+export interface TemplateActionTypeOptionDto {
+  personnelActionTypeId: number;
+  name: string;
+  isDefault: boolean;
+}
+
+export interface ExtractTokensRequest {
+  htmlContent: string;
+}
+
+export interface ExtractTokensResponse {
+  tokens: string[];
+}
+
+// =============================================================================
+// DTOs — Documentos Generados
+// =============================================================================
 
 export interface GeneratedDocumentDto {
   generatedDocumentId: number;
@@ -166,35 +290,107 @@ export const PersonnelActionsAPI = {
 // =============================================================================
 
 export const DocumentTemplatesAPI = {
-  ...createApiService<DocumentTemplateDto, DocumentTemplateCreateDto, DocumentTemplateUpdateDto>(
-    '/api/v1/documents/templates'
-  ),
+  getAll: (params?: {
+    templateType?: string;
+    status?: DocumentTemplateStatus;
+  }): Promise<ApiResponse<DocumentTemplateSummaryDto[]>> => {
+    const qs = new URLSearchParams();
+    if (params?.templateType) qs.set('templateType', params.templateType);
+    if (params?.status) qs.set('status', params.status);
+    const query = qs.toString() ? `?${qs.toString()}` : '';
+    return apiFetch<DocumentTemplateSummaryDto[]>(`/api/v1/documents/templates${query}`);
+  },
+
+  getById: (id: number | string): Promise<ApiResponse<DocumentTemplateDetailDto>> =>
+    apiFetch<DocumentTemplateDetailDto>(`/api/v1/documents/templates/${id}`),
+
+  create: (data: CreateDocumentTemplateRequest): Promise<ApiResponse<{ id: number }>> =>
+    apiFetch<{ id: number }>('/api/v1/documents/templates', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  update: (
+    id: number | string,
+    data: UpdateDocumentTemplateRequest
+  ): Promise<ApiResponse<void>> =>
+    apiFetch<void>(`/api/v1/documents/templates/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
 
   setStatus: (
     id: number | string,
-    status: string
-  ): Promise<ApiResponse<DocumentTemplateDto>> =>
-    apiFetch<DocumentTemplateDto>(`/api/v1/documents/templates/${id}/status`, {
+    status: DocumentTemplateStatus
+  ): Promise<ApiResponse<void>> =>
+    apiFetch<void>(`/api/v1/documents/templates/${id}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ status }),
     }),
 
-  preview: (id: number | string): Promise<ApiResponse<Blob>> =>
-    apiFetch<Blob>(`/api/v1/documents/templates/${id}/preview`, {
-      method: 'GET',
-      headers: { Accept: '*/*' },
+  preview: (data: PreviewTemplateRequest): Promise<ApiResponse<PreviewTemplateResponse>> =>
+    apiFetch<PreviewTemplateResponse>('/api/v1/documents/templates/preview', {
+      method: 'POST',
+      body: JSON.stringify(data),
     }),
 
-  // ── Campos de la plantilla ──────────────────────────────────────────────────
+  // ── Versionamiento ──────────────────────────────────────────────────────────
+
+  createVersion: (
+    id: number | string,
+    version: string
+  ): Promise<ApiResponse<CreateVersionResponse>> =>
+    apiFetch<CreateVersionResponse>(`/api/v1/documents/templates/${id}/version`, {
+      method: 'POST',
+      body: JSON.stringify({ version }),
+    }),
+
+  getVersionsByCode: (code: string): Promise<ApiResponse<TemplateVersionSummaryDto[]>> =>
+    apiFetch<TemplateVersionSummaryDto[]>(
+      `/api/v1/documents/templates/code/${encodeURIComponent(code)}/versions`
+    ),
+
+  // ── Importación de ContractText ─────────────────────────────────────────────
+
+  getContractTypesForTemplate: (
+    templateId: number | string
+  ): Promise<ApiResponse<TemplateContractTypeOptionDto[]>> =>
+    apiFetch<TemplateContractTypeOptionDto[]>(
+      `/api/v1/documents/templates/${templateId}/contract-types`
+    ),
+
+  getActionTypesForTemplate: (
+    templateId: number | string
+  ): Promise<ApiResponse<TemplateActionTypeOptionDto[]>> =>
+    apiFetch<TemplateActionTypeOptionDto[]>(
+      `/api/v1/documents/templates/${templateId}/action-types`
+    ),
+
+  importContractText: (
+    contractTypeId: number | string
+  ): Promise<ApiResponse<ImportContractTextResponse>> =>
+    apiFetch<ImportContractTextResponse>(
+      `/api/v1/documents/templates/contract-types/${contractTypeId}/import-text`
+    ),
+
+  // ── Utilidades ──────────────────────────────────────────────────────────────
+
+  extractTokens: (htmlContent: string): Promise<ApiResponse<ExtractTokensResponse>> =>
+    apiFetch<ExtractTokensResponse>('/api/v1/documents/templates/extract-tokens', {
+      method: 'POST',
+      body: JSON.stringify({ htmlContent }),
+    }),
+
+  // ── Campos ──────────────────────────────────────────────────────────────────
 
   getFields: (id: number | string): Promise<ApiResponse<DocumentTemplateFieldDto[]>> =>
     apiFetch<DocumentTemplateFieldDto[]>(`/api/v1/documents/templates/${id}/fields`),
 
   createField: (
     id: number | string,
-    data: DocumentTemplateFieldCreateDto
-  ): Promise<ApiResponse<DocumentTemplateFieldDto>> =>
-    apiFetch<DocumentTemplateFieldDto>(`/api/v1/documents/templates/${id}/fields`, {
+    data: CreateDocumentTemplateFieldRequest
+  ): Promise<ApiResponse<{ fieldId: number }>> =>
+    apiFetch<{ fieldId: number }>(`/api/v1/documents/templates/${id}/fields`, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
@@ -202,12 +398,12 @@ export const DocumentTemplatesAPI = {
   updateField: (
     id: number | string,
     fieldId: number | string,
-    data: Partial<DocumentTemplateFieldCreateDto>
-  ): Promise<ApiResponse<DocumentTemplateFieldDto>> =>
-    apiFetch<DocumentTemplateFieldDto>(
-      `/api/v1/documents/templates/${id}/fields/${fieldId}`,
-      { method: 'PUT', body: JSON.stringify(data) }
-    ),
+    data: Partial<CreateDocumentTemplateFieldRequest>
+  ): Promise<ApiResponse<void>> =>
+    apiFetch<void>(`/api/v1/documents/templates/${id}/fields/${fieldId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
 
   deleteField: (
     id: number | string,

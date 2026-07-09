@@ -7,7 +7,7 @@
  *  - OCP: los Comboboxes son reutilizables sin modificar el componente base.
  *  - DRY: el componente SearchCombobox encapsula el patrón Command+Popover.
  */
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -50,6 +50,7 @@ import {
 } from "@/lib/api";
 import { VistaDetallesEmpleadosAPI } from "@/lib/api";
 import { TiposReferenciaAPI, CargosAPI } from "@/lib/api";
+import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { DepartmentSelect } from "@/components/departments/DepartmentSelect";
 
 // =============================================================================
@@ -60,6 +61,7 @@ interface DepartmentAuthorityFormProps {
   authority?: DepartmentAuthorityDto | null;
   onSuccess: () => void;
   onCancel: () => void;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 interface FormData {
@@ -219,6 +221,7 @@ export function DepartmentAuthorityForm({
   authority,
   onSuccess,
   onCancel,
+  onDirtyChange,
 }: DepartmentAuthorityFormProps) {
   const isEditing = !!authority;
   const { toast } = useToast();
@@ -244,11 +247,17 @@ export function DepartmentAuthorityForm({
     handleSubmit,
     control,
     reset,
-    formState: { errors },
+    formState: { errors, isDirty: _formIsDirty },
     watch,
   } = useForm<FormData>({
     defaultValues: buildDefaults(authority),
   });
+
+  const _onDirtyChangeRef = useRef(onDirtyChange);
+  _onDirtyChangeRef.current = onDirtyChange;
+  useEffect(() => {
+    _onDirtyChangeRef.current?.(_formIsDirty);
+  }, [_formIsDirty]);
 
   // ── Resincronizar formulario cuando cambia el registro a editar ────────────
   // useForm solo aplica defaultValues en el primer montaje. Si el Dialog
@@ -273,7 +282,7 @@ export function DepartmentAuthorityForm({
   /** Tipos de autoridad — filtrados por categoría AUTHORITY_TYPE */
   const { data: authTypeData, isLoading: loadingAuthTypes } = useQuery({
     queryKey: ["ref-types-authority"],
-    queryFn:  () => TiposReferenciaAPI.byCategory("AUTHORITY_TYPE"),
+    queryFn:  () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.AUTHORITY_TYPE),
     staleTime: 10 * 60 * 1000,
   });
 

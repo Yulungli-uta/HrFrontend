@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 
 import { ReusableDocumentManager, type ReusableDocumentManagerHandle } from "@/components/ReusableDocumentManager";
+import { FinancialCertificationFieldsForm } from "@/components/certification-finance/FinancialCertificationFieldsForm";
 import { useToast } from "@/hooks/use-toast";
 
 import type { DialogMode, FinancialCertification, UIFinancialCertification } from "@/types/certificationFinance";
@@ -36,12 +37,13 @@ import { FinancialCertificationAPI, TiposReferenciaAPI, type ApiResponse } from 
 import { useContractRequest } from "@/hooks/contractRequest/useContractRequests";
 import type { UIContractRequest } from "@/types/contractRequest";
 import { parseApiError } from '@/lib/error-handling';
-import { 
+import {
   CONTRACT_REQUEST_DIRECTORY_CODE,
   CONTRACT_REQUEST_ENTITY_TYPE,
-  FINANCE_CERTIFICATION_DIRECTORY_CODE, 
+  FINANCE_CERTIFICATION_DIRECTORY_CODE,
   FINANCE_CERTIFICATION_ENTITY_TYPE
 } from "@/features/constants";
+import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 
 /**
  * Helpers de fecha:
@@ -70,7 +72,7 @@ type FormState = Partial<Omit<FinancialCertification, "certificationId">> & {
 };
 
 // Categoría correcta para los estados de la certificación financiera
-const FIN_CERT_STATUS_CATEGORY = "FIN_CERT_STATUS";
+const FIN_CERT_STATUS_CATEGORY = REF_TYPE_CATEGORIES.FIN_CERT_STATUS;
 
 function ContractRequestPreviewCard(props: {
   item: UIContractRequest;
@@ -809,71 +811,11 @@ export function CertificationDialog(props: {
             </CardContent>
           </Card>
 
-          <div>
-            <Label htmlFor="certCode">Código *</Label>
-            <Input
-              id="certCode"
-              value={form.certCode ?? ""}
+          <div className="col-span-2">
+            <FinancialCertificationFieldsForm
+              value={form}
+              onChange={(v) => setForm((f) => ({ ...f, ...v }))}
               disabled={isView}
-              onChange={(e) => setForm((f) => ({ ...f, certCode: e.target.value }))}
-              placeholder="Ej: CERT-2025-001"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="certNumber">Número *</Label>
-            <Input
-              id="certNumber"
-              value={form.certNumber ?? ""}
-              disabled={isView}
-              onChange={(e) => setForm((f) => ({ ...f, certNumber: e.target.value }))}
-              placeholder="Ej: 1100"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="budget">Presupuesto *</Label>
-            <Input
-              id="budget"
-              value={form.budget ?? ""}
-              disabled={isView}
-              onChange={(e) => setForm((f) => ({ ...f, budget: e.target.value }))}
-              placeholder="Ej: Cert. 1100 / POA 2025"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="certBudgetDate">Fecha de Certificación *</Label>
-            <Input
-              id="certBudgetDate"
-              type="date"
-              disabled={isView}
-              value={form.certBudgetDate ?? ""}
-              onChange={(e) => setForm((f) => ({ ...f, certBudgetDate: e.target.value }))}
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="rmuHour">RMU por Hora</Label>
-            <Input
-              id="rmuHour"
-              type="number"
-              step="0.01"
-              disabled={isView}
-              value={form.rmuHour ?? 0}
-              onChange={(e) => setForm((f) => ({ ...f, rmuHour: Number(e.target.value) }))}
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="rmuCon">RMU por Contrato</Label>
-            <Input
-              id="rmuCon"
-              type="number"
-              step="0.01"
-              disabled={isView}
-              value={form.rmuCon ?? 0}
-              onChange={(e) => setForm((f) => ({ ...f, rmuCon: Number(e.target.value) }))}
             />
           </div>
 

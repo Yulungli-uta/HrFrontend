@@ -27,8 +27,9 @@ import type { CreateContractRequestPersonDto, ContractRequestPersonDto, BulkVali
 import { CargosEspecializadosAPI } from "@/lib/api/services/contracts";
 import { PersonSearchCombobox } from "@/components/personnelActions/PersonSearchCombobox";
 import { BulkPersonUploadDialog } from "@/components/contractRequest/BulkPersonUploadDialog";
+import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 
-const JOB_TYPE_CATEGORY = "JOB_TYPE";
+const JOB_TYPE_CATEGORY = REF_TYPE_CATEGORIES.JOB_TYPE;
 
 type PersonRow = CreateContractRequestPersonDto & { _tempId: string; _jobLabel?: string; _personLabel?: string };
 

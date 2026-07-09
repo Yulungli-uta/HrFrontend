@@ -449,7 +449,9 @@ export default function ApprovalsPermissions() {
   const filteredPerms = useMemo(() => {
     return allPerms
       .filter((p) => {
-        const empName = (p.employeeId && employeesMap[p.employeeId]?.fullName?.toLowerCase()) ?? "";
+        const empName = p.employeeId != null
+          ? (employeesMap[p.employeeId]?.fullName?.toLowerCase() ?? "")
+          : "";
         const just = (p.justification ?? "").toLowerCase();
         const typeName = getTypeName(p.permissionTypeId).toLowerCase();
         const q = permFilters.q.toLowerCase();
@@ -486,7 +488,9 @@ export default function ApprovalsPermissions() {
   const filteredVacs = useMemo(() => {
     return allVacs
       .filter((v) => {
-        const empName = (v.EmployeeID && employeesMap[v.EmployeeID]?.fullName?.toLowerCase()) ?? "";
+        const empName = v.EmployeeID != null
+          ? (employeesMap[v.EmployeeID]?.fullName?.toLowerCase() ?? "")
+          : "";
         const reason = (v.Reason ?? "").toLowerCase();
         const q = vacFilters.q.toLowerCase();
         const textOk = !q || empName.includes(q) || reason.includes(q);
@@ -521,7 +525,9 @@ export default function ApprovalsPermissions() {
   const filteredJusts = useMemo(() => {
     return allJusts
       .filter((j) => {
-        const empName = (j.employeeId && employeesMap[j.employeeId!]?.fullName?.toLowerCase()) ?? "";
+        const empName = j.employeeId != null
+          ? (employeesMap[j.employeeId]?.fullName?.toLowerCase() ?? "")
+          : "";
         const reason = (j.reason ?? "").toLowerCase();
         const q = justFilters.q.toLowerCase();
         const textOk = !q || empName.includes(q) || reason.includes(q);

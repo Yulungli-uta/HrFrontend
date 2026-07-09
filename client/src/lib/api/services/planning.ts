@@ -44,9 +44,7 @@ export interface TimePlanningEmployeeUpdateDTO {
   actualHours?: number;
   actualMinutes?: number;
   employeeStatusTypeID?: number;
-  paymentAmount?: number;
   isEligible?: boolean;
-  eligibilityReason?: string;
 }
 
 export interface TimePlanningExecutionCreateDTO {

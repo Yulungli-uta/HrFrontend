@@ -95,6 +95,12 @@ export interface ReportConfig {
    * Ej: 'CONTRACT_STATUS', 'PERSONNEL_ACTION_STATUS'.
    */
   statusCategory?: string;
+  /**
+   * Timeout (ms) para las llamadas de preview/download de este reporte.
+   * Si no se especifica, se usa API_CONFIG.TIMEOUT (30s).
+   * Útil para reportes con muchas filas/columnas que legítimamente tardan más.
+   */
+  timeoutMs?: number;
 }
 
 // Configuraciones predefinidas de reportes
@@ -106,7 +112,7 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
     description: 'Información completa de empleados, salarios y contratos',
     icon: 'Users',
     availableFormats: ['pdf', 'excel'],
-    availableFilters: ['startDate', 'endDate', 'departmentId', 'employeeType', 'isActive']
+    availableFilters: ['startDate', 'endDate', 'departmentId', 'employeeTypeId', 'isActive']
   },
   attendance: {
     type: 'attendance',
@@ -132,7 +138,7 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
     availableFormats: ['pdf', 'excel'],
     // 'orientation' se incluye porque este reporte tiene 15 columnas y necesita
     // que el usuario pueda elegir entre horizontal (por defecto) o vertical.
-    availableFilters: ['startDate', 'endDate', 'employeeId', 'employeeType', 'orientation']
+    availableFilters: ['startDate', 'endDate', 'employeeId', 'employeeTypeId', 'orientation']
   },
 
   // ── Reportes v2 — sources del usuario ──────────────────────────────────────
@@ -184,7 +190,9 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
     description: 'Vista consolidada: horas trabajadas, permisos, vacaciones, justificaciones y licencias',
     icon: 'LayoutGrid',
     availableFormats: ['pdf', 'excel'],
-    availableFilters: ['startDate', 'endDate', 'employeeId', 'departmentId', 'orientation']
+    availableFilters: ['startDate', 'endDate', 'employeeId', 'departmentId', 'orientation'],
+    // Reporte con muchas columnas/filas: puede superar el timeout default de 30s.
+    timeoutMs: 120_000,
   },
 
   // ── Gestión RH ────────────────────────────────────────────────────────────

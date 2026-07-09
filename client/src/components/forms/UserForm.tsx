@@ -1,5 +1,5 @@
 // src/components/forms/UserForm.tsx
-import { useState, useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -51,6 +51,7 @@ import type { BaseCrudFormProps } from "@/types/components";
 
 interface UserFormProps extends Omit<BaseCrudFormProps<User, CreateUserDto>, "entity"> {
   user?: User | null;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 interface FormData {
@@ -118,7 +119,7 @@ async function sha256hex(text: string): Promise<string> {
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
-export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
+export default function UserForm({ user, onSuccess, onCancel, onDirtyChange }: UserFormProps) {
   const isEditing = !!user;
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -132,7 +133,7 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isDirty: _formIsDirty },
     setValue,
     watch,
     reset,
@@ -147,6 +148,12 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
       mustChangePassword: true,
     },
   });
+
+  const _onDirtyChangeRef = useRef(onDirtyChange);
+  _onDirtyChangeRef.current = onDirtyChange;
+  useEffect(() => {
+    _onDirtyChangeRef.current?.(_formIsDirty);
+  }, [_formIsDirty]);
 
   const userType = watch("userType");
   const passwordValue = watch("password");

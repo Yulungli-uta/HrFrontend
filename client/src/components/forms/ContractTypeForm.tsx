@@ -1,4 +1,5 @@
 // src/components/forms/ContractTypeForm.tsx
+import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,6 +10,8 @@ import {
   TiposReferenciaAPI,
   type ApiResponse,
 } from "@/lib/api";
+import { TemplateSelect } from "@/components/shared/TemplateSelect";
+import { useToast } from "@/hooks/use-toast";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,9 +34,10 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
+import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 
 // Categoría unificada en ref_Types — ya no existe PERSONAL_CONTRACT_TYPE
-const PERSONAL_CONTRACT_TYPE_CATEGORY = "CONTRACT_TYPE";
+const PERSONAL_CONTRACT_TYPE_CATEGORY = REF_TYPE_CATEGORIES.CONTRACT_TYPE;
 
 // ---------------- Esquema Zod ----------------
 
@@ -47,6 +51,8 @@ const contractTypeSchema = z.object({
   requiresAdUserCreation: z.boolean(),
   requiresAdUserDisable: z.boolean(),
   requiresAdGroupAssignment: z.boolean(),
+  defaultTemplateId: z.number().nullable().optional(),
+  delegationTemplateId: z.number().nullable().optional(),
 
   personalContractTypeId: z
     .string({
@@ -64,6 +70,7 @@ export interface ContractTypeFormProps {
   initialValues?: Partial<ContractTypeFormValues>;
   onCancel: () => void;
   onSuccess: () => void;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 // DTOs para el backend
@@ -77,6 +84,8 @@ interface ContractTypeCreateDTO {
   requiresAdUserCreation: boolean;
   requiresAdUserDisable: boolean;
   requiresAdGroupAssignment: boolean;
+  defaultTemplateId?: number | null;
+  delegationTemplateId?: number | null;
 }
 
 interface ContractTypeUpdateDTO {
@@ -89,6 +98,8 @@ interface ContractTypeUpdateDTO {
   requiresAdUserCreation: boolean;
   requiresAdUserDisable: boolean;
   requiresAdGroupAssignment: boolean;
+  defaultTemplateId?: number | null;
+  delegationTemplateId?: number | null;
 }
 
 function ensureSuccess<T>(res: ApiResponse<T>, defaultMessage: string): T {
@@ -104,8 +115,22 @@ export function ContractTypeForm({
   initialValues,
   onCancel,
   onSuccess,
+  onDirtyChange,
 }: ContractTypeFormProps) {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  // ------- Plantillas vinculadas (solo edición) -------
+  // La plantilla predeterminada y la plantilla de delegación viajan como campos normales
+  // del formulario (defaultTemplateId, delegationTemplateId), soportados por el backend
+  // tanto en creación como en edición. En modo edición, además se consultan los valores
+  // ya vinculados para precargarlos en el formulario.
+  const qLinkedTemplates = useQuery({
+    queryKey: ["contract-type-template", contractId],
+    queryFn: () => ContractTypeAPI.getWithTemplate(contractId!),
+    enabled: mode === "edit" && !!contractId,
+  });
+  const linked = qLinkedTemplates.data?.status === "success" ? qLinkedTemplates.data.data : null;
 
   // ------- Cargar opciones de reftype para el Select -------
   const {
@@ -136,8 +161,28 @@ export function ContractTypeForm({
       requiresAdUserDisable: (initialValues as any)?.requiresAdUserDisable ?? false,
       requiresAdGroupAssignment: (initialValues as any)?.requiresAdGroupAssignment ?? false,
       personalContractTypeId: initialValues?.personalContractTypeId ?? "",
+      defaultTemplateId: initialValues?.defaultTemplateId ?? null,
+      delegationTemplateId: initialValues?.delegationTemplateId ?? null,
     },
   });
+
+  // Notifica al padre cuando el formulario tiene cambios sin guardar
+  const onDirtyChangeRef = useRef(onDirtyChange);
+  onDirtyChangeRef.current = onDirtyChange;
+  const isDirty = form.formState.isDirty;
+  useEffect(() => {
+    onDirtyChangeRef.current?.(isDirty);
+  }, [isDirty]);
+
+  // En modo edición, las plantillas vinculadas se cargan de forma asíncrona
+  // (qLinkedTemplates); en cuanto llegan, se sincronizan al formulario.
+  useEffect(() => {
+    if (mode === "edit" && linked) {
+      form.setValue("defaultTemplateId", linked.defaultTemplateId ?? null);
+      form.setValue("delegationTemplateId", linked.delegationTemplateId ?? null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, linked]);
 
   // ------- Mutaciones -------
   const createMutation = useMutation({
@@ -152,6 +197,8 @@ export function ContractTypeForm({
         requiresAdUserCreation: values.requiresAdUserCreation,
         requiresAdUserDisable: values.requiresAdUserDisable,
         requiresAdGroupAssignment: values.requiresAdGroupAssignment,
+        defaultTemplateId: values.defaultTemplateId ?? null,
+        delegationTemplateId: values.delegationTemplateId ?? null,
       };
 
       const res = await ContractTypeAPI.create(payload as any);
@@ -179,6 +226,8 @@ export function ContractTypeForm({
         requiresAdUserCreation: values.requiresAdUserCreation,
         requiresAdUserDisable: values.requiresAdUserDisable,
         requiresAdGroupAssignment: values.requiresAdGroupAssignment,
+        defaultTemplateId: values.defaultTemplateId ?? null,
+        delegationTemplateId: values.delegationTemplateId ?? null,
       };
 
       const res = await ContractTypeAPI.update(contractId, payload as any);
@@ -414,6 +463,57 @@ export function ContractTypeForm({
                     <FormControl>
                       <Switch checked={field.value} onCheckedChange={field.onChange} />
                     </FormControl>
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Plantillas documentales */}
+            <div className="rounded-lg border p-4 space-y-3 bg-muted/30">
+              <p className="text-sm font-semibold text-foreground">Plantillas documentales</p>
+              <p className="text-xs text-muted-foreground">
+                Define qué plantilla se usa al generar el documento de contrato y, opcionalmente,
+                qué plantilla se usa cuando el contrato es por delegación.
+              </p>
+
+              {/* Plantilla predeterminada — campo normal del formulario, disponible en create y edit */}
+              <FormField
+                control={form.control}
+                name="defaultTemplateId"
+                render={({ field }) => (
+                  <FormItem className="space-y-1">
+                    <FormLabel className="text-sm">Plantilla predeterminada</FormLabel>
+                    <FormControl>
+                      <TemplateSelect
+                        templateType="CONTRATO"
+                        value={field.value ?? null}
+                        onChange={field.onChange}
+                        disabled={mode === "edit" && qLinkedTemplates.isLoading}
+                        placeholder="Sin plantilla asignada"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Plantilla de delegación — campo normal del formulario, disponible en create y edit */}
+              <FormField
+                control={form.control}
+                name="delegationTemplateId"
+                render={({ field }) => (
+                  <FormItem className="space-y-1">
+                    <FormLabel className="text-sm">Plantilla de delegación</FormLabel>
+                    <FormControl>
+                      <TemplateSelect
+                        templateType="CONTRATO"
+                        value={field.value ?? null}
+                        onChange={field.onChange}
+                        disabled={mode === "edit" && qLinkedTemplates.isLoading}
+                        placeholder="Sin plantilla asignada"
+                      />
+                    </FormControl>
+                    <FormMessage />
                   </FormItem>
                 )}
               />

@@ -8,6 +8,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/features/auth";
 import { JustificationsAPI, HorariosAPI, TiposReferenciaAPI, handleApiError } from "@/lib/api";
+import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { getBossFromEmployeeDetails } from "@/components/employees/AuthBoss";
 import { parseApiError } from '@/lib/error-handling';
 
@@ -116,7 +117,7 @@ export default function JustificationForm({ onCreated, onCancel }: Props) {
         setLoadingTypes(true);
 
         // Cargar tipos de justificación
-        const justificationResponse = await TiposReferenciaAPI.byCategory("JUSTIFICATION");
+        const justificationResponse = await TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.JUSTIFICATION);
         if (justificationResponse.status === "success") {
           setJustificationTypes(justificationResponse.data);
         } else {
@@ -128,7 +129,7 @@ export default function JustificationForm({ onCreated, onCancel }: Props) {
         }
 
         // Cargar tipos de picada
-        const punchResponse = await TiposReferenciaAPI.byCategory("PUNCH_TYPE");
+        const punchResponse = await TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.PUNCH_TYPE);
         if (punchResponse.status === "success") {
           setPunchTypes(punchResponse.data);
         } else {

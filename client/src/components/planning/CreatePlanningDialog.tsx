@@ -43,6 +43,7 @@ import {
   TiposReferenciaAPI,
 } from "@/lib/api";
 import { useAuth } from "@/features/auth";
+import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { parseApiError } from "@/lib/error-handling";
 import { cn } from "@/lib/utils";
 import {
@@ -254,7 +255,7 @@ export default function CreatePlanningDialog({
 
   const { data: employeePlanStatusResp } = useQuery({
     queryKey: ["ref-types", "EMPLOYEE_PLAN_STATUS"],
-    queryFn: () => TiposReferenciaAPI.byCategory("EMPLOYEE_PLAN_STATUS"),
+    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.EMPLOYEE_PLAN_STATUS),
     staleTime: 5 * 60_000,
     enabled: open,
   });

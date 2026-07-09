@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -12,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { Settings, Save, ChevronRight, ChevronDown } from "lucide-react";
+import { Settings, Save, ChevronRight, ChevronDown, Search, X } from "lucide-react";
 import { RolesAPI, MenuItemsAPI, RoleMenuItemsAPI } from "@/lib/api";
 import type { ApiResponse, PagedResult } from "@/lib/api";
 import type {
@@ -93,6 +94,29 @@ function collectAllIds(tree: Node[]): number[] {
   return out;
 }
 
+/**
+ * Filtra el árbol manteniendo un nodo si su nombre coincide con el término
+ * de búsqueda o si alguno de sus descendientes coincide (para conservar la ruta).
+ */
+function filterTree(tree: Node[], term: string): Node[] {
+  const q = term.trim().toLowerCase();
+  if (!q) return tree;
+
+  const filterNode = (node: Node): Node | null => {
+    const ownMatch = node.name.toLowerCase().includes(q);
+    const filteredChildren = (node.children ?? [])
+      .map(filterNode)
+      .filter((c): c is Node => c !== null);
+
+    if (ownMatch || filteredChildren.length) {
+      return { ...node, children: filteredChildren };
+    }
+    return null;
+  };
+
+  return tree.map(filterNode).filter((n): n is Node => n !== null);
+}
+
 /* =========================
  * Checkbox tri-estado
  * ========================= */
@@ -141,6 +165,7 @@ export default function RoleMenuItemsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [dirty, setDirty] = useState<boolean>(false);
+  const [searchTerm, setSearchTerm] = useState<string>("");
 
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -157,9 +182,10 @@ export default function RoleMenuItemsPage() {
     refetchOnWindowFocus: false,
   });
 
-  const { data: roleMenusResp, isLoading } = useQuery<ApiResponse<PagedResult<RoleMenuItem>>>({
-    queryKey: ["role-menu-items"],
-    queryFn: () => RoleMenuItemsAPI.list(1, 10000),
+  const { data: roleMenusResp, isLoading } = useQuery<ApiResponse<RoleMenuItem[]>>({
+    queryKey: ["role-menu-items", selectedRoleId],
+    queryFn: () => RoleMenuItemsAPI.getByRole(Number(selectedRoleId)),
+    enabled: !!selectedRoleId,
     refetchOnWindowFocus: false,
   });
 
@@ -182,6 +208,7 @@ export default function RoleMenuItemsPage() {
 
   const tree = useMemo(() => buildTree(allMenus), [allMenus]);
   const allIds = useMemo(() => new Set(collectAllIds(tree)), [tree]);
+  const filteredTree = useMemo(() => filterTree(tree, searchTerm), [tree, searchTerm]);
 
   const parentById = useMemo(() => {
     const map = new Map<number, number | null>();
@@ -200,11 +227,23 @@ export default function RoleMenuItemsPage() {
     return map;
   }, [allMenus]);
 
+  const didAutoExpandRoots = useRef(false);
+
   useEffect(() => {
-    if (expanded.size === 0 && tree.length) {
+    if (!didAutoExpandRoots.current && tree.length) {
+      didAutoExpandRoots.current = true;
       setExpanded(new Set(tree.map((r) => r.id)));
     }
-  }, [tree, expanded.size]);
+  }, [tree]);
+
+  useEffect(() => {
+    if (!searchTerm.trim()) return;
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      for (const id of collectAllIds(filteredTree)) next.add(id);
+      return next;
+    });
+  }, [searchTerm, filteredTree]);
 
   useEffect(() => {
     if (!selectedRoleId) {
@@ -618,9 +657,52 @@ export default function RoleMenuItemsPage() {
         <div className="hidden xl:block" />
         <Card className="xl:col-span-2">
           <CardHeader>
-            <CardTitle className="truncate">Items de Menú Disponibles</CardTitle>
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="truncate">Items de Menú Disponibles</CardTitle>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={expandAll}
+                  disabled={tree.length === 0}
+                  className="h-8 px-2 text-xs whitespace-nowrap"
+                >
+                  Expandir todo
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={collapseAll}
+                  disabled={tree.length === 0}
+                  className="h-8 px-2 text-xs whitespace-nowrap"
+                >
+                  Contraer todo
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
+            <div className="relative mb-3">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
+              <Input
+                placeholder="Buscar item de menú..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9 pr-9"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/70 hover:text-foreground"
+                  aria-label="Limpiar búsqueda"
+                  title="Limpiar búsqueda"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
             {!selectedRoleId ? (
               <p className="text-center text-muted-foreground py-8">
                 Seleccione un rol para configurar sus menús
@@ -629,9 +711,13 @@ export default function RoleMenuItemsPage() {
               <p className="text-center text-muted-foreground py-8">
                 No hay items de menú disponibles
               </p>
+            ) : !filteredTree.length ? (
+              <p className="text-center text-muted-foreground py-8">
+                No se encontraron items que coincidan con “{searchTerm}”
+              </p>
             ) : (
               <div className="space-y-1 max-h-[600px] overflow-y-auto pr-1">
-                {tree.map((n) => renderNode(n))}
+                {filteredTree.map((n) => renderNode(n))}
               </div>
             )}
           </CardContent>

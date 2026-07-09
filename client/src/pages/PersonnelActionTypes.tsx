@@ -19,6 +19,16 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   ClipboardList,
   Plus,
   Search,
@@ -40,6 +50,7 @@ import {
 import { PersonnelActionTypeForm } from "@/components/forms/PersonnelActionTypeForm";
 import { PersonnelActionTypeAPI } from "@/lib/api/services/contracts";
 import type { PersonnelActionTypeDto } from "@/lib/api/services/contracts";
+import { DocumentTemplatesAPI } from "@/lib/api/services/documentTemplates";
 
 export default function PersonnelActionTypesPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -48,6 +59,9 @@ export default function PersonnelActionTypesPage() {
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
   const [editing, setEditing] = useState<PersonnelActionTypeDto | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+
+  const [isFormDirty, setIsFormDirty] = useState(false);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
 
   const { data: apiResponse, isLoading, error } = useQuery({
     queryKey: ["/api/v1/rh/personnel-action-type"],
@@ -58,6 +72,19 @@ export default function PersonnelActionTypesPage() {
     if (apiResponse?.status !== "success") return [];
     return apiResponse.data;
   }, [apiResponse]);
+
+  // Plantillas vigentes de tipo ACCION_PERSONAL, solo para mostrar el nombre en el detalle.
+  const { data: templatesResponse } = useQuery({
+    queryKey: ["templates-current", "ACCION_PERSONAL"],
+    queryFn: () => DocumentTemplatesAPI.getAll({ templateType: "ACCION_PERSONAL", status: "Published" }),
+  });
+  const templateNameById = useMemo(() => {
+    const map = new Map<number, string>();
+    if (templatesResponse?.status === "success") {
+      for (const t of templatesResponse.data) map.set(t.templateId, `${t.name} (v${t.version})`);
+    }
+    return map;
+  }, [templatesResponse]);
 
   const filtered = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
@@ -78,6 +105,19 @@ export default function PersonnelActionTypesPage() {
     const adGroups = actionTypes.filter((a) => a.requiresAdGroupAssignment).length;
     return { total, active, adCreate, adDisable, adGroups };
   }, [actionTypes]);
+
+  function closeFormClean() {
+    setIsFormDirty(false);
+    setIsFormOpen(false);
+  }
+
+  function handleFormOpenChange(open: boolean) {
+    if (!open && isFormDirty) {
+      setShowExitConfirm(true);
+    } else {
+      setIsFormOpen(open);
+    }
+  }
 
   function openCreate() {
     setFormMode("create");
@@ -340,8 +380,32 @@ export default function PersonnelActionTypesPage() {
         </CardContent>
       </Card>
 
+      {/* Confirmación de salida sin guardar */}
+      <AlertDialog open={showExitConfirm} onOpenChange={setShowExitConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Salir sin guardar?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tiene cambios sin guardar. Si sale ahora, se perderán.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Continuar editando</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+              onClick={() => {
+                setShowExitConfirm(false);
+                closeFormClean();
+              }}
+            >
+              Salir sin guardar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Dialog form */}
-      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+      <Dialog open={isFormOpen} onOpenChange={handleFormOpenChange}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
@@ -364,7 +428,7 @@ export default function PersonnelActionTypesPage() {
                       code: editing.code,
                       description: editing.description ?? "",
                       numberingPrefix: editing.numberingPrefix,
-                      templateCode: editing.templateCode ?? "",
+                      defaultTemplateId: editing.defaultTemplateId ?? null,
                       isActive: editing.isActive,
                       requiresAdUserCreation: editing.requiresAdUserCreation,
                       requiresAdUserDisable: editing.requiresAdUserDisable,
@@ -372,8 +436,9 @@ export default function PersonnelActionTypesPage() {
                     }
                   : undefined
               }
-              onCancel={() => setIsFormOpen(false)}
-              onSuccess={() => setIsFormOpen(false)}
+              onDirtyChange={setIsFormDirty}
+              onCancel={closeFormClean}
+              onSuccess={closeFormClean}
             />
           </div>
         </DialogContent>
@@ -411,10 +476,12 @@ export default function PersonnelActionTypesPage() {
                       <p className="text-muted-foreground font-medium">Prefijo de numeración</p>
                       <p className="font-mono font-medium">{selected.numberingPrefix}</p>
                     </div>
-                    {selected.templateCode && (
+                    {selected.defaultTemplateId && (
                       <div>
-                        <p className="text-muted-foreground font-medium">Código de plantilla</p>
-                        <p className="font-mono">{selected.templateCode}</p>
+                        <p className="text-muted-foreground font-medium">Plantilla documental</p>
+                        <p className="font-mono">
+                          {templateNameById.get(selected.defaultTemplateId) ?? `ID ${selected.defaultTemplateId}`}
+                        </p>
                       </div>
                     )}
                     {selected.description && (

@@ -99,7 +99,12 @@ export const PermisosAPI = {
 // API de Tipos de Permisos
 // =============================================================================
 
-export const TiposPermisosAPI = createCrudService<any, any>('/api/v1/rh/permission-types');
+export const TiposPermisosAPI = {
+  ...createCrudService<any, any>('/api/v1/rh/permission-types'),
+  /** Tipos de permiso activos filtrados por el régimen laboral del usuario autenticado. */
+  getAvailable: (): Promise<ApiResponse<any[]>> =>
+    apiFetch<any[]>('/api/v1/rh/permission-types/available', { method: 'GET' }),
+};
 
 // =============================================================================
 // API de Vacaciones (con métodos especializados)

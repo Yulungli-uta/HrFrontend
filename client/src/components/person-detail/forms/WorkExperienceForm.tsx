@@ -1,6 +1,6 @@
 // client/src/components/person-detail/forms/WorkExperienceForm.tsx
 
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -29,6 +29,7 @@ import { RefreshCw } from "lucide-react";
 
 import type { WorkExperience } from "@/types/person";
 import { PaisesAPI, TiposReferenciaAPI, type RefType } from "@/lib/api";
+import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 
 // =============================
 // Zod schema
@@ -122,6 +123,7 @@ interface WorkExperienceFormProps {
   onSubmit: (data: WorkExperienceFormData) => Promise<void> | void;
   onCancel: () => void;
   isLoading?: boolean;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 // =============================
@@ -133,6 +135,7 @@ export default function WorkExperienceForm({
   onSubmit,
   onCancel,
   isLoading = false,
+  onDirtyChange,
 }: WorkExperienceFormProps) {
   // =============================
   // QUERIES: Países
@@ -160,7 +163,7 @@ export default function WorkExperienceForm({
     error: instTypesError,
   } = useQuery({
     queryKey: ["refTypes", "CV_INSTITUTION_TYPE"],
-    queryFn: () => TiposReferenciaAPI.byCategory("CV_INSTITUTION_TYPE"),
+    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CV_INSTITUTION_TYPE),
   });
 
   const institutionTypes: RefType[] =
@@ -177,7 +180,7 @@ export default function WorkExperienceForm({
     error: expTypesError,
   } = useQuery({
     queryKey: ["refTypes", "EXPERIENCE_TYPE"],
-    queryFn: () => TiposReferenciaAPI.byCategory("EXPERIENCE_TYPE"),
+    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.EXPERIENCE_TYPE),
   });
 
   const experienceTypes: RefType[] =
@@ -220,6 +223,13 @@ export default function WorkExperienceForm({
         : 0,
     },
   });
+
+  const _onDirtyChangeRef = useRef(onDirtyChange);
+  _onDirtyChangeRef.current = onDirtyChange;
+  const _isDirty = form.formState.isDirty;
+  useEffect(() => {
+    _onDirtyChangeRef.current?.(_isDirty);
+  }, [_isDirty]);
 
   const isCurrent = form.watch("isCurrent");
 

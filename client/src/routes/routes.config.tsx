@@ -14,6 +14,7 @@ export interface RouteConfig {
 
 // Dashboard
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
+const DashboardTH = lazy(() => import("@/pages/DashboardTH"));
 
 // Páginas principales
 const PeoplePage = lazy(() => import("@/pages/People"));
@@ -50,6 +51,8 @@ const DepartmentAuthoritiesPage = lazy(() => import("@/pages/DepartmentAuthoriti
 const UsersPage = lazy(() => import("@/pages/admin/Users"));
 const RolesPage = lazy(() => import("@/pages/admin/Roles"));
 const UserRolesPage = lazy(() => import("@/pages/admin/UserRoles"));
+const UserAccessScopesPage = lazy(() => import("@/pages/admin/UserAccessScopes"));
+const EmployeeLaborRegimesPage = lazy(() => import("@/pages/admin/EmployeeLaborRegimes"));
 const MenuItemsPage = lazy(() => import("@/pages/admin/MenuItems"));
 const RoleMenuItemsPage = lazy(() => import("@/pages/admin/RoleMenuItems"));
 const ChangePasswordPage = lazy(() => import("@/pages/profile/ChangePassword"));
@@ -92,6 +95,19 @@ const GuardScheduleMatrixReportPage = lazy(() => import("@/pages/reports/GuardSc
 const PersonnelActionsPage = lazy(() => import("@/pages/PersonnelActions"));
 const PersonnelActionDetailPage = lazy(() => import("@/pages/PersonnelActionDetail"));
 
+// Renuncia / Jubilación — el detalle se muestra como modal sobre la misma lista,
+// no como ruta con :id (evita exponer el ID en la URL).
+const MyResignationRetirementRequestsPage = lazy(() => import("@/pages/MyResignationRetirementRequestsPage"));
+const HrResignationRetirementRequestsPage = lazy(() => import("@/pages/HrResignationRetirementRequestsPage"));
+
+// Autoservicio del Empleado — reutiliza /perfil, /permissions y /vacations existentes;
+// aquí solo lo que no existía: dashboard, certificados, solicitudes internas, historial.
+const EmployeeSelfServicePage = lazy(() => import("@/pages/EmployeeSelfServicePage"));
+const MyCertificatesPage = lazy(() => import("@/pages/MyCertificatesPage"));
+const MyInternalRequestsPage = lazy(() => import("@/pages/MyInternalRequestsPage"));
+const MyDocumentsPage = lazy(() => import("@/pages/MyDocumentsPage"));
+const MyHistoryPage = lazy(() => import("@/pages/MyHistoryPage"));
+
 // Parámetros RR.HH. y Guardias
 const HrParametersPage = lazy(() => import("@/pages/HrParametersPage"));
 const GuardParametersPage = lazy(() => import("@/pages/guards/GuardParametersPage"));
@@ -113,6 +129,10 @@ const GuardVacationApprovalsPage = lazy(() => import("@/pages/guards/GuardVacati
 
 // Detalle de Contrato
 const ContractDetailPage = lazy(() => import("@/pages/ContractDetail"));
+
+// Plantillas documentales
+const DocumentTemplatesPage = lazy(() => import("@/pages/admin/DocumentTemplates"));
+const TemplateEditorPage = lazy(() => import("@/pages/admin/TemplateEditor"));
 
 // Administración de AD y otros
 const AzureManagementPage = lazy(() => import("@/pages/admin/AzureManagement"));
@@ -142,9 +162,23 @@ const GeneralSearch = lazy(() => import("@/pages/DocFlow/general-search"));
 
 export const routes: RouteConfig[] = [
   // ----- RUTAS PRINCIPALES -----
+  // "/" es el home de autoservicio: el dashboard con cards (resumen, certificados,
+  // solicitudes, etc.), NO los datos personales — el perfil completo se alcanza
+  // desde un botón dentro del dashboard, nunca como landing. El dashboard general
+  // (antes en /) se movió a /dashboard como destino explícito para RRHH/admin.
   {
     path: "/",
-    component: Dashboard
+    component: EmployeeSelfServicePage
+  },
+  {
+    path: "/dashboard",
+    component: Dashboard,
+    requiredPath: "/dashboard"
+  },
+  {
+    path: "/dashboard-th",
+    component: DashboardTH,
+    requiredPath: "/dashboard-th"
   },
   {
     path: "/perfil",
@@ -197,6 +231,45 @@ export const routes: RouteConfig[] = [
     path: "/personnel-actions/:id",
     component: PersonnelActionDetailPage,
     requiredPath: "/personnel-actions"
+  },
+
+  // ----- RENUNCIA / JUBILACION -----
+  {
+    path: "/my-resignation-retirement-requests",
+    component: MyResignationRetirementRequestsPage,
+    requiredPath: "/my-resignation-retirement-requests"
+  },
+  {
+    path: "/resignation-retirement-requests",
+    component: HrResignationRetirementRequestsPage,
+    requiredPath: "/resignation-retirement-requests"
+  },
+
+  // ----- AUTOSERVICIO DEL EMPLEADO -----
+  {
+    path: "/self-service",
+    component: EmployeeSelfServicePage,
+    requiredPath: "/self-service"
+  },
+  {
+    path: "/self-service/certificates",
+    component: MyCertificatesPage,
+    requiredPath: "/self-service"
+  },
+  {
+    path: "/self-service/requests",
+    component: MyInternalRequestsPage,
+    requiredPath: "/self-service"
+  },
+  {
+    path: "/self-service/documents",
+    component: MyDocumentsPage,
+    requiredPath: "/self-service"
+  },
+  {
+    path: "/self-service/history",
+    component: MyHistoryPage,
+    requiredPath: "/self-service"
   },
 
   // ----- CONTRATOS Y PERMISOS -----
@@ -479,6 +552,16 @@ export const routes: RouteConfig[] = [
     requiredPath: "/admin/user-roles"
   },
   {
+    path: "/admin/user-access-scopes",
+    component: UserAccessScopesPage,
+    requiredPath: "/admin/user-access-scopes"
+  },
+  {
+    path: "/admin/employee-labor-regimes",
+    component: EmployeeLaborRegimesPage,
+    requiredPath: "/admin/employee-labor-regimes"
+  },
+  {
     path: "/admin/menu-items",
     component: MenuItemsPage,
     requiredPath: "/admin/menu-items"
@@ -517,6 +600,16 @@ export const routes: RouteConfig[] = [
     path: "/admin/active-sessions",
     component: ActiveSessionsPage,
     requiredPath: "/admin/active-sessions"
+  },
+  {
+    path: "/admin/document-templates",
+    component: DocumentTemplatesPage,
+    requiredPath: "/admin/document-templates"
+  },
+  {
+    path: "/admin/document-templates/:id/editor",
+    component: TemplateEditorPage,
+    requiredPath: "/admin/document-templates"
   },
 
   // ----- MÓDULO: GUARDIAS ROTATIVOS -----

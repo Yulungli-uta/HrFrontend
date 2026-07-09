@@ -40,12 +40,20 @@ import { DataPagination } from "@/components/ui/DataPagination";
 import type { Role } from "@/features/auth";
 import { useToast } from "@/hooks/use-toast";
 import RoleForm from "@/components/forms/RoleForm";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
+import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
 import { parseApiError } from "@/lib/error-handling";
 
 export default function RolesPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [deleteRoleId, setDeleteRoleId] = useState<number | null>(null);
+
+  const { setIsFormDirty, handleOpenChange, close: _closeForm, confirmOpen, confirmExit, closeConfirm } =
+    useUnsavedChangesGuard((open) => {
+      setIsFormOpen(open);
+      if (!open) setEditingRole(null);
+    });
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -116,10 +124,7 @@ export default function RolesPage() {
     setIsFormOpen(true);
   };
 
-  const handleCloseForm = () => {
-    setIsFormOpen(false);
-    setEditingRole(null);
-  };
+  const handleCloseForm = _closeForm;
 
   const handleDelete = (id: number) => {
     setDeleteRoleId(id);
@@ -172,7 +177,7 @@ export default function RolesPage() {
           </p>
         </div>
 
-        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+        <Dialog open={isFormOpen} onOpenChange={handleOpenChange}>
           <DialogTrigger asChild>
             <Button
               className="bg-primary hover:bg-primary/90"
@@ -197,6 +202,7 @@ export default function RolesPage() {
               role={editingRole}
               onSuccess={handleCloseForm}
               onCancel={handleCloseForm}
+              onDirtyChange={setIsFormDirty}
             />
           </DialogContent>
         </Dialog>
@@ -311,6 +317,7 @@ export default function RolesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <UnsavedChangesDialog open={confirmOpen} onClose={closeConfirm} onConfirmExit={confirmExit} />
     </div>
   );
 }

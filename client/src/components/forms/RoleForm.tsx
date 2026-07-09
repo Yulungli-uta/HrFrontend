@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +11,7 @@ import type { BaseCrudFormProps } from "@/types/components";
 
 interface RoleFormProps extends Omit<BaseCrudFormProps<Role, CreateRoleDto>, 'entity'> {
   role?: Role | null;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 interface FormData {
@@ -19,13 +21,13 @@ interface FormData {
   isActive: boolean;
 }
 
-export default function RoleForm({ role, onSuccess, onCancel }: RoleFormProps) {
+export default function RoleForm({ role, onSuccess, onCancel, onDirtyChange }: RoleFormProps) {
   const isEditing = !!role;
 
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isDirty: _formIsDirty },
   } = useForm<FormData>({
     defaultValues: {
       name: role?.name || "",
@@ -34,6 +36,12 @@ export default function RoleForm({ role, onSuccess, onCancel }: RoleFormProps) {
       isActive: role?.isActive ?? true,
     },
   });
+
+  const _onDirtyChangeRef = useRef(onDirtyChange);
+  _onDirtyChangeRef.current = onDirtyChange;
+  useEffect(() => {
+    _onDirtyChangeRef.current?.(_formIsDirty);
+  }, [_formIsDirty]);
 
   // Usar el hook useCrudMutation
   const { create, update, isLoading } = useCrudMutation<Role, CreateRoleDto, UpdateRoleDto>({

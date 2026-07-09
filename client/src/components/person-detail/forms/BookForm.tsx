@@ -1,4 +1,5 @@
 // client/src/components/person-detail/BookForm.tsx
+import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -30,6 +31,7 @@ import {
   AreaConocimientoAPI,
   type RefType,
 } from "@/lib/api";
+import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 
 // =============================
 // Tipos auxiliares
@@ -126,6 +128,7 @@ interface BookFormProps {
   onSubmit: (data: any) => Promise<void> | void;
   onCancel: () => void;
   isLoading?: boolean;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 // =============================
@@ -137,6 +140,7 @@ export default function BookForm({
   onSubmit,
   onCancel,
   isLoading = false,
+  onDirtyChange,
 }: BookFormProps) {
   // =============================
   // QUERIES: Países
@@ -164,7 +168,7 @@ export default function BookForm({
     error: participationTypesError,
   } = useQuery({
     queryKey: ["refTypes", "BOOK_PARTIC_TYPE"],
-    queryFn: () => TiposReferenciaAPI.byCategory("BOOK_PARTIC_TYPE"),
+    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.BOOK_PARTIC_TYPE),
   });
 
   const participationTypes: RefType[] =
@@ -178,7 +182,7 @@ export default function BookForm({
     error: bookTypesError,
   } = useQuery({
     queryKey: ["refTypes", "BOOK_TYPE"],
-    queryFn: () => TiposReferenciaAPI.byCategory("BOOK_TYPE"),
+    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.BOOK_TYPE),
   });
 
   const bookTypes: RefType[] =
@@ -248,6 +252,13 @@ export default function BookForm({
       utaSponsorship: (book as any)?.utaSponsorship ?? false,
     },
   });
+
+  const _onDirtyChangeRef = useRef(onDirtyChange);
+  _onDirtyChangeRef.current = onDirtyChange;
+  const _isDirty = form.formState.isDirty;
+  useEffect(() => {
+    _onDirtyChangeRef.current?.(_isDirty);
+  }, [_isDirty]);
 
   const knowledgeAreaTypeId = form.watch("knowledgeAreaTypeId");
   const subAreaTypeId = form.watch("subAreaTypeId");

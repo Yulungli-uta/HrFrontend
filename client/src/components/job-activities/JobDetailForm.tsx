@@ -11,6 +11,7 @@ import { CheckCircle2, RefreshCw, XCircle } from "lucide-react";
 
 import type { Job, OccupationalGroup } from "@/types/Job-activities";
 import { TiposReferenciaAPI, type ApiResponse } from "@/lib/api";
+import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 
 // ------------------ TIPOS ------------------
 
@@ -77,7 +78,7 @@ export function JobDetailForm({
   } = useQuery<RefType[]>({
     queryKey: ["/api/v1/rh/ref/types", "CONTRACT_TYPE"],
     queryFn: async () => {
-      const res = await TiposReferenciaAPI.byCategory("CONTRACT_TYPE");
+      const res = await TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CONTRACT_TYPE);
       return ensureSuccess(res, "Error al cargar tipos de cargo");
     },
   });

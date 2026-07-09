@@ -84,7 +84,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { parseApiError } from "@/lib/error-handling";
 
 /* =========================
    Helpers
@@ -134,14 +133,12 @@ export default function UserRolesPage() {
   const [deleteAssignment, setDeleteAssignment] = useState<{
     userId: string;
     roleId: number;
-    assignedAt?: string;
   } | null>(null);
 
   const [editAssignment, setEditAssignment] = useState<{
     userId: string;
     userEmail: string;
     roleId: number;
-    assignedAt?: string;
     expiresAt?: string;
     reason?: string;
   } | null>(null);
@@ -190,8 +187,12 @@ export default function UserRolesPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async ({ userId, roleId, assignedAt }: { userId: string; roleId: number; assignedAt: string }) => {
-      return UserRolesAPI.remove(userId, roleId, assignedAt);
+    mutationFn: async ({ userId, roleId }: { userId: string; roleId: number }) => {
+      const res = await UserRolesAPI.remove(userId, roleId);
+      if (res.status !== "success") {
+        throw new Error(res.error?.message || "No se pudo remover la asignación.");
+      }
+      return res;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-roles"] });
@@ -204,7 +205,7 @@ export default function UserRolesPage() {
     onError: (error: unknown) => {
       toast({
         title: "Error al remover asignación",
-        description: parseApiError(error).message,
+        description: error instanceof Error ? error.message : "No se pudo remover la asignación.",
         variant: "destructive",
       });
     },
@@ -216,25 +217,29 @@ export default function UserRolesPage() {
     newRoleId: number;
     expiresAt?: string;
     reason?: string;
-    assignedAt?: string;
   };
 
   const updateMutation = useMutation({
     mutationFn: async (payload: UpdatePayload) => {
       const { userId, oldRoleId, newRoleId, expiresAt, reason } = payload;
 
-      try {
-        await UserRolesAPI.update(
-          userId,
-          oldRoleId,
-          { roleId: newRoleId as any, expiresAt, reason } as any
-        );
+      if (newRoleId === oldRoleId) {
+        const res = await UserRolesAPI.update(userId, oldRoleId, { expiresAt, reason } as any);
+        if (res.status !== "success") {
+          throw new Error(res.error?.message || "No se pudo actualizar la asignación.");
+        }
         return "updated";
-      } catch {
-        await UserRolesAPI.removeLegacy(userId, oldRoleId);
-        await UserRolesAPI.assign({ userId, roleId: newRoleId, expiresAt, reason });
-        return "replaced";
       }
+
+      const removeRes = await UserRolesAPI.remove(userId, oldRoleId);
+      if (removeRes.status !== "success") {
+        throw new Error(removeRes.error?.message || "No se pudo remover el rol anterior.");
+      }
+      const assignRes = await UserRolesAPI.assign({ userId, roleId: newRoleId, expiresAt, reason });
+      if (assignRes.status !== "success") {
+        throw new Error(assignRes.error?.message || "No se pudo asignar el nuevo rol.");
+      }
+      return "replaced";
     },
     onSuccess: (mode) => {
       queryClient.invalidateQueries({ queryKey: ["user-roles"] });
@@ -250,7 +255,7 @@ export default function UserRolesPage() {
     onError: (err: unknown) => {
       toast({
         title: "Error al actualizar",
-        description: parseApiError(err).message,
+        description: err instanceof Error ? err.message : "No se pudo actualizar la asignación.",
         variant: "destructive",
       });
     },
@@ -336,8 +341,8 @@ export default function UserRolesPage() {
   }, []);
 
   const handleDeleteAssignment = useCallback(
-    (userId: string, roleId: number, assignedAt?: string) => {
-      setDeleteAssignment({ userId, roleId, assignedAt });
+    (userId: string, roleId: number) => {
+      setDeleteAssignment({ userId, roleId });
     },
     []
   );
@@ -346,7 +351,6 @@ export default function UserRolesPage() {
     (data: {
       userId: string;
       roleId: number;
-      assignedAt?: string;
       expiresAt?: string;
       reason?: string;
     }) => {
@@ -355,7 +359,6 @@ export default function UserRolesPage() {
         userId: data.userId,
         userEmail: email,
         roleId: data.roleId,
-        assignedAt: data.assignedAt,
         expiresAt: data.expiresAt,
         reason: data.reason,
       });
@@ -755,7 +758,6 @@ export default function UserRolesPage() {
                   deleteMutation.mutate({
                     userId: deleteAssignment.userId,
                     roleId: deleteAssignment.roleId,
-                    assignedAt: deleteAssignment.assignedAt ?? new Date().toISOString(),
                   });
                 }
               }}
@@ -794,6 +796,9 @@ export default function UserRolesPage() {
               <AssignRoleForm
                 userId={selectedUserId}
                 userEmail={usersMap.get(selectedUserId)?.email || ""}
+                assignedRoleIds={(userRolesGrouped.get(selectedUserId) || [])
+                  .filter((ur) => !ur.isDeleted)
+                  .map((ur) => ur.roleId)}
                 onSuccess={handleCloseForm}
                 onCancel={handleCloseForm}
               />
@@ -836,7 +841,6 @@ export default function UserRolesPage() {
                     newRoleId: data.newRoleId,
                     expiresAt: data.expiresAt,
                     reason: data.reason,
-                    assignedAt: editAssignment.assignedAt,
                   })
                 }
               />
@@ -856,8 +860,8 @@ function StatCard({ title, value, icon, color, onClick }: any) {
   const colorClasses = {
     blue: "bg-primary/10 text-primary border-primary/30",
     green: "bg-success/10 text-success border-success/30",
-    purple: "bg-accent/50 text-secondary-foreground border-secondary/30",
-    orange: "bg-secondary/10 text-secondary-foreground border-warning/30",
+    purple: "bg-accent/50 text-accent-foreground border-secondary/30",
+    orange: "bg-warning/10 text-warning border-warning/30",
   };
 
   return (
@@ -1016,7 +1020,6 @@ function CardView({
                                   onEditAssignment({
                                     userId: ur.userId,
                                     roleId: ur.roleId,
-                                    assignedAt: ur.assignedAt,
                                     expiresAt: ur.expiresAt,
                                     reason: ur.reason,
                                   })
@@ -1030,7 +1033,7 @@ function CardView({
                                 variant="outline"
                                 size="sm"
                                 onClick={() =>
-                                  onDeleteAssignment(ur.userId, ur.roleId, ur.assignedAt)
+                                  onDeleteAssignment(ur.userId, ur.roleId)
                                 }
                                 className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8 p-0"
                               >
@@ -1172,7 +1175,6 @@ function TableView({
                                     onEditAssignment({
                                       userId: ur.userId,
                                       roleId: ur.roleId,
-                                      assignedAt: ur.assignedAt,
                                       expiresAt: ur.expiresAt,
                                       reason: ur.reason,
                                     })
@@ -1185,7 +1187,7 @@ function TableView({
                                   variant="outline"
                                   size="sm"
                                   onClick={() =>
-                                    onDeleteAssignment(ur.userId, ur.roleId, ur.assignedAt)
+                                    onDeleteAssignment(ur.userId, ur.roleId)
                                   }
                                   className="h-7 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
                                 >

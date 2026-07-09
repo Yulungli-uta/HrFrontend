@@ -208,6 +208,8 @@ export const DocumentsAPI = {
     relativePath?: string;
     files: File[];
     documentTypeId?: string;
+    documentReferenceNumber?: string;
+    documentReferenceDate?: string;
   }): Promise<ApiResponse<DocumentUploadResultDto>> => {
     const form = new FormData();
     form.append('DirectoryCode', payload.directoryCode);
@@ -215,6 +217,8 @@ export const DocumentsAPI = {
     form.append('EntityId', String(payload.entityId));
     if (payload.relativePath) form.append('RelativePath', payload.relativePath);
     if (payload.documentTypeId) form.append('DocumentTypeId', payload.documentTypeId);
+    if (payload.documentReferenceNumber) form.append('DocumentReferenceNumber', payload.documentReferenceNumber);
+    if (payload.documentReferenceDate) form.append('DocumentReferenceDate', payload.documentReferenceDate);
     payload.files.forEach((f) => form.append('Files', f));
     return apiFetch<DocumentUploadResultDto>('/api/v1/rh/documents/upload', {
       method: 'POST',
@@ -233,6 +237,8 @@ export const DocumentsAPI = {
     form.append('EntityId', String(args.entityId));
     if (args.relativePath) form.append('RelativePath', args.relativePath);
     if (args.documentTypeId) form.append('DocumentTypeId', args.documentTypeId);
+    if (args.documentReferenceNumber) form.append('DocumentReferenceNumber', args.documentReferenceNumber);
+    if (args.documentReferenceDate) form.append('DocumentReferenceDate', args.documentReferenceDate);
     form.append('File', args.file);
     return apiFetch<DocumentUploadResultDto>('/api/v1/rh/documents/upload-single', {
       method: 'POST',
@@ -253,6 +259,8 @@ export const DocumentsAPI = {
     if (args.relativePath) form.append('RelativePath', args.relativePath);
     args.items.forEach((it, i) => {
       form.append(`Items[${i}].DocumentTypeId`, it.documentTypeId);
+      if (it.documentReferenceNumber) form.append(`Items[${i}].DocumentReferenceNumber`, it.documentReferenceNumber);
+      if (it.documentReferenceDate) form.append(`Items[${i}].DocumentReferenceDate`, it.documentReferenceDate);
       form.append(`Items[${i}].File`, it.file);
     });
     return apiFetch<DocumentUploadResultDto>('/api/v1/rh/documents/upload-mapped', {

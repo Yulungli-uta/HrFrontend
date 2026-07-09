@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { TiposReferenciaAPI, type ApiResponse } from "@/lib/api";
 import type { ReferenceType } from "@/types/department";
+import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 
-const DEPT_SCOPE_CATEGORY = "DEPARTMENT_SCOPE";
+const DEPT_SCOPE_CATEGORY = REF_TYPE_CATEGORIES.DEPARTMENT_SCOPE;
 
 export const useReferenceScopeTypes = () => {
   const [scopeTypes, setScopeTypes] = useState<ReferenceType[]>([]);

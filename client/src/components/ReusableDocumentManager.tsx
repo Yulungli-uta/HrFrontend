@@ -30,6 +30,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectTrigger,
@@ -111,6 +112,19 @@ type Props = {
     clearOnSuccess?: boolean;
   };
 
+  /**
+   * ✅ Campos de Número/Fecha de referencia (opt-in, no afecta a quien no lo use).
+   * Si se omite, el componente se comporta exactamente igual que antes.
+   */
+  referenceFields?: {
+    enabled: boolean;
+    /** Si se especifica, los campos solo aparecen cuando el tipo seleccionado está en esta lista. */
+    appliesToDocTypeIds?: string[];
+    numberLabel?: string;
+    dateLabel?: string;
+    required?: boolean;
+  };
+
   onUploaded?: (result: DocumentUploadResultDto) => void;
 };
 
@@ -161,6 +175,8 @@ type DocTypeMode = "BATCH" | "PER_FILE";
 type SelectedItem = {
   file: File;
   documentTypeId: string | null; // solo usado si modo PER_FILE
+  referenceNumber?: string; // solo usado si modo PER_FILE + referenceFields.enabled
+  referenceDate?: string;
 };
 
 export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle, Props>(
@@ -180,6 +196,7 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
       allowSelectWhenNotReady = true,
       showInternalUploadButton = true,
       documentType,
+      referenceFields,
       onUploaded,
     },
     ref
@@ -226,6 +243,23 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
     // tipo por lote (solo si modo BATCH)
     const [selectedDocTypeId, setSelectedDocTypeId] = useState<string | null>(
       documentType?.defaultValue ?? null
+    );
+
+    // -----------------------------
+    // ✅ Campos de referencia (Número/Fecha) — opt-in, solo si referenceFields.enabled
+    // -----------------------------
+    const refFieldsEnabled = showUploadUi && !!referenceFields?.enabled;
+    const refFieldsRequired = !!referenceFields?.required;
+    const [batchReferenceNumber, setBatchReferenceNumber] = useState("");
+    const [batchReferenceDate, setBatchReferenceDate] = useState("");
+
+    const docTypeNeedsReference = useCallback(
+      (docTypeId: string | null) => {
+        if (!refFieldsEnabled) return false;
+        if (!referenceFields?.appliesToDocTypeIds?.length) return true;
+        return !!docTypeId && referenceFields.appliesToDocTypeIds.includes(docTypeId);
+      },
+      [refFieldsEnabled, referenceFields?.appliesToDocTypeIds]
     );
 
     // si cambia defaultValue desde props
@@ -286,6 +320,9 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
         if (docTypeRequired && (!selectedDocTypeId || selectedDocTypeId.trim() === "")) {
           return "Debe seleccionar un tipo de documento (para el lote).";
         }
+        if (refFieldsRequired && docTypeNeedsReference(selectedDocTypeId) && !batchReferenceNumber.trim()) {
+          return `Debe ingresar ${referenceFields?.numberLabel ?? "el número de referencia"} (para el lote).`;
+        }
         return null;
       }
 
@@ -294,8 +331,24 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
         const missing = selected.find((s) => !s.documentTypeId || s.documentTypeId.trim() === "");
         if (missing) return "Debe seleccionar el tipo de documento para cada archivo.";
       }
+      if (refFieldsRequired) {
+        const missingRef = selected.find(
+          (s) => docTypeNeedsReference(s.documentTypeId) && !s.referenceNumber?.trim()
+        );
+        if (missingRef) return `Debe ingresar ${referenceFields?.numberLabel ?? "el número de referencia"} para cada archivo que lo requiera.`;
+      }
       return null;
-    }, [docTypeEnabled, docTypeMode, docTypeRequired, selectedDocTypeId, selected]);
+    }, [
+      docTypeEnabled,
+      docTypeMode,
+      docTypeRequired,
+      selectedDocTypeId,
+      selected,
+      refFieldsRequired,
+      docTypeNeedsReference,
+      batchReferenceNumber,
+      referenceFields?.numberLabel,
+    ]);
 
     // -----------------------------
     // ✅ Agregar archivos (validando total)
@@ -456,6 +509,7 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
 
         // (A) MODO BATCH: 1 tipo para todos
         if (!docTypeEnabled || docTypeMode === "BATCH") {
+          const batchNeedsRef = docTypeNeedsReference(selectedDocTypeId);
           resp = await DocumentsAPI.upload({
             directoryCode,
             entityType,
@@ -463,11 +517,14 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
             relativePath,
             files: selected.map((s) => s.file),
             documentTypeId: docTypeEnabled ? (selectedDocTypeId ?? undefined) : undefined,
+            documentReferenceNumber: batchNeedsRef ? (batchReferenceNumber.trim() || undefined) : undefined,
+            documentReferenceDate: batchNeedsRef ? (batchReferenceDate || undefined) : undefined,
           } as any);
         } else {
           // (B) MODO PER_FILE: tipo por archivo
           if (selected.length === 1) {
             // usar uploadSingle
+            const needsRef = docTypeNeedsReference(selected[0].documentTypeId);
             resp = await DocumentsAPI.uploadSingle({
               directoryCode,
               entityType,
@@ -475,6 +532,8 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
               relativePath,
               file: selected[0].file,
               documentTypeId: selected[0].documentTypeId ?? undefined,
+              documentReferenceNumber: needsRef ? (selected[0].referenceNumber?.trim() || undefined) : undefined,
+              documentReferenceDate: needsRef ? (selected[0].referenceDate || undefined) : undefined,
             } as any);
           } else {
             // usar uploadMapped
@@ -483,10 +542,15 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
               entityType,
               entityId: String(effectiveEntityId),
               relativePath,
-              items: selected.map((s) => ({
-                file: s.file,
-                documentTypeId: s.documentTypeId ?? "",
-              })),
+              items: selected.map((s) => {
+                const needsRef = docTypeNeedsReference(s.documentTypeId);
+                return {
+                  file: s.file,
+                  documentTypeId: s.documentTypeId ?? "",
+                  documentReferenceNumber: needsRef ? (s.referenceNumber?.trim() || undefined) : undefined,
+                  documentReferenceDate: needsRef ? (s.referenceDate || undefined) : undefined,
+                };
+              }),
             } as any);
           }
         }
@@ -502,6 +566,8 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
             if (documentType?.clearOnSuccess) {
               setSelectedDocTypeId(null);
             }
+            setBatchReferenceNumber("");
+            setBatchReferenceDate("");
           }
 
           setUploading(false);
@@ -533,6 +599,9 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
         documentType?.clearOnSuccess,
         onUploaded,
         refresh,
+        docTypeNeedsReference,
+        batchReferenceNumber,
+        batchReferenceDate,
       ]
     );
 
@@ -753,6 +822,30 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
                         Tipos
                       </Button>
                     </div>
+
+                    {/* ✅ Número/Fecha de referencia (opt-in) — solo si aplica al tipo elegido */}
+                    {docTypeNeedsReference(selectedDocTypeId) && (
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <div className="flex-1 space-y-1">
+                          <Label className="text-xs">{referenceFields?.numberLabel ?? "Número"}</Label>
+                          <Input
+                            value={batchReferenceNumber}
+                            onChange={(e) => setBatchReferenceNumber(e.target.value)}
+                            disabled={disabled || uploading}
+                            placeholder={referenceFields?.numberLabel ?? "Número de referencia"}
+                          />
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <Label className="text-xs">{referenceFields?.dateLabel ?? "Fecha"}</Label>
+                          <Input
+                            type="date"
+                            value={batchReferenceDate}
+                            onChange={(e) => setBatchReferenceDate(e.target.value)}
+                            disabled={disabled || uploading}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -896,6 +989,38 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
                               {docTypeRequired && <p className="text-xs text-muted-foreground">Obligatorio.</p>}
                             </div>
                           )}
+
+                          {/* ✅ Número/Fecha de referencia por archivo (opt-in) */}
+                          {docTypeMode === "PER_FILE" && docTypeNeedsReference(s.documentTypeId) && (
+                            <div className="flex flex-col sm:flex-row gap-2">
+                              <div className="flex-1 space-y-1">
+                                <Label className="text-xs">{referenceFields?.numberLabel ?? "Número"}</Label>
+                                <Input
+                                  value={s.referenceNumber ?? ""}
+                                  onChange={(e) =>
+                                    setSelected((prev) =>
+                                      prev.map((p, idx) => (idx === i ? { ...p, referenceNumber: e.target.value } : p))
+                                    )
+                                  }
+                                  disabled={uploading}
+                                  placeholder={referenceFields?.numberLabel ?? "Número de referencia"}
+                                />
+                              </div>
+                              <div className="flex-1 space-y-1">
+                                <Label className="text-xs">{referenceFields?.dateLabel ?? "Fecha"}</Label>
+                                <Input
+                                  type="date"
+                                  value={s.referenceDate ?? ""}
+                                  onChange={(e) =>
+                                    setSelected((prev) =>
+                                      prev.map((p, idx) => (idx === i ? { ...p, referenceDate: e.target.value } : p))
+                                    )
+                                  }
+                                  disabled={uploading}
+                                />
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -951,6 +1076,8 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
                           <p className="text-xs text-muted-foreground">
                             {formatBytes(it.sizeBytes)} · {it.createdAt}
                             {typeLabel ? ` · Tipo: ${typeLabel}` : ""}
+                            {it.documentReferenceNumber ? ` · N°: ${it.documentReferenceNumber}` : ""}
+                            {it.documentReferenceDate ? ` · ${it.documentReferenceDate}` : ""}
                           </p>
                         </div>
 

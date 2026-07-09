@@ -51,6 +51,7 @@ import {
   VistaDetallesEmpleadosAPI,
   TiposReferenciaAPI,
 } from "@/lib/api";
+import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 
 import { ActiveSchedulePicker } from "@/components/schedules/ActiveSchedulePicker";
 import { SubordinateEmployeePicker } from "@/components/employees/SubordinateEmployeePicker";
@@ -713,7 +714,7 @@ export default function ScheduleChangePlansPage() {
 
   const { data: planStatusResponse } = useQuery({
     queryKey: ["refTypes", "SCHEDULE_CHANGE_STATUS"],
-    queryFn: () => TiposReferenciaAPI.byCategory("SCHEDULE_CHANGE_STATUS"),
+    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.SCHEDULE_CHANGE_STATUS),
     staleTime: 10 * 60_000,
   });
 

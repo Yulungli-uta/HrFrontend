@@ -72,6 +72,7 @@ export interface PersonnelActionDetail extends PersonnelActionSummary {
     // Flags del tipo de acción incluidos por el backend al devolver el detalle
     actionTypeRequiresAdUserDisable?: boolean;
     actionTypeRequiresAdUserCreation?: boolean;
+    actionTypeReachesVigente?: boolean;
 }
 
 export interface CreatePersonnelActionRequest {

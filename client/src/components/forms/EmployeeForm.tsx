@@ -60,7 +60,7 @@ import {
   type ApiResponse,
   type PagedResult,
 } from "@/lib/api";
-import type { PersonDto } from "@/lib/api/services/employees";
+import type { PersonDto } from "@/lib/api/services/people";
 import { cn } from "@/lib/utils";
 import { DepartmentSelect } from "@/components/departments/DepartmentSelect";
 
@@ -106,6 +106,7 @@ interface EmployeeFormProps {
   viewSeed?: EmployeeViewSeed;
   onSuccess?: () => void;
   onCancel?: () => void;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 type EmployeeFormData = {
@@ -206,6 +207,7 @@ export default function EmployeeForm({
   viewSeed,
   onSuccess,
   onCancel,
+  onDirtyChange,
 }: EmployeeFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -301,6 +303,13 @@ export default function EmployeeForm({
     },
     mode: "onChange",
   });
+
+  const _onDirtyChangeRef = useRef(onDirtyChange);
+  _onDirtyChangeRef.current = onDirtyChange;
+  const _isDirty = form.formState.isDirty;
+  useEffect(() => {
+    _onDirtyChangeRef.current?.(_isDirty);
+  }, [_isDirty]);
 
   const validateDate = (value?: string | null) => {
     if (!value) return "La fecha de contratación es obligatoria";
@@ -488,7 +497,6 @@ export default function EmployeeForm({
             : null
         );
         setBossLabel(viewSeed.immediateBoss ?? null);
-        setDeptLabel(viewSeed.department ?? null);
         setJobLabel(viewSeed.jobName ?? null);
       }
 

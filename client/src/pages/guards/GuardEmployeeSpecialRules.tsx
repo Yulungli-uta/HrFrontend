@@ -200,8 +200,9 @@ function RuleFormDialog({
 // ─── Main page ─────────────────────────────────────────────────────────────────
 
 export default function GuardEmployeeSpecialRulesPage() {
-  const { items, page, pageSize, totalCount, totalPages, setPage, searchValue, setSearch, isLoading } =
+  const { items, page, pageSize, totalCount, totalPages, goToPage, currentParams, setSearch, isLoading } =
     useSpecialRulesPaged(20);
+  const searchValue = currentParams.search ?? '';
 
   const [formOpen, setFormOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<GuardEmployeeSpecialRuleDto | null>(null);
@@ -291,9 +292,9 @@ export default function GuardEmployeeSpecialRulesPage() {
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <span>{totalCount} reglas</span>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>Anterior</Button>
+              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => goToPage(page - 1)}>Anterior</Button>
               <span className="flex items-center px-2">Pág {page} / {totalPages}</span>
-              <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>Siguiente</Button>
+              <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => goToPage(page + 1)}>Siguiente</Button>
             </div>
           </div>
         </>

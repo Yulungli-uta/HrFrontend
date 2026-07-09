@@ -37,6 +37,7 @@ import { useQuery } from '@tanstack/react-query';
 import { usePersonnelActionLookups } from '@/hooks/personnelActions/usePersonnelActionLookups';
 import { EmpleadosAPI, TiposReferenciaAPI /*, DepartmentAuthoritiesAPI */ } from '@/lib/api';
 import type { RefType } from '@/lib/api';
+import { REF_TYPE_CATEGORIES } from '@/features/refTypeCategories';
 import { PersonSearchCombobox } from './PersonSearchCombobox';
 import { DepartmentSelect } from '@/components/departments/DepartmentSelect';
 import { JobSelect } from '@/components/ui/JobSelect';
@@ -117,7 +118,7 @@ const schema = z.object({
   registrarId:          z.coerce.number().optional().nullable(),
 });
 
-type FormValues = z.infer<typeof schema>;
+type FormValues = z.input<typeof schema>;
 
 type Props = {
   defaultValues?: Partial<PersonnelActionDetail>;
@@ -125,6 +126,7 @@ type Props = {
   isBusy?: boolean;
   onSubmit: (data: CreatePersonnelActionRequest) => void;
   onCancel: () => void;
+  onDirtyChange?: (isDirty: boolean) => void;
 };
 
 function toDateInput(iso?: string | null): string {
@@ -220,6 +222,7 @@ export function PersonnelActionForm({
   isBusy,
   onSubmit,
   onCancel,
+  onDirtyChange,
 }: Props) {
   const { toast } = useToast();
   const { jobs, actionTypes, isLoading } = usePersonnelActionLookups(true);
@@ -227,7 +230,7 @@ export function PersonnelActionForm({
   const STALE = 5 * 60 * 1000;
   const { data: instProcData } = useQuery({
     queryKey: ['ref-types', 'AP_PROCESO_INSTITUCIONAL'],
-    queryFn: () => TiposReferenciaAPI.byCategory('AP_PROCESO_INSTITUCIONAL'),
+    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.AP_PROCESO_INSTITUCIONAL),
     staleTime: STALE,
   });
   const institutionalProcessOptions: RefType[] =
@@ -235,7 +238,7 @@ export function PersonnelActionForm({
 
   const { data: mgmtLevelData } = useQuery({
     queryKey: ['ref-types', 'AP_NIVEL_GESTION'],
-    queryFn: () => TiposReferenciaAPI.byCategory('AP_NIVEL_GESTION'),
+    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.AP_NIVEL_GESTION),
     staleTime: STALE,
   });
   const managementLevelOptions: RefType[] =
@@ -270,7 +273,7 @@ export function PersonnelActionForm({
 
   const { data: contractTypeData } = useQuery({
     queryKey: ['ref-types', 'CONTRACT_TYPE'],
-    queryFn: () => TiposReferenciaAPI.byCategory('CONTRACT_TYPE'),
+    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CONTRACT_TYPE),
     staleTime: STALE,
     enabled: actionRequiresUserCreation && personHasNoEmployee,
   });
@@ -285,6 +288,9 @@ export function PersonnelActionForm({
   const actionTypeOptions = uniqueById(actionTypes, (t: any) =>
     getNumberId(t, ['personnelActionTypeId', 'typeID', 'typeId', 'typeid', 'id'])
   );
+
+  const _onDirtyChangeRef = useRef(onDirtyChange);
+  _onDirtyChangeRef.current = onDirtyChange;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -317,6 +323,11 @@ export function PersonnelActionForm({
       registrarId:          defaultValues?.registrarId ?? null,
     },
   });
+
+  const _isDirty = form.formState.isDirty;
+  useEffect(() => {
+    _onDirtyChangeRef.current?.(_isDirty);
+  }, [_isDirty]);
 
   useEffect(() => {
     if (!defaultValues) return;

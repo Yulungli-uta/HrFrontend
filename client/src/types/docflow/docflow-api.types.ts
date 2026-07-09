@@ -71,6 +71,7 @@ export interface CreateInstanceRequest {
   initialProcessId: number;
   instanceName?: string;          // NUEVO CAMPO
   dynamicMetadataJson?: string;
+  assignedToUserId?: number;
 }
 
 export interface CreateDocumentRequest {

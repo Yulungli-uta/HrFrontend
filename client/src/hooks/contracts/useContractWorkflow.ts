@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { ContractsRHAPI, TiposReferenciaAPI } from "@/lib/api";
+import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 
-export const CONTRACT_STATUS_CATEGORY = "CONTRACT_STATUS";
+export const CONTRACT_STATUS_CATEGORY = REF_TYPE_CATEGORIES.CONTRACT_STATUS;
 
 export function useContractWorkflow(params: { enabled: boolean; currentStatusTypeId?: number | null }) {
   const { enabled, currentStatusTypeId } = params;

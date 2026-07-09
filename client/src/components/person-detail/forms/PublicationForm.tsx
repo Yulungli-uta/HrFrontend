@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -30,6 +30,7 @@ import {
   type RefType,
   AreaConocimientoAPI,
 } from "@/lib/api";
+import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 
 // =============================
 // Zod schema
@@ -78,6 +79,7 @@ interface PublicationFormProps {
   onSubmit: (data: any) => Promise<void> | void;
   onCancel: () => void;
   isLoading?: boolean;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 // Helper RefType
@@ -140,6 +142,7 @@ export default function PublicationForm({
   onSubmit,
   onCancel,
   isLoading = false,
+  onDirtyChange,
 }: PublicationFormProps) {
   // =============================
   // QUERIES
@@ -150,7 +153,7 @@ export default function PublicationForm({
     error: publicationTypesError,
   } = useQuery({
     queryKey: ["refTypes", "PUBLICATION_TYPE"],
-    queryFn: () => TiposReferenciaAPI.byCategory("PUBLICATION_TYPE"),
+    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.PUBLICATION_TYPE),
   });
 
   const selectedPublicationTypeId = publication
@@ -178,7 +181,7 @@ export default function PublicationForm({
     error: journalTypesError,
   } = useQuery({
     queryKey: ["refTypes", "JOURNAL_TYPE"],
-    queryFn: () => TiposReferenciaAPI.byCategory("JOURNAL_TYPE"),
+    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.JOURNAL_TYPE),
   });
 
   const selectedJournalTypeId = publication
@@ -238,6 +241,13 @@ export default function PublicationForm({
       notes: "",
     },
   });
+
+  const _onDirtyChangeRef = useRef(onDirtyChange);
+  _onDirtyChangeRef.current = onDirtyChange;
+  const _isDirty = form.formState.isDirty;
+  useEffect(() => {
+    _onDirtyChangeRef.current?.(_isDirty);
+  }, [_isDirty]);
 
   const knowledgeAreaTypeId = form.watch("knowledgeAreaTypeId");
   const subAreaTypeId = form.watch("subAreaTypeId");

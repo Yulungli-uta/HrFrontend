@@ -304,7 +304,7 @@ export const RolesAPI = {
       ...jsonBody(data),
     }),
 
-  update: (id: number, data: UpdateRoleDto): Promise<ApiResponse<Role>> =>
+  update: (id: string | number, data: UpdateRoleDto): Promise<ApiResponse<Role>> =>
     apiFetch<Role>(`/api/roles/${toInt(id)}`, {
       method: 'PUT',
       ...jsonBody(data),
@@ -338,7 +338,7 @@ export const RolesAPI = {
 
 /* =============================================================================
  * API de Asignación de Roles a Usuarios
- * Swagger: /api/user-roles + /api/user-roles/{userId}/{roleId}/{assignedAt}
+ * Swagger: /api/user-roles + /api/user-roles/{userId}/{roleId}
  * ========================================================================== */
 
 export const UserRolesAPI = {
@@ -359,17 +359,17 @@ export const UserRolesAPI = {
       ...jsonBody(data),
     }),
 
-  // Swagger: GET /api/user-roles/{userId}/{roleId}/{assignedAt}
-  get: (userId: string, roleId: number, assignedAt: string): Promise<ApiResponse<UserRole>> =>
+  // Swagger: GET /api/user-roles/{userId}/{roleId}
+  get: (userId: string, roleId: number): Promise<ApiResponse<UserRole>> =>
     apiFetch<UserRole>(
-      `/api/user-roles/${encodeURIComponent(userId)}/${toInt(roleId)}/${encodeURIComponent(assignedAt)}`,
+      `/api/user-roles/${encodeURIComponent(userId)}/${toInt(roleId)}`,
       { method: 'GET' },
     ),
 
-  // Swagger: DELETE /api/user-roles/{userId}/{roleId}/{assignedAt}
-  remove: (userId: string, roleId: number, assignedAt: string): Promise<ApiResponse<void>> =>
+  // Swagger: DELETE /api/user-roles/{userId}/{roleId}
+  remove: (userId: string, roleId: number): Promise<ApiResponse<void>> =>
     apiFetch<void>(
-      `/api/user-roles/${encodeURIComponent(userId)}/${toInt(roleId)}/${encodeURIComponent(assignedAt)}`,
+      `/api/user-roles/${encodeURIComponent(userId)}/${toInt(roleId)}`,
       { method: 'DELETE' },
     ),
 
@@ -391,16 +391,12 @@ export const UserRolesAPI = {
     return res;
   },
 
-  // Legacy: PUT /api/user-roles/{userId}/{roleId}
+  // Swagger: PUT /api/user-roles/{userId}/{roleId}
   update: (userId: string, roleId: number, data: UpdateUserRoleDto): Promise<ApiResponse<UserRole>> =>
     apiFetch<UserRole>(`/api/user-roles/${encodeURIComponent(userId)}/${toInt(roleId)}`, {
       method: 'PUT',
       ...jsonBody(data),
     }),
-
-  // Legacy: DELETE /api/user-roles/{userId}/{roleId}
-  removeLegacy: (userId: string, roleId: number): Promise<ApiResponse<void>> =>
-    apiFetch<void>(`/api/user-roles/${encodeURIComponent(userId)}/${toInt(roleId)}`, { method: 'DELETE' }),
 } as const;
 
 /* =============================================================================

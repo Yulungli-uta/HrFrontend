@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { Contract, Employee } from "@/shared/schema";
 import { FileText, Save, X, Calendar, DollarSign } from "lucide-react";
 import { ContratosAPI, EmpleadosAPI, PersonasAPI, type ApiResponse } from "@/lib/api";
-import type { PersonDto } from "@/lib/api/services/employees";
+import type { PersonDto } from "@/lib/api/services/people";
 
 interface ContractFormProps {
   contract?: Contract;

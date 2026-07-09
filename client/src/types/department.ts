@@ -20,6 +20,7 @@ export interface ReferenceType {
   description?: string | null;
   isActive: boolean;
   createdAt?: string | null;
+  metadata?: string | null;
 }
 
 export interface DepartmentFormData {

@@ -56,6 +56,7 @@ import {
   type ApiResponse,
 } from "@/lib/api";
 import { useAuth } from "@/features/auth";
+import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import TimePlanningEmployeeForm from "@/components/forms/TimePlanningEmployeeForm";
 import CreatePlanningDialog from "@/components/planning/CreatePlanningDialog";
 
@@ -148,7 +149,7 @@ export default function OvertimePage() {
 
   const { data: refPlanStatusResp } = useQuery<ApiResponse<RefType[]>>({
     queryKey: ["ref-types", "PLAN_STATUS"],
-    queryFn: () => TiposReferenciaAPI.byCategory("PLAN_STATUS"),
+    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.PLAN_STATUS),
     staleTime: 5 * 60_000,
   });
 

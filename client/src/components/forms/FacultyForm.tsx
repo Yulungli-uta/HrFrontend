@@ -1,5 +1,7 @@
+import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,15 +9,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { insertFacultySchema, type InsertFaculty, type Faculty, type Employee, type Person } from "@/shared/schema";
+import { type InsertFaculty, type Faculty, type Employee, type Person } from "@/shared/schema";
 import { Building2, Save, X, User } from "lucide-react";
 import { useCrudMutation } from "@/hooks/useCrudMutation";
 import { FacultadesAPI, EmpleadosAPI, PersonasAPI } from "@/lib/api";
 import type { BaseCrudFormProps } from "@/types/components";
 
-interface FacultyFormProps extends BaseCrudFormProps<Faculty, InsertFaculty> {}
+// Esquema local: `createInsertSchema(faculties)` degrada todos los campos a `unknown`
+// (incompatibilidad drizzle-zod/drizzle-orm con columnas nullable sin default), por lo
+// que se define aquí explícitamente el mismo shape que `InsertFaculty`.
+const facultyFormSchema = z.object({
+  id: z.number().nullable().optional(),
+  name: z.string().nullable().optional(),
+  deanEmployeeId: z.number().nullable().optional(),
+  isActive: z.boolean().nullable().optional(),
+});
 
-export default function FacultyForm({ entity: faculty, onSuccess, onCancel }: FacultyFormProps) {
+interface FacultyFormProps extends BaseCrudFormProps<Faculty, InsertFaculty> {
+  onDirtyChange?: (isDirty: boolean) => void;
+}
+
+export default function FacultyForm({ entity: faculty, onSuccess, onCancel, onDirtyChange }: FacultyFormProps) {
   const isEditing = !!faculty;
 
   // Cargar empleados
@@ -35,13 +49,20 @@ export default function FacultyForm({ entity: faculty, onSuccess, onCancel }: Fa
   const people = peopleResponse?.status === 'success' ? peopleResponse.data : [];
 
   const form = useForm<InsertFaculty>({
-    resolver: zodResolver(insertFacultySchema),
+    resolver: zodResolver(facultyFormSchema),
     defaultValues: faculty || {
       name: "",
       deanEmployeeId: null,
       isActive: true
     }
   });
+
+  const _onDirtyChangeRef = useRef(onDirtyChange);
+  _onDirtyChangeRef.current = onDirtyChange;
+  const _isDirty = form.formState.isDirty;
+  useEffect(() => {
+    _onDirtyChangeRef.current?.(_isDirty);
+  }, [_isDirty]);
 
   // Usar el hook useCrudMutation
   const { create, update, isLoading } = useCrudMutation({
@@ -57,7 +78,7 @@ export default function FacultyForm({ entity: faculty, onSuccess, onCancel }: Fa
 
   const onSubmit = (data: InsertFaculty) => {
     if (isEditing) {
-      update.mutate({ id: faculty.id, data });
+      update.mutate({ id: faculty.id as number, data });
     } else {
       create.mutate(data);
     }
@@ -94,10 +115,11 @@ export default function FacultyForm({ entity: faculty, onSuccess, onCancel }: Fa
                 <FormItem>
                   <FormLabel>Nombre de la Facultad *</FormLabel>
                   <FormControl>
-                    <Input 
+                    <Input
                       placeholder="Ingrese el nombre de la facultad"
                       data-testid="input-name"
                       {...field}
+                      value={field.value ?? ""}
                     />
                   </FormControl>
                   <FormMessage />
@@ -142,7 +164,7 @@ export default function FacultyForm({ entity: faculty, onSuccess, onCancel }: Fa
                     </FormControl>
                     <SelectContent>
                       {employees.map((employee) => {
-                        const person = people.find(p => p.id === employee.id);
+                        const person = people.find(p => p.personId === employee.personId);
                         return (
                           <SelectItem key={employee.id} value={employee.id.toString()}>
                             <div className="flex items-center space-x-2">
@@ -179,7 +201,7 @@ export default function FacultyForm({ entity: faculty, onSuccess, onCancel }: Fa
                   </div>
                   <FormControl>
                     <Switch
-                      checked={field.value}
+                      checked={field.value ?? false}
                       onCheckedChange={field.onChange}
                       data-testid="switch-isActive"
                     />
@@ -197,7 +219,7 @@ export default function FacultyForm({ entity: faculty, onSuccess, onCancel }: Fa
                 <p className="text-sm text-primary mt-1">
                   {(() => {
                     const employee = employees.find(e => e.id === form.watch("deanEmployeeId"));
-                    const person = people.find(p => p.id === employee?.id);
+                    const person = people.find(p => p.personId === employee?.personId);
                     return person ? `${person.firstName} ${person.lastName}` : 'Empleado seleccionado';
                   })()}
                 </p>

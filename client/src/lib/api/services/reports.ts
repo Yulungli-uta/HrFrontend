@@ -18,6 +18,7 @@ import type {
   ReportAudit,
   ReportAuditFilter,
 } from '@/types/reports';
+import { REPORT_CONFIGS } from '@/types/reports';
 
 export class ReportError extends Error {
   public status?: number;
@@ -71,6 +72,7 @@ class ReportService {
     const response = await apiFetch<any>(endpoint, {
       method: 'POST',
       body: JSON.stringify(filter ?? {}),
+      timeoutMs: REPORT_CONFIGS[type].timeoutMs,
     });
 
     const payload = this.handleApiResponse(response, endpoint);
@@ -101,6 +103,7 @@ class ReportService {
           ? 'application/pdf'
           : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       },
+      timeoutMs: REPORT_CONFIGS[type].timeoutMs,
     });
 
     return this.handleApiResponse(response, endpoint);

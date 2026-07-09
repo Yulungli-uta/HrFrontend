@@ -6,6 +6,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useCrudMutation } from "@/hooks/useCrudMutation";
 import type { Employee } from "@/shared/schema";
 import PersonForm from "@/components/forms/PersonForm";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
+import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
 import { useToast } from "@/hooks/use-toast";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import {
@@ -78,8 +80,8 @@ type PersonDto = {
   email: string;
   phone?: string | null;
   birthDate?: string | null;
-  sex?: number | string | null;
-  gender?: number | string | null;
+  sex?: number | null;
+  gender?: number | null;
   disability?: string | null;
   address?: string | null;
   isActive: boolean;
@@ -87,9 +89,9 @@ type PersonDto = {
   militaryCard?: string | null;
   motherName?: string | null;
   fatherName?: string | null;
-  countryId?: number | string | null;
-  provinceId?: number | string | null;
-  cantonId?: number | string | null;
+  countryId?: string | null;
+  provinceId?: string | null;
+  cantonId?: string | null;
   yearsOfResidence?: number | null;
   ethnicityTypeId?: number | null;
   bloodTypeTypeId?: number | null;
@@ -104,26 +106,26 @@ type PersonCreateDto = {
   identType: number;
   idCard: string;
   email: string;
-  phone?: string | null;
-  birthDate?: string | null;
-  sex?: number | string | null;
-  gender?: number | string | null;
-  disability?: string | null;
-  address?: string | null;
-  isActive?: boolean | null;
-  maritalStatusTypeId?: number | null;
-  militaryCard?: string | null;
-  motherName?: string | null;
-  fatherName?: string | null;
-  countryId?: number | string | null;
-  provinceId?: number | string | null;
-  cantonId?: number | string | null;
-  yearsOfResidence?: number | null;
-  ethnicityTypeId?: number | null;
-  bloodTypeTypeId?: number | null;
-  specialNeedsTypeId?: number | null;
-  disabilityPercentage?: number | null;
-  conadisCard?: string | null;
+  phone?: string;
+  birthDate?: string;
+  sex?: number;
+  gender?: number;
+  disability?: string;
+  address?: string;
+  isActive?: boolean;
+  maritalStatusTypeId?: number;
+  militaryCard?: string;
+  motherName?: string;
+  fatherName?: string;
+  countryId?: string;
+  provinceId?: string;
+  cantonId?: string;
+  yearsOfResidence?: number;
+  ethnicityTypeId?: number;
+  bloodTypeTypeId?: number;
+  specialNeedsTypeId?: number;
+  disabilityPercentage?: number;
+  conadisCard?: string;
 };
 
 type PersonFormValue = Partial<PersonCreateDto> & {
@@ -151,26 +153,26 @@ const normalizePersonCreatePayload = (data: PersonFormValue): PersonCreateDto =>
   identType: Number(data.identType ?? data.identificationTypeId ?? 0),
   idCard: data.idCard?.trim() ?? "",
   email: data.email?.trim() ?? "",
-  phone: data.phone?.trim() ?? null,
-  birthDate: data.birthDate ?? null,
-  sex: data.sex ?? null,
-  gender: data.gender ?? null,
-  disability: data.disability?.trim() ?? null,
-  address: data.address?.trim() ?? null,
+  phone: data.phone?.trim() ?? undefined,
+  birthDate: data.birthDate ?? undefined,
+  sex: data.sex != null ? Number(data.sex) : undefined,
+  gender: data.gender != null ? Number(data.gender) : undefined,
+  disability: data.disability?.trim() ?? undefined,
+  address: data.address?.trim() ?? undefined,
   isActive: data.isActive ?? true,
-  maritalStatusTypeId: data.maritalStatusTypeId ?? null,
-  militaryCard: data.militaryCard?.trim() ?? null,
-  motherName: data.motherName?.trim() ?? null,
-  fatherName: data.fatherName?.trim() ?? null,
-  countryId: data.countryId ?? null,
-  provinceId: data.provinceId ?? null,
-  cantonId: data.cantonId ?? null,
-  yearsOfResidence: data.yearsOfResidence ?? null,
-  ethnicityTypeId: data.ethnicityTypeId ?? null,
-  bloodTypeTypeId: data.bloodTypeTypeId ?? null,
-  specialNeedsTypeId: data.specialNeedsTypeId ?? null,
-  disabilityPercentage: data.disabilityPercentage ?? null,
-  conadisCard: data.conadisCard?.trim() ?? null,
+  maritalStatusTypeId: data.maritalStatusTypeId ?? undefined,
+  militaryCard: data.militaryCard?.trim() ?? undefined,
+  motherName: data.motherName?.trim() ?? undefined,
+  fatherName: data.fatherName?.trim() ?? undefined,
+  countryId: data.countryId || undefined,
+  provinceId: data.provinceId || undefined,
+  cantonId: data.cantonId || undefined,
+  yearsOfResidence: data.yearsOfResidence ?? undefined,
+  ethnicityTypeId: data.ethnicityTypeId ?? undefined,
+  bloodTypeTypeId: data.bloodTypeTypeId ?? undefined,
+  specialNeedsTypeId: data.specialNeedsTypeId ?? undefined,
+  disabilityPercentage: data.disabilityPercentage ?? undefined,
+  conadisCard: data.conadisCard?.trim() ?? undefined,
 });
 
 const PersonCard = ({
@@ -228,6 +230,12 @@ const PersonCard = ({
 export default function People() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingPerson, setEditingPerson] = useState<PersonDto | undefined>();
+
+  const { setIsFormDirty, handleOpenChange, close: closePersonForm, confirmOpen, confirmExit, closeConfirm } =
+    useUnsavedChangesGuard((open) => {
+      setIsFormOpen(open);
+      if (!open) setEditingPerson(undefined);
+    });
   const [activeFilter, setActiveFilter] = useState<"all" | "active" | "inactive">("all");
   const isMobile = useMediaQuery("(max-width: 639px)");
   const [viewMode, setViewMode] = useState<"grid" | "table">(() =>
@@ -416,7 +424,7 @@ export default function People() {
           </p>
         </div>
 
-        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+        <Dialog open={isFormOpen} onOpenChange={handleOpenChange}>
           <DialogTrigger asChild>
             <Button
               className="bg-primary hover:bg-primary/90 px-4 py-2 rounded-lg flex items-center gap-2"
@@ -442,10 +450,8 @@ export default function People() {
             <PersonForm
               person={editingPerson as any}
               onSubmit={handleCreatePerson as any}
-              onCancel={() => {
-                setIsFormOpen(false);
-                setEditingPerson(undefined);
-              }}
+              onCancel={closePersonForm}
+              onDirtyChange={setIsFormDirty}
               isLoading={createPersonMutation.isPending}
               refTypesByCategory={refTypesByCategory}
               isRefTypesError={isErrorRefTypes}
@@ -769,6 +775,7 @@ export default function People() {
           disabled={isLoadingPeople}
         />
       </div>
+      <UnsavedChangesDialog open={confirmOpen} onClose={closeConfirm} onConfirmExit={confirmExit} />
     </div>
   );
 }

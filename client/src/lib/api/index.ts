@@ -35,6 +35,8 @@ export { setAuthToken, getAuthToken, buildAuthHeader } from './utils/auth-token'
 
 // Seguridad
 export * from './services/security';
+export * from './services/userAccessScopes';
+export * from './services/employeeLaborRegimes';
 
 // Personas y estructura organizacional
 export {
@@ -194,11 +196,14 @@ export type {
   PersonnelActionCreateDto,
   PersonnelActionUpdateDto,
   PersonnelActionApproveDto,
-  DocumentTemplateDto,
-  DocumentTemplateCreateDto,
-  DocumentTemplateUpdateDto,
+  DocumentTemplateSummaryDto,
+  DocumentTemplateDetailDto,
   DocumentTemplateFieldDto,
-  DocumentTemplateFieldCreateDto,
+  CreateDocumentTemplateRequest,
+  UpdateDocumentTemplateRequest,
+  CreateDocumentTemplateFieldRequest,
+  DocumentTemplateStatus,
+  TemplateVersionSummaryDto,
   GeneratedDocumentDto,
   GeneratedDocumentCreateDto,
   GeneratedDocumentApproveDto,

@@ -88,6 +88,8 @@ import {
   type DepartmentAuthorityDenominationDto,
 } from "@/lib/api";
 import { DepartmentAuthorityForm } from "@/components/forms/DepartmentAuthorityForm";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
+import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
 
 // =============================================================================
 // Helpers
@@ -277,6 +279,12 @@ export default function DepartmentAuthoritiesPage() {
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<DepartmentAuthorityDto | null>(null);
+
+  const { setIsFormDirty, handleOpenChange: _handleFormDialogChange, close: _closeForm, confirmOpen, confirmExit, closeConfirm } =
+    useUnsavedChangesGuard((open) => {
+      setIsFormOpen(open);
+      if (!open) setEditingItem(null);
+    });
   const [deleteId, setDeleteId]   = useState<number | null>(null);
   const [showLookup, setShowLookup] = useState(false);
 
@@ -361,15 +369,9 @@ export default function DepartmentAuthoritiesPage() {
     setIsFormOpen(true);
   }, []);
 
-  const handleFormSuccess = useCallback(() => {
-    setIsFormOpen(false);
-    setEditingItem(null);
-  }, []);
+  const handleFormSuccess = _closeForm;
 
-  const handleFormCancel = useCallback(() => {
-    setIsFormOpen(false);
-    setEditingItem(null);
-  }, []);
+  const handleFormCancel = _closeForm;
 
   const handleSearchChange = useCallback((value: string) => {
     setSearch(value);
@@ -881,7 +883,7 @@ export default function DepartmentAuthoritiesPage() {
         </Card>
 
         {/* ── Dialog: Formulario Crear / Editar ── */}
-        <Dialog open={isFormOpen} onOpenChange={(open) => { if (!open) handleFormCancel(); }}>
+        <Dialog open={isFormOpen} onOpenChange={_handleFormDialogChange}>
           <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-foreground">
@@ -901,6 +903,7 @@ export default function DepartmentAuthoritiesPage() {
               authority={editingItem}
               onSuccess={handleFormSuccess}
               onCancel={handleFormCancel}
+              onDirtyChange={setIsFormDirty}
             />
           </DialogContent>
         </Dialog>
@@ -934,6 +937,7 @@ export default function DepartmentAuthoritiesPage() {
           </AlertDialogContent>
         </AlertDialog>
 
+      <UnsavedChangesDialog open={confirmOpen} onClose={closeConfirm} onConfirmExit={confirmExit} />
       </div>
     </TooltipProvider>
   );

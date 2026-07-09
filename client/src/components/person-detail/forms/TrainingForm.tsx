@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -29,6 +30,7 @@ import {
   type RefType,
   AreaConocimientoAPI,
 } from "@/lib/api";
+import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 
 // =============================
 // Zod schema
@@ -91,6 +93,7 @@ interface TrainingFormProps {
   onSubmit: (data: any) => Promise<void> | void;
   onCancel: () => void;
   isLoading?: boolean;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 // Helper RefType
@@ -114,6 +117,7 @@ export default function TrainingForm({
   onSubmit,
   onCancel,
   isLoading = false,
+  onDirtyChange,
 }: TrainingFormProps) {
   // =============================
   // TIPOS DE REFERENCIA
@@ -126,7 +130,7 @@ export default function TrainingForm({
     error: eventTypesError,
   } = useQuery({
     queryKey: ["refTypes", "EVENT_TYPE"],
-    queryFn: () => TiposReferenciaAPI.byCategory("EVENT_TYPE"),
+    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.EVENT_TYPE),
   });
 
   const eventTypes: RefType[] =
@@ -141,7 +145,7 @@ export default function TrainingForm({
     error: certTypesError,
   } = useQuery({
     queryKey: ["refTypes", "CERTIFICATION_TYPE"],
-    queryFn: () => TiposReferenciaAPI.byCategory("CERTIFICATION_TYPE"),
+    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CERTIFICATION_TYPE),
   });
 
   const certTypes: RefType[] =
@@ -156,7 +160,7 @@ export default function TrainingForm({
     error: approvalTypesError,
   } = useQuery({
     queryKey: ["refTypes", "CERT_APPROVAL_TYPE"],
-    queryFn: () => TiposReferenciaAPI.byCategory("CERT_APPROVAL_TYPE"),
+    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CERT_APPROVAL_TYPE),
   });
 
   const approvalTypes: RefType[] =
@@ -218,6 +222,13 @@ export default function TrainingForm({
       notes: "",
     },
   });
+
+  const _onDirtyChangeRef = useRef(onDirtyChange);
+  _onDirtyChangeRef.current = onDirtyChange;
+  const _isDirty = form.formState.isDirty;
+  useEffect(() => {
+    _onDirtyChangeRef.current?.(_isDirty);
+  }, [_isDirty]);
 
   // =============================
   // SUBMIT

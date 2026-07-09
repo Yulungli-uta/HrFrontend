@@ -14,6 +14,7 @@ import { useQuery } from '@tanstack/react-query';
 import { usePlanningMutations } from '@/hooks/guards/useGuards';
 import { GuardShiftPlanningAPI, GuardServiceLocationsAPI, GuardRotationGroupsAPI } from '@/lib/api/services/guards';
 import { TiposReferenciaAPI } from '@/lib/api/services/catalogs';
+import { REF_TYPE_CATEGORIES } from '@/features/refTypeCategories';
 import type { GuardShiftCalendarItemDto, GuardServiceLocationDto, GuardRotationGroupDto } from '@/types/guards';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -70,12 +71,12 @@ export function ManualShiftAssignDialog({ open, onClose, preselectedDate }: Prop
   // typeIds desde ref_Types
   const { data: sourceTypes } = useQuery({
     queryKey: ['refTypes', 'GUARD_PLANNING_SOURCE'],
-    queryFn:  () => TiposReferenciaAPI.byCategory('GUARD_PLANNING_SOURCE'),
+    queryFn:  () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.GUARD_PLANNING_SOURCE),
     staleTime: 300_000,
   });
   const { data: statusTypes } = useQuery({
     queryKey: ['refTypes', 'GUARD_PLANNING_STATUS'],
-    queryFn:  () => TiposReferenciaAPI.byCategory('GUARD_PLANNING_STATUS'),
+    queryFn:  () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.GUARD_PLANNING_STATUS),
     staleTime: 300_000,
   });
 

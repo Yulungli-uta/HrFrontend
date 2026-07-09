@@ -1,5 +1,5 @@
 // client/src/components/person-detail/EmergencyContactForm.tsx
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,6 +25,7 @@ import {
 
 import type { EmergencyContact } from "@/types/person";
 import { TiposReferenciaAPI, type RefType } from "@/lib/api";
+import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 
 // =============================
 // Regex de validación
@@ -96,6 +97,7 @@ interface EmergencyContactFormProps {
   onSubmit: (data: any) => Promise<void> | void;
   onCancel: () => void;
   isLoading?: boolean;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 // =============================
@@ -107,6 +109,7 @@ export default function EmergencyContactForm({
   onSubmit,
   onCancel,
   isLoading = false,
+  onDirtyChange,
 }: EmergencyContactFormProps) {
   // =============================
   // Catálogo RELATIONSHIP
@@ -117,7 +120,7 @@ export default function EmergencyContactForm({
     error: relationshipTypesError,
   } = useQuery({
     queryKey: ["refTypes", "RELATIONSHIP"],
-    queryFn: () => TiposReferenciaAPI.byCategory("RELATIONSHIP"),
+    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.RELATIONSHIP),
   });
 
   const relationshipTypes: RefType[] =
@@ -146,6 +149,13 @@ export default function EmergencyContactForm({
       address: emergencyContact?.address ?? "",
     },
   });
+
+  const _onDirtyChangeRef = useRef(onDirtyChange);
+  _onDirtyChangeRef.current = onDirtyChange;
+  const _isDirty = form.formState.isDirty;
+  useEffect(() => {
+    _onDirtyChangeRef.current?.(_isDirty);
+  }, [_isDirty]);
 
   // ⭐ Muy importante: recargar valores cuando cambia emergencyContact
   useEffect(() => {

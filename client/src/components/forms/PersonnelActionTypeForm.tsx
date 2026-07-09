@@ -1,10 +1,12 @@
 // src/components/forms/PersonnelActionTypeForm.tsx
+import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { PersonnelActionTypeAPI } from "@/lib/api/services/contracts";
+import { TemplateSelect } from "@/components/shared/TemplateSelect";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,7 +44,7 @@ const schema = z.object({
   code: z.string().min(1, "El código es obligatorio"),
   description: z.string().optional(),
   numberingPrefix: z.string().min(1, "El prefijo de numeración es obligatorio"),
-  templateCode: z.string().optional(),
+  defaultTemplateId: z.number().nullable().optional(),
   actionCategory: z.string().optional(),
   isActive: z.boolean(),
   requiresAdUserCreation: z.boolean(),
@@ -58,6 +60,7 @@ export interface PersonnelActionTypeFormProps {
   initialValues?: Partial<PersonnelActionTypeFormValues>;
   onCancel: () => void;
   onSuccess: () => void;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 const QUERY_KEY = "/api/v1/rh/personnel-action-type";
@@ -68,6 +71,7 @@ export function PersonnelActionTypeForm({
   initialValues,
   onCancel,
   onSuccess,
+  onDirtyChange,
 }: PersonnelActionTypeFormProps) {
   const queryClient = useQueryClient();
 
@@ -78,7 +82,7 @@ export function PersonnelActionTypeForm({
       code: initialValues?.code ?? "",
       description: initialValues?.description ?? "",
       numberingPrefix: initialValues?.numberingPrefix ?? "",
-      templateCode: initialValues?.templateCode ?? "",
+      defaultTemplateId: initialValues?.defaultTemplateId ?? null,
       actionCategory: initialValues?.actionCategory ?? "",
       isActive: initialValues?.isActive ?? true,
       requiresAdUserCreation: initialValues?.requiresAdUserCreation ?? false,
@@ -87,6 +91,14 @@ export function PersonnelActionTypeForm({
     },
   });
 
+  // Notifica al padre cuando el formulario tiene cambios sin guardar
+  const onDirtyChangeRef = useRef(onDirtyChange);
+  onDirtyChangeRef.current = onDirtyChange;
+  const isDirty = form.formState.isDirty;
+  useEffect(() => {
+    onDirtyChangeRef.current?.(isDirty);
+  }, [isDirty]);
+
   const createMutation = useMutation({
     mutationFn: async (values: PersonnelActionTypeFormValues) => {
       const res = await PersonnelActionTypeAPI.create({
@@ -94,7 +106,7 @@ export function PersonnelActionTypeForm({
         code: values.code,
         description: values.description || undefined,
         numberingPrefix: values.numberingPrefix,
-        templateCode: values.templateCode || undefined,
+        defaultTemplateId: values.defaultTemplateId ?? null,
         actionCategory: values.actionCategory || undefined,
         isActive: values.isActive,
         requiresAdUserCreation: values.requiresAdUserCreation,
@@ -118,7 +130,7 @@ export function PersonnelActionTypeForm({
         code: values.code,
         description: values.description || undefined,
         numberingPrefix: values.numberingPrefix,
-        templateCode: values.templateCode || undefined,
+        defaultTemplateId: values.defaultTemplateId ?? null,
         actionCategory: values.actionCategory || undefined,
         isActive: values.isActive,
         requiresAdUserCreation: values.requiresAdUserCreation,
@@ -237,18 +249,23 @@ export function PersonnelActionTypeForm({
               )}
             />
 
-            {/* Código de plantilla */}
+            {/* Plantilla documental */}
             <FormField
               control={form.control}
-              name="templateCode"
+              name="defaultTemplateId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Código de plantilla</FormLabel>
+                  <FormLabel>Plantilla documental</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ej: TPL-CONTRATACION" {...field} />
+                    <TemplateSelect
+                      templateType="ACCION_PERSONAL"
+                      value={field.value ?? null}
+                      onChange={field.onChange}
+                      placeholder="Sin plantilla asignada"
+                    />
                   </FormControl>
                   <FormDescription>
-                    Código de la plantilla documental asociada (opcional).
+                    Solo se muestran las plantillas publicadas (vigentes) de tipo Acción de Personal.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

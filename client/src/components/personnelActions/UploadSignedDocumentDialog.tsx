@@ -40,6 +40,11 @@ type Props = {
   employeeId?: number;              // Necesario para llamar disableByHrEmployeeId
   onAutoFinalize?: () => Promise<void>;
   onFinalizePreviousAction?: () => Promise<void>;
+  /** 2026-07-06: si el tipo participa en la cadena de "vigente", el backend ya
+   * transicionó FIRMADO_CARGADO->VIGENTE y cerró la anterior automáticamente
+   * dentro de la misma llamada de carga — no se debe llamar onAutoFinalize ni
+   * onFinalizePreviousAction (eso movería la acción recién vigente a FINALIZADO). */
+  reachesVigente?: boolean;
 };
 
 export function UploadSignedDocumentDialog({
@@ -52,6 +57,7 @@ export function UploadSignedDocumentDialog({
   employeeId,
   onAutoFinalize,
   onFinalizePreviousAction,
+  reachesVigente = false,
 }: Props) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -119,6 +125,18 @@ export function UploadSignedDocumentDialog({
     toast({ title: 'Documento firmado registrado', description: 'La acción pasó a FIRMADO_CARGADO.' });
 
     // ── 3. Acciones post-carga según el tipo de acción ───────────────────────
+    // 2026-07-06: si reachesVigente=true, el backend ya hizo todo (transición a
+    // VIGENTE + cierre de la anterior + registro de movimiento/régimen) dentro
+    // de la misma llamada de "registrar documento firmado" — no se ejecuta nada
+    // más aquí, solo se informa.
+    if (reachesVigente) {
+      toast({ title: 'Acción vigente', description: 'La acción quedó vigente automáticamente al cargar el documento firmado.' });
+      setComment('');
+      onSuccess?.();
+      onOpenChange(false);
+      return;
+    }
+
     setIsPostProcessing(true);
     try {
       if (requiresAdUserDisable) {

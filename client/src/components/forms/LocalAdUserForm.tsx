@@ -1,5 +1,5 @@
 // src/components/forms/LocalAdUserForm.tsx
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -54,11 +54,12 @@ interface Props {
   user?: LocalAdUserResponse | null;
   onSuccess: () => void;
   onCancel: () => void;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 // ─── Componente ──────────────────────────────────────────────────────────────
 
-export default function LocalAdUserForm({ user, onSuccess, onCancel }: Props) {
+export default function LocalAdUserForm({ user, onSuccess, onCancel, onDirtyChange }: Props) {
   const isEdit = !!user?.id;
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -92,6 +93,13 @@ export default function LocalAdUserForm({ user, onSuccess, onCancel }: Props) {
       department: user?.department ?? "",
     },
   });
+
+  const _onDirtyChangeRef = useRef(onDirtyChange);
+  _onDirtyChangeRef.current = onDirtyChange;
+  const _isDirty = createForm.formState.isDirty || editForm.formState.isDirty;
+  useEffect(() => {
+    _onDirtyChangeRef.current?.(_isDirty);
+  }, [_isDirty]);
 
   // ── Mutations ──
   const createMutation = useMutation({

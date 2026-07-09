@@ -45,9 +45,10 @@ async function docflowFetch<T>(path: string, init: RequestInit = {}): Promise<T>
 
     logger.api.response(method, fullPath, err.code, 0);
 
+    const detailsMessage = (err.details as { message?: string } | undefined)?.message;
     throw createApiError(
       err.code,
-      err.details?.message || err.message || getErrorMessage(err.code),
+      detailsMessage || err.message || getErrorMessage(err.code),
       `ERR_${err.code}`
     );
   }

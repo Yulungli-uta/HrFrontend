@@ -374,7 +374,7 @@ export default function ChangePasswordPage() {
     queryKey: ["password-change-method"],
     queryFn: async () => {
       const res = await PasswordAPI.getChangeMethod();
-      return res.status === "ok" ? res.data.method : "AzureWriteback";
+      return res.status === "success" ? res.data.method : "AzureWriteback";
     },
     staleTime: 5 * 60 * 1000,
   });

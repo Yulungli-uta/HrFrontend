@@ -291,8 +291,8 @@ export default function PermissionForm({
   // Types
   // -----------------------
   const { data: typesResp, isLoading: typesLoading } = useQuery<ApiResponse<PermissionType[]>>({
-    queryKey: ["/api/v1/rh/permission-types"],
-    queryFn: () => TiposPermisosAPI.list(),
+    queryKey: ["/api/v1/rh/permission-types/available"],
+    queryFn: () => TiposPermisosAPI.getAvailable(),
     staleTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
   });

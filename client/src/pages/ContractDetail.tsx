@@ -17,6 +17,7 @@ import { useContractDetail } from '@/hooks/contracts/useContractDetail';
 import { useContractLookups } from '@/hooks/contracts/useContractLookups';
 import { useAuth } from '@/features/auth';
 import { TiposReferenciaAPI } from '@/lib/api';
+import { REF_TYPE_CATEGORIES } from '@/features/refTypeCategories';
 import { ContractActions } from '@/components/contracts/ContractActions';
 import { DocumentPreviewPanel } from '@/components/personnelActions/DocumentPreviewPanel';
 import { ContractDialog } from '@/components/contracts/ContractDialog';
@@ -128,7 +129,7 @@ export default function ContractDetail() {
 
   const qStatusTypes = useQuery({
     queryKey: ['reftypes', 'CONTRACT_STATUS'],
-    queryFn: () => TiposReferenciaAPI.byCategory('CONTRACT_STATUS'),
+    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CONTRACT_STATUS),
     staleTime: 10 * 60 * 1000,
   });
   const statusTypes = qStatusTypes.data?.status === 'success' ? qStatusTypes.data.data ?? [] : [];

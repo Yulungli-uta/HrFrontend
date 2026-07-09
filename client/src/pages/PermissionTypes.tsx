@@ -20,7 +20,8 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/features/auth";
-import { TiposPermisosAPI } from "@/lib/api";
+import { TiposPermisosAPI, TiposReferenciaAPI } from "@/lib/api";
+import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,6 +58,7 @@ type PermissionTypeRaw = {
   IsMedical?: boolean | number | string;
   isActive?: boolean | number | string;
   IsActive?: boolean | number | string;
+  contractTypeId?: number | null;
   createdAt?: string;
 };
 
@@ -70,6 +72,7 @@ interface PermissionTypeUI {
   LeadTimeHours?: number | null;
   IsMedical: boolean;
   IsActive: boolean;
+  ContractTypeId?: number | null;
   CreatedAt?: string;
 }
 
@@ -91,6 +94,7 @@ const normalizePermissionType = (raw: PermissionTypeRaw): PermissionTypeUI => ({
   LeadTimeHours: toNumberOrNull(raw?.leadTimeHours),
   IsMedical: toBool((raw as any)?.isMedical ?? (raw as any)?.IsMedical ?? false),
   IsActive: toBool((raw as any)?.isActive ?? (raw as any)?.IsActive ?? true),
+  ContractTypeId: raw?.contractTypeId ?? null,
   CreatedAt: raw?.createdAt,
 });
 
@@ -104,6 +108,7 @@ const toPayload = (ui: PermissionTypeUI): PermissionTypeRaw => ({
   leadTimeHours: ui.LeadTimeHours ?? 0,
   isMedical: ui.IsMedical,
   isActive: ui.IsActive,
+  contractTypeId: ui.ContractTypeId ?? null,
 });
 
 const getInitialFormState = (): PermissionTypeUI => ({
@@ -115,6 +120,7 @@ const getInitialFormState = (): PermissionTypeUI => ({
   LeadTimeHours: null,
   IsMedical: false,
   IsActive: true,
+  ContractTypeId: null,
 });
 
 export default function PermissionTypesPage() {
@@ -124,6 +130,7 @@ export default function PermissionTypesPage() {
   const [permissionTypes, setPermissionTypes] = useState<PermissionTypeUI[]>([]);
   const [filteredTypes, setFilteredTypes] = useState<PermissionTypeUI[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [contractTypes, setContractTypes] = useState<{ typeId: number; name: string }[]>([]);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingType, setEditingType] = useState<PermissionTypeUI | null>(null);
@@ -145,6 +152,10 @@ export default function PermissionTypesPage() {
 
   useEffect(() => {
     loadPermissionTypes();
+    TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CONTRACT_TYPE).then((res: any) => {
+      const items = Array.isArray(res?.data) ? res.data : [];
+      setContractTypes(items.filter((r: any) => r.isActive).map((r: any) => ({ typeId: r.typeId, name: r.name })));
+    }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -419,6 +430,33 @@ export default function PermissionTypesPage() {
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="contractTypeId">Régimen laboral</Label>
+                <Select
+                  value={newType.ContractTypeId != null ? String(newType.ContractTypeId) : 'all'}
+                  onValueChange={(v) =>
+                    setNewType({ ...newType, ContractTypeId: v === 'all' ? null : Number(v) })
+                  }
+                >
+                  <SelectTrigger id="contractTypeId">
+                    <SelectValue placeholder="Todos los regímenes" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos los regímenes</SelectItem>
+                    {contractTypes.map((ct) => (
+                      <SelectItem key={ct.typeId} value={String(ct.typeId)}>
+                        {ct.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  "Todos" = visible para cualquier régimen; LOES hereda también los de LOSEP.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
                 <Label htmlFor="maxDays">Máx. días por año</Label>
                 <Input
                   id="maxDays"
@@ -439,6 +477,7 @@ export default function PermissionTypesPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-4">
+
               <div className="space-y-2">
                 <Label htmlFor="leadTimeHours">Anticipación mínima (horas)</Label>
                 <Input
@@ -855,6 +894,7 @@ export default function PermissionTypesPage() {
                       <TableHead>Activo</TableHead>
                       <TableHead>Anticipación</TableHead>
                       <TableHead>Máx. Días/Año</TableHead>
+                      <TableHead>Régimen</TableHead>
                       <TableHead className="w-[140px]">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -949,6 +989,16 @@ export default function PermissionTypesPage() {
                             <Badge variant="outline">{type.MaxDays} días</Badge>
                           ) : (
                             <span className="text-muted-foreground">Ilimitado</span>
+                          )}
+                        </TableCell>
+
+                        <TableCell>
+                          {type.ContractTypeId != null ? (
+                            <Badge variant="default" className="bg-primary/10 text-primary border-primary/30">
+                              {contractTypes.find(c => c.typeId === type.ContractTypeId)?.name ?? `ID ${type.ContractTypeId}`}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">Todos</span>
                           )}
                         </TableCell>
 

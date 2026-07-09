@@ -21,6 +21,7 @@ export interface Employee {
   baseSalary?: number; // Añadir este campo
   scheduleID?: number; // Añadir este campo
   schedule?: any; // Añadir este campo
+  scheduleName?: string;
 }
 
 export interface EmployeeSchedule {

@@ -227,13 +227,23 @@ export const ContractTypeAPI = {
   ...createCrudService<any, any>('/api/v1/rh/contract-type'),
 
   getWithTemplate: (id: number | string): Promise<ApiResponse<any>> =>
-    apiFetch<any>(`/api/v1/rh/contract-type/${id}/with-template`),
+    apiFetch<any>(`/api/v1/rh/contract-type/${id}/template`),
 
   setDefaultTemplate: (
     id: number | string,
-    templateId: number | string
+    templateId: number | string | null
   ): Promise<ApiResponse<any>> =>
     apiFetch<any>(`/api/v1/rh/contract-type/${id}/default-template`, {
+      method: 'PATCH',
+      body: JSON.stringify({ templateId }),
+    }),
+
+  /** Asigna o quita la plantilla de delegación (usada cuando Contracts.IsDelegation = true). */
+  setDelegationTemplate: (
+    id: number | string,
+    templateId: number | string | null
+  ): Promise<ApiResponse<any>> =>
+    apiFetch<any>(`/api/v1/rh/contract-type/${id}/delegation-template`, {
       method: 'PATCH',
       body: JSON.stringify({ templateId }),
     }),
@@ -262,12 +272,13 @@ export interface PersonnelActionTypeDto {
   numberingPrefix: string;
   numberingYear: number;
   numberingLastSequence: number;
-  templateCode?: string | null;
+  defaultTemplateId?: number | null;
   actionCategory?: string | null;
   isActive: boolean;
   requiresAdUserCreation: boolean;
   requiresAdUserDisable: boolean;
   requiresAdGroupAssignment: boolean;
+  reachesVigente: boolean;
 }
 
 export const PersonnelActionTypeAPI = {
@@ -294,7 +305,7 @@ export const PersonnelActionTypeAPI = {
     code: string;
     description?: string;
     numberingPrefix: string;
-    templateCode?: string;
+    defaultTemplateId?: number | null;
     actionCategory?: string;
     isActive?: boolean;
     requiresAdUserCreation?: boolean;
@@ -311,7 +322,7 @@ export const PersonnelActionTypeAPI = {
     code: string;
     description?: string;
     numberingPrefix: string;
-    templateCode?: string;
+    defaultTemplateId?: number | null;
     actionCategory?: string;
     isActive?: boolean;
     requiresAdUserCreation?: boolean;
@@ -325,6 +336,12 @@ export const PersonnelActionTypeAPI = {
 
   delete: (id: number): Promise<ApiResponse<void>> =>
     apiFetch<void>(`${PERSONNEL_ACTION_TYPE_BASE}/${id}`, { method: 'DELETE' }),
+
+  setDefaultTemplate: (id: number, templateId: number | null): Promise<ApiResponse<void>> =>
+    apiFetch<void>(`${PERSONNEL_ACTION_TYPE_BASE}/${id}/default-template`, {
+      method: 'PATCH',
+      body: JSON.stringify({ templateId }),
+    }),
 };
 
 // =============================================================================

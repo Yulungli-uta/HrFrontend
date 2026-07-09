@@ -9,6 +9,7 @@ import {
 
 import type { ContractRequestCreate, ContractRequestDto } from "@/types/contractRequest";
 import type { DirectoryParameter } from "@/types/directoryParameter";
+import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 
 export type SelectItem = { id: number; name: string };
 
@@ -100,13 +101,13 @@ export const contractRequestService = {
 
   /** ===== Catálogos (combos) ===== */
   async listWorkModalities(): Promise<ApiResponse<SelectItem[]>> {
-    const resp = await TiposReferenciaAPI.byCategory("WORK_MODALITY");
+    const resp = await TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.WORK_MODALITY);
     if (resp.status !== "success") return resp as any;
     return { status: "success", data: normalizeRefList(resp.data) };
   },
 
   async listContractRequestStatuses(): Promise<ApiResponse<SelectItem[]>> {
-    const resp = await TiposReferenciaAPI.byCategory("CONTRACT_REQUEST_STATUS");
+    const resp = await TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CONTRACT_REQUEST_STATUS);
     if (resp.status !== "success") return resp as any;
     return { status: "success", data: normalizeRefList(resp.data) };
   },

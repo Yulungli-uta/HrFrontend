@@ -167,9 +167,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             if (empResponse.status === "success" && empResponse.data) {
               const rawId = empResponse.data.personID ?? empResponse.data.personId;
               empDetails.personId = rawId != null ? Number(rawId) : undefined;
+              if (empDetails.personId == null) {
+                console.error(
+                  "fetchEmployeeDetails: la respuesta de EmpleadosAPI.get no trae personID/personId",
+                  { employeeID: empDetails.employeeID, data: empResponse.data }
+                );
+              }
+            } else {
+              console.error(
+                "fetchEmployeeDetails: EmpleadosAPI.get no devolvió éxito al resolver personId",
+                { employeeID: empDetails.employeeID, response: empResponse }
+              );
             }
-          } catch {
-            // personId queda undefined — no bloquea el flujo principal
+          } catch (personIdError) {
+            // No bloquea el flujo principal (el resto del perfil sigue funcionando),
+            // pero sin este log era imposible saber por qué /perfil se quedaba cargando
+            // indefinidamente (personId nunca se llenaba y PersonDetail.tsx no reintentaba).
+            console.error(
+              "fetchEmployeeDetails: error al resolver personId vía EmpleadosAPI.get",
+              { employeeID: empDetails.employeeID, error: personIdError }
+            );
           }
           persistEmployeeDetails(empDetails);
           logAuth("FETCH EMPLOYEE DETAILS OK", { email });

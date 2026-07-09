@@ -37,6 +37,8 @@ import EmployeeForm from "@/components/forms/EmployeeForm";
 import { VistaEmpleadosAPI, TiposReferenciaAPI } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { usePaged } from "@/hooks/pagination/usePaged";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
+import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
 
 export interface EmployeeView {
   employeeID: number;
@@ -204,6 +206,12 @@ export default function EmployeesPage() {
   );
   const [editSeed, setEditSeed] = useState<EmployeeView | null>(null);
 
+  const { setIsFormDirty, handleOpenChange: _handleFormOpenChange, close: closeForm, confirmOpen, confirmExit, closeConfirm } =
+    useUnsavedChangesGuard((open) => {
+      setIsFormOpen(open);
+      if (!open) setEditSeed(null);
+    });
+
   const {
     items: rawEmployees,
     isLoading,
@@ -368,10 +376,7 @@ const employeeStats = useMemo(() => {
 
         <Dialog
           open={isFormOpen}
-          onOpenChange={(open) => {
-            setIsFormOpen(open);
-            if (!open) setEditSeed(null);
-          }}
+          onOpenChange={_handleFormOpenChange}
         >
           <DialogTrigger asChild>
             <Button
@@ -398,10 +403,10 @@ const employeeStats = useMemo(() => {
 
             <EmployeeForm
               key={editSeed ? `edit-${editSeed.employeeID}` : "create"}
-              viewSeed={editSeed ?? undefined}
+              viewSeed={editSeed ? { ...editSeed, sex: editSeed.sex != null ? String(editSeed.sex) : undefined } : undefined}
+              onDirtyChange={setIsFormDirty}
               onSuccess={() => {
-                setIsFormOpen(false);
-                setEditSeed(null);
+                closeForm();
                 toast({
                   title: "Operación exitosa",
                   description: editSeed
@@ -409,10 +414,7 @@ const employeeStats = useMemo(() => {
                     : "Empleado creado correctamente",
                 });
               }}
-              onCancel={() => {
-                setIsFormOpen(false);
-                setEditSeed(null);
-              }}
+              onCancel={closeForm}
             />
           </DialogContent>
         </Dialog>
@@ -951,6 +953,7 @@ const employeeStats = useMemo(() => {
           )}
         </DialogContent>
       </Dialog>
+      <UnsavedChangesDialog open={confirmOpen} onClose={closeConfirm} onConfirmExit={confirmExit} />
     </div>
   );
 }

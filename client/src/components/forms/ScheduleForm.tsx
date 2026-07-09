@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -37,7 +37,6 @@ import { HorariosAPI } from "@/lib/api";
 import { parseApiError } from "@/lib/error-handling";
 import {
   insertScheduleSchema,
-  type InsertSchedule,
   type FrontendSchedule,
 } from "@/shared/schema";
 import { Calendar, Clock, Save, Smartphone, X, Zap } from "lucide-react";
@@ -46,6 +45,7 @@ interface ScheduleFormProps {
   schedule?: FrontendSchedule;
   onSuccess?: () => void;
   onCancel?: () => void;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 type ScheduleFormValues = z.input<typeof insertScheduleSchema>;
 const normalizeTime = (time: string | null | undefined): string | null => {
@@ -101,6 +101,7 @@ export default function ScheduleForm({
   schedule,
   onSuccess,
   onCancel,
+  onDirtyChange,
 }: ScheduleFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -126,6 +127,13 @@ export default function ScheduleForm({
       isActive: true,
     },
   });
+
+  const _onDirtyChangeRef = useRef(onDirtyChange);
+  _onDirtyChangeRef.current = onDirtyChange;
+  const _isDirty = form.formState.isDirty;
+  useEffect(() => {
+    _onDirtyChangeRef.current?.(_isDirty);
+  }, [_isDirty]);
 
   useEffect(() => {
     if (schedule) {
@@ -263,7 +271,7 @@ export default function ScheduleForm({
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (data: InsertSchedule) => {
+    mutationFn: async (data: ScheduleFormValues) => {
       if (!editingId) {
         throw new Error("ID de horario no proporcionado");
       }
@@ -332,7 +340,7 @@ export default function ScheduleForm({
     },
   });
 
-  const onSubmit = (data: InsertSchedule) => {
+  const onSubmit = (data: ScheduleFormValues) => {
     if (isEditing) {
       if (!editingId) {
         toast({

@@ -32,6 +32,7 @@ import {
   TiposReferenciaAPI,
   VistaEmpleadosAPI,
 } from "@/lib/api";
+import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import {
   RefreshCw,
   Download,
@@ -77,9 +78,7 @@ interface TimePlanningEmployee {
   actualMinutes?: number;
   employeeStatusTypeID: number;
   employeeStatusName?: string;
-  paymentAmount?: number;
   isEligible: boolean;
-  eligibilityReason?: string;
   createdAt: string;
   employeeName?: string;
   department?: string;
@@ -106,6 +105,8 @@ interface ExecutionRow {
   overtimeMinutes: number;
   nightMinutes: number;
   holidayMinutes: number;
+  /** Minutos trabajados fuera de la ventana planificada (antes del inicio o después del fin). */
+  exceededMinutes: number;
   verifiedBy?: number | null;
   verifiedAt?: string | null;
   comments?: string | null;
@@ -127,9 +128,6 @@ const formatHM = (hours?: number, minutes?: number) => {
   }
   return "0h";
 };
-
-const toLocaleMoney = (n?: number) =>
-  typeof n === "number" ? `$${n.toLocaleString()}` : "N/A";
 
 const ensureTime = (hhmmOrHms: string) =>
   hhmmOrHms.length === 5 ? `${hhmmOrHms}:00` : hhmmOrHms;
@@ -196,7 +194,7 @@ export default function TimePlanningEmployeeForm({
 
   const loadEmployeeStatusTypes = async () => {
     try {
-      const response = await TiposReferenciaAPI.byCategory("EMPLOYEE_PLAN_STATUS");
+      const response = await TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.EMPLOYEE_PLAN_STATUS);
       if (response.status === "success") {
         setEmployeeStatusTypes(response.data || []);
       }
@@ -294,7 +292,7 @@ export default function TimePlanningEmployeeForm({
         return;
       }
 
-      const resp = await TimePlanningEmployeesAPI.update(planningId, planEmployeeID, {
+      const resp = await TimePlanningEmployeesAPI.update(planEmployeeID, {
         planEmployeeID,
         employeeStatusTypeID: statusType.typeId,
       });
@@ -399,9 +397,7 @@ export default function TimePlanningEmployeeForm({
       "AssignedMinutes",
       "ActualHours",
       "ActualMinutes",
-      "PaymentAmount",
       "IsEligible",
-      "EligibilityReason",
       "CreatedAt",
     ];
 
@@ -418,9 +414,7 @@ export default function TimePlanningEmployeeForm({
       e.assignedMinutes ?? "",
       e.actualHours ?? "",
       e.actualMinutes ?? "",
-      e.paymentAmount ?? "",
       e.isEligible ? "1" : "0",
-      quote(e.eligibilityReason),
       e.createdAt,
     ]);
 
@@ -642,9 +636,6 @@ export default function TimePlanningEmployeeForm({
                       <TableHead className="min-w-[110px]">Estado</TableHead>
                       <TableHead className="min-w-[120px]">Asignado</TableHead>
                       <TableHead className="min-w-[120px]">Real</TableHead>
-                      <TableHead className="hidden xl:table-cell min-w-[110px]">
-                        Pago
-                      </TableHead>
                       <TableHead className="text-right min-w-[140px]">
                         Acciones
                       </TableHead>
@@ -693,10 +684,6 @@ export default function TimePlanningEmployeeForm({
 
                         <TableCell className="text-sm">
                           {formatHM(employee.actualHours, employee.actualMinutes)}
-                        </TableCell>
-
-                        <TableCell className="hidden xl:table-cell text-sm">
-                          {toLocaleMoney(employee.paymentAmount)}
                         </TableCell>
 
                         <TableCell>
@@ -934,9 +921,10 @@ function ExecutionDialog({
       acc.overtime += r.overtimeMinutes || 0;
       acc.night += r.nightMinutes || 0;
       acc.holiday += r.holidayMinutes || 0;
+      acc.exceeded += r.exceededMinutes || 0;
       return acc;
     },
-    { total: 0, regular: 0, overtime: 0, night: 0, holiday: 0 }
+    { total: 0, regular: 0, overtime: 0, night: 0, holiday: 0, exceeded: 0 }
   );
 
   return (
@@ -1013,6 +1001,7 @@ function ExecutionDialog({
                     <TableHead className="hidden sm:table-cell">HE</TableHead>
                     <TableHead className="hidden sm:table-cell">Noct.</TableHead>
                     <TableHead className="hidden md:table-cell">Feriado</TableHead>
+                    <TableHead className="hidden md:table-cell" title="Minutos trabajados fuera de la ventana planificada">Fuera Horario</TableHead>
                     <TableHead className="hidden lg:table-cell">Obs.</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -1020,7 +1009,7 @@ function ExecutionDialog({
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={9}>
+                      <TableCell colSpan={10}>
                         <div className="flex items-center justify-center py-6 text-sm">
                           <RefreshCw className="h-4 w-4 animate-spin mr-2" />
                           Cargando ejecuciones…
@@ -1030,7 +1019,7 @@ function ExecutionDialog({
                   ) : rows.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={9}
+                        colSpan={10}
                         className="text-center text-muted-foreground py-6"
                       >
                         No hay ejecuciones registradas.
@@ -1085,6 +1074,9 @@ function ExecutionDialog({
                         <TableCell className="hidden md:table-cell text-sm">
                           {r.holidayMinutes}m
                         </TableCell>
+                        <TableCell className="hidden md:table-cell text-sm">
+                          {r.exceededMinutes}m
+                        </TableCell>
                         <TableCell className="hidden lg:table-cell text-xs text-muted-foreground">
                           {r.comments || "—"}
                         </TableCell>
@@ -1109,6 +1101,9 @@ function ExecutionDialog({
                       </TableCell>
                       <TableCell className="hidden md:table-cell font-medium">
                         {total.holiday}m
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell font-medium">
+                        {total.exceeded}m
                       </TableCell>
                       <TableCell className="hidden lg:table-cell" />
                     </TableRow>

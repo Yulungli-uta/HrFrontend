@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/tooltip";
 
 import { ContractsRHAPI, TiposReferenciaAPI, FinancialCertificationAPI } from "@/lib/api";
+import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { usePaged } from "@/hooks/pagination/usePaged";
 import { DataPagination } from "@/components/ui/DataPagination";
 import type { ContractDto } from "@/types/contract";
@@ -93,7 +94,7 @@ export default function ContractsPage() {
 
   const qStatusTypes = useQuery({
     queryKey: ["reftypes", "CONTRACT_STATUS"],
-    queryFn: () => TiposReferenciaAPI.byCategory("CONTRACT_STATUS"),
+    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CONTRACT_STATUS),
     staleTime: 10 * 60 * 1000,
   });
   const statusTypes =

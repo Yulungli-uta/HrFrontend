@@ -1,4 +1,5 @@
 // src/features/constants.ts
+import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 
 export interface ParameterDomain {
   key: string;
@@ -6,36 +7,41 @@ export interface ParameterDomain {
   categories: string[];
 }
 
+// NOTA: las categorías de estos dominios deben existir tal cual en HR.ref_Types.
+// NATIONALITY, EDUCATION_LEVEL, DEGREE_TYPE, PERMISSION_TYPE, OVERTIME_TYPE,
+// JOB_ACTIVITY_TYPE y EMPLOYEE_TYPE se quitaron de aquí porque esos datos viven
+// en tablas dedicadas propias (Countries, EducationLevels, Degree, PermissionTypes,
+// OvertimeConfig, JobActivity) y no son categorías de ref_Types — antes producían
+// listas vacías silenciosas en la pantalla de parámetros. MOVEMENT_TYPE también se
+// quitó: PersonnelMovements.MovementType es texto libre, no tiene categoría ref_Types equivalente.
 export const HR_PARAMETER_DOMAINS: ParameterDomain[] = [
   {
     key: 'acciones',
     label: 'Acciones de Personal',
-    categories: ['PERSONNEL_ACTION_STATUS', 'MOVEMENT_TYPE', 'MANAGEMENT_LEVEL', 'INSTITUTIONAL_PROCESS'],
+    categories: [REF_TYPE_CATEGORIES.PERSONNEL_ACTION_STATUS, REF_TYPE_CATEGORIES.AP_NIVEL_GESTION, REF_TYPE_CATEGORIES.AP_PROCESO_INSTITUCIONAL],
   },
   {
     key: 'empleados',
     label: 'Empleados',
-    categories: ['EMPLOYEE_TYPE', 'CONTRACT_TYPE'],
+    categories: [REF_TYPE_CATEGORIES.CONTRACT_TYPE],
   },
   {
     key: 'personal',
     label: 'Datos Personales',
-    categories: ['MARITAL_STATUS', 'BLOOD_TYPE', 'GENDER', 'NATIONALITY', 'ETHNIC_GROUP', 'DISABILITY_TYPE'],
+    categories: [REF_TYPE_CATEGORIES.MARITAL_STATUS, REF_TYPE_CATEGORIES.BLOOD_TYPE, REF_TYPE_CATEGORIES.GENDER_TYPE, REF_TYPE_CATEGORIES.ETHNICITY, REF_TYPE_CATEGORIES.DISABILITY_TYPE],
   },
   {
     key: 'cv',
     label: 'CV y Formación',
-    categories: ['EDUCATION_LEVEL', 'DEGREE_TYPE', 'BOOK_TYPE', 'PUBLICATION_TYPE', 'FAMILY_RELATION', 'TRAINING_TYPE'],
+    categories: [
+      REF_TYPE_CATEGORIES.BOOK_TYPE, REF_TYPE_CATEGORIES.PUBLICATION_TYPE, REF_TYPE_CATEGORIES.RELATIONSHIP, REF_TYPE_CATEGORIES.EVENT_TYPE,
+      REF_TYPE_CATEGORIES.TRAINING_DIRECTION, REF_TYPE_CATEGORIES.TRAINING_MODALITY, REF_TYPE_CATEGORIES.LANGUAGE, REF_TYPE_CATEGORIES.LANGUAGE_LEVEL,
+    ],
   },
   {
     key: 'contratos',
     label: 'Contratos',
-    categories: ['CONTRACT_STATUS', 'CERTIFICATION_STATUS'],
-  },
-  {
-    key: 'otros',
-    label: 'Otros',
-    categories: ['PERMISSION_TYPE', 'OVERTIME_TYPE', 'JOB_ACTIVITY_TYPE'],
+    categories: [REF_TYPE_CATEGORIES.CONTRACT_STATUS, REF_TYPE_CATEGORIES.CERT_APPROVAL_TYPE],
   },
 ];
 
@@ -45,17 +51,17 @@ export const GUARD_PARAMETER_DOMAINS: ParameterDomain[] = [
   {
     key: 'bloques',
     label: 'Bloques y Fuentes',
-    categories: ['GUARD_BLOCK_SOURCE', 'GUARD_BLOCK_TYPE', 'GUARD_SHIFT_TYPE'],
+    categories: [REF_TYPE_CATEGORIES.GUARD_BLOCK_SOURCE, REF_TYPE_CATEGORIES.GUARD_BLOCK_TYPE, REF_TYPE_CATEGORIES.GUARD_SHIFT_TYPE],
   },
   {
     key: 'grupos',
     label: 'Grupos y Niveles',
-    categories: ['GUARD_GROUP_LEVEL_TYPE', 'GUARD_GROUP_STATUS'],
+    categories: [REF_TYPE_CATEGORIES.GUARD_GROUP_LEVEL_TYPE, REF_TYPE_CATEGORIES.GUARD_GROUP_STATUS],
   },
   {
     key: 'reglas',
     label: 'Reglas y Cobertura',
-    categories: ['GUARD_SPECIAL_RULE_TYPE', 'GUARD_COVERAGE_TYPE', 'GUARD_VALIDATION_TYPE'],
+    categories: [REF_TYPE_CATEGORIES.GUARD_SPECIAL_RULE_TYPE, REF_TYPE_CATEGORIES.GUARD_COVERAGE_TYPE, REF_TYPE_CATEGORIES.GUARD_VALIDATION_TYPE],
   },
 ];
 
@@ -75,3 +81,9 @@ export const CONTRACT_ENTITY_TYPE = "HRCONTRACT";
 
 export const PERSONNEL_ACTION_DIRECTORY_CODE = "HRPERSONNEL_ACTION";
 export const PERSONNEL_ACTION_ENTITY_TYPE = "PersonnelAction";
+
+export const RESIGNATION_RETIREMENT_DIRECTORY_CODE = "HR_RESIGNATION_RETIREMENT";
+export const RESIGNATION_RETIREMENT_ENTITY_TYPE = "RESIGNATION_RETIREMENT_REQUEST";
+
+export const LANGUAGE_CERTIFICATION_DIRECTORY_CODE = "HR_LANGUAGE_CERTIFICATION";
+export const LANGUAGE_CERTIFICATION_ENTITY_TYPE = "LANGUAGE";

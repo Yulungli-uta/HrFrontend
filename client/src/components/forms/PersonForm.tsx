@@ -161,7 +161,7 @@ const personSchema = z.object({
   hasDisability: z.boolean().default(false),
 });
 
-type PersonFormData = z.infer<typeof personSchema>;
+type PersonFormData = z.input<typeof personSchema>;
 
 // ---------------------- Props ----------------------
 
@@ -173,6 +173,7 @@ interface PersonFormProps {
   refTypesByCategory: Record<string, RawRefType[]>;
   isRefTypesError?: boolean;
   isRefTypesLoading?: boolean;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 // ---------------------- Helpers ----------------------
@@ -333,6 +334,7 @@ export default function PersonForm({
   refTypesByCategory,
   isRefTypesError = false,
   isRefTypesLoading = false,
+  onDirtyChange,
 }: PersonFormProps) {
   const { toast } = useToast();
   const isEditing = !!person;
@@ -457,12 +459,18 @@ export default function PersonForm({
     reset,
     setValue,
     watch,
-    formState: { errors, isSubmitting, isValid },
+    formState: { errors, isSubmitting, isValid, isDirty: _formIsDirty },
   } = useForm<PersonFormData>({
     resolver: zodResolver(personSchema),
     mode: "onChange",
     defaultValues,
   });
+
+  const _onDirtyChangeRef = useRef(onDirtyChange);
+  _onDirtyChangeRef.current = onDirtyChange;
+  useEffect(() => {
+    _onDirtyChangeRef.current?.(_formIsDirty);
+  }, [_formIsDirty]);
 
   const watchIdentType = useWatch({ control, name: "identType" });
   const watchCountryId = useWatch({ control, name: "countryId" });

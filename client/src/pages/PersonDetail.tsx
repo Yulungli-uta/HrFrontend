@@ -1,3 +1,4 @@
+//src/pages/PersonDetail.tsx
 import { useState, useMemo } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -12,6 +13,7 @@ import {
   PaisesAPI,
   ProvinciasAPI,
   CantonesAPI,
+  EmpleadosAPI,
 } from "@/lib/api";
 
 import { PersonalInfoTab } from "@/components/person-detail/tabs/PersonalInfoTab";
@@ -19,6 +21,7 @@ import { PublicationsTab } from "@/components/person-detail/tabs/PublicationsTab
 import { FamilyMembersTab } from "@/components/person-detail/tabs/FamilyMembersTab";
 import { WorkExperiencesTab } from "@/components/person-detail/tabs/WorkExperiencesTab";
 import { TrainingsTab } from "@/components/person-detail/tabs/TrainingsTab";
+import { LanguagesTab } from "@/components/person-detail/tabs/LanguagesTab";
 import { BooksTab } from "@/components/person-detail/tabs/BooksTab";
 import { EmergencyContactsTab } from "@/components/person-detail/tabs/EmergencyContactsTab";
 
@@ -36,6 +39,7 @@ import {
   Users,
   Briefcase,
   GraduationCap,
+  Languages as LanguagesIcon,
   BookOpen,
   Phone,
 } from "lucide-react";
@@ -110,12 +114,32 @@ export default function PersonDetail() {
 
   const hasPeoplePermission = user?.permissions?.some((p) => p === "/people") ?? false;
   const urlId = id ? Number(id) : null;
+  const isOwnProfileMode = !(hasPeoplePermission && urlId && !isNaN(urlId));
+
+  // Red de seguridad: AuthContext.fetchEmployeeDetails resuelve personId con una
+  // llamada adicional (VwEmployeeDetails no lo trae) que puede fallar en silencio.
+  // Si eso pasa, /perfil se queda con un spinner infinito (personId=0 para siempre).
+  // Aquí lo resolvemos de nuevo, directo, sin depender de ese caché.
+  const needsPersonIdFallback = isOwnProfileMode && !employeeDetails?.personId && !!employeeDetails?.employeeID;
+
+  const { data: personIdFallbackResponse } = useQuery({
+    queryKey: ["person-id-fallback", employeeDetails?.employeeID],
+    queryFn: () => EmpleadosAPI.get(employeeDetails!.employeeID),
+    enabled: needsPersonIdFallback,
+    staleTime: 5 * 60_000,
+    retry: 1,
+  });
+
+  const fallbackPersonId = personIdFallbackResponse?.status === "success"
+    ? Number((personIdFallbackResponse.data as any)?.personID ?? (personIdFallbackResponse.data as any)?.personId)
+    : undefined;
 
   // Administrador (tiene /people): usa el ID de la URL.
-  // Empleado regular o ruta /perfil sin parámetro: usa el personId del contexto de autenticación.
+  // Empleado regular o ruta /perfil sin parámetro: usa el personId del contexto de autenticación,
+  // y si ese aún no está disponible, el resuelto localmente arriba.
   const personId = (hasPeoplePermission && urlId && !isNaN(urlId))
     ? urlId
-    : (employeeDetails?.personId ?? 0);
+    : (employeeDetails?.personId ?? fallbackPersonId ?? 0);
 
   // No disparar APIs hasta tener el personId resuelto
   const fetchEnabled = personId > 0;
@@ -301,7 +325,9 @@ export default function PersonDetail() {
           <p className="text-muted-foreground mb-4">
             La persona que buscas no existe o no tienes permisos para verla.
           </p>
-          <Button onClick={() => navigate("/people")}>Volver al listado</Button>
+          {hasPeoplePermission && urlId && (
+            <Button onClick={() => navigate("/people")}>Volver al listado</Button>
+          )}
         </div>
       </div>
     );
@@ -312,6 +338,7 @@ export default function PersonDetail() {
     familyMembers:     data?.familyMembers      ?? [],
     workExperiences:   data?.workExperiences    ?? [],
     trainings:         data?.trainings          ?? [],
+    languages:         (data as any)?.languages ?? [],
     books:             data?.books              ?? [],
     emergencyContacts: data?.emergencyContacts  ?? [],
     stats:             (data as any)?.stats     ?? null,
@@ -324,23 +351,30 @@ export default function PersonDetail() {
         {/* ── Cabecera ── */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 sm:gap-4">
           <div className="flex items-center space-x-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate("/people")}
-              className="hidden sm:flex"
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Volver
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate("/people")}
-              className="sm:hidden"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
+            {/* El botón "Volver" solo tiene sentido cuando se llegó aquí desde el listado
+                administrativo (/people/:id con permiso). En modo autoservicio (/, /perfil,
+                sin urlId) no existe un "listado" al que volver — se oculta. */}
+            {hasPeoplePermission && urlId && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate("/people")}
+                  className="hidden sm:flex"
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Volver
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigate("/people")}
+                  className="sm:hidden"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+              </>
+            )}
             <div className="min-w-0 flex-1">
               <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground truncate">
                 {person?.firstName} {person?.lastName}
@@ -384,6 +418,7 @@ export default function PersonDetail() {
                 { value: "family",       icon: Users,         label: "Familia"        },
                 { value: "experience",   icon: Briefcase,     label: "Experiencia"    },
                 { value: "trainings",    icon: GraduationCap, label: "Capacitaciones" },
+                { value: "languages",    icon: LanguagesIcon, label: "Idiomas"        },
                 { value: "books",        icon: BookOpen,      label: "Libros"         },
                 { value: "emergency",    icon: Phone,         label: "Contactos"      },
               ] as const).map(({ value, icon: Icon, label }) => (
@@ -461,6 +496,20 @@ export default function PersonDetail() {
                 confirmDelete(
                   "¿Está seguro de que desea eliminar esta capacitación?",
                   () => mutations.trainings.delete.mutate(id)
+                )
+              }
+              refTypesMap={allRefTypesById}
+            />
+          </TabsContent>
+
+          <TabsContent value="languages" className="space-y-4">
+            <LanguagesTab
+              languages={safeData.languages}
+              onEdit={openForm as any}
+              onDelete={(id) =>
+                confirmDelete(
+                  "¿Está seguro de que desea eliminar esta certificación de idioma?",
+                  () => mutations.languages.delete.mutate(id)
                 )
               }
               refTypesMap={allRefTypesById}

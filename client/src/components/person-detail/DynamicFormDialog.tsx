@@ -1,9 +1,12 @@
 // client/src/components/person-detail/DynamicFormDialog.tsx
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
+import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
 import PublicationForm from "@/components/person-detail/forms/PublicationForm";
 import FamilyMemberForm from "@/components/person-detail/forms/FamilyMemberForm";
 import WorkExperienceForm from "@/components/person-detail/forms/WorkExperienceForm";
 import TrainingForm from "@/components/person-detail/forms/TrainingForm";
+import LanguageForm from "@/components/person-detail/forms/LanguageForm";
 import BookForm from "@/components/person-detail/forms/BookForm";
 import EmergencyContactForm from "@/components/person-detail/forms/EmergencyContactForm";
 
@@ -21,6 +24,7 @@ const formTypeToMutationKey = {
   family: "familyMembers",
   experience: "workExperiences",
   training: "trainings",
+  language: "languages",
   book: "books",
   emergency: "emergencyContacts",
 } as const;
@@ -30,6 +34,7 @@ const formComponents = {
   family: FamilyMemberForm,
   experience: WorkExperienceForm,
   training: TrainingForm,
+  language: LanguageForm,
   book: BookForm,
   emergency: EmergencyContactForm,
 };
@@ -39,6 +44,7 @@ const formTitles = {
   family: "Carga Familiar",
   experience: "Experiencia Laboral",
   training: "Capacitación",
+  language: "Idioma",
   book: "Libro",
   emergency: "Contacto de Emergencia",
 };
@@ -49,6 +55,7 @@ const formTypeToPropName = {
   family: "familyMember",            // FamilyMemberForm: familyMember?: FamilyMember
   experience: "workExperience",      // WorkExperienceForm: workExperience?: WorkExperience
   training: "training",              // (ya funcionaba así)
+  language: "language",              // LanguageForm: language?: Language
   book: "book",                      // (ya funcionaba así)
   emergency: "emergencyContact",     // EmergencyContactForm: emergencyContact?: EmergencyContact
 } as const;
@@ -69,6 +76,8 @@ export function DynamicFormDialog({
   personId,
   mutations,
 }: DynamicFormDialogProps) {
+  const { setIsFormDirty, handleOpenChange, confirmOpen, confirmExit, closeConfirm } =
+    useUnsavedChangesGuard((open) => { if (!open) onClose(); });
   // console.log("[DynamicFormDialog] RENDER", {
   //   formState,
   //   personId,
@@ -117,6 +126,7 @@ export function DynamicFormDialog({
       family: "burdenId",
       experience: "workExpId",
       training: "trainingId",
+      language: "languageId",
       book: "bookId",
       emergency: "emergencyContactId",
     };
@@ -179,7 +189,6 @@ export function DynamicFormDialog({
         await mutations[mutationKey].create.mutateAsync(data);
       }
 
-      // console.log("[DynamicFormDialog] handleSubmit SUCCESS", { type, mutationKey });
       onSuccess();
     } catch (error) {
       console.error(
@@ -205,29 +214,33 @@ export function DynamicFormDialog({
     personId,
     ...(isEditing && propName ? { [propName]: item } : {}),
     onSubmit: handleSubmit,
-    onCancel: onClose,
+    onCancel: () => handleOpenChange(false),
     isLoading,
+    onDirtyChange: setIsFormDirty,
   };
 
   return (
-    <Dialog open={!!formState.type} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-lg sm:text-xl">
-            {isEditing
-              ? `Editar ${
-                  formTitles[type as keyof typeof formTitles]
-                }`
-              : `Nueva ${
-                  formTitles[type as keyof typeof formTitles]
-                }`}
-          </DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={!!formState.type} onOpenChange={handleOpenChange}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg sm:text-xl">
+              {isEditing
+                ? `Editar ${formTitles[type as keyof typeof formTitles]}`
+                : `Nueva ${formTitles[type as keyof typeof formTitles]}`}
+            </DialogTitle>
+          </DialogHeader>
 
-        <div className="mt-4">
-          <FormComponent {...formProps} />
-        </div>
-      </DialogContent>
-    </Dialog>
+          <div className="mt-4">
+            <FormComponent {...formProps} />
+          </div>
+        </DialogContent>
+      </Dialog>
+      <UnsavedChangesDialog
+        open={confirmOpen}
+        onClose={closeConfirm}
+        onConfirmExit={confirmExit}
+      />
+    </>
   );
 }

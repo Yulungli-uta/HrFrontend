@@ -9,11 +9,12 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import type { Employee, Person, Contract } from "@/shared/schema";
 import { DollarSign, Save, X, Calculator, Users } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface PayrollFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 type PayrollFormData = {
@@ -25,7 +26,7 @@ type PayrollFormData = {
   bankAccount: string | null;
 };
 
-export default function PayrollForm({ onSuccess, onCancel }: PayrollFormProps) {
+export default function PayrollForm({ onSuccess, onCancel, onDirtyChange }: PayrollFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedEmployees, setSelectedEmployees] = useState<number[]>([]);
@@ -53,6 +54,13 @@ export default function PayrollForm({ onSuccess, onCancel }: PayrollFormProps) {
       bankAccount: null
     }
   });
+
+  const _onDirtyChangeRef = useRef(onDirtyChange);
+  _onDirtyChangeRef.current = onDirtyChange;
+  const _isDirty = form.formState.isDirty;
+  useEffect(() => {
+    _onDirtyChangeRef.current?.(_isDirty);
+  }, [_isDirty]);
 
   const createMutation = useMutation({
     mutationFn: async (data: PayrollFormData) => {
@@ -268,8 +276,8 @@ export default function PayrollForm({ onSuccess, onCancel }: PayrollFormProps) {
                           {employees?.map((employee) => {
                             const person = people?.find(p => p.id === employee.id);
                             return (
-                              <SelectItem key={employee.id} value={employee.id.toString()}>
-                                {person ? `${person.firstName} ${person.lastName}` : `Empleado #${employeeId}`}
+                              <SelectItem key={employee.id} value={(employee.id as number).toString()}>
+                                {person ? `${person.firstName} ${person.lastName}` : `Empleado #${employee.id}`}
                               </SelectItem>
                             );
                           })}

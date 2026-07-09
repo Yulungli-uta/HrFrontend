@@ -227,8 +227,8 @@ export default function ActiveSessionsPage() {
                         <TableCell className="text-sm whitespace-nowrap">{fmtDate(s.expiresAt)}</TableCell>
                         <TableCell>
                           {s.isWebSocketConnected
-                            ? <Wifi className="h-4 w-4 text-green-500" title="WebSocket conectado" />
-                            : <WifiOff className="h-4 w-4 text-muted-foreground" title="Sin WebSocket" />
+                            ? <span title="WebSocket conectado"><Wifi className="h-4 w-4 text-green-500" /></span>
+                            : <span title="Sin WebSocket"><WifiOff className="h-4 w-4 text-muted-foreground" /></span>
                           }
                         </TableCell>
                         <TableCell className="text-right">

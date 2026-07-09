@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -16,13 +16,14 @@ import { useToast } from "@/hooks/use-toast";
 import { RolesAPI, UserRolesAPI } from "@/lib/api";
 import type { ApiResponse, PagedResult } from "@/lib/api";
 import type { Role, CreateUserRoleDto } from "@/features/auth";
-import { parseApiError } from '@/lib/error-handling';
 
 interface AssignRoleFormProps {
   userId: string;
   userEmail: string;
+  assignedRoleIds?: number[];
   onSuccess: () => void;
   onCancel: () => void;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 interface FormData {
@@ -34,8 +35,10 @@ interface FormData {
 export default function AssignRoleForm({
   userId,
   userEmail,
+  assignedRoleIds = [],
   onSuccess,
   onCancel,
+  onDirtyChange,
 }: AssignRoleFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -43,7 +46,7 @@ export default function AssignRoleForm({
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isDirty: _formIsDirty },
     setValue,
     watch,
   } = useForm<FormData>({
@@ -53,6 +56,12 @@ export default function AssignRoleForm({
       reason: "",
     },
   });
+
+  const _onDirtyChangeRef = useRef(onDirtyChange);
+  _onDirtyChangeRef.current = onDirtyChange;
+  useEffect(() => {
+    _onDirtyChangeRef.current?.(_formIsDirty);
+  }, [_formIsDirty]);
 
   const roleId = watch("roleId");
 
@@ -73,11 +82,20 @@ export default function AssignRoleForm({
     }
     return [];
   }, [rolesResponse]);
-  const activeRoles = roles.filter((r: Role) => r.isActive && !r.isDeleted);
+  const assignedIdsSet = useMemo(() => new Set(assignedRoleIds), [assignedRoleIds]);
+  const activeRoles = roles.filter(
+    (r: Role) => r.isActive && !r.isDeleted && !assignedIdsSet.has(r.id)
+  );
 
   // Mutación (usa assign, no create)
   const assignMutation = useMutation({
-    mutationFn: (data: CreateUserRoleDto) => UserRolesAPI.assign(data),
+    mutationFn: async (data: CreateUserRoleDto) => {
+      const res = await UserRolesAPI.assign(data);
+      if (res.status !== "success") {
+        throw new Error(res.error?.message || "No se pudo asignar el rol.");
+      }
+      return res;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-roles"] });
       toast({ title: "Rol asignado", description: "El rol se asignó correctamente." });
@@ -86,7 +104,7 @@ export default function AssignRoleForm({
     onError: (error: unknown) => {
       toast({
         title: "Error al asignar rol",
-        description: parseApiError(error).message,
+        description: error instanceof Error ? error.message : "No se pudo asignar el rol.",
         variant: "destructive",
       });
     },
@@ -124,7 +142,11 @@ export default function AssignRoleForm({
             </SelectTrigger>
             <SelectContent>
               {activeRoles.length === 0 ? (
-                <div className="p-2 text-sm text-muted-foreground">No hay roles disponibles</div>
+                <div className="p-2 text-sm text-muted-foreground">
+                  {assignedIdsSet.size > 0
+                    ? "El usuario ya tiene todos los roles disponibles asignados"
+                    : "No hay roles disponibles"}
+                </div>
               ) : (
                 activeRoles.map((role) => (
                   <SelectItem key={role.id} value={role.id.toString()}>

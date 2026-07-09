@@ -45,9 +45,9 @@ export interface PersonDto {
   militaryCard?: string | null;
   motherName?: string | null;
   fatherName?: string | null;
-  countryId?: number | null;
-  provinceId?: number | null;
-  cantonId?: number | null;
+  countryId?: string | null;
+  provinceId?: string | null;
+  cantonId?: string | null;
   yearsOfResidence?: number | null;
   ethnicityTypeId?: number | null;
   bloodTypeTypeId?: number | null;
@@ -73,9 +73,9 @@ export interface PersonCreateDto {
   militaryCard?: string;
   motherName?: string;
   fatherName?: string;
-  countryId?: number;
-  provinceId?: number;
-  cantonId?: number;
+  countryId?: string;
+  provinceId?: string;
+  cantonId?: string;
   yearsOfResidence?: number;
   ethnicityTypeId?: number;
   bloodTypeTypeId?: number;
@@ -173,10 +173,14 @@ export const VistaDetallesEmpleadosAPI = {
     apiFetch<any>(`/api/v1/rh/vw/EmployeeDetails/email/${encodeURIComponent(email)}`),
 
   byDepartment: (departmentName: string): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`/api/v1/rh/vw/EmployeeDetails/department/${departmentName}`),
+    apiFetch<any[]>(`/api/v1/rh/vw/EmployeeDetails/department/${encodeURIComponent(departmentName)}`),
+
+  /** Filtra por DepartmentID exacto (sin ambigüedad de nombres/tildes). */
+  byDepartmentId: (departmentId: number): Promise<ApiResponse<any[]>> =>
+    apiFetch<any[]>(`/api/v1/rh/vw/EmployeeDetails/department-id/${departmentId}`),
 
   byFaculty: (facultyName: string): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`/api/v1/rh/vw/EmployeeDetails/faculty/${facultyName}`),
+    apiFetch<any[]>(`/api/v1/rh/vw/EmployeeDetails/faculty/${encodeURIComponent(facultyName)}`),
 
   byType: (employeeType: number): Promise<ApiResponse<any[]>> =>
     apiFetch<any[]>(`/api/v1/rh/vw/EmployeeDetails/type/${employeeType}`),

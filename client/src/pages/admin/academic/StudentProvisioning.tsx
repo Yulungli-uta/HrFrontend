@@ -71,6 +71,7 @@ export default function StudentProvisioningPage() {
   const { toast } = useToast();
 
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [confirmDisableId, setConfirmDisableId] = useState<number | null>(null);
@@ -78,9 +79,9 @@ export default function StudentProvisioningPage() {
   const statusId = statusFilter !== 'all' ? parseInt(statusFilter, 10) : undefined;
 
   const { data, isFetching } = useQuery({
-    queryKey: ['student-provisioning', page, statusId],
+    queryKey: ['student-provisioning', page, pageSize, statusId],
     queryFn: async () => {
-      const res = await StudentProvisioningAPI.list(page, PAGE_SIZE, statusId);
+      const res = await StudentProvisioningAPI.list(page, pageSize, statusId);
       if (res.status !== 'success') throw new Error(res.error?.message ?? 'Error al cargar');
       return res.data;
     },
@@ -90,15 +91,15 @@ export default function StudentProvisioningPage() {
   const disableMut = useMutation({
     mutationFn: (studentId: number) => StudentProvisioningAPI.disable(studentId),
     onSuccess: (res) => {
-      if (res.status === 'success' && res.data?.success) {
+      if (res.status !== 'success') {
+        toast({ title: 'Error al deshabilitar', description: res.error?.message, variant: 'destructive' });
+        return;
+      }
+      if (res.data?.success) {
         toast({ title: 'Cuenta deshabilitada', description: 'Cuenta AD deshabilitada y movida a OU Inactivos.' });
         qc.invalidateQueries({ queryKey: ['student-provisioning'] });
       } else {
-        toast({
-          title: 'Error al deshabilitar',
-          description: res.data?.errorMessage ?? res.error?.message,
-          variant: 'destructive',
-        });
+        toast({ title: 'Error al deshabilitar', description: res.data?.errorMessage, variant: 'destructive' });
       }
     },
     onError: (err: Error) => {
@@ -248,11 +249,16 @@ export default function StudentProvisioningPage() {
         </CardContent>
       </Card>
 
-      {data && data.total > PAGE_SIZE && (
+      {data && data.total > pageSize && (
         <DataPagination
-          currentPage={page}
-          totalPages={Math.ceil(data.total / PAGE_SIZE)}
+          page={page}
+          totalPages={Math.ceil(data.total / pageSize)}
+          totalCount={data.total}
+          pageSize={pageSize}
+          hasPreviousPage={page > 1}
+          hasNextPage={page < Math.ceil(data.total / pageSize)}
           onPageChange={setPage}
+          onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
         />
       )}
 
