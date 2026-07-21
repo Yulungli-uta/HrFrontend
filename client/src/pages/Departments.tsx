@@ -25,6 +25,7 @@ import type {
 } from "@/types/department";
 import { buildTree } from "@/utils/departments";
 import { parseApiError } from "@/lib/error-handling";
+import { logger } from "@/lib/logger";
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 const PAGE_SIZE = 20;
@@ -220,7 +221,7 @@ export default function DepartmentsPage() {
       });
       await refetch();
     } catch (e) {
-      console.error("[ToggleStatus]", parseApiError(e).message);
+      logger.error("Departments", "[ToggleStatus]", parseApiError(e).message);
     } finally {
       setTogglingId(null);
     }

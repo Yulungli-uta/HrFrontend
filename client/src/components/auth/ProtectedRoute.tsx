@@ -17,6 +17,7 @@ import { PermissionService } from '@/services/permissions';
 import { Redirect } from 'wouter';
 import { Shield, Lock, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { logger } from "@/lib/logger";
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -58,15 +59,15 @@ function hasRouteAccessFromPermissions(
   const normalizedPerms = perms.map(normalizePath);
 
   // console.group('🔎 [ProtectedRoute] Chequeo de permisos por ruta');
-  // console.log('Ruta requerida (raw):', requiredPath);
-  // console.log('Ruta requerida (normalizada):', normalizedRequired);
-  // console.log('Permisos del usuario (raw):', perms);
-  // console.log('Permisos del usuario (normalizados):', normalizedPerms);
+  // logger.debug("ProtectedRoute", 'Ruta requerida (raw):', requiredPath);
+  // logger.debug("ProtectedRoute", 'Ruta requerida (normalizada):', normalizedRequired);
+  // logger.debug("ProtectedRoute", 'Permisos del usuario (raw):', perms);
+  // logger.debug("ProtectedRoute", 'Permisos del usuario (normalizados):', normalizedPerms);
   // console.groupEnd();
 
   // Coincidencia exacta
   // if (normalizedPerms.includes(normalizedRequired)) {
-  //   console.log('✅ [ProtectedRoute] Coincidencia EXACTA encontrada en permisos');
+  //   logger.debug("ProtectedRoute", '✅ [ProtectedRoute] Coincidencia EXACTA encontrada en permisos');
   //   return true;
   // }
 
@@ -77,11 +78,11 @@ function hasRouteAccessFromPermissions(
   );
 
   if (hasParentPermission) {
-    // console.log('✅ [ProtectedRoute] Coincidencia por PERMISO PADRE encontrada');
+    // logger.debug("ProtectedRoute", '✅ [ProtectedRoute] Coincidencia por PERMISO PADRE encontrada');
     return true;
   }
 
-  // console.warn('❌ [ProtectedRoute] Ningún permiso coincide con la ruta requerida');
+  // logger.warn("ProtectedRoute", '❌ [ProtectedRoute] Ningún permiso coincide con la ruta requerida');
   return false;
 }
 
@@ -110,11 +111,11 @@ export function ProtectedRoute({
   
   // Verificar permisos por ruta
   if (requiredPath) {
-    // console.log(`🔐 [ProtectedRoute] Verificando acceso a la ruta: ${requiredPath}`);
+    // logger.debug("ProtectedRoute", `🔐 [ProtectedRoute] Verificando acceso a la ruta: ${requiredPath}`);
 
     // Validar que el usuario tenga permisos cargados
     if (!user?.permissions || user.permissions.length === 0) {
-      // console.warn('⚠️ Usuario sin permisos cargados, denegando acceso (lista vacía)');
+      // logger.warn("ProtectedRoute", '⚠️ Usuario sin permisos cargados, denegando acceso (lista vacía)');
       if (showUnauthorized) {
         return <UnauthorizedPage reason="route" requiredPath={requiredPath} noPermissions />;
       }
@@ -126,25 +127,25 @@ export function ProtectedRoute({
     try {
       serviceResult = PermissionService.hasRouteAccess(user, requiredPath);
     } catch (e) {
-      // console.error('❌ Error en PermissionService.hasRouteAccess:', e);
+      // logger.error("ProtectedRoute", '❌ Error en PermissionService.hasRouteAccess:', e);
     }
 
     // 2️⃣ Resultado con nuestro chequeo local usando user.permissions
     const localResult = hasRouteAccessFromPermissions(user, requiredPath);
 
     // console.group('📊 [ProtectedRoute] Resultado de chequeos de ruta');
-    // console.log('requiredPath:', requiredPath);
-    // console.log('PermissionService.hasRouteAccess:', serviceResult);
-    // console.log('Local hasRouteAccessFromPermissions:', localResult);
+    // logger.debug("ProtectedRoute", 'requiredPath:', requiredPath);
+    // logger.debug("ProtectedRoute", 'PermissionService.hasRouteAccess:', serviceResult);
+    // logger.debug("ProtectedRoute", 'Local hasRouteAccessFromPermissions:', localResult);
     // console.groupEnd();
 
     const finalResult = serviceResult || localResult;
 
     if (!finalResult) {
-      // console.warn(`⚠️ Acceso denegado a ${requiredPath}`);
+      // logger.warn("ProtectedRoute", `⚠️ Acceso denegado a ${requiredPath}`);
       if (import.meta.env.DEV) {
-        console.log('Permisos del usuario (raw):', user.permissions);
-        console.log('Ruta requerida:', requiredPath);
+        logger.debug("ProtectedRoute", 'Permisos del usuario (raw):', user.permissions);
+        logger.debug("ProtectedRoute", 'Ruta requerida:', requiredPath);
       }
       if (showUnauthorized) {
       }
@@ -153,23 +154,23 @@ export function ProtectedRoute({
 
     // Log de acceso exitoso (solo en desarrollo)
     // if (import.meta.env.DEV) {
-    //   console.log(`✅ Acceso permitido a ${requiredPath}`);
+    //   logger.debug("ProtectedRoute", `✅ Acceso permitido a ${requiredPath}`);
     // }
   }
   
   // Verificar permisos por rol
   if (requiredRoles && requiredRoles.length > 0) {
-    console.log(`🔐 [ProtectedRoute] Verificando roles requeridos: ${requiredRoles.join(', ')}`);
+    logger.debug("ProtectedRoute", `🔐 [ProtectedRoute] Verificando roles requeridos: ${requiredRoles.join(', ')}`);
 
     const hasPermission = requireAllRoles
       ? PermissionService.hasAllRoles(user, requiredRoles)
       : PermissionService.hasAnyRole(user, requiredRoles);
     
     if (!hasPermission) {
-      // console.warn(`⚠️ Acceso denegado por roles. Requeridos: ${requiredRoles.join(', ')}`);
+      // logger.warn("ProtectedRoute", `⚠️ Acceso denegado por roles. Requeridos: ${requiredRoles.join(', ')}`);
       if (import.meta.env.DEV) {
-        console.log('Roles del usuario:', user?.roles);
-        console.log('Roles requeridos:', requiredRoles);
+        logger.debug("ProtectedRoute", 'Roles del usuario:', user?.roles);
+        logger.debug("ProtectedRoute", 'Roles requeridos:', requiredRoles);
       }
       if (showUnauthorized) {
         return <UnauthorizedPage reason="role" requiredRoles={requiredRoles} />;

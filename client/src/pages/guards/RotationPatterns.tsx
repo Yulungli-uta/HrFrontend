@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { RotateCw, Plus, Sun, Moon, ChevronRight, ChevronLeft, Pencil, Info } from 'lucide-react';
+import { RotateCw, Plus, Sun, Moon, ChevronRight, ChevronLeft, Pencil, Info, Search } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -99,10 +100,13 @@ function DaySummary({ rows }: { rows: DetailRow[] }) {
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function RotationPatternsPage() {
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const isActiveParam = statusFilter === 'all' ? undefined : statusFilter === 'active';
+
   const {
     items: patterns, isLoading, page, pageSize, totalCount,
-    totalPages, hasPreviousPage, hasNextPage, goToPage, setPageSize,
-  } = useRotationPatternsPaged(20);
+    totalPages, hasPreviousPage, hasNextPage, goToPage, setPageSize, setSearch,
+  } = useRotationPatternsPaged(20, isActiveParam);
   const { create, update, setDetails } = useRotationPatternMutations();
 
   const [open, setOpen] = useState(false);
@@ -231,6 +235,27 @@ export default function RotationPatternsPage() {
           <Plus className="h-4 w-4 mr-2" />
           Nuevo patrón
         </Button>
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            className="pl-8"
+            placeholder="Buscar por nombre o código…"
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+        <Select value={statusFilter} onValueChange={v => setStatusFilter(v as typeof statusFilter)}>
+          <SelectTrigger className="w-full sm:w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="active">Activos</SelectItem>
+            <SelectItem value="inactive">Inactivos</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {isLoading ? (

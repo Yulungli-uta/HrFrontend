@@ -464,6 +464,15 @@ export default function ContractRequestPage() {
 
   const linkedCertId = qLinkedCert.data?.certificationId ?? null;
 
+  // Referencia estable: ContractDialog usa este objeto como dependencia de su efecto de
+  // hidratación (resetea el formulario/checklist al "abrir"). Sin memoizar, cada render de
+  // esta página recreaba el objeto y disparaba ese reset en cada re-render — incluyendo
+  // mientras el usuario adjuntaba documentos en el Paso 3, perdiendo lo ya seleccionado.
+  const contractDialogInitial = useMemo(
+    () => (linkedCertId != null ? { certificationID: linkedCertId } : undefined),
+    [linkedCertId]
+  );
+
   // Diálogo de nuevo contrato
   const [contractOpen, setContractOpen] = useState(false);
   const [contractMode, setContractMode] = useState<"create" | "view" | "edit">("create");
@@ -985,7 +994,7 @@ export default function ContractRequestPage() {
         mode={contractMode}
         setMode={setContractMode}
         selected={null}
-        initial={linkedCertId != null ? { certificationID: linkedCertId } : undefined}
+        initial={contractDialogInitial}
       />
     </div>
   );

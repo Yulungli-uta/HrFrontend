@@ -10,13 +10,14 @@ import {
   ContactosEmergenciaAPI,
   type ApiResponse,
 } from "@/lib/api";
+import { logger } from "@/lib/logger";
 
 // Helper para manejar respuestas de API
 function ensureSuccess<T>(res: ApiResponse<T>, defaultMessage: string): T {
-  console.log("[usePersonMutations] ensureSuccess RAW response", res);
+  logger.debug("usePersonMutations", "[usePersonMutations] ensureSuccess RAW response", res);
 
   if (res.status === "error") {
-    console.error("[usePersonMutations] API ERROR", res);
+    logger.error("usePersonMutations", "[usePersonMutations] API ERROR", res);
     throw new Error(res.error?.message || defaultMessage);
   }
   return res.data;
@@ -26,7 +27,7 @@ export function usePersonMutations(personId: number) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  console.log("[usePersonMutations] INIT", { personId });
+  logger.debug("usePersonMutations", "[usePersonMutations] INIT", { personId });
 
   // Mutation base reusable para create
   const createMutation = (config: {
@@ -43,7 +44,7 @@ export function usePersonMutations(personId: number) {
           ? config.transformData(data)
           : { ...data, personId };
 
-        // console.log("[usePersonMutations] CREATE start", {
+        // logger.debug("usePersonMutations", "[usePersonMutations] CREATE start", {
         //   entity,
         //   personId,
         //   inputData: data,
@@ -52,7 +53,7 @@ export function usePersonMutations(personId: number) {
 
         const res = await config.apiCall(transformedData);
 
-        // console.log("[usePersonMutations] CREATE response", {
+        // logger.debug("usePersonMutations", "[usePersonMutations] CREATE response", {
         //   entity,
         //   personId,
         //   res,
@@ -62,7 +63,7 @@ export function usePersonMutations(personId: number) {
       },
       onSuccess: (result) => {
         const entity = config.queryKey[0];
-        // console.log("[usePersonMutations] CREATE success", {
+        // logger.debug("usePersonMutations", "[usePersonMutations] CREATE success", {
         //   entity,
         //   personId,
         //   result,
@@ -77,7 +78,7 @@ export function usePersonMutations(personId: number) {
       },
       onError: (error: Error) => {
         const entity = config.queryKey[0];
-        // console.error("[usePersonMutations] CREATE error", {
+        // logger.error("usePersonMutations", "[usePersonMutations] CREATE error", {
         //   entity,
         //   personId,
         //   error,
@@ -105,7 +106,7 @@ export function usePersonMutations(personId: number) {
           ? config.transformData(data)
           : { ...data, personId };
 
-        // console.log("[usePersonMutations] UPDATE start", {
+        // logger.debug("usePersonMutations", "[usePersonMutations] UPDATE start", {
         //   entity,
         //   personId,
         //   id,
@@ -115,7 +116,7 @@ export function usePersonMutations(personId: number) {
 
         const res = await config.apiCall(id, transformedData);
 
-        // console.log("[usePersonMutations] UPDATE response", {
+        // logger.debug("usePersonMutations", "[usePersonMutations] UPDATE response", {
         //   entity,
         //   personId,
         //   id,
@@ -126,7 +127,7 @@ export function usePersonMutations(personId: number) {
       },
       onSuccess: (result, variables) => {
         const entity = config.queryKey[0];
-        // console.log("[usePersonMutations] UPDATE success", {
+        // logger.debug("usePersonMutations", "[usePersonMutations] UPDATE success", {
         //   entity,
         //   personId,
         //   id: variables.id,
@@ -142,7 +143,7 @@ export function usePersonMutations(personId: number) {
       },
       onError: (error: Error, variables) => {
         const entity = config.queryKey[0];
-        // console.error("[usePersonMutations] UPDATE error", {
+        // logger.error("usePersonMutations", "[usePersonMutations] UPDATE error", {
         //   entity,
         //   personId,
         //   id: variables?.id,
@@ -167,7 +168,7 @@ export function usePersonMutations(personId: number) {
     useMutation({
       mutationFn: async (id: number) => {
         const entity = config.queryKey[0];
-        // console.log("[usePersonMutations] DELETE start", {
+        // logger.debug("usePersonMutations", "[usePersonMutations] DELETE start", {
         //   entity,
         //   personId,
         //   id,
@@ -175,7 +176,7 @@ export function usePersonMutations(personId: number) {
 
         const res = await config.apiCall(id);
 
-        // console.log("[usePersonMutations] DELETE response", {
+        // logger.debug("usePersonMutations", "[usePersonMutations] DELETE response", {
         //   entity,
         //   personId,
         //   id,
@@ -186,7 +187,7 @@ export function usePersonMutations(personId: number) {
       },
       onSuccess: (result, id) => {
         const entity = config.queryKey[0];
-        // console.log("[usePersonMutations] DELETE success", {
+        // logger.debug("usePersonMutations", "[usePersonMutations] DELETE success", {
         //   entity,
         //   personId,
         //   id,
@@ -202,7 +203,7 @@ export function usePersonMutations(personId: number) {
       },
       onError: (error: Error, id) => {
         const entity = config.queryKey[0];
-        // console.error("[usePersonMutations] DELETE error", {
+        // logger.error("usePersonMutations", "[usePersonMutations] DELETE error", {
         //   entity,
         //   personId,
         //   id,

@@ -26,6 +26,7 @@ import { RefreshCw } from "lucide-react";
 import type { Language } from "@/types/person";
 import { TiposReferenciaAPI, type RefType } from "@/lib/api";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
+import { logger } from "@/lib/logger";
 
 // =============================
 // Zod schema
@@ -144,7 +145,7 @@ export default function LanguageForm({
     try {
       await onSubmit(payload);
     } catch (error) {
-      console.error("[LanguageForm] onSubmit ERROR", error);
+      logger.error("LanguageForm", "[LanguageForm] onSubmit ERROR", error);
     }
   };
 

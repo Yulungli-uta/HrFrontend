@@ -57,6 +57,46 @@ export interface RoleMenuItem {
   isVisible: boolean;
 }
 
+/** Fila cruda de auth.tbl_Permissions (catálogo, no confundir con el código "MODULO.ACCION"). */
+export interface Permission {
+  id: number;
+  name: string;
+  module: string;
+  action: string;
+  description: string | null;
+  version: number;
+  isDeleted: boolean;
+}
+
+export interface RolePermission {
+  roleId: number;
+  permissionId: number;
+  grantedBy: string | null;
+}
+
+/** Grupo reutilizable de roles (ej. "Directora Administrativa") — ver AccessProfileAssignmentService. */
+export interface AccessProfile {
+  id: number;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+  createdAt: string;
+  isDeleted: boolean;
+}
+
+export interface AccessProfileRole {
+  accessProfileId: number;
+  roleId: number;
+}
+
+export interface UserAccessProfile {
+  userId: string;
+  accessProfileId: number;
+  assignedAt: string;
+  assignedBy: string | null;
+  isDeleted: boolean;
+}
+
 // ─── DTOs de creación ──────────────────────────────────────────────────────────
 
 export interface CreateUserDto {
@@ -95,6 +135,28 @@ export interface CreateRoleMenuItemDto {
   isVisible?: boolean;
 }
 
+export interface CreateRolePermissionDto {
+  roleId: number;
+  permissionId: number;
+  grantedBy?: string;
+}
+
+export interface CreateAccessProfileDto {
+  name: string;
+  description?: string;
+}
+
+export interface CreateAccessProfileRoleDto {
+  accessProfileId: number;
+  roleId: number;
+}
+
+export interface CreateUserAccessProfileDto {
+  userId: string;
+  accessProfileId: number;
+  assignedBy?: string;
+}
+
 // ─── DTOs de actualización ─────────────────────────────────────────────────────
 
 export interface UpdateUserDto {
@@ -128,6 +190,12 @@ export interface UpdateMenuItemDto {
 
 export interface UpdateRoleMenuItemDto {
   isVisible?: boolean;
+}
+
+export interface UpdateAccessProfileDto {
+  name?: string;
+  description?: string;
+  isActive?: boolean;
 }
 
 // ─── DTOs de contraseña ────────────────────────────────────────────────────────

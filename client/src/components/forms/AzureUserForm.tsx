@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { AzureManagementAPI } from "@/lib/api";
 import { parseApiError } from '@/lib/error-handling';
+import { logger } from "@/lib/logger";
 
 const DEBUG_AUTH =
   String((import.meta as any)?.env?.VITE_DEBUG_AUTH || "").toLowerCase() === "true";
@@ -71,8 +72,7 @@ export default function AzureUserForm({ mode, user, onSuccess, onCancel }: Props
     if (!DEBUG_AUTH) return;
     const ev = { at: new Date().toISOString(), action, detail };
     setDebugEvents((prev) => [ev, ...prev].slice(0, 50));
-    // eslint-disable-next-line no-console
-    console.log(`[DEBUG_AUTH][AzureUserForm] ${action}`, detail ?? "");
+    logger.debug("AzureUserForm", `[DEBUG_AUTH][AzureUserForm] ${action}`, detail ?? "");
   };
 
   const isEdit = mode === "edit";

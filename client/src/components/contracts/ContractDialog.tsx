@@ -66,8 +66,15 @@ import {
   ReusableDocumentManager,
   type ReusableDocumentManagerHandle,
 } from "@/components/ReusableDocumentManager";
+import {
+  RequiredDocumentsChecklist,
+  type RequiredDocumentsChecklistHandle,
+} from "@/components/shared/RequiredDocumentsChecklist";
+import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 
 import { PersonSearchCombobox } from "@/components/personnelActions/PersonSearchCombobox";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
+import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
 
 import {
   FinancialCertificationAPI,
@@ -80,6 +87,7 @@ import {
   DocumentsAPI,
   AcademicLadderAPI,
   VwAuthorityAPI,
+  TiposReferenciaAPI,
 } from "@/lib/api";
 import { Switch } from "@/components/ui/switch";
 import type { VwJobWithDegreeAndGroup } from "@/lib/api";
@@ -96,9 +104,6 @@ import {
 } from "@/features/constants";
 import { getEntityId, getEntityLabel } from "@/utils/options";
 
-// HR.ref_Types (Category=DOCUMENT_TYPE): RESOLUCION_CAU=2061, MEMORANDO_RECTORADO=2062.
-// Documentos cuyo número/fecha de referencia alimentan placeholders de las plantillas de contrato.
-const CONTRACT_REFERENCE_DOC_TYPE_IDS = ["2061", "2062"];
 
 import { useToast } from "@/hooks/use-toast";
 import { parseApiError } from "@/lib/error-handling";
@@ -113,6 +118,7 @@ import {
   RequestPeoplePicker,
   type RequestPersonItem,
 } from "@/components/contracts/RequestPeoplePicker";
+import { logger } from "@/lib/logger";
 
 type DialogMode = "create" | "view" | "edit";
 
@@ -330,7 +336,34 @@ export function ContractDialog(props: {
   const docManagerRef = useRef<ReusableDocumentManagerHandle>(null);
   const certDocManagerRef = useRef<ReusableDocumentManagerHandle>(null);
   const requestDocManagerRef = useRef<ReusableDocumentManagerHandle>(null);
-  const autoSwitchedToEditRef = useRef(false);
+  const requiredDocsRef = useRef<RequiredDocumentsChecklistHandle>(null);
+  const dialogContentRef = useRef<HTMLDivElement>(null);
+
+  // true mientras un cambio de `form` viene de un efecto del sistema (hidratación, valor
+  // por defecto, refresco tras guardar) y no de una edición real del usuario — evita marcar
+  // "cambios sin guardar" por algo que el propio formulario hizo solo.
+  const isSystemFormUpdateRef = useRef(false);
+  const [isSavingFromExitGuard, setIsSavingFromExitGuard] = useState(false);
+  const {
+    setIsFormDirty,
+    handleOpenChange: guardedOpenChange,
+    close: closeGuarded,
+    confirmOpen,
+    confirmExit,
+    closeConfirm,
+  } = useUnsavedChangesGuard(onOpenChange);
+
+  const [contractsModuleId, setContractsModuleId] = useState<number | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const res = await TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.ACCESS_MODULE_TYPE);
+      if (cancelled || res.status !== "success") return;
+      const contractsModule = (res.data ?? []).find((rt: any) => rt.name === "CONTRACTS");
+      if (contractsModule) setContractsModuleId(contractsModule.typeId ?? contractsModule.typeID);
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const [form, setForm] = useState<ContractsCreateDto>(() =>
     buildEmptyForm(initial)
@@ -355,10 +388,11 @@ export function ContractDialog(props: {
 
   useEffect(() => {
     if (!open) {
-      autoSwitchedToEditRef.current = false;
       return;
     }
 
+    setIsFormDirty(false);
+    isSystemFormUpdateRef.current = true;
     setForm(
       isCreate
         ? buildEmptyForm(initial)
@@ -374,6 +408,7 @@ export function ContractDialog(props: {
     setIsPersonFromDetail(false);
     setSelectedPersonLabel(null);
     docManagerRef.current?.clearSelected();
+    requiredDocsRef.current?.clearSelected();
     // Forzar carga de archivos cuando se abre un contrato existente
     if (!isCreate && selectedId) {
       setTimeout(() => {
@@ -381,6 +416,20 @@ export function ContractDialog(props: {
       }, 150);
     }
   }, [open, isCreate, selectedId, selected, initial]);
+
+  // Cualquier cambio de `form` mientras el diálogo está abierto se considera una edición
+  // real del usuario, salvo que venga marcado como actualización del sistema (hidratación,
+  // valor por defecto, refresco tras guardar) — ver los `isSystemFormUpdateRef.current = true`
+  // puestos justo antes de esos `setForm` puntuales.
+  useEffect(() => {
+    if (!open) return;
+    if (isSystemFormUpdateRef.current) {
+      isSystemFormUpdateRef.current = false;
+      return;
+    }
+    if (isView) return;
+    setIsFormDirty(true);
+  }, [form, open, isView, setIsFormDirty]);
 
   // Lookups normales
   // Solo carga certificaciones APROBADAS para el selector de creación
@@ -698,31 +747,12 @@ export function ContractDialog(props: {
     return s?.typeID ?? null;
   }, [wf.statuses]);
 
-  const generadoStatusId = useMemo(() => {
-    const s = wf.statuses.find((x: any) => x.name === "GENERADO");
-    return s?.typeID ?? null;
-  }, [wf.statuses]);
-
-  const isEditableStatus = useMemo(() => {
-    if (!form.status) return false;
-    return form.status === borradorStatusId || form.status === generadoStatusId;
-  }, [form.status, borradorStatusId, generadoStatusId]);
-
   // En create mode, fijar el estado inicial a BORRADOR cuando carguen los ref_types
   useEffect(() => {
     if (!isCreate || !open || !borradorStatusId) return;
+    isSystemFormUpdateRef.current = true;
     setForm((f) => ({ ...f, status: borradorStatusId }));
   }, [isCreate, open, borradorStatusId]);
-
-  // Auto-switch a modo edición cuando el contrato está en BORRADOR o GENERADO
-  useEffect(() => {
-    if (!open || isCreate || autoSwitchedToEditRef.current) return;
-    if (!borradorStatusId && !generadoStatusId) return;
-    if (mode === "view" && isEditableStatus) {
-      autoSwitchedToEditRef.current = true;
-      setMode("edit");
-    }
-  }, [open, isCreate, mode, isEditableStatus, borradorStatusId, generadoStatusId, setMode]);
 
   function handleSelectRequestPerson(person: RequestPersonItem) {
     setSelectedRequestPersonId(person.requestPersonId);
@@ -761,6 +791,7 @@ export function ContractDialog(props: {
         }
       }
 
+      setIsFormDirty(false);
       setMode("view");
     },
     onError: (err: unknown) => {
@@ -790,6 +821,7 @@ export function ContractDialog(props: {
 
       const updatedContract = await ContractsRHAPI.getById(entityId!);
       if (updatedContract.status === "success" && updatedContract.data) {
+        isSystemFormUpdateRef.current = true;
         setForm(buildFormFromSelected(updatedContract.data));
       }
     },
@@ -826,12 +858,26 @@ export function ContractDialog(props: {
     return errors;
   }
 
-  async function handleSave() {
+  /** Devuelve true si el guardado se completó (creado u actualizado), false si quedó bloqueado por validación o error. */
+  async function handleSave(): Promise<boolean> {
     const errors = validateForm();
+
+    // Solo aplica en creación: en edición la validación de documentos ya la hace el backend
+    // (ContractsService.UpdateAsync) contra lo realmente subido al servidor.
+    const docChecklistErrors = isCreate ? (requiredDocsRef.current?.getValidationErrors() ?? []) : [];
+    errors.push(...docChecklistErrors);
+
     if (errors.length > 0) {
       setValidationErrors(errors);
-      setActiveTab("info");
-      return;
+      if (isCreate) {
+        setWizardStep(docChecklistErrors.length > 0 ? 3 : 1);
+      } else {
+        setActiveTab("info");
+      }
+      // El diálogo tiene scroll interno — sin esto, el error puede quedar fuera de vista si
+      // el usuario estaba desplazado hacia abajo (p.ej. viendo el Paso 3).
+      dialogContentRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+      return false;
     }
     setValidationErrors([]);
 
@@ -853,7 +899,7 @@ export function ContractDialog(props: {
         } catch (e: unknown) {
           toast({ title: "❌ Error al reservar código de contrato", description: parseApiError(e).message, variant: "destructive" });
           setIsReservingCode(false);
-          return;
+          return false;
         } finally {
           setIsReservingCode(false);
         }
@@ -864,24 +910,27 @@ export function ContractDialog(props: {
         const res = await createMut.mutateAsync({ ...form, contractCode: finalContractCode });
         if ((res as any).status !== "success") {
           toast({ title: "❌ Error al crear contrato", description: (res as any).error?.message ?? "Error desconocido.", variant: "destructive" });
-          return;
+          return false;
         }
         newContractId = (res as any).data?.contract?.contractID ?? (res as any).data?.contractID;
       } catch (e: unknown) {
         toast({ title: "❌ Error al crear contrato", description: parseApiError(e).message, variant: "destructive" });
-        return;
+        return false;
       }
 
       if (!newContractId) {
         toast({ title: "❌ Error", description: "No se pudo obtener el ID del contrato creado.", variant: "destructive" });
-        return;
+        return false;
       }
 
       // Subida de documentos — transacción compensatoria si falla
-      const selCount = docManagerRef.current?.getSelectedCount() ?? 0;
+      const selCount =
+        (docManagerRef.current?.getSelectedCount() ?? 0) +
+        (requiredDocsRef.current?.getSelectedCount() ?? 0);
       if (selCount > 0) {
         try {
           await docManagerRef.current?.uploadAll(newContractId);
+          await requiredDocsRef.current?.uploadAll(newContractId);
         } catch (err: unknown) {
           try {
             await ContractsRHAPI.delete(newContractId);
@@ -893,14 +942,14 @@ export function ContractDialog(props: {
               variant: "destructive",
             });
             onOpenChange(false);
-            return;
+            return false;
           }
           toast({
             title: "❌ Contrato no creado",
             description: `No se pudo subir los documentos. El contrato fue revertido. ${parseApiError(err).message}`,
             variant: "destructive",
           });
-          return;
+          return false;
         }
       }
 
@@ -923,13 +972,15 @@ export function ContractDialog(props: {
           qc.invalidateQueries({ queryKey: ["contract-request-slots", certRequestId] });
           qc.invalidateQueries({ queryKey: ["/api/v1/rh/cv/contract-request"] });
         } catch (err) {
-          console.error("Error al vincular persona con la solicitud:", err);
+          logger.error("ContractDialog", "Error al vincular persona con la solicitud:", err);
         }
       }
 
       qc.invalidateQueries({ queryKey: ["contracts-rh"] });
       toast({ title: "✅ Contrato creado", description: `Contrato #${newContractId} guardado correctamente.` });
+      setIsFormDirty(false);
       onOpenChange(false);
+      return true;
 
     } else if (selectedId) {
       const dto: ContractsUpdateDto = {
@@ -937,7 +988,33 @@ export function ContractDialog(props: {
         contractID: selectedId,
         rowVersion: selected?.rowVersion,
       };
-      updateMut.mutate(dto);
+      try {
+        await updateMut.mutateAsync(dto);
+        return true;
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * "Guardar" desde el popup de "¿Salir sin guardar?". Corre el mismo guardado con
+   * validación de siempre; si falla, deja el diálogo abierto mostrando los errores en
+   * vez de salir. Si tiene éxito: en creación `handleSave` ya cierra el diálogo; en
+   * edición solo cambia a modo vista, así que aquí se completa la salida que el
+   * usuario pidió originalmente al hacer clic afuera.
+   */
+  async function handleSaveFromExitGuard() {
+    setIsSavingFromExitGuard(true);
+    try {
+      const saved = await handleSave();
+      closeConfirm();
+      if (saved && !isCreate) {
+        closeGuarded();
+      }
+    } finally {
+      setIsSavingFromExitGuard(false);
     }
   }
 
@@ -977,8 +1054,8 @@ export function ContractDialog(props: {
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+      <Dialog open={open} onOpenChange={guardedOpenChange}>
+        <DialogContent ref={dialogContentRef} className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogTitle className="sr-only">
             {isCreate
               ? isAddendum
@@ -1887,10 +1964,10 @@ export function ContractDialog(props: {
                   documentType={{ enabled: true, required: true }}
                   referenceFields={{
                     enabled: true,
-                    appliesToDocTypeIds: CONTRACT_REFERENCE_DOC_TYPE_IDS,
                     numberLabel: "Número de resolución/oficio",
                     dateLabel: "Fecha de resolución/oficio",
                   }}
+                  allowReplace={!isView}
                 />
               </TabsContent>
 
@@ -2519,16 +2596,29 @@ export function ContractDialog(props: {
               {wizardStep === 3 && (
                 <Card>
                   <CardHeader>
-                    <CardTitle>Paso 3: Documentos (Opcional)</CardTitle>
+                    <CardTitle>Paso 3: Documentos</CardTitle>
                     <CardDescription>
-                      Puede adjuntar documentos ahora o después de crear el
-                      contrato
+                      Los documentos marcados como obligatorios deben adjuntarse aquí antes de crear
+                      el contrato. Los demás son opcionales y puede adjuntarlos ahora o después.
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="space-y-4">
+                    {contractsModuleId != null && (
+                      <RequiredDocumentsChecklist
+                        ref={requiredDocsRef}
+                        moduleTypeId={contractsModuleId}
+                        specificTypeId={form.contractTypeID}
+                        directoryCode={CONTRACT_DIRECTORY_CODE}
+                        entityType={CONTRACT_ENTITY_TYPE}
+                        entityId={undefined}
+                        entityReady={false}
+                        relativePath=""
+                        maxSizeMB={20}
+                      />
+                    )}
                     <ReusableDocumentManager
                       ref={docManagerRef}
-                      label="Documentos del Contrato"
+                      label="Otros Documentos del Contrato"
                       directoryCode={CONTRACT_DIRECTORY_CODE}
                       entityType={CONTRACT_ENTITY_TYPE}
                       entityId={undefined}
@@ -2549,7 +2639,6 @@ export function ContractDialog(props: {
                       documentType={{ enabled: true, required: true }}
                       referenceFields={{
                         enabled: true,
-                        appliesToDocTypeIds: CONTRACT_REFERENCE_DOC_TYPE_IDS,
                         numberLabel: "Número de resolución/oficio",
                         dateLabel: "Fecha de resolución/oficio",
                       }}
@@ -2656,6 +2745,14 @@ export function ContractDialog(props: {
         description="Por favor indique el motivo del cambio de estado para auditoría."
         required={true}
         onConfirm={confirmStatusChange}
+      />
+
+      <UnsavedChangesDialog
+        open={confirmOpen}
+        onClose={closeConfirm}
+        onConfirmExit={confirmExit}
+        onSave={handleSaveFromExitGuard}
+        isSaving={isSavingFromExitGuard}
       />
     </>
   );

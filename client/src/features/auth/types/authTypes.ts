@@ -43,7 +43,7 @@ export interface UserSession {
   displayName?: string;
   isActive?: boolean;
   azureObjectId?: string;
-  /** URLs de menús asignados */
+  /** URLs de menús asignados — NO confundir con actionPermissions (son cosas distintas). */
   permissions?: string[];
   lastLogin?: string;
   /** Lista de roles del usuario */
@@ -52,6 +52,22 @@ export interface UserSession {
   adGroups?: string[];
   /** Menús completos asignados al usuario */
   menuItems?: MenuItem[];
+  /**
+   * Códigos "MODULO.ACCION" (ver features/actionPermissions.ts) efectivos para los roles
+   * del usuario. Viene de RepositoryUta (`AuthService.MeAsync` → `ActionPermissions`), mismo
+   * cálculo que `GET /api/role-permissions/effective`. Usar SIEMPRE a través de
+   * `can()`/`canAny()`/`canAll()` (services/permissions/actionPermissionService.ts), nunca
+   * comparando el array directamente — así el bypass de ADMIN.ACCESS y la validación de
+   * "¿esto vino cargado?" quedan en un solo lugar.
+   */
+  actionPermissions?: string[];
+  /**
+   * Nombres de AccessProfile asignados al usuario (campo `profiles` tal cual lo serializa
+   * `/api/auth/me`). Informativo únicamente — la autorización real ya quedó expandida a roles
+   * concretos al momento de asignar el perfil, esto no se usa para calcular permisos (ver
+   * AuthService.MeAsync en RepositoryUta).
+   */
+  profiles?: string[];
 }
 
 // ─── Requests / Responses ─────────────────────────────────────────────────────

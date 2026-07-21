@@ -104,10 +104,10 @@ export function useGuardRotationGroupsPaged(initialPageSize = 20) {
   });
 }
 
-export function useRotationPatternsPaged(initialPageSize = 20) {
+export function useRotationPatternsPaged(initialPageSize = 20, isActive?: boolean) {
   return usePaged<import('@/types/guards').RotationPatternDto>({
-    queryKey: ['guards', 'patterns', 'paged'],
-    queryFn: (params) => RotationPatternsAPI.listPaged(params),
+    queryKey: ['guards', 'patterns', 'paged', isActive ?? 'all'],
+    queryFn: (params) => RotationPatternsAPI.listPaged(params, isActive),
     initialPageSize,
     staleTime: 120_000,
   });
@@ -549,7 +549,33 @@ export function usePlanningMutations(onSuccess?: () => void) {
     onError: (e) => toast({ title: 'Error al confirmar', description: parseApiError(e).message, variant: 'destructive' }),
   });
 
-  return { create, generate, preview, confirm };
+  const cancel = useMutation({
+    mutationFn: ({ id, dto }: { id: number; dto: import('@/types/guards').CancelGuardShiftPlanningDto }) =>
+      GuardShiftPlanningAPI.cancel(id, dto),
+    onSuccess: (res) => {
+      if (res.status === 'success') {
+        invalidateAll();
+        qc.invalidateQueries({ queryKey: ['guards', 'planning'] });
+        toast({ title: 'Turno cancelado' });
+        onSuccess?.();
+      } else toast({ title: 'Error al cancelar', description: res.error.message, variant: 'destructive' });
+    },
+    onError: (e) => toast({ title: 'Error', description: parseApiError(e).message, variant: 'destructive' }),
+  });
+
+  const cancelRange = useMutation({
+    mutationFn: (dto: import('@/types/guards').CancelGuardShiftPlanningRangeDto) => GuardShiftPlanningAPI.cancelRange(dto),
+    onSuccess: (res) => {
+      if (res.status === 'success') {
+        invalidateAll();
+        toast({ title: `Cancelación completada: ${res.data.cancelled} planificaciones canceladas` });
+        onSuccess?.();
+      } else toast({ title: 'Error al cancelar', description: res.error.message, variant: 'destructive' });
+    },
+    onError: (e) => toast({ title: 'Error', description: parseApiError(e).message, variant: 'destructive' }),
+  });
+
+  return { create, generate, preview, confirm, cancel, cancelRange };
 }
 
 export function useShiftChangeMutations(onSuccess?: () => void) {

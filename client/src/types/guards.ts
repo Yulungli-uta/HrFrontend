@@ -63,6 +63,13 @@ export interface UpdateGuardServiceLocationDto {
 
 // ─── Grupos de Rotación ───────────────────────────────────────────────────────
 
+export interface EligibleEmployeeDto {
+  employeeID: number;
+  fullName: string;
+  idCard: string | null;
+  email: string | null;
+}
+
 export interface GuardRotationGroupDto {
   groupId: number;
   groupCode: string | null;
@@ -331,6 +338,22 @@ export interface CreateGuardShiftPlanningDto {
   planningSourceTypeId: number;
   statusTypeId: number;
   notes?: string;
+}
+
+export interface CancelGuardShiftPlanningDto {
+  notes?: string;
+}
+
+export interface CancelGuardShiftPlanningRangeDto {
+  groupId: number | null;
+  startDate: string;
+  endDate: string;
+  notes?: string;
+}
+
+export interface CancelGuardShiftPlanningResultDto {
+  cancelled: number;
+  messages: string[];
 }
 
 export interface GenerateGuardShiftPlanningRequestDto {

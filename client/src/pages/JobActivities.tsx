@@ -83,6 +83,7 @@ import { DegreeForm } from "@/components/job-activities/DegreeForm";
 import { OccupationalGroupForm } from "@/components/job-activities/OccupationalGroupForm";
 import { ActivityForm } from "@/components/job-activities/ActivityForm";
 import { parseApiError } from '@/lib/error-handling';
+import { logger } from "@/lib/logger";
 
 // -------- Helpers para manejo de ApiResponse --------
 
@@ -680,7 +681,7 @@ export default function JobActivitiesPage() {
         description: `El cargo seleccionado no tiene un ID válido (${selectedJob.jobID})`,
         variant: "destructive",
       });
-      console.error("JobID inválido:", selectedJob);
+      logger.error("JobActivities", "JobID inválido:", selectedJob);
       return;
     }
 
@@ -691,7 +692,7 @@ export default function JobActivitiesPage() {
         description: `La actividad seleccionada no tiene un ID válido (${activity.activitiesID})`,
         variant: "destructive",
       });
-      console.error("ActivitiesID inválido:", activity);
+      logger.error("JobActivities", "ActivitiesID inválido:", activity);
       return;
     }
 
@@ -707,7 +708,7 @@ export default function JobActivitiesPage() {
       unassignMutation.mutate(alreadyAssigned);
     } else {
       // Asignar
-      console.log("Asignando actividad:", {
+      logger.debug("JobActivities", "Asignando actividad:", {
         jobID: selectedJob.jobID,
         activitiesID: activity.activitiesID,
         selectedJob,

@@ -111,6 +111,11 @@ export const GuardRotationGroupsAPI = {
   getAll: (): Promise<ApiResponse<GuardRotationGroupDto[]>> =>
     apiFetch<GuardRotationGroupDto[]>(`${BASE}/guard-rotation-groups`),
 
+  /** Empleados con cargo de guardia, para el buscador de "Agregar guardias" (filtrado, a
+   * diferencia del buscador genérico de empleados). */
+  getEligibleEmployees: (search: string): Promise<ApiResponse<import('@/types/guards').EligibleEmployeeDto[]>> =>
+    apiFetch(`${BASE}/guard-rotation-groups/eligible-employees?search=${encodeURIComponent(search)}`),
+
   listPaged: (params: PagedRequest): Promise<ApiResponse<PagedResult<GuardRotationGroupDto>>> => {
     const qs = new URLSearchParams({ page: String(params.page), pageSize: String(params.pageSize) });
     if (params.search?.trim()) qs.set('search', params.search.trim());
@@ -185,9 +190,10 @@ export const RotationPatternsAPI = {
   getAll: (): Promise<ApiResponse<RotationPatternDto[]>> =>
     apiFetch<RotationPatternDto[]>(`${BASE}/rotation-patterns`),
 
-  listPaged: (params: PagedRequest): Promise<ApiResponse<PagedResult<RotationPatternDto>>> => {
+  listPaged: (params: PagedRequest, isActive?: boolean): Promise<ApiResponse<PagedResult<RotationPatternDto>>> => {
     const qs = new URLSearchParams({ page: String(params.page), pageSize: String(params.pageSize) });
     if (params.search?.trim()) qs.set('search', params.search.trim());
+    if (isActive !== undefined) qs.set('isActive', String(isActive));
     return apiFetch<PagedResult<RotationPatternDto>>(`${BASE}/rotation-patterns/paged?${qs}`);
   },
 
@@ -313,6 +319,20 @@ export const GuardShiftPlanningAPI = {
 
   readinessCheck: (targetDate: string): Promise<ApiResponse<import('@/types/guards').GuardReadinessCheckDto>> =>
     apiFetch(`${BASE}/guard-shift-planning/readiness-check?targetDate=${targetDate}`),
+
+  cancel: (id: number, dto: import('@/types/guards').CancelGuardShiftPlanningDto): Promise<ApiResponse<GuardShiftPlanningDto>> =>
+    apiFetch<GuardShiftPlanningDto>(`${BASE}/guard-shift-planning/${id}/cancel`, {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    }),
+
+  cancelRange: (
+    dto: import('@/types/guards').CancelGuardShiftPlanningRangeDto
+  ): Promise<ApiResponse<import('@/types/guards').CancelGuardShiftPlanningResultDto>> =>
+    apiFetch(`${BASE}/guard-shift-planning/cancel-range`, {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    }),
 };
 
 // =============================================================================

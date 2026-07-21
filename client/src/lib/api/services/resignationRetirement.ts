@@ -8,6 +8,7 @@
 import { apiFetch } from '../core/fetch';
 import type { ApiResponse } from '../core/fetch';
 import type {
+  ApproveResignationRetirementRequest,
   CancelResignationRetirementRequest,
   CreateResignationRetirementRequest,
   EmployeeConsolidatedInfo,
@@ -88,7 +89,7 @@ export const ResignationRetirementAPI = {
 
   approve: (
     id: number,
-    payload: ReviewResignationRetirementRequest
+    payload: ApproveResignationRetirementRequest
   ): Promise<ApiResponse<ResignationRetirementDetail>> =>
     apiFetch<ResignationRetirementDetail>(`${BASE}/${id}/approve`, {
       method: 'POST',

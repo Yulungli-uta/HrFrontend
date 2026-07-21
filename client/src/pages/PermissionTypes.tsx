@@ -30,6 +30,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { parseApiError } from '@/lib/error-handling';
+import { logger } from "@/lib/logger";
 
 // -----------------------------------------------------------------------------
 // Formato esperado por backend
@@ -178,7 +179,7 @@ export default function PermissionTypesPage() {
       const normalized = rawArray.map(normalizePermissionType);
       setPermissionTypes(normalized);
     } catch (error) {
-      console.error('Error loading permission types:', error);
+      logger.error("PermissionTypes", 'Error loading permission types:', error);
       setPermissionTypes([]);
       toast({
         title: "Error",
@@ -298,7 +299,7 @@ export default function PermissionTypesPage() {
       handleDialogClose();
       await loadPermissionTypes();
     } catch (error: unknown) {
-      console.error('Error saving permission type:', error);
+      logger.error("PermissionTypes", 'Error saving permission type:', error);
       toast({
         title: "Error",
         description: parseApiError(error).message,
@@ -338,7 +339,7 @@ export default function PermissionTypesPage() {
         throw new Error((resp as any)?.error?.message || 'Error inactivando el tipo');
       }
     } catch (error: unknown) {
-      console.error('Error inactivando permission type:', error);
+      logger.error("PermissionTypes", 'Error inactivando permission type:', error);
       toast({
         title: "Error",
         description: parseApiError(error).message,

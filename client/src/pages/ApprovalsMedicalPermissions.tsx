@@ -59,6 +59,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { logger } from "@/lib/logger";
 
 /* -------------------- Tipos -------------------- */
 interface Permission {
@@ -338,7 +339,7 @@ export default function ApprovalsMedicalPermissionsPage() {
 
   useEffect(() => {
     if (permsRes?.status === "success") {
-      console.log("RAW medical permissions sample:", safeArray(permsRes.data)[0]);
+      logger.debug("ApprovalsMedicalPermissions", "RAW medical permissions sample:", safeArray(permsRes.data)[0]);
     }
   }, [permsRes]);
 

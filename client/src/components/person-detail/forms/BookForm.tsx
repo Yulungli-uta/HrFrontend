@@ -32,6 +32,7 @@ import {
   type RefType,
 } from "@/lib/api";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
+import { logger } from "@/lib/logger";
 
 // =============================
 // Tipos auxiliares
@@ -364,7 +365,7 @@ export default function BookForm({
         form.reset();
       }
     } catch (error) {
-      console.error("[BookForm] onSubmit ERROR", error);
+      logger.error("BookForm", "[BookForm] onSubmit ERROR", error);
     }
   };
 

@@ -9,6 +9,7 @@ import TrainingForm from "@/components/person-detail/forms/TrainingForm";
 import LanguageForm from "@/components/person-detail/forms/LanguageForm";
 import BookForm from "@/components/person-detail/forms/BookForm";
 import EmergencyContactForm from "@/components/person-detail/forms/EmergencyContactForm";
+import { logger } from "@/lib/logger";
 
 interface DynamicFormDialogProps {
   formState: { type: string | null; item: any | null };
@@ -78,14 +79,14 @@ export function DynamicFormDialog({
 }: DynamicFormDialogProps) {
   const { setIsFormDirty, handleOpenChange, confirmOpen, confirmExit, closeConfirm } =
     useUnsavedChangesGuard((open) => { if (!open) onClose(); });
-  // console.log("[DynamicFormDialog] RENDER", {
+  // logger.debug("DynamicFormDialog", "[DynamicFormDialog] RENDER", {
   //   formState,
   //   personId,
   //   hasMutations: !!mutations,
   // });
 
   if (!formState.type) {
-    // console.log("[DynamicFormDialog] sin tipo de formulario, no se muestra diálogo", {
+    // logger.debug("DynamicFormDialog", "[DynamicFormDialog] sin tipo de formulario, no se muestra diálogo", {
     //   formState,
     // });
     return null;
@@ -101,7 +102,7 @@ export function DynamicFormDialog({
       type as keyof typeof formTypeToPropName
     ];
 
-  // console.log("[DynamicFormDialog] resolved config", {
+  // logger.debug("DynamicFormDialog", "[DynamicFormDialog] resolved config", {
   //   type,
   //   mutationKey,
   //   isEditing,
@@ -111,7 +112,7 @@ export function DynamicFormDialog({
 
   // Verificar que las mutaciones existen
   if (!mutations || !mutations[mutationKey]) {
-    // console.error(`[DynamicFormDialog] Mutaciones no encontradas para: ${mutationKey}`, {
+    // logger.error("DynamicFormDialog", `[DynamicFormDialog] Mutaciones no encontradas para: ${mutationKey}`, {
     //   type,
     //   mutationKey,
     //   mutations,
@@ -134,7 +135,7 @@ export function DynamicFormDialog({
     const idField = idMap[type];
     const id = item?.[idField] || item?.id;
 
-    // console.log("[DynamicFormDialog] getItemId", {
+    // logger.debug("DynamicFormDialog", "[DynamicFormDialog] getItemId", {
     //   type,
     //   idField,
     //   item,
@@ -145,7 +146,7 @@ export function DynamicFormDialog({
   };
 
   const handleSubmit = async (data: any) => {
-    // console.log("[DynamicFormDialog] handleSubmit called", {
+    // logger.debug("DynamicFormDialog", "[DynamicFormDialog] handleSubmit called", {
     //   type,
     //   isEditing,
     //   item,
@@ -158,7 +159,7 @@ export function DynamicFormDialog({
         // Obtener el ID correcto basado en el tipo
         const id = getItemId(item, type);
         if (!id) {
-          console.error("[DynamicFormDialog] handleSubmit sin ID para editar", {
+          logger.error("DynamicFormDialog", "[DynamicFormDialog] handleSubmit sin ID para editar", {
             type,
             item,
             data,
@@ -168,7 +169,7 @@ export function DynamicFormDialog({
           );
         }
 
-        // console.log("[DynamicFormDialog] UPDATE mutation", {
+        // logger.debug("DynamicFormDialog", "[DynamicFormDialog] UPDATE mutation", {
         //   type,
         //   mutationKey,
         //   id,
@@ -180,7 +181,7 @@ export function DynamicFormDialog({
           data,
         });
       } else {
-        console.log("[DynamicFormDialog] CREATE mutation", {
+        logger.debug("DynamicFormDialog", "[DynamicFormDialog] CREATE mutation", {
           type,
           mutationKey,
           data,
@@ -191,8 +192,7 @@ export function DynamicFormDialog({
 
       onSuccess();
     } catch (error) {
-      console.error(
-        `[DynamicFormDialog] Error en formulario ${type}:`,
+      logger.error("DynamicFormDialog", `[DynamicFormDialog] Error en formulario ${type}:`,
         error
       );
       // El error ya se maneja en la mutación, no necesitamos hacer nada más aquí
@@ -204,7 +204,7 @@ export function DynamicFormDialog({
     mutations[mutationKey]?.update?.isPending ||
     false;
 
-  // console.log("[DynamicFormDialog] isLoading state", {
+  // logger.debug("DynamicFormDialog", "[DynamicFormDialog] isLoading state", {
   //   type,
   //   mutationKey,
   //   isLoading,

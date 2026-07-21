@@ -18,9 +18,10 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/features/auth";
 import logoPath from "@/assets/LogoUTA.png";
+import { logger } from "@/lib/logger";
 
 const DEBUG = import.meta.env.VITE_DEBUG_AUTH === "true";
-const logSidebar = (...args: any[]) => { if (DEBUG) console.log("[SIDEBAR]", ...args); };
+const logSidebar = (...args: any[]) => { if (DEBUG) logger.debug("Sidebar", "[SIDEBAR]", ...args); };
 
 /* ─── Tipos ─────────────────────────────────────────────────────────────── */
 interface NavNode {

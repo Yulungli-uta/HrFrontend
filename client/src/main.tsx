@@ -3,16 +3,17 @@ import { Router } from "wouter";
 import App from "./App";
 import "./index.css";
 import "./uta-branding.css";
+import { logger } from "@/lib/logger";
 
 // Global error handlers
 window.addEventListener('unhandledrejection', (event) => {
-  console.error('Unhandled promise rejection:', event.reason);
+  logger.error("main", 'Unhandled promise rejection:', event.reason);
   // Prevent the default browser behavior
   event.preventDefault();
 });
 
 window.addEventListener('error', (event) => {
-  console.error('Unhandled error:', event.error);
+  logger.error("main", 'Unhandled error:', event.error);
 });
 
 

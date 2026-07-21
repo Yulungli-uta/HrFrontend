@@ -1,5 +1,5 @@
 // services/permissions/cacheService.ts
-const DEBUG = import.meta.env.VITE_DEBUG_AUTH === "true";
+import { logger } from "@/lib/logger";
 
 const SESSION_KEY = "uta-session-id";
 
@@ -10,7 +10,7 @@ function getOrCreateSessionId(): string {
   if (!sessionId) {
     sessionId = crypto.randomUUID();
     sessionStorage.setItem(SESSION_KEY, sessionId);
-    DEBUG && console.log("[CACHE] New sessionId created:", sessionId);
+    logger.auth.debug("[CACHE] New sessionId created");
   }
   return sessionId;
 }
@@ -36,20 +36,20 @@ export class CacheService {
     try {
       const raw = localStorage.getItem(this.key(key));
       const value = raw ? JSON.parse(raw) : null;
-      DEBUG && console.log("[CACHE] GET", this.key(key), value);
+      logger.auth.debug("[CACHE] GET", this.key(key));
       return value;
     } catch (err) {
-      console.error("[CACHE] Error al leer caché:", err);
+      logger.auth.error("[CACHE] Error al leer caché:", err);
       return null;
     }
   }
 
   set<T>(key: string, value: T) {
     try {
-      DEBUG && console.log("[CACHE] SET", this.key(key), value);
+      logger.auth.debug("[CACHE] SET", this.key(key));
       localStorage.setItem(this.key(key), JSON.stringify(value));
     } catch (err) {
-      console.error("[CACHE] Error al escribir caché:", err);
+      logger.auth.error("[CACHE] Error al escribir caché:", err);
     }
   }
 
@@ -61,7 +61,7 @@ export class CacheService {
       this.set(key, fresh);
       return fresh;
     } catch (err) {
-      DEBUG && console.warn("[CACHE] FALLBACK, usando valor cacheado:", err);
+      logger.auth.warn("[CACHE] FALLBACK, usando valor cacheado:", err);
       if (cached !== null && cached !== undefined) {
         return cached;
       }
@@ -72,7 +72,7 @@ export class CacheService {
   /** Limpia el caché SOLO de este usuario + sesión */
   clearAllForCurrent() {
     const prefix = `cache:${this.userId}:${this.sessionId}:`;
-    DEBUG && console.log("[CACHE] CLEAR for user/session:", prefix);
+    logger.auth.debug("[CACHE] CLEAR for user/session:", prefix);
     Object.keys(localStorage)
       .filter(k => k.startsWith(prefix))
       .forEach(k => localStorage.removeItem(k));
@@ -80,7 +80,7 @@ export class CacheService {
 
   /** 🔥 Limpia TODO el caché de permisos de TODOS los usuarios/sesiones */
   static clearAll() {
-    DEBUG && console.log("[CACHE] CLEAR ALL (global)");
+    logger.auth.debug("[CACHE] CLEAR ALL (global)");
     const prefix = "cache:";
     Object.keys(localStorage)
       .filter(k => k.startsWith(prefix))

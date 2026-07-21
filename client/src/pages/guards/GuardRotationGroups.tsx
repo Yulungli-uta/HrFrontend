@@ -3,7 +3,7 @@ import { useState } from 'react';
 import {
   Users, Plus, MapPin, Shield, ChevronRight, ChevronLeft,
   Loader2, UserMinus, X, Building2, RotateCw, ChevronDown, ChevronUp,
-  Layers,
+  Layers, Search,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
@@ -21,6 +22,7 @@ import {
 } from '@/components/ui/table';
 import { EmployeeCombobox } from '@/components/ui/EmployeeCombobox';
 import { GroupPatternAssignmentDialog } from '@/components/guards/GroupPatternAssignmentDialog';
+import { GuardRotationGroupsAPI } from '@/lib/api/services/guards';
 import {
   useLocationSummary, useGroupsByLocation, useGuardGroupEmployees,
   useGuardGroupMutations, useGeneralGroupsWithSubgroups, useGeneralGroups,
@@ -300,9 +302,10 @@ function GroupEmployeesPanel({ group }: { group: LocationGroupDetailDto }) {
   const pendingIds = new Set(pending.map(p => p.employeeId));
 
   const handleAdd = (emp: any) => {
-    if (!emp || activeIds.has(emp.employeeId) || pendingIds.has(emp.employeeId)) return;
+    const employeeId: number | undefined = emp?.employeeID ?? emp?.employeeId;
+    if (!emp || employeeId == null || activeIds.has(employeeId) || pendingIds.has(employeeId)) return;
     setPending(prev => [...prev, {
-      employeeId: emp.employeeId,
+      employeeId,
       fullName: emp.fullName ?? emp.employeeFullName ?? '',
       idCard: emp.idCard ?? '',
     }]);
@@ -446,7 +449,15 @@ function GroupEmployeesPanel({ group }: { group: LocationGroupDetailDto }) {
       <Separator />
       <div>
         <p className="text-xs font-semibold uppercase text-muted-foreground mb-2">Agregar guardias</p>
-        <EmployeeCombobox key={comboKey} value={null} onSelect={() => { }} onSelectEmployee={handleAdd} placeholder="Buscar guardia…" />
+        <EmployeeCombobox
+          key={comboKey}
+          value={null}
+          onSelect={() => { }}
+          onSelectEmployee={handleAdd}
+          placeholder="Buscar guardia…"
+          searchFn={(term) => GuardRotationGroupsAPI.getEligibleEmployees(term)}
+          searchKey="guard-eligible-employees-search"
+        />
         {pending.length > 0 && (
           <>
             <div className="max-h-36 overflow-y-auto mt-2 space-y-1 pr-1">
@@ -648,6 +659,24 @@ function HierarchyView({
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [empPanel, setEmpPanel] = useState<LocationGroupDetailDto | null>(null);
   const [patternPanel, setPatternPanel] = useState<LocationGroupDetailDto | null>(null);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+
+  const matchesStatus = (isActive: boolean) =>
+    statusFilter === 'all' || (statusFilter === 'active') === isActive;
+  const term = search.trim().toLowerCase();
+  const matchesSearch = (name: string, code?: string | null) =>
+    !term || name.toLowerCase().includes(term) || (code ?? '').toLowerCase().includes(term);
+
+  const filteredGroups = groups
+    .map(g => {
+      const selfMatches = matchesStatus(g.isActive) && matchesSearch(g.name, g.groupCode);
+      const matchingSubs = g.subgroups.filter(s => matchesStatus(s.isActive) && matchesSearch(s.name, s.groupCode));
+      if (!selfMatches && matchingSubs.length === 0) return null;
+      const visibleSubs = selfMatches ? g.subgroups.filter(s => matchesStatus(s.isActive)) : matchingSubs;
+      return { ...g, subgroups: visibleSubs };
+    })
+    .filter((g): g is GuardRotationGroupWithSubgroupsDto => g !== null);
 
   const toggle = (id: number) =>
     setExpanded(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -684,7 +713,33 @@ function HierarchyView({
 
   return (
     <div className="space-y-3">
-      {groups.map(g => {
+      <div className="flex flex-col sm:flex-row gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            className="pl-8"
+            placeholder="Buscar por nombre o código…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+        <Select value={statusFilter} onValueChange={v => setStatusFilter(v as typeof statusFilter)}>
+          <SelectTrigger className="w-full sm:w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="active">Activos</SelectItem>
+            <SelectItem value="inactive">Inactivos</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {filteredGroups.length === 0 && (
+        <p className="text-sm text-muted-foreground text-center py-8">Sin resultados para el filtro actual.</p>
+      )}
+
+      {filteredGroups.map(g => {
         const isOpen = expanded.has(g.groupId);
         return (
           <Card key={g.groupId} className={g.isActive ? '' : 'opacity-60'}>

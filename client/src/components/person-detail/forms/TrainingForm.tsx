@@ -31,6 +31,7 @@ import {
   AreaConocimientoAPI,
 } from "@/lib/api";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
+import { logger } from "@/lib/logger";
 
 // =============================
 // Zod schema
@@ -285,7 +286,7 @@ export default function TrainingForm({
     try {
       await onSubmit(payload);
     } catch (error) {
-      console.error("[TrainingForm] onSubmit ERROR", error);
+      logger.error("TrainingForm", "[TrainingForm] onSubmit ERROR", error);
     }
   };
 

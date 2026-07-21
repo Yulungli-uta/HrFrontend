@@ -3,6 +3,7 @@ import { useState, useCallback } from "react";
 import { DepartamentosAPI } from "@/lib/api";
 import type { Department, DepartmentFormData } from "@/types/department";
 import { parseApiError } from '@/lib/error-handling';
+import { logger } from "@/lib/logger";
 
 export const useDepartmentMutation = (onSuccess: () => void) => {
   const [saving, setSaving] = useState(false);
@@ -40,7 +41,7 @@ export const useDepartmentMutation = (onSuccess: () => void) => {
         payload.rowVersion = department.rowVersion;
       }
 
-      console.log('Payload enviado:', payload); // Para debug
+      logger.debug("useDepartmentMutation", 'Payload enviado:', payload); // Para debug
 
       let res;
       if (mode === 'create') {
@@ -66,7 +67,7 @@ export const useDepartmentMutation = (onSuccess: () => void) => {
       onSuccess();
       return true;
     } catch (e: unknown) {
-      console.error('Error en mutación:', e);
+      logger.error("useDepartmentMutation", 'Error en mutación:', e);
       setError(e instanceof Error ? e.message : `Error al ${mode === 'create' ? 'crear' : 'actualizar'}`);
       return false;
     } finally {

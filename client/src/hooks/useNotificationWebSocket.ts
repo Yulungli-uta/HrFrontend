@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import * as signalR from "@microsoft/signalr";
 import { getBrowserId } from "@/utils/browserId";
+import { logger } from "@/lib/logger";
 
 const DEBUG = import.meta.env.VITE_DEBUG_AUTH === "true";
 
@@ -33,6 +34,11 @@ export interface WebSocketMessage {
     accessToken: string;
     refreshToken: string;
   };
+
+  // PKCE (RFC 7636): cuando el servidor tiene SecureTokenDelivery activo, el par de
+  // tokens NO viaja aquí — solo esta referencia de un solo uso, canjeable en
+  // POST /api/auth/azure/exchange junto con el codeVerifier (ver AuthContext.tsx).
+  deliveryCode?: string;
 }
 
 interface UseNotificationWebSocketReturn {
@@ -67,17 +73,17 @@ export function useNotificationWebSocket(
   // ----------------------------------------------------------------------
   const connectWebSocket = useCallback(async () => {
     if (!clientId) {
-      DEBUG && console.warn("[WS] No clientId → skip connect");
+      logger.auth.warn("[WS] No clientId → skip connect");
       return;
     }
 
     if (!browserId) {
-      DEBUG && console.warn("[WS] No browserId → skip connect");
+      logger.auth.warn("[WS] No browserId → skip connect");
       return;
     }
 
     if (reconnectingRef.current) {
-      DEBUG && console.warn("[WS] Already reconnecting, skip");
+      logger.auth.warn("[WS] Already reconnecting, skip");
       return;
     }
 
@@ -88,7 +94,7 @@ export function useNotificationWebSocket(
         clientId
       )}&browserId=${encodeURIComponent(browserId)}`;
 
-      DEBUG && console.log("[WS] Connecting to:", url);
+      logger.auth.debug("[WS] Connecting to hub");
 
       // const hub = new signalR.HubConnectionBuilder()
       //   .withUrl(url, {
@@ -107,21 +113,21 @@ export function useNotificationWebSocket(
         
       // 🔥 Un solo handler unificado
       hub.on("connected", (msg: any) => {
-        if (DEBUG) console.log("[WS] Server connected callback:", msg);
+        logger.auth.debug("[WS] Server connected callback");
       });
 
       hub.on("ReceiveNotification", (msg: WebSocketMessage) => {
-        DEBUG && console.log("[WS] ReceiveNotification:", msg);
+        logger.auth.debug("[WS] ReceiveNotification:", msg?.eventType);
         setLastMessage(msg);
       });
 
       hub.on("LoginNotification", (msg: WebSocketMessage) => {
-        DEBUG && console.log("[WS] LoginNotification:", msg);
+        logger.auth.debug("[WS] LoginNotification:", msg?.eventType);
         setLastMessage(msg);
       });
 
       hub.onreconnected(async () => {
-        DEBUG && console.log("[WS] Reconnected");
+        logger.auth.debug("[WS] Reconnected");
 
         setIsConnected(true);
 
@@ -129,18 +135,18 @@ export function useNotificationWebSocket(
           await hub.invoke("JoinApplicationGroup", clientId, "UTA-Licencias");
           await hub.invoke("JoinBrowserGroup", clientId, browserId);
         } catch (e) {
-          console.error("[WS] Error rejoining groups:", e);
+          logger.auth.error("[WS] Error rejoining groups:", e);
         }
       });
 
       hub.onclose(() => {
-        DEBUG && console.log("[WS] Disconnected");
+        logger.auth.debug("[WS] Disconnected");
         setIsConnected(false);
       });
 
       await hub.start();
 
-      DEBUG && console.log("[WS] Connected OK");
+      logger.auth.debug("[WS] Connected OK");
 
       // await hub.invoke("JoinApplicationGroup", clientId);
       // await hub.invoke("JoinBrowserGroup", clientId, browserId);
@@ -151,7 +157,7 @@ export function useNotificationWebSocket(
       setConnection(hub);
       setIsConnected(true);
     } catch (error) {
-      console.error("[WS] Connection failed:", error);
+      logger.auth.error("[WS] Connection failed:", error);
     } finally {
       reconnectingRef.current = false;
     }
@@ -161,7 +167,7 @@ export function useNotificationWebSocket(
 
   const disconnectWebSocket = useCallback(async () => {
     if (connectionRef.current) {
-      DEBUG && console.log("[WS] Disconnect requested");
+      logger.auth.debug("[WS] Disconnect requested");
 
       await connectionRef.current.stop();
       connectionRef.current = null;
@@ -186,14 +192,14 @@ export function useNotificationWebSocket(
   const sendMessage = useCallback(
     async (msg: any) => {
       if (!connectionRef.current || !isConnected) {
-        DEBUG && console.warn("[WS] sendMessage ignored → not connected");
+        logger.auth.warn("[WS] sendMessage ignored → not connected");
         return;
       }
 
       try {
         await connectionRef.current.invoke("SendMessage", msg);
       } catch (error) {
-        console.error("[WS] SendMessage error:", error);
+        logger.auth.error("[WS] SendMessage error:", error);
       }
     },
     [isConnected]

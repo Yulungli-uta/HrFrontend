@@ -54,8 +54,10 @@ function createPrefix(module: string, level: LogLevel): string {
 }
 
 export const logger = {
+  // Los errores se imprimen SIEMPRE (sin flag): son la única traza disponible
+  // en producción para fallos puros de frontend. Nunca incluir tokens ni payloads
+  // sensibles en los argumentos de un error.
   error(module: string, message: string, ...args: unknown[]) {
-    if (!shouldLog("error")) return;
     console.error(`${createPrefix(module, "error")} ${message}`, ...args);
   },
 
@@ -96,8 +98,8 @@ export const logger = {
       logFn(`${prefix} <-- ${status} ${method} ${url}${timing}`);
     },
 
+    // Errores de API siempre visibles (misma política que logger.error)
     error(method: string, url: string, error: unknown, durationMs?: number) {
-      if (!shouldLog("error")) return;
       const config = getConfig();
       const prefix = createPrefix("API", "error");
       const timing = config.showTimings && durationMs !== undefined ? ` (${durationMs}ms)` : "";

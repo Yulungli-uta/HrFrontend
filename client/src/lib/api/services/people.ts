@@ -10,6 +10,7 @@
 
 // src/lib/api/services/employees.ts
 import { createApiService } from '../core/pagination';
+import type { PagedRequest, PagedResult } from '../core/pagination';
 import { apiFetch } from '../core/fetch';
 import type { ApiResponse } from '../core/fetch';
 import type { BulkVerifyResponse } from '@/types/contractRequestPerson';
@@ -149,6 +150,28 @@ export const FacultadesAPI = createApiService<any, any>('/api/v1/rh/faculties');
 
 export const VistaEmpleadosAPI = {
   ...createApiService<any, any>('/api/v1/rh/vw/EmployeeComplete'),
+
+  /**
+   * Sobrescribe listPaged para soportar filtros adicionales server-side:
+   * régimen (employeeType), departamento y estado (isActive), además de search/paginación.
+   */
+  listPaged: (params: PagedRequest & {
+    employeeType?: number;
+    department?: string;
+    isActive?: boolean;
+  }): Promise<ApiResponse<PagedResult<any>>> => {
+    const qs = new URLSearchParams({
+      page: String(params.page),
+      pageSize: String(params.pageSize),
+      ...(params.sortBy ? { sortBy: params.sortBy } : {}),
+      ...(params.sortDirection ? { sortDirection: params.sortDirection } : {}),
+      ...(params.search?.trim() ? { search: params.search.trim() } : {}),
+      ...(params.employeeType ? { employeeType: String(params.employeeType) } : {}),
+      ...(params.department ? { department: params.department } : {}),
+      ...(params.isActive !== undefined ? { isActive: String(params.isActive) } : {}),
+    });
+    return apiFetch<PagedResult<any>>(`/api/v1/rh/vw/EmployeeComplete/paged?${qs.toString()}`);
+  },
 
   byDepartment: (department: string): Promise<ApiResponse<any[]>> =>
     apiFetch<any[]>(`/api/v1/rh/vw/EmployeeComplete/department/${department}`),

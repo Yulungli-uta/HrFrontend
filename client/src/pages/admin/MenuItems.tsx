@@ -42,6 +42,7 @@ import type { MenuItem, MenuItemTree } from "@/features/auth";
 import { useToast } from "@/hooks/use-toast";
 import MenuItemForm from "@/components/forms/MenuItemForm";
 import { parseApiError } from '@/lib/error-handling';
+import { logger } from "@/lib/logger";
 
 /** Normaliza cualquier payload común a arreglo de MenuItem */
 function coerceToMenuArray(payload: unknown): MenuItem[] {
@@ -203,7 +204,7 @@ export default function MenuItemsPage() {
     try {
       return buildMenuTreeSafe(menuItems);
     } catch (e) {
-      console.error("[MenuItemsPage] buildMenuTreeSafe error:", e, menuItems);
+      logger.error("MenuItems", "[MenuItemsPage] buildMenuTreeSafe error:", e, menuItems);
       return [];
     }
   }, [menuItems]);

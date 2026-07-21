@@ -15,6 +15,7 @@ import {
   Loader2,
   Inbox,
 } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -304,7 +305,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    console.error("[ErrorBoundary] Error capturado:", error, errorInfo);
+    logger.error("error-handling", "[ErrorBoundary] Error capturado:", error, errorInfo);
     this.props.onError?.(error, errorInfo);
   }
 

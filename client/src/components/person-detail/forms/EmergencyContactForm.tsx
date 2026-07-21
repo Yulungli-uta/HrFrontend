@@ -26,6 +26,7 @@ import {
 import type { EmergencyContact } from "@/types/person";
 import { TiposReferenciaAPI, type RefType } from "@/lib/api";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
+import { logger } from "@/lib/logger";
 
 // =============================
 // Regex de validación
@@ -217,7 +218,7 @@ export default function EmergencyContactForm({
         form.reset();
       }
     } catch (error) {
-      console.error("[EmergencyContactForm] onSubmit ERROR", error);
+      logger.error("EmergencyContactForm", "[EmergencyContactForm] onSubmit ERROR", error);
     }
   };
 

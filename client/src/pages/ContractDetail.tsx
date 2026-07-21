@@ -434,15 +434,15 @@ export default function ContractDetail() {
             accept="*/*"
             maxSizeMB={20}
             maxFiles={10}
-            showInternalUploadButton={true}
-            disabled={!isEditable}
+            showInternalUploadButton={false}
+            disabled={true}
             roles={{
-              canUpload: isEditable,
+              canUpload: false,
               canPreview: true,
               canDownload: true,
-              canDelete: isEditable,
+              canDelete: false,
             }}
-            documentType={{ enabled: isEditable, required: false }}
+            documentType={{ enabled: false, required: false }}
           />
         </CardContent>
       </Card>

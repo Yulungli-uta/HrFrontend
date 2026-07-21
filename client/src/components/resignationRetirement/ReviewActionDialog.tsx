@@ -63,11 +63,23 @@ export function ReviewActionDialog({ open, onOpenChange, action, request, onSucc
   const [observation, setObservation] = useState('');
   const config = ACTION_CONFIG[action];
 
+  // Documento firmado obligatorio para aprobar (validado también en backend). La carga
+  // se restringe a un solo archivo, así que basta con el más reciente de la lista.
+  const signedDocument = request.supportingDocuments[0] ?? null;
+  const missingSignedDocument = action === 'approve' && !signedDocument;
+
   const mutation = useMutation({
     mutationFn: async () => {
       const rowVersion = request.rowVersion;
       if (action === 'approve') {
-        const res = await ResignationRetirementAPI.approve(request.requestId, { observation: observation || null, rowVersion });
+        if (!signedDocument) {
+          throw new Error('Debe existir un documento firmado adjunto a la solicitud antes de aprobar.');
+        }
+        const res = await ResignationRetirementAPI.approve(request.requestId, {
+          storedFileId: signedDocument.fileId,
+          observation: observation || null,
+          rowVersion,
+        });
         if (res.status !== 'success') throw new Error(parseApiError(res.error));
         return res.data;
       }
@@ -98,7 +110,7 @@ export function ReviewActionDialog({ open, onOpenChange, action, request, onSucc
     },
   });
 
-  const canSubmit = !config.requireObservation || observation.trim().length > 0;
+  const canSubmit = (!config.requireObservation || observation.trim().length > 0) && !missingSignedDocument;
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!mutation.isPending) onOpenChange(v); }}>
@@ -107,6 +119,13 @@ export function ReviewActionDialog({ open, onOpenChange, action, request, onSucc
           <DialogTitle>{config.title}</DialogTitle>
           <DialogDescription>{config.description}</DialogDescription>
         </DialogHeader>
+
+        {missingSignedDocument && (
+          <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+            No se puede aprobar: la solicitud no tiene un documento firmado adjunto. Cierre este diálogo y
+            suba el documento firmado antes de aprobar.
+          </div>
+        )}
 
         <div className="space-y-2">
           <Label htmlFor="observation">

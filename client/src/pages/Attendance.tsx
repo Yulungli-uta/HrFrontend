@@ -16,6 +16,7 @@ import { MarcacionesAPI, MarcacionesEspecializadasAPI, handleApiError, TimeAPI }
 import { useAuth } from "@/features/auth";
 import { PunchTable } from "@/components/forms/PunchTable";
 import { parseApiError } from "@/lib/error-handling";
+import { logger } from "@/lib/logger";
 
 // =========================
 // Utilidades y constantes
@@ -101,7 +102,7 @@ function RangeQueryModal({ employeeId }: { employeeId: number }) {
         description: `Se encontraron ${rows.length} marcaciones.`,
       });
     } catch (error) {
-      console.error("Error en consulta por rango:", error);
+      logger.error("Attendance", "Error en consulta por rango:", error);
       toast({
         title: "Error en consulta",
         description: "No se pudieron obtener las marcaciones.",
@@ -284,7 +285,7 @@ export default function AttendancePage() {
           setApiStatus("offline");
         }
       } catch (e) {
-        console.error("Error checking API status:", e);
+        logger.error("Attendance", "Error checking API status:", e);
         if (mounted) setApiStatus("offline");
       }
     };

@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, AlertCircle, Pencil, Ban, FileText, Download } from 'lucide-react';
+import { Loader2, AlertCircle, Pencil, Ban, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
@@ -51,7 +51,6 @@ export function MyRequestDetailDialog({ open, onOpenChange, requestId, onChanged
   const [mode, setMode] = useState<'view' | 'edit'>('view');
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
-  const [isGeneratingDocument, setIsGeneratingDocument] = useState(false);
   const [isDownloadingDocument, setIsDownloadingDocument] = useState(false);
   const { directory, params: dirParams } = useDirectoryParams(DIR_CODE);
 
@@ -93,21 +92,6 @@ export function MyRequestDetailDialog({ open, onOpenChange, requestId, onChanged
       toast({ variant: 'destructive', title: 'No se pudo anular la solicitud', description: parseApiError(err) });
     } finally {
       setIsCancelling(false);
-    }
-  };
-
-  const handleGenerateDocument = async () => {
-    if (!request) return;
-    setIsGeneratingDocument(true);
-    try {
-      const res = await ResignationRetirementAPI.generateMyDocument(request.requestId);
-      if (res.status !== 'success') throw new Error(parseApiError(res.error));
-      await refetch();
-      toast({ title: 'Documento generado', description: 'Descárgalo, imprímelo, fírmalo y súbelo como documento firmado.' });
-    } catch (err) {
-      toast({ variant: 'destructive', title: 'No se pudo generar el documento', description: parseApiError(err) });
-    } finally {
-      setIsGeneratingDocument(false);
     }
   };
 
@@ -222,22 +206,19 @@ export function MyRequestDetailDialog({ open, onOpenChange, requestId, onChanged
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Carta de renuncia/jubilación</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex flex-wrap items-center gap-2">
-                    {EDITABLE_STATUSES.includes(request.status) && (
-                      <Button size="sm" variant="outline" onClick={handleGenerateDocument} disabled={isGeneratingDocument}>
-                        {isGeneratingDocument ? (
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        ) : (
-                          <FileText className="h-4 w-4 mr-2" />
-                        )}
-                        {request.generatedDocumentId ? 'Regenerar carta' : 'Generar carta'}
-                      </Button>
-                    )}
+              {EDITABLE_STATUSES.includes(request.status) ? (
+                <Card>
+                  <CardContent className="p-4 text-sm text-muted-foreground">
+                    Para generar la carta, descargarla, firmarla y adjuntar el documento firmado, pulsa
+                    <span className="font-medium text-foreground"> Editar</span> arriba.
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Carta y documento firmado</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
                     {request.generatedDocumentId && (
                       <Button size="sm" variant="outline" onClick={handleDownloadDocument} disabled={isDownloadingDocument}>
                         {isDownloadingDocument ? (
@@ -248,25 +229,21 @@ export function MyRequestDetailDialog({ open, onOpenChange, requestId, onChanged
                         Descargar carta
                       </Button>
                     )}
-                  </div>
-                  {!request.generatedDocumentId && (
-                    <p className="text-xs text-muted-foreground">
-                      Genera la carta, descárgala, imprímela, fírmala y sube el documento firmado abajo.
-                    </p>
-                  )}
-
-                  <ReusableDocumentManager
-                    directoryCode={directory?.code ?? DIR_CODE}
-                    entityType={ENTITY_TYPE}
-                    entityId={request.requestId}
-                    relativePath={dirParams.relativePath}
-                    accept={dirParams.accept || '.pdf'}
-                    maxSizeMB={dirParams.maxSizeMB}
-                    label="Documento firmado"
-                    entityReady={true}
-                  />
-                </CardContent>
-              </Card>
+                    <ReusableDocumentManager
+                      directoryCode={directory?.code ?? DIR_CODE}
+                      entityType={ENTITY_TYPE}
+                      entityId={request.requestId}
+                      relativePath={dirParams.relativePath}
+                      accept={dirParams.accept || '.pdf'}
+                      maxSizeMB={dirParams.maxSizeMB}
+                      maxFiles={1}
+                      label="Documento firmado"
+                      entityReady={true}
+                      roles={{ canUpload: false, canDelete: false, canDownload: true, canPreview: true }}
+                    />
+                  </CardContent>
+                </Card>
+              )}
 
               {CANCELLABLE_STATUSES.includes(request.status) && cancelReason && (
                 <Card className="border-destructive/40">

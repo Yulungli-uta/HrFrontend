@@ -50,6 +50,7 @@ import {
   ClipboardCheck,
 } from "lucide-react";
 import { parseApiError } from '@/lib/error-handling';
+import { logger } from "@/lib/logger";
 
 /* -------------------- Tipos de dominio -------------------- */
 interface Permission {
@@ -403,7 +404,7 @@ export default function ApprovalsPermissions() {
 
   useEffect(() => {
     if (permsRes?.status === "success") {
-      console.log("RAW permission sample:", safeArray(permsRes.data)[0]);
+      logger.debug("ApprovalsPermissions", "RAW permission sample:", safeArray(permsRes.data)[0]);
     }
   }, [permsRes]);
 

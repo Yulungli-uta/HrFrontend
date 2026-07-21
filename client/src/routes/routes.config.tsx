@@ -42,6 +42,7 @@ const ApprovalsMedicalPermissionsPage = lazy(() => import("@/pages/ApprovalsMedi
 const ApprovalsPermissionsPage = lazy(() => import("@/pages/ApprovalsPermissions"));
 const JobActivitiesPage = lazy(() => import("@/pages/JobActivities"));
 const ReferenceTypesPage = lazy(() => import("@/pages/ReferenceTypes"));
+const TramiteRequirementsPage = lazy(() => import("@/pages/TramiteRequirements"));
 const AcademicLadderPage = lazy(() => import("@/pages/AcademicLadder"));
 const HolidaysPage = lazy(() => import("@/pages/Holidays"));
 const FilesUploadPage = lazy(() => import("@/pages/FilesUploadPage"));
@@ -55,6 +56,8 @@ const UserAccessScopesPage = lazy(() => import("@/pages/admin/UserAccessScopes")
 const EmployeeLaborRegimesPage = lazy(() => import("@/pages/admin/EmployeeLaborRegimes"));
 const MenuItemsPage = lazy(() => import("@/pages/admin/MenuItems"));
 const RoleMenuItemsPage = lazy(() => import("@/pages/admin/RoleMenuItems"));
+const RoleEditorPage = lazy(() => import("@/pages/admin/RoleEditor"));
+const AccessProfilesPage = lazy(() => import("@/pages/admin/AccessProfiles"));
 const ChangePasswordPage = lazy(() => import("@/pages/profile/ChangePassword"));
 
 // Páginas de reportes
@@ -520,6 +523,11 @@ export const routes: RouteConfig[] = [
     requiredPath: "/referenceTypes"
   },
   {
+    path: "/tramite-requirements",
+    component: TramiteRequirementsPage,
+    requiredPath: "/tramite-requirements"
+  },
+  {
     path: "/hr-parameters",
     component: HrParametersPage,
     requiredPath: "/hr-parameters"
@@ -570,6 +578,19 @@ export const routes: RouteConfig[] = [
     path: "/admin/role-menu-items",
     component: RoleMenuItemsPage,
     requiredPath: "/admin/role-menu-items"
+  },
+  {
+    // Unifica menús + permisos de acción en pestañas. No reemplaza
+    // /admin/role-menu-items (se mantiene funcionando igual, sin tocar) — es
+    // una vía adicional que reutiliza esa misma página dentro de una pestaña.
+    path: "/admin/role-editor",
+    component: RoleEditorPage,
+    requiredRoles: ["Administrador", "R_DITIC"]
+  },
+  {
+    path: "/admin/access-profiles",
+    component: AccessProfilesPage,
+    requiredRoles: ["Administrador", "R_DITIC"]
   },
   {
     path: "/admin/AzureMagnament",

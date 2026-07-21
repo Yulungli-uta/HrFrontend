@@ -37,6 +37,7 @@ import {
   PERMISSION_DIRECTORY_CODE,
   PERMISSION_ENTITY_TYPE,
 } from "@/features/constants";
+import { logger } from "@/lib/logger";
 
 // Turn on logs by setting VITE_DEBUG_AUTH=true in .env
 const DEBUG = import.meta.env.VITE_DEBUG_AUTH === "true";
@@ -299,8 +300,8 @@ export default function PermissionsPage() {
   useEffect(() => {
     if (!DEBUG) return;
     console.group("✅ PermissionsPage init");
-    console.log("employeeDetails:", employeeDetails);
-    console.log("employeeId:", employeeId);
+    logger.debug("Permissions", "employeeDetails:", employeeDetails);
+    logger.debug("Permissions", "employeeId:", employeeId);
     console.groupEnd();
   }, [employeeDetails, employeeId]);
 

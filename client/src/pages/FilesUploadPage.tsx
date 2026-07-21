@@ -10,6 +10,7 @@ import { DirectoryParametersAPI, FileManagementAPI, handleApiError, type ApiResp
 import { Download, Search, FileText, Files, AlertCircle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { logger } from "@/lib/logger";
 
 type UploadedInfo = {
   directoryCode?: string;
@@ -137,7 +138,7 @@ const FilesUploadPage: React.FC = () => {
 
   // Manejar progreso de subida múltiple
   const handleMultipleProgress = (progress: { uploaded: number; total: number; percentage: number }) => {
-    console.log(`Progreso: ${progress.uploaded}/${progress.total} (${Math.round(progress.percentage)}%)`);
+    logger.debug("FilesUploadPage", `Progreso: ${progress.uploaded}/${progress.total} (${Math.round(progress.percentage)}%)`);
   };
 
   // Carga inicial de ejemplo
@@ -308,10 +309,10 @@ const FilesUploadPage: React.FC = () => {
             maxParallelUploads={3}
             onAllUploaded={handleMultipleUploaded}
             onFileUploaded={(serverResponse, file, customName) => {
-              console.log(`Archivo subido: ${customName}`, serverResponse);
+              logger.debug("FilesUploadPage", `Archivo subido: ${customName}`, serverResponse);
             }}
             onFileError={(message, file, customName) => {
-              console.error(`Error en ${customName}:`, message);
+              logger.error("FilesUploadPage", `Error en ${customName}:`, message);
             }}
             onProgress={handleMultipleProgress}
           />

@@ -2,6 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { X, Download, ZoomIn, ZoomOut } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { logger } from "@/lib/logger";
 
 interface PdfPreviewModalProps {
   isOpen: boolean;
@@ -37,7 +38,7 @@ export function PdfPreviewModal({ isOpen, onClose, base64Data, reportName, onDow
       const blob = base64ToBlob(base64Data, 'application/pdf');
       return URL.createObjectURL(blob);
     } catch (e) {
-      console.error('[PdfPreviewModal] Error convirtiendo base64 a Blob:', e);
+      logger.error("PdfPreviewModal", '[PdfPreviewModal] Error convirtiendo base64 a Blob:', e);
       return null;
     }
   }, [isOpen, base64Data]);

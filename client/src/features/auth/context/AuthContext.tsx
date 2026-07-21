@@ -28,6 +28,7 @@ import {
   LS_EMPLOYEE_DETAILS,
   INACTIVITY_TIMEOUT,
   INACTIVITY_CHECK_INTERVAL_MS,
+  REFRESH_MARGIN_MS,
   ACTIVITY_EVENTS,
 } from "../constants/sessionConstants";
 import { useToast } from "@/hooks/use-toast";
@@ -40,15 +41,18 @@ import {
 import { PermissionService, CacheService } from "@/services/permissions";
 import { parseApiError } from "@/lib/error-handling";
 import { registerForceLogoutCallback } from "@/lib/api/core/fetch";
+import { queryClient } from "@/lib/queryClient";
+import { logger } from "@/lib/logger";
+import { generateCodeVerifier, computeCodeChallenge } from "../services/pkce";
 
-const AUTH_DEBUG = import.meta.env.VITE_DEBUG_AUTH === "true";
+const logAuth = (...args: unknown[]) => logger.auth.debug(String(args[0] ?? ""), ...args.slice(1));
 
-const logAuth = (...args: unknown[]) => {
-  if (AUTH_DEBUG) {
-    // eslint-disable-next-line no-console
-    console.log("[AUTH]", ...args);
-  }
-};
+/**
+ * Throttle de la escritura de "última actividad" a localStorage: los eventos de
+ * actividad (mousemove, scroll) disparan decenas de veces por segundo y escribir
+ * en cada uno degrada el rendimiento sin aportar precisión útil.
+ */
+const ACTIVITY_WRITE_THROTTLE_MS = 15_000;
 
 const APP_CLIENT_ID = import.meta.env.VITE_APP_CLIENT_ID;
 
@@ -122,7 +126,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [employeeDetails, setEmployeeDetails] =
     useState<EmployeeDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [lastActivity, setLastActivity] = useState(Date.now());
+
+  // Última actividad como ref (NO state): los eventos de actividad disparan en cada
+  // mousemove/scroll y un setState aquí re-renderizaría toda la app continuamente.
+  const lastActivityRef = useRef(Date.now());
+  const lastActivityWriteRef = useRef(0);
 
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -139,6 +147,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const processedLoginEventsRef = useRef<Set<string>>(new Set());
   const isProcessingLoginRef = useRef(false);
+
+  // PKCE (login Office 365): el codeVerifier vive SOLO en memoria de esta pestaña,
+  // nunca en localStorage/sessionStorage. Se genera al abrir el popup y se consume
+  // al recibir el deliveryCode por WebSocket (ver loginWithOffice365 y el efecto WS).
+  const azureCodeVerifierRef = useRef<string | null>(null);
 
   // ─── Persistencia de detalles del empleado ────────────────────────────────
 
@@ -168,13 +181,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               const rawId = empResponse.data.personID ?? empResponse.data.personId;
               empDetails.personId = rawId != null ? Number(rawId) : undefined;
               if (empDetails.personId == null) {
-                console.error(
+                logger.auth.error(
                   "fetchEmployeeDetails: la respuesta de EmpleadosAPI.get no trae personID/personId",
                   { employeeID: empDetails.employeeID, data: empResponse.data }
                 );
               }
             } else {
-              console.error(
+              logger.auth.error(
                 "fetchEmployeeDetails: EmpleadosAPI.get no devolvió éxito al resolver personId",
                 { employeeID: empDetails.employeeID, response: empResponse }
               );
@@ -183,7 +196,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             // No bloquea el flujo principal (el resto del perfil sigue funcionando),
             // pero sin este log era imposible saber por qué /perfil se quedaba cargando
             // indefinidamente (personId nunca se llenaba y PersonDetail.tsx no reintentaba).
-            console.error(
+            logger.auth.error(
               "fetchEmployeeDetails: error al resolver personId vía EmpleadosAPI.get",
               { employeeID: empDetails.employeeID, error: personIdError }
             );
@@ -191,13 +204,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           persistEmployeeDetails(empDetails);
           logAuth("FETCH EMPLOYEE DETAILS OK", { email });
         } else {
-          console.error(
+          logger.auth.error(
             "Error al obtener detalles del empleado:",
             response.status === "error" ? response.error : "Sin datos"
           );
         }
       } catch (error) {
-        console.error("Error en fetchEmployeeDetails:", error);
+        logger.auth.error("Error en fetchEmployeeDetails:", error);
       }
     },
     [persistEmployeeDetails]
@@ -216,7 +229,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       );
 
       const now = Date.now();
-      setLastActivity(now);
+      lastActivityRef.current = now;
+      lastActivityWriteRef.current = now;
       try {
         localStorage.setItem(LS_LAST_ACTIVITY, String(now));
       } catch {
@@ -252,7 +266,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           menuItems: mergedUser.menuItems?.length ?? 0,
         });
       } catch (err) {
-        console.error("[AUTH] Error loading permissions/menu:", err);
+        logger.auth.error("[AUTH] Error loading permissions/menu:", err);
         const safeUser: UserSession = {
           ...userInfo,
           roles: userInfo.roles ?? [],
@@ -281,6 +295,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // ─── Logout ───────────────────────────────────────────────────────────────
 
   const logout = useCallback(() => {
+    // Revocación en servidor best-effort ANTES de limpiar los tokens locales
+    // (se necesita el refresh token). No bloquea el logout local: si el servidor
+    // no responde, la sesión local se limpia igual.
+    const refreshToken = tokenService.getRefreshToken();
+    if (refreshToken) {
+      authService.logout(refreshToken).catch((err) => {
+        logger.auth.error("Error revocando sesión en servidor durante logout", err);
+      });
+    }
+
     setIsLoading(false);
     setIsAuthenticated(false);
     setUser(null);
@@ -294,7 +318,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       CacheService.clearAll();
     } catch (error) {
-      console.error("Error limpiando caché:", error);
+      logger.auth.error("Error limpiando caché de permisos", error);
+    }
+
+    // Limpiar el caché en memoria de React Query: con staleTime Infinity, los datos
+    // del usuario anterior sobrevivirían al logout y podrían mostrarse a otro usuario
+    // que inicie sesión en el mismo navegador.
+    try {
+      queryClient.clear();
+    } catch (error) {
+      logger.auth.error("Error limpiando caché de React Query", error);
     }
 
     try {
@@ -390,7 +423,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       }
     } catch (error) {
-      console.error("Error refreshing auth:", error);
+      logger.auth.error("Error refreshing auth:", error);
       logout();
     }
   }, [logout, doLoginState, fetchEmployeeDetails]);
@@ -432,12 +465,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     (async () => {
       try {
-        const { data, pair } = lastMessage as WebSocketMessage;
+        const { data, pair: legacyPair, deliveryCode } = lastMessage as WebSocketMessage;
+
+        // PKCE (RFC 7636): si el servidor tiene SecureTokenDelivery activo, el mensaje
+        // trae deliveryCode en vez del par de tokens real. Se canjea aquí usando el
+        // codeVerifier que nunca salió de esta pestaña.
+        let pair = legacyPair;
+        if (deliveryCode) {
+          const verifier = azureCodeVerifierRef.current;
+          if (!verifier) {
+            logger.auth.error(
+              "WS Login trajo deliveryCode pero no hay codeVerifier en memoria (pestaña recargada durante el login); se aborta"
+            );
+            return;
+          }
+          try {
+            pair = await authService.exchangeAzureDeliveryCode(deliveryCode, verifier);
+          } finally {
+            // Un solo uso también del lado cliente: no reintentar con el mismo verifier
+            azureCodeVerifierRef.current = null;
+          }
+        }
+
         if (!pair) return;
         tokenService.setTokens(pair);
         const adGroups = tokenService.extractAdGroups(pair.accessToken);
         if (adGroups.length > 0) {
-          console.log("[AUTH-AD] Grupos AD recibidos vía WS notification:", adGroups);
+          logger.auth.debug("Grupos AD recibidos vía WS notification:", adGroups.length);
         } else {
           logAuth("[AUTH-AD] No hay grupos AD en el JWT de notificación WS");
         }
@@ -456,7 +510,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setTimeout(() => setLocation("/"), 300);
         logAuth("LOGIN VIA WEBSOCKET COMPLETADO");
       } catch (e) {
-        console.error("WS login handling error:", e);
+        logger.auth.error("WS login handling error:", e);
       } finally {
         isProcessingLoginRef.current = false;
       }
@@ -554,26 +608,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const updateActivity = useCallback(() => {
     const now = Date.now();
-    setLastActivity(now);
-    if (isAuthenticated) {
+    lastActivityRef.current = now;
+
+    // Escritura a localStorage con throttle: los eventos de actividad disparan
+    // decenas de veces por segundo; persistir cada 15s es más que suficiente.
+    if (now - lastActivityWriteRef.current >= ACTIVITY_WRITE_THROTTLE_MS) {
+      lastActivityWriteRef.current = now;
       try {
         localStorage.setItem(LS_LAST_ACTIVITY, now.toString());
       } catch {
         /* ignore */
       }
     }
-  }, [isAuthenticated]);
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated) return;
+
+    // Reiniciar el contador al autenticarse para no heredar un timestamp viejo
+    lastActivityRef.current = Date.now();
 
     ACTIVITY_EVENTS.forEach((event) =>
       document.addEventListener(event, updateActivity, true)
     );
 
     const interval = setInterval(() => {
-      const now = Date.now();
-      const diffMs = now - lastActivity;
+      const diffMs = Date.now() - lastActivityRef.current;
 
       if (diffMs >= INACTIVITY_TIMEOUT) {
         logAuth("AUTO-LOGOUT por inactividad", {
@@ -584,12 +644,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           description: "Su sesión ha expirado por inactividad",
           variant: "destructive",
         });
-        setLocation("/login");
+        // Única vía de salida: logout() limpia estado, tokens, cachés y redirige
         logoutRef.current();
-        // Fallback de recarga completa para garantizar limpieza total
-        if (typeof window !== "undefined") {
-          window.location.replace(`${import.meta.env.BASE_URL}login`);
-        }
       }
     }, INACTIVITY_CHECK_INTERVAL_MS);
 
@@ -599,7 +655,64 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       );
       clearInterval(interval);
     };
-  }, [isAuthenticated, lastActivity, toast, updateActivity, setLocation]);
+  }, [isAuthenticated, toast, updateActivity]);
+
+  // ─── Refresh proactivo del access token ───────────────────────────────────
+  // Renueva el token REFRESH_MARGIN_MS antes de que expire, para que el usuario
+  // nunca pague la latencia del ciclo 401 → refresh → retry en pleno uso.
+  // El retry por 401 de fetch.ts queda como red de seguridad si esto falla.
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    let cancelled = false;
+    let timerId: number | undefined;
+
+    const scheduleNextRefresh = () => {
+      if (cancelled) return;
+
+      const token = tokenService.getAccessToken();
+      if (!token) return;
+
+      const expMs = tokenService.getTokenExpirationMs(token);
+      if (expMs === null) return;
+
+      // Mínimo 30s para no entrar en bucles agresivos con tokens muy cortos
+      const delay = Math.max(expMs - Date.now() - REFRESH_MARGIN_MS, 30_000);
+
+      timerId = window.setTimeout(async () => {
+        try {
+          // Si otro flujo (retry por 401, otra pestaña) ya renovó, solo reprogramar
+          const current = tokenService.getAccessToken();
+          if (!current || tokenService.getTokenExpirationMs(current) !== expMs) {
+            scheduleNextRefresh();
+            return;
+          }
+
+          const refreshToken = tokenService.getRefreshToken();
+          if (!refreshToken) return;
+
+          const newTokens = await authService.refreshToken(refreshToken);
+          tokenService.setTokens(newTokens);
+          logAuth("REFRESH PROACTIVO OK");
+          scheduleNextRefresh();
+        } catch (error) {
+          // No reintentar en bucle: el retry por 401 de fetch.ts toma el relevo
+          logger.auth.error(
+            "Refresh proactivo falló; el retry por 401 continuará la sesión",
+            error
+          );
+        }
+      }, delay);
+    };
+
+    scheduleNextRefresh();
+
+    return () => {
+      cancelled = true;
+      if (timerId !== undefined) clearTimeout(timerId);
+    };
+  }, [isAuthenticated]);
 
   // ─── Login local ──────────────────────────────────────────────────────────
 
@@ -615,7 +728,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       logAuth("LOGIN LOCAL OK");
       return true;
     } catch (error: unknown) {
-      console.error("[AUTH] Error en login local:", error);
+      logger.auth.error("[AUTH] Error en login local:", error);
       toast({
         title: "Error de autenticación",
         description: parseApiError(error).message,
@@ -633,11 +746,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
       logAuth("Iniciando login Office 365...");
-      const { url, state } = await authService.getAzureAuthUrl();
-      sessionStorage.setItem("oauth_state", state);
+
+      // PKCE (RFC 7636): el codeVerifier se genera aquí y queda SOLO en memoria de esta
+      // pestaña; solo su hash (codeChallenge) se envía al servidor. Se consume al recibir
+      // el deliveryCode por WebSocket (ver el efecto "WS: LoginNotification" más abajo).
+      const codeVerifier = generateCodeVerifier();
+      azureCodeVerifierRef.current = codeVerifier;
+      const codeChallenge = await computeCodeChallenge(codeVerifier);
+
+      // El "state" de OAuth lo genera y valida RepositoryUta; el frontend no lo
+      // consume (el login se completa vía WebSocket con clientId+browserId).
+      const { url } = await authService.getAzureAuthUrl(codeChallenge);
       window.open(url, "office365login", "width=600,height=700,left=200,top=100");
     } catch (error: unknown) {
-      console.error("[AUTH] Error en Office 365 login:", error);
+      logger.auth.error("[AUTH] Error en Office 365 login:", error);
       toast({
         title: "Error de autenticación",
         description: parseApiError(error).message,

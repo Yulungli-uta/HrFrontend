@@ -24,13 +24,14 @@ import {
   normalizePerson,
   normalizePublication
 } from "@/types/person";
+import { logger } from "@/lib/logger";
 
 // Helper para manejar respuestas de API
 function ensureSuccess<T>(res: ApiResponse<T>, defaultMessage: string): T {
   //console\.log("[ensureSuccess] RAW response", res);
 
   if (res.status === "error") {
-    console.error("[ensureSuccess] API ERROR", res);
+    logger.error("usePersonData", "[ensureSuccess] API ERROR", res);
     throw new Error(res.error?.message || defaultMessage);
   }
   return res.data;
@@ -89,7 +90,7 @@ export function usePersonData(personId: number, options?: { enabled?: boolean })
         return normalized;
       }
 
-      console.error("[usePersonData] person ERROR status", response);
+      logger.error("usePersonData", "[usePersonData] person ERROR status", response);
       return response;
     },
   });
@@ -118,7 +119,7 @@ export function usePersonData(personId: number, options?: { enabled?: boolean })
             return normalized;
           }
 
-          console.error("[usePersonData] publications ERROR status", { personId, response });
+          logger.error("usePersonData", "[usePersonData] publications ERROR status", { personId, response });
           return response;
         },
       },
@@ -141,7 +142,7 @@ export function usePersonData(personId: number, options?: { enabled?: boolean })
             return { ...response, data };
           }
 
-          console.error("[usePersonData] familyMembers ERROR status", { personId, response });
+          logger.error("usePersonData", "[usePersonData] familyMembers ERROR status", { personId, response });
           return response;
         },
       },
@@ -164,7 +165,7 @@ export function usePersonData(personId: number, options?: { enabled?: boolean })
             return { ...response, data };
           }
 
-          console.error("[usePersonData] workExperiences ERROR status", { personId, response });
+          logger.error("usePersonData", "[usePersonData] workExperiences ERROR status", { personId, response });
           return response;
         },
       },
@@ -187,7 +188,7 @@ export function usePersonData(personId: number, options?: { enabled?: boolean })
             return { ...response, data };
           }
 
-          console.error("[usePersonData] trainings ERROR status", { personId, response });
+          logger.error("usePersonData", "[usePersonData] trainings ERROR status", { personId, response });
           return response;
         },
       },
@@ -203,7 +204,7 @@ export function usePersonData(personId: number, options?: { enabled?: boolean })
             return { ...response, data };
           }
 
-          console.error("[usePersonData] languages ERROR status", { personId, response });
+          logger.error("usePersonData", "[usePersonData] languages ERROR status", { personId, response });
           return response;
         },
       },
@@ -226,7 +227,7 @@ export function usePersonData(personId: number, options?: { enabled?: boolean })
             return { ...response, data };
           }
 
-          console.error("[usePersonData] books ERROR status", { personId, response });
+          logger.error("usePersonData", "[usePersonData] books ERROR status", { personId, response });
           return response;
         },
       },
@@ -249,7 +250,7 @@ export function usePersonData(personId: number, options?: { enabled?: boolean })
             return { ...response, data };
           }
 
-          console.error("[usePersonData] emergencyContacts ERROR status", { personId, response });
+          logger.error("usePersonData", "[usePersonData] emergencyContacts ERROR status", { personId, response });
           return response;
         },
       },
@@ -315,7 +316,7 @@ export function usePersonData(personId: number, options?: { enabled?: boolean })
 
     queryClient.invalidateQueries({ queryKey: ['person', String(personId)] });
     relatedQueries.forEach((q, index) => {
-      // console.log("[usePersonData] refetch related query", {
+      // logger.debug("usePersonData", "[usePersonData] refetch related query", {
       //   index,
       //   label: labels[index],
       // });
@@ -395,7 +396,7 @@ export function usePersonMutations(personId: number) {
     onError: (error: Error) => {
       const entity = config.queryKey[0];
 
-      console.error("[usePersonMutations] CREATE error", {
+      logger.error("usePersonData", "[usePersonMutations] CREATE error", {
         entity,
         personId,
         error,
@@ -460,7 +461,7 @@ export function usePersonMutations(personId: number) {
     onError: (error: Error, vars) => {
       const entity = config.queryKey[0];
 
-      console.error("[usePersonMutations] UPDATE error", {
+      logger.error("usePersonData", "[usePersonMutations] UPDATE error", {
         entity,
         personId,
         id: (vars as any)?.id,
@@ -519,7 +520,7 @@ export function usePersonMutations(personId: number) {
     onError: (error: Error, id) => {
       const entity = config.queryKey[0];
 
-      console.error("[usePersonMutations] DELETE error", {
+      logger.error("usePersonData", "[usePersonMutations] DELETE error", {
         entity,
         personId,
         id,

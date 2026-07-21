@@ -97,7 +97,17 @@ export function HrRequestDetailDialog({ open, onOpenChange, requestId, onChanged
               <div className="flex flex-wrap justify-end gap-2 -mt-2">
                 {REVIEWABLE_STATUSES.includes(request.status) && (
                   <>
-                    <Button size="sm" onClick={() => setReviewAction('approve')} className="bg-green-600 hover:bg-green-700">
+                    <Button
+                      size="sm"
+                      onClick={() => setReviewAction('approve')}
+                      className="bg-green-600 hover:bg-green-700"
+                      disabled={request.supportingDocuments.length === 0}
+                      title={
+                        request.supportingDocuments.length === 0
+                          ? 'No hay documento firmado adjunto — no se puede aprobar'
+                          : undefined
+                      }
+                    >
                       <CheckCircle2 className="h-4 w-4 mr-1" />
                       Aprobar
                     </Button>
@@ -128,6 +138,15 @@ export function HrRequestDetailDialog({ open, onOpenChange, requestId, onChanged
                   </Button>
                 )}
               </div>
+
+              {REVIEWABLE_STATUSES.includes(request.status) && request.supportingDocuments.length === 0 && (
+                <Card className="border-destructive/40 bg-destructive/10">
+                  <CardContent className="p-4 text-sm text-destructive">
+                    Esta solicitud todavía no tiene el documento firmado cargado por el solicitante. No se puede
+                    aprobar hasta que se adjunte.
+                  </CardContent>
+                </Card>
+              )}
 
               {request.status === 'APROBADO' && !request.linkedPersonnelActionId && (
                 <Card className="border-success bg-success-subtle">
@@ -197,8 +216,10 @@ export function HrRequestDetailDialog({ open, onOpenChange, requestId, onChanged
                     relativePath={dirParams.relativePath}
                     accept={dirParams.accept || '.pdf'}
                     maxSizeMB={dirParams.maxSizeMB}
-                    label="Documentos de respaldo"
+                    maxFiles={1}
+                    label="Documento firmado (solicitante)"
                     entityReady={true}
+                    roles={{ canUpload: false, canDelete: false, canDownload: true, canPreview: true }}
                   />
                 </CardContent>
               </Card>

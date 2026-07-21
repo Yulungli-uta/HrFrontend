@@ -28,6 +28,11 @@ import type {
   UserRole,
   MenuItem,
   RoleMenuItem,
+  Permission,
+  RolePermission,
+  AccessProfile,
+  AccessProfileRole,
+  UserAccessProfile,
   CreateUserDto,
   UpdateUserDto,
   CreateRoleDto,
@@ -38,9 +43,15 @@ import type {
   UpdateMenuItemDto,
   CreateRoleMenuItemDto,
   UpdateRoleMenuItemDto,
+  CreateRolePermissionDto,
+  CreateAccessProfileDto,
+  CreateAccessProfileRoleDto,
+  CreateUserAccessProfileDto,
+  UpdateAccessProfileDto,
   ChangePasswordDto as ChangePasswordDtoFromTypes,
   ChangePasswordResponse,
 } from '@/features/auth';
+import { logger } from "@/lib/logger";
 
 /* =============================================================================
  * Helpers de request/response
@@ -420,7 +431,7 @@ export const MenuItemsAPI = {
       })}`,
       { method: "GET" }
     );
-    console.log("[MenuItemsAPI.listPaged] raw:", raw);
+    logger.debug("security", "[MenuItemsAPI.listPaged] raw:", raw);
     // apiFetch envuelve la respuesta del backend, así que aquí se normaliza
     if (raw?.status === "success" && (raw.data as any)?.success && (raw.data as any)?.data) {
       return {
@@ -521,6 +532,150 @@ export const RoleMenuItemsAPI = {
   create(data: CreateRoleMenuItemDto) {
     return this.assign(data);
   },
+} as const;
+
+/* =============================================================================
+ * API de Permisos de Acción por Rol (Swagger: /api/role-permissions)
+ * Requiere Administrador,R_DITIC. Distinto de RoleMenuItemsAPI (asigna URLs de
+ * menú, no permisos de acción "MODULO.ACCION").
+ * ========================================================================== */
+
+export const RolePermissionsAPI = {
+  list: (page: number = 1, pageSize: number = 20): Promise<ApiResponse<PagedResult<RolePermission>>> =>
+    apiFetch<PagedResult<RolePermission>>(`/api/role-permissions${serializeQuery({ page, pageSize })}`, { method: 'GET' }),
+
+  // Swagger: GET /api/role-permissions/role/{roleId} — TODOS los permisos del rol, sin paginar.
+  getByRole: async (roleId: number): Promise<ApiResponse<RolePermission[]>> => {
+    const raw = await apiFetch<RolePermission[]>(`/api/role-permissions/role/${toInt(roleId)}`, { method: 'GET' });
+    const res = ensureApiResponse<RolePermission[]>(raw);
+    if (res.status === 'success') res.data = coerceToArray<RolePermission>(res.data);
+    return res;
+  },
+
+  /** Permisos efectivos ("MODULO.ACCION") para un conjunto de roles — endpoint público, mismo que usa HrBackend. */
+  getEffective: async (roles: string[]): Promise<ApiResponse<string[]>> => {
+    const usp = new URLSearchParams();
+    roles.forEach((r) => usp.append('roles', r));
+    const raw = await apiFetch<string[]>(`/api/role-permissions/effective?${usp.toString()}`, { method: 'GET' });
+    const res = ensureApiResponse<string[]>(raw);
+    if (res.status === 'success') res.data = coerceToArray<string>(res.data);
+    return res;
+  },
+
+  get: (roleId: number, permissionId: number): Promise<ApiResponse<RolePermission>> =>
+    apiFetch<RolePermission>(`/api/role-permissions/${toInt(roleId)}/${toInt(permissionId)}`, { method: 'GET' }),
+
+  assign: (data: CreateRolePermissionDto): Promise<ApiResponse<RolePermission>> =>
+    apiFetch<RolePermission>('/api/role-permissions', {
+      method: 'POST',
+      ...jsonBody({
+        roleId: toInt(data.roleId),
+        permissionId: toInt(data.permissionId),
+        grantedBy: data.grantedBy,
+      }),
+    }),
+
+  remove: (roleId: number, permissionId: number): Promise<ApiResponse<void>> =>
+    apiFetch<void>(`/api/role-permissions/${toInt(roleId)}/${toInt(permissionId)}`, { method: 'DELETE' }),
+} as const;
+
+/* =============================================================================
+ * API del catálogo de permisos, tipado (Swagger: /api/permissions)
+ * Complementa a PermissionsAPI (arriba, sin tipar) — usar esta versión en UI
+ * nueva que necesite Permission[] real (ej. Editor de Rol / tab de permisos).
+ * ========================================================================== */
+
+export const PermissionsCatalogAPI = {
+  /**
+   * Desenvuelve el triple anidamiento de /api/permissions (paginado):
+   * apiFetch envuelve en {status,data} -> el backend envuelve en
+   * {success,data,message} (ApiResponse.Ok) -> y esa `data` es un
+   * PagedResult {items,...}. `coerceToArray` (usado en getByRole/etc. de
+   * este archivo) solo desenvuelve DOS niveles — funciona para endpoints
+   * que devuelven un array plano, pero no para éste. Mismo criterio que
+   * `normalizePagedItems` en RoleMenuItemsPage/RolesPage.
+   */
+  listAll: async (): Promise<ApiResponse<Permission[]>> => {
+    const raw = await apiFetch<any>(`/api/permissions${serializeQuery({ page: 1, pageSize: 1000 })}`, { method: 'GET' });
+    if (raw.status !== 'success') return raw as ApiResponse<Permission[]>;
+
+    const d: any = raw.data;
+    let items: Permission[] = [];
+    if (Array.isArray(d?.items)) items = d.items;
+    else if (Array.isArray(d?.Items)) items = d.Items;
+    else if (d?.success === true && Array.isArray(d?.data?.items)) items = d.data.items;
+    else if (d?.success === true && Array.isArray(d?.data?.Items)) items = d.data.Items;
+    else if (Array.isArray(d)) items = d;
+
+    return { status: 'success', data: items.filter((p) => !p.isDeleted) };
+  },
+} as const;
+
+/* =============================================================================
+ * API de Perfiles de Acceso (Swagger: /api/access-profiles,
+ * /api/access-profile-roles, /api/user-access-profiles)
+ * Agrupan varios roles bajo un nombre reutilizable (ej. "Directora
+ * Administrativa"); asignar un perfil a un usuario expande a filas UserRole
+ * concretas vía IAccessProfileAssignmentService (backend), esto solo gestiona
+ * la definición del perfil y sus asignaciones.
+ * ========================================================================== */
+
+export const AccessProfilesAPI = {
+  list: (page: number = 1, pageSize: number = 100): Promise<ApiResponse<PagedResult<AccessProfile>>> =>
+    apiFetch<PagedResult<AccessProfile>>(`/api/access-profiles${serializeQuery({ page, pageSize })}`, { method: 'GET' }),
+
+  get: (id: number): Promise<ApiResponse<AccessProfile>> =>
+    apiFetch<AccessProfile>(`/api/access-profiles/${toInt(id)}`, { method: 'GET' }),
+
+  create: (data: CreateAccessProfileDto): Promise<ApiResponse<AccessProfile>> =>
+    apiFetch<AccessProfile>('/api/access-profiles', { method: 'POST', ...jsonBody(data) }),
+
+  update: (id: string | number, data: UpdateAccessProfileDto): Promise<ApiResponse<AccessProfile>> =>
+    apiFetch<AccessProfile>(`/api/access-profiles/${toInt(id)}`, { method: 'PUT', ...jsonBody(data) }),
+
+  remove: (id: number): Promise<ApiResponse<void>> =>
+    apiFetch<void>(`/api/access-profiles/${toInt(id)}`, { method: 'DELETE' }),
+} as const;
+
+export const AccessProfileRolesAPI = {
+  getByProfile: async (accessProfileId: number): Promise<ApiResponse<AccessProfileRole[]>> => {
+    const raw = await apiFetch<AccessProfileRole[]>(`/api/access-profile-roles/profile/${toInt(accessProfileId)}`, { method: 'GET' });
+    const res = ensureApiResponse<AccessProfileRole[]>(raw);
+    if (res.status === 'success') res.data = coerceToArray<AccessProfileRole>(res.data);
+    return res;
+  },
+
+  assign: (data: CreateAccessProfileRoleDto): Promise<ApiResponse<AccessProfileRole>> =>
+    apiFetch<AccessProfileRole>('/api/access-profile-roles', {
+      method: 'POST',
+      ...jsonBody({ accessProfileId: toInt(data.accessProfileId), roleId: toInt(data.roleId) }),
+    }),
+
+  remove: (accessProfileId: number, roleId: number): Promise<ApiResponse<void>> =>
+    apiFetch<void>(`/api/access-profile-roles/${toInt(accessProfileId)}/${toInt(roleId)}`, { method: 'DELETE' }),
+} as const;
+
+export const UserAccessProfilesAPI = {
+  getByUser: async (userId: string): Promise<ApiResponse<UserAccessProfile[]>> => {
+    const raw = await apiFetch<UserAccessProfile[]>(`/api/user-access-profiles/user/${encodeURIComponent(userId)}`, { method: 'GET' });
+    const res = ensureApiResponse<UserAccessProfile[]>(raw);
+    if (res.status === 'success') res.data = coerceToArray<UserAccessProfile>(res.data);
+    return res;
+  },
+
+  /** Asigna el perfil: el backend expande a filas UserRole concretas (AssignedVia="Profile:{id}"). */
+  assign: (data: CreateUserAccessProfileDto): Promise<ApiResponse<UserAccessProfile>> =>
+    apiFetch<UserAccessProfile>('/api/user-access-profiles', {
+      method: 'POST',
+      ...jsonBody({
+        userId: data.userId,
+        accessProfileId: toInt(data.accessProfileId),
+        assignedBy: data.assignedBy,
+      }),
+    }),
+
+  remove: (userId: string, accessProfileId: number): Promise<ApiResponse<void>> =>
+    apiFetch<void>(`/api/user-access-profiles/${encodeURIComponent(userId)}/${toInt(accessProfileId)}`, { method: 'DELETE' }),
 } as const;
 
 /* =============================================================================
@@ -855,9 +1010,45 @@ export const AppParamsAPI = {
     apiFetch<unknown>(`/api/app-params/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 } as const;
 
+/** Fila cruda de auth.tbl_AuditLog. */
+export interface AuditLogEntry {
+  id: number;
+  userId: string | null;
+  action: string;
+  module: string;
+  entityId: string | null;
+  oldValues: string | null;
+  newValues: string | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  timestamp: string;
+}
+
 export const AuditLogAPI = {
   list: (page: number = 1, pageSize: number = 20) =>
     apiFetch<unknown>(`/api/audit-log${serializeQuery({ page, pageSize })}`, { method: 'GET' }),
+
+  /**
+   * Historial filtrado por módulo (ej. "UserAccessProfiles", "UserRoles"), opcionalmente
+   * acotado a un EntityId (ej. AccessProfileId o RoleId) y/o UserId. Endpoint devuelve un
+   * array plano (ApiResponse.Ok(items)) — dos niveles de envoltorio, coerceToArray los maneja bien.
+   */
+  getByModule: async (
+    module: string,
+    opts?: { entityId?: string | number; userId?: string; limit?: number }
+  ): Promise<ApiResponse<AuditLogEntry[]>> => {
+    const raw = await apiFetch<AuditLogEntry[]>(
+      `/api/audit-log/by-module/${encodeURIComponent(module)}${serializeQuery({
+        entityId: opts?.entityId,
+        userId: opts?.userId,
+        limit: opts?.limit,
+      })}`,
+      { method: 'GET' }
+    );
+    const res = ensureApiResponse<AuditLogEntry[]>(raw);
+    if (res.status === 'success') res.data = coerceToArray<AuditLogEntry>(res.data);
+    return res;
+  },
 
   create: (data: CreateAuditLogDto) =>
     apiFetch<unknown>('/api/audit-log', { method: 'POST', ...jsonBody(data) }),

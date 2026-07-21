@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { parseApiError } from '@/lib/error-handling';
+import { logger } from "@/lib/logger";
 
 interface Holiday {
   holidayID?: number;
@@ -72,7 +73,7 @@ export default function HolidaysPage() {
       if (response.status === 'success') {
         setHolidays(response.data || []);
       } else {
-        console.error('Error loading holidays:', response.error);
+        logger.error("Holidays", 'Error loading holidays:', response.error);
         setHolidays([]);
         toast({
           title: "Error",
@@ -81,7 +82,7 @@ export default function HolidaysPage() {
         });
       }
     } catch (error) {
-      console.error('Error in loadHolidays:', error);
+      logger.error("Holidays", 'Error in loadHolidays:', error);
       setHolidays([]);
       toast({
         title: "Error",
@@ -204,7 +205,7 @@ export default function HolidaysPage() {
       });
       await loadHolidays();
     } catch (error: unknown) {
-      console.error('Error saving holiday:', error);
+      logger.error("Holidays", 'Error saving holiday:', error);
       toast({
         title: "Error",
         description: parseApiError(error).message,
@@ -231,7 +232,7 @@ export default function HolidaysPage() {
         throw new Error(response.error?.message || 'Error deleting holiday');
       }
     } catch (error: unknown) {
-      console.error('Error deleting holiday:', error);
+      logger.error("Holidays", 'Error deleting holiday:', error);
       toast({
         title: "Error",
         description: parseApiError(error).message,

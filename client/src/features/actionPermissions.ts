@@ -1,0 +1,219 @@
+// src/features/actionPermissions.ts
+//
+// Catálogo centralizado de TODOS los permisos de acción existentes en
+// auth.tbl_Permissions (RepositoryUta). Usar SIEMPRE estas constantes en vez
+// de escribir el código "MODULO.ACCION" directamente — mismo criterio que
+// REF_TYPE_CATEGORIES en este mismo directorio.
+//
+// El código real que llega en UserSession.actionPermissions es siempre
+// "{Module}.{Action}" en MAYÚSCULAS (lo computa RepositoryUta con
+// `(p.Module + "." + p.Action).ToUpper()` en RolePermissionsController /
+// AuthService.MeAsync) — por eso el valor de cada constante ya está en
+// mayúsculas aunque en BD algunas filas legadas tengan casing distinto
+// (ej. "Roles"/"Read" vs "ROLES"/"READ" resuelven al mismo código
+// "ROLES.READ").
+//
+// Lista verificada contra la BD real (SELECT DISTINCT Module, Action FROM
+// auth.tbl_Permissions WHERE IsDeleted = 0), 137 filas / ~131 códigos
+// únicos tras normalizar mayúsculas, round 7 de la migración de permisos.
+//
+// No confundir PERMISSIONS (catálogo/administración de permisos, RepositoryUta)
+// con PERMISSIONS_LICENSES (licencias/permisos de empleado, HrBackend) — son
+// módulos distintos que coincidentemente comparten la palabra "permisos" en
+// español.
+
+export const ACTION_PERMISSIONS = {
+  // ── Administración / bypass ────────────────────────────────────────────
+  /** Bypass universal: si el usuario tiene este código, cualquier can()/canAny() resuelve true. */
+  ADMIN_ACCESS: "ADMIN.ACCESS",
+
+  // ── Asistencia (PunchJustifications) ───────────────────────────────────
+  ATTENDANCE_READ: "ATTENDANCE.READ",
+  ATTENDANCE_CREATE: "ATTENDANCE.CREATE",
+  ATTENDANCE_UPDATE: "ATTENDANCE.UPDATE",
+  ATTENDANCE_DELETE: "ATTENDANCE.DELETE",
+
+  // ── Auditoría ───────────────────────────────────────────────────────────
+  AUDIT_READ: "AUDIT.READ",
+  AUDIT_CREATE: "AUDIT.CREATE",
+
+  // ── Catálogos de referencia (tipos de contrato/acción/permiso, cargos,
+  //    feriados, autoridades, escalafón, parámetros) ─────────────────────
+  CATALOGS_READ: "CATALOGS.READ",
+  CATALOGS_CREATE: "CATALOGS.CREATE",
+  CATALOGS_UPDATE: "CATALOGS.UPDATE",
+  CATALOGS_DELETE: "CATALOGS.DELETE",
+
+  // ── Contratos ───────────────────────────────────────────────────────────
+  CONTRACTS_READ: "CONTRACTS.READ",
+  CONTRACTS_CREATE: "CONTRACTS.CREATE",
+  CONTRACTS_UPDATE: "CONTRACTS.UPDATE",
+  CONTRACTS_DELETE: "CONTRACTS.DELETE",
+  CONTRACTS_APPROVE: "CONTRACTS.APPROVE",
+  CONTRACTS_GENERATE_DOCUMENT: "CONTRACTS.GENERATE_DOCUMENT",
+
+  // ── Documentos (FileManagement / Documents / StoredFiles / GeneratedDocuments) ──
+  DOCUMENTS_READ: "DOCUMENTS.READ",
+  DOCUMENTS_CREATE: "DOCUMENTS.CREATE",
+  DOCUMENTS_UPDATE: "DOCUMENTS.UPDATE",
+  DOCUMENTS_DELETE: "DOCUMENTS.DELETE",
+  DOCUMENTS_UPLOAD: "DOCUMENTS.UPLOAD",
+  DOCUMENTS_DOWNLOAD: "DOCUMENTS.DOWNLOAD",
+  DOCUMENTS_APPROVE: "DOCUMENTS.APPROVE",
+
+  // ── Autoservicio: certificados de empleado ─────────────────────────────
+  EMPLOYEE_CERTIFICATE_READ: "EMPLOYEE_CERTIFICATE.READ",
+  EMPLOYEE_CERTIFICATE_CREATE: "EMPLOYEE_CERTIFICATE.CREATE",
+  EMPLOYEE_CERTIFICATE_DOWNLOAD: "EMPLOYEE_CERTIFICATE.DOWNLOAD",
+
+  // ── Autoservicio: solicitudes internas de empleado ─────────────────────
+  EMPLOYEE_INTERNAL_REQUESTS_READ: "EMPLOYEE_INTERNAL_REQUESTS.READ",
+  EMPLOYEE_INTERNAL_REQUESTS_CREATE: "EMPLOYEE_INTERNAL_REQUESTS.CREATE",
+  EMPLOYEE_INTERNAL_REQUESTS_UPDATE: "EMPLOYEE_INTERNAL_REQUESTS.UPDATE",
+  EMPLOYEE_INTERNAL_REQUESTS_CANCEL: "EMPLOYEE_INTERNAL_REQUESTS.CANCEL",
+  EMPLOYEE_INTERNAL_REQUESTS_APPROVE: "EMPLOYEE_INTERNAL_REQUESTS.APPROVE",
+  EMPLOYEE_INTERNAL_REQUESTS_REJECT: "EMPLOYEE_INTERNAL_REQUESTS.REJECT",
+  EMPLOYEE_INTERNAL_REQUESTS_RETURN: "EMPLOYEE_INTERNAL_REQUESTS.RETURN",
+  EMPLOYEE_INTERNAL_REQUESTS_COMPLETE: "EMPLOYEE_INTERNAL_REQUESTS.COMPLETE",
+
+  // ── Empleados (ficha) ───────────────────────────────────────────────────
+  EMPLOYEES_READ: "EMPLOYEES.READ",
+  EMPLOYEES_UPDATE: "EMPLOYEES.UPDATE",
+
+  // ── Certificación financiera ────────────────────────────────────────────
+  FINANCIAL_CERTIFICATION_READ: "FINANCIAL_CERTIFICATION.READ",
+  FINANCIAL_CERTIFICATION_CREATE: "FINANCIAL_CERTIFICATION.CREATE",
+  FINANCIAL_CERTIFICATION_UPDATE: "FINANCIAL_CERTIFICATION.UPDATE",
+  FINANCIAL_CERTIFICATION_APPROVE: "FINANCIAL_CERTIFICATION.APPROVE",
+  FINANCIAL_CERTIFICATION_REJECT: "FINANCIAL_CERTIFICATION.REJECT",
+  FINANCIAL_CERTIFICATION_DELETE: "FINANCIAL_CERTIFICATION.DELETE",
+
+  // ── Guardias ─────────────────────────────────────────────────────────────
+  GUARDS_READ: "GUARDS.READ",
+  GUARDS_CREATE: "GUARDS.CREATE",
+  GUARDS_UPDATE: "GUARDS.UPDATE",
+  GUARDS_DELETE: "GUARDS.DELETE",
+  GUARDS_APPROVE: "GUARDS.APPROVE",
+
+  // ── Menús (RepositoryUta, panel de administración) ─────────────────────
+  MENUS_READ: "MENUS.READ",
+  MENUS_UPDATE: "MENUS.UPDATE",
+
+  // ── Horas extra ──────────────────────────────────────────────────────────
+  OVERTIME_READ: "OVERTIME.READ",
+  OVERTIME_CREATE: "OVERTIME.CREATE",
+  OVERTIME_UPDATE: "OVERTIME.UPDATE",
+  OVERTIME_DELETE: "OVERTIME.DELETE",
+
+  // ── Configuración/cálculo de horas extra (distinto de OVERTIME.*) ──────
+  OVERTIME_CONFIG_READ: "OVERTIME_CONFIG.READ",
+  OVERTIME_CONFIG_CREATE: "OVERTIME_CONFIG.CREATE",
+  OVERTIME_CONFIG_UPDATE: "OVERTIME_CONFIG.UPDATE",
+  OVERTIME_CONFIG_DELETE: "OVERTIME_CONFIG.DELETE",
+  OVERTIME_CONFIG_MANAGE: "OVERTIME_CONFIG.MANAGE",
+
+  // ── Parámetros del sistema ──────────────────────────────────────────────
+  PARAMETERS_READ: "PARAMETERS.READ",
+  PARAMETERS_UPDATE: "PARAMETERS.UPDATE",
+
+  // ── Personas (hoja de vida) ──────────────────────────────────────────────
+  PEOPLE_READ: "PEOPLE.READ",
+  PEOPLE_CREATE: "PEOPLE.CREATE",
+  PEOPLE_UPDATE: "PEOPLE.UPDATE",
+  PEOPLE_DELETE: "PEOPLE.DELETE",
+
+  // ── Administración del catálogo de permisos (RepositoryUta) — NO confundir
+  //    con PERMISSIONS_LICENSES (licencias/permisos de empleado) ──────────
+  PERMISSIONS_READ: "PERMISSIONS.READ",
+  PERMISSIONS_UPDATE: "PERMISSIONS.UPDATE",
+
+  // ── Licencias / permisos de empleado (HrBackend) ────────────────────────
+  PERMISSIONS_LICENSES_READ: "PERMISSIONS_LICENSES.READ",
+  PERMISSIONS_LICENSES_CREATE: "PERMISSIONS_LICENSES.CREATE",
+  PERMISSIONS_LICENSES_UPDATE: "PERMISSIONS_LICENSES.UPDATE",
+  PERMISSIONS_LICENSES_DELETE: "PERMISSIONS_LICENSES.DELETE",
+  PERMISSIONS_LICENSES_APPROVE: "PERMISSIONS_LICENSES.APPROVE",
+  PERMISSIONS_LICENSES_REJECT: "PERMISSIONS_LICENSES.REJECT",
+  /** Exclusivo de R_Medico: aprobación de permisos/licencias médicas. */
+  PERMISSIONS_LICENSES_APPROVE_MEDICAL: "PERMISSIONS_LICENSES.APPROVE_MEDICAL",
+  /** Exclusivo de R_Medico: rechazo de permisos/licencias médicas. */
+  PERMISSIONS_LICENSES_REJECT_MEDICAL: "PERMISSIONS_LICENSES.REJECT_MEDICAL",
+
+  // ── Acciones de personal ─────────────────────────────────────────────────
+  PERSONNEL_ACTIONS_READ: "PERSONNEL_ACTIONS.READ",
+  PERSONNEL_ACTIONS_CREATE: "PERSONNEL_ACTIONS.CREATE",
+  PERSONNEL_ACTIONS_UPDATE: "PERSONNEL_ACTIONS.UPDATE",
+  PERSONNEL_ACTIONS_CANCEL: "PERSONNEL_ACTIONS.CANCEL",
+  PERSONNEL_ACTIONS_APPROVE: "PERSONNEL_ACTIONS.APPROVE",
+  PERSONNEL_ACTIONS_GENERATE_DOCUMENT: "PERSONNEL_ACTIONS.GENERATE_DOCUMENT",
+
+  // ── Reportes ─────────────────────────────────────────────────────────────
+  REPORTS_READ: "REPORTS.READ",
+  /** Sembrado en el catálogo pero sin consumidor hoy — no confundir con DOCUMENTS.DOWNLOAD. */
+  REPORTS_EXPORT: "REPORTS.EXPORT",
+
+  // ── Autoservicio: renuncia / jubilación ─────────────────────────────────
+  RESIGNATION_RETIREMENT_READ: "RESIGNATION_RETIREMENT.READ",
+  RESIGNATION_RETIREMENT_CREATE: "RESIGNATION_RETIREMENT.CREATE",
+  RESIGNATION_RETIREMENT_UPDATE: "RESIGNATION_RETIREMENT.UPDATE",
+  RESIGNATION_RETIREMENT_CANCEL: "RESIGNATION_RETIREMENT.CANCEL",
+  RESIGNATION_RETIREMENT_APPROVE: "RESIGNATION_RETIREMENT.APPROVE",
+  RESIGNATION_RETIREMENT_REJECT: "RESIGNATION_RETIREMENT.REJECT",
+  RESIGNATION_RETIREMENT_RETURN: "RESIGNATION_RETIREMENT.RETURN",
+  RESIGNATION_RETIREMENT_GENERATE_DOCUMENT: "RESIGNATION_RETIREMENT.GENERATE_DOCUMENT",
+  RESIGNATION_RETIREMENT_DOWNLOAD: "RESIGNATION_RETIREMENT.DOWNLOAD",
+
+  // ── Roles (RepositoryUta, panel de administración) ─────────────────────
+  ROLES_READ: "ROLES.READ",
+  ROLES_CREATE: "ROLES.CREATE",
+  ROLES_UPDATE: "ROLES.UPDATE",
+  ROLES_DELETE: "ROLES.DELETE",
+
+  // ── Historial salarial ───────────────────────────────────────────────────
+  SALARY_HISTORY_READ: "SALARY_HISTORY.READ",
+  SALARY_HISTORY_UPDATE: "SALARY_HISTORY.UPDATE",
+  SALARY_HISTORY_DELETE: "SALARY_HISTORY.DELETE",
+
+  // ── Planes de cambio de horario ──────────────────────────────────────────
+  SCHEDULE_CHANGE_PLANS_READ: "SCHEDULE_CHANGE_PLANS.READ",
+  SCHEDULE_CHANGE_PLANS_CREATE: "SCHEDULE_CHANGE_PLANS.CREATE",
+  SCHEDULE_CHANGE_PLANS_APPROVE: "SCHEDULE_CHANGE_PLANS.APPROVE",
+  SCHEDULE_CHANGE_PLANS_CANCEL: "SCHEDULE_CHANGE_PLANS.CANCEL",
+
+  // ── Tokens de seguridad / sesiones (RepositoryUta, panel de administración) ──
+  SECURITY_TOKENS_MANAGE: "SECURITY_TOKENS.MANAGE",
+  SESSIONS_READ: "SESSIONS.READ",
+  SESSIONS_MANAGE: "SESSIONS.MANAGE",
+
+  // ── Planificación de horas extra / horas recuperables (TimePlanning) ───
+  TIME_PLANNING_READ: "TIME_PLANNING.READ",
+  TIME_PLANNING_CREATE: "TIME_PLANNING.CREATE",
+  TIME_PLANNING_UPDATE: "TIME_PLANNING.UPDATE",
+  TIME_PLANNING_DELETE: "TIME_PLANNING.DELETE",
+  TIME_PLANNING_APPROVE: "TIME_PLANNING.APPROVE",
+  TIME_PLANNING_REJECT: "TIME_PLANNING.REJECT",
+
+  // ── Horas recuperables (TimeRecoveryPlans/Logs + Recovery) ──────────────
+  TIME_RECOVERY_READ: "TIME_RECOVERY.READ",
+  TIME_RECOVERY_CREATE: "TIME_RECOVERY.CREATE",
+  TIME_RECOVERY_UPDATE: "TIME_RECOVERY.UPDATE",
+  TIME_RECOVERY_DELETE: "TIME_RECOVERY.DELETE",
+  TIME_RECOVERY_MANAGE: "TIME_RECOVERY.MANAGE",
+
+  // ── Usuarios (RepositoryUta, panel de administración) ───────────────────
+  USERS_READ: "USERS.READ",
+  USERS_CREATE: "USERS.CREATE",
+  USERS_UPDATE: "USERS.UPDATE",
+  USERS_DELETE: "USERS.DELETE",
+  USERS_MANAGE_ROLES: "USERS.MANAGE_ROLES",
+
+  // ── Vacaciones ────────────────────────────────────────────────────────────
+  VACATIONS_READ: "VACATIONS.READ",
+  VACATIONS_CREATE: "VACATIONS.CREATE",
+  VACATIONS_UPDATE: "VACATIONS.UPDATE",
+  VACATIONS_DELETE: "VACATIONS.DELETE",
+  VACATIONS_APPROVE: "VACATIONS.APPROVE",
+} as const;
+
+export type ActionPermissionCode =
+  (typeof ACTION_PERMISSIONS)[keyof typeof ACTION_PERMISSIONS];

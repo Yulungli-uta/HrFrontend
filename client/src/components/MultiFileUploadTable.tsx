@@ -30,6 +30,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { parseApiError } from '@/lib/error-handling';
+import { logger } from "@/lib/logger";
 
 interface FileWithMeta {
   file: File;
@@ -276,7 +277,7 @@ export const ReusableMultipleFileUpload: React.FC<ReusableMultipleFileUploadProp
           document.body.removeChild(a);
         }
       } catch (error) {
-        console.error('Error descargando archivo:', error);
+        logger.error("MultiFileUploadTable", 'Error descargando archivo:', error);
         setErrorText("Error al descargar el archivo.");
       }
     } else {

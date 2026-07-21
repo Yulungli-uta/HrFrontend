@@ -1,29 +1,35 @@
 // features/auth/services/tokenService.ts
 import { TokenPair, UserSession } from "../types/authTypes";
 import { getBrowserId } from "@/utils/browserId";
-
-const DEBUG = import.meta.env.VITE_DEBUG_AUTH === "true";
-
-function logToken(...args: any[]) {
-  if (DEBUG) {
-    // eslint-disable-next-line no-console
-    console.log("[TOKEN]", ...args);
-  }
-}
+import { logger } from "@/lib/logger";
 
 function key(suffix: string): string {
   const browserId = getBrowserId();
   return `wsuta:${browserId}:${suffix}`;
 }
 
+/**
+ * Decodifica el payload de un JWT sin validar firma (la validación es del backend).
+ * Retorna null si el token no tiene formato JWT válido.
+ */
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const payloadPart = token.split(".")[1];
+    if (!payloadPart) return null;
+    return JSON.parse(atob(payloadPart)) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
 export const tokenService = {
   getAccessToken(): string | null {
     try {
       const token = localStorage.getItem(key("accessToken"));
-      logToken("getAccessToken →", token ? "EXISTS" : "NULL");
+      logger.auth.debug("getAccessToken →", token ? "EXISTS" : "NULL");
       return token;
     } catch (e) {
-      console.error("[TOKEN] Error reading accessToken:", e);
+      logger.auth.error("Error leyendo accessToken de localStorage", e);
       return null;
     }
   },
@@ -31,10 +37,10 @@ export const tokenService = {
   getRefreshToken(): string | null {
     try {
       const token = localStorage.getItem(key("refreshToken"));
-      logToken("getRefreshToken →", token ? "EXISTS" : "NULL");
+      logger.auth.debug("getRefreshToken →", token ? "EXISTS" : "NULL");
       return token;
     } catch (e) {
-      console.error("[TOKEN] Error reading refreshToken:", e);
+      logger.auth.error("Error leyendo refreshToken de localStorage", e);
       return null;
     }
   },
@@ -43,90 +49,82 @@ export const tokenService = {
     try {
       const raw = localStorage.getItem(key("userSession"));
       if (!raw) {
-        logToken("getUserSession → NULL");
+        logger.auth.debug("getUserSession → NULL");
         return null;
       }
       const session = JSON.parse(raw) as UserSession;
-      logToken("getUserSession → OK", session);
+      logger.auth.debug("getUserSession → OK", { id: session.id, email: session.email });
       return session;
     } catch (e) {
-      console.error("[TOKEN] Error parsing userSession:", e);
+      logger.auth.error("Error parseando userSession", e);
       return null;
     }
   },
 
   setTokens(tokens: TokenPair): void {
     try {
-      logToken("Saving tokens:", tokens);
+      // Nunca loguear el valor de los tokens, ni siquiera en modo debug
+      logger.auth.debug("setTokens → SAVED");
       localStorage.setItem(key("accessToken"), tokens.accessToken);
       localStorage.setItem(key("refreshToken"), tokens.refreshToken);
     } catch (e) {
-      console.error("[TOKEN] Error saving tokens:", e);
+      logger.auth.error("Error guardando tokens en localStorage", e);
     }
   },
 
   setUserSession(userData: UserSession): void {
     try {
-      logToken("setUserSession:", {
+      logger.auth.debug("setUserSession →", {
         id: userData.id,
         email: userData.email,
         userType: userData.userType,
       });
       localStorage.setItem(key("userSession"), JSON.stringify(userData));
     } catch (e) {
-      console.error("[TOKEN] Error saving userSession:", e);
+      logger.auth.error("Error guardando userSession", e);
     }
   },
 
   clearTokens(): void {
     try {
-      logToken("clearTokens()");
+      logger.auth.debug("clearTokens → CLEARED");
       localStorage.removeItem(key("accessToken"));
       localStorage.removeItem(key("refreshToken"));
       localStorage.removeItem(key("userSession"));
     } catch (e) {
-      console.error("[TOKEN] Error clearing tokens:", e);
+      logger.auth.error("Error limpiando tokens de localStorage", e);
     }
   },
 
   extractAdGroups(token: string): string[] {
-    try {
-      const payloadB64 = token.split(".")[1];
-      if (!payloadB64) return [];
-      const payload = JSON.parse(atob(payloadB64)) as Record<string, unknown>;
-      const raw = payload["ad_group"];
-      if (!raw) return [];
-      const groups = Array.isArray(raw) ? raw : [raw];
-      logToken("extractAdGroups →", groups);
-      return groups.filter((g): g is string => typeof g === "string");
-    } catch (e) {
-      console.error("[TOKEN] Error extrayendo ad_group del JWT:", e);
-      return [];
-    }
+    const payload = decodeJwtPayload(token);
+    if (!payload) return [];
+    const raw = payload["ad_group"];
+    if (!raw) return [];
+    const groups = Array.isArray(raw) ? raw : [raw];
+    logger.auth.debug("extractAdGroups →", groups.length, "grupos");
+    return groups.filter((g): g is string => typeof g === "string");
+  },
+
+  /**
+   * Retorna el instante de expiración del token en milisegundos epoch,
+   * o null si el token no es decodificable o no tiene claim exp.
+   */
+  getTokenExpirationMs(token: string): number | null {
+    const payload = decodeJwtPayload(token);
+    const exp = payload?.exp;
+    return typeof exp === "number" ? exp * 1000 : null;
   },
 
   isTokenExpired(token: string): boolean {
-    try {
-      const payloadPart = token.split(".")[1];
-      if (!payloadPart) {
-        logToken("isTokenExpired → invalid token (no payload)");
-        return true;
-      }
-
-      const payloadJson = atob(payloadPart);
-      const payload = JSON.parse(payloadJson) as { exp?: number };
-
-      if (!payload.exp) {
-        logToken("isTokenExpired → no exp in payload");
-        return true;
-      }
-
-      const expired = payload.exp * 1000 < Date.now();
-      logToken("isTokenExpired →", expired ? "EXPIRED" : "VALID");
-      return expired;
-    } catch (e) {
-      console.error("[TOKEN] Error decoding token:", e);
+    const payload = decodeJwtPayload(token);
+    const exp = payload?.exp;
+    if (typeof exp !== "number") {
+      logger.auth.debug("isTokenExpired → token inválido o sin exp");
       return true;
     }
+    const expired = exp * 1000 < Date.now();
+    logger.auth.debug("isTokenExpired →", expired ? "EXPIRED" : "VALID");
+    return expired;
   },
 };

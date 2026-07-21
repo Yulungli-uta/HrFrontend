@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, MessageSquare } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 export function StatusChangeDialog(props: {
   open: boolean;
@@ -35,7 +36,7 @@ export function StatusChangeDialog(props: {
       await onConfirm(v ? v : null);
       onOpenChange(false);
     } catch (error) {
-      console.error("Error al confirmar:", error);
+      logger.error("StatusChangeDialog", "Error al confirmar:", error);
     } finally {
       setSaving(false);
     }

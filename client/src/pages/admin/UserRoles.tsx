@@ -52,12 +52,14 @@ import {
   CheckCircle,
   XCircle,
   Edit3,
+  History,
 } from "lucide-react";
 import { AuthUsersAPI, RolesAPI, UserRolesAPI } from "@/lib/api";
 import type { ApiResponse, PagedResult } from "@/lib/api";
 import type { User, Role, UserRole } from "@/features/auth";
 import { useToast } from "@/hooks/use-toast";
 import AssignRoleForm from "@/components/forms/AssignRoleForm";
+import { AuditHistoryDialog } from "@/components/shared/AuditHistoryDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Tooltip,
@@ -142,6 +144,8 @@ export default function UserRolesPage() {
     expiresAt?: string;
     reason?: string;
   } | null>(null);
+
+  const [historyUser, setHistoryUser] = useState<{ id: string; email: string } | null>(null);
 
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
@@ -334,6 +338,14 @@ export default function UserRolesPage() {
     setSelectedUserId(userId);
     setIsFormOpen(true);
   }, []);
+
+  const handleViewHistory = useCallback(
+    (userId: string) => {
+      const email = usersMap.get(userId)?.email || userId;
+      setHistoryUser({ id: userId, email });
+    },
+    [usersMap]
+  );
 
   const handleCloseForm = useCallback(() => {
     setIsFormOpen(false);
@@ -675,6 +687,7 @@ export default function UserRolesPage() {
           onAssignRole={handleAssignRole}
           onDeleteAssignment={handleDeleteAssignment}
           onEditAssignment={handleEditAssignment}
+          onViewHistory={handleViewHistory}
         />
       ) : (
         <TableView
@@ -684,6 +697,7 @@ export default function UserRolesPage() {
           onAssignRole={handleAssignRole}
           onDeleteAssignment={handleDeleteAssignment}
           onEditAssignment={handleEditAssignment}
+          onViewHistory={handleViewHistory}
         />
       )}
 
@@ -848,6 +862,16 @@ export default function UserRolesPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {historyUser && (
+        <AuditHistoryDialog
+          open={!!historyUser}
+          onOpenChange={(open) => !open && setHistoryUser(null)}
+          title={`Historial de roles — ${historyUser.email}`}
+          module="UserRoles"
+          userId={historyUser.id}
+        />
+      )}
     </div>
   );
 }
@@ -899,6 +923,7 @@ function CardView({
   onAssignRole,
   onDeleteAssignment,
   onEditAssignment,
+  onViewHistory,
 }: any) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -977,6 +1002,15 @@ function CardView({
                     <Eye className="h-4 w-4" />
                   )}
                   {isExpanded ? "Ocultar" : "Detalles"}
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onViewHistory(user.id)}
+                  className="flex items-center gap-1"
+                >
+                  <History className="h-4 w-4" />
                 </Button>
 
                 <Button
@@ -1062,6 +1096,7 @@ function TableView({
   onAssignRole,
   onDeleteAssignment,
   onEditAssignment,
+  onViewHistory,
 }: any) {
   return (
     <Card>
@@ -1131,6 +1166,14 @@ function TableView({
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onViewHistory(user.id)}
+                      >
+                        <History className="h-4 w-4" />
+                      </Button>
+
                       <Button
                         size="sm"
                         onClick={() => onAssignRole(user.id)}

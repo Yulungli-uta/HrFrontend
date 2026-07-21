@@ -59,6 +59,13 @@ export interface ResignationRetirementSummary {
   createdAt?: string | null;
 }
 
+export interface SignedDocumentSummary {
+  fileId: number;
+  fileGuid: string;
+  originalFileName?: string | null;
+  uploadedAt?: string | null;
+}
+
 export interface ResignationRetirementStatusHistoryEntry {
   historyId: number;
   requestId: number;
@@ -101,6 +108,9 @@ export interface ResignationRetirementDetail {
 
   history: ResignationRetirementStatusHistoryEntry[];
   rowVersion: string; // byte[] serializado como base64 por System.Text.Json
+
+  /** Documento(s) firmado(s) adjuntos (HR_RESIGNATION_RETIREMENT / RESIGNATION_RETIREMENT_REQUEST). */
+  supportingDocuments: SignedDocumentSummary[];
 }
 
 export interface PagedResignationRetirementResult {
@@ -126,6 +136,13 @@ export interface UpdateResignationRetirementRequest {
 }
 
 export interface ReviewResignationRetirementRequest {
+  observation?: string | null;
+  rowVersion: string;
+}
+
+/** Aprobación: exige el StoredFileId del documento firmado ya adjunto a la solicitud. */
+export interface ApproveResignationRetirementRequest {
+  storedFileId: number;
   observation?: string | null;
   rowVersion: string;
 }

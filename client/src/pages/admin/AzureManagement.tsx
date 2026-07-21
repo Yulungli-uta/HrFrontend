@@ -61,6 +61,7 @@ import {
 import { AzureManagementAPI } from "@/lib/api";
 import AzureUserForm, { type AzureUserFormMode } from "@/components/forms/AzureUserForm";
 import { parseApiError } from '@/lib/error-handling';
+import { logger } from "@/lib/logger";
 
 /** =========================================================
  *  DEBUG FLAG: solo muestra Debug si VITE_DEBUG_AUTH === "true"
@@ -268,8 +269,7 @@ export default function AzureManagement() {
     if (!DEBUG_AUTH) return;
     const ev: DebugEvent = { at: new Date().toISOString(), action, detail };
     setDebugEvents((prev) => [ev, ...prev].slice(0, 50));
-    // eslint-disable-next-line no-console
-    console.log(`[DEBUG_AUTH] ${action}`, detail ?? "");
+    logger.debug("AzureManagement", `[DEBUG_AUTH] ${action}`, detail ?? "");
   };
 
   /** UI state */

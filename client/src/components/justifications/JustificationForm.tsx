@@ -11,6 +11,7 @@ import { JustificationsAPI, HorariosAPI, TiposReferenciaAPI, handleApiError } fr
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { getBossFromEmployeeDetails } from "@/components/employees/AuthBoss";
 import { parseApiError } from '@/lib/error-handling';
+import { logger } from "@/lib/logger";
 
 /** ------------- Helpers de fecha/hora (LOCAL, sin convertir a UTC) ------------- **/
 
@@ -58,7 +59,7 @@ function normalizeTypeCode(t: any): Mode | null {
     return "DIAS";
   }
 
-  console.warn("Tipo no reconocido:", raw, t);
+  logger.warn("JustificationForm", "Tipo no reconocido:", raw, t);
   return null;
 }
 
@@ -140,7 +141,7 @@ export default function JustificationForm({ onCreated, onCancel }: Props) {
           });
         }
       } catch (error) {
-        console.error("Error loading types:", error);
+        logger.error("JustificationForm", "Error loading types:", error);
         toast({
           title: "Error",
           description: "Error al cargar los tipos de justificación.",
@@ -218,7 +219,7 @@ export default function JustificationForm({ onCreated, onCancel }: Props) {
         });
       }
     } catch (error) {
-      console.error("Error loading schedule:", error);
+      logger.error("JustificationForm", "Error loading schedule:", error);
       setEmployeeSchedule(null);
       toast({
         title: "Error",

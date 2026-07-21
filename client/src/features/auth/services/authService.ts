@@ -3,9 +3,7 @@ import { ApiResponse } from "@/lib/api";
 import { TokenPair, UserSession, LoginRequest } from "../types/authTypes";
 import { tokenService } from "./tokenService";
 import { getBrowserId } from "@/utils/browserId";
-import { parseApiError } from '@/lib/error-handling';
-
-const DEBUG = import.meta.env.VITE_DEBUG_AUTH === "true";
+import { logger } from "@/lib/logger";
 
 const AUTH_API_BASE_URL =
   import.meta.env.VITE_AUTH_API_BASE_URL || "http://localhost:5010";
@@ -94,7 +92,7 @@ export const authService = {
    * LOGIN LOCAL
    * -------------------------------------- */
   async loginLocal(credentials: LoginRequest): Promise<TokenPair> {
-    DEBUG && console.log("[AUTH] loginLocal initiated", credentials.email);
+    logger.auth.debug("loginLocal initiated", credentials.email);
 
     const res = await authFetch<{
       data: TokenPair;
@@ -104,14 +102,14 @@ export const authService = {
       method: "POST",
       body: JSON.stringify(credentials),
     });
-    console.log("loginLocal - respuesta: "+ res);
+
     if (res.status === "error") {
-      DEBUG && console.error("[AUTH] loginLocal failed", res.error);
+      logger.auth.error("loginLocal failed", res.error.code);
       throw new Error(res.error.message ?? "Credenciales inválidas");
     }
 
     if (res.data?.success && res.data?.data) {
-      DEBUG && console.log("[AUTH] loginLocal success");
+      logger.auth.debug("loginLocal success");
       return res.data.data;
     }
 
@@ -122,7 +120,7 @@ export const authService = {
    * REFRESH TOKEN
    * -------------------------------------- */
   async refreshToken(refreshToken: string): Promise<TokenPair> {
-    DEBUG && console.log("[AUTH] refreshToken initiated");
+    logger.auth.debug("refreshToken initiated");
 
     const res = await authFetch<{ data: TokenPair; success: boolean }>(
       "/api/auth/refresh",
@@ -133,12 +131,12 @@ export const authService = {
     );
 
     if (res.status === "error") {
-      DEBUG && console.error("[AUTH] refreshToken failed", res.error);
+      logger.auth.error("refreshToken failed", res.error.code);
       throw new Error(res.error.message ?? "Error al renovar token");
     }
 
     if (res.data?.success && res.data?.data) {
-      DEBUG && console.log("[AUTH] refreshToken success");
+      logger.auth.debug("refreshToken success");
       return res.data.data;
     }
 
@@ -146,11 +144,34 @@ export const authService = {
   },
 
   /** -----------------------------------------
+   * LOGOUT — revoca la sesión en el servidor
+   * -------------------------------------- */
+  /**
+   * Best-effort: revoca el refresh token en RepositoryUta para que la sesión
+   * de 7 días no quede activa tras cerrar sesión. Nunca lanza: si el servidor
+   * no responde, el logout local (limpieza de tokens) procede igual.
+   */
+  async logout(refreshToken: string): Promise<void> {
+    logger.auth.debug("logout (revocación en servidor) initiated");
+
+    const res = await authFetch("/api/auth/logout", {
+      method: "POST",
+      body: JSON.stringify({ refreshToken }),
+    });
+
+    if (res.status === "error") {
+      logger.auth.error("logout en servidor falló (la sesión local se limpia igual)", res.error.code);
+      return;
+    }
+
+    logger.auth.debug("logout en servidor OK");
+  },
+
+  /** -----------------------------------------
    * GET CURRENT USER
    * -------------------------------------- */
   async getCurrentUser(accessToken: string): Promise<UserSession> {
-    DEBUG &&
-      console.log("[AUTH] getCurrentUser with token:", accessToken?.slice(0, 10));
+    logger.auth.debug("getCurrentUser initiated");
 
     const res = await authFetch<{ data: UserSession; success: boolean }>(
       "/api/auth/me",
@@ -160,7 +181,7 @@ export const authService = {
     );
 
     if (res.status === "error") {
-      DEBUG && console.error("[AUTH] getCurrentUser FAILED", res.error);
+      logger.auth.error("getCurrentUser failed", res.error.code);
       throw new Error(
         res.error.message ?? "Error al obtener información del usuario"
       );
@@ -169,12 +190,12 @@ export const authService = {
     if (res.data?.success && res.data?.data) {
       const user: UserSession = res.data.data;
       const adGroups = tokenService.extractAdGroups(accessToken);
-      if (adGroups.length > 0) {
-        console.log("[AUTH-AD] Grupos AD recibidos en JWT:", adGroups);
-      } else {
-        DEBUG && console.log("[AUTH-AD] No hay grupos AD en el JWT (AD inactivo o usuario sin grupos)");
-      }
-      DEBUG && console.log("[AUTH] getCurrentUser OK");
+      logger.auth.debug(
+        adGroups.length > 0
+          ? `Grupos AD recibidos en JWT: ${adGroups.length}`
+          : "No hay grupos AD en el JWT (AD inactivo o usuario sin grupos)"
+      );
+      logger.auth.debug("getCurrentUser OK");
       return { ...user, adGroups };
     }
 
@@ -184,14 +205,15 @@ export const authService = {
   /** -----------------------------------------
    * OBTENER URL DE LOGIN AZURE
    * -------------------------------------- */
-  async getAzureAuthUrl(): Promise<{ url: string; state: string }> {
-    DEBUG && console.log("[AUTH] getAzureAuthUrl initiated");
+  async getAzureAuthUrl(codeChallenge?: string): Promise<{ url: string; state: string }> {
+    logger.auth.debug("getAzureAuthUrl initiated");
 
     const browserId = getBrowserId();
 
     const params = new URLSearchParams({
       clientId: APP_CLIENT_ID,
       browserId, // 🔥 CLAVE para Opción A
+      ...(codeChallenge ? { codeChallenge } : {}),
     });
 
     const res = await authFetch<{
@@ -200,13 +222,12 @@ export const authService = {
     }>(`/api/auth/azure/url?${params.toString()}`);
 
     if (res.status === "error") {
-      DEBUG && console.error("[AUTH] getAzureAuthUrl FAILED", res.error);
+      logger.auth.error("getAzureAuthUrl failed", res.error.code);
       throw new Error(res.error.message ?? "Error al obtener URL de Azure");
     }
 
     if (res.data?.success && res.data?.data) {
-      DEBUG &&
-        console.log("[AUTH] getAzureAuthUrl SUCCESS", res.data.data.url);
+      logger.auth.debug("getAzureAuthUrl success");
       return res.data.data;
     }
 
@@ -217,7 +238,7 @@ export const authService = {
    * HANDLE CALLBACK AZURE
    * -------------------------------------- */
   async handleAzureCallback(code: string, state: string): Promise<TokenPair> {
-    DEBUG && console.log("[AUTH] handleAzureCallback", { state });
+    logger.auth.debug("handleAzureCallback initiated");
 
     const res = await authFetch<{ data: TokenPair; success: boolean }>(
       `/api/auth/azure/callback?code=${encodeURIComponent(
@@ -226,14 +247,49 @@ export const authService = {
     );
 
     if (res.status === "error") {
-      DEBUG && console.error("[AUTH] Azure callback FAILED", res.error);
+      logger.auth.error("Azure callback failed", res.error.code);
       throw new Error(
         res.error.message ?? "Error al procesar autenticación con Azure"
       );
     }
 
     if (res.data?.success && res.data?.data) {
-      DEBUG && console.log("[AUTH] Azure callback OK");
+      logger.auth.debug("Azure callback OK");
+      return res.data.data;
+    }
+
+    throw new Error("Estructura de respuesta inválida");
+  },
+
+  /** -----------------------------------------
+   * INTERCAMBIO PKCE (login Office 365)
+   * -------------------------------------- */
+  /**
+   * Canjea el deliveryCode recibido por WebSocket por el par de tokens real,
+   * demostrando posesión del codeVerifier que nunca salió de esta pestaña.
+   * Ver features/auth/services/pkce.ts.
+   */
+  async exchangeAzureDeliveryCode(
+    deliveryCode: string,
+    codeVerifier: string
+  ): Promise<TokenPair> {
+    logger.auth.debug("exchangeAzureDeliveryCode initiated");
+
+    const res = await authFetch<{ data: TokenPair; success: boolean }>(
+      "/api/auth/azure/exchange",
+      {
+        method: "POST",
+        body: JSON.stringify({ deliveryCode, codeVerifier }),
+      }
+    );
+
+    if (res.status === "error") {
+      logger.auth.error("exchangeAzureDeliveryCode failed", res.error.code);
+      throw new Error(res.error.message ?? "Código de entrega inválido o expirado");
+    }
+
+    if (res.data?.success && res.data?.data) {
+      logger.auth.debug("exchangeAzureDeliveryCode success");
       return res.data.data;
     }
 

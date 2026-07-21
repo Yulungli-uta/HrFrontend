@@ -21,6 +21,7 @@ import {
   type ApiError,
   TimeAPI,
 } from "@/lib/api";
+import { logger } from "@/lib/logger";
 
 interface AttendanceFormProps {
   onSuccess?: () => void;
@@ -74,7 +75,7 @@ export default function AttendanceForm({ onSuccess, onCancel }: AttendanceFormPr
         description: "La hora se ha sincronizado correctamente con el servidor",
       });
     } catch (error) {
-      console.error("Error syncing time with server:", error);
+      logger.error("AttendanceForm", "Error syncing time with server:", error);
       toast({
         title: "Error al sincronizar hora",
         description: "Se usará la hora local del dispositivo",
@@ -101,7 +102,7 @@ export default function AttendanceForm({ onSuccess, onCancel }: AttendanceFormPr
         }
         return response.data;
       } catch (error) {
-        console.error("Error fetching last punch:", error);
+        logger.error("AttendanceForm", "Error fetching last punch:", error);
         toast({
           title: "Error al obtener última marcación",
           description: handleApiError(
@@ -168,7 +169,7 @@ export default function AttendanceForm({ onSuccess, onCancel }: AttendanceFormPr
           setIsGettingLocation(false);
         },
         (error) => {
-          console.log("Error obteniendo ubicación:", error);
+          logger.debug("AttendanceForm", "Error obteniendo ubicación:", error);
           setIsGettingLocation(false);
           toast({
             title: "No se pudo obtener la ubicación",
@@ -275,7 +276,7 @@ export default function AttendanceForm({ onSuccess, onCancel }: AttendanceFormPr
 
       createMutation.mutate(data);
     } catch (error) {
-      console.error("Error obteniendo hora del servidor:", error);
+      logger.error("AttendanceForm", "Error obteniendo hora del servidor:", error);
       toast({
         title: "Error al obtener hora del servidor",
         description: "Por favor, intente nuevamente",

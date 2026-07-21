@@ -32,10 +32,11 @@ import { cn } from "@/lib/utils";
 import type { ReportFilter, ReportType, PageOrientation } from "@/types/reports";
 import { REPORT_CONFIGS } from "@/types/reports";
 
-import { ContractTypeAPI, DepartamentosAPI, TiposReferenciaAPI, VistaEmpleadosAPI } from "@/lib/api";
+import { ContractTypeAPI, TiposReferenciaAPI, VistaEmpleadosAPI } from "@/lib/api";
 import { PersonnelActionTypeAPI } from "@/lib/api/services/contracts";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { GuardServiceLocationsAPI, GuardRotationGroupsAPI } from "@/lib/api/services/guards";
+import { DepartmentSelect } from "@/components/departments";
 
 /* ---------------------------------- Types --------------------------------- */
 
@@ -47,7 +48,6 @@ type LoadState<T> = {
   error?: string;
 };
 
-type Department    = { departmentId: number; name: string };
 type EmployeeView  = { employeeID: number; fullName: string };
 type RefType       = { typeId: number; name: string; category?: string };
 type ContractKind      = { contractTypeId?: number; contractTypeID?: number; id?: number; name: string };
@@ -73,17 +73,6 @@ function extractArray<T = any>(res: any): T[] {
   if (Array.isArray(res?.data)) return res.data;
   if (Array.isArray(res?.results)) return res.results;
   return [];
-}
-
-function mapDepartmentOptions(raw: any[]): Option[] {
-  return raw
-    .map((d) => {
-      const id = toNum(d.departmentId ?? d.departmentID ?? d.id);
-      const name = toStr(d.name);
-      if (id == null || !name) return null;
-      return { value: String(id), label: name };
-    })
-    .filter(Boolean) as Option[];
 }
 
 function mapEmployeeOptions(raw: any[]): Option[] {
@@ -229,7 +218,6 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
   const [filter, setFilter] = React.useState<ReportFilter>(initialFilter);
 
   // estados de catálogos
-  const [departments, setDepartments] = React.useState<LoadState<Department>>({ loading: false, items: [] });
   const [guardLocations, setGuardLocations] = React.useState<LoadState<GuardLocation>>({ loading: false, items: [] });
   const [guardGroups, setGuardGroups] = React.useState<LoadState<GuardGroup>>({ loading: false, items: [] });
   const [employees, setEmployees] = React.useState<LoadState<EmployeeView>>({ loading: false, items: [] });
@@ -254,20 +242,6 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
   // carga catálogos cuando aplique
   React.useEffect(() => {
     let alive = true;
-
-    const loadDepartments = async () => {
-      if (!hasFilter("departmentId", "departmentID")) return;
-      setDepartments({ loading: true, items: [] });
-      try {
-        const res = await DepartamentosAPI.list();
-        const arr = extractArray(res);
-        if (!alive) return;
-        setDepartments({ loading: false, items: arr as any[] });
-      } catch {
-        if (!alive) return;
-        setDepartments({ loading: false, items: [], error: "No se pudieron cargar departamentos" });
-      }
-    };
 
     const loadContractKinds = async () => {
       if (!hasFilter("contractTypeId")) return;
@@ -383,7 +357,6 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
       }
     };
 
-    void loadDepartments();
     void loadEmployees();
     void loadContractTypes();
     void loadContractKinds();
@@ -399,11 +372,6 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
   }, [reportType, hasFilter]);
 
   // opciones ya normalizadas (label visible / value código)
-  const departmentOptions = React.useMemo<Option[]>(
-    () => mapDepartmentOptions(departments.items as any[]),
-    [departments.items]
-  );
-
   const employeeOptions = React.useMemo<Option[]>(
     () => mapEmployeeOptions(employees.items as any[]),
     [employees.items]
@@ -482,20 +450,15 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
             </div>
           )}
 
-          {/* Departamento (buscable) */}
+          {/* Departamento (buscable, muestra nombre/código/tipo/ámbito) */}
           {hasFilter("departmentId", "departmentID") && (
             <div className="space-y-2">
               <Label>Departamento</Label>
-              <SearchableCombobox
-                value={filter.departmentId != null ? String(filter.departmentId) : "all"}
-                onChange={(v) => setFilterValue("departmentId", v === "all" ? undefined : Number(v))}
-                options={departmentOptions}
+              <DepartmentSelect
+                value={filter.departmentId ?? null}
+                onChange={(id) => setFilterValue("departmentId", id ?? undefined)}
                 placeholder="Todos los departamentos"
-                searchPlaceholder="Buscar departamento..."
-                emptyText={departments.loading ? "Cargando..." : "Sin resultados"}
-                disabled={departments.loading}
               />
-              {departments.error && <p className="text-xs text-destructive">{departments.error}</p>}
             </div>
           )}
 

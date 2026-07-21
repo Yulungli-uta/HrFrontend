@@ -16,6 +16,9 @@ export interface StoredFileDto {
   sizeBytes: number;
   status: number;
   createdAt: string;
+  createdBy?: number | null;
+  deletedAt?: string | null;
+  deletedBy?: number | null;
   documentReferenceNumber?: string | null;
   documentReferenceDate?: string | null;
 }

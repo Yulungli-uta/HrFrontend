@@ -1,5 +1,5 @@
 //src/pages/guards/GuardShiftPlanning.tsx
-import { useState, Fragment } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import {
   Calendar, RefreshCw, Zap, AlertTriangle, CheckCircle2, X,
   MapPin, Users, ChevronDown, ChevronRight, Info, ArrowLeftRight, Building2, UserPlus,
@@ -47,9 +47,34 @@ const FALLBACK_COLORS = [
   '#0ea5e9', '#8b5cf6', '#f97316', '#14b8a6',
 ];
 
+function hexToRgb(hex: string): [number, number, number] {
+  const clean = hex.replace('#', '');
+  const full = clean.length === 3 ? clean.split('').map(c => c + c).join('') : clean;
+  const num = parseInt(full, 16);
+  return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+}
+
+// Luminancia relativa (WCAG) para detectar colores demasiado claros como para usarse de texto.
+function relativeLuminance([r, g, b]: [number, number, number]) {
+  const [rl, gl, bl] = [r, g, b].map(c => {
+    const s = c / 255;
+    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * rl + 0.7152 * gl + 0.0722 * bl;
+}
+
+// Oscurece colores claros (amarillos, grises casi blancos) para que el texto siga siendo legible
+// en modo claro; conserva el hex original tal cual cuando ya tiene contraste suficiente.
+function darkenForText(hex: string): string {
+  const rgb = hexToRgb(hex);
+  if (relativeLuminance(rgb) < 0.55) return hex;
+  const [r, g, b] = rgb.map(c => Math.round(c * 0.45));
+  return `#${[r, g, b].map(c => c.toString(16).padStart(2, '0')).join('')}`;
+}
+
 function hexToGroupStyle(hex: string) {
-  // Genera bg claro + texto oscuro + borde a partir del hex del grupo
-  return { backgroundColor: hex + '22', color: hex, borderColor: hex + '88' };
+  // Genera bg claro + texto legible + borde a partir del hex del grupo
+  return { backgroundColor: hex + '22', color: darkenForText(hex), borderColor: hex + '88' };
 }
 
 // Construye mapa groupId → { hex, name } garantizando colores únicos.
@@ -399,6 +424,10 @@ function PlanningDetailPanel({ planningId, onClose }: { planningId: number | nul
   const { data, isLoading } = usePlanningDetail(planningId);
   const detail = data?.status === 'success' ? data.data : null;
   const [showReplacement, setShowReplacement] = useState(false);
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
+  const { cancel } = usePlanningMutations(() => { setConfirmingCancel(false); onClose(); });
+
+  useEffect(() => { setConfirmingCancel(false); setShowReplacement(false); }, [planningId]);
 
   return (
     <>
@@ -464,17 +493,41 @@ function PlanningDetailPanel({ planningId, onClose }: { planningId: number | nul
                 <InfoRow label="Notas" value={detail.notes} />
               )}
 
-              <div className="flex gap-2 pt-2">
-                {detail.status !== 'CANCELLED' && detail.status !== 'REPLACED' && (
-                  <Button
-                    size="sm" variant="secondary" className="flex-1"
-                    onClick={() => setShowReplacement(true)}
-                  >
-                    <ArrowLeftRight className="h-3.5 w-3.5 mr-1.5" />
-                    Solicitar reemplazo
-                  </Button>
+              <div className="flex flex-col gap-2 pt-2">
+                <div className="flex gap-2">
+                  {detail.status !== 'CANCELLED' && detail.status !== 'REPLACED' && (
+                    <Button
+                      size="sm" variant="secondary" className="flex-1"
+                      onClick={() => setShowReplacement(true)}
+                    >
+                      <ArrowLeftRight className="h-3.5 w-3.5 mr-1.5" />
+                      Solicitar reemplazo
+                    </Button>
+                  )}
+                  <Button size="sm" variant="outline" className="flex-1" onClick={onClose}>Cerrar</Button>
+                </div>
+                {detail.status !== 'CANCELLED' && (
+                  confirmingCancel ? (
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm" variant="destructive" className="flex-1"
+                        disabled={cancel.isPending}
+                        onClick={() => cancel.mutate({ id: detail.planningId, dto: {} })}
+                      >
+                        {cancel.isPending ? 'Cancelando…' : 'Confirmar cancelación'}
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setConfirmingCancel(false)}>Volver</Button>
+                    </div>
+                  ) : (
+                    <Button
+                      size="sm" variant="ghost" className="text-destructive hover:text-destructive"
+                      onClick={() => setConfirmingCancel(true)}
+                    >
+                      <X className="h-3.5 w-3.5 mr-1.5" />
+                      Cancelar turno
+                    </Button>
+                  )
                 )}
-                <Button size="sm" variant="outline" className="flex-1" onClick={onClose}>Cerrar</Button>
               </div>
             </div>
           )}
@@ -729,6 +782,110 @@ function GenerateDialog({
   );
 }
 
+// ─── Componente: dialog de cancelación masiva por grupo + rango ──────────────
+
+function CancelRangeDialog({
+  open, onClose, groups,
+}: {
+  open: boolean;
+  onClose: () => void;
+  groups: { groupId: number; name: string }[];
+}) {
+  const today = todayStr();
+  const [groupId, setGroupId] = useState<number | 'ALL' | ''>('');
+  const [startDate, setStartDate] = useState(today);
+  const [endDate, setEndDate] = useState(addDays(today, 6));
+  const [notes, setNotes] = useState('');
+  const [confirming, setConfirming] = useState(false);
+
+  const { cancelRange } = usePlanningMutations(() => {
+    setConfirming(false);
+    setGroupId('');
+    setNotes('');
+    onClose();
+  });
+
+  const isInvalid = groupId === '' || !startDate || !endDate || endDate < startDate;
+  const isAllGroups = groupId === 'ALL';
+
+  const handleClose = () => {
+    setConfirming(false);
+    onClose();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && handleClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Cancelar planificación</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          <p className="text-xs text-muted-foreground">
+            Cancela (no borra) todos los turnos activos del grupo en el rango de fechas indicado.
+            Las fechas canceladas quedan libres para volver a planificarse.
+          </p>
+          <div>
+            <Label className="text-xs">Grupo *</Label>
+            <select
+              className="w-full h-9 border rounded-md px-3 text-sm bg-background mt-1"
+              value={groupId}
+              onChange={e => setGroupId(
+                e.target.value === '' ? '' : e.target.value === 'ALL' ? 'ALL' : Number(e.target.value)
+              )}
+            >
+              <option value="">Seleccione un grupo…</option>
+              <option value="ALL">Todos los grupos</option>
+              {groups.map(g => (
+                <option key={g.groupId} value={g.groupId}>{g.name}</option>
+              ))}
+            </select>
+          </div>
+          {isAllGroups && (
+            <p className="text-xs text-destructive font-medium">
+              Se cancelarán los turnos activos de TODOS los grupos en el rango indicado, no solo uno.
+            </p>
+          )}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs">Desde *</Label>
+              <Input type="date" className="mt-1" value={startDate} onChange={e => setStartDate(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-xs">Hasta *</Label>
+              <Input type="date" className="mt-1" value={endDate} onChange={e => setEndDate(e.target.value)} />
+            </div>
+          </div>
+          <div>
+            <Label className="text-xs">Motivo (opcional)</Label>
+            <Input className="mt-1" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Ej: cambio de cobertura" />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={handleClose} disabled={cancelRange.isPending}>Cancelar</Button>
+          {confirming ? (
+            <Button
+              variant="destructive"
+              disabled={cancelRange.isPending}
+              onClick={() => groupId !== '' && cancelRange.mutate({
+                groupId: groupId === 'ALL' ? null : groupId,
+                startDate, endDate, notes: notes || undefined,
+              })}
+            >
+              {cancelRange.isPending ? 'Cancelando…' : 'Confirmar cancelación'}
+            </Button>
+          ) : (
+            <Button variant="destructive" disabled={isInvalid} onClick={() => setConfirming(true)}>
+              Continuar
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function Stat({ label, value, color }: { label: string; value: number; color: 'blue' | 'yellow' | 'red' | 'green' }) {
   const colors = {
     blue: 'bg-blue-50 text-blue-600',
@@ -757,6 +914,7 @@ export default function GuardShiftPlanningPage() {
 
   const [showGenDialog,    setShowGenDialog]    = useState(false);
   const [showManualDialog, setShowManualDialog] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [selectedPlanningId, setSelectedPlanningId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState('cronograma');
 
@@ -801,6 +959,10 @@ export default function GuardShiftPlanningPage() {
           <Button size="sm" onClick={() => setShowGenDialog(true)}>
             <Zap className="h-4 w-4 mr-2" />
             Generar turnos
+          </Button>
+          <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={() => setShowCancelDialog(true)}>
+            <X className="h-4 w-4 mr-2" />
+            Cancelar planificación
           </Button>
         </div>
       </div>
@@ -995,6 +1157,13 @@ export default function GuardShiftPlanningPage() {
         onClose={() => setShowGenDialog(false)}
         groups={groups}
         locations={locations}
+      />
+
+      {/* Dialog cancelación masiva */}
+      <CancelRangeDialog
+        open={showCancelDialog}
+        onClose={() => setShowCancelDialog(false)}
+        groups={groups}
       />
 
       <ManualShiftAssignDialog

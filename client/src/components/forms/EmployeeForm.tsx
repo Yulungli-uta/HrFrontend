@@ -63,6 +63,7 @@ import {
 import type { PersonDto } from "@/lib/api/services/people";
 import { cn } from "@/lib/utils";
 import { DepartmentSelect } from "@/components/departments/DepartmentSelect";
+import { logger } from "@/lib/logger";
 
 type EmployeeViewSeed = {
   employeeID: number;
@@ -458,18 +459,30 @@ export default function EmployeeForm({
               : null
           );
           setBossLabel(viewSeed.immediateBoss ?? null);
-          setJobLabel(viewSeed.jobName ?? null);
+
+          if (jobId) {
+            try {
+              const jobResp = await CargosAPI.get(jobId);
+              const jobData =
+                jobResp?.status === "success" ? (jobResp.data as any) : null;
+              setJobLabel(jobData?.description ?? jobData?.Description ?? null);
+            } catch {
+              setJobLabel(null);
+            }
+          } else {
+            setJobLabel(null);
+          }
 
           if (DEBUG) {
             console.group("Hydrate EmployeeForm from viewSeed");
-            console.log("viewSeed:", viewSeed);
-            console.log("employee record:", empData);
-            console.log("employeeId:", employeeId);
-            console.log("personId:", personId);
-            console.log("departmentId:", departmentId);
-            console.log("immediateBossId:", immediateBossId);
-            console.log("employeeType:", employeeType);
-            console.log("hireDate:", hireDate);
+            logger.debug("EmployeeForm", "viewSeed:", viewSeed);
+            logger.debug("EmployeeForm", "employee record:", empData);
+            logger.debug("EmployeeForm", "employeeId:", employeeId);
+            logger.debug("EmployeeForm", "personId:", personId);
+            logger.debug("EmployeeForm", "departmentId:", departmentId);
+            logger.debug("EmployeeForm", "immediateBossId:", immediateBossId);
+            logger.debug("EmployeeForm", "employeeType:", employeeType);
+            logger.debug("EmployeeForm", "hireDate:", hireDate);
             console.groupEnd();
           }
         }
@@ -497,7 +510,7 @@ export default function EmployeeForm({
             : null
         );
         setBossLabel(viewSeed.immediateBoss ?? null);
-        setJobLabel(viewSeed.jobName ?? null);
+        setJobLabel(null);
       }
 
       hydratedRef.current = true;
@@ -505,7 +518,7 @@ export default function EmployeeForm({
 
     resolveEmployeeId();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewSeed, contractOptions, loadingRefTypes]);
+  }, [viewSeed?.employeeID, loadingRefTypes]);
 
   const createMutation = useMutation({
     mutationFn: async (data: EmployeeFormData) => {
@@ -595,7 +608,7 @@ export default function EmployeeForm({
 
   const onSubmit = (data: EmployeeFormData) => {
     if (DEBUG) {
-      console.log("Submit Employee:", {
+      logger.debug("EmployeeForm", "Submit Employee:", {
         data,
         employeeIdForUpdate,
         viewSeed,

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { MapPin, Plus, RefreshCw, ChevronRight, ChevronDown, Pencil } from 'lucide-react';
+import { MapPin, Plus, RefreshCw, ChevronRight, ChevronDown, Pencil, Search } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useGuardLocationsTree, useGuardLocationMutations } from '@/hooks/guards/useGuards';
 import type { GuardServiceLocationTreeDto, CreateGuardServiceLocationDto, UpdateGuardServiceLocationDto } from '@/types/guards';
 import { useQuery } from '@tanstack/react-query';
@@ -35,6 +36,30 @@ const DEFAULT_FORM: LocationFormState = {
   isAssignable: false,
   isActive: true,
 };
+
+// Conserva el subárbol completo del nodo que matchea directamente; si solo matchea un
+// descendiente, muestra la rama filtrada hasta ese descendiente.
+function filterLocationTree(
+  nodes: GuardServiceLocationTreeDto[],
+  term: string,
+  statusFilter: 'all' | 'active' | 'inactive'
+): GuardServiceLocationTreeDto[] {
+  const matchesStatus = (isActive: boolean) => statusFilter === 'all' || (statusFilter === 'active') === isActive;
+  const t = term.trim().toLowerCase();
+  const nameMatches = (n: GuardServiceLocationTreeDto) =>
+    !t || n.locationName.toLowerCase().includes(t) || (n.locationCode ?? '').toLowerCase().includes(t);
+
+  return nodes.reduce<GuardServiceLocationTreeDto[]>((acc, n) => {
+    const selfMatches = matchesStatus(n.isActive) && nameMatches(n);
+    if (selfMatches) {
+      acc.push(n);
+      return acc;
+    }
+    const filteredChildren = filterLocationTree(n.children, term, statusFilter);
+    if (filteredChildren.length > 0) acc.push({ ...n, children: filteredChildren });
+    return acc;
+  }, []);
+}
 
 function LocationTreeNode({
   node,
@@ -99,8 +124,11 @@ export default function GuardServiceLocationsPage() {
   const [mode, setMode] = useState<DialogMode>('create');
   const [editId, setEditId] = useState<number | null>(null);
   const [form, setForm] = useState<LocationFormState>(DEFAULT_FORM);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
   const tree = resp?.status === 'success' ? resp.data : [];
+  const filteredTree = filterLocationTree(tree, search, statusFilter);
 
   const { data: detailResp } = useQuery({
     queryKey: [...GUARD_KEYS.locationsTree, 'detail', editId],
@@ -197,15 +225,38 @@ export default function GuardServiceLocationsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Árbol de ubicaciones</CardTitle>
+          <div className="flex flex-col sm:flex-row gap-2 mt-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                className="pl-8"
+                placeholder="Buscar por nombre o código…"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={v => setStatusFilter(v as typeof statusFilter)}>
+              <SelectTrigger className="w-full sm:w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="active">Activos</SelectItem>
+                <SelectItem value="inactive">Inactivos</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <p className="text-sm text-muted-foreground py-4">Cargando ubicaciones…</p>
           ) : tree.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4">No hay ubicaciones registradas.</p>
+          ) : filteredTree.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4">Sin resultados para el filtro actual.</p>
           ) : (
             <div className="space-y-1">
-              {tree.map(node => (
+              {filteredTree.map(node => (
                 <LocationTreeNode key={node.locationId} node={node} onEdit={openEdit} />
               ))}
             </div>

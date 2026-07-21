@@ -34,7 +34,15 @@ import {
   X,
 } from "lucide-react";
 import EmployeeForm from "@/components/forms/EmployeeForm";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { VistaEmpleadosAPI, TiposReferenciaAPI } from "@/lib/api";
+import { DepartmentSelect } from "@/components/departments";
 import { useToast } from "@/hooks/use-toast";
 import { usePaged } from "@/hooks/pagination/usePaged";
 import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
@@ -206,6 +214,11 @@ export default function EmployeesPage() {
   );
   const [editSeed, setEditSeed] = useState<EmployeeView | null>(null);
 
+  const [regimeFilter, setRegimeFilter] = useState<number | undefined>(undefined);
+  const [departmentIdFilter, setDepartmentIdFilter] = useState<number | null>(null);
+  const [departmentFilter, setDepartmentFilter] = useState<string | undefined>(undefined);
+  const [isActiveFilter, setIsActiveFilter] = useState<boolean | undefined>(undefined);
+
   const { setIsFormDirty, handleOpenChange: _handleFormOpenChange, close: closeForm, confirmOpen, confirmExit, closeConfirm } =
     useUnsavedChangesGuard((open) => {
       setIsFormOpen(open);
@@ -229,8 +242,14 @@ export default function EmployeesPage() {
     clearSearch,
     currentParams,
   } = usePaged<any>({
-    queryKey: "employees-complete",
-    queryFn: (params) => VistaEmpleadosAPI.listPaged(params),
+    queryKey: ["employees-complete", regimeFilter, departmentFilter, isActiveFilter],
+    queryFn: (params) =>
+      VistaEmpleadosAPI.listPaged({
+        ...params,
+        employeeType: regimeFilter,
+        department: departmentFilter,
+        isActive: isActiveFilter,
+      }),
     initialPageSize: 20,
   });
 
@@ -544,6 +563,57 @@ const employeeStats = useMemo(() => {
               <X className="h-4 w-4" />
             </button>
           )}
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <Select
+            value={regimeFilter ? String(regimeFilter) : "all"}
+            onValueChange={(value) => {
+              setRegimeFilter(value === "all" ? undefined : Number(value));
+              goToPage(1);
+            }}
+          >
+            <SelectTrigger className="w-full sm:w-56" aria-label="Filtrar por régimen">
+              <SelectValue placeholder="Régimen laboral" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los regímenes</SelectItem>
+              {Object.entries(contractTypeMap).map(([typeId, name]) => (
+                <SelectItem key={typeId} value={typeId}>
+                  {name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <div className="w-full sm:w-72">
+            <DepartmentSelect
+              value={departmentIdFilter}
+              onChange={(id, dept) => {
+                setDepartmentIdFilter(id);
+                setDepartmentFilter(dept?.departmentName ?? undefined);
+                goToPage(1);
+              }}
+              placeholder="Todos los departamentos"
+            />
+          </div>
+
+          <Select
+            value={isActiveFilter === undefined ? "all" : String(isActiveFilter)}
+            onValueChange={(value) => {
+              setIsActiveFilter(value === "all" ? undefined : value === "true");
+              goToPage(1);
+            }}
+          >
+            <SelectTrigger className="w-full sm:w-44" aria-label="Filtrar por estado">
+              <SelectValue placeholder="Estado" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los estados</SelectItem>
+              <SelectItem value="true">Activos</SelectItem>
+              <SelectItem value="false">Inactivos</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

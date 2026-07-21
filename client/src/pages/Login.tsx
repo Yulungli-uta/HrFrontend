@@ -23,6 +23,7 @@ import {
 import { useAuth } from '@/features/auth';
 import { Loader2 } from 'lucide-react';
 import { parseApiError } from '@/lib/error-handling';
+import { logger } from "@/lib/logger";
 
 const DEBUG = import.meta.env.VITE_DEBUG_AUTH === "true";
 
@@ -48,7 +49,7 @@ export default function LoginPage() {
   // ✅ Si ya está autenticado, redirigir
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
-      DEBUG && console.log("✅ Usuario autenticado, redirigiendo a /");
+      DEBUG && logger.debug("Login", "✅ Usuario autenticado, redirigiendo a /");
       setLocation("/");
     }
   }, [isAuthenticated, authLoading, setLocation]);
@@ -58,8 +59,8 @@ export default function LoginPage() {
     setLocalLoading(true);
 
     try {
-      DEBUG && console.log("🔐 Iniciando login local...", { username });
-      console.log("[ENV]", {
+      DEBUG && logger.debug("Login", "🔐 Iniciando login local...", { username });
+      logger.debug("Login", "[ENV]", {
         MODE: import.meta.env.MODE,
         API: import.meta.env.VITE_API_BASE,
         AUTH: import.meta.env.VITE_AUTH_API_BASE_URL,
@@ -70,7 +71,7 @@ export default function LoginPage() {
 
       if (!success) {
         // ❌ NO lanzamos Error, solo mostramos un toast (AuthContext ya suele mostrar uno)
-        DEBUG && console.warn("[LOGIN] login() devolvió false (credenciales inválidas o error interno)");
+        DEBUG && logger.warn("Login", "[LOGIN] login() devolvió false (credenciales inválidas o error interno)");
         toast({
           title: "No se pudo iniciar sesión",
           description: "Verifique sus credenciales o intente nuevamente.",
@@ -79,11 +80,11 @@ export default function LoginPage() {
         return;
       }
 
-      DEBUG && console.log("✅ Login local exitoso (login() devolvió true)");
+      DEBUG && logger.debug("Login", "✅ Login local exitoso (login() devolvió true)");
       // La redirección la hace el useEffect cuando isAuthenticated cambie a true
 
     } catch (error: unknown) {
-      console.error("❌ Error inesperado en login local:", error);
+      logger.error("Login", "❌ Error inesperado en login local:", error);
       toast({
         title: "Error de autenticación",
         description:
@@ -98,11 +99,11 @@ export default function LoginPage() {
   const handleOffice365Login = async () => {
     setLocalLoading(true);
     try {
-      DEBUG && console.log("🔐 Iniciando login Office 365...");
+      DEBUG && logger.debug("Login", "🔐 Iniciando login Office 365...");
       await loginWithOffice365();
       // La navegación la hace el flujo WebSocket + AuthContext
     } catch (error) {
-      console.error("❌ Error en Office 365 login:", error);
+      logger.error("Login", "❌ Error en Office 365 login:", error);
       toast({
         title: "Error de autenticación",
         description: "Error al iniciar sesión con Office 365",

@@ -141,6 +141,15 @@ export type { HolidayResponseDTO } from './services/holidays';
 export { TiposReferenciaAPI, PaisesAPI, ProvinciasAPI, CantonesAPI, AcademicLadderAPI } from './services/catalogs';
 export type { RefType, AcademicLadderDto, AcademicLadderCreateDto, AcademicLadderUpdateDto } from './services/catalogs';
 
+// Parametrización de requisitos documentales por trámite
+export { TramiteRequirementsAPI } from './services/tramiteRequirements';
+export type {
+  AccessibleModuleDto,
+  TramiteRequirementDto,
+  TramiteRequirementCreateDto,
+  TramiteRequirementUpdateDto,
+} from './services/tramiteRequirements';
+
 // Sistema y reportes
 export { HealthAPI, SistemaAPI, AuditoriaAPI } from './services/system';
 export type { StatsResponse } from './services/system';

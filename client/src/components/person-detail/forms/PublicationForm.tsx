@@ -31,6 +31,7 @@ import {
   AreaConocimientoAPI,
 } from "@/lib/api";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
+import { logger } from "@/lib/logger";
 
 // =============================
 // Zod schema
@@ -377,7 +378,7 @@ export default function PublicationForm({
     try {
       await onSubmit(payload);
     } catch (err) {
-      console.error("[PublicationForm] submit error", err);
+      logger.error("PublicationForm", "[PublicationForm] submit error", err);
     }
   };
 

@@ -48,6 +48,8 @@ import {
   Download,
   Trash2,
   RefreshCw,
+  Replace,
+  History,
 } from "lucide-react";
 
 /**
@@ -70,6 +72,7 @@ type RefTypeItem = {
   name?: string;
   description?: string;
   code?: string;
+  metadata?: string | null;
 };
 
 function getRefTypeId(rt: RefTypeItem): string {
@@ -78,6 +81,15 @@ function getRefTypeId(rt: RefTypeItem): string {
 }
 function getRefTypeLabel(rt: RefTypeItem): string {
   return (rt.name ?? rt.description ?? rt.code ?? "").toString() || `ID ${getRefTypeId(rt)}`;
+}
+/** Lee el flag requiresReference desde HR.ref_Types.Metadata (JSON), sin romper tipos sin metadata. */
+function refTypeRequiresReference(rt: RefTypeItem): boolean {
+  if (!rt.metadata) return false;
+  try {
+    return JSON.parse(rt.metadata)?.requiresReference === true;
+  } catch {
+    return false;
+  }
 }
 
 type Props = {
@@ -126,6 +138,15 @@ type Props = {
   };
 
   onUploaded?: (result: DocumentUploadResultDto) => void;
+
+  /**
+   * ✅ Reemplazar documento (opt-in, no afecta a quien no lo use). Cuando está activo y el
+   * archivo tiene permisos de subir+eliminar, agrega un botón "Reemplazar" (sube el nuevo
+   * con el mismo tipo/referencia y recién si eso funciona hace soft-delete del anterior) y
+   * un botón "Ver Historial" (lista, para ese mismo tipo de documento, todas las versiones
+   * — activas y reemplazadas — con sus fechas).
+   */
+  allowReplace?: boolean;
 };
 
 export type ReusableDocumentManagerHandle = {
@@ -198,10 +219,17 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
       documentType,
       referenceFields,
       onUploaded,
+      allowReplace = false,
     },
     ref
   ) => {
     const inputRef = useRef<HTMLInputElement | null>(null);
+    const replaceInputRef = useRef<HTMLInputElement | null>(null);
+    const [replacingGuid, setReplacingGuid] = useState<string | null>(null);
+    const [historyOpen, setHistoryOpen] = useState(false);
+    const [historyDocTypeId, setHistoryDocTypeId] = useState<number | null>(null);
+    const [historyItems, setHistoryItems] = useState<StoredFileDto[]>([]);
+    const [historyLoading, setHistoryLoading] = useState(false);
 
     // ✅ ahora guardamos selected como items (para soportar tipo por archivo)
     const [selected, setSelected] = useState<SelectedItem[]>([]);
@@ -253,15 +281,6 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
     const [batchReferenceNumber, setBatchReferenceNumber] = useState("");
     const [batchReferenceDate, setBatchReferenceDate] = useState("");
 
-    const docTypeNeedsReference = useCallback(
-      (docTypeId: string | null) => {
-        if (!refFieldsEnabled) return false;
-        if (!referenceFields?.appliesToDocTypeIds?.length) return true;
-        return !!docTypeId && referenceFields.appliesToDocTypeIds.includes(docTypeId);
-      },
-      [refFieldsEnabled, referenceFields?.appliesToDocTypeIds]
-    );
-
     // si cambia defaultValue desde props
     useEffect(() => {
       if (!docTypeEnabled) return;
@@ -294,6 +313,30 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
       });
       return m;
     }, [refTypes]);
+
+    // Mapa tipoId -> requiere referencia, leído de HR.ref_Types.Metadata (evita hardcodear IDs por consumidor).
+    const docTypeRequiresRefMap = useMemo(() => {
+      const m = new Map<string, boolean>();
+      refTypes.forEach((rt) => {
+        const id = getRefTypeId(rt);
+        if (!id) return;
+        m.set(id, refTypeRequiresReference(rt));
+      });
+      return m;
+    }, [refTypes]);
+
+    const docTypeNeedsReference = useCallback(
+      (docTypeId: string | null) => {
+        if (!refFieldsEnabled) return false;
+        // Si el consumidor fija una lista explícita, se respeta ese contrato (compatibilidad).
+        if (referenceFields?.appliesToDocTypeIds?.length) {
+          return !!docTypeId && referenceFields.appliesToDocTypeIds.includes(docTypeId);
+        }
+        // Data-driven: el propio catálogo de tipos de documento decide (HR.ref_Types.Metadata).
+        return !!docTypeId && (docTypeRequiresRefMap.get(docTypeId) ?? false);
+      },
+      [refFieldsEnabled, referenceFields?.appliesToDocTypeIds, docTypeRequiresRefMap]
+    );
 
     const pickFiles = () => inputRef.current?.click();
 
@@ -688,6 +731,81 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
       }
 
       await refresh();
+    };
+
+    const startReplace = (it: StoredFileDto) => {
+      if (!allowReplace || !canUpload || !canDelete) return;
+      setReplacingGuid(it.fileGuid);
+      replaceInputRef.current?.click();
+    };
+
+    const handleReplaceFileSelected = async (file: File | null) => {
+      const original = items.find((it) => it.fileGuid === replacingGuid);
+      setReplacingGuid(null);
+      if (!file || !original) return;
+
+      const effectiveEntityId = entityId;
+      if (effectiveEntityId === undefined || effectiveEntityId === null) return;
+
+      setErrorText(null);
+      setUploading(true);
+      try {
+        // Primero sube el nuevo con el mismo tipo/referencia del original; si falla, el
+        // original queda intacto (no se toca hasta confirmar que el reemplazo funcionó).
+        const uploadResp = await DocumentsAPI.uploadSingle({
+          directoryCode,
+          entityType,
+          entityId: String(effectiveEntityId),
+          relativePath: relativePath ?? "",
+          file,
+          documentTypeId: original.documentTypeId != null ? String(original.documentTypeId) : "",
+          documentReferenceNumber: original.documentReferenceNumber ?? undefined,
+          documentReferenceDate: original.documentReferenceDate ?? undefined,
+        });
+        if (uploadResp.status === "error") {
+          setErrorText(handleApiError(uploadResp.error, "Error subiendo el reemplazo."));
+          return;
+        }
+
+        const deleteResp = await DocumentsAPI.remove(original.fileGuid, false);
+        if (deleteResp.status === "error") {
+          setErrorText(
+            "El nuevo archivo se subió, pero no se pudo retirar el anterior automáticamente: " +
+              handleApiError(deleteResp.error, "")
+          );
+        }
+
+        await refresh();
+      } finally {
+        setUploading(false);
+      }
+    };
+
+    const openHistory = async (it: StoredFileDto) => {
+      if (it.documentTypeId == null) return;
+      const effectiveEntityId = entityId;
+      if (effectiveEntityId === undefined || effectiveEntityId === null) return;
+
+      setHistoryDocTypeId(it.documentTypeId);
+      setHistoryOpen(true);
+      setHistoryLoading(true);
+      try {
+        // Sin filtro de status: trae activos Y reemplazados/eliminados (soft-delete) para
+        // reconstruir el histórico de este tipo de documento.
+        const resp = await DocumentsAPI.listByEntity({
+          directoryCode,
+          entityType,
+          entityId: String(effectiveEntityId),
+        });
+        const all = resp.status === "success" ? resp.data ?? [] : [];
+        setHistoryItems(
+          all
+            .filter((f) => f.documentTypeId === it.documentTypeId)
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        );
+      } finally {
+        setHistoryLoading(false);
+      }
     };
 
     const canInteractSelect = !disabled && !uploading && canUpload && (entityReady || allowSelectWhenNotReady);
@@ -1121,6 +1239,28 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
                                 <TooltipContent>Eliminar</TooltipContent>
                               </Tooltip>
                             )}
+
+                            {allowReplace && canUpload && canDelete && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button variant="ghost" size="icon" onClick={() => startReplace(it)} disabled={uploading}>
+                                    <Replace className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Reemplazar</TooltipContent>
+                              </Tooltip>
+                            )}
+
+                            {allowReplace && it.documentTypeId != null && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button variant="ghost" size="icon" onClick={() => openHistory(it)}>
+                                    <History className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Ver historial</TooltipContent>
+                              </Tooltip>
+                            )}
                           </TooltipProvider>
                         </div>
                       </div>
@@ -1186,6 +1326,65 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Input oculto para "Reemplazar" — compartido, dirigido por replacingGuid */}
+        {allowReplace && (
+          <input
+            ref={replaceInputRef}
+            type="file"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0] ?? null;
+              handleReplaceFileSelected(file);
+              e.target.value = "";
+            }}
+          />
+        )}
+
+        {/* Historial de versiones de un tipo de documento (activo + reemplazados) */}
+        {allowReplace && (
+          <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Historial del documento</DialogTitle>
+                <DialogDescription>
+                  {docTypeMap.get(String(historyDocTypeId ?? "")) ?? "Todas las versiones subidas para este tipo."}
+                </DialogDescription>
+              </DialogHeader>
+              {historyLoading ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Cargando…
+                </div>
+              ) : historyItems.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4">Sin historial.</p>
+              ) : (
+                <div className="space-y-2 max-h-96 overflow-auto">
+                  {historyItems.map((h) => {
+                    const isActive = h.status === 1;
+                    return (
+                      <div key={h.fileGuid} className="border rounded-lg p-3 text-sm space-y-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-medium truncate">{h.originalFileName || h.storedFileName}</span>
+                          <span
+                            className={`text-xs rounded-full px-2 py-0.5 shrink-0 ${
+                              isActive ? "bg-success-subtle text-success" : "bg-muted text-muted-foreground"
+                            }`}
+                          >
+                            {isActive ? "Activo" : "Reemplazado"}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Subido: {h.createdAt}</p>
+                        {!isActive && h.deletedAt && (
+                          <p className="text-xs text-muted-foreground">Reemplazado: {h.deletedAt}</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
+        )}
       </>
     );
   }

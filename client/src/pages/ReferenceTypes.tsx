@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { parseApiError } from '@/lib/error-handling';
+import { logger } from "@/lib/logger";
 
 // -----------------------------------------------------------------------------
 // Tipos reales del backend (camelCase) y tipos de la UI (PascalCase)
@@ -153,7 +154,7 @@ export default function ReferenceTypesPage() {
         const uniqueCategories = Array.from(new Set(normalized.map((t: any) => t.Category).filter(Boolean)));
         setCategories(uniqueCategories.sort());
       } else {
-        console.error('Error loading reference types:', response.error);
+        logger.error("ReferenceTypes", 'Error loading reference types:', response.error);
         setReferenceTypes([]);
         toast({
           title: "Error",
@@ -162,7 +163,7 @@ export default function ReferenceTypesPage() {
         });
       }
     } catch (error) {
-      console.error('Error in loadReferenceTypes:', error);
+      logger.error("ReferenceTypes", 'Error in loadReferenceTypes:', error);
       setReferenceTypes([]);
       toast({
         title: "Error",
@@ -275,7 +276,7 @@ export default function ReferenceTypesPage() {
       resetForm();
       await loadReferenceTypes();
     } catch (error: unknown) {
-      console.error('Error saving reference type:', error);
+      logger.error("ReferenceTypes", 'Error saving reference type:', error);
       toast({
         title: "Error",
         description: parseApiError(error).message || "Error al guardar el tipo de referencia",
@@ -340,7 +341,7 @@ export default function ReferenceTypesPage() {
       resetBatchForm();
       await loadReferenceTypes();
     } catch (error: unknown) {
-      console.error('Error in batch creation:', error);
+      logger.error("ReferenceTypes", 'Error in batch creation:', error);
       toast({
         title: "Error",
         description: "Error al crear los tipos de referencia",
@@ -367,7 +368,7 @@ export default function ReferenceTypesPage() {
         throw new Error(response.error?.message || 'Error deleting reference type');
       }
     } catch (error: unknown) {
-      console.error('Error deleting reference type:', error);
+      logger.error("ReferenceTypes", 'Error deleting reference type:', error);
       toast({
         title: "Error",
         description: parseApiError(error).message || "Error al eliminar el tipo de referencia",

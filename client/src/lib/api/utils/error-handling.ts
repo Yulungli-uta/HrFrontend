@@ -5,6 +5,19 @@
  * CORRECCIÓN: Unifica el contrato de error entre `core/fetch.ts` (ApiError con
  * { code, message, details }) y los consumidores que usaban `parseApiError`
  * del antiguo `src/lib/error-handling.tsx`.
+ *
+ * NOTA (investigado, no tocado): existe una segunda función `parseApiError`
+ * en `@/lib/error-handling.tsx` con firma incompatible (devuelve el objeto
+ * `ApiError { status, code, message, details }`, no un `string`). Ambas
+ * versiones son, hoy, internamente consistentes con sus propios consumidores
+ * reales (~13 archivos usan esta versión como string; ~56 usan la de
+ * `error-handling.tsx` como objeto vía `.message`/`.status`) — no hay bug
+ * activo. Delegar esta versión a la otra requeriría normalizar primero el
+ * shape `{code,...}` (core/fetch.ts) vs `{status,...}` (error-handling.tsx),
+ * que hoy NO son intercambiables (la versión objeto solo reconoce `status`,
+ * no `code`, y perdería el mensaje real si se le pasara un ApiError de
+ * core/fetch.ts sin adaptar primero). Se dejó sin tocar a propósito para no
+ * arriesgar los ~70 call-sites sin poder verificar visualmente cada pantalla.
  */
 
 import type { ApiError, ApiResponse } from '../core/fetch';

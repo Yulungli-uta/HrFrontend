@@ -305,7 +305,12 @@ async function getFreshAccessToken(): Promise<string | null> {
 
       return newTokens.accessToken;
     } catch (error) {
-      console.error('[API] Error refreshing access token:', error);
+      apiLogger.logError(
+        'POST',
+        '/api/auth/refresh (renovación de token)',
+        error instanceof Error ? error : new Error(String(error)),
+        0
+      );
       return null;
     } finally {
       refreshPromise = null;

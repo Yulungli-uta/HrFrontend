@@ -20,6 +20,13 @@ type Props = {
   onSelectEmployee?: (emp: any) => void;
   disabled?: boolean;
   placeholder?: string;
+  /**
+   * Búsqueda alterna al buscador genérico de HR.vw_EmployeeDetails (ej. para filtrar solo
+   * empleados con cierto cargo). Si se omite, usa VistaDetallesEmpleadosAPI.listPaged.
+   */
+  searchFn?: (search: string) => Promise<{ status: string; data?: any }>;
+  /** Clave de caché única cuando se usa searchFn (para no compartir caché con el buscador genérico). */
+  searchKey?: string;
 };
 
 /**
@@ -33,6 +40,8 @@ export function EmployeeCombobox({
   onSelectEmployee,
   disabled,
   placeholder = '— Sin especificar —',
+  searchFn,
+  searchKey = 'employee-details-search',
 }: Props) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -52,14 +61,18 @@ export function EmployeeCombobox({
   }, [value]);
 
   const { data, isFetching } = useQuery({
-    queryKey: ['employee-details-search', debouncedSearch],
+    queryKey: [searchKey, debouncedSearch],
     queryFn: () =>
-      VistaDetallesEmpleadosAPI.listPaged({ page: 1, pageSize: 15, search: debouncedSearch }),
+      searchFn
+        ? searchFn(debouncedSearch)
+        : VistaDetallesEmpleadosAPI.listPaged({ page: 1, pageSize: 15, search: debouncedSearch }),
     enabled: debouncedSearch.length >= 2,
     staleTime: 15_000,
   });
 
-  const employees: any[] = data?.status === 'success' ? (data.data?.items ?? []) : [];
+  const employees: any[] = data?.status === 'success'
+    ? (Array.isArray(data.data) ? data.data : (data.data?.items ?? []))
+    : [];
   const hasSearched = debouncedSearch.length >= 2;
 
   const handleSelect = (emp: any) => {

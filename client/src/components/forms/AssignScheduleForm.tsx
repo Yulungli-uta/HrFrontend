@@ -17,6 +17,7 @@ import { useAuth } from "@/features/auth";
 import { HorariosEmpleadosAPI, handleApiError } from "@/lib/api";
 import type { Employee, Schedule, EmployeeSchedule } from "@/types/schedule";
 import { parseApiError } from "@/lib/error-handling";
+import { logger } from "@/lib/logger";
 
 interface AssignScheduleFormProps {
   open: boolean;
@@ -112,7 +113,7 @@ export default function AssignScheduleForm({
           updatedAt: new Date().toISOString(),
         };
 
-        console.log("Actualizando horario anterior:", updatePreviousSchedulePayload);
+        logger.debug("AssignScheduleForm", "Actualizando horario anterior:", updatePreviousSchedulePayload);
         const updateRes = await HorariosEmpleadosAPI.update(
           existingEmployeeSchedule.empScheduleId,
           updatePreviousSchedulePayload
@@ -135,7 +136,7 @@ export default function AssignScheduleForm({
         updatedAt: new Date().toISOString(),
       };
 
-      console.log("Creando nuevo horario:", payload);
+      logger.debug("AssignScheduleForm", "Creando nuevo horario:", payload);
       const createRes = await HorariosEmpleadosAPI.create(payload);
       
       if (createRes.status === "error") {

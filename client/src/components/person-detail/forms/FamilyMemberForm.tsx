@@ -23,6 +23,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { RefreshCw } from "lucide-react";
 import type { FamilyMember } from "@/types/person";
+import { logger } from "@/lib/logger";
 
 const familyMemberFormSchema = z.object({
   firstName: z.string().min(1, "El nombre es requerido"),
@@ -113,7 +114,7 @@ export default function FamilyMemberForm({
         form.reset();
       }
     } catch (error) {
-      console.error("Error submitting family member:", error);
+      logger.error("FamilyMemberForm", "Error submitting family member:", error);
     }
   };
 

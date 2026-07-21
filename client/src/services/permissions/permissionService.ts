@@ -6,8 +6,7 @@
 import { UserSession } from "@/features/auth";
 import { tokenService, authService } from "@/features/auth";
 import { CacheService } from "./cacheService";
-
-const DEBUG = import.meta.env.VITE_DEBUG_AUTH === "true";
+import { logger } from "@/lib/logger";
 
 const PERMISSION_CONFIG = {
   SUPER_ROLES: ["Administrador", "SuperAdmin"],
@@ -113,7 +112,7 @@ export class PermissionService {
       let accessToken = tokenService.getAccessToken();
 
       if (!accessToken) {
-        DEBUG && console.warn("[PERMISSIONS] No hay accessToken");
+        logger.auth.warn("[PERMISSIONS] No hay accessToken");
         return null;
       }
 
@@ -124,18 +123,18 @@ export class PermissionService {
       // Token expirado → intentar renovar
       const refreshToken = tokenService.getRefreshToken();
       if (!refreshToken) {
-        DEBUG && console.warn("[PERMISSIONS] No hay refreshToken para renovar");
+        logger.auth.warn("[PERMISSIONS] No hay refreshToken para renovar");
         return null;
       }
 
-      DEBUG && console.log("[PERMISSIONS] Token expirado, renovando...");
+      logger.auth.debug("[PERMISSIONS] Token expirado, renovando...");
       const newPair = await authService.refreshToken(refreshToken);
       tokenService.setTokens(newPair);
       accessToken = newPair.accessToken;
-      DEBUG && console.log("[PERMISSIONS] Token renovado OK");
+      logger.auth.debug("[PERMISSIONS] Token renovado OK");
       return accessToken;
     } catch (err) {
-      console.error("[PERMISSIONS] Error al validar/renovar token:", err);
+      logger.auth.error("[PERMISSIONS] Error al validar/renovar token:", err);
       return null;
     }
   }
@@ -153,11 +152,9 @@ export class PermissionService {
     permissions: string[];
     menuItems: any[];
   }> {
-    const DEBUG = import.meta.env.VITE_DEBUG_AUTH === "true";
-
     const accessToken = await this.ensureValidToken();
     if (!accessToken) {
-      DEBUG && console.warn("[PERMISSIONS] No se puede cargar /api/menu/user: token inválido");
+      logger.auth.warn("[PERMISSIONS] No se puede cargar /api/menu/user: token inválido");
       return { roles: [], permissions: [], menuItems: [] };
     }
 
@@ -171,7 +168,7 @@ export class PermissionService {
     }>("all-permissions", async () => {
       const url = `${this.getApiBaseUrl()}/api/menu/user`;
 
-      DEBUG && console.log("[PERMISSIONS] Fetching menu from:", url);
+      logger.auth.debug("[PERMISSIONS] Fetching menu from:", url);
 
       const res = await fetch(url, {
         method: "GET",
@@ -180,7 +177,6 @@ export class PermissionService {
           Authorization: `Bearer ${accessToken}`,
         },
       });
-      console.log("Menu: "+ res);
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}: ${res.statusText}`);
       }
@@ -188,7 +184,7 @@ export class PermissionService {
       const json = await res.json();
 
       if (!json?.success || !json.data) {
-        DEBUG && console.warn("[PERMISSIONS] Respuesta inválida de /api/menu/user:", json);
+        logger.auth.warn("[PERMISSIONS] Respuesta inválida de /api/menu/user");
         return { roles: [], permissions: [], menuItems: [] };
       }
 
@@ -203,7 +199,7 @@ export class PermissionService {
       } else if (Array.isArray(json.data.menuItems)) {
         menuItems = json.data.menuItems;
       } else {
-        DEBUG && console.warn("[PERMISSIONS] No se encontraron menuItems en data:", json.data);
+        logger.auth.warn("[PERMISSIONS] No se encontraron menuItems en data");
         menuItems = [];
       }
 
@@ -229,12 +225,11 @@ export class PermissionService {
         .filter((m: any) => m.url && m.url !== null)
         .map((m: any) => m.url as string);
 
-      DEBUG &&
-        console.log("[PERMISSIONS] /api/menu/user mapeado:", {
-          roles,
-          permissionsCount: permissions.length,
-          menuItemsCount: menuItems.length,
-        });
+      logger.auth.debug("[PERMISSIONS] /api/menu/user mapeado:", {
+        roles,
+        permissionsCount: permissions.length,
+        menuItemsCount: menuItems.length,
+      });
 
       // 👉 Esto es lo que se inyecta en userInfo en AuthContext
       // userInfo.roles = roles

@@ -1,6 +1,6 @@
 // utils/browserId.ts — versión final robusta y segura
 
-const DEBUG = import.meta.env.VITE_DEBUG_AUTH === "true";
+import { logger } from "@/lib/logger";
 
 // Si existe variable de entorno, se usa esa clave.
 // Si no, se usa un valor estable por defecto.
@@ -14,7 +14,7 @@ const BROWSER_ID_KEY =
 export function getBrowserId(): string {
   // Seguridad en servidores, tests o entornos sin window
   if (typeof window === "undefined") {
-    DEBUG && console.warn("[BROWSER-ID] SSR MODE");
+    logger.auth.warn("[BROWSER-ID] SSR MODE");
     return "server-browser";
   }
 
@@ -23,8 +23,6 @@ export function getBrowserId(): string {
 
     // Si no existe, lo generamos
     if (!id) {
-      // DEBUG && console.log("[BROWSER-ID] Generando nuevo ID…");
-
       if (
         typeof crypto !== "undefined" &&
         typeof crypto.randomUUID === "function"
@@ -38,13 +36,10 @@ export function getBrowserId(): string {
       localStorage.setItem(BROWSER_ID_KEY, id);
     }
 
-    // DEBUG && console.log("[BROWSER-ID] ID usado:", id);
     return id;
 
-  } catch (err) {
-    // Modo incógnito extremo o fallo en localStorage
-    // DEBUG && console.error("[BROWSER-ID] localStorage falló:", err);
-
+  } catch {
+    // Modo incógnito extremo o fallo en localStorage: ID efímero de respaldo
     return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   }
 }

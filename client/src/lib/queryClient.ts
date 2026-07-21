@@ -1,57 +1,34 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { logger } from "@/lib/logger";
 
-async function throwIfResNotOk(res: Response) {
-  if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
-  }
-}
-
-export async function apiRequest(
-  method: string,
-  url: string,
-  data?: unknown | undefined,
-): Promise<Response> {
-  const res = await fetch(url, {
-    method,
-    headers: data ? { "Content-Type": "application/json" } : {},
-    body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
-  });
-
-  await throwIfResNotOk(res);
-  return res;
-}
-
-type UnauthorizedBehavior = "returnNull" | "throw";
-export const getQueryFn: <T>(options: {
-  on401: UnauthorizedBehavior;
-}) => QueryFunction<T> =
-  ({ on401: unauthorizedBehavior }) =>
-  async ({ queryKey }) => {
-    const res = await fetch(queryKey.join("/") as string, {
-      credentials: "include",
-    });
-
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      return null;
-    }
-
-    await throwIfResNotOk(res);
-    return await res.json();
-  };
+/**
+ * queryFn por defecto: falla explícitamente.
+ *
+ * Antes existía un queryFn por defecto que hacía fetch(queryKey.join("/")) SIN
+ * header Authorization: cualquier useQuery sin queryFn explícito generaba una
+ * petición no autenticada silenciosa. Ningún consumidor lo usaba (verificado),
+ * así que ahora el error es inmediato y descriptivo en lugar de un request
+ * fantasma sin token.
+ */
+const missingQueryFn: QueryFunction = ({ queryKey }) => {
+  throw new Error(
+    `useQuery sin queryFn explícito (queryKey: ${JSON.stringify(queryKey)}). ` +
+      "Define un queryFn que use los servicios de @/lib/api (apiFetch), " +
+      "que inyectan el token de autenticación."
+  );
+};
 
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      queryFn: getQueryFn({ on401: "throw" }),
+      queryFn: missingQueryFn,
       refetchInterval: false,
       refetchOnWindowFocus: false,
       staleTime: Infinity,
       retry: (failureCount, error) => {
-        // Don't retry on client errors (4xx) except 429
-        if (error instanceof Error && error.message.includes('4')) {
-          const status = parseInt(error.message.split(':')[0]);
+        // No reintentar errores de cliente (4xx) excepto 429
+        if (error instanceof Error && error.message.includes("4")) {
+          const status = parseInt(error.message.split(":")[0]);
           if (status >= 400 && status < 500 && status !== 429) {
             return false;
           }
@@ -62,7 +39,7 @@ export const queryClient = new QueryClient({
     mutations: {
       retry: false,
       onError: (error) => {
-        console.error('Mutation error:', error);
+        logger.error("MUTATION", "Error en mutación", error);
       },
     },
   },

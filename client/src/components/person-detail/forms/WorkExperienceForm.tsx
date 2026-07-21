@@ -30,6 +30,7 @@ import { RefreshCw } from "lucide-react";
 import type { WorkExperience } from "@/types/person";
 import { PaisesAPI, TiposReferenciaAPI, type RefType } from "@/lib/api";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
+import { logger } from "@/lib/logger";
 
 // =============================
 // Zod schema
@@ -259,7 +260,7 @@ export default function WorkExperienceForm({
         form.reset();
       }
     } catch (error) {
-      console.error("[WorkExperienceForm] onSubmit ERROR", error);
+      logger.error("WorkExperienceForm", "[WorkExperienceForm] onSubmit ERROR", error);
     }
   };
 
