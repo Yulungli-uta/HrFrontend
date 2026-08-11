@@ -1,0 +1,1365 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Documento técnico - Servicios de seguridad HrFrontend</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #0f172a;
+      --muted: #475569;
+      --line: #d7dee8;
+      --soft: #f8fafc;
+      --panel: #ffffff;
+      --brand: #075aaf;
+      --accent: #f59e0b;
+      --ok: #047857;
+      --warn: #b45309;
+      --code: #111827;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      color: var(--ink);
+      background: var(--soft);
+      line-height: 1.55;
+    }
+    header {
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+      padding: 28px 34px;
+    }
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px;
+      background: #fff;
+    }
+    h1 { margin: 0 0 8px; font-size: 30px; letter-spacing: 0; }
+    h2 {
+      margin: 34px 0 12px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+      font-size: 23px;
+      letter-spacing: 0;
+    }
+    h3 { margin: 24px 0 10px; font-size: 18px; letter-spacing: 0; }
+    h4 { margin: 18px 0 8px; font-size: 15px; letter-spacing: 0; }
+    p { margin: 8px 0 12px; }
+    ul, ol { margin-top: 8px; }
+    li { margin: 4px 0; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0 20px;
+      font-size: 14px;
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 9px 10px;
+      vertical-align: top;
+      text-align: left;
+    }
+    th { background: #eef4fb; color: #0b3b75; }
+    code {
+      background: #eef2f7;
+      padding: 2px 5px;
+      border-radius: 4px;
+      color: var(--code);
+      font-size: 0.94em;
+    }
+    pre {
+      background: #0f172a;
+      color: #f8fafc;
+      border-radius: 8px;
+      padding: 14px;
+      overflow: auto;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    pre code { background: transparent; color: inherit; padding: 0; }
+    .meta {
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .toc {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 8px 18px;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      padding: 16px;
+      border-radius: 8px;
+    }
+    .toc a { color: var(--brand); text-decoration: none; }
+    .note, .warning, .okbox {
+      border-left: 4px solid var(--brand);
+      background: #f8fbff;
+      padding: 12px 14px;
+      margin: 14px 0;
+      border-radius: 6px;
+    }
+    .warning { border-left-color: var(--warn); background: #fff8ed; }
+    .okbox { border-left-color: var(--ok); background: #f0fdf4; }
+    figure {
+      margin: 18px 0 26px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fff;
+    }
+    figure img { width: 100%; display: block; }
+    figcaption {
+      padding: 10px 12px;
+      font-size: 13px;
+      color: var(--muted);
+      background: #f8fafc;
+      border-top: 1px solid var(--line);
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #e0f2fe;
+      color: #075985;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .method {
+      font-weight: 700;
+      color: #0b3b75;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Documento técnico de servicios de seguridad</h1>
+    <div class="meta">
+      Sistema: HrFrontend React + TypeScript, RepositoryUta AuthSystem, HrBackend .NET |
+      Fecha: 2026-07-23 |
+      Entorno documentado: local/staging
+    </div>
+  </header>
+
+  <main>
+    <section id="alcance">
+      <h2>1. Alcance</h2>
+      <p>
+        Este documento describe la autenticación y autorización usada por el frontend de RRHH:
+        login local, login con Office 365/Azure AD, recepción de notificación de login por SignalR,
+        gestión de usuarios, roles, menús, permisos de acción, Active Directory local, Azure AD y sesiones activas.
+      </p>
+      <p>
+        Las evidencias visuales fueron capturadas en modo claro desde el frontend local.
+        Las capturas incluyen una etiqueta de pantalla y, cuando el menú efectivo lo muestra, la opción del sistema resaltada.
+      </p>
+
+      <div class="toc">
+        <a href="#arquitectura">Arquitectura general</a>
+        <a href="#variables">Variables y parámetros base</a>
+        <a href="#parametrizacion-clientes">Parametrización previa de clientes</a>
+        <a href="#login-local">Login local</a>
+        <a href="#login-azure">Login Office 365/Azure</a>
+        <a href="#notificacion-azure">Notificación Azure por SignalR</a>
+        <a href="#sesion-frontend">Gestión de sesión frontend</a>
+        <a href="#autorizacion">Roles, menús y permisos</a>
+        <a href="#ad">AD local y Azure AD</a>
+        <a href="#pantallas">Pantallas operativas</a>
+        <a href="#observaciones">Observaciones técnicas</a>
+      </div>
+    </section>
+
+    <section id="arquitectura">
+      <h2>2. Arquitectura general</h2>
+      <p>
+        El frontend no autentica directamente contra Microsoft ni contra LDAP. El frontend consume el servicio de autenticación
+        centralizado en <code>RepositoryUta</code>, que expone <code>/api/auth</code>, <code>/notificationHub</code>,
+        <code>/api/azure-management</code> y <code>/api/local-ad</code>. HrBackend valida tokens para los módulos propios de RRHH.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Componente</th>
+            <th>Responsabilidad</th>
+            <th>Fuente revisada</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>HrFrontend</td>
+            <td>Formulario de login, popup Office 365, WebSocket, almacenamiento de tokens, carga de usuario, menú y permisos.</td>
+            <td><code>client/src/features/auth/*</code>, <code>client/src/hooks/useNotificationWebSocket.ts</code></td>
+          </tr>
+          <tr>
+            <td>RepositoryUta AuthSystem</td>
+            <td>Emite tokens, valida usuarios locales, genera URL Azure, procesa callback, entrega token por PKCE y administra AD/Azure.</td>
+            <td><code>Controllers/AuthController.cs</code>, <code>Services/Implementations/AzureAuthService.cs</code></td>
+          </tr>
+          <tr>
+            <td>SignalR Hub</td>
+            <td>Notifica eventos de login Azure al navegador que inició el flujo.</td>
+            <td><code>Hubs/NotificationHub.cs</code>, <code>Services/Implementations/NotificationService.cs</code></td>
+          </tr>
+          <tr>
+            <td>HrBackend</td>
+            <td>Consume validación centralizada de token y permisos para servicios de RRHH.</td>
+            <td><code>Infrastructure/Services/TokenValidationService.cs</code></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Flujo resumido</h3>
+      <ol>
+        <li>El usuario ingresa al frontend.</li>
+        <li>El frontend abre conexión SignalR con <code>clientId</code> y <code>browserId</code>.</li>
+        <li>Para login local, envía correo y contraseña a <code>/api/auth/login</code>.</li>
+        <li>Para Office 365, solicita URL a <code>/api/auth/azure/url</code>, abre popup Microsoft y espera <code>LoginNotification</code>.</li>
+        <li>Al recibir tokens, el frontend consulta <code>/api/auth/me</code>, guarda sesión y carga rutas/menús/permisos.</li>
+        <li>Las llamadas posteriores viajan con <code>Authorization: Bearer &lt;accessToken&gt;</code>.</li>
+      </ol>
+    </section>
+
+    <section id="variables">
+      <h2>3. Variables y parámetros base</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Variable</th>
+            <th>Uso</th>
+            <th>Valor local por defecto observado</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>VITE_AUTH_API_BASE_URL</code></td>
+            <td>Base URL para autenticación.</td>
+            <td><code>http://localhost:5010</code></td>
+          </tr>
+          <tr>
+            <td><code>VITE_NOTIFICATION_HUB_URL</code></td>
+            <td>URL del hub SignalR.</td>
+            <td><code>http://localhost:5010/notificationHub</code></td>
+          </tr>
+          <tr>
+            <td><code>VITE_APP_CLIENT_ID</code></td>
+            <td>Identificador de aplicación cliente autorizado en AuthSystem.</td>
+            <td>Debe configurarse por ambiente.</td>
+          </tr>
+          <tr>
+            <td><code>VITE_BROWSER_ID_KEY</code></td>
+            <td>Clave de localStorage para guardar el identificador del navegador.</td>
+            <td><code>wsuta-browser-id</code></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Identificador de navegador</h3>
+      <p>
+        El frontend genera un <code>browserId</code> estable por navegador usando <code>crypto.randomUUID()</code> y lo guarda en
+        <code>localStorage</code>. Este valor permite que la notificación Azure llegue al navegador correcto.
+      </p>
+      <pre><code>localStorage["wsuta-browser-id"] = "uuid-del-navegador"
+localStorage["wsuta:{browserId}:accessToken"] = "jwt"
+localStorage["wsuta:{browserId}:refreshToken"] = "refresh"
+localStorage["wsuta:{browserId}:userSession"] = "{...}"</code></pre>
+    </section>
+
+    <section id="parametrizacion-clientes">
+      <h2>4. Parametrización previa de clientes en RepositoryUta</h2>
+      <p>
+        Antes de que un frontend externo pueda iniciar sesión con Azure, RepositoryUta debe conocer a esa aplicación cliente.
+        El <code>clientId</code> que envía el frontend a <code>/api/auth/azure/url</code> se valida contra
+        <code>auth.tbl_Applications</code>. Si no existe, está inactivo o eliminado, el backend responde
+        <code>Aplicación cliente no autorizada</code>.
+      </p>
+
+      <h3>4.1 Datos que debe solicitar cada frontend cliente</h3>
+      <table>
+        <thead>
+          <tr><th>Dato</th><th>Quién lo define</th><th>Uso</th><th>Ejemplo</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>Name</code></td>
+            <td>Administrador RepositoryUta</td>
+            <td>Nombre descriptivo de la aplicación.</td>
+            <td><code>Portal Bienestar Universitario</code></td>
+          </tr>
+          <tr>
+            <td><code>ClientId</code></td>
+            <td>Administrador RepositoryUta</td>
+            <td>Identificador público que el frontend envía en Azure URL y SignalR.</td>
+            <td><code>bienestar-frontend</code></td>
+          </tr>
+          <tr>
+            <td><code>ClientSecret</code></td>
+            <td>Administrador RepositoryUta</td>
+            <td>Se usa para flujos app-to-app o legacy. No debe exponerse en un frontend público.</td>
+            <td><code>valor-secreto-solo-backend</code></td>
+          </tr>
+          <tr>
+            <td><code>AllowedOrigins</code></td>
+            <td>Administrador RepositoryUta</td>
+            <td>Origen web autorizado para CORS y control operativo.</td>
+            <td><code>https://bienestar.uta.edu.ec</code></td>
+          </tr>
+          <tr>
+            <td><code>ApplicationId</code></td>
+            <td>RepositoryUta</td>
+            <td>GUID interno usado para crear la suscripción de notificaciones.</td>
+            <td><code>4f7d...-...</code></td>
+          </tr>
+          <tr>
+            <td><code>NotificationType</code></td>
+            <td>Administrador RepositoryUta</td>
+            <td>Define cómo se entrega el evento de login: <code>websocket</code>, <code>webhook</code> o <code>both</code>.</td>
+            <td><code>websocket</code></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="warning">
+        <strong>Importante:</strong> en un frontend web público no se debe guardar ni enviar <code>ClientSecret</code>.
+        Para Azure interactivo el frontend necesita <code>clientId</code>, <code>browserId</code> y PKCE. El secreto queda reservado
+        para servicios backend, integraciones servidor-servidor o endpoints legacy.
+      </div>
+
+      <h3>4.2 Crear o validar la aplicación cliente</h3>
+      <p>
+        El código actual valida clientes con <code>IClientApplicationService</code> buscando una fila activa en
+        <code>auth.tbl_Applications</code>. No se observó un controlador público de alta de aplicaciones; por tanto,
+        el alta inicial debe realizarse por script SQL, seed, migración o herramienta administrativa interna.
+      </p>
+      <pre><code>-- Ejemplo referencial. Ajustar nombres, secreto y origen por ambiente.
+DECLARE @ApplicationId uniqueidentifier = NEWID();
+DECLARE @ClientId nvarchar(200) = N'bienestar-frontend';
+DECLARE @ClientSecretPlano nvarchar(200) = N'CAMBIAR-ESTE-SECRETO';
+
+-- ClientSecretHash debe generarse con el mismo algoritmo de ITokenService.Hash.
+-- No guardar el secreto plano en base de datos.
+INSERT INTO auth.tbl_Applications
+(
+  Id,
+  Name,
+  ClientId,
+  ClientSecretHash,
+  Description,
+  IsActive,
+  IsDeleted,
+  CreatedAt,
+  CreatedBy
+)
+VALUES
+(
+  @ApplicationId,
+  N'Portal Bienestar Universitario',
+  @ClientId,
+  N'HASH_GENERADO_POR_REPOSITORYUTA',
+  N'Frontend externo autorizado para login Azure',
+  1,
+  0,
+  SYSUTCDATETIME(),
+  N'admin'
+);
+
+SELECT @ApplicationId AS ApplicationId, @ClientId AS ClientId;</code></pre>
+
+      <h3>4.3 Crear la suscripción de notificación</h3>
+      <p>
+        El login Azure envía <code>LoginNotification</code> solo si la aplicación tiene una suscripción activa para
+        <code>EventType = "Login"</code>. La entidad soporta <code>NotificationType</code> con valores
+        <code>webhook</code>, <code>websocket</code> o <code>both</code>. Para frontends web que esperan SignalR,
+        debe quedar en <code>websocket</code> o <code>both</code>.
+      </p>
+      <pre><code>-- Opción recomendada para frontend web: WebSocket/SignalR.
+INSERT INTO auth.tbl_NotificationSubscriptions
+(
+  Id,
+  ApplicationId,
+  EventType,
+  WebhookUrl,
+  SecretKey,
+  NotificationType,
+  WebSocketGroupName,
+  RequireAuthentication,
+  IsActive,
+  CreatedAt,
+  CreatedBy
+)
+VALUES
+(
+  NEWID(),
+  @ApplicationId,
+  N'Login',
+  NULL,
+  NULL,
+  N'websocket',
+  N'app_bienestar-frontend',
+  0,
+  1,
+  SYSUTCDATETIME(),
+  N'admin'
+);</code></pre>
+
+      <p>
+        Si el integrador también necesita recibir eventos en un backend propio, usar <code>NotificationType = "both"</code>
+        y configurar <code>WebhookUrl</code> más <code>SecretKey</code>. RepositoryUta firmará el payload con
+        <code>X-Webhook-Signature</code> cuando exista <code>SecretKey</code>.
+      </p>
+      <pre><code>-- Opción híbrida: WebSocket para el navegador y webhook para backend externo.
+INSERT INTO auth.tbl_NotificationSubscriptions
+(
+  Id,
+  ApplicationId,
+  EventType,
+  WebhookUrl,
+  SecretKey,
+  NotificationType,
+  WebSocketGroupName,
+  RequireAuthentication,
+  IsActive,
+  CreatedAt,
+  CreatedBy
+)
+VALUES
+(
+  NEWID(),
+  @ApplicationId,
+  N'Login',
+  N'https://bienestar.uta.edu.ec/api/auth/repositoryuta-webhook',
+  N'secret-hmac-del-webhook',
+  N'both',
+  N'app_bienestar-frontend',
+  0,
+  1,
+  SYSUTCDATETIME(),
+  N'admin'
+);</code></pre>
+
+      <h3>4.4 Alternativa por API para suscripciones</h3>
+      <p>
+        RepositoryUta expone <code>/api/notifications/subscriptions</code> para crear suscripciones, pero el DTO actual no recibe
+        <code>NotificationType</code>; por defecto la entidad queda como <code>webhook</code>. Si se usa este endpoint para un
+        frontend SignalR, se debe actualizar posteriormente la fila a <code>websocket</code> o <code>both</code>.
+      </p>
+      <pre><code>POST /api/notifications/subscriptions
+Authorization: Bearer &lt;token-admin&gt;
+Content-Type: application/json
+
+{
+  "applicationId": "GUID-DE-auth.tbl_Applications",
+  "eventType": "Login",
+  "webhookUrl": "",
+  "secretKey": null
+}
+
+-- Ajuste posterior si el objetivo es SignalR:
+UPDATE auth.tbl_NotificationSubscriptions
+SET NotificationType = 'websocket',
+    WebhookUrl = NULL,
+    RequireAuthentication = 0,
+    ModifiedAt = SYSUTCDATETIME(),
+    ModifiedBy = 'admin'
+WHERE ApplicationId = 'GUID-DE-auth.tbl_Applications'
+  AND EventType = 'Login'
+  AND IsActive = 1;</code></pre>
+
+      <h3>4.5 Checklist de parametrización</h3>
+      <ol>
+        <li>Crear fila activa en <code>auth.tbl_Applications</code>.</li>
+        <li>Confirmar que <code>ClientId</code> sea único, estable y conocido por el frontend.</li>
+        <li>Generar y guardar <code>ClientSecretHash</code> solo para flujos backend/legacy.</li>
+        <li>Registrar orígenes CORS del frontend en la configuración de RepositoryUta si aplica.</li>
+        <li>Crear suscripción activa con <code>EventType = "Login"</code>.</li>
+        <li>Para navegadores, configurar <code>NotificationType = "websocket"</code> o <code>"both"</code>.</li>
+        <li>Verificar que <code>AzureAd:RedirectUri</code> coincida con la URL configurada en Microsoft Entra ID.</li>
+        <li>Verificar que <code>AzureAd:SecureTokenDelivery = true</code> para entrega con <code>deliveryCode</code>.</li>
+        <li>Entregar al frontend solo <code>authBaseUrl</code>, <code>notificationHubUrl</code> y <code>clientId</code>.</li>
+      </ol>
+
+      <h3>4.6 Flujo completo que debe implementar cada frontend</h3>
+      <ol>
+        <li>Inicializar configuración: <code>authBaseUrl</code>, <code>notificationHubUrl</code>, <code>clientId</code>.</li>
+        <li>Crear o leer <code>browserId</code> desde almacenamiento local.</li>
+        <li>Crear conexión SignalR a <code>{notificationHubUrl}?clientId={clientId}&amp;browserId={browserId}</code>.</li>
+        <li>Registrar handler para <code>LoginNotification</code>.</li>
+        <li>Ejecutar <code>connection.start()</code>.</li>
+        <li>Invocar <code>JoinApplicationGroup(clientId, null)</code> o <code>JoinApplicationGroup(clientId, "anon")</code>.</li>
+        <li>Invocar <code>JoinBrowserGroup(clientId, browserId)</code>.</li>
+        <li>Generar <code>codeVerifier</code> y <code>codeChallenge</code>.</li>
+        <li>Solicitar <code>GET /api/auth/azure/url?clientId=...&amp;browserId=...&amp;codeChallenge=...</code>.</li>
+        <li>Abrir la URL devuelta en popup o redirección.</li>
+        <li>Esperar el evento <code>LoginNotification</code>.</li>
+        <li>Si llega <code>deliveryCode</code>, llamar <code>POST /api/auth/azure/exchange</code> con <code>deliveryCode</code> y <code>codeVerifier</code>.</li>
+        <li>Guardar tokens recibidos y consultar <code>GET /api/auth/me</code>.</li>
+        <li>Construir sesión local y navegar al dashboard del frontend cliente.</li>
+      </ol>
+
+      <h3>4.7 Ejemplo TypeScript para frontend web</h3>
+      <pre><code>import * as signalR from "@microsoft/signalr";
+
+const authBaseUrl = "https://repositoryuta.uta.edu.ec";
+const notificationHubUrl = `${authBaseUrl}/notificationHub`;
+const clientId = "bienestar-frontend";
+
+function getBrowserId(): string {
+  const key = "repositoryuta-browser-id";
+  let value = localStorage.getItem(key);
+  if (!value) {
+    value = crypto.randomUUID();
+    localStorage.setItem(key, value);
+  }
+  return value;
+}
+
+function base64Url(bytes: Uint8Array): string {
+  let binary = "";
+  bytes.forEach((b) =&gt; binary += String.fromCharCode(b));
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function createCodeVerifier(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return base64Url(bytes);
+}
+
+async function createCodeChallenge(verifier: string): Promise&lt;string&gt; {
+  const data = new TextEncoder().encode(verifier);
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  return base64Url(new Uint8Array(hash));
+}
+
+export async function loginWithRepositoryUtaAzure(): Promise&lt;void&gt; {
+  const browserId = getBrowserId();
+  const codeVerifier = createCodeVerifier();
+  const codeChallenge = await createCodeChallenge(codeVerifier);
+
+  const connection = new signalR.HubConnectionBuilder()
+    .withUrl(`${notificationHubUrl}?clientId=${encodeURIComponent(clientId)}&amp;browserId=${encodeURIComponent(browserId)}`)
+    .withAutomaticReconnect()
+    .build();
+
+  connection.on("LoginNotification", async (message: any) =&gt; {
+    if (message?.eventType !== "Login") return;
+
+    if (!message.deliveryCode) {
+      throw new Error("RepositoryUta no envió deliveryCode. Verificar AzureAd:SecureTokenDelivery.");
+    }
+
+    const exchangeResponse = await fetch(`${authBaseUrl}/api/auth/azure/exchange`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        deliveryCode: message.deliveryCode,
+        codeVerifier
+      })
+    }).then((r) =&gt; r.json());
+
+    if (!exchangeResponse.success) {
+      throw new Error(exchangeResponse.message || "No se pudo canjear deliveryCode.");
+    }
+
+    const { accessToken, refreshToken } = exchangeResponse.data;
+    localStorage.setItem("accessToken", accessToken);
+    localStorage.setItem("refreshToken", refreshToken);
+
+    const me = await fetch(`${authBaseUrl}/api/auth/me`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    }).then((r) =&gt; r.json());
+
+    localStorage.setItem("userSession", JSON.stringify(me.data));
+    window.location.href = "/";
+  });
+
+  await connection.start();
+  await connection.invoke("JoinApplicationGroup", clientId, null);
+  await connection.invoke("JoinBrowserGroup", clientId, browserId);
+
+  const params = new URLSearchParams({
+    clientId,
+    browserId,
+    codeChallenge
+  });
+
+  const urlResponse = await fetch(`${authBaseUrl}/api/auth/azure/url?${params.toString()}`)
+    .then((r) =&gt; r.json());
+
+  if (!urlResponse.success) {
+    throw new Error(urlResponse.message || "RepositoryUta no generó URL Azure.");
+  }
+
+  const popup = window.open(
+    urlResponse.data.url,
+    "repositoryuta-azure-login",
+    "width=600,height=720,left=200,top=100"
+  );
+
+  if (!popup) {
+    throw new Error("El navegador bloqueó el popup de Microsoft.");
+  }
+}</code></pre>
+
+      <h3>4.8 Ejemplo JavaScript sin framework</h3>
+      <pre><code>&lt;script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@latest/dist/browser/signalr.min.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+const authBaseUrl = "https://repositoryuta.uta.edu.ec";
+const clientId = "bienestar-frontend";
+
+async function sha256Base64Url(text) {
+  const data = new TextEncoder().encode(text);
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  const bytes = new Uint8Array(hash);
+  let binary = "";
+  bytes.forEach(b =&gt; binary += String.fromCharCode(b));
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function randomBase64Url() {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  let binary = "";
+  bytes.forEach(b =&gt; binary += String.fromCharCode(b));
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+async function iniciarLoginAzure() {
+  let browserId = localStorage.getItem("repositoryuta-browser-id");
+  if (!browserId) {
+    browserId = crypto.randomUUID();
+    localStorage.setItem("repositoryuta-browser-id", browserId);
+  }
+
+  const codeVerifier = randomBase64Url();
+  const codeChallenge = await sha256Base64Url(codeVerifier);
+
+  const connection = new signalR.HubConnectionBuilder()
+    .withUrl(`${authBaseUrl}/notificationHub?clientId=${clientId}&amp;browserId=${browserId}`)
+    .withAutomaticReconnect()
+    .build();
+
+  connection.on("LoginNotification", async function(msg) {
+    if (msg.eventType !== "Login") return;
+
+    const response = await fetch(`${authBaseUrl}/api/auth/azure/exchange`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        deliveryCode: msg.deliveryCode,
+        codeVerifier: codeVerifier
+      })
+    }).then(r =&gt; r.json());
+
+    const accessToken = response.data.accessToken;
+    localStorage.setItem("accessToken", accessToken);
+
+    const me = await fetch(`${authBaseUrl}/api/auth/me`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    }).then(r =&gt; r.json());
+
+    console.log("Usuario autenticado:", me.data);
+  });
+
+  await connection.start();
+  await connection.invoke("JoinApplicationGroup", clientId, null);
+  await connection.invoke("JoinBrowserGroup", clientId, browserId);
+
+  const params = new URLSearchParams({ clientId, browserId, codeChallenge });
+  const azure = await fetch(`${authBaseUrl}/api/auth/azure/url?${params}`).then(r =&gt; r.json());
+  window.open(azure.data.url, "azureLogin", "width=600,height=720");
+}
+&lt;/script&gt;</code></pre>
+
+      <h3>4.9 Ejemplo webhook opcional para backend Node.js</h3>
+      <p>
+        Este ejemplo aplica solo si la suscripción se configura como <code>webhook</code> o <code>both</code>.
+        El navegador seguirá necesitando SignalR si quiere completar el login interactivo en la misma pestaña.
+      </p>
+      <pre><code>import express from "express";
+import crypto from "node:crypto";
+
+const app = express();
+const secret = "secret-hmac-del-webhook";
+
+app.use(express.json({
+  verify: (req, _res, buf) =&gt; {
+    req.rawBody = buf.toString("utf8");
+  }
+}));
+
+app.post("/api/auth/repositoryuta-webhook", (req, res) =&gt; {
+  const signature = req.header("X-Webhook-Signature");
+  const expected = crypto
+    .createHmac("sha256", secret)
+    .update(req.rawBody)
+    .digest("hex");
+
+  if (signature &amp;&amp; signature !== expected) {
+    return res.status(401).send("Invalid signature");
+  }
+
+  console.log("Evento RepositoryUta:", req.body.eventType, req.body.data?.email);
+  res.json({ ok: true });
+});
+
+app.listen(3000);</code></pre>
+
+      <h3>4.10 Errores frecuentes en integraciones</h3>
+      <table>
+        <thead>
+          <tr><th>Síntoma</th><th>Causa probable</th><th>Corrección</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>Aplicación cliente no autorizada</code></td>
+            <td>No existe fila activa en <code>auth.tbl_Applications</code> para el <code>clientId</code>.</td>
+            <td>Crear/activar aplicación y verificar que el frontend envíe exactamente el mismo <code>ClientId</code>.</td>
+          </tr>
+          <tr>
+            <td>No llega <code>LoginNotification</code></td>
+            <td>No existe suscripción <code>Login</code> activa o <code>NotificationType</code> quedó como <code>webhook</code>.</td>
+            <td>Configurar <code>NotificationType = websocket</code> o <code>both</code>.</td>
+          </tr>
+          <tr>
+            <td>El evento llega a otro navegador o no llega al actual</td>
+            <td><code>browserId</code> distinto entre hub y <code>/api/auth/azure/url</code>.</td>
+            <td>Usar el mismo <code>browserId</code> durante todo el flujo.</td>
+          </tr>
+          <tr>
+            <td><code>Código de entrega inválido o expirado</code></td>
+            <td><code>deliveryCode</code> expiró, ya fue usado o se perdió el <code>codeVerifier</code>.</td>
+            <td>Reiniciar login Azure. No recargar la pestaña mientras el popup está abierto.</td>
+          </tr>
+          <tr>
+            <td>Popup bloqueado</td>
+            <td>El navegador bloqueó ventanas abiertas fuera de una acción del usuario.</td>
+            <td>Abrir popup directamente desde el click del botón de login.</td>
+          </tr>
+          <tr>
+            <td>CORS o conexión SignalR rechazada</td>
+            <td>Origen del frontend no permitido en RepositoryUta.</td>
+            <td>Agregar origen en configuración CORS/AllowedOrigins del ambiente.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="login-local">
+      <h2>5. Metodología de login local</h2>
+      <figure>
+        <img src="assets/security-services/01-login-local.png" alt="Pantalla login local" />
+        <figcaption>Login local: usuario y contraseña administrados por el servicio central.</figcaption>
+      </figure>
+
+      <h3>Pasos de usuario</h3>
+      <ol>
+        <li>Abrir la pantalla <code>/login</code>.</li>
+        <li>Seleccionar la pestaña <strong>Local</strong>.</li>
+        <li>Ingresar usuario/correo institucional y contraseña.</li>
+        <li>Presionar <strong>Iniciar Sesión</strong>.</li>
+        <li>Si el backend responde tokens válidos, el frontend consulta el perfil y redirige al dashboard.</li>
+      </ol>
+
+      <h3>Servicio consumido</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Método</th>
+            <th>Endpoint</th>
+            <th>Parámetros</th>
+            <th>Respuesta esperada</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="method">POST</td>
+            <td><code>/api/auth/login</code></td>
+            <td><code>email</code>, <code>password</code></td>
+            <td><code>accessToken</code>, <code>refreshToken</code></td>
+          </tr>
+          <tr>
+            <td class="method">GET</td>
+            <td><code>/api/auth/me</code></td>
+            <td>Header <code>Authorization: Bearer accessToken</code></td>
+            <td>Usuario, roles, menú, permisos de acción y grupos AD.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Request de login local</h3>
+      <pre><code>{
+  "email": "usuario@uta.edu.ec",
+  "password": "********"
+}</code></pre>
+
+      <h3>Respuesta esperada</h3>
+      <pre><code>{
+  "success": true,
+  "data": {
+    "accessToken": "jwt...",
+    "refreshToken": "refresh..."
+  },
+  "message": "Login exitoso"
+}</code></pre>
+
+      <h3>Errores controlados</h3>
+      <table>
+        <thead>
+          <tr><th>Caso</th><th>Respuesta</th><th>Tratamiento frontend</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Credenciales inválidas</td>
+            <td><code>401 Unauthorized</code> con mensaje <code>Credenciales inválidas</code></td>
+            <td>Muestra toast de error y no guarda tokens.</td>
+          </tr>
+          <tr>
+            <td>Usuario inactivo/no encontrado</td>
+            <td>Error de backend</td>
+            <td>Muestra mensaje normalizado por <code>parseApiError</code>.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="login-azure">
+      <h2>6. Metodología de login Office 365 / Azure AD</h2>
+      <figure>
+        <img src="assets/security-services/02-login-office365.png" alt="Pantalla login Office 365" />
+        <figcaption>Login Office 365: el usuario se autentica contra Microsoft en un popup.</figcaption>
+      </figure>
+
+      <h3>Pasos de usuario</h3>
+      <ol>
+        <li>Abrir <code>/login</code>.</li>
+        <li>Seleccionar la pestaña <strong>Office 365</strong>.</li>
+        <li>Presionar <strong>Iniciar sesión con Office 365</strong>.</li>
+        <li>El frontend genera un <code>codeVerifier</code> PKCE en memoria y calcula <code>codeChallenge</code>.</li>
+        <li>El frontend solicita la URL a <code>/api/auth/azure/url</code> enviando <code>clientId</code>, <code>browserId</code> y <code>codeChallenge</code>.</li>
+        <li>El frontend abre la URL de Microsoft en popup.</li>
+        <li>Microsoft devuelve el callback al backend.</li>
+        <li>El backend valida el <code>state</code>, emite tokens y envía una notificación SignalR al navegador que inició el flujo.</li>
+        <li>El frontend recibe <code>deliveryCode</code>, lo canjea con <code>codeVerifier</code> y completa la sesión.</li>
+      </ol>
+
+      <h3>Servicios consumidos</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Método</th>
+            <th>Endpoint</th>
+            <th>Parámetros</th>
+            <th>Uso</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="method">GET</td>
+            <td><code>/api/auth/azure/url</code></td>
+            <td><code>clientId</code>, <code>browserId</code>, <code>codeChallenge</code></td>
+            <td>Genera URL Microsoft y <code>state</code> de OAuth.</td>
+          </tr>
+          <tr>
+            <td class="method">GET</td>
+            <td><code>/api/auth/azure/callback</code></td>
+            <td><code>code</code>, <code>state</code></td>
+            <td>Callback recibido desde Microsoft. Lo consume el backend, no el frontend directamente.</td>
+          </tr>
+          <tr>
+            <td class="method">POST</td>
+            <td><code>/api/auth/azure/exchange</code></td>
+            <td><code>deliveryCode</code>, <code>codeVerifier</code></td>
+            <td>Canje seguro del código de entrega por tokens reales.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Solicitud de URL Azure</h3>
+      <pre><code>GET /api/auth/azure/url?clientId=UTA-Licencias&amp;browserId=browser-uuid&amp;codeChallenge=base64url_sha256</code></pre>
+
+      <h3>Respuesta de URL Azure</h3>
+      <pre><code>{
+  "success": true,
+  "data": {
+    "url": "https://login.microsoftonline.com/...",
+    "state": "base64-state",
+    "clientId": "UTA-Licencias",
+    "browserId": "browser-uuid"
+  }
+}</code></pre>
+
+      <h3>Canje de deliveryCode</h3>
+      <pre><code>POST /api/auth/azure/exchange
+{
+  "deliveryCode": "codigo-de-un-solo-uso",
+  "codeVerifier": "valor-generado-solo-en-la-pestana"
+}</code></pre>
+
+      <div class="okbox">
+        <strong>Seguridad PKCE:</strong> con <code>AzureAd:SecureTokenDelivery=true</code>, el par de tokens real no viaja por WebSocket.
+        El WebSocket entrega solo un <code>deliveryCode</code> de un solo uso, con expiración aproximada de 120 segundos.
+      </div>
+    </section>
+
+    <section id="notificacion-azure">
+      <h2>7. Recepción de notificación Azure por SignalR</h2>
+      <p>
+        Para que un cliente externo o el propio frontend pueda completar el login Azure, debe conectarse al hub antes o durante el flujo
+        usando el mismo <code>clientId</code> y <code>browserId</code> que envió a <code>/api/auth/azure/url</code>.
+      </p>
+
+      <h3>Conexión requerida</h3>
+      <pre><code>const hubUrl = "http://localhost:5010/notificationHub";
+const connection = new signalR.HubConnectionBuilder()
+  .withUrl(`${hubUrl}?clientId=${clientId}&amp;browserId=${browserId}`)
+  .withAutomaticReconnect()
+  .build();
+
+connection.on("LoginNotification", async (message) =&gt; {
+  if (message.eventType !== "Login") return;
+
+  if (message.deliveryCode) {
+    const tokens = await fetch(`${authBase}/api/auth/azure/exchange`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        deliveryCode: message.deliveryCode,
+        codeVerifier
+      })
+    }).then(r =&gt; r.json());
+
+    // Guardar tokens y consultar /api/auth/me
+  }
+});
+
+await connection.start();
+await connection.invoke("JoinApplicationGroup", clientId, "UTA-Licencias");
+await connection.invoke("JoinBrowserGroup", clientId, browserId);</code></pre>
+
+      <h3>Estructura de mensaje esperada</h3>
+      <pre><code>{
+  "eventType": "Login",
+  "timestamp": "2026-07-23T10:00:00",
+  "context": {
+    "initiatingApplication": "UTA-Licencias",
+    "loginSource": "Office365",
+    "sessionScope": "specific",
+    "notificationType": "hybrid"
+  },
+  "data": {
+    "userId": "guid",
+    "email": "usuario@uta.edu.ec",
+    "displayName": "Nombre Usuario",
+    "loginType": "Office365",
+    "ipAddress": "127.0.0.1",
+    "roles": ["Administrador"],
+    "permissions": ["/admin/users"]
+  },
+  "pair": null,
+  "deliveryCode": "codigo-de-entrega"
+}</code></pre>
+
+      <h3>Reglas para que el cliente se conecte correctamente</h3>
+      <ol>
+        <li>Generar o recuperar <code>browserId</code> antes de pedir la URL Azure.</li>
+        <li>Conectarse a <code>/notificationHub?clientId=...&amp;browserId=...</code>.</li>
+        <li>Unirse explícitamente a <code>JoinBrowserGroup(clientId, browserId)</code>.</li>
+        <li>Enviar el mismo <code>browserId</code> en <code>/api/auth/azure/url</code>.</li>
+        <li>Conservar el <code>codeVerifier</code> solo en memoria de la pestaña que inició el login.</li>
+        <li>Canjear el <code>deliveryCode</code> una sola vez; si expira o falla, reiniciar el flujo Azure.</li>
+      </ol>
+    </section>
+
+    <section id="sesion-frontend">
+      <h2>8. Gestión de sesión en frontend</h2>
+      <figure>
+        <img src="assets/security-services/03-dashboard.png" alt="Dashboard del sistema" />
+        <figcaption>Dashboard posterior al login: valida que la sesión quedó activa y el usuario fue cargado.</figcaption>
+      </figure>
+
+      <h3>Qué guarda el frontend</h3>
+      <table>
+        <thead>
+          <tr><th>Elemento</th><th>Ubicación</th><th>Uso</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>accessToken</code></td>
+            <td><code>localStorage</code> con prefijo por <code>browserId</code></td>
+            <td>Autorizar llamadas a APIs.</td>
+          </tr>
+          <tr>
+            <td><code>refreshToken</code></td>
+            <td><code>localStorage</code> con prefijo por <code>browserId</code></td>
+            <td>Renovar access token cuando expira.</td>
+          </tr>
+          <tr>
+            <td><code>UserSession</code></td>
+            <td><code>localStorage</code></td>
+            <td>Renderizar usuario, roles, permisos, menús y grupos AD.</td>
+          </tr>
+          <tr>
+            <td><code>lastActivity</code></td>
+            <td><code>localStorage</code></td>
+            <td>Control de cierre por inactividad.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Renovación y cierre</h3>
+      <table>
+        <thead>
+          <tr><th>Acción</th><th>Servicio</th><th>Comportamiento</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Renovar token</td>
+            <td><code>POST /api/auth/refresh</code></td>
+            <td>Envía <code>refreshToken</code> y recibe nuevo par de tokens.</td>
+          </tr>
+          <tr>
+            <td>Cerrar sesión</td>
+            <td><code>POST /api/auth/logout</code></td>
+            <td>Revoca refresh token en servidor y limpia estado local.</td>
+          </tr>
+          <tr>
+            <td>Expulsión administrativa</td>
+            <td>Evento SignalR <code>ForceLogout</code></td>
+            <td>Muestra aviso y ejecuta logout en el frontend.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Cambio de clave</h3>
+      <figure>
+        <img src="assets/security-services/04-cambio-clave.png" alt="Cambio de contraseña" />
+        <figcaption>Cambio de clave del usuario autenticado.</figcaption>
+      </figure>
+      <p>
+        El cambio de clave usa <code>PasswordAPI</code>. Para usuarios locales requiere contraseña actual.
+        Para usuarios AzureAD depende de <code>PasswordChange:Method</code>: <code>LocalAd</code> o <code>AzureWriteback</code>.
+      </p>
+      <table>
+        <thead>
+          <tr><th>Método</th><th>Endpoint</th><th>Parámetros</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="method">GET</td>
+            <td><code>/api/auth/password-change-method</code></td>
+            <td>Sin body. Devuelve <code>LocalAd</code> o <code>AzureWriteback</code>.</td>
+          </tr>
+          <tr>
+            <td class="method">POST</td>
+            <td><code>/api/auth/change-password</code></td>
+            <td><code>currentPassword</code>, <code>newPassword</code></td>
+          </tr>
+          <tr>
+            <td class="method">POST</td>
+            <td><code>/api/auth/request-password-change-2fa</code></td>
+            <td>Solicita OTP de cambio de clave.</td>
+          </tr>
+          <tr>
+            <td class="method">POST</td>
+            <td><code>/api/auth/change-password-2fa</code></td>
+            <td><code>currentPassword</code>, <code>newPassword</code>, <code>otpCode</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="autorizacion">
+      <h2>9. Roles, menú, perfiles y permisos de acción</h2>
+      <p>
+        El sistema maneja dos capas distintas de autorización. La primera decide qué opciones/rutas aparecen en el menú.
+        La segunda decide qué acciones puede ejecutar el usuario dentro de una pantalla.
+      </p>
+
+      <table>
+        <thead>
+          <tr><th>Concepto</th><th>Qué controla</th><th>Servicios</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Roles</td>
+            <td>Agrupan acceso y permisos. Ejemplo: <code>Administrador</code>, <code>R_DITIC</code>.</td>
+            <td><code>/api/roles</code>, <code>/api/user-roles</code></td>
+          </tr>
+          <tr>
+            <td>Roles tipo menú</td>
+            <td>Asocian roles con ítems de menú/URLs visibles.</td>
+            <td><code>/api/menu-items</code>, <code>/api/role-menu-items</code></td>
+          </tr>
+          <tr>
+            <td>Permission action</td>
+            <td>Permisos granulares de acciones como crear, editar, aprobar, eliminar.</td>
+            <td><code>/api/permissions</code>, <code>/api/role-permissions</code></td>
+          </tr>
+          <tr>
+            <td>Perfiles de acceso</td>
+            <td>Agrupan varios roles para asignación rápida a usuarios.</td>
+            <td><code>/api/access-profiles</code>, <code>/api/access-profile-roles</code>, <code>/api/user-access-profiles</code></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Pantallas y operación</h3>
+
+      <figure>
+        <img src="assets/security-services/05-usuarios.png" alt="Administración de usuarios" />
+        <figcaption>Usuarios: filtrar, crear, editar, activar/desactivar y revisar tipo Local/AzureAD.</figcaption>
+      </figure>
+
+      <figure>
+        <img src="assets/security-services/06-roles.png" alt="Administración de roles" />
+        <figcaption>Roles: crear, editar, eliminar lógicamente y mantener roles activos.</figcaption>
+      </figure>
+
+      <figure>
+        <img src="assets/security-services/07-asignacion-roles.png" alt="Asignación de roles a usuarios" />
+        <figcaption>Roles de usuarios: seleccionar usuario y asignar o retirar roles.</figcaption>
+      </figure>
+
+      <figure>
+        <img src="assets/security-services/08-items-menu.png" alt="Items de menú" />
+        <figcaption>Items de menú: administrar nombre, URL, ícono, jerarquía, orden y visibilidad.</figcaption>
+      </figure>
+
+      <figure>
+        <img src="assets/security-services/09-roles-menu.png" alt="Roles tipo menú" />
+        <figcaption>Roles tipo menú: seleccionar rol y marcar qué opciones del sistema debe visualizar.</figcaption>
+      </figure>
+
+      <figure>
+        <img src="assets/security-services/10-editor-roles.png" alt="Editor de roles" />
+        <figcaption>Editor de roles: vista unificada para menú y permisos del rol.</figcaption>
+      </figure>
+
+      <figure>
+        <img src="assets/security-services/11-permisos-accion.png" alt="Permisos de acción por rol" />
+        <figcaption>Permisos de acción: asignación de códigos de acción a un rol seleccionado.</figcaption>
+      </figure>
+
+      <figure>
+        <img src="assets/security-services/12-perfiles-acceso.png" alt="Perfiles de acceso" />
+        <figcaption>Perfiles de acceso: crear perfiles reutilizables, asociar roles y asignarlos a usuarios.</figcaption>
+      </figure>
+
+      <h3>Endpoints principales de autorización</h3>
+      <table>
+        <thead>
+          <tr><th>Recurso</th><th>Endpoints</th><th>Operación</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Usuarios</td>
+            <td><code>GET/POST/PUT/DELETE /api/users</code>, <code>GET /api/users/paged</code></td>
+            <td>Listado, creación, actualización, eliminación y filtros por tipo/estado.</td>
+          </tr>
+          <tr>
+            <td>Roles</td>
+            <td><code>GET/POST/PUT/DELETE /api/roles</code></td>
+            <td>Mantenimiento de roles.</td>
+          </tr>
+          <tr>
+            <td>Usuario-Rol</td>
+            <td><code>GET/POST/PUT /api/user-roles</code>, <code>DELETE /api/user-roles/{userId}/{roleId}</code></td>
+            <td>Asignación o retiro de roles a usuarios.</td>
+          </tr>
+          <tr>
+            <td>Menú</td>
+            <td><code>GET/POST/PUT/DELETE /api/menu-items</code></td>
+            <td>Mantenimiento de opciones visibles.</td>
+          </tr>
+          <tr>
+            <td>Menú por rol</td>
+            <td><code>GET /api/role-menu-items/role/{roleId}</code>, <code>POST /api/role-menu-items</code>, <code>DELETE /api/role-menu-items/{roleId}/{menuItemId}</code></td>
+            <td>Control de opciones disponibles para cada rol.</td>
+          </tr>
+          <tr>
+            <td>Permisos de acción</td>
+            <td><code>GET /api/permissions</code>, <code>GET /api/role-permissions/role/{roleId}</code>, <code>GET /api/role-permissions/effective?roles=...</code></td>
+            <td>Catálogo y cálculo efectivo de acciones autorizadas.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="note">
+        El permiso <code>ADMIN.ACCESS</code> se trata como bypass técnico para roles administradores, de acuerdo con el servicio de permisos de acción del frontend.
+      </div>
+    </section>
+
+    <section id="ad">
+      <h2>10. Gestión de AD local, Azure AD y sesiones</h2>
+
+      <h3>Azure AD / Microsoft Graph</h3>
+      <figure>
+        <img src="assets/security-services/13-azure-management.png" alt="Gestión Azure AD" />
+        <figcaption>Azure Management: usuarios desde Graph, búsqueda, creación, edición, activación, reset de clave, roles y eliminación.</figcaption>
+      </figure>
+
+      <table>
+        <thead>
+          <tr><th>Operación</th><th>Endpoint</th><th>Parámetros principales</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Listar usuarios Azure</td><td><code>GET /api/azure-management/users</code></td><td><code>page</code>, <code>pageSize</code>, <code>filter</code></td></tr>
+          <tr><td>Crear usuario</td><td><code>POST /api/azure-management/users</code></td><td>Email, displayName, nombres, contraseña, ubicación, estado.</td></tr>
+          <tr><td>Actualizar usuario</td><td><code>PUT /api/azure-management/users/{id}</code></td><td>Atributos editables de Graph.</td></tr>
+          <tr><td>Habilitar/deshabilitar</td><td><code>POST /api/azure-management/users/{id}/enable|disable</code></td><td>ID de usuario Azure.</td></tr>
+          <tr><td>Reset de clave</td><td><code>POST /api/azure-management/users/{id}/reset-password</code></td><td><code>forceChange</code></td></tr>
+          <tr><td>Roles Azure</td><td><code>GET /api/azure-management/azure-roles</code></td><td>Roles de directorio.</td></tr>
+          <tr><td>Asignar rol Azure</td><td><code>POST /api/azure-management/users/{userId}/azure-roles/{roleId}</code></td><td>ID usuario e ID rol.</td></tr>
+          <tr><td>Grupos Azure</td><td><code>GET/POST/PUT/DELETE /api/azure-management/groups</code></td><td>Grupo, miembros y operaciones masivas.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Active Directory local</h3>
+      <figure>
+        <img src="assets/security-services/14-local-ad.png" alt="Gestión AD local usuarios" />
+        <figcaption>AD local: usuarios LDAP, búsqueda, creación, habilitar/deshabilitar, sincronización Entra y cambio de clave administrativo.</figcaption>
+      </figure>
+
+      <figure>
+        <img src="assets/security-services/15-local-ad-grupos.png" alt="Gestión AD local grupos" />
+        <figcaption>AD local: pestaña de grupos, miembros y administración de pertenencias.</figcaption>
+      </figure>
+
+      <table>
+        <thead>
+          <tr><th>Operación</th><th>Endpoint</th><th>Parámetros principales</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Autenticar contra LDAP</td><td><code>POST /api/local-ad/authenticate</code></td><td><code>username</code>, <code>password</code></td></tr>
+          <tr><td>Listar usuarios</td><td><code>GET /api/local-ad/users</code></td><td><code>page</code>, <code>pageSize</code>, <code>filter</code></td></tr>
+          <tr><td>Crear usuario AD</td><td><code>POST /api/local-ad/users</code></td><td>Email, displayName, givenName, surname, initialPassword, OU destino.</td></tr>
+          <tr><td>Actualizar usuario AD</td><td><code>PUT /api/local-ad/users/{id}</code></td><td>Atributos básicos.</td></tr>
+          <tr><td>Habilitar/deshabilitar</td><td><code>POST /api/local-ad/users/{id}/enable|disable</code></td><td>ObjectGUID.</td></tr>
+          <tr><td>Cambiar clave usuario</td><td><code>POST /api/local-ad/users/{id}/change-password</code></td><td><code>newPassword</code>, <code>forcePasswordChange</code></td></tr>
+          <tr><td>Listar grupos</td><td><code>GET /api/local-ad/groups</code></td><td><code>page</code>, <code>pageSize</code>, <code>filter</code></td></tr>
+          <tr><td>Crear grupo</td><td><code>POST /api/local-ad/groups</code></td><td><code>groupName</code>, <code>description</code></td></tr>
+          <tr><td>Miembros de grupo</td><td><code>GET /api/local-ad/groups/{groupId}/members</code></td><td>ID de grupo.</td></tr>
+          <tr><td>Agregar/remover miembro</td><td><code>POST/DELETE /api/local-ad/groups/{groupId}/members/{userId}</code></td><td>ID grupo e ID usuario.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Sesiones activas y clientes API</h3>
+      <figure>
+        <img src="assets/security-services/16-sesiones-activas.png" alt="Sesiones activas" />
+        <figcaption>Sesiones activas: monitoreo, revocación de sesión individual, revocación por usuario y administración de clientes API.</figcaption>
+      </figure>
+
+      <table>
+        <thead>
+          <tr><th>Operación</th><th>Endpoint</th><th>Resultado</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Listar sesiones activas</td><td><code>GET /api/session-management/sessions</code></td><td>Sesiones por usuario, IP, dispositivo y expiración.</td></tr>
+          <tr><td>Revocar sesión</td><td><code>POST /api/session-management/sessions/{sessionId}/revoke</code></td><td>Invalida una sesión específica.</td></tr>
+          <tr><td>Revocar todas por usuario</td><td><code>POST /api/session-management/sessions/user/{userId}/revoke-all</code></td><td>Cierra sesiones activas de un usuario.</td></tr>
+          <tr><td>Listar clientes API</td><td><code>GET /api/session-management/api-clients</code></td><td>Aplicaciones cliente registradas.</td></tr>
+          <tr><td>Activar/desactivar cliente</td><td><code>POST /api/session-management/api-clients/{applicationId}/toggle</code></td><td>Cambia disponibilidad del cliente.</td></tr>
+          <tr><td>Rotar secreto</td><td><code>POST /api/session-management/api-clients/{applicationId}/rotate-secret</code></td><td>Genera nuevo secreto de cliente.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="pantallas">
+      <h2>11. Guía operativa por pantalla</h2>
+      <table>
+        <thead>
+          <tr><th>Pantalla</th><th>Ruta</th><th>Cómo operar</th><th>Control requerido</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Login local</td>
+            <td><code>/login</code></td>
+            <td>Elegir pestaña Local, ingresar correo/usuario y contraseña, iniciar sesión.</td>
+            <td>Endpoint <code>/api/auth/login</code>, usuario activo y credenciales correctas.</td>
+          </tr>
+          <tr>
+            <td>Login Office 365</td>
+            <td><code>/login</code></td>
+            <td>Elegir Office 365, abrir popup, autenticarse en Microsoft y esperar notificación.</td>
+            <td><code>clientId</code> autorizado, <code>browserId</code>, WebSocket conectado, PKCE válido.</td>
+          </tr>
+          <tr>
+            <td>Usuarios</td>
+            <td><code>/admin/users</code></td>
+            <td>Filtrar por texto, estado o tipo; crear/editar/desactivar usuarios.</td>
+            <td>Rol administrador o menú asignado.</td>
+          </tr>
+          <tr>
+            <td>Roles</td>
+            <td><code>/admin/roles</code></td>
+            <td>Crear rol, editar descripción/estado, eliminar si ya no aplica.</td>
+            <td>Control administrativo.</td>
+          </tr>
+          <tr>
+            <td>Roles por usuario</td>
+            <td><code>/admin/user-roles</code></td>
+            <td>Buscar usuario, revisar roles actuales, asignar o retirar roles.</td>
+            <td>Auditar cambios de autorización.</td>
+          </tr>
+          <tr>
+            <td>Items de menú</td>
+            <td><code>/admin/menu-items</code></td>
+            <td>Configurar nombre, URL, orden, padre, ícono y visibilidad.</td>
+            <td>Evitar URLs duplicadas o rutas inexistentes.</td>
+          </tr>
+          <tr>
+            <td>Roles tipo menú</td>
+            <td><code>/admin/role-menu-items</code></td>
+            <td>Seleccionar rol y marcar opciones de menú visibles.</td>
+            <td>Confirmar que el usuario recargue sesión para ver cambios.</td>
+          </tr>
+          <tr>
+            <td>Permisos de acción</td>
+            <td><code>/admin/role-editor</code></td>
+            <td>Seleccionar rol y activar permisos de acción por módulo.</td>
+            <td>No confundir con permisos de menú.</td>
+          </tr>
+          <tr>
+            <td>Azure Management</td>
+            <td><code>/admin/AzureMagnament</code></td>
+            <td>Buscar usuario Graph, crear usuario, cambiar estado, resetear clave, revisar roles.</td>
+            <td>Requiere <code>Administrador</code> o <code>R_DITIC</code>.</td>
+          </tr>
+          <tr>
+            <td>AD local</td>
+            <td><code>/admin/local-ad</code></td>
+            <td>Gestionar usuarios/grupos LDAP, pertenencias, claves y sincronización Entra.</td>
+            <td>Requiere <code>Administrador</code> o <code>R_DITIC</code>.</td>
+          </tr>
+          <tr>
+            <td>Sesiones activas</td>
+            <td><code>/admin/active-sessions</code></td>
+            <td>Revisar sesiones, revocar sesión puntual o revocar todas las de un usuario.</td>
+            <td>Acción sensible; confirmar antes de revocar.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="observaciones">
+      <h2>12. Observaciones técnicas verificadas</h2>
+      <div class="warning">
+        <strong>Ruta AD local:</strong> con la sesión usada para capturas, la pantalla <code>/admin/local-ad</code> carga correctamente,
+        pero <code>/api/auth/me</code> no devolvió un <code>menuItem</code> específico para esa ruta. Por esa razón la captura muestra
+        la pantalla/ruta cargada y no una opción lateral real resaltada. Conviene revisar la fila de menú para
+        <code>/admin/local-ad</code> si se desea acceso visible desde sidebar.
+      </div>
+      <div class="note">
+        <strong>Ruta Azure:</strong> la opción visible en el menú aparece como <code>AzureMagnament</code>, manteniendo el mismo texto/ruta
+        del frontend: <code>/admin/AzureMagnament</code>.
+      </div>
+      <div class="okbox">
+        <strong>Capturas:</strong> se generaron 16 imágenes en modo claro en <code>docs/assets/security-services</code>.
+      </div>
+    </section>
+  </main>
+</body>
+</html>

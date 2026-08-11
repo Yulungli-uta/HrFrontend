@@ -32,6 +32,16 @@ type ReusableFileUploadProps = {
   onUploaded?: (serverResponse: any) => void;
   /** Callback error (mensaje amigable) */
   onError?: (message: string) => void;
+
+  /**
+   * Modo diferido: no sube el archivo de inmediato (oculta el botón "Subir" propio).
+   * Útil cuando la entidad a la que se asociará el archivo aún no existe (se está
+   * creando en el mismo formulario) — quien use el componente decide cuándo y cómo
+   * subirlo (ej. como parte de un POST combinado registro+archivo).
+   */
+  deferUpload?: boolean;
+  /** Se llama cada vez que cambia el archivo seleccionado (solo relevante con deferUpload). */
+  onFileSelected?: (file: File | null) => void;
 };
 
 function getSafeFilename(name: string) {
@@ -50,7 +60,9 @@ export const ReusableFileUpload: React.FC<ReusableFileUploadProps> = ({
   className,
   enableDropzone = true,
   onUploaded,
-  onError
+  onError,
+  deferUpload = false,
+  onFileSelected,
 }) => {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -83,6 +95,7 @@ export const ReusableFileUpload: React.FC<ReusableFileUploadProps> = ({
     setErrorText(null);
     setFile(f);
     if (f && !customName) setCustomName(f.name);
+    if (deferUpload) onFileSelected?.(f);
   };
 
   const onSelect: React.ChangeEventHandler<HTMLInputElement> = (e) => {
@@ -118,6 +131,7 @@ export const ReusableFileUpload: React.FC<ReusableFileUploadProps> = ({
     setFile(null);
     setCustomName(defaultFileName || "");
     if (inputRef.current) inputRef.current.value = "";
+    if (deferUpload) onFileSelected?.(null);
   };
 
   const doUpload = async () => {
@@ -284,14 +298,16 @@ export const ReusableFileUpload: React.FC<ReusableFileUploadProps> = ({
           >
             Limpiar
           </Button>
-          <Button
-            type="button"
-            onClick={doUpload}
-            disabled={disabled || isUploading || !directoryCode}
-          >
-            {isUploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isUploading ? "Subiendo…" : "Subir"}
-          </Button>
+          {!deferUpload && (
+            <Button
+              type="button"
+              onClick={doUpload}
+              disabled={disabled || isUploading || !directoryCode}
+            >
+              {isUploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isUploading ? "Subiendo…" : "Subir"}
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>

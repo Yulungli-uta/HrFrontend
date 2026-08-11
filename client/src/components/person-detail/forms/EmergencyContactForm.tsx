@@ -46,6 +46,14 @@ const emergencyContactFormSchema = z.object({
     .string()
     .min(1, "La identificación es requerida"),
 
+  identificationTypeId: z
+    .number({
+      required_error: "El tipo de identificación es requerido",
+      invalid_type_error: "El tipo de identificación es requerido",
+    })
+    .int()
+    .positive(),
+
   firstName: z
     .string()
     .min(1, "El nombre es requerido")
@@ -94,6 +102,8 @@ function getRefTypeId(t: any): number | undefined {
 interface EmergencyContactFormProps {
   personId: number;
   emergencyContact?: EmergencyContact | null;
+  /** Contactos ya registrados de esta persona, para validar que la identificación no se repita. */
+  existingContacts?: EmergencyContact[];
   // Enviamos el payload final compatible con el servicio
   onSubmit: (data: any) => Promise<void> | void;
   onCancel: () => void;
@@ -107,6 +117,7 @@ interface EmergencyContactFormProps {
 export default function EmergencyContactForm({
   personId,
   emergencyContact,
+  existingContacts = [],
   onSubmit,
   onCancel,
   isLoading = false,
@@ -130,12 +141,33 @@ export default function EmergencyContactForm({
       : [];
 
   // =============================
+  // Catálogo IDENTITY_TYPE
+  // =============================
+  const {
+    data: identityTypesResp,
+    isLoading: loadingIdentityTypes,
+    error: identityTypesError,
+  } = useQuery({
+    queryKey: ["refTypes", "IDENTITY_TYPE"],
+    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.IDENTITY_TYPE),
+  });
+
+  const identityTypes: RefType[] =
+    identityTypesResp?.status === "success"
+      ? (identityTypesResp.data ?? []).filter((t: any) => t.isActive)
+      : [];
+
+  // =============================
   // useForm
   // =============================
   const form = useForm<EmergencyContactFormData>({
     resolver: zodResolver(emergencyContactFormSchema),
     defaultValues: {
       identification: (emergencyContact as any)?.identification ?? "",
+      identificationTypeId:
+        emergencyContact?.identificationTypeId != null
+          ? Number(emergencyContact.identificationTypeId)
+          : 0,
       firstName: emergencyContact?.firstName ?? "",
       lastName: emergencyContact?.lastName ?? "",
       relationshipTypeId:
@@ -163,6 +195,10 @@ export default function EmergencyContactForm({
     if (emergencyContact) {
       form.reset({
         identification: (emergencyContact as any)?.identification ?? "",
+        identificationTypeId:
+          emergencyContact.identificationTypeId != null
+            ? Number(emergencyContact.identificationTypeId)
+            : 0,
         firstName: emergencyContact.firstName ?? "",
         lastName: emergencyContact.lastName ?? "",
         relationshipTypeId:
@@ -179,6 +215,7 @@ export default function EmergencyContactForm({
     } else {
       form.reset({
         identification: "",
+        identificationTypeId: 0,
         firstName: "",
         lastName: "",
         relationshipTypeId: 0,
@@ -193,6 +230,24 @@ export default function EmergencyContactForm({
   // SUBMIT
   // =============================
   const handleSubmit = async (data: EmergencyContactFormData) => {
+    const currentContactId =
+      (emergencyContact as any)?.contactId ??
+      (emergencyContact as any)?.emergencyContactId ??
+      null;
+
+    const duplicate = existingContacts.find(
+      (c) =>
+        c.contactId !== currentContactId &&
+        c.identification.trim().toLowerCase() === data.identification.trim().toLowerCase()
+    );
+    if (duplicate) {
+      form.setError("identification", {
+        type: "manual",
+        message: `Ya existe un contacto con esta identificación (${duplicate.firstName} ${duplicate.lastName}).`,
+      });
+      return;
+    }
+
     const now = new Date();
 
     const payload = {
@@ -202,6 +257,7 @@ export default function EmergencyContactForm({
         0,
       personId,
       identification: data.identification,
+      identificationTypeId: data.identificationTypeId,
       firstName: data.firstName,
       lastName: data.lastName,
       relationshipTypeId: data.relationshipTypeId,
@@ -236,6 +292,45 @@ export default function EmergencyContactForm({
       >
         {/* Datos principales */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Tipo de identificación */}
+          <FormField
+            control={form.control}
+            name="identificationTypeId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Tipo de Identificación</FormLabel>
+                <Select
+                  disabled={loadingIdentityTypes || !!identityTypesError || saving}
+                  value={field.value ? String(field.value) : ""}
+                  onValueChange={(v) => field.onChange(Number(v))}
+                >
+                  <FormControl>
+                    <SelectTrigger data-testid="select-identification-type">
+                      <SelectValue
+                        placeholder={loadingIdentityTypes ? "Cargando tipos..." : "Seleccionar tipo"}
+                      />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {identityTypes.map((t) => {
+                      const id = getRefTypeId(t);
+                      if (id == null) return null;
+                      return (
+                        <SelectItem key={id} value={String(id)}>
+                          {t.name ?? `Tipo ${id}`}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+                {identityTypesError && (
+                  <p className="text-xs text-destructive mt-1">No se pudieron cargar los tipos.</p>
+                )}
+              </FormItem>
+            )}
+          />
+
           {/* Identificación */}
           <FormField
             control={form.control}

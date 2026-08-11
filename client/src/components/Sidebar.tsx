@@ -14,7 +14,7 @@ import {
   MapPin, Shield, UserCheck, Home, Activity, BarChart2, List,
   Lock, Tag, Archive, UserPlus, Mail,
   Globe, Star, AlertTriangle, CheckCircle, Package, Truck, Wrench,
-  Database, Server, Code, Key, RefreshCw, Download, Upload,
+  Database, Server, Code, Key, RefreshCw, Download, Upload, History,
 } from "lucide-react";
 import { useAuth } from "@/features/auth";
 import logoPath from "@/assets/LogoUTA.png";
@@ -49,7 +49,7 @@ const iconMap: Record<string, React.ComponentType<any>> = {
   Search, MapPin, Shield, UserCheck, Home, Activity, BarChart2, List,
   Lock, Tag, Archive, UserPlus, Mail, Globe, Star, AlertTriangle,
   CheckCircle, Package, Truck, Wrench, Database, Server, Code, Key,
-  RefreshCw, Download, Upload,
+  RefreshCw, Download, Upload, History,
 };
 
 /* ─── Helper: construir subnodos recursivamente ──────────────────────────── */
@@ -65,6 +65,16 @@ function buildSubNodes(parentId: number, all: NormalizedMenuItem[]): NavNode[] {
       return node;
     })
     .filter(n => n.path !== undefined || (n.children && n.children.length > 0));
+}
+
+/* ─── Helper: recolectar todos los `path` del árbol (recursivo) ──────────── */
+function collectPaths(nodes: NavNode[]): string[] {
+  const paths: string[] = [];
+  for (const n of nodes) {
+    if (n.path) paths.push(n.path);
+    if (n.children) paths.push(...collectPaths(n.children));
+  }
+  return paths;
 }
 
 /* ─── Helper: filtrar nodos recursivamente ───────────────────────────────── */
@@ -281,12 +291,28 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onLogout }) => {
     const t = (p || "/").replace(/\/+$/, "");
     return t === "" ? "/" : t;
   };
+  const allMenuPaths = useMemo(() => {
+    const all: string[] = [];
+    navGroups.forEach(g => all.push(...collectPaths(g.items)));
+    return new Set(all.map(normalizePath));
+  }, [navGroups]);
+
   const isActivePath = (path: string) => {
     const current = normalizePath(location);
     const target  = normalizePath(path);
     if (target === "/") return current === "/";
+    if (current === target) return true;
     const depth = target.split("/").filter(Boolean).length;
-    return current === target || (depth >= 2 && current.startsWith(target + "/"));
+    if (depth >= 2 && current.startsWith(target + "/")) {
+      // El fallback de "hijo implícito" (ej. /signatures/processes/123, una vista de
+      // detalle que no es su propio ítem de menú) mantiene resaltado al padre. Pero si
+      // la ruta actual SÍ es la ruta exacta de OTRO ítem del menú (ej.
+      // /signatures/processes/all = "Todos los procesos", hermano de
+      // /signatures/processes = "Procesos enviados"), ese otro ítem ya matchea por
+      // igualdad exacta arriba — no se debe resaltar también este por compartir prefijo.
+      return !allMenuPaths.has(current);
+    }
+    return false;
   };
 
   /* ── Filtro de búsqueda ── */

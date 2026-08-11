@@ -29,6 +29,7 @@ type ReferenceTypeRaw = {
   description?: string | null;
   isActive?: boolean | number | string;
   createdAt?: string | number;
+  siiesLabel?: string | null;
 };
 
 interface ReferenceType {
@@ -38,6 +39,8 @@ interface ReferenceType {
   Description?: string;
   IsActive: boolean;
   CreatedAt?: string;
+  /** Denominación exacta del catálogo SIIES (CACES) para este valor, cuando aplica. */
+  SiiesLabel?: string;
 }
 
 // Helpers de normalización
@@ -50,6 +53,7 @@ const normalizeRefType = (raw: ReferenceTypeRaw): ReferenceType => ({
   Description: (raw?.description ?? undefined) || undefined,
   IsActive: toBool(raw?.isActive ?? true),
   CreatedAt: raw?.createdAt ? String(raw.createdAt) : undefined,
+  SiiesLabel: (raw?.siiesLabel ?? undefined) || undefined,
 });
 
 const toRaw = (ui: ReferenceType): ReferenceTypeRaw => ({
@@ -59,6 +63,7 @@ const toRaw = (ui: ReferenceType): ReferenceTypeRaw => ({
   description: ui.Description ?? null,
   isActive: ui.IsActive,
   createdAt: ui.CreatedAt,
+  siiesLabel: ui.SiiesLabel ?? null,
 });
 
 // “Bonito” para la categoría en UI (sin afectar filtros/API)
@@ -110,7 +115,8 @@ export default function ReferenceTypesPage() {
     Category: '',
     Name: '',
     Description: '',
-    IsActive: true
+    IsActive: true,
+    SiiesLabel: ''
   });
 
   // Estados para inserción múltiple
@@ -398,7 +404,8 @@ export default function ReferenceTypesPage() {
       Category: '',
       Name: '',
       Description: '',
-      IsActive: true
+      IsActive: true,
+      SiiesLabel: ''
     });
     setCategoryMode('select');
     setBatchMode(false);
@@ -647,6 +654,20 @@ export default function ReferenceTypesPage() {
                     />
                   </div>
 
+                  <div className="space-y-2">
+                    <Label htmlFor="siiesLabel">Denominación SIIES (opcional)</Label>
+                    <Input
+                      id="siiesLabel"
+                      value={newType.SiiesLabel || ''}
+                      onChange={(e) => setNewType({ ...newType, SiiesLabel: e.target.value })}
+                      placeholder="Ej: MASCULINO, INDIGENA, FISICA MOTORA..."
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Valor exacto exigido por el catálogo SIIES (CACES) cuando este tipo se usa en el
+                      reporte SIIES Funcionarios. Dejar vacío si no aplica.
+                    </p>
+                  </div>
+
                   <div className="flex items-center space-x-2">
                     <Switch
                       checked={newType.IsActive}
@@ -822,6 +843,7 @@ export default function ReferenceTypesPage() {
                           <TableHead>Categoría</TableHead>
                           <TableHead>Nombre</TableHead>
                           <TableHead className="hidden md:table-cell">Descripción</TableHead>
+                          <TableHead className="hidden xl:table-cell">SIIES</TableHead>
                           <TableHead>Estado</TableHead>
                           <TableHead className="hidden lg:table-cell">Creado</TableHead>
                           <TableHead>Acciones</TableHead>
@@ -837,6 +859,9 @@ export default function ReferenceTypesPage() {
                             <TableCell className="font-medium text-sm">{type.Name || '—'}</TableCell>
                             <TableCell className="hidden md:table-cell max-w-xs truncate text-sm">
                               {type.Description || 'Sin descripción'}
+                            </TableCell>
+                            <TableCell className="hidden xl:table-cell text-sm font-mono">
+                              {type.SiiesLabel || '—'}
                             </TableCell>
                             <TableCell>
                               <Badge variant={type.IsActive ? "default" : "secondary"} className="text-xs">

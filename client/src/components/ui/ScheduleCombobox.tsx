@@ -26,6 +26,31 @@ function fmtTime(t: string | null | undefined) {
   return t ? t.slice(0, 5) : '—';
 }
 
+function pickScheduleId(s: any): number {
+  return Number(s?.scheduleId ?? s?.scheduleID ?? s?.ScheduleId ?? s?.ScheduleID ?? s?.id ?? 0);
+}
+
+function pickDescription(s: any): string {
+  return s?.description ?? s?.Description ?? s?.name ?? s?.Name ?? 'Horario';
+}
+
+function pickCode(s: any): string | null {
+  return s?.scheduleCode ?? s?.ScheduleCode ?? s?.code ?? s?.Code ?? null;
+}
+
+function pickEntryTime(s: any): string | null {
+  return s?.entryTime ?? s?.EntryTime ?? s?.startTime ?? s?.StartTime ?? null;
+}
+
+function pickExitTime(s: any): string | null {
+  return s?.exitTime ?? s?.ExitTime ?? s?.endTime ?? s?.EndTime ?? null;
+}
+
+function isRotatingSchedule(s: any): boolean {
+  const raw = s?.isRotating ?? s?.IsRotating ?? s?.rotating ?? s?.Rotating;
+  return raw === true || raw === 'true' || raw === 1 || raw === '1';
+}
+
 function isOvernight(entry: string | null | undefined, exit: string | null | undefined) {
   if (!entry || !exit) return false;
   return exit.slice(0, 5) <= entry.slice(0, 5);
@@ -56,25 +81,40 @@ export function ScheduleCombobox({
   const { data, isFetching } = useQuery({
     queryKey: ['schedules-combobox', debouncedSearch, onlyRotating],
     queryFn: () => {
-      const qs = new URLSearchParams({ page: '1', pageSize: '20' });
+      const qs = new URLSearchParams();
       if (debouncedSearch) qs.set('search', debouncedSearch);
-      if (onlyRotating) qs.set('isRotating', 'true');
+      if (onlyRotating) {
+        return apiFetch<any>(`/api/v1/rh/schedules/rotating${qs.toString() ? `?${qs.toString()}` : ''}`);
+      }
+      qs.set('page', '1');
+      qs.set('pageSize', '20');
       return apiFetch<any>(`/api/v1/rh/schedules/paged?${qs.toString()}`);
     },
     enabled: open,
     staleTime: 60_000,
   });
 
-  const schedules: any[] = data?.status === 'success' ? (data.data?.items ?? []) : [];
+  const responseData = data?.status === 'success' ? data.data : null;
+  const rawSchedules: any[] = Array.isArray(responseData)
+    ? responseData
+    : Array.isArray(responseData?.items)
+      ? responseData.items
+      : [];
+  const schedules = rawSchedules
+    .filter(s => s?.isActive !== false && s?.IsActive !== false)
+    .filter(s => !onlyRotating || isRotatingSchedule(s));
 
   const buildLabel = (s: any) => {
-    const overnight = isOvernight(s.entryTime, s.exitTime);
-    return `${s.description} · ${fmtTime(s.entryTime)}–${fmtTime(s.exitTime)}${overnight ? ' (+1)' : ''}`;
+    const entry = pickEntryTime(s);
+    const exit = pickExitTime(s);
+    const code = pickCode(s);
+    const overnight = isOvernight(entry, exit);
+    return `${code ? `[${code}] ` : ''}${pickDescription(s)} · ${fmtTime(entry)}–${fmtTime(exit)}${overnight ? ' (+1)' : ''}`;
   };
 
   const handleSelect = (s: any) => {
     setInternalLabel(buildLabel(s));
-    onSelect(s.scheduleId, s);
+    onSelect(pickScheduleId(s), s);
     setOpen(false);
     setSearch('');
     setDebouncedSearch('');
@@ -142,24 +182,30 @@ export function ScheduleCombobox({
               </CommandEmpty>
             )}
             {!isFetching && schedules.map((s) => {
-              const overnight = isOvernight(s.entryTime, s.exitTime);
+              const scheduleId = pickScheduleId(s);
+              const code = pickCode(s);
+              const entry = pickEntryTime(s);
+              const exit = pickExitTime(s);
+              const overnight = isOvernight(entry, exit);
               return (
                 <CommandItem
-                  key={s.scheduleId}
-                  value={String(s.scheduleId)}
+                  key={scheduleId}
+                  value={String(scheduleId)}
                   onSelect={() => handleSelect(s)}
                   className="cursor-pointer"
                 >
                   <Check
                     className={cn(
                       'mr-2 h-4 w-4 shrink-0',
-                      value === s.scheduleId ? 'opacity-100' : 'opacity-0'
+                      value === scheduleId ? 'opacity-100' : 'opacity-0'
                     )}
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium truncate text-sm">{s.description}</p>
+                    <p className="font-medium truncate text-sm">
+                      {code ? `[${code}] ` : ''}{pickDescription(s)}
+                    </p>
                     <p className="text-xs text-muted-foreground">
-                      {fmtTime(s.entryTime)} – {fmtTime(s.exitTime)}
+                      {fmtTime(entry)} – {fmtTime(exit)}
                       {overnight && (
                         <span className="ml-1 text-orange-500 font-medium">+1 día</span>
                       )}

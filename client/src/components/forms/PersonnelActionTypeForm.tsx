@@ -3,9 +3,11 @@ import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { PersonnelActionTypeAPI } from "@/lib/api/services/contracts";
+import { TiposReferenciaAPI, type ApiResponse } from "@/lib/api";
+import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { TemplateSelect } from "@/components/shared/TemplateSelect";
 
 import { Button } from "@/components/ui/button";
@@ -50,6 +52,8 @@ const schema = z.object({
   requiresAdUserCreation: z.boolean(),
   requiresAdUserDisable: z.boolean(),
   requiresAdGroupAssignment: z.boolean(),
+  /** SIIES RELACION_IES homologado — opcional, requerido solo para el reporte SIIES. */
+  siiesRelacionIesTypeId: z.string().optional(),
 });
 
 export type PersonnelActionTypeFormValues = z.infer<typeof schema>;
@@ -75,6 +79,18 @@ export function PersonnelActionTypeForm({
 }: PersonnelActionTypeFormProps) {
   const queryClient = useQueryClient();
 
+  const { data: siiesRelacionIesResponse, isLoading: isLoadingSiiesRelacionIes } =
+    useQuery<ApiResponse<any[]>>({
+      queryKey: ["refTypes", REF_TYPE_CATEGORIES.SIIES_RELACION_IES],
+      queryFn: () =>
+        TiposReferenciaAPI.byCategory(
+          REF_TYPE_CATEGORIES.SIIES_RELACION_IES
+        ) as Promise<ApiResponse<any[]>>,
+    });
+
+  const siiesRelacionIesOptions =
+    siiesRelacionIesResponse?.status === "success" ? siiesRelacionIesResponse.data : [];
+
   const form = useForm<PersonnelActionTypeFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -88,6 +104,9 @@ export function PersonnelActionTypeForm({
       requiresAdUserCreation: initialValues?.requiresAdUserCreation ?? false,
       requiresAdUserDisable: initialValues?.requiresAdUserDisable ?? false,
       requiresAdGroupAssignment: initialValues?.requiresAdGroupAssignment ?? false,
+      siiesRelacionIesTypeId: (initialValues as any)?.siiesRelacionIesTypeId
+        ? String((initialValues as any).siiesRelacionIesTypeId)
+        : "",
     },
   });
 
@@ -112,7 +131,10 @@ export function PersonnelActionTypeForm({
         requiresAdUserCreation: values.requiresAdUserCreation,
         requiresAdUserDisable: values.requiresAdUserDisable,
         requiresAdGroupAssignment: values.requiresAdGroupAssignment,
-      });
+        siiesRelacionIesTypeId: values.siiesRelacionIesTypeId
+          ? Number(values.siiesRelacionIesTypeId)
+          : null,
+      } as any);
       if (res.status === "error") throw new Error(res.error.message || "Error al crear");
       return res.data;
     },
@@ -136,7 +158,10 @@ export function PersonnelActionTypeForm({
         requiresAdUserCreation: values.requiresAdUserCreation,
         requiresAdUserDisable: values.requiresAdUserDisable,
         requiresAdGroupAssignment: values.requiresAdGroupAssignment,
-      });
+        siiesRelacionIesTypeId: values.siiesRelacionIesTypeId
+          ? Number(values.siiesRelacionIesTypeId)
+          : null,
+      } as any);
       if (res.status === "error") throw new Error(res.error.message || "Error al actualizar");
       return res;
     },
@@ -309,6 +334,44 @@ export function PersonnelActionTypeForm({
                       onCheckedChange={field.onChange}
                     />
                   </FormControl>
+                </FormItem>
+              )}
+            />
+
+            {/* Relación con la IES (SIIES) */}
+            <FormField
+              control={form.control}
+              name="siiesRelacionIesTypeId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Relación con la IES (SIIES)</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value ?? ""}
+                    disabled={isLoadingSiiesRelacionIes}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sin homologar" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {siiesRelacionIesOptions.map((rt: any) => {
+                        const id = rt.id ?? rt.refTypeId ?? rt.typeId ?? rt.valueId;
+                        const label = rt.name ?? rt.description ?? rt.code ?? `ID ${id}`;
+                        return (
+                          <SelectItem key={id} value={String(id)}>
+                            {label}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    Homologación requerida por el reporte SIIES Funcionarios (Instructivo CACES).
+                    Sin este dato, las acciones de este tipo quedan sin RELACION_IES en el reporte.
+                  </FormDescription>
+                  <FormMessage />
                 </FormItem>
               )}
             />

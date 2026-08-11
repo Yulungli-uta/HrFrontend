@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { VacacionesAPI, PermisosAPI, TimeBalanceAPI, ParametersAPI, apiFetch, type ApiResponse } from "@/lib/api";
+import { VacacionesAPI, PermisosAPI, TimeBalanceAPI, ParametersAPI, apiFetch, handleApiError, type ApiResponse } from "@/lib/api";
 import type { InsertVacation as InsertVacacion } from "@/shared/schema";
 
 type VacationFormData = {
@@ -267,14 +267,26 @@ export default function VacationForm({
       }) as Partial<InsertVacacion>;
 
       // EDIT (si tu API soporta update)
+      let res: ApiResponse<any>;
       if (isEdit && currentId != null) {
         const upd = (VacacionesAPI as any).update ?? (VacacionesAPI as any).put;
-        if (typeof upd === "function") return upd(currentId, payload);
-        return apiFetch<any>(`/api/v1/rh/vacations/${currentId}`, { method: "PUT", body: JSON.stringify(payload), headers: { "Content-Type": "application/json" } });
+        res = typeof upd === "function"
+          ? await upd(currentId, payload)
+          : await apiFetch<any>(`/api/v1/rh/vacations/${currentId}`, { method: "PUT", body: JSON.stringify(payload), headers: { "Content-Type": "application/json" } });
+      } else {
+        // CREATE
+        res = await VacacionesAPI.create(payload as InsertVacacion);
       }
 
-      // CREATE
-      return VacacionesAPI.create(payload as InsertVacacion);
+      // apiFetch nunca rechaza la promesa ante errores HTTP (siempre resuelve
+      // {status:'error',...}) — sin este chequeo, onSuccess se disparaba igual aunque el
+      // backend hubiera rechazado la solicitud (ej. empleado sin régimen activo → 500),
+      // mostrando "creado correctamente" sin haber creado ni reservado nada.
+      if (res.status === "error") {
+        throw new Error(handleApiError(res.error, isEdit ? "No se pudo actualizar la vacación." : "No se pudo crear la vacación."));
+      }
+
+      return res;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/v1/rh/vacations", "by-employee", employeeId] });

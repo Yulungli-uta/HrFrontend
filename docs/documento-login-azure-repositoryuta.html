@@ -1,0 +1,715 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Integración Login Azure - RepositoryUta</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #0f172a;
+      --muted: #475569;
+      --line: #d7dee8;
+      --soft: #f8fafc;
+      --brand: #075aaf;
+      --warn: #b45309;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      color: var(--ink);
+      background: var(--soft);
+      line-height: 1.55;
+    }
+    header {
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+      padding: 28px 34px;
+    }
+    main {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 28px;
+      background: #fff;
+    }
+    h1 { margin: 0 0 8px; font-size: 30px; letter-spacing: 0; }
+    h2 {
+      margin: 34px 0 12px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+      font-size: 23px;
+      letter-spacing: 0;
+    }
+    h3 { margin: 24px 0 10px; font-size: 18px; letter-spacing: 0; }
+    p { margin: 8px 0 12px; }
+    li { margin: 5px 0; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0 20px;
+      font-size: 14px;
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 9px 10px;
+      vertical-align: top;
+      text-align: left;
+    }
+    th { background: #eef4fb; color: #0b3b75; }
+    code {
+      background: #eef2f7;
+      padding: 2px 5px;
+      border-radius: 4px;
+      color: #111827;
+      font-size: 0.94em;
+    }
+    pre {
+      background: #0f172a;
+      color: #f8fafc;
+      border-radius: 8px;
+      padding: 14px;
+      overflow: auto;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    pre code { background: transparent; color: inherit; padding: 0; }
+    .meta { color: var(--muted); font-size: 14px; }
+    .toc {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 8px 18px;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      padding: 16px;
+      border-radius: 8px;
+    }
+    .toc a { color: var(--brand); text-decoration: none; }
+    .note, .warning {
+      border-left: 4px solid var(--brand);
+      background: #f8fbff;
+      padding: 12px 14px;
+      margin: 14px 0;
+      border-radius: 6px;
+    }
+    .warning { border-left-color: var(--warn); background: #fff8ed; }
+    .method { font-weight: 700; color: #0b3b75; white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Integración de Login Azure con RepositoryUta</h1>
+    <div class="meta">
+      Guía genérica para nuevos frontends o clientes web que consumirán los servicios de autenticación Azure.      
+    </div>
+  </header>
+
+  <main>
+    <section id="objetivo">
+      <h2>1. Objetivo</h2>
+      <p>
+        Este documento indica, de forma independiente a cualquier frontend existente, qué debe parametrizarse en RepositoryUta
+        y cuál es el orden exacto de consumo de servicios para autenticar un usuario con Microsoft Azure / Office 365.
+      </p>
+      <p>
+        El objetivo es que un programador pueda implementar un login Azure desde cero sabiendo:
+        tablas requeridas, parámetros obligatorios, endpoints, orden del flujo y forma correcta de recibir la notificación SignalR.
+      </p>
+
+      <div class="toc">
+        <a href="#tablas">Tablas a parametrizar</a>
+        <a href="#parametros">Parámetros necesarios</a>
+        <a href="#seguridad">Llaves de seguridad del flujo</a>
+        <a href="#servicios">Servicios a consumir</a>
+        <a href="#flujo">Orden completo del flujo</a>
+        <a href="#signalr">Recepción de SignalR</a>
+        <a href="#ejemplo">Código de referencia</a>
+        <a href="#errores">Errores frecuentes</a>
+      </div>
+    </section>
+
+    <section id="tablas">
+      <h2>2. Tablas que deben registrarse antes del login</h2>
+      <p>
+        RepositoryUta solo permite generar URL Azure para aplicaciones registradas. Antes de que un frontend pueda consumir
+        el login, deben existir registros válidos en las siguientes tablas.
+      </p>
+
+      <h3>2.1 Tabla <code>auth.tbl_Applications</code></h3>
+      <p>
+        Registra la aplicación cliente. El campo más importante para el frontend es <code>ClientId</code>.
+        Este valor es público y será enviado por el frontend en la URL Azure y en la conexión SignalR.
+      </p>
+      <table>
+        <thead>
+          <tr><th>Campo</th><th>Requerido</th><th>Uso</th><th>Ejemplo</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>Id</code></td><td>Sí</td><td>Identificador interno GUID.</td><td><code>NEWID()</code></td></tr>
+          <tr><td><code>Name</code></td><td>Sí</td><td>Nombre descriptivo de la aplicación.</td><td><code>Portal Nuevo</code></td></tr>
+          <tr><td><code>ClientId</code></td><td>Sí</td><td>Identificador público que usará el frontend.</td><td><code>portal-nuevo-web</code></td></tr>
+          <tr><td><code>ClientSecretHash</code></td><td>Sí</td><td>Hash del secreto para flujos backend/legacy. No se entrega al frontend público.</td><td><code>HASH_GENERADO</code></td></tr>
+          <tr><td><code>Description</code></td><td>No</td><td>Descripción funcional.</td><td><code>Frontend nuevo con login Azure</code></td></tr>
+          <tr><td><code>IsActive</code></td><td>Sí</td><td>Debe estar en <code>1</code>.</td><td><code>1</code></td></tr>
+          <tr><td><code>IsDeleted</code></td><td>Sí</td><td>Debe estar en <code>0</code>.</td><td><code>0</code></td></tr>
+        </tbody>
+      </table>
+
+      <div class="warning">
+        <strong>Nota para frontend:</strong> el <code>ClientSecret</code> no debe incluirse en aplicaciones web públicas.
+        El frontend solo necesita conocer el <code>ClientId</code>.
+      </div>
+
+      <h3>2.2 Tabla <code>auth.tbl_NotificationSubscriptions</code></h3>
+      <p>
+        Registra la suscripción que permite a RepositoryUta notificar el resultado del login Azure.
+        Para que un navegador reciba el evento por SignalR, el campo <code>NotificationType</code> debe ser
+        <code>websocket</code> o <code>both</code>.
+      </p>
+      <table>
+        <thead>
+          <tr><th>Campo</th><th>Requerido</th><th>Uso</th><th>Valor recomendado</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>Id</code></td><td>Sí</td><td>Identificador de suscripción.</td><td><code>NEWID()</code></td></tr>
+          <tr><td><code>ApplicationId</code></td><td>Sí</td><td>Debe apuntar a <code>auth.tbl_Applications.Id</code>.</td><td><code>@ApplicationId</code></td></tr>
+          <tr><td><code>EventType</code></td><td>Sí</td><td>Evento que se desea recibir.</td><td><code>Login</code></td></tr>
+          <tr><td><code>WebhookUrl</code></td><td>No</td><td>Solo si se usa webhook o both.</td><td><code>NULL</code> para solo SignalR</td></tr>
+          <tr><td><code>SecretKey</code></td><td>No</td><td>Clave HMAC para webhook.</td><td><code>NULL</code> para solo SignalR</td></tr>
+          <tr><td><code>NotificationType</code></td><td>Sí</td><td>Canal de notificación.</td><td><code>websocket</code></td></tr>
+          <tr><td><code>WebSocketGroupName</code></td><td>No</td><td>Referencia del grupo de app.</td><td><code>app_portal-nuevo-web</code></td></tr>
+          <tr><td><code>RequireAuthentication</code></td><td>No</td><td>Para login inicial suele ser anónimo.</td><td><code>0</code></td></tr>
+          <tr><td><code>IsActive</code></td><td>Sí</td><td>Debe estar activa.</td><td><code>1</code></td></tr>
+        </tbody>
+      </table>
+
+      <h3>2.3 Validación rápida de registros</h3>
+      <p>
+        Para validar la parametrización, confirmar que el <code>ClientId</code> exista activo y no eliminado en
+        <code>auth.tbl_Applications</code>. Luego confirmar que la aplicación tenga una suscripción activa en
+        <code>auth.tbl_NotificationSubscriptions</code> con <code>EventType = "Login"</code> y
+        <code>NotificationType = "websocket"</code> o <code>"both"</code>.
+      </p>
+    </section>
+
+    <section id="parametros">
+      <h2>3. Parámetros que necesita crear o manejar el frontend</h2>
+      <table>
+        <thead>
+          <tr><th>Parámetro</th><th>Quién lo crea</th><th>Dónde se usa</th><th>Obligatorio</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>authBaseUrl</code></td>
+            <td>Configuración del frontend</td>
+            <td>Base de endpoints REST.</td>
+            <td>Sí</td>
+          </tr>
+          <tr>
+            <td><code>notificationHubUrl</code></td>
+            <td>Configuración del frontend</td>
+            <td>Conexión SignalR.</td>
+            <td>Sí</td>
+          </tr>
+          <tr>
+            <td><code>clientId</code></td>
+            <td>RepositoryUta, registrado en <code>auth.tbl_Applications</code></td>
+            <td><code>/api/auth/azure/url</code> y <code>/notificationHub</code>.</td>
+            <td>Sí</td>
+          </tr>
+          <tr>
+            <td><code>browserId</code></td>
+            <td>Frontend</td>
+            <td>Identifica el navegador que debe recibir la notificación.</td>
+            <td>Sí</td>
+          </tr>
+          <tr>
+            <td><code>codeVerifier</code></td>
+            <td>Frontend</td>
+            <td>Se usa al canjear <code>deliveryCode</code>.</td>
+            <td>Sí</td>
+          </tr>
+          <tr>
+            <td><code>codeChallenge</code></td>
+            <td>Frontend, calculado desde <code>codeVerifier</code></td>
+            <td>Se envía a <code>/api/auth/azure/url</code>.</td>
+            <td>Sí</td>
+          </tr>
+          <tr>
+            <td><code>deliveryCode</code></td>
+            <td>RepositoryUta</td>
+            <td>Llega en <code>LoginNotification</code>; se envía a <code>/api/auth/azure/exchange</code>.</td>
+            <td>Sí</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>3.1 Valores de ejemplo</h3>
+      <pre><code>authBaseUrl = "https://repositoryuta.uta.edu.ec"
+notificationHubUrl = "https://repositoryuta.uta.edu.ec/notificationHub"
+clientId = "portal-nuevo-web"
+browserId = "uuid-generado-por-el-frontend"
+codeVerifier = "random-base64url-generado-en-la-pestana"
+codeChallenge = "base64url(SHA256(codeVerifier))"</code></pre>
+    </section>
+
+    <section id="seguridad">
+      <h2>4. Llaves de seguridad y no broadcast</h2>
+      <p>
+        El flujo actualizado evita enviar el resultado de login a todos los clientes conectados al hub.
+        Para eso usa una combinación de <code>clientId</code>, <code>browserId</code>, <code>state</code>,
+        <code>codeChallenge</code>, <code>codeVerifier</code> y <code>deliveryCode</code>.
+      </p>
+
+      <table>
+        <thead>
+          <tr><th>Elemento</th><th>Quién lo crea</th><th>Viaja por red</th><th>Función de seguridad</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>clientId</code></td>
+            <td>RepositoryUta</td>
+            <td>Sí</td>
+            <td>Identifica la aplicación cliente autorizada en <code>auth.tbl_Applications</code>.</td>
+          </tr>
+          <tr>
+            <td><code>browserId</code></td>
+            <td>Frontend</td>
+            <td>Sí</td>
+            <td>Llave de enrutamiento para que RepositoryUta envíe la notificación solo al grupo <code>browser_{browserId}</code>.</td>
+          </tr>
+          <tr>
+            <td><code>state</code></td>
+            <td>RepositoryUta</td>
+            <td>Sí, por OAuth</td>
+            <td>Transporta y valida <code>stateId</code>, <code>clientId</code>, <code>browserId</code> y <code>codeChallenge</code>. Se valida contra caché anti replay.</td>
+          </tr>
+          <tr>
+            <td><code>codeVerifier</code></td>
+            <td>Frontend</td>
+            <td>Solo al canjear</td>
+            <td>Llave privada temporal de la pestaña. No debe guardarse en base ni enviarse al iniciar el login.</td>
+          </tr>
+          <tr>
+            <td><code>codeChallenge</code></td>
+            <td>Frontend</td>
+            <td>Sí</td>
+            <td>Hash PKCE del <code>codeVerifier</code>. RepositoryUta lo guarda ligado al flujo para validar el canje.</td>
+          </tr>
+          <tr>
+            <td><code>deliveryCode</code></td>
+            <td>RepositoryUta</td>
+            <td>Sí, por SignalR</td>
+            <td>Código de un solo uso. Sustituye el envío directo de tokens por el hub.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="note">
+        Cuando <code>browserId</code> está presente, RepositoryUta envía <code>LoginNotification</code> al grupo
+        <code>browser_{browserId}</code>. Solo usa <code>app_{clientId}</code> como ruta amplia si no existe
+        <code>browserId</code>. Por seguridad, un frontend nuevo siempre debe enviar <code>browserId</code>.
+      </div>
+
+      <div class="warning">
+        El valor <code>state</code> viaja codificado en Base64 dentro del flujo OAuth. No debe tratarse como cifrado.
+        La seguridad sensible del canje se basa en PKCE: solo la pestaña que conserva el <code>codeVerifier</code>
+        puede canjear el <code>deliveryCode</code> por tokens.
+      </div>
+    </section>
+
+    <section id="servicios">
+      <h2>5. Servicios que consume el frontend</h2>
+      <table>
+        <thead>
+          <tr><th>Orden</th><th>Método</th><th>Endpoint</th><th>Parámetros</th><th>Respuesta importante</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td class="method">WS</td>
+            <td><code>/notificationHub?clientId={clientId}&amp;browserId={browserId}</code></td>
+            <td>Query: <code>clientId</code>, <code>browserId</code></td>
+            <td>Conexión SignalR activa.</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td class="method">SignalR</td>
+            <td><code>JoinApplicationGroup</code></td>
+            <td><code>clientId</code>, <code>userId</code> opcional o <code>null</code></td>
+            <td>Conexión asociada a <code>app_{clientId}</code>.</td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td class="method">SignalR</td>
+            <td><code>JoinBrowserGroup</code></td>
+            <td><code>clientId</code>, <code>browserId</code></td>
+            <td>Conexión asociada a <code>browser_{browserId}</code>.</td>
+          </tr>
+          <tr>
+            <td>4</td>
+            <td class="method">GET</td>
+            <td><code>/api/auth/azure/url</code></td>
+            <td><code>clientId</code>, <code>browserId</code>, <code>codeChallenge</code></td>
+            <td><code>url</code> de Microsoft y <code>state</code>.</td>
+          </tr>
+          <tr>
+            <td>5</td>
+            <td class="method">GET</td>
+            <td><code>/api/auth/azure/callback</code></td>
+            <td><code>code</code>, <code>state</code></td>
+            <td>Lo invoca Microsoft. El frontend no llama este endpoint manualmente.</td>
+          </tr>
+          <tr>
+            <td>6</td>
+            <td class="method">SignalR</td>
+            <td><code>LoginNotification</code></td>
+            <td>Evento recibido por el frontend.</td>
+            <td><code>deliveryCode</code> y datos básicos del usuario.</td>
+          </tr>
+          <tr>
+            <td>7</td>
+            <td class="method">POST</td>
+            <td><code>/api/auth/azure/exchange</code></td>
+            <td><code>deliveryCode</code>, <code>codeVerifier</code></td>
+            <td><code>accessToken</code>, <code>refreshToken</code>.</td>
+          </tr>
+          <tr>
+            <td>8</td>
+            <td class="method">GET</td>
+            <td><code>/api/auth/me</code></td>
+            <td>Header <code>Authorization: Bearer accessToken</code></td>
+            <td>Datos de usuario, roles, permisos y menús.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>5.1 Servicio para obtener URL Azure</h3>
+      <pre><code>GET {authBaseUrl}/api/auth/azure/url?clientId=portal-nuevo-web&amp;browserId={browserId}&amp;codeChallenge={codeChallenge}</code></pre>
+
+      <h4>Respuesta esperada</h4>
+      <pre><code>{
+  "success": true,
+  "data": {
+    "url": "https://login.microsoftonline.com/...",
+    "state": "base64-state",
+    "clientId": "portal-nuevo-web",
+    "browserId": "uuid-del-navegador"
+  }
+}</code></pre>
+
+      <h3>5.2 Servicio para canjear deliveryCode</h3>
+      <pre><code>POST {authBaseUrl}/api/auth/azure/exchange
+Content-Type: application/json
+
+{
+  "deliveryCode": "codigo-recibido-por-signalr",
+  "codeVerifier": "verifier-generado-por-la-pestana"
+}</code></pre>
+
+      <h4>Respuesta esperada</h4>
+      <pre><code>{
+  "success": true,
+  "data": {
+    "accessToken": "jwt",
+    "refreshToken": "refresh-token"
+  }
+}</code></pre>
+
+      <h3>5.3 Servicio para obtener usuario actual</h3>
+      <pre><code>GET {authBaseUrl}/api/auth/me
+Authorization: Bearer {accessToken}</code></pre>
+    </section>
+
+    <section id="flujo">
+      <h2>6. Orden completo del flujo de login</h2>
+      <ol>
+        <li>El usuario presiona el botón <strong>Iniciar sesión con Azure</strong>.</li>
+        <li>El frontend lee o crea <code>browserId</code>. Debe persistirlo en almacenamiento local del navegador.</li>
+        <li>El frontend genera <code>codeVerifier</code>. Este valor debe quedarse solo en memoria de la pestaña.</li>
+        <li>El frontend calcula <code>codeChallenge</code> usando SHA-256 y Base64URL.</li>
+        <li>El frontend crea la conexión SignalR a <code>/notificationHub?clientId={clientId}&amp;browserId={browserId}</code>.</li>
+        <li>El frontend registra el listener del evento <code>LoginNotification</code>.</li>
+        <li>El frontend inicia la conexión SignalR con <code>connection.start()</code>.</li>
+        <li>El frontend invoca <code>JoinApplicationGroup(clientId, null)</code>.</li>
+        <li>El frontend invoca <code>JoinBrowserGroup(clientId, browserId)</code>.</li>
+        <li>El frontend consume <code>GET /api/auth/azure/url</code> enviando <code>clientId</code>, <code>browserId</code> y <code>codeChallenge</code>.</li>
+        <li>RepositoryUta valida que <code>clientId</code> exista activo en <code>auth.tbl_Applications</code>.</li>
+        <li>RepositoryUta responde la URL de Microsoft.</li>
+        <li>El frontend abre la URL de Microsoft en popup o redirección.</li>
+        <li>El usuario se autentica en Microsoft.</li>
+        <li>Microsoft redirige a <code>/api/auth/azure/callback</code> con <code>code</code> y <code>state</code>.</li>
+        <li>RepositoryUta valida <code>state</code>, intercambia el código con Microsoft y crea tokens internos.</li>
+        <li>RepositoryUta crea un <code>deliveryCode</code> de un solo uso.</li>
+        <li>RepositoryUta busca una suscripción activa en <code>auth.tbl_NotificationSubscriptions</code> para <code>EventType = Login</code>.</li>
+        <li>RepositoryUta envía <code>LoginNotification</code> únicamente al grupo <code>browser_{browserId}</code> si el frontend envió <code>browserId</code>.</li>
+        <li>El frontend recibe <code>deliveryCode</code>.</li>
+        <li>El frontend consume <code>POST /api/auth/azure/exchange</code> enviando <code>deliveryCode</code> y <code>codeVerifier</code>.</li>
+        <li>RepositoryUta valida que el <code>codeVerifier</code> corresponda al <code>codeChallenge</code> original.</li>
+        <li>RepositoryUta responde <code>accessToken</code> y <code>refreshToken</code>.</li>
+        <li>El frontend guarda los tokens según su estrategia de sesión.</li>
+        <li>El frontend consume <code>GET /api/auth/me</code> para cargar usuario, roles y permisos.</li>
+        <li>El frontend redirige al usuario a su pantalla inicial autenticada.</li>
+      </ol>
+    </section>
+
+    <section id="signalr">
+      <h2>7. Cómo receptar la notificación SignalR</h2>
+
+      <h3>6.1 Conexión al hub</h3>
+      <pre><code>notificationHubUrl = "{authBaseUrl}/notificationHub"
+connectionUrl = "{notificationHubUrl}?clientId={clientId}&amp;browserId={browserId}"</code></pre>
+
+      <h3>6.2 Métodos que se invocan luego de conectar</h3>
+      <pre><code>await connection.start();
+await connection.invoke("JoinApplicationGroup", clientId, null);
+await connection.invoke("JoinBrowserGroup", clientId, browserId);</code></pre>
+
+      <h3>6.3 Evento que debe escuchar el frontend</h3>
+      <pre><code>connection.on("LoginNotification", async (message) =&gt; {
+  if (message.eventType !== "Login") return;
+
+  const deliveryCode = message.deliveryCode;
+  // Canjear deliveryCode con /api/auth/azure/exchange
+});</code></pre>
+
+      <h3>6.4 Payload esperado</h3>
+      <pre><code>{
+  "eventType": "Login",
+  "timestamp": "2026-07-24T10:00:00",
+  "context": {
+    "initiatingApplication": "portal-nuevo-web",
+    "loginSource": "Office365",
+    "sessionScope": "specific",
+    "notificationType": "hybrid"
+  },
+  "data": {
+    "userId": "guid",
+    "email": "usuario@uta.edu.ec",
+    "displayName": "Nombre Usuario",
+    "loginType": "Office365",
+    "ipAddress": "127.0.0.1",
+    "roles": ["Rol1"],
+    "permissions": ["/ruta"]
+  },
+  "pair": null,
+  "deliveryCode": "codigo-de-un-solo-uso"
+}</code></pre>
+
+      <div class="note">
+        El frontend debe completar el login usando <code>deliveryCode</code>. No debe depender de <code>pair</code>, porque
+        en el flujo seguro los tokens reales no viajan por SignalR.
+      </div>
+    </section>
+
+    <section id="ejemplo">
+      <h2>8. Código de referencia para un frontend nuevo</h2>
+      <p>
+        Este ejemplo es genérico. Puede adaptarse a React, Angular, Vue o JavaScript puro.
+        Requiere la librería <code>@microsoft/signalr</code>.
+      </p>
+
+      <pre><code>import * as signalR from "@microsoft/signalr";
+
+const authBaseUrl = "https://repositoryuta.uta.edu.ec";
+const notificationHubUrl = `${authBaseUrl}/notificationHub`;
+const clientId = "portal-nuevo-web";
+
+function getBrowserId() {
+  const key = "repositoryuta-browser-id";
+  let browserId = localStorage.getItem(key);
+
+  if (!browserId) {
+    browserId = crypto.randomUUID();
+    localStorage.setItem(key, browserId);
+  }
+
+  return browserId;
+}
+
+function base64UrlEncode(bytes) {
+  let binary = "";
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+function generateCodeVerifier() {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return base64UrlEncode(bytes);
+}
+
+async function computeCodeChallenge(codeVerifier) {
+  const data = new TextEncoder().encode(codeVerifier);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return base64UrlEncode(new Uint8Array(digest));
+}
+
+async function loginWithAzure() {
+  const browserId = getBrowserId();
+  const codeVerifier = generateCodeVerifier();
+  const codeChallenge = await computeCodeChallenge(codeVerifier);
+
+  const connection = new signalR.HubConnectionBuilder()
+    .withUrl(`${notificationHubUrl}?clientId=${encodeURIComponent(clientId)}&amp;browserId=${encodeURIComponent(browserId)}`)
+    .withAutomaticReconnect()
+    .build();
+
+  connection.on("LoginNotification", async (message) =&gt; {
+    if (!message || message.eventType !== "Login") return;
+
+    if (!message.deliveryCode) {
+      throw new Error("No llegó deliveryCode en LoginNotification.");
+    }
+
+    const exchangeResponse = await fetch(`${authBaseUrl}/api/auth/azure/exchange`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        deliveryCode: message.deliveryCode,
+        codeVerifier: codeVerifier
+      })
+    });
+
+    const exchangePayload = await exchangeResponse.json();
+
+    if (!exchangeResponse.ok || !exchangePayload.success) {
+      throw new Error(exchangePayload.message || "No se pudo canjear deliveryCode.");
+    }
+
+    const accessToken = exchangePayload.data.accessToken;
+    const refreshToken = exchangePayload.data.refreshToken;
+
+    const meResponse = await fetch(`${authBaseUrl}/api/auth/me`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    });
+
+    const mePayload = await meResponse.json();
+
+    if (!meResponse.ok || !mePayload.success) {
+      throw new Error(mePayload.message || "No se pudo obtener usuario actual.");
+    }
+
+    localStorage.setItem("accessToken", accessToken);
+    localStorage.setItem("refreshToken", refreshToken);
+    localStorage.setItem("userSession", JSON.stringify(mePayload.data));
+
+    await connection.stop();
+    window.location.href = "/";
+  });
+
+  await connection.start();
+  await connection.invoke("JoinApplicationGroup", clientId, null);
+  await connection.invoke("JoinBrowserGroup", clientId, browserId);
+
+  const query = new URLSearchParams({
+    clientId,
+    browserId,
+    codeChallenge
+  });
+
+  const azureUrlResponse = await fetch(`${authBaseUrl}/api/auth/azure/url?${query.toString()}`);
+  const azureUrlPayload = await azureUrlResponse.json();
+
+  if (!azureUrlResponse.ok || !azureUrlPayload.success) {
+    throw new Error(azureUrlPayload.message || "No se pudo obtener URL de Azure.");
+  }
+
+  const popup = window.open(
+    azureUrlPayload.data.url,
+    "azure-login",
+    "width=600,height=720,left=200,top=100"
+  );
+
+  if (!popup) {
+    throw new Error("El navegador bloqueó el popup de Azure.");
+  }
+}</code></pre>
+
+      <h3>8.1 Orden resumido en pseudocódigo</h3>
+      <pre><code>browserId = getOrCreateBrowserId()
+codeVerifier = generateRandomPkceVerifier()
+codeChallenge = sha256Base64Url(codeVerifier)
+
+connection = connectSignalR(notificationHubUrl, clientId, browserId)
+listen LoginNotification
+start connection
+invoke JoinApplicationGroup(clientId, null)
+invoke JoinBrowserGroup(clientId, browserId)
+
+azureUrl = GET /api/auth/azure/url(clientId, browserId, codeChallenge)
+openPopup(azureUrl)
+
+on LoginNotification:
+  tokens = POST /api/auth/azure/exchange(deliveryCode, codeVerifier)
+  user = GET /api/auth/me(accessToken)
+  saveSession(tokens, user)
+  redirect()</code></pre>
+    </section>
+
+    <section id="errores">
+      <h2>9. Errores frecuentes y validaciones</h2>
+      <table>
+        <thead>
+          <tr><th>Situación</th><th>Causa probable</th><th>Validación</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>Aplicación cliente no autorizada</code></td>
+            <td>No existe <code>ClientId</code> activo en <code>auth.tbl_Applications</code>.</td>
+            <td>Revisar <code>ClientId</code>, <code>IsActive = 1</code>, <code>IsDeleted = 0</code>.</td>
+          </tr>
+          <tr>
+            <td>No llega <code>LoginNotification</code></td>
+            <td>No existe suscripción activa o <code>NotificationType</code> no es <code>websocket</code>/<code>both</code>.</td>
+            <td>Revisar <code>auth.tbl_NotificationSubscriptions</code>.</td>
+          </tr>
+          <tr>
+            <td>La notificación no llega al navegador correcto</td>
+            <td>El <code>browserId</code> usado en SignalR no coincide con el enviado a <code>/api/auth/azure/url</code>.</td>
+            <td>Loguear ambos valores y confirmar igualdad exacta.</td>
+          </tr>
+          <tr>
+            <td><code>deliveryCode</code> inválido o expirado</td>
+            <td>El código ya fue usado, expiró o se perdió el <code>codeVerifier</code>.</td>
+            <td>Reiniciar el flujo de login Azure.</td>
+          </tr>
+          <tr>
+            <td>Popup bloqueado</td>
+            <td>El popup no se abrió desde una acción directa del usuario.</td>
+            <td>Abrir Microsoft desde el click del botón de login.</td>
+          </tr>
+          <tr>
+            <td>Error CORS o SignalR no conecta</td>
+            <td>Origen del frontend no permitido o URL de hub incorrecta.</td>
+            <td>Validar CORS, HTTPS, proxy y <code>notificationHubUrl</code>.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>9.1 Checklist final para el programador</h3>
+      <ol>
+        <li>Solicitar <code>clientId</code> registrado en RepositoryUta.</li>
+        <li>Confirmar que existe suscripción <code>Login</code> con <code>NotificationType = websocket</code> o <code>both</code>.</li>
+        <li>Configurar <code>authBaseUrl</code> y <code>notificationHubUrl</code>.</li>
+        <li>Implementar generación de <code>browserId</code>.</li>
+        <li>Implementar PKCE: <code>codeVerifier</code> y <code>codeChallenge</code>.</li>
+        <li>Conectar SignalR antes de abrir Microsoft.</li>
+        <li>Invocar <code>JoinBrowserGroup</code> con el mismo <code>browserId</code>.</li>
+        <li>Solicitar URL Azure.</li>
+        <li>Recibir <code>LoginNotification</code>.</li>
+        <li>Canjear <code>deliveryCode</code>.</li>
+        <li>Consultar <code>/api/auth/me</code>.</li>
+        <li>Guardar sesión y continuar al sistema.</li>
+      </ol>
+    </section>
+  </main>
+</body>
+</html>

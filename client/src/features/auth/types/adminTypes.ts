@@ -103,6 +103,8 @@ export interface CreateUserDto {
   email: string;
   displayName?: string;
   userType?: string; // "Local" | "AzureAD"
+  /** Obligatorio cuando userType es "AzureAD" (empleado real); ignorado/opcional para "Local". */
+  hrEmployeeId?: number;
 }
 
 export interface CreateRoleDto {

@@ -28,16 +28,17 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { DataPagination } from "@/components/ui/DataPagination";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/features/auth";
 import {
   PermisosAPI,
   VacacionesAPI,
   TiposPermisosAPI,
-  VistaDetallesEmpleadosAPI,
   JustificationsAPI,
   handleApiError,
 } from "@/lib/api";
+import { useEmployeeLookupMap } from "@/hooks/useEmployeeLookupMap";
 import {
   CalendarCheck,
   Sun,
@@ -91,12 +92,6 @@ interface PermissionType {
   id: number;
   name: string;
 }
-interface EmployeeLite {
-  employeeID: number;
-  fullName: string;
-  departmentName?: string;
-}
-
 type JustStatus = "PENDING" | "APPROVED" | "REJECTED";
 interface Justification {
   punchJustId?: number;
@@ -347,11 +342,7 @@ export default function ApprovalsPermissions() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: employeesRes } = useQuery({
-    queryKey: ["/api/v1/rh/vw/EmployeeDetails"],
-    queryFn: () => VistaDetallesEmpleadosAPI.list(),
-    staleTime: 5 * 60 * 1000,
-  });
+  const { employeesMap } = useEmployeeLookupMap();
 
   const permissionTypes: PermissionType[] = useMemo(() => {
     if (typesRes?.status !== "success") return [];
@@ -360,30 +351,17 @@ export default function ApprovalsPermissions() {
       .filter((t) => t.id != null);
   }, [typesRes]);
 
-  const employeesMap: Record<number, EmployeeLite> = useMemo(() => {
-    if (employeesRes?.status !== "success") return {};
-    const arr = safeArray(employeesRes.data);
-    const map: Record<number, EmployeeLite> = {};
-    for (const r of arr) {
-      const id = toNumber(pick(r, ["employeeID", "EmployeeID", "id", "Id", "ID"]));
-      const fullName =
-        pick(r, ["fullName", "FullName"]) ??
-        `${pick(r, ["firstName", "FirstName"]) ?? ""} ${pick(r, ["lastName", "LastName"]) ?? ""}`.trim();
-      if (id != null) {
-        map[id] = {
-          employeeID: id,
-          fullName: fullName || `#${id}`,
-          departmentName: pick(r, ["departmentName", "DepartmentName"]),
-        };
-      }
-    }
-    return map;
-  }, [employeesRes]);
-
   const getTypeName = (id?: number) =>
     id == null ? "—" : (permissionTypes.find((t) => Number(t.id) === Number(id))?.name ?? "—");
 
   /* --------- Consultas por bossId (aprobador actual) --------- */
+  // PENDIENTE (evaluado 2026-07-23, no es prioridad por ahora): un usuario con rol elevado
+  // (Administrador/R_RH/etc, sin EmployeeId propio o sin ser jefe directo de nadie) ve estas
+  // 3 pestañas siempre vacías, porque solo consultan getByBossId(approverId). El backend ya
+  // permite a roles elevados aprobar/rechazar cualquier registro (ver ElevatedRoles en
+  // VacationsController/PermissionsController), y ya existe VacationsController.GetAll para
+  // listar todo — solo falta conectarlo aquí para ese caso. Se decidió dejarlo pendiente sin
+  // implementar por ahora.
   const { data: permsRes, isLoading: loadingPerms } = useQuery({
     queryKey: ["/api/v1/rh/permissions", "boss", approverId],
     enabled: !!approverId,
@@ -561,6 +539,23 @@ export default function ApprovalsPermissions() {
         return (b.punchJustId ?? 0) - (a.punchJustId ?? 0);
       });
   }, [allJusts, justFilters, employeesMap]);
+
+  // Paginación en cliente para Justificaciones — el listado ya viene acotado al jefe
+  // inmediato (getByBossId) y ya se ordena desc por fecha de creación arriba; solo se
+  // pagina el resultado ya filtrado/ordenado, sin tocar el fetch ni los filtros existentes.
+  const [justPage, setJustPage] = useState(1);
+  const [justPageSize, setJustPageSize] = useState(20);
+
+  useEffect(() => {
+    setJustPage(1);
+  }, [justFilters]);
+
+  const justTotalCount = filteredJusts.length;
+  const justTotalPages = Math.max(1, Math.ceil(justTotalCount / justPageSize));
+  const pagedJusts = useMemo(() => {
+    const start = (justPage - 1) * justPageSize;
+    return filteredJusts.slice(start, start + justPageSize);
+  }, [filteredJusts, justPage, justPageSize]);
 
   /* --------- Invalidate helpers --------- */
   const qcInvalidatePerms = () =>
@@ -1524,7 +1519,7 @@ export default function ApprovalsPermissions() {
                 ) : filteredJusts.length === 0 ? (
                   <div className="py-6 text-center text-muted-foreground">Sin resultados</div>
                 ) : (
-                  filteredJusts.map((j, i) => {
+                  pagedJusts.map((j, i) => {
                     const emp = j.employeeId ? employeesMap[j.employeeId] : undefined;
                     const st = normalizeJustStatus(j.status);
                     const chip = statusChip[st] ?? statusChip.PENDING;
@@ -1622,7 +1617,7 @@ export default function ApprovalsPermissions() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {filteredJusts.map((j, i) => {
+                        {pagedJusts.map((j, i) => {
                           const emp = j.employeeId ? employeesMap[j.employeeId] : undefined;
                           const st = normalizeJustStatus(j.status);
                           const chip = statusChip[st] ?? statusChip.PENDING;
@@ -1685,6 +1680,22 @@ export default function ApprovalsPermissions() {
                   </div>
                 )}
               </div>
+
+              {!loadingJusts && (
+                <DataPagination
+                  page={justPage}
+                  totalPages={justTotalPages}
+                  totalCount={justTotalCount}
+                  pageSize={justPageSize}
+                  hasPreviousPage={justPage > 1}
+                  hasNextPage={justPage < justTotalPages}
+                  onPageChange={setJustPage}
+                  onPageSizeChange={(size) => {
+                    setJustPageSize(size);
+                    setJustPage(1);
+                  }}
+                />
+              )}
             </CardContent>
           </Card>
         </TabsContent>

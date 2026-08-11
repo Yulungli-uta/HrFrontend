@@ -49,7 +49,7 @@ export interface FileDeleteResponseDto {
 // Helper interno: fetch directo sin Content-Type (para FormData)
 // =============================================================================
 
-async function fetchMultipart<T>(
+export async function fetchMultipart<T>(
   url: string,
   body: FormData,
   method: 'POST' | 'PUT' = 'POST'

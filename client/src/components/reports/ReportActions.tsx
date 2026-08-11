@@ -9,12 +9,14 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, Eye, FileText, FileSpreadsheet } from 'lucide-react';
+import { Loader2, Eye, FileText, FileSpreadsheet, FileDown } from 'lucide-react';
 
 interface ReportActionsProps {
   onPreview: () => void | Promise<void>;
-  onDownloadPdf: () => void | Promise<void>;
-  onDownloadExcel: () => void | Promise<void>;
+  onDownloadPdf?: () => void | Promise<void>;
+  onDownloadExcel?: () => void | Promise<void>;
+  /** Descarga CSV (UTF-8, separador ';') — usado por los reportes SIIES. */
+  onDownloadCsv?: () => void | Promise<void>;
   isPreviewing?: boolean;
   isDownloading?: boolean;
   description?: string;
@@ -24,6 +26,7 @@ export function ReportActions({
   onPreview,
   onDownloadPdf,
   onDownloadExcel,
+  onDownloadCsv,
   isPreviewing = false,
   isDownloading = false,
   description,
@@ -56,45 +59,72 @@ export function ReportActions({
           </Button>
 
           {/* Descargar PDF */}
-          <Button
-            onClick={onDownloadPdf}
-            disabled={isLoading}
-            size="lg"
-            className="flex-1 min-w-[200px]"
-          >
-            {isDownloading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Descargando...
-              </>
-            ) : (
-              <>
-                <FileText className="mr-2 h-4 w-4" />
-                Descargar PDF
-              </>
-            )}
-          </Button>
+          {onDownloadPdf && (
+            <Button
+              onClick={onDownloadPdf}
+              disabled={isLoading}
+              size="lg"
+              className="flex-1 min-w-[200px]"
+            >
+              {isDownloading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Descargando...
+                </>
+              ) : (
+                <>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Descargar PDF
+                </>
+              )}
+            </Button>
+          )}
 
           {/* Descargar Excel */}
-          <Button
-            onClick={onDownloadExcel}
-            disabled={isLoading}
-            variant="secondary"
-            size="lg"
-            className="flex-1 min-w-[200px]"
-          >
-            {isDownloading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Descargando...
-              </>
-            ) : (
-              <>
-                <FileSpreadsheet className="mr-2 h-4 w-4" />
-                Descargar Excel
-              </>
-            )}
-          </Button>
+          {onDownloadExcel && (
+            <Button
+              onClick={onDownloadExcel}
+              disabled={isLoading}
+              variant="secondary"
+              size="lg"
+              className="flex-1 min-w-[200px]"
+            >
+              {isDownloading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Descargando...
+                </>
+              ) : (
+                <>
+                  <FileSpreadsheet className="mr-2 h-4 w-4" />
+                  Descargar Excel
+                </>
+              )}
+            </Button>
+          )}
+
+          {/* Descargar CSV (SIIES) */}
+          {onDownloadCsv && (
+            <Button
+              onClick={onDownloadCsv}
+              disabled={isLoading}
+              variant="secondary"
+              size="lg"
+              className="flex-1 min-w-[200px]"
+            >
+              {isDownloading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Descargando...
+                </>
+              ) : (
+                <>
+                  <FileDown className="mr-2 h-4 w-4" />
+                  Descargar CSV
+                </>
+              )}
+            </Button>
+          )}
         </div>
 
         {description && (

@@ -25,6 +25,9 @@ interface JobDetailFormProps {
     jobTypeId: number | null;
     groupId: number | null;
     isActive: boolean;
+    siiesTipoFuncionarioTypeId: number | null;
+    puestoJerarquicoSuperior: boolean;
+    referenceSalary: number | null;
   }) => void;
   inlineMode?: boolean;
   onCancel?: () => void;
@@ -66,6 +69,15 @@ export function JobDetailForm({
     job.jobTypeId ? String(job.jobTypeId) : ""
   );
   const [isActive, setIsActive] = useState<boolean>(job.isActive);
+  const [siiesTipoFuncionarioTypeId, setSiiesTipoFuncionarioTypeId] = useState<string>(
+    job.siiesTipoFuncionarioTypeId ? String(job.siiesTipoFuncionarioTypeId) : ""
+  );
+  const [puestoJerarquicoSuperior, setPuestoJerarquicoSuperior] = useState<boolean>(
+    job.puestoJerarquicoSuperior
+  );
+  const [referenceSalary, setReferenceSalary] = useState<string>(
+    job.referenceSalary != null ? String(job.referenceSalary) : ""
+  );
 
   // ===========================
   // CARGA TIPOS DE CARGO (ref_Types / CONTRACT_TYPE)
@@ -88,6 +100,26 @@ export function JobDetailForm({
   );
 
   // ===========================
+  // CARGA TIPO DE FUNCIONARIO SIIES (ref_Types / SIIES_TIPO_FUNCIONARIO)
+  // ===========================
+
+  const {
+    data: siiesTipoFuncionarioTypes,
+    isLoading: loadingSiiesTipoFuncionario,
+    error: siiesTipoFuncionarioError,
+  } = useQuery<RefType[]>({
+    queryKey: ["/api/v1/rh/ref/types", "SIIES_TIPO_FUNCIONARIO"],
+    queryFn: async () => {
+      const res = await TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.SIIES_TIPO_FUNCIONARIO);
+      return ensureSuccess(res, "Error al cargar tipos de funcionario SIIES");
+    },
+  });
+
+  const activeSiiesTipoFuncionarioTypes = (siiesTipoFuncionarioTypes ?? []).filter(
+    (t) => t.isActive !== false
+  );
+
+  // ===========================
   // SINCRONIZAR FORM AL CAMBIAR CARGO
   // ===========================
 
@@ -96,7 +128,21 @@ export function JobDetailForm({
     setGroupId(job.groupId ? String(job.groupId) : "");
     setJobTypeId(job.jobTypeId ? String(job.jobTypeId) : "");
     setIsActive(job.isActive);
-  }, [job.jobID, job.description, job.groupId, job.jobTypeId, job.isActive]);
+    setSiiesTipoFuncionarioTypeId(
+      job.siiesTipoFuncionarioTypeId ? String(job.siiesTipoFuncionarioTypeId) : ""
+    );
+    setPuestoJerarquicoSuperior(job.puestoJerarquicoSuperior);
+    setReferenceSalary(job.referenceSalary != null ? String(job.referenceSalary) : "");
+  }, [
+    job.jobID,
+    job.description,
+    job.groupId,
+    job.jobTypeId,
+    job.isActive,
+    job.siiesTipoFuncionarioTypeId,
+    job.puestoJerarquicoSuperior,
+    job.referenceSalary,
+  ]);
 
   // ===========================
   // SUBMIT
@@ -109,6 +155,11 @@ export function JobDetailForm({
       jobTypeId: jobTypeId ? Number(jobTypeId) : null,
       groupId: groupId ? Number(groupId) : null,
       isActive,
+      siiesTipoFuncionarioTypeId: siiesTipoFuncionarioTypeId
+        ? Number(siiesTipoFuncionarioTypeId)
+        : null,
+      puestoJerarquicoSuperior,
+      referenceSalary: referenceSalary ? Number(referenceSalary) : null,
     });
   };
 
@@ -182,6 +233,79 @@ export function JobDetailForm({
             )}
           </select>
         </div>
+      </div>
+
+      {/* CLASIFICACIÓN SIIES (reporte Funcionarios / Funcionario Pasaporte) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t">
+        {/* Tipo de funcionario SIIES (ref_Types SIIES_TIPO_FUNCIONARIO) */}
+        <div>
+          <Label className="text-sm font-medium">Tipo de funcionario (SIIES)</Label>
+
+          {siiesTipoFuncionarioError && (
+            <p className="text-xs text-destructive mb-1">
+              Error al cargar tipos de funcionario SIIES. Intente refrescar la página.
+            </p>
+          )}
+
+          <select
+            className="border border-input rounded-md px-3 py-2 text-sm w-full bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            value={siiesTipoFuncionarioTypeId}
+            onChange={(e) => setSiiesTipoFuncionarioTypeId(e.target.value)}
+            disabled={loadingSiiesTipoFuncionario || !!siiesTipoFuncionarioError}
+          >
+            {loadingSiiesTipoFuncionario && (
+              <option key="loading" value="">
+                Cargando tipos de funcionario...
+              </option>
+            )}
+
+            {!loadingSiiesTipoFuncionario && (
+              <>
+                <option key="no-type" value="">
+                  (sin clasificar)
+                </option>
+                {activeSiiesTipoFuncionarioTypes.map((t) => (
+                  <option key={t.typeId} value={t.typeId}>
+                    {t.name}
+                  </option>
+                ))}
+              </>
+            )}
+          </select>
+        </div>
+
+        {/* Puesto jerárquico superior */}
+        <div className="flex items-center gap-2 pt-6">
+          <input
+            id={`job-puesto-jerarquico-${job.jobID || "nuevo"}`}
+            type="checkbox"
+            className="h-4 w-4"
+            checked={puestoJerarquicoSuperior}
+            onChange={(e) => setPuestoJerarquicoSuperior(e.target.checked)}
+          />
+          <Label
+            htmlFor={`job-puesto-jerarquico-${job.jobID || "nuevo"}`}
+            className="text-sm"
+          >
+            Puesto Jerárquico Superior (SIIES)
+          </Label>
+        </div>
+      </div>
+
+      {/* SUELDO DE REFERENCIA */}
+      <div>
+        <Label className="text-sm font-medium">Sueldo de referencia</Label>
+        <Input
+          type="number"
+          step="0.01"
+          min="0"
+          value={referenceSalary}
+          onChange={(e) => setReferenceSalary(e.target.value)}
+          placeholder="Ej: 733.00"
+        />
+        <p className="text-xs text-muted-foreground mt-1">
+          Valor de referencia del cargo (no es el sueldo real de ninguna persona en particular).
+        </p>
       </div>
 
       {/* ESTADO ACTIVO */}

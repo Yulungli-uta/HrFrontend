@@ -1,17 +1,23 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ActionIconButton } from "@/components/ui/action-icon-button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Plus, Edit, Trash2, Calendar, BookOpen, MapPin } from "lucide-react";
+import { FileText, Plus, Edit, Trash2, Calendar, BookOpen, MapPin, ChevronDown, ChevronUp } from "lucide-react";
 import { Publication } from "@/types/person";
+import { ReusableDocumentManager } from "@/components/ReusableDocumentManager";
+import { PUBLICATION_DOCUMENT_DIRECTORY_CODE, PUBLICATION_DOCUMENT_ENTITY_TYPE } from "@/features/constants";
 
 interface PublicationsTabProps {
   publications: Publication[];
   onEdit: (type: string, item: any) => void;
   onDelete: (id: number) => void;
+  /** Identificación de la persona — agrupa su expediente completo en una sola carpeta. */
+  personIdCard?: string;
 }
 
-export function PublicationsTab({ publications, onEdit, onDelete }: PublicationsTabProps) {
+export function PublicationsTab({ publications, onEdit, onDelete, personIdCard }: PublicationsTabProps) {
+  const [expandedId, setExpandedId] = useState<number | null>(null);
   const formatDate = (dateString: string) => {
     if (!dateString) return "No especificada";
     return new Date(dateString).toLocaleDateString("es-EC", {
@@ -91,6 +97,38 @@ export function PublicationsTab({ publications, onEdit, onDelete }: Publications
                           </div>
                         )}
                       </div>
+
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs -ml-2"
+                        onClick={() =>
+                          setExpandedId(expandedId === resolveId(publication) ? null : resolveId(publication))
+                        }
+                      >
+                        <FileText className="h-3.5 w-3.5 mr-1" />
+                        Documento
+                        {expandedId === resolveId(publication) ? (
+                          <ChevronUp className="h-3.5 w-3.5 ml-1" />
+                        ) : (
+                          <ChevronDown className="h-3.5 w-3.5 ml-1" />
+                        )}
+                      </Button>
+
+                      {expandedId === resolveId(publication) && (
+                        <ReusableDocumentManager
+                          directoryCode={PUBLICATION_DOCUMENT_DIRECTORY_CODE}
+                          entityType={PUBLICATION_DOCUMENT_ENTITY_TYPE}
+                          entityId={resolveId(publication)}
+                          relativePath={personIdCard ? `${personIdCard}/${PUBLICATION_DOCUMENT_ENTITY_TYPE.toLowerCase()}` : undefined}
+                          accept=".pdf"
+                          maxSizeMB={15}
+                          label="Documento de la publicación"
+                          entityReady={true}
+                          allowReplace
+                          documentType={{ enabled: true, category: "CV_DOCUMENT_TYPE", label: "Tipo de documento" }}
+                        />
+                      )}
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">

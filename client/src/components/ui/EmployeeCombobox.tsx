@@ -13,6 +13,8 @@ import { Button } from '@/components/ui/button';
 import { Check, ChevronsUpDown, X, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { VistaDetallesEmpleadosAPI } from '@/lib/api';
+import type { ApiResponse } from '@/lib/api';
+import type { PagedResult } from '@/lib/api/core/pagination';
 
 type Props = {
   value: number | null;
@@ -24,7 +26,7 @@ type Props = {
    * Búsqueda alterna al buscador genérico de HR.vw_EmployeeDetails (ej. para filtrar solo
    * empleados con cierto cargo). Si se omite, usa VistaDetallesEmpleadosAPI.listPaged.
    */
-  searchFn?: (search: string) => Promise<{ status: string; data?: any }>;
+  searchFn?: (search: string) => Promise<ApiResponse<any[] | PagedResult<any>>>;
   /** Clave de caché única cuando se usa searchFn (para no compartir caché con el buscador genérico). */
   searchKey?: string;
 };
@@ -59,6 +61,23 @@ export function EmployeeCombobox({
   useEffect(() => {
     if (!value) setSelectedLabel(null);
   }, [value]);
+
+  // Al editar un registro existente, `value` llega ya seteado desde el padre sin que el
+  // usuario haya buscado/seleccionado nada en esta sesión — sin esto se mostraría
+  // "Empleado #<id>" en vez del nombre real. Se resuelve una sola vez por id.
+  const { data: resolvedData } = useQuery({
+    queryKey: ['employee-details-resolve', value],
+    queryFn: () => VistaDetallesEmpleadosAPI.get(value as number),
+    enabled: !!value && !selectedLabel,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  useEffect(() => {
+    if (resolvedData?.status === 'success' && resolvedData.data) {
+      const emp = resolvedData.data as any;
+      setSelectedLabel(emp.fullName ?? `Empleado #${value}`);
+    }
+  }, [resolvedData, value]);
 
   const { data, isFetching } = useQuery({
     queryKey: [searchKey, debouncedSearch],

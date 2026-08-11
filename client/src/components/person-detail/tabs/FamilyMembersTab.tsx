@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ActionIconButton } from "@/components/ui/action-icon-button";
 import { Badge } from "@/components/ui/badge";
-import { Users, Plus, Edit, Trash2, Calendar, IdCard, GraduationCap, HeartHandshake } from "lucide-react";
+import { Users, Plus, Edit, Trash2, Calendar, IdCard, GraduationCap, HeartHandshake, FileText, ChevronDown, ChevronUp } from "lucide-react";
 import { FamilyMember } from "@/types/person";
+import { ReusableDocumentManager } from "@/components/ReusableDocumentManager";
+import { FAMILY_MEMBER_DOCUMENT_DIRECTORY_CODE, FAMILY_MEMBER_DOCUMENT_ENTITY_TYPE } from "@/features/constants";
 
 interface FamilyMembersTabProps {
   familyMembers: FamilyMember[];
@@ -14,6 +17,8 @@ interface FamilyMembersTabProps {
    * (DIP: el componente depende de la abstracción, no del API directamente)
    */
   refTypesMap?: Record<number, string>;
+  /** Identificación de la persona — agrupa su expediente completo en una sola carpeta. */
+  personIdCard?: string;
 }
 
 export function FamilyMembersTab({
@@ -21,7 +26,9 @@ export function FamilyMembersTab({
   onEdit,
   onDelete,
   refTypesMap = {},
+  personIdCard,
 }: FamilyMembersTabProps) {
+  const [expandedId, setExpandedId] = useState<number | null>(null);
   const formatDate = (dateString: string) => {
     if (!dateString) return "No especificada";
     return new Date(dateString).toLocaleDateString("es-EC", {
@@ -172,6 +179,38 @@ export function FamilyMembersTab({
                               </span>
                             )}
                           </div>
+                        )}
+
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="self-start text-xs -ml-2"
+                          onClick={() =>
+                            setExpandedId(expandedId === member.burdenId ? null : member.burdenId)
+                          }
+                        >
+                          <FileText className="h-3.5 w-3.5 mr-1" />
+                          Documento
+                          {expandedId === member.burdenId ? (
+                            <ChevronUp className="h-3.5 w-3.5 ml-1" />
+                          ) : (
+                            <ChevronDown className="h-3.5 w-3.5 ml-1" />
+                          )}
+                        </Button>
+
+                        {expandedId === member.burdenId && (
+                          <ReusableDocumentManager
+                            directoryCode={FAMILY_MEMBER_DOCUMENT_DIRECTORY_CODE}
+                            entityType={FAMILY_MEMBER_DOCUMENT_ENTITY_TYPE}
+                            entityId={member.burdenId}
+                            relativePath={personIdCard ? `${personIdCard}/${FAMILY_MEMBER_DOCUMENT_ENTITY_TYPE.toLowerCase()}` : undefined}
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            maxSizeMB={10}
+                            label="Partida de nacimiento u otro soporte"
+                            entityReady={true}
+                            allowReplace
+                            documentType={{ enabled: true, category: "CV_DOCUMENT_TYPE", label: "Tipo de documento" }}
+                          />
                         )}
                       </div>
                     </div>

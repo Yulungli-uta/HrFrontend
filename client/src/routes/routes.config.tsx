@@ -25,6 +25,9 @@ const DepartmentsPage = lazy(() => import("@/pages/Departments"));
 const ContractsPage = lazy(() => import("@/pages/Contracts"));
 const PermissionsPage = lazy(() => import("@/pages/Permissions"));
 const VacationsPage = lazy(() => import("@/pages/Vacations"));
+const VacationBalanceAdjustmentPage = lazy(() => import("@/pages/VacationBalanceAdjustment"));
+const LiquidacionesPage = lazy(() => import("@/pages/Liquidaciones"));
+const CorrectionsAuditPage = lazy(() => import("@/pages/CorrectionsAudit"));
 const AttendancePage = lazy(() => import("@/pages/Attendance"));
 const PayrollPage = lazy(() => import("@/pages/Payroll"));
 const SchedulesPage = lazy(() => import("@/pages/Schedules"));
@@ -42,6 +45,10 @@ const ApprovalsMedicalPermissionsPage = lazy(() => import("@/pages/ApprovalsMedi
 const ApprovalsPermissionsPage = lazy(() => import("@/pages/ApprovalsPermissions"));
 const JobActivitiesPage = lazy(() => import("@/pages/JobActivities"));
 const ReferenceTypesPage = lazy(() => import("@/pages/ReferenceTypes"));
+const InstitutionsPage = lazy(() => import("@/pages/Institutions"));
+const KnowledgeAreasPage = lazy(() => import("@/pages/KnowledgeAreas"));
+const ParametersPage = lazy(() => import("@/pages/Parameters"));
+const GeoLocationsPage = lazy(() => import("@/pages/GeoLocations"));
 const TramiteRequirementsPage = lazy(() => import("@/pages/TramiteRequirements"));
 const AcademicLadderPage = lazy(() => import("@/pages/AcademicLadder"));
 const HolidaysPage = lazy(() => import("@/pages/Holidays"));
@@ -87,6 +94,11 @@ const GrantedPermissionsReportPage = lazy(() => import("@/pages/reports/GrantedP
 const ContractRequestsReportPage = lazy(() => import("@/pages/reports/ContractRequestsReport"));
 const CertificationsReportPage = lazy(() => import("@/pages/reports/CertificationsReport"));
 
+// Reportes SIIES (CACES)
+const SiiesFuncionariosReportPage = lazy(() => import("@/pages/reports/SiiesFuncionariosReport"));
+const SiiesProfesoresReportPage = lazy(() => import("@/pages/reports/SiiesProfesoresReport"));
+const SiiesFormacionProfesionalReportPage = lazy(() => import("@/pages/reports/SiiesFormacionProfesionalReport"));
+
 // Reportes v2 — Guardias
 const GuardShiftPlanningReportPage = lazy(() => import("@/pages/reports/GuardShiftPlanningReport"));
 const GuardLocationCoverageReportPage = lazy(() => import("@/pages/reports/GuardLocationCoverageReport"));
@@ -97,6 +109,8 @@ const GuardScheduleMatrixReportPage = lazy(() => import("@/pages/reports/GuardSc
 // Acciones de Personal
 const PersonnelActionsPage = lazy(() => import("@/pages/PersonnelActions"));
 const PersonnelActionDetailPage = lazy(() => import("@/pages/PersonnelActionDetail"));
+const PersonnelActionsCorrectionPage = lazy(() => import("@/pages/PersonnelActionsCorrection"));
+const PersonnelActionsHistoricalEntryPage = lazy(() => import("@/pages/PersonnelActionsHistoricalEntry"));
 
 // Renuncia / Jubilación — el detalle se muestra como modal sobre la misma lista,
 // no como ruta con :id (evita exponer el ID en la URL).
@@ -132,6 +146,8 @@ const GuardVacationApprovalsPage = lazy(() => import("@/pages/guards/GuardVacati
 
 // Detalle de Contrato
 const ContractDetailPage = lazy(() => import("@/pages/ContractDetail"));
+const ContractsCorrectionPage = lazy(() => import("@/pages/ContractsCorrection"));
+const ContractsHistoricalEntryPage = lazy(() => import("@/pages/ContractsHistoricalEntry"));
 
 // Plantillas documentales
 const DocumentTemplatesPage = lazy(() => import("@/pages/admin/DocumentTemplates"));
@@ -158,12 +174,44 @@ const SearchInstances = lazy(() => import("@/pages/DocFlow/search-instances"));
 const InstanceHistory = lazy(() => import("@/pages/DocFlow/instance-history"));
 const GeneralSearch = lazy(() => import("@/pages/DocFlow/general-search"));
 
+// Firma electrónica
+const SigningInboxPage = lazy(() => import("@/pages/electronicSignature/SigningInboxPage"));
+const CreateSigningProcessPage = lazy(() => import("@/pages/electronicSignature/CreateSigningProcessPage"));
+const SigningProcessesPage = lazy(() => import("@/pages/electronicSignature/SigningProcessesPage"));
+const SigningProcessDetailPage = lazy(() => import("@/pages/electronicSignature/SigningProcessDetailPage"));
+const SignDocumentPage = lazy(() => import("@/pages/electronicSignature/SignDocumentPage"));
+const ValidateDocumentPage = lazy(() => import("@/pages/electronicSignature/ValidateDocumentPage"));
+const ValidateCertificatePage = lazy(() => import("@/pages/electronicSignature/ValidateCertificatePage"));
+const SignatureCallbackEndpointsPage = lazy(() => import("@/pages/admin/SignatureCallbackEndpoints"));
+
 
 // ============================================
 // CONFIGURACIÓN DE RUTAS
 // ============================================
 
 export const routes: RouteConfig[] = [
+  { path: "/signatures/inbox", component: SigningInboxPage, requiredPath: "/signatures/inbox" },
+  { path: "/signatures/processes", component: SigningProcessesPage, requiredPath: "/signatures/processes" },
+  { path: "/signatures/processes/all", component: SigningProcessesPage, requiredPath: "/signatures/processes/all" },
+  { path: "/signatures/processes/new", component: CreateSigningProcessPage, requiredPath: "/signatures/processes/new" },
+  { path: "/signatures/processes/:id", component: SigningProcessDetailPage, requiredPath: "/signatures/processes" },
+  { path: "/signatures/processes/:id/sign", component: SignDocumentPage, requiredPath: "/signatures/inbox" },
+  // Sin requiredPath a proposito: validar un certificado o la firma de un documento son
+  // utilidades de solo lectura (no exponen datos de RH) accesibles para cualquier usuario
+  // autenticado, igual que "Cambiar contraseña". "/signatures/validate" (certificado .p12)
+  // se accede desde el menú de cuenta en el Header; la validación de documento firmado se
+  // enlaza desde "Procesos de firma" — ninguna de las dos necesita permiso de
+  // auth.tbl_MenuItems propio.
+  { path: "/signatures/validate", component: ValidateCertificatePage },
+  { path: "/signatures/validate-document", component: ValidateDocumentPage },
+  {
+    // Sin menu item propio (auth.tbl_MenuItems) — gateado por rol directo, mismo
+    // patrón que /admin/role-editor, ya que solo R_SIGNATURE_ADMIN tiene
+    // SIGNATURE.CONFIG.MANAGE en RepositoryUta.
+    path: "/admin/signature-callback-endpoints",
+    component: SignatureCallbackEndpointsPage,
+    requiredRoles: ["R_SIGNATURE_ADMIN", "Administrador"]
+  },
   // ----- RUTAS PRINCIPALES -----
   // "/" es el home de autoservicio: el dashboard con cards (resumen, certificados,
   // solicitudes, etc.), NO los datos personales — el perfil completo se alcanza
@@ -231,6 +279,18 @@ export const routes: RouteConfig[] = [
     requiredPath: "/personnel-actions"
   },
   {
+    // Menú "Acción Personal" > "Corregir" (ver RepositoryUta/Database/auth/10_correction_audit_menu.sql).
+    path: "/personnel-actions/correct",
+    component: PersonnelActionsCorrectionPage,
+    requiredPath: "/personnel-actions/correct"
+  },
+  {
+    // Menú "Acción Personal" > "Ingresar Histórico".
+    path: "/personnel-actions/historical",
+    component: PersonnelActionsHistoricalEntryPage,
+    requiredPath: "/personnel-actions/historical"
+  },
+  {
     path: "/personnel-actions/:id",
     component: PersonnelActionDetailPage,
     requiredPath: "/personnel-actions"
@@ -280,6 +340,18 @@ export const routes: RouteConfig[] = [
     path: "/contracts",
     component: ContractsPage,
     requiredPath: "/contracts"
+  },
+  {
+    // Menú "Contratos" > "Corregir" (ver RepositoryUta/Database/auth/10_correction_audit_menu.sql).
+    path: "/contracts/correct",
+    component: ContractsCorrectionPage,
+    requiredPath: "/contracts/correct"
+  },
+  {
+    // Menú "Contratos" > "Ingresar Histórico".
+    path: "/contracts/historical",
+    component: ContractsHistoricalEntryPage,
+    requiredPath: "/contracts/historical"
   },
   {
     path: "/contracts/:id",
@@ -454,6 +526,21 @@ export const routes: RouteConfig[] = [
     requiredPath: "/reports/active-contracts"
   },
   {
+    path: "/reports/siies-funcionarios",
+    component: SiiesFuncionariosReportPage,
+    requiredPath: "/reports/siies-funcionarios"
+  },
+  {
+    path: "/reports/siies-profesores",
+    component: SiiesProfesoresReportPage,
+    requiredPath: "/reports/siies-profesores"
+  },
+  {
+    path: "/reports/siies-formacion-profesional",
+    component: SiiesFormacionProfesionalReportPage,
+    requiredPath: "/reports/siies-formacion-profesional"
+  },
+  {
     path: "/reports/personnel-actions",
     component: PersonnelActionsReportPage,
     requiredPath: "/reports/personnel-actions"
@@ -521,6 +608,26 @@ export const routes: RouteConfig[] = [
     path: "/referenceTypes",
     component: ReferenceTypesPage,
     requiredPath: "/referenceTypes"
+  },
+  {
+    path: "/institutions",
+    component: InstitutionsPage,
+    requiredPath: "/institutions"
+  },
+  {
+    path: "/knowledge-areas",
+    component: KnowledgeAreasPage,
+    requiredPath: "/knowledge-areas"
+  },
+  {
+    path: "/parameters",
+    component: ParametersPage,
+    requiredPath: "/parameters"
+  },
+  {
+    path: "/geo-locations",
+    component: GeoLocationsPage,
+    requiredPath: "/geo-locations"
   },
   {
     path: "/tramite-requirements",
@@ -591,6 +698,27 @@ export const routes: RouteConfig[] = [
     path: "/admin/access-profiles",
     component: AccessProfilesPage,
     requiredRoles: ["Administrador", "R_DITIC"]
+  },
+  {
+    // Menú en Talento Humano (auth.tbl_MenuItems Id=120), no en Administración —
+    // es una acción de RRHH, no de administración del sistema.
+    path: "/vacation-balance-adjustment",
+    component: VacationBalanceAdjustmentPage,
+    requiredPath: "/vacation-balance-adjustment"
+  },
+  {
+    // Página independiente del buzón de liquidaciones (antes una pestaña dentro de
+    // Ajuste de Saldo) — la liquidación puede originarse por renuncia, jubilación,
+    // fin de contrato o renuncia vía acción de personal, no solo por un ajuste manual.
+    path: "/liquidaciones-vacaciones",
+    component: LiquidacionesPage,
+    requiredPath: "/liquidaciones-vacaciones"
+  },
+  {
+    // Menú "Auditoría" (auth.tbl_MenuItems, ver RepositoryUta/Database/auth/10_correction_audit_menu.sql).
+    path: "/audit/corrections",
+    component: CorrectionsAuditPage,
+    requiredPath: "/audit/corrections"
   },
   {
     path: "/admin/AzureMagnament",

@@ -11,6 +11,7 @@ import type {
   ApproveResignationRetirementRequest,
   CancelResignationRetirementRequest,
   CreateResignationRetirementRequest,
+  CreateResignationRetirementOnBehalfRequest,
   EmployeeConsolidatedInfo,
   PagedResignationRetirementResult,
   ResignationRetirementDetail,
@@ -79,6 +80,20 @@ export const ResignationRetirementAPI = {
     apiFetch<Blob>(`${BASE}/my/${id}/download-document`),
 
   // ── Recursos Humanos (revisión) ───────────────────────────────────────────
+
+  /**
+   * Genera una solicitud en nombre de un empleado que no puede/no logra hacer la suya
+   * propia (abandono de puesto, no localizable, etc.) — exclusivo de RRHH. A diferencia
+   * de createMy, permite indicar una fecha de salida ya pasada.
+   */
+  createOnBehalf: (
+    payload: CreateResignationRetirementOnBehalfRequest
+  ): Promise<ApiResponse<ResignationRetirementDetail>> =>
+    apiFetch<ResignationRetirementDetail>(BASE, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
   getPaged: (
     filter?: ResignationRetirementQueryFilter
   ): Promise<ApiResponse<PagedResignationRetirementResult>> =>

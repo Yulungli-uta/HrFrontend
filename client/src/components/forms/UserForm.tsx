@@ -1,21 +1,12 @@
 // src/components/forms/UserForm.tsx
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  Check,
-  ChevronsUpDown,
-  Loader2,
-  User2,
-  AlertCircle,
-  Eye,
-  EyeOff,
-} from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { AlertCircle, Check, Eye, EyeOff, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -23,25 +14,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
+import { EmployeeCombobox } from "@/components/ui/EmployeeCombobox";
 
-import {
-  AuthUsersAPI,
-  LocalCredentialsAPI,
-  VistaDetallesEmpleadosAPI,
-} from "@/lib/api";
+import { AuthUsersAPI, LocalCredentialsAPI } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import type { User, CreateUserDto, UpdateUserDto } from "@/features/auth";
@@ -64,12 +39,6 @@ interface FormData {
   mustChangePassword: boolean;
 }
 
-interface EmployeeOption {
-  email: string;
-  displayName: string;
-  department?: string;
-}
-
 type CreateUserWithEmployeePayload = {
   success: boolean;
   data: {
@@ -82,33 +51,6 @@ type CreateUserWithEmployeePayload = {
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function normalizeEmployees(raw: unknown): EmployeeOption[] {
-  if (!raw) return [];
-  const data = (raw as any)?.data ?? raw;
-  const items: any[] = Array.isArray(data)
-    ? data
-    : Array.isArray(data?.items)
-      ? data.items
-      : Array.isArray(data?.results)
-        ? data.results
-        : [];
-
-  return items
-    .filter((e) => e?.email)
-    .map((e) => ({
-      email: String(e.email ?? ""),
-      displayName: String(
-        e.displayName ??
-        e.fullName ??
-        e.nombreCompleto ??
-        `${e.firstName ?? ""} ${e.lastName ?? ""}`.trim() ??
-        e.email ??
-        ""
-      ),
-      department: e.department ?? e.departmentName ?? e.departamento ?? undefined,
-    }));
-}
 
 async function sha256hex(text: string): Promise<string> {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
@@ -124,9 +66,8 @@ export default function UserForm({ user, onSuccess, onCancel, onDirtyChange }: U
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const [comboOpen, setComboOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedEmployee, setSelectedEmployee] = useState<EmployeeOption | null>(null);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<number | null>(null);
+  const [selectedEmployeeError, setSelectedEmployeeError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
@@ -160,36 +101,6 @@ export default function UserForm({ user, onSuccess, onCancel, onDirtyChange }: U
   const displayName = watch("displayName");
 
   const isLocal = userType === "Local";
-
-  // ── Carga de empleados (solo en creación de AzureAD) ───────────────────────
-  const { data: employeesRaw, isLoading: isLoadingEmployees } = useQuery({
-    queryKey: ["employee-details-for-user-form"],
-    queryFn: () => VistaDetallesEmpleadosAPI.list(),
-    enabled: !isEditing && !isLocal,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const employeeOptions = useMemo<EmployeeOption[]>(() => {
-    const all = normalizeEmployees(employeesRaw);
-    if (!searchQuery.trim()) return all;
-    const q = searchQuery.toLowerCase();
-    return all.filter(
-      (e) =>
-        e.email.toLowerCase().includes(q) ||
-        e.displayName.toLowerCase().includes(q) ||
-        (e.department ?? "").toLowerCase().includes(q)
-    );
-  }, [employeesRaw, searchQuery]);
-
-  const handleSelectEmployee = useCallback(
-    (emp: EmployeeOption) => {
-      setSelectedEmployee(emp);
-      setValue("email", emp.email, { shouldValidate: true });
-      setValue("displayName", emp.displayName, { shouldValidate: true });
-      setComboOpen(false);
-    },
-    [setValue]
-  );
 
   // ── Mutations ─────────────────────────────────────────────────────────────
 
@@ -240,11 +151,20 @@ export default function UserForm({ user, onSuccess, onCancel, onDirtyChange }: U
       return;
     }
 
+    // AzureAD (empleado real) necesita el vínculo a HR; Local (cuenta administrativa/
+    // de servicio) no siempre corresponde a un empleado, así que no se exige ahí.
+    if (!isLocal && !selectedEmployeeId) {
+      setSelectedEmployeeError("Seleccione un empleado antes de crear el usuario.");
+      return;
+    }
+    setSelectedEmployeeError(null);
+
     // Paso 1: crear usuario en auth.tbl_Users
     const createResponse = await createUserMutation.mutateAsync({
       email: data.email,
       displayName: data.displayName || undefined,
       userType: data.userType,
+      hrEmployeeId: selectedEmployeeId ?? undefined,
     });
 
     if (createResponse.status === "error") {
@@ -317,7 +237,8 @@ export default function UserForm({ user, onSuccess, onCancel, onDirtyChange }: U
             // limpiar campos al cambiar de tipo
             setValue("email", "");
             setValue("displayName", "");
-            setSelectedEmployee(null);
+            setSelectedEmployeeId(null);
+            setSelectedEmployeeError(null);
           }}
           disabled={isEditing}
         >
@@ -346,108 +267,31 @@ export default function UserForm({ user, onSuccess, onCancel, onDirtyChange }: U
             Seleccione un empleado para autocompletar el email y nombre.
           </p>
 
-          <Popover open={comboOpen} onOpenChange={setComboOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                type="button"
-                variant="outline"
-                role="combobox"
-                aria-expanded={comboOpen}
-                className={cn(
-                  "w-full justify-between font-normal",
-                  !selectedEmployee && "text-muted-foreground"
-                )}
-              >
-                {selectedEmployee ? (
-                  <span className="flex items-center gap-2 truncate">
-                    <User2 className="h-4 w-4 shrink-0 text-primary" />
-                    <span className="truncate">
-                      {selectedEmployee.displayName}
-                      <span className="ml-2 text-xs text-muted-foreground">
-                        ({selectedEmployee.email})
-                      </span>
-                    </span>
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-2">
-                    <User2 className="h-4 w-4 shrink-0" />
-                    Buscar empleado...
-                  </span>
-                )}
-                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-              </Button>
-            </PopoverTrigger>
+          <EmployeeCombobox
+            value={selectedEmployeeId}
+            onSelect={(id) => {
+              setSelectedEmployeeId(id);
+              setSelectedEmployeeError(null);
+            }}
+            onSelectEmployee={(emp) => {
+              setValue("email", emp.email ?? "", { shouldValidate: true });
+              setValue("displayName", emp.fullName ?? "", { shouldValidate: true });
+            }}
+            placeholder="Buscar empleado por nombre o cédula..."
+          />
 
-            <PopoverContent
-              className="w-[var(--radix-popover-trigger-width)] p-0"
-              align="start"
-              sideOffset={4}
-            >
-              <Command shouldFilter={false}>
-                <CommandInput
-                  placeholder="Buscar por nombre, email o departamento..."
-                  value={searchQuery}
-                  onValueChange={setSearchQuery}
-                />
-                <CommandList className="max-h-64">
-                  {isLoadingEmployees ? (
-                    <div className="flex items-center justify-center py-6 gap-2 text-sm text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Cargando empleados...
-                    </div>
-                  ) : employeeOptions.length === 0 ? (
-                    <CommandEmpty>
-                      {searchQuery
-                        ? "No se encontraron empleados con ese criterio."
-                        : "No hay empleados disponibles."}
-                    </CommandEmpty>
-                  ) : (
-                    <CommandGroup>
-                      {employeeOptions.map((emp) => (
-                        <CommandItem
-                          key={emp.email}
-                          value={emp.email}
-                          onSelect={() => handleSelectEmployee(emp)}
-                          className="flex items-start gap-3 py-2 cursor-pointer"
-                        >
-                          <Check
-                            className={cn(
-                              "mt-0.5 h-4 w-4 shrink-0 text-primary",
-                              selectedEmployee?.email === emp.email
-                                ? "opacity-100"
-                                : "opacity-0"
-                            )}
-                          />
-                          <div className="flex flex-col min-w-0">
-                            <span className="font-medium text-sm text-foreground truncate">
-                              {emp.displayName}
-                            </span>
-                            <span className="text-xs text-muted-foreground truncate">
-                              {emp.email}
-                            </span>
-                            {emp.department && (
-                              <Badge
-                                variant="secondary"
-                                className="mt-1 w-fit text-[10px] px-1.5 py-0"
-                              >
-                                {emp.department}
-                              </Badge>
-                            )}
-                          </div>
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  )}
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
-
-          {!selectedEmployee && (
-            <p className="flex items-center gap-1 text-xs text-warning">
+          {selectedEmployeeError ? (
+            <p className="flex items-center gap-1 text-xs text-destructive">
               <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-              Sin empleado seleccionado no se creará el vínculo UserEmployee.
+              {selectedEmployeeError}
             </p>
+          ) : (
+            !selectedEmployeeId && (
+              <p className="flex items-center gap-1 text-xs text-warning">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                Sin empleado seleccionado no se creará el vínculo UserEmployee.
+              </p>
+            )
           )}
         </div>
       )}

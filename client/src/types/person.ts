@@ -168,6 +168,7 @@ export interface EmergencyContact {
   contactId: number;
   personId: number;
   identification: string;
+  identificationTypeId: number | null;
   firstName: string;
   lastName: string;
   relationshipTypeId: number;
@@ -175,6 +176,58 @@ export interface EmergencyContact {
   phone: string;
   mobile: string | null;
   createdAt: string;
+}
+
+export interface CatastrophicIllness {
+  illnessId: number;
+  personId: number;
+  illness: string;
+  illnessTypeId: number;
+  certificateNumber: string | null;
+  iessNumber: string | null;
+  substituteName: string | null;
+  createdAt?: string;
+}
+
+export interface Address {
+  addressId: number;
+  personId: number;
+  addressTypeId: number;
+  countryId: string;
+  provinceId: string;
+  cantonId: string;
+  parish: string | null;
+  neighborhood: string | null;
+  mainStreet: string;
+  secondaryStreet: string | null;
+  houseNumber: string | null;
+  reference: string | null;
+  createdAt?: string;
+}
+
+export interface BankAccount {
+  accountId: number;
+  personId: number;
+  financialInstitution: string;
+  accountTypeId: number;
+  accountNumber: string;
+  createdAt?: string;
+}
+
+export interface EducationLevel {
+  educationId: number;
+  personId: number;
+  educationLevelTypeId: number;
+  institutionId: number;
+  title: string;
+  specialty: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  grade: string | null;
+  location: string | null;
+  score: number | null;
+  senescytRegistrationNumber: string | null;
+  createdAt?: string;
 }
 
 // =============================================================================

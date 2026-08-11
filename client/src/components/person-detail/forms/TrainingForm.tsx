@@ -1,8 +1,8 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -23,15 +24,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { RefreshCw } from "lucide-react";
+import { ReusableFileUpload } from "@/components/ReusableFileUpload";
 
 import type { Training } from "@/types/person";
 import {
   TiposReferenciaAPI,
   type RefType,
   AreaConocimientoAPI,
+  CapacitacionesAPI,
 } from "@/lib/api";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
+import { TRAINING_CERTIFICATE_DIRECTORY_CODE, TRAINING_CERTIFICATE_ENTITY_TYPE } from "@/features/constants";
 import { logger } from "@/lib/logger";
+import { useToast } from "@/hooks/use-toast";
 
 // =============================
 // Zod schema
@@ -95,7 +100,10 @@ interface TrainingFormProps {
   onCancel: () => void;
   isLoading?: boolean;
   onDirtyChange?: (isDirty: boolean) => void;
+  closeAndRefresh?: () => void;
 }
+
+const MAX_FILE_MB = 10;
 
 // Helper RefType
 function getRefTypeId(t: any): number | undefined {
@@ -119,7 +127,22 @@ export default function TrainingForm({
   onCancel,
   isLoading = false,
   onDirtyChange,
+  closeAndRefresh,
 }: TrainingFormProps) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedDocTypeId, setSelectedDocTypeId] = useState<string>("");
+  const [isSavingWithDocument, setIsSavingWithDocument] = useState(false);
+  const [fileUploadKey, setFileUploadKey] = useState(0);
+
+  const { data: docTypesResp } = useQuery({
+    queryKey: ["refTypes", "CV_DOCUMENT_TYPE"],
+    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CV_DOCUMENT_TYPE),
+  });
+  const docTypes: RefType[] =
+    docTypesResp?.status === "success" ? (docTypesResp.data ?? []).filter((t: any) => t.isActive) : [];
+
   // =============================
   // TIPOS DE REFERENCIA
   // =============================
@@ -235,6 +258,50 @@ export default function TrainingForm({
   // SUBMIT
   // =============================
   const handleSubmit = async (data: TrainingFormData) => {
+    // Camino con documento adjunto: solo al crear.
+    if (!training && selectedFile) {
+      setIsSavingWithDocument(true);
+      try {
+        const formData = new FormData();
+        formData.append("PersonId", String(personId));
+        if (data.location) formData.append("Location", data.location);
+        formData.append("Title", data.title);
+        formData.append("Institution", data.institution);
+        if (data.knowledgeAreaTypeId) formData.append("KnowledgeAreaTypeId", String(data.knowledgeAreaTypeId));
+        formData.append("EventTypeId", String(data.eventTypeId));
+        if (data.certifiedBy) formData.append("CertifiedBy", data.certifiedBy);
+        if (data.certificateTypeId) formData.append("CertificateTypeId", String(data.certificateTypeId));
+        formData.append("StartDate", data.startDate);
+        if (data.endDate) formData.append("EndDate", data.endDate);
+        if (data.hours != null) formData.append("Hours", String(data.hours));
+        if (data.approvalTypeId) formData.append("ApprovalTypeId", String(data.approvalTypeId));
+        formData.append("File", selectedFile);
+        if (selectedDocTypeId) formData.append("DocumentTypeId", selectedDocTypeId);
+
+        const res = await CapacitacionesAPI.createWithDocument(formData);
+        if (res.status === "error") {
+          throw new Error(res.error?.message || "No se pudo crear la capacitación con el documento adjunto.");
+        }
+
+        await queryClient.invalidateQueries({ queryKey: ["trainings", String(personId)] });
+        toast({ title: "✅ Éxito", description: "Capacitación y documento registrados correctamente." });
+        form.reset();
+        setSelectedFile(null);
+        setFileUploadKey((k) => k + 1);
+        closeAndRefresh?.();
+      } catch (error: any) {
+        logger.error("TrainingForm", "[TrainingForm] createWithDocument ERROR", error);
+        toast({
+          title: "❌ Error",
+          description: error?.message || "No se pudo registrar la capacitación con el documento.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsSavingWithDocument(false);
+      }
+      return;
+    }
+
     const now = new Date();
 
     const normalizeId = (value: number | null | undefined) =>
@@ -290,7 +357,7 @@ export default function TrainingForm({
     }
   };
 
-  const saving = isLoading;
+  const saving = isLoading || isSavingWithDocument;
 
   // =============================
   // UI
@@ -635,6 +702,49 @@ export default function TrainingForm({
             )}
           />
         </div>
+
+        {!training && (
+          <div className="space-y-3 rounded-xl border border-dashed p-4">
+            <Label>Certificado de capacitación (opcional)</Label>
+            <ReusableFileUpload
+              key={fileUploadKey}
+              directoryCode={TRAINING_CERTIFICATE_DIRECTORY_CODE}
+              relativePath={TRAINING_CERTIFICATE_ENTITY_TYPE.toLowerCase()}
+              accept=".pdf,.jpg,.jpeg,.png"
+              maxSizeMB={MAX_FILE_MB}
+              label="Certificado de capacitación"
+              disabled={saving}
+              deferUpload
+              onFileSelected={setSelectedFile}
+            />
+
+            {selectedFile && docTypes.length > 0 && (
+              <div className="space-y-1">
+                <Label className="text-xs">Tipo de documento</Label>
+                <Select value={selectedDocTypeId} onValueChange={setSelectedDocTypeId} disabled={saving}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar tipo (opcional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {docTypes.map((t) => {
+                      const id = getRefTypeId(t);
+                      if (id == null) return null;
+                      return (
+                        <SelectItem key={id} value={String(id)}>
+                          {t.name ?? `Tipo ${id}`}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <p className="text-xs text-muted-foreground">
+              Si adjuntas un archivo, el registro y el documento se guardan juntos — si algo falla, no queda ninguno de los dos a medias.
+            </p>
+          </div>
+        )}
 
         {/* BOTONES */}
         <div className="flex justify-end gap-2 pt-2">

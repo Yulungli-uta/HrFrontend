@@ -9,6 +9,10 @@ import TrainingForm from "@/components/person-detail/forms/TrainingForm";
 import LanguageForm from "@/components/person-detail/forms/LanguageForm";
 import BookForm from "@/components/person-detail/forms/BookForm";
 import EmergencyContactForm from "@/components/person-detail/forms/EmergencyContactForm";
+import CatastrophicIllnessForm from "@/components/person-detail/forms/CatastrophicIllnessForm";
+import EducationLevelForm from "@/components/person-detail/forms/EducationLevelForm";
+import AddressForm from "@/components/person-detail/forms/AddressForm";
+import BankAccountForm from "@/components/person-detail/forms/BankAccountForm";
 import { logger } from "@/lib/logger";
 
 interface DynamicFormDialogProps {
@@ -17,6 +21,8 @@ interface DynamicFormDialogProps {
   onSuccess: () => void;
   personId: number;
   mutations: any;
+  /** Datos ya cargados de la persona (safeData), para validaciones que necesitan ver la lista completa. */
+  allData?: Record<string, any[]>;
 }
 
 // Mapeo de tipos de formulario a claves de mutaciones
@@ -28,6 +34,10 @@ const formTypeToMutationKey = {
   language: "languages",
   book: "books",
   emergency: "emergencyContacts",
+  catastrophicIllness: "catastrophicIllnesses",
+  educationLevel: "educationLevels",
+  address: "addresses",
+  bankAccount: "bankAccounts",
 } as const;
 
 const formComponents = {
@@ -38,6 +48,10 @@ const formComponents = {
   language: LanguageForm,
   book: BookForm,
   emergency: EmergencyContactForm,
+  catastrophicIllness: CatastrophicIllnessForm,
+  educationLevel: EducationLevelForm,
+  address: AddressForm,
+  bankAccount: BankAccountForm,
 };
 
 const formTitles = {
@@ -48,6 +62,10 @@ const formTitles = {
   language: "Idioma",
   book: "Libro",
   emergency: "Contacto de Emergencia",
+  catastrophicIllness: "Enfermedad Catastrófica",
+  educationLevel: "Formación Académica",
+  address: "Dirección",
+  bankAccount: "Cuenta Bancaria",
 };
 
 // Mapeo de tipos de formulario a nombre de prop esperado en cada formulario
@@ -59,6 +77,10 @@ const formTypeToPropName = {
   language: "language",              // LanguageForm: language?: Language
   book: "book",                      // (ya funcionaba así)
   emergency: "emergencyContact",     // EmergencyContactForm: emergencyContact?: EmergencyContact
+  catastrophicIllness: "catastrophicIllness", // CatastrophicIllnessForm: catastrophicIllness?: CatastrophicIllness
+  educationLevel: "educationLevel",  // EducationLevelForm: educationLevel?: EducationLevel
+  address: "address",                // AddressForm: address?: Address
+  bankAccount: "bankAccount",        // BankAccountForm: bankAccount?: BankAccount
 } as const;
 
 // const formTypeToPropName = {
@@ -76,6 +98,7 @@ export function DynamicFormDialog({
   onSuccess,
   personId,
   mutations,
+  allData,
 }: DynamicFormDialogProps) {
   const { setIsFormDirty, handleOpenChange, confirmOpen, confirmExit, closeConfirm } =
     useUnsavedChangesGuard((open) => { if (!open) onClose(); });
@@ -130,6 +153,10 @@ export function DynamicFormDialog({
       language: "languageId",
       book: "bookId",
       emergency: "emergencyContactId",
+      catastrophicIllness: "illnessId",
+      educationLevel: "educationId",
+      address: "addressId",
+      bankAccount: "accountId",
     };
 
     const idField = idMap[type];
@@ -210,13 +237,20 @@ export function DynamicFormDialog({
   //   isLoading,
   // });
 
+  const extraListProps: Record<string, any> =
+    type === "emergency" ? { existingContacts: allData?.emergencyContacts ?? [] } : {};
+
   const formProps = {
     personId,
     ...(isEditing && propName ? { [propName]: item } : {}),
+    ...extraListProps,
     onSubmit: handleSubmit,
     onCancel: () => handleOpenChange(false),
     isLoading,
     onDirtyChange: setIsFormDirty,
+    // Para formularios que hacen su propia mutación fuera del flujo genérico
+    // (ej. crear-con-documento adjunto en una sola llamada transaccional).
+    closeAndRefresh: () => onSuccess(),
   };
 
   return (

@@ -37,6 +37,10 @@ export { setAuthToken, getAuthToken, buildAuthHeader } from './utils/auth-token'
 export * from './services/security';
 export * from './services/userAccessScopes';
 export * from './services/employeeLaborRegimes';
+export * from './services/signatureProcesses';
+export * from './services/signatureDocuments';
+export * from './services/signatureValidation';
+export * from './services/signatureCallbackEndpoints';
 
 // Personas y estructura organizacional
 export {
@@ -135,6 +139,8 @@ export type { FileUploadResponseDto, FileDeleteResponseDto } from './services/do
 
 // Feriados
 export { HolidaysAPI } from './services/holidays';
+export { EmployeeLaborRegimesAPI } from './services/employeeLaborRegimes';
+export type { EmployeeLaborRegimeDto } from './services/employeeLaborRegimes';
 export type { HolidayResponseDTO } from './services/holidays';
 
 // Catalogos y geografia maestra
@@ -193,6 +199,9 @@ export type {
   EmployeeAvailabilityBlockDto,
   GuardAssignmentValidationDto,
 } from '@/types/guards';
+
+// Historial de correcciones (HR.Audit, Action=CORRECTION)
+export { AuditAPI } from './services/audit';
 
 // Plantillas de documentos y documentos generados
 export {

@@ -26,6 +26,7 @@ import {
   ApprovePersonnelActionRequest,
   CancelPersonnelActionRequest,
   CommentRequest,
+  CorrectPersonnelActionRequest,
   CreatePersonnelActionRequest,
   CreatePersonnelActionResponse,
   GenerateDocumentOverridesRequest,
@@ -51,12 +52,17 @@ export const ContractsRHAPI = {
 
   /**
    * Sobrescribe listPaged para soportar filtros adicionales server-side:
-   * statusTypeId (TypeId del estado) y certificationId.
+   * statusTypeId (TypeId del estado), certificationId, employeeId (titular del
+   * contrato — el backend lo resuelve a PersonID) y rango de fecha de inicio —
+   * usados por la pantalla "Corregir Contrato".
    */
   listPaged: (params: PagedRequest & {
     statusTypeId?: number | null;
     certificationId?: number | null;
     year?: number | null;
+    employeeId?: number | null;
+    startDateFrom?: string | null;
+    startDateTo?: string | null;
     sortDirection?: "asc" | "desc";
   }): Promise<ApiResponse<PagedResult<any>>> => {
     const qs = new URLSearchParams({
@@ -67,6 +73,9 @@ export const ContractsRHAPI = {
       ...(params.statusTypeId != null ? { statusTypeId: String(params.statusTypeId) } : {}),
       ...(params.certificationId != null ? { certificationId: String(params.certificationId) } : {}),
       ...(params.year != null && params.year > 0 ? { year: String(params.year) } : {}),
+      ...(params.employeeId != null ? { employeeId: String(params.employeeId) } : {}),
+      ...(params.startDateFrom ? { startDateFrom: params.startDateFrom } : {}),
+      ...(params.startDateTo ? { startDateTo: params.startDateTo } : {}),
     });
     return apiFetch<PagedResult<any>>(`${CONTRACTS_BASE}/paged?${qs.toString()}`);
   },
@@ -217,6 +226,19 @@ export const ContractsRHAPI = {
     apiFetch<void>(`${CONTRACTS_BASE}/${id}/unfreeze-document`, {
       method: 'PATCH',
     }),
+
+  /**
+   * Corrige el contrato en CUALQUIER estado (a diferencia del PUT normal, solo
+   * BORRADOR/GENERADO). Exige motivo y requiere el permiso elevado CONTRACTS.MANAGE.
+   */
+  correct: (
+    id: number | string,
+    payload: { reason: string; data: any }
+  ): Promise<ApiResponse<void>> =>
+    apiFetch<void>(`${CONTRACTS_BASE}/${id}/correct`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
 };
 
 // =============================================================================
@@ -279,6 +301,8 @@ export interface PersonnelActionTypeDto {
   requiresAdUserDisable: boolean;
   requiresAdGroupAssignment: boolean;
   reachesVigente: boolean;
+  /** SIIES RELACION_IES homologado (ref_Types categoría SIIES_RELACION_IES). */
+  siiesRelacionIesTypeId?: number | null;
 }
 
 export const PersonnelActionTypeAPI = {
@@ -602,6 +626,16 @@ export const PersonnelActionsAPI = {
 
   update: (id: number, payload: UpdatePersonnelActionRequest): Promise<ApiResponse<void>> =>
     apiFetch<void>(`${PERSONNEL_ACTIONS_BASE}/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+
+  /**
+   * Corrige la acción en CUALQUIER estado (a diferencia de `update`, solo BORRADOR/GENERADO).
+   * Exige motivo y requiere el permiso elevado PERSONNEL_ACTIONS.MANAGE.
+   */
+  correct: (id: number, payload: CorrectPersonnelActionRequest): Promise<ApiResponse<void>> =>
+    apiFetch<void>(`${PERSONNEL_ACTIONS_BASE}/${id}/correct`, {
       method: 'PUT',
       body: JSON.stringify(payload),
     }),

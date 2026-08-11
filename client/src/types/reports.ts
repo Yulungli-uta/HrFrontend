@@ -34,9 +34,13 @@ export type ReportType =
   | 'guard-location-coverage'
   | 'guard-shift-changes'
   | 'guard-group-roster'
-  | 'guard-schedule-matrix';
+  | 'guard-schedule-matrix'
+  // Reportes SIIES (CACES, Instructivo Carga Masiva v2S)
+  | 'siies-funcionarios'
+  | 'siies-profesores'
+  | 'siies-formacion-profesional';
 
-export type ReportFormat = 'pdf' | 'excel';
+export type ReportFormat = 'pdf' | 'excel' | 'csv';
 
 /**
  * Orientación de página para el PDF generado.
@@ -74,6 +78,18 @@ export interface ReportFilter {
   /** ID del grupo de rotación de guardias (tbl_GuardRotationGroups). */
   groupId?: number;
   orientation?: PageOrientation;
+  /**
+   * Tipo de identificación para el reporte SIIES Funcionarios — segrega en un solo reporte
+   * la matriz 5.7 (CEDULA) de la 5.8 (PASAPORTE). Nunca se mezclan en el mismo archivo.
+   * Por defecto CEDULA si no se especifica.
+   */
+  identType?: 'CEDULA' | 'PASAPORTE';
+  /** Filtra por número de identificación exacto (cédula o pasaporte), para un solo registro. */
+  identification?: string;
+  /** Rota 90° el texto de las cabeceras del PDF. Por defecto horizontal (false). */
+  verticalHeaders?: boolean;
+  /** Si es false, la cabecera del PDF aparece solo en la primera página. Por defecto true. */
+  repeatHeaderOnEveryPage?: boolean;
 }
 
 // ============================================
@@ -323,6 +339,32 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
     availableFormats: ['pdf', 'excel'],
     availableFilters: ['startDate', 'endDate', 'groupId', 'locationId', 'orientation'],
   },
+
+  // ── Reportes SIIES (CACES, Instructivo Carga Masiva v2S) ──────────────────
+  'siies-funcionarios': {
+    type: 'siies-funcionarios',
+    title: 'SIIES - Funcionarios',
+    description: 'Matrices 5.7/5.8 del Instructivo CACES. Use el filtro "Tipo de identificación" para elegir Cédula o Pasaporte — cada exportación genera un único archivo, nunca mezclados. Exporta CSV UTF-8 con separador ";".',
+    icon: 'FileSpreadsheet',
+    availableFormats: ['pdf', 'csv'],
+    availableFilters: ['identType', 'identification', 'includeInactive', 'verticalHeaders', 'repeatHeaderOnEveryPage'],
+  },
+  'siies-profesores': {
+    type: 'siies-profesores',
+    title: 'SIIES - Profesores',
+    description: 'Matrices 5.2/5.3 (Contratos IES) y 5.4 (Distribución Horas) fusionadas. Use el filtro "Tipo de identificación" para elegir Cédula o Pasaporte — cada exportación genera un único archivo, nunca mezclados. Exporta CSV UTF-8 con separador ";".',
+    icon: 'FileSpreadsheet',
+    availableFormats: ['pdf', 'csv'],
+    availableFilters: ['identType', 'identification', 'includeInactive', 'verticalHeaders', 'repeatHeaderOnEveryPage'],
+  },
+  'siies-formacion-profesional': {
+    type: 'siies-formacion-profesional',
+    title: 'SIIES - Formación Profesional',
+    description: 'Matriz 5.5 del Instructivo CACES (Formación Profesional Terminado). Una fila por título académico de cada docente. Exporta CSV UTF-8 con separador ";".',
+    icon: 'FileSpreadsheet',
+    availableFormats: ['pdf', 'csv'],
+    availableFilters: ['identification', 'includeInactive', 'verticalHeaders', 'repeatHeaderOnEveryPage'],
+  },
 };
 
 // ============================================
@@ -406,9 +448,9 @@ export function getReportFileName(type: ReportType, format: ReportFormat): strin
  * Obtiene el MIME type para un formato
  */
 export function getReportMimeType(format: ReportFormat): string {
-  return format === 'pdf'
-    ? 'application/pdf'
-    : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  if (format === 'pdf') return 'application/pdf';
+  if (format === 'csv') return 'text/csv';
+  return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 }
 
 /**

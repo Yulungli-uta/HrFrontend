@@ -24,6 +24,12 @@ export interface Job {
   jobTypeId: number | null;
   groupId: number | null;
   isActive: boolean;
+  /** SIIES TIPO_FUNCIONARIO — FK a ref_Types (Category='SIIES_TIPO_FUNCIONARIO'). Clasificación por cargo. */
+  siiesTipoFuncionarioTypeId: number | null;
+  /** SIIES PUESTO_JERARQUICO_SUPERIOR — clasificación por cargo, no por empleado. */
+  puestoJerarquicoSuperior: boolean;
+  /** Sueldo de referencia/vigente del cargo. No es el sueldo real de ninguna persona en particular. */
+  referenceSalary: number | null;
   createdAt?: string;
   updatedAt?: string | null;
 }
@@ -92,6 +98,12 @@ export function normalizeJob(raw: any): Job {
     groupId:
       raw.groupId ?? raw.GroupId ?? raw.groupID ?? null,
     isActive: raw.isActive ?? raw.IsActive ?? true,
+    siiesTipoFuncionarioTypeId:
+      raw.siiesTipoFuncionarioTypeId ?? raw.SiiesTipoFuncionarioTypeId ?? null,
+    puestoJerarquicoSuperior:
+      raw.puestoJerarquicoSuperior ?? raw.PuestoJerarquicoSuperior ?? false,
+    referenceSalary:
+      raw.referenceSalary ?? raw.ReferenceSalary ?? null,
     createdAt: raw.createdAt ?? raw.CreatedAt,
     updatedAt: raw.updatedAt ?? raw.UpdatedAt ?? null,
   };

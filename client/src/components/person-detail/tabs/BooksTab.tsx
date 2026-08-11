@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ActionIconButton } from "@/components/ui/action-icon-button";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Plus, Edit, Trash2, Calendar, User, Book } from "lucide-react";
+import { BookOpen, Plus, Edit, Trash2, Calendar, User, Book, FileText, ChevronDown, ChevronUp } from "lucide-react";
 import { Book as BookType } from "@/types/person";
+import { ReusableDocumentManager } from "@/components/ReusableDocumentManager";
+import { BOOK_DOCUMENT_DIRECTORY_CODE, BOOK_DOCUMENT_ENTITY_TYPE } from "@/features/constants";
 
 interface BooksTabProps {
   books: BookType[];
@@ -11,9 +14,12 @@ interface BooksTabProps {
   onDelete: (id: number) => void;
   /** Mapa id → nombre para resolver país de publicación */
   countryMap?: Record<number, string>;
+  /** Identificación de la persona — agrupa su expediente completo en una sola carpeta. */
+  personIdCard?: string;
 }
 
-export function BooksTab({ books, onEdit, onDelete, countryMap = {} }: BooksTabProps) {
+export function BooksTab({ books, onEdit, onDelete, countryMap = {}, personIdCard }: BooksTabProps) {
+  const [expandedId, setExpandedId] = useState<number | null>(null);
   const formatDate = (dateString: string) => {
     if (!dateString) return "No especificada";
     return new Date(dateString).toLocaleDateString("es-EC", {
@@ -147,6 +153,36 @@ export function BooksTab({ books, onEdit, onDelete, countryMap = {} }: BooksTabP
                         <p className="text-sm text-muted-foreground line-clamp-2">
                           {book.description}
                         </p>
+                      )}
+
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="self-start text-xs"
+                        onClick={() => setExpandedId(expandedId === book.bookId ? null : book.bookId)}
+                      >
+                        <FileText className="h-3.5 w-3.5 mr-1" />
+                        Documento
+                        {expandedId === book.bookId ? (
+                          <ChevronUp className="h-3.5 w-3.5 ml-1" />
+                        ) : (
+                          <ChevronDown className="h-3.5 w-3.5 ml-1" />
+                        )}
+                      </Button>
+
+                      {expandedId === book.bookId && (
+                        <ReusableDocumentManager
+                          directoryCode={BOOK_DOCUMENT_DIRECTORY_CODE}
+                          entityType={BOOK_DOCUMENT_ENTITY_TYPE}
+                          entityId={book.bookId}
+                          relativePath={personIdCard ? `${personIdCard}/${BOOK_DOCUMENT_ENTITY_TYPE.toLowerCase()}` : undefined}
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          maxSizeMB={15}
+                          label="Portada o ficha del libro"
+                          entityReady={true}
+                          allowReplace
+                          documentType={{ enabled: true, category: "CV_DOCUMENT_TYPE", label: "Tipo de documento" }}
+                        />
                       )}
                     </div>
                   </div>

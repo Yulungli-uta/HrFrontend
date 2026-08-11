@@ -116,6 +116,7 @@ export function ShiftReplacementDialog({ open, detail, onClose }: Props) {
   const canSubmit =
     !!replacementEmployeeId &&
     reason.trim().length > 0 &&
+    (!needsSchedule || !!newScheduleId) &&
     (!hasConflict || overrideConflict) &&
     !conflictLoading;
 
@@ -235,8 +236,9 @@ export function ShiftReplacementDialog({ open, detail, onClose }: Props) {
               <ScheduleCombobox
                 value={newScheduleId}
                 label={null}
-                placeholder="Seleccionar turno…"
+                placeholder="Seleccionar turno rotativo…"
                 onSelect={id => setNewScheduleId(id)}
+                onlyRotating
               />
             </div>
           )}

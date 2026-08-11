@@ -86,7 +86,12 @@ export function EmergencyContactsTab({
                         {(contact as any).identification && (
                           <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                             <IdCard className="h-3 w-3" />
-                            <span>{(contact as any).identification}</span>
+                            <span>
+                              {contact.identificationTypeId
+                                ? `${refTypesMap[Number(contact.identificationTypeId)] ?? "ID"}: `
+                                : ""}
+                              {(contact as any).identification}
+                            </span>
                           </div>
                         )}
                       </div>

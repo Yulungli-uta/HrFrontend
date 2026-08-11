@@ -537,6 +537,88 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
             </div>
           )}
 
+          {/* Tipo de Identificación (SIIES: segrega matriz 5.7 Cédula / 5.8 Pasaporte) */}
+          {hasFilter("identType") && (
+            <div className="space-y-2">
+              <Label htmlFor="identType">Tipo de Identificación</Label>
+              <Select
+                value={filter.identType ?? "CEDULA"}
+                onValueChange={(value) =>
+                  setFilterValue("identType", value as "CEDULA" | "PASAPORTE")
+                }
+              >
+                <SelectTrigger id="identType">
+                  <SelectValue placeholder="Seleccionar tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="CEDULA">Cédula (matriz 5.7)</SelectItem>
+                  <SelectItem value="PASAPORTE">Pasaporte (matriz 5.8)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Cada exportación genera un solo archivo; nunca se mezclan cédula y pasaporte.
+              </p>
+            </div>
+          )}
+
+          {/* Identificación (búsqueda de una sola persona) */}
+          {hasFilter("identification") && (
+            <div className="space-y-2">
+              <Label htmlFor="identification">Identificación (opcional)</Label>
+              <Input
+                id="identification"
+                type="text"
+                value={filter.identification ?? ""}
+                onChange={(e) => setFilterValue("identification", e.target.value)}
+                placeholder="Cédula o pasaporte de una sola persona"
+              />
+              <p className="text-xs text-muted-foreground">
+                Déjelo vacío para incluir a todos los registros.
+              </p>
+            </div>
+          )}
+
+          {/* Orientación de cabecera del PDF (horizontal / vertical) */}
+          {hasFilter("verticalHeaders") && (
+            <div className="space-y-2">
+              <Label htmlFor="verticalHeaders">Cabecera del PDF</Label>
+              <Select
+                value={filter.verticalHeaders ? "true" : "false"}
+                onValueChange={(value) => setFilterValue("verticalHeaders", value === "true")}
+              >
+                <SelectTrigger id="verticalHeaders">
+                  <SelectValue placeholder="Horizontal" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="false">Horizontal</SelectItem>
+                  <SelectItem value="true">Vertical (rotada 90°)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Vertical ayuda a que quepan más columnas en reportes angostos.
+              </p>
+            </div>
+          )}
+
+          {/* Repetir cabecera en cada página vs. solo primera página */}
+          {hasFilter("repeatHeaderOnEveryPage") && (
+            <div className="space-y-2">
+              <Label htmlFor="repeatHeaderOnEveryPage">Repetir cabecera</Label>
+              <Select
+                value={filter.repeatHeaderOnEveryPage === false ? "false" : "true"}
+                onValueChange={(value) => setFilterValue("repeatHeaderOnEveryPage", value === "true")}
+              >
+                <SelectTrigger id="repeatHeaderOnEveryPage">
+                  <SelectValue placeholder="Todas las páginas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="true">En todas las páginas</SelectItem>
+                  <SelectItem value="false">Solo en la primera página</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           {/* Incluir Inactivos (select simple) */}
           {hasFilter("includeInactive") && (
             <div className="space-y-2">

@@ -18,7 +18,7 @@ import type {
   ReportAudit,
   ReportAuditFilter,
 } from '@/types/reports';
-import { REPORT_CONFIGS } from '@/types/reports';
+import { REPORT_CONFIGS, getReportMimeType } from '@/types/reports';
 
 export class ReportError extends Error {
   public status?: number;
@@ -52,6 +52,7 @@ class ReportService {
   private buildEndpoint(type: ReportType, format: ReportFormat, action: 'preview' | 'download'): string {
     if (action === 'preview') return `${this.baseUrl}/v2/${type}/preview`;
     if (format === 'pdf') return `${this.baseUrl}/v2/${type}/pdf/download`;
+    if (format === 'csv') return `${this.baseUrl}/v2/${type}/csv`;
     return `${this.baseUrl}/v2/${type}/excel`;
   }
 
@@ -99,9 +100,7 @@ class ReportService {
       method: 'POST',
       body: JSON.stringify(filter ?? {}),
       headers: {
-        Accept: format === 'pdf'
-          ? 'application/pdf'
-          : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        Accept: getReportMimeType(format),
       },
       timeoutMs: REPORT_CONFIGS[type].timeoutMs,
     });

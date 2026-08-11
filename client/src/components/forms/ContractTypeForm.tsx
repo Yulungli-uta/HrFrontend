@@ -38,6 +38,7 @@ import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 
 // Categoría unificada en ref_Types — ya no existe PERSONAL_CONTRACT_TYPE
 const PERSONAL_CONTRACT_TYPE_CATEGORY = REF_TYPE_CATEGORIES.CONTRACT_TYPE;
+const SIIES_RELACION_IES_CATEGORY = REF_TYPE_CATEGORIES.SIIES_RELACION_IES;
 
 // ---------------- Esquema Zod ----------------
 
@@ -60,6 +61,9 @@ const contractTypeSchema = z.object({
       invalid_type_error: "Debe seleccionar un valor",
     })
     .min(1, "Debe seleccionar un tipo de contrato personal"),
+
+  /** SIIES RELACION_IES homologado — opcional, requerido solo para el reporte SIIES. */
+  siiesRelacionIesTypeId: z.string().optional(),
 });
 
 export type ContractTypeFormValues = z.infer<typeof contractTypeSchema>;
@@ -86,6 +90,7 @@ interface ContractTypeCreateDTO {
   requiresAdGroupAssignment: boolean;
   defaultTemplateId?: number | null;
   delegationTemplateId?: number | null;
+  siiesRelacionIesTypeId?: number | null;
 }
 
 interface ContractTypeUpdateDTO {
@@ -100,6 +105,7 @@ interface ContractTypeUpdateDTO {
   requiresAdGroupAssignment: boolean;
   defaultTemplateId?: number | null;
   delegationTemplateId?: number | null;
+  siiesRelacionIesTypeId?: number | null;
 }
 
 function ensureSuccess<T>(res: ApiResponse<T>, defaultMessage: string): T {
@@ -148,6 +154,18 @@ export function ContractTypeForm({
   const refTypes =
     refTypesResponse?.status === "success" ? refTypesResponse.data : [];
 
+  const { data: siiesRelacionIesResponse, isLoading: isLoadingSiiesRelacionIes } =
+    useQuery<ApiResponse<any[]>>({
+      queryKey: ["refTypes", SIIES_RELACION_IES_CATEGORY],
+      queryFn: () =>
+        TiposReferenciaAPI.byCategory(
+          SIIES_RELACION_IES_CATEGORY
+        ) as Promise<ApiResponse<any[]>>,
+    });
+
+  const siiesRelacionIesOptions =
+    siiesRelacionIesResponse?.status === "success" ? siiesRelacionIesResponse.data : [];
+
   // ------- Formulario RHF -------
   const form = useForm<ContractTypeFormValues>({
     resolver: zodResolver(contractTypeSchema),
@@ -163,6 +181,9 @@ export function ContractTypeForm({
       personalContractTypeId: initialValues?.personalContractTypeId ?? "",
       defaultTemplateId: initialValues?.defaultTemplateId ?? null,
       delegationTemplateId: initialValues?.delegationTemplateId ?? null,
+      siiesRelacionIesTypeId: (initialValues as any)?.siiesRelacionIesTypeId
+        ? String((initialValues as any).siiesRelacionIesTypeId)
+        : "",
     },
   });
 
@@ -199,6 +220,9 @@ export function ContractTypeForm({
         requiresAdGroupAssignment: values.requiresAdGroupAssignment,
         defaultTemplateId: values.defaultTemplateId ?? null,
         delegationTemplateId: values.delegationTemplateId ?? null,
+        siiesRelacionIesTypeId: values.siiesRelacionIesTypeId
+          ? Number(values.siiesRelacionIesTypeId)
+          : null,
       };
 
       const res = await ContractTypeAPI.create(payload as any);
@@ -228,6 +252,9 @@ export function ContractTypeForm({
         requiresAdGroupAssignment: values.requiresAdGroupAssignment,
         defaultTemplateId: values.defaultTemplateId ?? null,
         delegationTemplateId: values.delegationTemplateId ?? null,
+        siiesRelacionIesTypeId: values.siiesRelacionIesTypeId
+          ? Number(values.siiesRelacionIesTypeId)
+          : null,
       };
 
       const res = await ContractTypeAPI.update(contractId, payload as any);
@@ -410,6 +437,44 @@ export function ContractTypeForm({
                       onCheckedChange={field.onChange}
                     />
                   </FormControl>
+                </FormItem>
+              )}
+            />
+
+            {/* Relación con la IES (SIIES) */}
+            <FormField
+              control={form.control}
+              name="siiesRelacionIesTypeId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Relación con la IES (SIIES)</FormLabel>
+                  <FormControl>
+                    <Select
+                      value={field.value || ""}
+                      onValueChange={field.onChange}
+                      disabled={isLoadingSiiesRelacionIes}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sin homologar" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {siiesRelacionIesOptions.map((rt: any) => {
+                          const id = rt.id ?? rt.refTypeId ?? rt.typeId ?? rt.valueId;
+                          const label = rt.name ?? rt.description ?? rt.code ?? `ID ${id}`;
+                          return (
+                            <SelectItem key={id} value={String(id)}>
+                              {label}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </FormControl>
+                  <FormDescription>
+                    Homologación requerida por el reporte SIIES Funcionarios (Instructivo CACES).
+                    Sin este dato, los contratos de este tipo quedan sin RELACION_IES en el reporte.
+                  </FormDescription>
+                  <FormMessage />
                 </FormItem>
               )}
             />

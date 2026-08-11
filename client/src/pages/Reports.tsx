@@ -27,6 +27,7 @@ import {
   CalendarClock,
   ChevronRight,
   FileBarChart2,
+  FileSpreadsheet,
 } from "lucide-react";
 
 // ─── Tipos ─────────────────────────────────────────────────────────────────────
@@ -150,11 +151,43 @@ const REPORT_CARDS: ReportCard[] = [
     href: "/reports/attendance-cross",
     formats: ["PDF", "Excel"],
   },
+
+  // ── Reportes v2 — SIIES (CACES, Instructivo Carga Masiva v2S) ────────────────
+  {
+    id: "siies-funcionarios",
+    title: "SIIES - Funcionarios",
+    description: "Matrices 5.7/5.8 del Instructivo Carga Masiva CACES: personal administrativo y técnicos docentes. Filtro Cédula/Pasaporte para segregar sin mezclar archivos",
+    icon: FileSpreadsheet,
+    category: "SIIES (CACES)",
+    badgeColor: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200",
+    href: "/reports/siies-funcionarios",
+    formats: ["PDF", "CSV"],
+  },
+  {
+    id: "siies-profesores",
+    title: "SIIES - Profesores",
+    description: "Matrices 5.2/5.3 (Contratos IES) y 5.4 (Distribución Horas) fusionadas. Filtro Cédula/Pasaporte para segregar sin mezclar archivos",
+    icon: FileSpreadsheet,
+    category: "SIIES (CACES)",
+    badgeColor: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200",
+    href: "/reports/siies-profesores",
+    formats: ["PDF", "CSV"],
+  },
+  {
+    id: "siies-formacion-profesional",
+    title: "SIIES - Formación Profesional",
+    description: "Matriz 5.5 del Instructivo Carga Masiva CACES: títulos académicos de docentes (Formación Profesional Terminado)",
+    icon: FileSpreadsheet,
+    category: "SIIES (CACES)",
+    badgeColor: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200",
+    href: "/reports/siies-formacion-profesional",
+    formats: ["PDF", "CSV"],
+  },
 ];
 
 // ─── Agrupación por categoría ──────────────────────────────────────────────────
 
-const CATEGORY_ORDER = ["Personal", "Asistencia", "Organización"];
+const CATEGORY_ORDER = ["Personal", "Asistencia", "Organización", "SIIES (CACES)"];
 
 function groupByCategory(cards: ReportCard[]): Record<string, ReportCard[]> {
   return cards.reduce<Record<string, ReportCard[]>>((acc, card) => {

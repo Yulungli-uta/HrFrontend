@@ -3,7 +3,7 @@ import { useState } from 'react';
 import {
   Users, Plus, MapPin, Shield, ChevronRight, ChevronLeft,
   Loader2, UserMinus, X, Building2, RotateCw, ChevronDown, ChevronUp,
-  Layers, Search,
+  Layers, Search, Copy, ListFilter,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,7 @@ import { GuardRotationGroupsAPI } from '@/lib/api/services/guards';
 import {
   useLocationSummary, useGroupsByLocation, useGuardGroupEmployees,
   useGuardGroupMutations, useGeneralGroupsWithSubgroups, useGeneralGroups,
+  useGuardRotationGroups,
   useGuardRefTypes, useEmployeeLocationAssignments, useLocationRotationMutations,
   useGuardLocationsAssignable, useLocationRotationPeriods, useLocationRotationAssignments,
   useGroupPatterns,
@@ -35,6 +36,7 @@ import type {
   GuardRotationGroupDto, GuardRotationGroupWithSubgroupsDto,
   GuardRotationGroupEmployeeDto,
   CreateGuardRotationGroupDto, UpdateGuardRotationGroupDto,
+  DuplicateGuardRotationGroupDto,
   RemoveEmployeeFromRotationGroupDto, AssignEmployeeToRotationGroupDto,
   GuardLocationRotationAssignmentDto,
 } from '@/types/guards';
@@ -71,6 +73,12 @@ function PatternChips({ sequence }: { sequence: string | null }) {
 function ColorDot({ color }: { color?: string | null }) {
   if (!color) return <div className="w-3 h-3 rounded-full bg-muted border shrink-0" />;
   return <div className="w-3 h-3 rounded-full shrink-0 border" style={{ backgroundColor: color }} />;
+}
+
+function getLocationKey(groupCode?: string | null) {
+  if (!groupCode?.trim()) return 'SIN_UBICACION';
+  const parts = groupCode.split('_');
+  return parts.length >= 3 ? parts[2] : 'OTROS';
 }
 
 // Carga el patrón activo del grupo y lo muestra inline.
@@ -133,13 +141,14 @@ function toLocationDetail(g: {
   description: string | null;
   isActive: boolean;
   employeeCount: number;
+  isSpecial: boolean;
 }): LocationGroupDetailDto {
   return {
     groupId: g.groupId, groupCode: g.groupCode, groupName: g.name,
     description: g.description, isActive: g.isActive,
     patternId: null, patternCode: null, patternName: null,
     patternSequence: null, patternReadable: null,
-    assignedEmployees: g.employeeCount,
+    assignedEmployees: g.employeeCount, isSpecial: g.isSpecial,
   };
 }
 
@@ -297,9 +306,18 @@ function GroupEmployeesPanel({ group }: { group: LocationGroupDetailDto }) {
   const [comboKey, setComboKey] = useState(0);
   const [removeTarget, setRemoveTarget] = useState<GuardRotationGroupEmployeeDto | null>(null);
   const [removeDate, setRemoveDate] = useState(today);
+  const [employeeSearch, setEmployeeSearch] = useState('');
 
   const activeIds = new Set(active.map(e => e.employeeId));
   const pendingIds = new Set(pending.map(p => p.employeeId));
+  const employeeTerm = employeeSearch.trim().toLowerCase();
+  const filteredActive = employeeTerm
+    ? active.filter(e =>
+        e.employeeFullName.toLowerCase().includes(employeeTerm)
+        || (e.employeeIdCard ?? '').toLowerCase().includes(employeeTerm)
+        || e.employeeId.toString().includes(employeeTerm)
+      )
+    : active;
 
   const handleAdd = (emp: any) => {
     const employeeId: number | undefined = emp?.employeeID ?? emp?.employeeId;
@@ -395,16 +413,32 @@ function GroupEmployeesPanel({ group }: { group: LocationGroupDetailDto }) {
         <p className="text-xs font-semibold uppercase text-muted-foreground mb-2">
           Guardias activos ({active.length})
         </p>
+        <div className="mb-2 space-y-1.5">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              className="h-9 pl-8 text-sm"
+              value={employeeSearch}
+              onChange={e => setEmployeeSearch(e.target.value)}
+              placeholder="Buscar guardia asignado..."
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Mostrando {filteredActive.length} de {active.length}
+          </p>
+        </div>
         {isLoading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
             <Loader2 className="h-4 w-4 animate-spin" /> Cargando…
           </div>
         ) : active.length === 0 ? (
           <p className="text-sm text-muted-foreground">Sin guardias asignados.</p>
+        ) : filteredActive.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Sin guardias para el filtro actual.</p>
         ) : (
           <>
             <div className="max-h-[380px] overflow-y-auto space-y-2 pr-1">
-              {active.map(e => (
+              {filteredActive.map(e => (
                 <div key={e.groupEmployeeId} className="rounded-md border px-3 py-2">
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
@@ -519,6 +553,7 @@ type GroupForm = {
   parentGroupId: number | '';
   groupLevelTypeId: number | '';
   isActive: boolean;
+  isSpecial: boolean;
 };
 
 type FormMode = { kind: 'create'; defaultParentId?: number } | { kind: 'edit'; groupId: number; current: GroupForm };
@@ -536,8 +571,8 @@ function GroupFormDialog({
   const { create, update } = useGuardGroupMutations(() => onClose());
 
   const [form, setForm] = useState<GroupForm>(() => {
-    if (!mode) return { name: '', groupCode: '', description: '', colorCode: '', parentGroupId: '', groupLevelTypeId: '', isActive: true };
-    if (mode.kind === 'create') return { name: '', groupCode: '', description: '', colorCode: '', parentGroupId: mode.defaultParentId ?? '', groupLevelTypeId: '', isActive: true };
+    if (!mode) return { name: '', groupCode: '', description: '', colorCode: '', parentGroupId: '', groupLevelTypeId: '', isActive: true, isSpecial: false };
+    if (mode.kind === 'create') return { name: '', groupCode: '', description: '', colorCode: '', parentGroupId: mode.defaultParentId ?? '', groupLevelTypeId: '', isActive: true, isSpecial: false };
     return mode.current;
   });
 
@@ -553,6 +588,7 @@ function GroupFormDialog({
         colorCode: form.colorCode || undefined,
         parentGroupId: form.parentGroupId !== '' ? Number(form.parentGroupId) : undefined,
         groupLevelTypeId: form.groupLevelTypeId !== '' ? Number(form.groupLevelTypeId) : undefined,
+        isSpecial: form.isSpecial,
       };
       create.mutate(dto);
     } else if (mode?.kind === 'edit') {
@@ -564,6 +600,7 @@ function GroupFormDialog({
         colorCode: form.colorCode || undefined,
         parentGroupId: form.parentGroupId !== '' ? Number(form.parentGroupId) : undefined,
         groupLevelTypeId: form.groupLevelTypeId !== '' ? Number(form.groupLevelTypeId) : undefined,
+        isSpecial: form.isSpecial,
       };
       update.mutate({ id: mode.groupId, dto });
     }
@@ -627,6 +664,13 @@ function GroupFormDialog({
               </select>
             </div>
           </div>
+          <div className="flex items-center gap-3">
+            <Switch checked={form.isSpecial} onCheckedChange={v => f('isSpecial', v)} />
+            <div>
+              <Label>Grupo especial</Label>
+              <p className="text-xs text-muted-foreground">Permite que sus guardias tengan 2 turnos el mismo día.</p>
+            </div>
+          </div>
           {mode?.kind === 'edit' && (
             <div className="flex items-center gap-3">
               <Switch checked={form.isActive} onCheckedChange={v => f('isActive', v)} />
@@ -638,6 +682,72 @@ function GroupFormDialog({
           <Button variant="outline" onClick={onClose} disabled={isSaving}>Cancelar</Button>
           <Button onClick={handleSave} disabled={isSaving || !form.name.trim()}>
             {isSaving ? 'Guardando…' : mode?.kind === 'create' ? 'Crear' : 'Guardar'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── DuplicateGroupDialog ─────────────────────────────────────────────────────
+
+function DuplicateGroupDialog({
+  baseGroup, onClose,
+}: {
+  baseGroup: GuardRotationGroupDto | GuardRotationGroupWithSubgroupsDto | null;
+  onClose: () => void;
+}) {
+  const { duplicate } = useGuardGroupMutations(() => onClose());
+
+  const [newName, setNewName] = useState('');
+  const [newGroupCode, setNewGroupCode] = useState('');
+
+  const handleClose = () => {
+    setNewName('');
+    setNewGroupCode('');
+    onClose();
+  };
+
+  const handleSave = () => {
+    if (!baseGroup || !newName.trim()) return;
+    const dto: DuplicateGuardRotationGroupDto = {
+      newName: newName.trim(),
+      newGroupCode: newGroupCode || undefined,
+    };
+    duplicate.mutate({ groupId: baseGroup.groupId, dto });
+  };
+
+  return (
+    <Dialog open={!!baseGroup} onOpenChange={v => !v && handleClose()}>
+      <DialogContent className="sm:max-w-md" aria-describedby={undefined}>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Copy className="h-4 w-4" />
+            Duplicar grupo
+          </DialogTitle>
+        </DialogHeader>
+        {baseGroup && (
+          <p className="text-sm text-muted-foreground">
+            Se creará un grupo nuevo copiando configuración (color, nivel, grupo especial) y los guardias
+            actualmente asignados a <strong>{baseGroup.name}</strong>. El patrón de rotación no se copia —
+            deberás asignar uno al grupo nuevo.
+          </p>
+        )}
+        <div className="space-y-3 py-1">
+          <div>
+            <Label>Nuevo nombre *</Label>
+            <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Ej: Guardia Amarillo (copia)" />
+          </div>
+          <div>
+            <Label>Nuevo código</Label>
+            <Input value={newGroupCode} onChange={e => setNewGroupCode(e.target.value)}
+              placeholder="G_EXCEL_HUACHI_LM_2" className="font-mono text-sm" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={handleClose} disabled={duplicate.isPending}>Cancelar</Button>
+          <Button onClick={handleSave} disabled={duplicate.isPending || !newName.trim()}>
+            {duplicate.isPending ? 'Duplicando…' : 'Duplicar grupo'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -659,6 +769,7 @@ function HierarchyView({
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [empPanel, setEmpPanel] = useState<LocationGroupDetailDto | null>(null);
   const [patternPanel, setPatternPanel] = useState<LocationGroupDetailDto | null>(null);
+  const [duplicateTarget, setDuplicateTarget] = useState<GuardRotationGroupDto | GuardRotationGroupWithSubgroupsDto | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
@@ -687,7 +798,7 @@ function HierarchyView({
     current: {
       name: g.name, groupCode: g.groupCode ?? '', description: g.description ?? '',
       colorCode: g.colorCode ?? '', parentGroupId: g.parentGroupId ?? '',
-      groupLevelTypeId: '', isActive: g.isActive,
+      groupLevelTypeId: '', isActive: g.isActive, isSpecial: g.isSpecial,
     },
   });
 
@@ -697,7 +808,7 @@ function HierarchyView({
     current: {
       name: g.name, groupCode: g.groupCode ?? '', description: g.description ?? '',
       colorCode: g.colorCode ?? '', parentGroupId: '',
-      groupLevelTypeId: '', isActive: g.isActive,
+      groupLevelTypeId: '', isActive: g.isActive, isSpecial: g.isSpecial,
     },
   });
 
@@ -785,6 +896,10 @@ function HierarchyView({
                   <Button variant="ghost" size="sm" className="h-7 text-xs"
                     onClick={() => onOpenForm(toEditModeGeneral(g))}>Editar</Button>
                   <Button variant="outline" size="sm" className="h-7 text-xs"
+                    onClick={() => setDuplicateTarget(g)}>
+                    <Copy className="h-3 w-3 mr-1" />Duplicar
+                  </Button>
+                  <Button variant="outline" size="sm" className="h-7 text-xs"
                     onClick={() => onOpenForm({ kind: 'create', defaultParentId: g.groupId })}>
                     <Plus className="h-3 w-3 mr-1" />Subgrupo
                   </Button>
@@ -797,62 +912,115 @@ function HierarchyView({
                 {g.subgroups.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-4">Sin subgrupos.</p>
                 ) : (
-                  <div className="rounded-md border overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Nombre</TableHead>
-                          <TableHead>Código</TableHead>
-                          <TableHead>Patrón activo</TableHead>
-                          <TableHead className="text-center">Guardias</TableHead>
-                          <TableHead className="text-center">Estado</TableHead>
-                          <TableHead className="text-right">Acciones</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {g.subgroups.map(sub => (
-                          <TableRow key={sub.groupId}>
-                            <TableCell className="font-medium text-sm">{sub.name}</TableCell>
-                            <TableCell className="font-mono text-xs">{sub.groupCode ?? '—'}</TableCell>
-                            <TableCell>
-                              <GroupActivePattern
-                                groupId={sub.groupId}
-                                onAssign={() => setPatternPanel(toLocationDetail(sub))}
-                              />
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <button
-                                onClick={() => setEmpPanel(toLocationDetail(sub))}
-                                className="hover:underline text-primary font-semibold text-sm focus:outline-none"
-                                title="Ver listado de guardias"
-                              >
-                                {sub.employeeCount}
-                              </button>
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <Badge variant={sub.isActive ? 'default' : 'secondary'} className="text-xs">
-                                {sub.isActive ? 'Activo' : 'Inactivo'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex gap-1 justify-end">
-                                <Button variant="outline" size="sm" className="h-7 text-xs"
-                                  onClick={() => setEmpPanel(toLocationDetail(sub))}>
-                                  <Users className="h-3 w-3 mr-1" />Guardias
-                                </Button>
-                                <Button variant="outline" size="sm" className="h-7 text-xs"
-                                  onClick={() => setPatternPanel(toLocationDetail(sub))}>
-                                  <RotateCw className="h-3 w-3 mr-1" />Patrón
-                                </Button>
-                                <Button variant="ghost" size="sm" className="h-7 text-xs"
-                                  onClick={() => onOpenForm(toEditMode(sub))}>Editar</Button>
-                              </div>
-                            </TableCell>
+                  <>
+                    {/* Vista móvil: cards */}
+                    <div className="md:hidden space-y-2">
+                      {g.subgroups.map(sub => (
+                        <div key={sub.groupId} className={`rounded-md border p-3 space-y-2 ${sub.isActive ? '' : 'opacity-60'}`}>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="font-medium text-sm truncate">{sub.name}</p>
+                              <p className="text-xs font-mono text-muted-foreground">{sub.groupCode ?? '—'}</p>
+                            </div>
+                            <Badge variant={sub.isActive ? 'default' : 'secondary'} className="text-xs shrink-0">
+                              {sub.isActive ? 'Activo' : 'Inactivo'}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center justify-between gap-2 text-xs">
+                            <GroupActivePattern
+                              groupId={sub.groupId}
+                              onAssign={() => setPatternPanel(toLocationDetail(sub))}
+                            />
+                            <button
+                              onClick={() => setEmpPanel(toLocationDetail(sub))}
+                              className="hover:underline text-primary font-semibold text-sm focus:outline-none shrink-0"
+                              title="Ver listado de guardias"
+                            >
+                              <Users className="h-3 w-3 inline mr-1" />{sub.employeeCount}
+                            </button>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            <Button variant="outline" size="sm" className="h-7 text-xs"
+                              onClick={() => setEmpPanel(toLocationDetail(sub))}>
+                              <Users className="h-3 w-3 mr-1" />Guardias
+                            </Button>
+                            <Button variant="outline" size="sm" className="h-7 text-xs"
+                              onClick={() => setPatternPanel(toLocationDetail(sub))}>
+                              <RotateCw className="h-3 w-3 mr-1" />Patrón
+                            </Button>
+                            <Button variant="ghost" size="sm" className="h-7 text-xs"
+                              onClick={() => onOpenForm(toEditMode(sub))}>Editar</Button>
+                            <Button variant="outline" size="sm" className="h-7 text-xs"
+                              onClick={() => setDuplicateTarget(sub)}>
+                              <Copy className="h-3 w-3 mr-1" />Duplicar
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Vista escritorio: tabla */}
+                    <div className="hidden md:block rounded-md border overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Nombre</TableHead>
+                            <TableHead>Código</TableHead>
+                            <TableHead>Patrón activo</TableHead>
+                            <TableHead className="text-center">Guardias</TableHead>
+                            <TableHead className="text-center">Estado</TableHead>
+                            <TableHead className="text-right">Acciones</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
+                        </TableHeader>
+                        <TableBody>
+                          {g.subgroups.map(sub => (
+                            <TableRow key={sub.groupId}>
+                              <TableCell className="font-medium text-sm">{sub.name}</TableCell>
+                              <TableCell className="font-mono text-xs">{sub.groupCode ?? '—'}</TableCell>
+                              <TableCell>
+                                <GroupActivePattern
+                                  groupId={sub.groupId}
+                                  onAssign={() => setPatternPanel(toLocationDetail(sub))}
+                                />
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <button
+                                  onClick={() => setEmpPanel(toLocationDetail(sub))}
+                                  className="hover:underline text-primary font-semibold text-sm focus:outline-none"
+                                  title="Ver listado de guardias"
+                                >
+                                  {sub.employeeCount}
+                                </button>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant={sub.isActive ? 'default' : 'secondary'} className="text-xs">
+                                  {sub.isActive ? 'Activo' : 'Inactivo'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex gap-1 justify-end">
+                                  <Button variant="outline" size="sm" className="h-7 text-xs"
+                                    onClick={() => setEmpPanel(toLocationDetail(sub))}>
+                                    <Users className="h-3 w-3 mr-1" />Guardias
+                                  </Button>
+                                  <Button variant="outline" size="sm" className="h-7 text-xs"
+                                    onClick={() => setPatternPanel(toLocationDetail(sub))}>
+                                    <RotateCw className="h-3 w-3 mr-1" />Patrón
+                                  </Button>
+                                  <Button variant="ghost" size="sm" className="h-7 text-xs"
+                                    onClick={() => onOpenForm(toEditMode(sub))}>Editar</Button>
+                                  <Button variant="outline" size="sm" className="h-7 text-xs"
+                                    onClick={() => setDuplicateTarget(sub)}>
+                                    <Copy className="h-3 w-3 mr-1" />Duplicar
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </>
                 )}
               </CardContent>
             )}
@@ -861,6 +1029,8 @@ function HierarchyView({
       })}
 
       <GroupPatternAssignmentDialog open={!!patternPanel} group={patternPanel} onClose={() => setPatternPanel(null)} />
+
+      <DuplicateGroupDialog baseGroup={duplicateTarget} onClose={() => setDuplicateTarget(null)} />
 
       <Dialog open={!!empPanel} onOpenChange={v => { if (!v) setEmpPanel(null); }}>
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
@@ -875,6 +1045,269 @@ function HierarchyView({
 }
 
 // ─── LocationGroupsView ───────────────────────────────────────────────────────
+
+function AllGroupsView({
+  onOpenForm,
+}: {
+  onOpenForm: (mode: FormMode) => void;
+}) {
+  const { data, isLoading } = useGuardRotationGroups();
+  const groups: GuardRotationGroupDto[] = data?.status === 'success' ? (data.data ?? []) : [];
+
+  const [empPanel, setEmpPanel] = useState<LocationGroupDetailDto | null>(null);
+  const [patternPanel, setPatternPanel] = useState<LocationGroupDetailDto | null>(null);
+  const [duplicateTarget, setDuplicateTarget] = useState<GuardRotationGroupDto | null>(null);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [parentFilter, setParentFilter] = useState('all');
+  const [levelFilter, setLevelFilter] = useState('all');
+  const [specialFilter, setSpecialFilter] = useState<'all' | 'special' | 'normal'>('all');
+  const [locationFilter, setLocationFilter] = useState('all');
+
+  const parents = Array.from(new Map(groups
+    .filter(g => g.parentGroupId === null)
+    .map(g => [g.groupId, g])).values()).sort((a, b) => a.name.localeCompare(b.name));
+  const levels = Array.from(new Set(groups.map(g => g.groupLevelTypeName).filter(Boolean) as string[])).sort();
+  const locations = Array.from(new Set(groups.map(g => getLocationKey(g.groupCode)))).sort();
+
+  const term = search.trim().toLowerCase();
+  const filtered = groups.filter(g => {
+    if (statusFilter !== 'all' && g.isActive !== (statusFilter === 'active')) return false;
+    if (parentFilter === 'root' && g.parentGroupId !== null) return false;
+    if (parentFilter === 'children' && g.parentGroupId === null) return false;
+    if (parentFilter !== 'all' && parentFilter !== 'root' && parentFilter !== 'children' && g.parentGroupId !== Number(parentFilter)) return false;
+    if (levelFilter !== 'all' && (g.groupLevelTypeName ?? '') !== levelFilter) return false;
+    if (specialFilter !== 'all' && g.isSpecial !== (specialFilter === 'special')) return false;
+    if (locationFilter !== 'all' && getLocationKey(g.groupCode) !== locationFilter) return false;
+    if (!term) return true;
+    return g.name.toLowerCase().includes(term)
+      || (g.groupCode ?? '').toLowerCase().includes(term)
+      || (g.parentGroupName ?? '').toLowerCase().includes(term)
+      || (g.groupLevelTypeName ?? '').toLowerCase().includes(term);
+  });
+
+  const toEditMode = (g: GuardRotationGroupDto): FormMode => ({
+    kind: 'edit',
+    groupId: g.groupId,
+    current: {
+      name: g.name, groupCode: g.groupCode ?? '', description: g.description ?? '',
+      colorCode: g.colorCode ?? '', parentGroupId: g.parentGroupId ?? '',
+      groupLevelTypeId: '', isActive: g.isActive, isSpecial: g.isSpecial,
+    },
+  });
+
+  if (isLoading) return (
+    <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground">
+      <Loader2 className="h-5 w-5 animate-spin" /> Cargando grupos...
+    </div>
+  );
+
+  return (
+    <div className="space-y-3">
+      <div className="grid gap-2 lg:grid-cols-[minmax(220px,1fr)_repeat(5,minmax(140px,auto))]">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            className="pl-8"
+            placeholder="Buscar por nombre, codigo, padre o nivel..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+        <Select value={statusFilter} onValueChange={v => setStatusFilter(v as typeof statusFilter)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="active">Activos</SelectItem>
+            <SelectItem value="inactive">Inactivos</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={parentFilter} onValueChange={setParentFilter}>
+          <SelectTrigger><SelectValue placeholder="Padre" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los padres</SelectItem>
+            <SelectItem value="root">Sin grupo padre</SelectItem>
+            <SelectItem value="children">Solo subgrupos</SelectItem>
+            {parents.map(g => <SelectItem key={g.groupId} value={String(g.groupId)}>{g.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={levelFilter} onValueChange={setLevelFilter}>
+          <SelectTrigger><SelectValue placeholder="Nivel" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los niveles</SelectItem>
+            {levels.map(level => <SelectItem key={level} value={level}>{level}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={specialFilter} onValueChange={v => setSpecialFilter(v as typeof specialFilter)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="special">Especiales</SelectItem>
+            <SelectItem value="normal">Normales</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={locationFilter} onValueChange={setLocationFilter}>
+          <SelectTrigger><SelectValue placeholder="Ubicacion" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas las ubicaciones</SelectItem>
+            {locations.map(loc => <SelectItem key={loc} value={loc}>{loc}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+        <span>Mostrando {filtered.length} de {groups.length} grupos</span>
+        
+      </div>
+
+      {filtered.length === 0 ? (
+        <p className="text-center text-sm text-muted-foreground py-8 border rounded-md">
+          Sin resultados para los filtros actuales.
+        </p>
+      ) : (
+        <>
+          {/* Vista móvil: cards */}
+          <div className="md:hidden space-y-3">
+            {filtered.map(g => (
+              <Card key={g.groupId} className={g.isActive ? '' : 'opacity-60'}>
+                <CardContent className="p-3 space-y-2.5">
+                  <div className="flex items-start gap-2">
+                    <ColorDot color={g.colorCode} />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-sm truncate">{g.name}</p>
+                      <p className="text-xs text-muted-foreground font-mono">{g.groupCode ?? '-'}</p>
+                    </div>
+                    <Badge variant={g.isActive ? 'default' : 'secondary'} className="text-xs shrink-0">
+                      {g.isActive ? 'Activo' : 'Inactivo'}
+                    </Badge>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {g.groupLevelTypeName && <Badge variant="outline" className="text-xs">{g.groupLevelTypeName}</Badge>}
+                    {g.isSpecial && <Badge variant="secondary" className="text-xs">Especial</Badge>}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <p className="text-muted-foreground">Padre</p>
+                      <p className="font-medium truncate">{g.parentGroupName ?? 'Sin padre'}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Ubicación</p>
+                      <p className="font-medium font-mono">{getLocationKey(g.groupCode)}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Patrón activo</p>
+                      <GroupActivePattern groupId={g.groupId} onAssign={() => setPatternPanel(toLocationDetail(g))} />
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Guardias</p>
+                      <button
+                        onClick={() => setEmpPanel(toLocationDetail(g))}
+                        className="hover:underline text-primary font-semibold text-sm focus:outline-none"
+                        title="Ver listado de guardias"
+                      >
+                        {g.employeeCount}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setEmpPanel(toLocationDetail(g))}>
+                      <Users className="h-3 w-3 mr-1" />Guardias
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setPatternPanel(toLocationDetail(g))}>
+                      <RotateCw className="h-3 w-3 mr-1" />Patron
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => onOpenForm(toEditMode(g))}>Editar</Button>
+                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setDuplicateTarget(g)}>
+                      <Copy className="h-3 w-3 mr-1" />Duplicar
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Vista escritorio: tabla */}
+          <div className="hidden md:block rounded-md border overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Grupo</TableHead>
+                  <TableHead>Padre</TableHead>
+                  <TableHead>Ubicacion</TableHead>
+                  <TableHead>Patron activo</TableHead>
+                  <TableHead className="text-center">Guardias</TableHead>
+                  <TableHead className="text-center">Estado</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map(g => (
+                  <TableRow key={g.groupId} className={g.isActive ? '' : 'opacity-60'}>
+                    <TableCell>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <ColorDot color={g.colorCode} />
+                        <div className="min-w-0">
+                          <p className="font-medium text-sm truncate">{g.name}</p>
+                          <p className="text-xs text-muted-foreground font-mono">{g.groupCode ?? '-'}</p>
+                        </div>
+                        {g.groupLevelTypeName && <Badge variant="outline" className="text-xs">{g.groupLevelTypeName}</Badge>}
+                        {g.isSpecial && <Badge variant="secondary" className="text-xs">Especial</Badge>}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-sm">{g.parentGroupName ?? 'Sin padre'}</TableCell>
+                    <TableCell className="text-xs font-mono">{getLocationKey(g.groupCode)}</TableCell>
+                    <TableCell>
+                      <GroupActivePattern groupId={g.groupId} onAssign={() => setPatternPanel(toLocationDetail(g))} />
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <button
+                        onClick={() => setEmpPanel(toLocationDetail(g))}
+                        className="hover:underline text-primary font-semibold text-sm focus:outline-none"
+                        title="Ver listado de guardias"
+                      >
+                        {g.employeeCount}
+                      </button>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant={g.isActive ? 'default' : 'secondary'} className="text-xs">
+                        {g.isActive ? 'Activo' : 'Inactivo'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex gap-1 justify-end">
+                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setEmpPanel(toLocationDetail(g))}>
+                          <Users className="h-3 w-3 mr-1" />Guardias
+                        </Button>
+                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setPatternPanel(toLocationDetail(g))}>
+                          <RotateCw className="h-3 w-3 mr-1" />Patron
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => onOpenForm(toEditMode(g))}>Editar</Button>
+                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setDuplicateTarget(g)}>
+                          <Copy className="h-3 w-3 mr-1" />Duplicar
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </>
+      )}
+
+      <GroupPatternAssignmentDialog open={!!patternPanel} group={patternPanel} onClose={() => setPatternPanel(null)} />
+      <DuplicateGroupDialog baseGroup={duplicateTarget} onClose={() => setDuplicateTarget(null)} />
+      <Dialog open={!!empPanel} onOpenChange={v => { if (!v) setEmpPanel(null); }}>
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Users className="h-4 w-4" />Gestion de Guardias</DialogTitle>
+          </DialogHeader>
+          {empPanel && <GroupEmployeesPanel group={empPanel} />}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
 
 function LocationGroupsView({
   location, onBack, onOpenForm,
@@ -894,7 +1327,7 @@ function LocationGroupsView({
     groupId: g.groupId,
     current: {
       name: g.groupName, groupCode: g.groupCode ?? '', description: g.description ?? '',
-      colorCode: '', parentGroupId: '', groupLevelTypeId: '', isActive: g.isActive,
+      colorCode: '', parentGroupId: '', groupLevelTypeId: '', isActive: g.isActive, isSpecial: g.isSpecial,
     },
   });
 
@@ -922,62 +1355,109 @@ function LocationGroupsView({
       ) : groups.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-12">No hay grupos para esta ubicación.</p>
       ) : (
-        <div className="rounded-lg border overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Código</TableHead>
-                <TableHead>Nombre</TableHead>
-                <TableHead>Patrón</TableHead>
-                <TableHead className="text-center">Guardias</TableHead>
-                <TableHead className="text-center">Estado</TableHead>
-                <TableHead className="text-right">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {groups.map(g => (
-                <TableRow key={g.groupId}>
-                  <TableCell className="font-mono text-xs whitespace-nowrap">{g.groupCode ?? '—'}</TableCell>
-                  <TableCell>
-                    <p className="font-medium text-sm">{g.groupName}</p>
-                    {g.description && (
-                      <p className="text-xs text-muted-foreground truncate max-w-[160px]">{g.description}</p>
-                    )}
-                  </TableCell>
-                  <TableCell>
+        <>
+          {/* Vista móvil: cards */}
+          <div className="md:hidden space-y-3">
+            {groups.map(g => (
+              <Card key={g.groupId} className={g.isActive ? '' : 'opacity-60'}>
+                <CardContent className="p-3 space-y-2.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm">{g.groupName}</p>
+                      <p className="text-xs font-mono text-muted-foreground">{g.groupCode ?? '—'}</p>
+                      {g.description && (
+                        <p className="text-xs text-muted-foreground truncate">{g.description}</p>
+                      )}
+                    </div>
+                    <Badge variant={g.isActive ? 'default' : 'secondary'} className="shrink-0">
+                      {g.isActive ? 'Activo' : 'Inactivo'}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 text-xs">
                     <GroupActivePattern
                       groupId={g.groupId}
                       onAssign={() => setPatternDialogGroup(g)}
                     />
-                  </TableCell>
-                  <TableCell className="text-center">
                     <button
                       onClick={() => setEmployeePanelGroup(g)}
-                      className="hover:underline text-primary font-semibold text-sm focus:outline-none"
+                      className="hover:underline text-primary font-semibold text-sm focus:outline-none shrink-0"
                       title="Ver listado de guardias"
                     >
-                      {g.assignedEmployees}
+                      <Users className="h-3 w-3 inline mr-1" />{g.assignedEmployees}
                     </button>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <Badge variant={g.isActive ? 'default' : 'secondary'}>{g.isActive ? 'Activo' : 'Inactivo'}</Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex gap-1 justify-end">
-                      <Button variant="outline" size="sm" onClick={() => setEmployeePanelGroup(g)}>
-                        <Users className="h-3.5 w-3.5 mr-1" />Guardias
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => setPatternDialogGroup(g)}>
-                        <RotateCw className="h-3.5 w-3.5 mr-1" />Patrón
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => openEdit(g)}>Editar</Button>
-                    </div>
-                  </TableCell>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    <Button variant="outline" size="sm" onClick={() => setEmployeePanelGroup(g)}>
+                      <Users className="h-3.5 w-3.5 mr-1" />Guardias
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setPatternDialogGroup(g)}>
+                      <RotateCw className="h-3.5 w-3.5 mr-1" />Patrón
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => openEdit(g)}>Editar</Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Vista escritorio: tabla */}
+          <div className="hidden md:block rounded-lg border overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Código</TableHead>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead>Patrón</TableHead>
+                  <TableHead className="text-center">Guardias</TableHead>
+                  <TableHead className="text-center">Estado</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {groups.map(g => (
+                  <TableRow key={g.groupId}>
+                    <TableCell className="font-mono text-xs whitespace-nowrap">{g.groupCode ?? '—'}</TableCell>
+                    <TableCell>
+                      <p className="font-medium text-sm">{g.groupName}</p>
+                      {g.description && (
+                        <p className="text-xs text-muted-foreground truncate max-w-[160px]">{g.description}</p>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <GroupActivePattern
+                        groupId={g.groupId}
+                        onAssign={() => setPatternDialogGroup(g)}
+                      />
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <button
+                        onClick={() => setEmployeePanelGroup(g)}
+                        className="hover:underline text-primary font-semibold text-sm focus:outline-none"
+                        title="Ver listado de guardias"
+                      >
+                        {g.assignedEmployees}
+                      </button>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant={g.isActive ? 'default' : 'secondary'}>{g.isActive ? 'Activo' : 'Inactivo'}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex gap-1 justify-end">
+                        <Button variant="outline" size="sm" onClick={() => setEmployeePanelGroup(g)}>
+                          <Users className="h-3.5 w-3.5 mr-1" />Guardias
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => setPatternDialogGroup(g)}>
+                          <RotateCw className="h-3.5 w-3.5 mr-1" />Patrón
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => openEdit(g)}>Editar</Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </>
       )}
 
       <GroupPatternAssignmentDialog open={!!patternDialogGroup} group={patternDialogGroup} onClose={() => setPatternDialogGroup(null)} />
@@ -1079,11 +1559,14 @@ export default function GuardRotationGroupsPage() {
       )}
 
       {/* Tabs */}
-      <Tabs defaultValue="jerarquia">
+      <Tabs defaultValue="todos">
         <TabsList>
+          <TabsTrigger value="todos">
+            <ListFilter className="h-3.5 w-3.5 mr-1.5" />Todos los grupos
+          </TabsTrigger>
           <TabsTrigger value="jerarquia">
             <Layers className="h-3.5 w-3.5 mr-1.5" />Jerarquía
-          </TabsTrigger>
+          </TabsTrigger>          
           <TabsTrigger value="ubicacion">
             <MapPin className="h-3.5 w-3.5 mr-1.5" />Por ubicación
           </TabsTrigger>
@@ -1091,6 +1574,10 @@ export default function GuardRotationGroupsPage() {
 
         <TabsContent value="jerarquia" className="mt-4">
           <HierarchyView onOpenForm={setFormMode} />
+        </TabsContent>
+
+        <TabsContent value="todos" className="mt-4">
+          <AllGroupsView onOpenForm={setFormMode} />
         </TabsContent>
 
         <TabsContent value="ubicacion" className="mt-4">

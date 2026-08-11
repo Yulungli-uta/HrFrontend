@@ -12,6 +12,7 @@ export interface ApiConfigType {
   AUTH_BASE_URL: string;
   REPORTS_BASE_URL: string;
   FILES_BASE_URL: string;
+  SIGNATURE_BASE_URL: string;
   DEFAULT_HEADERS: Record<string, string>;
   TIMEOUT: number;
   CREDENTIALS: RequestCredentials;
@@ -45,6 +46,10 @@ export const API_CONFIG: ApiConfigType = {
     import.meta.env.VITE_API_BASE ||
     'http://localhost:5000',
 
+  SIGNATURE_BASE_URL:
+    import.meta.env.VITE_SIGNATURE_API_BASE_URL ||
+    'http://localhost:5060',
+
   DEFAULT_HEADERS: {
     'Content-Type': 'application/json',
     Accept: 'application/json',
@@ -70,6 +75,7 @@ export function resolveBaseUrl(path: string): string {
   if (path.startsWith('/api/v1/rh/reports')) return API_CONFIG.REPORTS_BASE_URL;
 
   if (path.startsWith('/api/v1/rh')) return API_CONFIG.RH_BASE_URL;
+  if (path.startsWith('/api/v1/signature')) return API_CONFIG.SIGNATURE_BASE_URL;
 
   if (path.startsWith('/api/auth') || path.startsWith('/api/app-auth')) {
     return API_CONFIG.AUTH_BASE_URL;

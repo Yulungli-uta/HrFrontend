@@ -10,6 +10,10 @@ import {
   IdiomasAPI,
   LibrosAPI,
   ContactosEmergenciaAPI,
+  EnfermedadesCatastroficasAPI,
+  NivelesEducacionAPI,
+  DireccionesAPI,
+  CuentasBancariasAPI,
   type ApiResponse
 } from "@/lib/api";
 import {
@@ -21,6 +25,10 @@ import {
   Language,
   Book,
   EmergencyContact,
+  CatastrophicIllness,
+  EducationLevel,
+  Address,
+  BankAccount,
   normalizePerson,
   normalizePublication
 } from "@/types/person";
@@ -254,6 +262,70 @@ export function usePersonData(personId: number, options?: { enabled?: boolean })
           return response;
         },
       },
+      {
+        queryKey: ['catastrophicIllnesses', String(personId)],
+        queryFn: () => {
+          return EnfermedadesCatastroficasAPI.getByPersonId(personId);
+        },
+        enabled: fetchEnabled,
+        select: (response: ApiResponse<CatastrophicIllness[]>) => {
+          if (response.status === 'success') {
+            const data = response.data || [];
+            return { ...response, data };
+          }
+
+          logger.error("usePersonData", "[usePersonData] catastrophicIllnesses ERROR status", { personId, response });
+          return response;
+        },
+      },
+      {
+        queryKey: ['educationLevels', String(personId)],
+        queryFn: () => {
+          return NivelesEducacionAPI.getByPersonId(personId);
+        },
+        enabled: fetchEnabled,
+        select: (response: ApiResponse<EducationLevel[]>) => {
+          if (response.status === 'success') {
+            const data = response.data || [];
+            return { ...response, data };
+          }
+
+          logger.error("usePersonData", "[usePersonData] educationLevels ERROR status", { personId, response });
+          return response;
+        },
+      },
+      {
+        queryKey: ['addresses', String(personId)],
+        queryFn: () => {
+          return DireccionesAPI.getByPersonId(personId);
+        },
+        enabled: fetchEnabled,
+        select: (response: ApiResponse<Address[]>) => {
+          if (response.status === 'success') {
+            const data = response.data || [];
+            return { ...response, data };
+          }
+
+          logger.error("usePersonData", "[usePersonData] addresses ERROR status", { personId, response });
+          return response;
+        },
+      },
+      {
+        queryKey: ['bankAccounts', String(personId)],
+        queryFn: () => {
+          return CuentasBancariasAPI.getByPersonId(personId);
+        },
+        enabled: fetchEnabled,
+        select: (response: ApiResponse<BankAccount[]>) => {
+          if (response.status === 'success') {
+            const data = response.data || [];
+            return { ...response, data };
+          }
+
+          logger.error("usePersonData", "[usePersonData] bankAccounts ERROR status", { personId, response });
+          return response;
+        },
+      },
     ],
   });
 
@@ -271,6 +343,10 @@ export function usePersonData(personId: number, options?: { enabled?: boolean })
     "languages",
     "books",
     "emergencyContacts",
+    "catastrophicIllnesses",
+    "educationLevels",
+    "addresses",
+    "bankAccounts",
   ] as const;
 
   const [
@@ -280,7 +356,11 @@ export function usePersonData(personId: number, options?: { enabled?: boolean })
     trainings,
     languages,
     books,
-    emergencyContacts
+    emergencyContacts,
+    catastrophicIllnesses,
+    educationLevels,
+    addresses,
+    bankAccounts
   ] = relatedQueries.map((q, index) => {
     const label = labels[index];
     const raw: any = q.data;
@@ -336,6 +416,10 @@ export function usePersonData(personId: number, options?: { enabled?: boolean })
       languages,
       books,
       emergencyContacts,
+      catastrophicIllnesses,
+      educationLevels,
+      addresses,
+      bankAccounts,
     },
     refetch: refetchAll,
   };
@@ -676,6 +760,86 @@ export function usePersonMutations(personId: number) {
         apiCall: ContactosEmergenciaAPI.remove,
         successMessage: "El contacto de emergencia se ha eliminado correctamente",
         errorMessage: "No se pudo eliminar el contacto de emergencia"
+      }),
+    },
+    catastrophicIllnesses: {
+      create: createMutation({
+        queryKey: ['catastrophicIllnesses', String(personId)],
+        apiCall: EnfermedadesCatastroficasAPI.create,
+        successMessage: "La enfermedad catastrófica se ha registrado correctamente",
+        errorMessage: "No se pudo registrar la enfermedad catastrófica"
+      }),
+      update: updateMutation({
+        queryKey: ['catastrophicIllnesses', String(personId)],
+        apiCall: EnfermedadesCatastroficasAPI.update,
+        successMessage: "La enfermedad catastrófica se ha actualizado correctamente",
+        errorMessage: "No se pudo actualizar la enfermedad catastrófica"
+      }),
+      delete: deleteMutation({
+        queryKey: ['catastrophicIllnesses', String(personId)],
+        apiCall: EnfermedadesCatastroficasAPI.remove,
+        successMessage: "La enfermedad catastrófica se ha eliminado correctamente",
+        errorMessage: "No se pudo eliminar la enfermedad catastrófica"
+      }),
+    },
+    educationLevels: {
+      create: createMutation({
+        queryKey: ['educationLevels', String(personId)],
+        apiCall: NivelesEducacionAPI.create,
+        successMessage: "La formación académica se ha registrado correctamente",
+        errorMessage: "No se pudo registrar la formación académica"
+      }),
+      update: updateMutation({
+        queryKey: ['educationLevels', String(personId)],
+        apiCall: NivelesEducacionAPI.update,
+        successMessage: "La formación académica se ha actualizado correctamente",
+        errorMessage: "No se pudo actualizar la formación académica"
+      }),
+      delete: deleteMutation({
+        queryKey: ['educationLevels', String(personId)],
+        apiCall: NivelesEducacionAPI.remove,
+        successMessage: "La formación académica se ha eliminado correctamente",
+        errorMessage: "No se pudo eliminar la formación académica"
+      }),
+    },
+    addresses: {
+      create: createMutation({
+        queryKey: ['addresses', String(personId)],
+        apiCall: DireccionesAPI.create,
+        successMessage: "La dirección se ha agregado correctamente",
+        errorMessage: "No se pudo agregar la dirección"
+      }),
+      update: updateMutation({
+        queryKey: ['addresses', String(personId)],
+        apiCall: DireccionesAPI.update,
+        successMessage: "La dirección se ha actualizado correctamente",
+        errorMessage: "No se pudo actualizar la dirección"
+      }),
+      delete: deleteMutation({
+        queryKey: ['addresses', String(personId)],
+        apiCall: DireccionesAPI.remove,
+        successMessage: "La dirección se ha eliminado correctamente",
+        errorMessage: "No se pudo eliminar la dirección"
+      }),
+    },
+    bankAccounts: {
+      create: createMutation({
+        queryKey: ['bankAccounts', String(personId)],
+        apiCall: CuentasBancariasAPI.create,
+        successMessage: "La cuenta bancaria se ha agregado correctamente",
+        errorMessage: "No se pudo agregar la cuenta bancaria"
+      }),
+      update: updateMutation({
+        queryKey: ['bankAccounts', String(personId)],
+        apiCall: CuentasBancariasAPI.update,
+        successMessage: "La cuenta bancaria se ha actualizado correctamente",
+        errorMessage: "No se pudo actualizar la cuenta bancaria"
+      }),
+      delete: deleteMutation({
+        queryKey: ['bankAccounts', String(personId)],
+        apiCall: CuentasBancariasAPI.remove,
+        successMessage: "La cuenta bancaria se ha eliminado correctamente",
+        errorMessage: "No se pudo eliminar la cuenta bancaria"
       }),
     },
   };

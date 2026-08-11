@@ -1,0 +1,8 @@
+export interface SignerProgress { participantId:number; identification:string; fullName:string; status:string; signedAt?:string|null }
+export interface SigningProgress { processId:number; processNumber:string; status:string; totalRequiredSigners:number; signedRequiredSigners:number; progressPercentage:number; currentDocumentVersion:number; signers:SignerProgress[]; myParticipantId?:number|null }
+export interface SigningSession { signingSessionId:string; launchUrl:string; expiresAt:string }
+export interface SigningProcessListItem { processId:number; processGuid:string; processNumber:string; title:string; status:string; workflowType:string; createdAt:string; expiresAt?:string|null; progressPercentage:number; myParticipantStatus?:string|null; myParticipantId?:number|null; creatorEmail?:string }
+export interface AuditEvent { eventId:number; eventType:string; actorUserId?:string|null; dataJson?:string|null; correlationId:string; occurredAt:string }
+export interface DocumentVersion { versionId:number; sequenceNumber:number; previousVersionId?:number|null; sha256:string; fileGuid:string; sizeBytes:number; pageCount?:number|null; createdAt:string }
+export interface SigningDocument { documentId:number; processId:number; fileName:string; contentType:string; versions:DocumentVersion[] }
+export interface CreateSigningRequest { source:Record<string,string|undefined>; document:{fileGuid:string;fileName:string;sha256?:string}; process:{title:string;description?:string;workflowType:"UNORDERED"|"SEQUENTIAL";expiresAt?:string;minimumRequiredSignatures:number;notifyOnCreate?:boolean}; signers:Array<{personId?:number;employeeId?:number;identification:string;fullName:string;email:string;role:string;required:boolean;order?:number;isExternal?:boolean}> }

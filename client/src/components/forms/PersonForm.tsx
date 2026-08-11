@@ -20,10 +20,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, Loader2, Plus, Edit, Trash2 } from "lucide-react";
+import { ActionIconButton } from "@/components/ui/action-icon-button";
 
 import { useToast } from "@/hooks/use-toast";
 import type { Person, InsertPerson } from "@/shared/schema";
+import type { CatastrophicIllness } from "@/types/person";
 import { PaisesAPI, ProvinciasAPI, CantonesAPI } from "@/lib/api";
 import type { ApiResponse } from "@/lib/api";
 
@@ -145,6 +147,7 @@ const personSchema = z.object({
     .optional(),
 
   ethnicityTypeId: z.number().optional(),
+  indigenousNationalityTypeId: z.number().optional(),
   bloodTypeTypeId: z.number().optional(),
   specialNeedsTypeId: z.number().optional(),
   disabilityPercentage: z
@@ -174,6 +177,10 @@ interface PersonFormProps {
   isRefTypesError?: boolean;
   isRefTypesLoading?: boolean;
   onDirtyChange?: (isDirty: boolean) => void;
+  catastrophicIllnesses?: CatastrophicIllness[];
+  onAddCatastrophicIllness?: () => void;
+  onEditCatastrophicIllness?: (item: CatastrophicIllness) => void;
+  onDeleteCatastrophicIllness?: (id: number) => void;
 }
 
 // ---------------------- Helpers ----------------------
@@ -335,6 +342,10 @@ export default function PersonForm({
   isRefTypesError = false,
   isRefTypesLoading = false,
   onDirtyChange,
+  catastrophicIllnesses = [],
+  onAddCatastrophicIllness,
+  onEditCatastrophicIllness,
+  onDeleteCatastrophicIllness,
 }: PersonFormProps) {
   const { toast } = useToast();
   const isEditing = !!person;
@@ -364,6 +375,10 @@ export default function PersonForm({
     () => getSafeOptions(refTypesByCategory, "ETHNICITY"),
     [refTypesByCategory]
   );
+  const indigenousNationalityTypes = useMemo(
+    () => getSafeOptions(refTypesByCategory, "SIIES_INDIGENOUS_NATIONALITY"),
+    [refTypesByCategory]
+  );
   const specialNeedsTypes = useMemo(
     () => getSafeOptions(refTypesByCategory, "SPECIAL_NEEDS"),
     [refTypesByCategory]
@@ -372,6 +387,13 @@ export default function PersonForm({
     () => getSafeOptions(refTypesByCategory, "DISABILITY_TYPE"),
     [refTypesByCategory]
   );
+  const illnessTypeMap = useMemo(() => {
+    const map: Record<number, string> = {};
+    getSafeOptions(refTypesByCategory, "CATASTROPHIC_ILLNESS_TYPE").forEach(
+      (opt) => (map[opt.id] = opt.name)
+    );
+    return map;
+  }, [refTypesByCategory]);
 
   const cedulaType = useMemo(
     () =>
@@ -418,6 +440,7 @@ export default function PersonForm({
       cantonId: person.cantonId ? String(person.cantonId) : "",
       yearsOfResidence: person.yearsOfResidence || undefined,
       ethnicityTypeId: person.ethnicityTypeId || undefined,
+      indigenousNationalityTypeId: (person as any).indigenousNationalityTypeId || undefined,
       bloodTypeTypeId: person.bloodTypeTypeId || undefined,
       specialNeedsTypeId: person.specialNeedsTypeId || undefined,
       disabilityPercentage: person.disabilityPercentage || undefined,
@@ -445,6 +468,7 @@ export default function PersonForm({
       cantonId: "",
       yearsOfResidence: undefined,
       ethnicityTypeId: undefined,
+      indigenousNationalityTypeId: undefined,
       bloodTypeTypeId: undefined,
       specialNeedsTypeId: undefined,
       disabilityPercentage: undefined,
@@ -471,6 +495,13 @@ export default function PersonForm({
   useEffect(() => {
     _onDirtyChangeRef.current?.(_formIsDirty);
   }, [_formIsDirty]);
+
+  const watchedEthnicityTypeId = useWatch({ control, name: "ethnicityTypeId" });
+  const isEthnicityIndigena = useMemo(() => {
+    const selected = ethnicityTypes.find((t) => t.id === watchedEthnicityTypeId);
+    const name = selected?.name?.toUpperCase() ?? "";
+    return name.includes("INDÍGENA") || name.includes("INDIGENA");
+  }, [ethnicityTypes, watchedEthnicityTypeId]);
 
   const watchIdentType = useWatch({ control, name: "identType" });
   const watchCountryId = useWatch({ control, name: "countryId" });
@@ -652,6 +683,12 @@ export default function PersonForm({
 
       // @ts-expect-error campo solo de UI
       delete submitData.hasDisability;
+
+      // SIIES: no forma parte de InsertPerson (schema compartido) — se agrega aparte
+      // para no tener que tocar ese schema; solo aplica cuando la etnia es Indígena.
+      (submitData as any).indigenousNationalityTypeId = isEthnicityIndigena
+        ? data.indigenousNationalityTypeId ?? null
+        : null;
 
       onSubmit(submitData);
     } catch {
@@ -1150,6 +1187,22 @@ export default function PersonForm({
                     id="ethnicityTypeId"
                   />
                 </div>
+                {isEthnicityIndigena && (
+                  <div className="space-y-2">
+                    <Label htmlFor="indigenousNationalityTypeId">Nacionalidad Indígena (SIIES)</Label>
+                    <SafeSelect
+                      options={indigenousNationalityTypes}
+                      value={watch("indigenousNationalityTypeId")?.toString() || ""}
+                      onValueChange={(value) =>
+                        setValue("indigenousNationalityTypeId", parseInt(value, 10), {
+                          shouldValidate: true,
+                        })
+                      }
+                      placeholder="Seleccione la nacionalidad indígena"
+                      id="indigenousNationalityTypeId"
+                    />
+                  </div>
+                )}
               </div>
             </SectionCard>
           </TabsContent>
@@ -1370,6 +1423,73 @@ export default function PersonForm({
                   </div>
                 </div>
               </div>
+            </SectionCard>
+
+            <SectionCard title="Enfermedades Catastróficas">
+              {!isEditing ? (
+                <p className="text-sm text-muted-foreground">
+                  Podrás registrar enfermedades catastróficas después de crear la persona.
+                </p>
+              ) : (
+                <>
+                  <div className="flex justify-end">
+                    {onAddCatastrophicIllness && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={onAddCatastrophicIllness}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Agregar enfermedad catastrófica
+                      </Button>
+                    )}
+                  </div>
+
+                  {catastrophicIllnesses.length === 0 ? (
+                    <div className="text-center py-4 text-muted-foreground">
+                      <p className="text-sm">Sin enfermedades catastróficas registradas.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {catastrophicIllnesses.map((ci) => (
+                        <div
+                          key={ci.illnessId}
+                          className="flex items-start justify-between gap-3 rounded-lg border bg-muted/10 p-3"
+                        >
+                          <div className="min-w-0">
+                            <p className="font-medium text-foreground truncate">{ci.illness}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {illnessTypeMap[ci.illnessTypeId] ?? "Tipo sin definir"}
+                              {ci.certificateNumber ? ` · Certificado: ${ci.certificateNumber}` : ""}
+                            </p>
+                          </div>
+                          <div className="flex gap-1 shrink-0">
+                            {onEditCatastrophicIllness && (
+                              <ActionIconButton
+                                icon={Edit}
+                                label="Editar registro"
+                                tone="primary"
+                                onClick={() => onEditCatastrophicIllness(ci)}
+                                touch
+                              />
+                            )}
+                            {onDeleteCatastrophicIllness && (
+                              <ActionIconButton
+                                icon={Trash2}
+                                label="Eliminar registro"
+                                tone="destructive"
+                                onClick={() => onDeleteCatastrophicIllness(ci.illnessId)}
+                                touch
+                              />
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
             </SectionCard>
           </TabsContent>
 

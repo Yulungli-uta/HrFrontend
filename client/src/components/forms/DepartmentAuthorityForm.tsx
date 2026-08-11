@@ -48,10 +48,10 @@ import {
   type DepartmentAuthorityCreateDto,
   type DepartmentAuthorityUpdateDto,
 } from "@/lib/api";
-import { VistaDetallesEmpleadosAPI } from "@/lib/api";
 import { TiposReferenciaAPI, CargosAPI } from "@/lib/api";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { DepartmentSelect } from "@/components/departments/DepartmentSelect";
+import { EmployeeCombobox } from "@/components/ui/EmployeeCombobox";
 
 // =============================================================================
 // Tipos internos
@@ -272,13 +272,6 @@ export function DepartmentAuthorityForm({
 
   // ── Carga de datos para los Comboboxes ──────────────────────────────────────
 
-  /** Empleados — lista completa paginada (se filtra en cliente) */
-  const { data: empData, isLoading: loadingEmps } = useQuery({
-    queryKey: ["employees-details-all"],
-    queryFn:  () => VistaDetallesEmpleadosAPI.list(),
-    staleTime: 5 * 60 * 1000,
-  });
-
   /** Tipos de autoridad — filtrados por categoría AUTHORITY_TYPE */
   const { data: authTypeData, isLoading: loadingAuthTypes } = useQuery({
     queryKey: ["ref-types-authority"],
@@ -294,16 +287,6 @@ export function DepartmentAuthorityForm({
   });
 
   // ── Normalización de opciones ────────────────────────────────────────────────
-
-  const empOptions = useMemo((): OptionItem[] => {
-    const raw = (empData as any)?.data ?? empData ?? [];
-    const arr = Array.isArray(raw) ? raw : raw?.items ?? [];
-    return arr.map((e: any) => ({
-      value:    e.employeeID ?? e.EmployeeID ?? e.employeeId,
-      label:    `${e.firstName ?? e.FirstName ?? ""} ${e.lastName ?? e.LastName ?? ""}`.trim(),
-      sublabel: e.idCard ?? e.IDCard ?? e.email ?? e.Email ?? undefined,
-    }));
-  }, [empData]);
 
   const authTypeOptions = useMemo((): OptionItem[] => {
     const raw = (authTypeData as any)?.data ?? authTypeData ?? [];
@@ -449,17 +432,15 @@ export function DepartmentAuthorityForm({
           rules={{ required: "El empleado es requerido" }}
           render={({ field }) => (
             <div className="space-y-1">
-              <SearchCombobox
-                label="Empleado"
+              <Label>
+                <User2 className="inline h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+                Empleado
+                <span className="text-destructive ml-1">*</span>
+              </Label>
+              <EmployeeCombobox
+                value={field.value ?? null}
+                onSelect={(id) => field.onChange(id)}
                 placeholder="Buscar empleado por nombre o cédula..."
-                searchPlaceholder="Nombre, apellido o cédula..."
-                emptyMessage="No se encontraron empleados."
-                options={empOptions}
-                value={field.value}
-                onChange={field.onChange}
-                isLoading={loadingEmps}
-                required
-                icon={User2}
               />
               {errors.employeeId && (
                 <p className="text-xs text-destructive flex items-center gap-1">

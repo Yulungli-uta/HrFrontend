@@ -1,13 +1,14 @@
-import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, User, CalendarDays, Plus } from "lucide-react";
+import { Calendar, User, CalendarDays } from "lucide-react";
 import type { Vacation } from "@/shared/schema";
-import { VacacionesAPI, type ApiResponse } from "@/lib/api"; // Cambiamos la importación
+import { VacacionesAPI } from "@/lib/api";
+import { usePaged } from "@/hooks/pagination/usePaged";
+import { DataPagination } from "@/components/ui/DataPagination";
 
 const statusLabels: Record<string, string> = {
   "Planned": "Planificadas",
+  "Approved": "Aprobadas",
   "InProgress": "En Curso",
   "Completed": "Completadas",
   "Canceled": "Canceladas"
@@ -15,20 +16,34 @@ const statusLabels: Record<string, string> = {
 
 const statusColors: Record<string, string> = {
   "Planned": "bg-primary/15 text-primary",
+  "Approved": "bg-success/15 text-success",
   "InProgress": "bg-warning/15 text-warning",
   "Completed": "bg-success/15 text-success",
   "Canceled": "bg-destructive/15 text-destructive"
 };
 
 export default function VacationsPage() {
-  // Usamos el servicio específico de vacaciones
-  const { data: apiResponse, isLoading, error } = useQuery<ApiResponse<Vacation[]>>({
-    queryKey: ['/api/v1/rh/vacations'], // Cambiamos la queryKey
-    queryFn: () => VacacionesAPI.list(), // Usamos el servicio de vacaciones
+  // Paginado real desde el servidor, ordenado por fecha de registro descendente
+  // (más reciente primero) — antes traía TODO sin paginar ni ordenar.
+  const {
+    items: vacations,
+    isLoading,
+    isError,
+    page,
+    pageSize,
+    totalCount,
+    totalPages,
+    hasPreviousPage,
+    hasNextPage,
+    goToPage,
+    setPageSize,
+  } = usePaged<Vacation>({
+    queryKey: "vacations-paged",
+    queryFn: (params) => VacacionesAPI.listPaged(params),
+    initialPageSize: 20,
+    initialSortBy: "createdAt",
+    initialSortDirection: "desc",
   });
-
-  // Extraemos las vacaciones del formato de respuesta de la API
-  const vacations = apiResponse?.status === 'success' ? apiResponse.data : [];
 
   if (isLoading) {
     return (
@@ -55,25 +70,12 @@ export default function VacationsPage() {
     );
   }
 
-  if (error) {
+  if (isError) {
     return (
       <div className="container mx-auto p-6">
         <Card className="border-destructive/30 bg-destructive/10">
           <CardContent className="pt-6">
             <p className="text-destructive">Error al cargar las vacaciones. Intente nuevamente.</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Manejar errores de la API (cuando status es 'error')
-  if (apiResponse?.status === 'error') {
-    return (
-      <div className="container mx-auto p-6">
-        <Card className="border-destructive/30 bg-destructive/10">
-          <CardContent className="pt-6">
-            <p className="text-destructive">Error al cargar las vacaciones: {apiResponse.error.message}</p>
           </CardContent>
         </Card>
       </div>
@@ -87,99 +89,74 @@ export default function VacationsPage() {
           <h1 className="text-3xl font-bold text-foreground">Gestión de Vacaciones</h1>
           <p className="text-muted-foreground mt-2">Administre las vacaciones del personal universitario</p>
         </div>
-        <Button 
-          data-testid="button-add-vacation"
-          className="bg-primary hover:bg-primary/90"
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Programar Vacaciones
-        </Button>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {vacations.map((vacation) => (
-          <Card key={vacation.id} className="hover:shadow-lg transition-shadow duration-200">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Calendar className="h-5 w-5 text-success" />
-                  <span data-testid={`text-vacation-${vacation.id}`}>
-                    Vacaciones #{vacation.id}
-                  </span>
-                </div>
-                <Badge 
-                  className={statusColors[vacation.status as keyof typeof statusColors] || "bg-muted text-foreground"}
-                  data-testid={`status-${vacation.id}`}
-                >
-                  {statusLabels[vacation.status as keyof typeof statusLabels] || vacation.status}
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                <User className="h-4 w-4" />
-                <span data-testid={`text-employee-${vacation.id}`}>
-                  Empleado: #{vacation.employeeId}
-                </span>
-              </div>
-              
-              <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                <CalendarDays className="h-4 w-4" />
-                <span data-testid={`text-start-date-${vacation.id}`}>
-                  Desde: {new Date(vacation.startDate as string).toLocaleDateString()}
-                </span>
-              </div>
-              
-              <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                <CalendarDays className="h-4 w-4" />
-                <span data-testid={`text-end-date-${vacation.id}`}>
-                  Hasta: {new Date(vacation.endDate as string).toLocaleDateString()}
-                </span>
-              </div>
-              
-              <div className="bg-background p-3 rounded-lg">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium text-foreground">Días concedidos:</span>
-                  <span className="font-bold text-primary" data-testid={`text-days-granted-${vacation.id}`}>
-                    {vacation.daysGranted}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-foreground">Días tomados:</span>
-                  <span className="font-bold text-success" data-testid={`text-days-taken-${vacation.id}`}>
-                    {vacation.daysTaken}
-                  </span>
-                </div>
-              </div>
+      <Card>
+        <CardContent className="pt-6">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {vacations.map((vacation: any) => (
+              <Card key={vacation.id ?? vacation.vacationId ?? vacation.VacationID} className="hover:shadow-lg transition-shadow duration-200">
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Calendar className="h-5 w-5 text-success" />
+                      <span>Vacaciones #{vacation.id ?? vacation.vacationId ?? vacation.VacationID}</span>
+                    </div>
+                    <Badge className={statusColors[vacation.status as keyof typeof statusColors] || "bg-muted text-foreground"}>
+                      {statusLabels[vacation.status as keyof typeof statusLabels] || vacation.status}
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                    <User className="h-4 w-4" />
+                    <span>Empleado: #{vacation.employeeId}</span>
+                  </div>
 
-              <div className="pt-3 border-t">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="w-full"
-                  data-testid={`button-view-vacation-${vacation.id}`}
-                >
-                  Ver Detalles
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                  <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                    <CalendarDays className="h-4 w-4" />
+                    <span>Desde: {new Date(vacation.startDate as string).toLocaleDateString()}</span>
+                  </div>
 
-      {vacations.length === 0 && (
-        <Card className="text-center py-12">
-          <CardContent>
-            <Calendar className="mx-auto h-12 w-12 text-muted-foreground/70 mb-4" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">No hay vacaciones registradas</h3>
-            <p className="text-muted-foreground mb-4">Comience programando las primeras vacaciones</p>
-            <Button data-testid="button-add-first-vacation">
-              <Plus className="mr-2 h-4 w-4" />
-              Programar Primeras Vacaciones
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+                  <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                    <CalendarDays className="h-4 w-4" />
+                    <span>Hasta: {new Date(vacation.endDate as string).toLocaleDateString()}</span>
+                  </div>
+
+                  <div className="bg-background p-3 rounded-lg">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium text-foreground">Días concedidos:</span>
+                      <span className="font-bold text-primary">{vacation.daysGranted}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-foreground">Días tomados:</span>
+                      <span className="font-bold text-success">{vacation.daysTaken}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {vacations.length === 0 && (
+            <div className="text-center py-12">
+              <Calendar className="mx-auto h-12 w-12 text-muted-foreground/70 mb-4" />
+              <h3 className="text-lg font-semibold text-foreground mb-2">No hay vacaciones registradas</h3>
+            </div>
+          )}
+
+          <DataPagination
+            page={page}
+            totalPages={totalPages}
+            totalCount={totalCount}
+            pageSize={pageSize}
+            hasPreviousPage={hasPreviousPage}
+            hasNextPage={hasNextPage}
+            onPageChange={goToPage}
+            onPageSizeChange={setPageSize}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -1,10 +1,11 @@
 // src/pages/HrResignationRetirementRequestsPage.tsx
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -12,11 +13,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ClipboardList, Loader2, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { ClipboardList, Loader2, AlertCircle, ChevronLeft, ChevronRight, UserPlus } from 'lucide-react';
+import { EmployeeCombobox } from '@/components/ui/EmployeeCombobox';
 import { TiposReferenciaAPI } from '@/lib/api';
 import { REF_TYPE_CATEGORIES } from '@/features/refTypeCategories';
 import { ResignationRetirementAPI } from '@/lib/api/services/resignationRetirement';
 import { parseApiError } from '@/lib/api/utils/error-handling';
+import { useToast } from '@/hooks/use-toast';
 import { RequestStatusBadge } from '@/components/resignationRetirement/RequestStatusBadge';
 import { HrRequestDetailDialog } from '@/components/resignationRetirement/HrRequestDetailDialog';
 import type {
@@ -25,6 +36,125 @@ import type {
   ResignationRetirementStatus,
   ResignationRetirementSummary,
 } from '@/types/resignation-retirement';
+
+/**
+ * Diálogo para que RRHH genere una renuncia/jubilación EN NOMBRE de un empleado que no
+ * puede o no logra hacer su propia solicitud (abandono de puesto, no localizable, etc.).
+ * A diferencia del autoservicio, aquí sí se permite una fecha de salida ya pasada — el
+ * objetivo es registrar cuanto antes una salida real ya ocurrida para que la
+ * acreditación mensual de vacaciones se detenga sin esperar al documento firmado. El
+ * resto del trámite (revisión, aprobación con documento firmado, cierre de régimen)
+ * sigue exactamente el mismo flujo, sin cambios.
+ */
+function GenerateOnBehalfDialog({
+  open,
+  onOpenChange,
+  onCreated,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onCreated: () => void;
+}) {
+  const { toast } = useToast();
+  const [employeeId, setEmployeeId] = useState<number | null>(null);
+  const [requestType, setRequestType] = useState<ResignationRetirementRequestType>('RESIGNATION');
+  const [proposedExitDate, setProposedExitDate] = useState('');
+  const [reason, setReason] = useState('');
+
+  const resetForm = () => {
+    setEmployeeId(null);
+    setRequestType('RESIGNATION');
+    setProposedExitDate('');
+    setReason('');
+  };
+
+  const mutation = useMutation({
+    mutationFn: () => {
+      if (!employeeId) throw new Error('Seleccione un empleado.');
+      if (!proposedExitDate) throw new Error('Indique la fecha de salida.');
+      return ResignationRetirementAPI.createOnBehalf({
+        employeeId,
+        requestType,
+        proposedExitDate,
+        reason: reason.trim() || null,
+        additionalNotes: null,
+      });
+    },
+    onSuccess: (res) => {
+      if (res.status === 'success') {
+        toast({
+          title: 'Solicitud generada',
+          description: 'La acreditación de vacaciones se detiene desde la fecha de salida indicada. El trámite sigue pendiente de revisión y documento firmado.',
+        });
+        resetForm();
+        onOpenChange(false);
+        onCreated();
+      } else {
+        toast({ title: 'Error al generar', description: parseApiError(res), variant: 'destructive' });
+      }
+    },
+    onError: (err) => {
+      toast({ title: 'Error al generar', description: parseApiError(err), variant: 'destructive' });
+    },
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) resetForm(); onOpenChange(o); }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Generar renuncia/jubilación</DialogTitle>
+          <DialogDescription>
+            Úsalo cuando el empleado no puede o no logra hacer su propia solicitud. Puedes indicar una
+            fecha de salida ya pasada — el sistema detiene la acreditación de vacaciones desde esa fecha
+            de inmediato, aunque el documento firmado todavía no se haya subido.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          <div className="space-y-1.5">
+            <Label>Empleado</Label>
+            <EmployeeCombobox value={employeeId} onSelect={(id) => setEmployeeId(id ?? null)} />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Tipo</Label>
+            <Select value={requestType} onValueChange={(v) => setRequestType(v as ResignationRetirementRequestType)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="RESIGNATION">Renuncia</SelectItem>
+                <SelectItem value="RETIREMENT">Jubilación</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Fecha de salida (puede ser una fecha ya pasada)</Label>
+            <Input type="date" value={proposedExitDate} onChange={(e) => setProposedExitDate(e.target.value)} />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Motivo</Label>
+            <Textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Ej. abandono de puesto, empleado no localizable desde el..."
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button
+            disabled={!employeeId || !proposedExitDate || mutation.isPending}
+            onClick={() => mutation.mutate()}
+          >
+            {mutation.isPending ? 'Generando...' : 'Generar solicitud'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 function formatDate(dateStr?: string | null): string {
   if (!dateStr) return '—';
@@ -44,6 +174,7 @@ export default function HrResignationRetirementRequestsPage() {
   const [status, setStatus] = useState<ResignationRetirementStatus | ''>('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
 
   const filter: ResignationRetirementQueryFilter = {
     page,
@@ -74,16 +205,22 @@ export default function HrResignationRetirementRequestsPage() {
 
   return (
     <div className="container mx-auto p-4 sm:p-6 space-y-6">
-      <div>
-        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground flex items-center gap-3">
-          <div className="p-2 bg-primary/15 rounded-lg">
-            <ClipboardList className="h-6 w-6 lg:h-8 lg:w-8 text-primary" />
-          </div>
-          Solicitudes de Renuncia/Jubilación
-        </h1>
-        <p className="text-muted-foreground mt-2 text-sm">
-          Revisión de Recursos Humanos. Restringido a los departamentos permitidos según tu alcance de acceso.
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground flex items-center gap-3">
+            <div className="p-2 bg-primary/15 rounded-lg">
+              <ClipboardList className="h-6 w-6 lg:h-8 lg:w-8 text-primary" />
+            </div>
+            Solicitudes de Renuncia/Jubilación
+          </h1>
+          <p className="text-muted-foreground mt-2 text-sm">
+            Revisión de Recursos Humanos. Restringido a los departamentos permitidos según tu alcance de acceso.
+          </p>
+        </div>
+
+        <Button onClick={() => setGenerateDialogOpen(true)} className="w-full sm:w-auto">
+          <UserPlus className="mr-2 h-4 w-4" /> Generar renuncia/jubilación
+        </Button>
       </div>
 
       <Card>
@@ -222,6 +359,12 @@ export default function HrResignationRetirementRequestsPage() {
         onOpenChange={(open) => !open && setSelectedRequestId(null)}
         requestId={selectedRequestId}
         onChanged={() => refetch()}
+      />
+
+      <GenerateOnBehalfDialog
+        open={generateDialogOpen}
+        onOpenChange={setGenerateDialogOpen}
+        onCreated={() => refetch()}
       />
     </div>
   );

@@ -15,6 +15,7 @@ import {
   ParametersAPI,
   type ApiResponse,
   apiFetch,
+  handleApiError,
 } from "@/lib/api";
 
 import type { InsertPermiso } from "@/shared/schema";
@@ -711,6 +712,13 @@ export default function PermissionForm({
             ? await upd(editingId, payload)
             : await apiFetch<any>(`/api/v1/rh/permissions/${editingId}`, { method: "PUT", body: JSON.stringify(payload), headers: { "Content-Type": "application/json" } });
 
+        // apiFetch nunca rechaza la promesa ante errores HTTP — sin este chequeo, el
+        // formulario mostraba "actualizado correctamente" aunque el backend rechazara la
+        // solicitud.
+        if (resp.status === "error") {
+          throw new Error(handleApiError(resp.error, "No se pudo actualizar el permiso."));
+        }
+
         if (requiresDocs) {
           const selectedCount = docManagerRef.current?.getSelectedCount?.() ?? 0;
           if (selectedCount > 0) {
@@ -731,6 +739,14 @@ export default function PermissionForm({
       }
 
       const createdResp = await PermisosAPI.create(payload);
+
+      // apiFetch nunca rechaza la promesa ante errores HTTP (siempre resuelve
+      // {status:'error',...}) — sin este chequeo, onSuccess se disparaba igual aunque el
+      // backend hubiera rechazado la solicitud, mostrando "creado correctamente" sin haber
+      // creado ni reservado nada.
+      if (createdResp.status === "error") {
+        throw new Error(handleApiError(createdResp.error, "No se pudo crear el permiso."));
+      }
 
       if (requiresDocs) {
         const createdId = extractPermissionId(createdResp);

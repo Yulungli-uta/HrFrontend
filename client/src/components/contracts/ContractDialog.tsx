@@ -83,7 +83,6 @@ import {
   ContractsRHAPI,
   ContractRequestAPI,
   VwJobWithDegreeAndGroupAPI,
-  VistaDetallesEmpleadosAPI,
   DocumentsAPI,
   AcademicLadderAPI,
   VwAuthorityAPI,
@@ -93,6 +92,7 @@ import { Switch } from "@/components/ui/switch";
 import type { VwJobWithDegreeAndGroup } from "@/lib/api";
 import { JobSelect } from "@/components/ui/JobSelect";
 import { DepartmentSelect } from "@/components/departments/DepartmentSelect";
+import { EmployeeCombobox } from "@/components/ui/EmployeeCombobox";
 
 import {
   CONTRACT_DIRECTORY_CODE,
@@ -142,6 +142,8 @@ type ContractsCreateDto = {
   laborRegimeID?: number | null;
   workModalityID?: number | null;
   contractedHours?: number | null;
+  /** true solo desde "Ingresar Histórico": el backend exige fechas anteriores a hoy. */
+  isHistoricalEntry?: boolean;
 };
 
 type ContractsUpdateDto = ContractsCreateDto & {
@@ -325,8 +327,15 @@ export function ContractDialog(props: {
   setMode: (m: DialogMode) => void;
   selected?: ContractLike | null;
   initial?: Partial<ContractsCreateDto>;
+  /**
+   * Fecha máxima permitida (YYYY-MM-DD) para startDate/endDate del paso 2 del
+   * wizard de creación. Usado únicamente por la pantalla de "Ingresar Histórico"
+   * (un contrato histórico ya concluyó — no puede empezar ni terminar hoy o en
+   * el futuro). Sin este prop, el comportamiento de creación normal no cambia.
+   */
+  maxDate?: string;
 }) {
-  const { open, onOpenChange, mode, setMode, selected, initial } = props;
+  const { open, onOpenChange, mode, setMode, selected, initial, maxDate } = props;
 
   const isCreate = mode === "create";
   const isView = mode === "view";
@@ -474,12 +483,6 @@ export function ContractDialog(props: {
     return [];
   })();
 
-  const qEmployees = useQuery({
-    queryKey: ["employees-details-all"],
-    queryFn: () => VistaDetallesEmpleadosAPI.list(),
-    enabled: open,
-    staleTime: 5 * 60 * 1000,
-  });
 
   // Autoridad activa vigente del departamento del contrato (ej. Decano de la facultad),
   // usada para preseleccionar la autoridad nominadora cuando el contrato es por delegación.
@@ -558,23 +561,6 @@ export function ContractDialog(props: {
     () => jobs.find((j) => j.jobID === (form.jobID ?? undefined)),
     [jobs, form.jobID]
   );
-
-  const employeeItems: SearchItem[] = useMemo(() => {
-    const raw = (qEmployees.data as any)?.data ?? qEmployees.data ?? [];
-    const arr = Array.isArray(raw) ? raw : raw?.items ?? [];
-    return arr
-      .map((e: any) => {
-        const id = e.employeeID ?? e.EmployeeID ?? e.employeeId;
-        if (!id) return null;
-        const name = `${e.firstName ?? e.FirstName ?? ""} ${e.lastName ?? e.LastName ?? ""}`.trim();
-        const idCard = e.idCard ?? e.IDCard ?? "";
-        return {
-          value: String(id),
-          label: idCard ? `${name} — ${idCard}` : name,
-        } as SearchItem;
-      })
-      .filter(Boolean) as SearchItem[];
-  }, [qEmployees.data]);
 
   const selectedCert = useMemo(
     () =>
@@ -855,6 +841,15 @@ export function ContractDialog(props: {
       }
     }
 
+    // Registro histórico: el atributo `max` del <input type=date> no bloquea un valor
+    // ya asignado (texto pegado, escritura manual) — hay que revalidar aquí antes de enviar.
+    if (maxDate) {
+      if (form.startDate && form.startDate > maxDate)
+        errors.push("Registro histórico: la fecha de inicio debe ser anterior a hoy.");
+      if (form.endDate && form.endDate > maxDate)
+        errors.push("Registro histórico: la fecha de fin debe ser anterior a hoy.");
+    }
+
     return errors;
   }
 
@@ -907,7 +902,7 @@ export function ContractDialog(props: {
 
       let newContractId: number | undefined;
       try {
-        const res = await createMut.mutateAsync({ ...form, contractCode: finalContractCode });
+        const res = await createMut.mutateAsync({ ...form, contractCode: finalContractCode, isHistoricalEntry: !!maxDate });
         if ((res as any).status !== "success") {
           toast({ title: "❌ Error al crear contrato", description: (res as any).error?.message ?? "Error desconocido.", variant: "destructive" });
           return false;
@@ -1037,7 +1032,12 @@ export function ContractDialog(props: {
 
   function canProceedStep(step: number): boolean {
     if (step === 1) {
-      const base = !!(form.personID && form.contractTypeID && form.departmentID);
+      // 2026-08-06: laborRegimeID ya se marcaba obligatorio con asterisco rojo
+      // (línea ~2260, se filtra el Tipo de Contrato por régimen) pero el gate no lo
+      // exigía — se podía avanzar sin régimen y quedar con un Tipo de Contrato sin
+      // filtrar. Tiene selector manual (línea ~2202) si la auto-derivación no aplica,
+      // así que exigirlo aquí no bloquea ningún flujo legítimo.
+      const base = !!(form.personID && form.contractTypeID && form.departmentID && form.laborRegimeID);
       if (isAdendumType && !form.parentID) return false;
       if (!isCertApproved) return false;
       // Bloquear si ya no hay cupos disponibles en la solicitud
@@ -1045,7 +1045,16 @@ export function ContractDialog(props: {
       return base;
     }
     if (step === 2) {
-      return !!(form.contractCode && form.startDate && form.endDate);
+      // 2026-08-06: Autoridad Nominadora y Director DTH ya se mostraban con asterisco
+      // rojo (obligatorios visualmente) pero el gate no los exigía — bug real, se podía
+      // crear un contrato sin ninguno de los dos. Ambos tienen su propio EmployeeCombobox.
+      return !!(
+        form.contractCode &&
+        form.startDate &&
+        form.endDate &&
+        form.authorityNominatorId &&
+        form.dthDirectorId
+      );
     }
     return true;
   }
@@ -1522,7 +1531,7 @@ export function ContractDialog(props: {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="contractCode">
-                            Código de Contrato *
+                            Código de Contrato <span className="text-destructive">*</span>
                           </Label>
                           <Input
                             id="contractCode"
@@ -1661,7 +1670,7 @@ export function ContractDialog(props: {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="contractType">
-                            Tipo de Contrato *
+                            Tipo de Contrato <span className="text-destructive">*</span>
                           </Label>
                           <SearchableSelect
                             value={
@@ -1691,7 +1700,7 @@ export function ContractDialog(props: {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="department">Departamento *</Label>
+                          <Label htmlFor="department">Departamento <span className="text-destructive">*</span></Label>
                           <DepartmentSelect
                             value={form.departmentID || null}
                             onChange={(id) =>
@@ -1704,7 +1713,7 @@ export function ContractDialog(props: {
 
                         {(isAdendumType || !!form.parentID) && (
                           <div className="space-y-2 md:col-span-2">
-                            <Label htmlFor="parentContract">Contrato Padre *</Label>
+                            <Label htmlFor="parentContract">Contrato Padre <span className="text-destructive">*</span></Label>
                             {isView ? (
                               <p className="text-sm py-2 font-medium">
                                 {form.parentID ? `Contrato #${form.parentID}` : "—"}
@@ -1848,27 +1857,21 @@ export function ContractDialog(props: {
 
                         <div className="space-y-2">
                           <Label>Autoridad Nominadora</Label>
-                          <SearchableSelect
-                            value={form.authorityNominatorId ? String(form.authorityNominatorId) : null}
-                            items={employeeItems}
-                            placeholder="Seleccione autoridad..."
-                            searchPlaceholder="Buscar por nombre o cédula..."
-                            isLoading={qEmployees.isLoading || qDeptAuthority.isLoading}
+                          <EmployeeCombobox
+                            value={form.authorityNominatorId ?? null}
+                            onSelect={(id) => setForm((f) => ({ ...f, authorityNominatorId: id }))}
+                            placeholder="Buscar autoridad por nombre o cédula..."
                             disabled={isView}
-                            onChange={(v) => setForm((f) => ({ ...f, authorityNominatorId: Number(v) || null }))}
                           />
                         </div>
 
                         <div className="space-y-2">
                           <Label>Director DTH</Label>
-                          <SearchableSelect
-                            value={form.dthDirectorId ? String(form.dthDirectorId) : null}
-                            items={employeeItems}
-                            placeholder="Seleccione director..."
-                            searchPlaceholder="Buscar por nombre o cédula..."
-                            isLoading={qEmployees.isLoading}
+                          <EmployeeCombobox
+                            value={form.dthDirectorId ?? null}
+                            onSelect={(id) => setForm((f) => ({ ...f, dthDirectorId: id }))}
+                            placeholder="Buscar director por nombre o cédula..."
                             disabled={isView}
-                            onChange={(v) => setForm((f) => ({ ...f, dthDirectorId: Number(v) || null }))}
                           />
                         </div>
                       </div>
@@ -1882,7 +1885,7 @@ export function ContractDialog(props: {
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="startDate">Fecha de Inicio *</Label>
+                          <Label htmlFor="startDate">Fecha de Inicio <span className="text-destructive">*</span></Label>
                           <Input
                             id="startDate"
                             type="date"
@@ -1898,7 +1901,7 @@ export function ContractDialog(props: {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="endDate">Fecha de Fin *</Label>
+                          <Label htmlFor="endDate">Fecha de Fin <span className="text-destructive">*</span></Label>
                           <Input
                             id="endDate"
                             type="date"
@@ -2288,7 +2291,7 @@ export function ContractDialog(props: {
                     {/* ── 3. TIPO DE CONTRATO (filtrado por régimen, aparece después de elegir régimen) ── */}
                     {form.laborRegimeID && (
                       <div className="space-y-2">
-                        <Label htmlFor="wizard-type">Tipo de Contrato *</Label>
+                        <Label htmlFor="wizard-type">Tipo de Contrato <span className="text-destructive">*</span></Label>
                         <SearchableSelect
                           value={form.contractTypeID ? String(form.contractTypeID) : null}
                           items={toSearchItems(
@@ -2331,7 +2334,7 @@ export function ContractDialog(props: {
                         {isAdendumType && (
                           <div className="space-y-2 mt-2">
                             <Label htmlFor="wizard-parent">
-                              Contrato Padre *
+                              Contrato Padre <span className="text-destructive">*</span>
                               <span className="text-xs font-normal text-muted-foreground ml-2">requerido para adendum</span>
                             </Label>
                             <SearchableSelect
@@ -2366,7 +2369,7 @@ export function ContractDialog(props: {
                     {/* ── Persona ── */}
                     <div className="space-y-2">
                       <Label htmlFor="wizard-person">
-                        Persona *
+                        Persona <span className="text-destructive">*</span>
                         {isPersonFromDetail && (
                           <span className="ml-2 text-xs text-green-600 dark:text-green-400 font-normal">
                             (pre-completada desde el detalle)
@@ -2387,7 +2390,7 @@ export function ContractDialog(props: {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="wizard-dept">Departamento *</Label>
+                        <Label htmlFor="wizard-dept">Departamento <span className="text-destructive">*</span></Label>
                         <DepartmentSelect
                           value={form.departmentID || null}
                           onChange={(id) =>
@@ -2447,25 +2450,19 @@ export function ContractDialog(props: {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Autoridad Nominadora <span className="text-destructive">*</span></Label>
-                        <SearchableSelect
-                          value={form.authorityNominatorId ? String(form.authorityNominatorId) : null}
-                          items={employeeItems}
-                          placeholder="Seleccione autoridad..."
-                          searchPlaceholder="Buscar por nombre o cédula..."
-                          isLoading={qEmployees.isLoading || qDeptAuthority.isLoading}
-                          onChange={(v) => setForm((f) => ({ ...f, authorityNominatorId: Number(v) || null }))}
+                        <EmployeeCombobox
+                          value={form.authorityNominatorId ?? null}
+                          onSelect={(id) => setForm((f) => ({ ...f, authorityNominatorId: id }))}
+                          placeholder="Buscar autoridad por nombre o cédula..."
                         />
                       </div>
 
                       <div className="space-y-2">
                         <Label>Director DTH <span className="text-destructive">*</span></Label>
-                        <SearchableSelect
-                          value={form.dthDirectorId ? String(form.dthDirectorId) : null}
-                          items={employeeItems}
-                          placeholder="Seleccione director..."
-                          searchPlaceholder="Buscar por nombre o cédula..."
-                          isLoading={qEmployees.isLoading}
-                          onChange={(v) => setForm((f) => ({ ...f, dthDirectorId: Number(v) || null }))}
+                        <EmployeeCombobox
+                          value={form.dthDirectorId ?? null}
+                          onSelect={(id) => setForm((f) => ({ ...f, dthDirectorId: id }))}
+                          placeholder="Buscar director por nombre o cédula..."
                         />
                       </div>
                     </div>
@@ -2485,7 +2482,7 @@ export function ContractDialog(props: {
 
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="wizard-code">Código del Contrato *</Label>
+                      <Label htmlFor="wizard-code">Código del Contrato <span className="text-destructive">*</span></Label>
                       <Input
                         id="wizard-code"
                         value={form.contractCode}
@@ -2499,12 +2496,13 @@ export function ContractDialog(props: {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="wizard-start">
-                          Fecha de Inicio *
+                          Fecha de Inicio <span className="text-destructive">*</span>
                         </Label>
                         <Input
                           id="wizard-start"
                           type="date"
                           value={form.startDate}
+                          max={maxDate}
                           onChange={(e) =>
                             setForm((f) => ({
                               ...f,
@@ -2512,15 +2510,19 @@ export function ContractDialog(props: {
                             }))
                           }
                         />
+                        {maxDate && (
+                          <p className="text-xs text-muted-foreground">Registro histórico: debe ser anterior a hoy.</p>
+                        )}
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="wizard-end">Fecha de Fin *</Label>
+                        <Label htmlFor="wizard-end">Fecha de Fin <span className="text-destructive">*</span></Label>
                         <Input
                           id="wizard-end"
                           type="date"
                           value={form.endDate}
                           min={form.startDate || undefined}
+                          max={maxDate}
                           onChange={(e) =>
                             setForm((f) => ({
                               ...f,
@@ -2528,6 +2530,9 @@ export function ContractDialog(props: {
                             }))
                           }
                         />
+                        {maxDate && (
+                          <p className="text-xs text-muted-foreground">Registro histórico: debe ser anterior a hoy.</p>
+                        )}
                       </div>
                     </div>
 

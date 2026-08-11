@@ -57,6 +57,12 @@ export default defineConfig(({ mode }) => {
 
     build: {
       chunkSizeWarningLimit: 1000,
+      rollupOptions: {
+        checks: {
+          invalidAnnotation: false,
+          pluginTimings: false,
+        },
+      } as any,
       minify: "terser",
       terserOptions: {
         compress: {

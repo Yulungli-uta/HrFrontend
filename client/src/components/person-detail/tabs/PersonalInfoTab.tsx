@@ -1,9 +1,17 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { User, Edit, Mail, Phone, Calendar, MapPin, Heart, Users } from "lucide-react";
-import { Person } from "@/types/person";
+import { ActionIconButton } from "@/components/ui/action-icon-button";
+import { User, Edit, Mail, Phone, Calendar, MapPin, Heart, Users, ShieldAlert, Plus, Trash2, FileText, ChevronDown, ChevronUp } from "lucide-react";
+import { Person, CatastrophicIllness } from "@/types/person";
+import { ReusableDocumentManager } from "@/components/ReusableDocumentManager";
+import {
+  PERSON_PHOTO_DIRECTORY_CODE,
+  PERSON_PHOTO_ENTITY_TYPE,
+  CATASTROPHIC_ILLNESS_CERTIFICATE_DIRECTORY_CODE,
+  CATASTROPHIC_ILLNESS_CERTIFICATE_ENTITY_TYPE,
+} from "@/features/constants";
 
 interface RefType {
   id: number;
@@ -22,6 +30,10 @@ interface PersonalInfoTabProps {
   countryMap?: Record<number, string>;
   provinceMap?: Record<number, string>;
   cantonMap?: Record<number, string>;
+  catastrophicIllnesses?: CatastrophicIllness[];
+  onAddCatastrophicIllness?: () => void;
+  onEditCatastrophicIllness?: (item: CatastrophicIllness) => void;
+  onDeleteCatastrophicIllness?: (id: number) => void;
 }
 
 function buildRefMap(refs?: RefType[]) {
@@ -59,7 +71,14 @@ export function PersonalInfoTab({
   countryMap = {},
   provinceMap = {},
   cantonMap = {},
+  catastrophicIllnesses = [],
+  onAddCatastrophicIllness,
+  onEditCatastrophicIllness,
+  onDeleteCatastrophicIllness,
 }: PersonalInfoTabProps) {
+  const [expandedIllnessId, setExpandedIllnessId] = useState<number | null>(null);
+  const [photoExpanded, setPhotoExpanded] = useState(false);
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("es-EC", {
       year: "numeric",
@@ -88,7 +107,25 @@ export function PersonalInfoTab({
     [refTypesByCategory]
   );
 
+  const bloodTypeMap = useMemo(
+    () => buildRefMap(refTypesByCategory["BLOOD_TYPE"]),
+    [refTypesByCategory]
+  );
+
+  const specialNeedsMap = useMemo(
+    () => buildRefMap(refTypesByCategory["SPECIAL_NEEDS"]),
+    [refTypesByCategory]
+  );
+
   const hasFamilyInfo = Boolean(person.motherName || person.fatherName);
+
+  const hasHealthInfo = Boolean(
+    person.bloodTypeTypeId ||
+    person.specialNeedsTypeId ||
+    person.disability ||
+    person.disabilityPercentage ||
+    person.conadisCard
+  );
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
@@ -110,6 +147,38 @@ export function PersonalInfoTab({
           </CardHeader>
 
           <CardContent className="space-y-4">
+            <div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs -ml-2"
+                onClick={() => setPhotoExpanded((v) => !v)}
+              >
+                <FileText className="h-3.5 w-3.5 mr-1" />
+                Fotografía de perfil
+                {photoExpanded ? (
+                  <ChevronUp className="h-3.5 w-3.5 ml-1" />
+                ) : (
+                  <ChevronDown className="h-3.5 w-3.5 ml-1" />
+                )}
+              </Button>
+              {photoExpanded && (
+                <ReusableDocumentManager
+                  directoryCode={PERSON_PHOTO_DIRECTORY_CODE}
+                  entityType={PERSON_PHOTO_ENTITY_TYPE}
+                  entityId={person.personId}
+                  relativePath={person.idCard ? `${person.idCard}/${PERSON_PHOTO_ENTITY_TYPE.toLowerCase()}` : undefined}
+                  accept=".jpg,.jpeg,.png"
+                  maxSizeMB={5}
+                  maxFiles={1}
+                  label="Fotografía de perfil"
+                  entityReady={true}
+                  allowReplace
+                  documentType={{ enabled: true, category: "CV_DOCUMENT_TYPE", label: "Tipo de documento", defaultValue: undefined }}
+                />
+              )}
+            </div>
+
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-muted-foreground">Estado</span>
               <Badge variant={person.isActive ? "default" : "secondary"}>
@@ -226,6 +295,155 @@ export function PersonalInfoTab({
                   {(isValidId(person.cantonId) && cantonMap[Number(person.cantonId)]) || "—"}
                 </p>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="flex items-center gap-2">
+              <Heart className="h-5 w-5" />
+              Salud
+              <Badge variant="outline" className="ml-2 text-xs font-normal text-muted-foreground">
+                Información confidencial
+              </Badge>
+            </CardTitle>
+            {onAddCatastrophicIllness && (
+              <Button size="sm" variant="outline" onClick={onAddCatastrophicIllness}>
+                <Plus className="h-4 w-4 mr-2" />
+                Agregar enfermedad catastrófica
+              </Button>
+            )}
+          </CardHeader>
+
+          <CardContent className="space-y-4">
+            {hasHealthInfo ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Tipo de Sangre</label>
+                  <p className="mt-1 text-foreground">
+                    {resolveRefName(person.bloodTypeTypeId, bloodTypeMap, refTypesMap) ?? "—"}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Necesidades Especiales</label>
+                  <p className="mt-1 text-foreground">
+                    {resolveRefName(person.specialNeedsTypeId, specialNeedsMap, refTypesMap) ?? "—"}
+                  </p>
+                </div>
+
+                {person.disability && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Discapacidad</label>
+                    <p className="mt-1 text-foreground">
+                      {person.disability}
+                      {person.disabilityPercentage ? ` (${person.disabilityPercentage}%)` : ""}
+                    </p>
+                  </div>
+                )}
+
+                {person.conadisCard && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Carnet CONADIS</label>
+                    <p className="mt-1 text-foreground">{person.conadisCard}</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Sin datos de salud registrados. Edita el perfil para agregarlos.
+              </p>
+            )}
+
+            {/* Enfermedades catastróficas */}
+            <div className="pt-2 border-t">
+              <div className="flex items-center gap-2 mb-3 mt-3">
+                <ShieldAlert className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium text-foreground">Enfermedades Catastróficas</span>
+              </div>
+
+              {catastrophicIllnesses.length === 0 ? (
+                <div className="text-center py-4 text-muted-foreground">
+                  <p className="text-sm">Sin enfermedades catastróficas registradas.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {catastrophicIllnesses.map((ci) => (
+                    <div
+                      key={ci.illnessId}
+                      className="rounded-lg border bg-muted/10 p-3 space-y-2"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-medium text-foreground truncate">{ci.illness}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {resolveRefName(ci.illnessTypeId, {}, refTypesMap) ?? "Tipo sin definir"}
+                            {ci.certificateNumber ? ` · Certificado: ${ci.certificateNumber}` : ""}
+                          </p>
+                          {ci.substituteName && (
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              Sustituto: {ci.substituteName}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          {onEditCatastrophicIllness && (
+                            <ActionIconButton
+                              icon={Edit}
+                              label="Editar registro"
+                              tone="primary"
+                              onClick={() => onEditCatastrophicIllness(ci)}
+                              touch
+                            />
+                          )}
+                          {onDeleteCatastrophicIllness && (
+                            <ActionIconButton
+                              icon={Trash2}
+                              label="Eliminar registro"
+                              tone="destructive"
+                              onClick={() => onDeleteCatastrophicIllness(ci.illnessId)}
+                              touch
+                            />
+                          )}
+                        </div>
+                      </div>
+
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs -ml-2"
+                        onClick={() =>
+                          setExpandedIllnessId(expandedIllnessId === ci.illnessId ? null : ci.illnessId)
+                        }
+                      >
+                        <FileText className="h-3.5 w-3.5 mr-1" />
+                        Certificado médico
+                        {expandedIllnessId === ci.illnessId ? (
+                          <ChevronUp className="h-3.5 w-3.5 ml-1" />
+                        ) : (
+                          <ChevronDown className="h-3.5 w-3.5 ml-1" />
+                        )}
+                      </Button>
+
+                      {expandedIllnessId === ci.illnessId && (
+                        <ReusableDocumentManager
+                          directoryCode={CATASTROPHIC_ILLNESS_CERTIFICATE_DIRECTORY_CODE}
+                          entityType={CATASTROPHIC_ILLNESS_CERTIFICATE_ENTITY_TYPE}
+                          entityId={ci.illnessId}
+                          relativePath={person.idCard ? `${person.idCard}/${CATASTROPHIC_ILLNESS_CERTIFICATE_ENTITY_TYPE.toLowerCase()}` : undefined}
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          maxSizeMB={10}
+                          label="Certificado médico"
+                          entityReady={true}
+                          allowReplace
+                          documentType={{ enabled: true, category: "CV_DOCUMENT_TYPE", label: "Tipo de documento" }}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

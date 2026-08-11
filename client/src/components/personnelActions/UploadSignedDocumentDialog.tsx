@@ -45,6 +45,16 @@ type Props = {
    * dentro de la misma llamada de carga — no se debe llamar onAutoFinalize ni
    * onFinalizePreviousAction (eso movería la acción recién vigente a FINALIZADO). */
   reachesVigente?: boolean;
+  /**
+   * true solo desde la pantalla de "Ingresar Histórico": le indica al backend que
+   * omita aprovisionamiento/bloqueo de cuenta AD y cierre de régimen por separación
+   * (un registro histórico no debe disparar efectos de "evento en vivo"). Por eso
+   * mismo, la pantalla de histórico tampoco debe pasar requiresAdUserDisable/
+   * requiresAdUserCreation/employeeId/onAutoFinalize/onFinalizePreviousAction —
+   * deben quedar en sus valores por defecto para que este diálogo no dispare esos
+   * efectos por su cuenta desde el frontend tampoco.
+   */
+  isHistoricalEntry?: boolean;
 };
 
 export function UploadSignedDocumentDialog({
@@ -58,6 +68,7 @@ export function UploadSignedDocumentDialog({
   onAutoFinalize,
   onFinalizePreviousAction,
   reachesVigente = false,
+  isHistoricalEntry = false,
 }: Props) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -75,6 +86,7 @@ export function UploadSignedDocumentDialog({
       PersonnelActionsAPI.uploadSignedDocument(actionId, {
         storedFileId,
         comment: comment.trim() || undefined,
+        isHistoricalEntry,
       }),
   });
 
@@ -111,11 +123,19 @@ export function UploadSignedDocumentDialog({
 
     // ── 2. Registrar el documento firmado en la acción de personal ────────────
     // Servicio: HrBackend — POST /api/v1/rh/personnel-actions/{id}/upload-signed-document
+    // apiFetch nunca lanza excepción en errores HTTP — resuelve con {status:'error'} — así
+    // que el try/catch por sí solo no detecta un rechazo del backend (ej. transición de
+    // estado inválida); hay que revisar el status explícitamente.
+    let registerResult;
     try {
-      await registerMutation.mutateAsync(storedFileId);
+      registerResult = await registerMutation.mutateAsync(storedFileId);
     } catch (err: unknown) {
       const detail = err instanceof Error ? err.message : 'Error inesperado al registrar el documento.';
       toast({ variant: 'destructive', title: 'Error al registrar', description: detail });
+      return;
+    }
+    if (registerResult.status === 'error') {
+      toast({ variant: 'destructive', title: 'Error al registrar', description: registerResult.error.message });
       return;
     }
 

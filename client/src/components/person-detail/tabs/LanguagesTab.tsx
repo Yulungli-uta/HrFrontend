@@ -14,9 +14,11 @@ interface LanguagesTabProps {
   onDelete: (id: number) => void;
   /** Mapa id → nombre para resolver languageTypeId/levelTypeId */
   refTypesMap?: Record<number, string>;
+  /** Identificación de la persona — agrupa su expediente completo en una sola carpeta. */
+  personIdCard?: string;
 }
 
-export function LanguagesTab({ languages, onEdit, onDelete, refTypesMap = {} }: LanguagesTabProps) {
+export function LanguagesTab({ languages, onEdit, onDelete, refTypesMap = {}, personIdCard }: LanguagesTabProps) {
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
   const formatDate = (dateString?: string) => {
@@ -138,10 +140,12 @@ export function LanguagesTab({ languages, onEdit, onDelete, refTypesMap = {} }: 
                               directoryCode={LANGUAGE_CERTIFICATION_DIRECTORY_CODE}
                               entityType={LANGUAGE_CERTIFICATION_ENTITY_TYPE}
                               entityId={language.languageId}
+                              relativePath={personIdCard ? `${personIdCard}/${LANGUAGE_CERTIFICATION_ENTITY_TYPE.toLowerCase()}` : undefined}
                               accept=".pdf"
                               maxSizeMB={10}
                               label="Certificado de idioma"
                               entityReady={true}
+                              allowReplace
                             />
                           </div>
                         )}

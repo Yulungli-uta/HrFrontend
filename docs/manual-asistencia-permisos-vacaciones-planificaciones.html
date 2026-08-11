@@ -1,0 +1,671 @@
+﻿<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Manual de Usuario - Asistencia, Permisos, Vacaciones y Planificaciones</title>
+  <style>
+    :root {
+      color: #1f2937;
+      background: #f3f4f6;
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.55;
+    }
+    body {
+      margin: 0;
+      padding: 28px 16px;
+    }
+    main {
+      max-width: 1120px;
+      margin: 0 auto;
+      background: #fff;
+      border: 1px solid #dbe3ef;
+      box-shadow: 0 12px 32px rgba(15, 23, 42, 0.10);
+      padding: 42px;
+    }
+    h1 {
+      margin: 0 0 10px;
+      color: #0f172a;
+      font-size: 30px;
+      line-height: 1.2;
+    }
+    h2 {
+      margin: 38px 0 12px;
+      padding-top: 12px;
+      border-top: 2px solid #e5e7eb;
+      color: #1d4ed8;
+      font-size: 22px;
+    }
+    h3 {
+      margin: 24px 0 8px;
+      color: #334155;
+      font-size: 17px;
+    }
+    p, li {
+      font-size: 15px;
+    }
+    .meta {
+      margin: 0 0 26px;
+      color: #64748b;
+      font-size: 14px;
+    }
+    .note {
+      margin: 16px 0;
+      padding: 12px 14px;
+      border-left: 4px solid #2563eb;
+      background: #eff6ff;
+      color: #1e3a8a;
+    }
+    .route {
+      margin: 12px 0 16px;
+      padding: 10px 12px;
+      border: 1px solid #bfdbfe;
+      border-radius: 6px;
+      background: #eff6ff;
+      color: #1e40af;
+      font-size: 14px;
+    }
+    .route strong {
+      color: #1e3a8a;
+    }
+    .warning {
+      margin: 16px 0;
+      padding: 12px 14px;
+      border-left: 4px solid #d97706;
+      background: #fffbeb;
+      color: #92400e;
+    }
+    ol, ul {
+      padding-left: 24px;
+    }
+    code {
+      padding: 2px 5px;
+      border-radius: 4px;
+      background: #eef2ff;
+      color: #3730a3;
+      font-size: 13px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 20px;
+      font-size: 14px;
+    }
+    th, td {
+      border: 1px solid #dbe3ef;
+      padding: 9px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: #f8fafc;
+      color: #0f172a;
+    }
+    figure {
+      margin: 18px 0 30px;
+      page-break-inside: avoid;
+    }
+    img {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
+    }
+    figcaption {
+      margin-top: 8px;
+      color: #64748b;
+      text-align: center;
+      font-size: 13px;
+    }
+    .toc a {
+      color: #1d4ed8;
+      text-decoration: none;
+    }
+    .checklist li {
+      margin-bottom: 6px;
+    }
+    @media print {
+      body {
+        background: #fff;
+        padding: 0;
+      }
+      main {
+        border: 0;
+        box-shadow: none;
+        padding: 0;
+      }
+      h2 {
+        page-break-after: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Manual de Usuario: Asistencia, Permisos, Vacaciones, Aprobaciones y Reportes</h1>
+    <p class="meta">Sistema HR Frontend | Documento HTML para previsualizacion | Generado el 22/07/2026</p>
+
+    <div class="note">
+      Este manual esta enfocado en el flujo de empleado normal y jefatura de Talento Humano: asistencia, permisos, vacaciones ordinarias del empleado, justificaciones, aprobaciones y reportes. No incluye el flujo de vacaciones de guardias, porque ese modulo es diferente y lo carga/revisa el supervisor de guardias.
+    </div>
+
+    <h2>Indice</h2>
+    <ol class="toc">
+      <li><a href="#acceso">Acceso al sistema</a></li>
+      <li><a href="#dashboard">Dashboard de autoservicio</a></li>
+      <li><a href="#cambio-clave">Cambio de clave</a></li>
+      <li><a href="#asistencia">Picada / registro de asistencia</a></li>
+      <li><a href="#permisos">Permisos</a></li>
+      <li><a href="#vacaciones">Vacaciones</a></li>
+      <li><a href="#justificaciones">Justificaciones</a></li>
+      <li><a href="#aprobaciones">Aprobaciones de permisos, vacaciones y justificaciones</a></li>
+      <li><a href="#reportes">Reporteria anexa</a></li>
+      <li><a href="#horas-extra">Planificacion de horas extras</a></li>
+      <li><a href="#recuperacion">Planificacion de recuperacion</a></li>
+      <li><a href="#controles">Controles verificados</a></li>
+    </ol>
+
+    <h2 id="acceso">1. Acceso al sistema</h2>
+    <p>El usuario ingresa al sistema desde la pantalla de autenticacion. Una vez validada la sesion, el sistema muestra las opciones permitidas segun el rol, permisos de menu y datos de empleado asociados al usuario.</p>
+    <div class="route"><strong>Opcion en el sistema:</strong> Pantalla inicial de login. Desde aqui se ingresa con cuenta institucional, cuenta local o acceso habilitado por rol.</div>
+    <figure>
+      <img src="assets/manuales-rh/auto-00-login.png?v=20260722-1705" alt="Pantalla de inicio de sesion del sistema HR">
+      <figcaption>Figura 1. Pantalla de inicio de sesion.</figcaption>
+    </figure>
+    <h3>Tipos de acceso</h3>
+    <table>
+      <thead>
+        <tr><th>Tipo de acceso</th><th>Uso</th><th>Consideraciones</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Cuenta institucional / Office 365</td>
+          <td>Permite ingresar con credenciales institucionales asociadas al correo de la Universidad.</td>
+          <td>Puede usar servicios de autenticacion institucional y politicas de seguridad externas.</td>
+        </tr>
+        <tr>
+          <td>Cuenta local del sistema</td>
+          <td>Permite ingresar con usuario y contrasena registrados directamente en el sistema.</td>
+          <td>El cambio de clave se gestiona desde la opcion <strong>Cambiar contrasena</strong>.</td>
+        </tr>
+        <tr>
+          <td>Acceso por rol</td>
+          <td>Despues del login, el sistema habilita opciones segun el rol: empleado, jefe inmediato, Talento Humano, medico o administrador.</td>
+          <td>Si una opcion no aparece en el menu, el usuario debe solicitar revision de permisos.</td>
+        </tr>
+      </tbody>
+    </table>
+    <h3>Pasos</h3>
+    <ol>
+      <li>Abra la URL local o institucional del sistema.</li>
+      <li>Seleccione o use el tipo de acceso disponible en la pantalla.</li>
+      <li>Ingrese usuario/correo y contrasena.</li>
+      <li>Confirme el acceso.</li>
+      <li>Verifique que el menu lateral muestre las opciones autorizadas.</li>
+    </ol>
+    <div class="note">
+      La visualizacion de opciones posteriores al ingreso depende del perfil del usuario. Un empleado normal vera autoservicio, asistencia, permisos, vacaciones y justificaciones; una jefatura vera ademas bandejas de aprobacion; perfiles medicos o administradores veran opciones adicionales.
+    </div>
+
+    <h2 id="dashboard">2. Dashboard de autoservicio</h2>
+    <p>El dashboard de autoservicio es la primera vista del empleado normal. Presenta un resumen rapido de la informacion personal y accesos directos a las acciones mas usadas.</p>
+    <div class="route"><strong>Opcion en el sistema:</strong> Menu principal &gt; Dashboard / Inicio de autoservicio.</div>
+    <figure>
+      <img src="assets/manuales-rh/auto-23-dashboard-autoservicio.png?v=20260722-1705" alt="Dashboard de autoservicio del empleado">
+      <figcaption>Figura 2. Dashboard de autoservicio del empleado.</figcaption>
+    </figure>
+    <h3>Informacion visible</h3>
+    <ul>
+      <li>Datos basicos del empleado: cedula, cargo, dependencia y fecha de ingreso.</li>
+      <li>Saldo de vacaciones disponible.</li>
+      <li>Permisos pendientes.</li>
+      <li>Solicitudes internas pendientes.</li>
+      <li>Certificados recientes.</li>
+      <li>Ultima marcacion registrada.</li>
+      <li>Justificaciones pendientes.</li>
+    </ul>
+    <h3>Accesos rapidos</h3>
+    <p>Desde esta vista el empleado puede ir directamente a permisos, vacaciones, marcaciones, justificaciones, certificados, solicitudes e historial. El boton <strong>Ver mi perfil completo</strong> abre la ficha personal del empleado.</p>
+
+    <h2 id="cambio-clave">3. Cambio de clave</h2>
+    <p>La opcion <code>/profile/change-password</code> permite actualizar la contrasena de la cuenta autenticada. Se accede desde el encabezado del sistema, en la opcion <strong>Cambiar contrasena</strong>.</p>
+    <div class="route"><strong>Opcion en el sistema:</strong> Encabezado superior &gt; menu de usuario &gt; Cambiar contrasena.</div>
+    <figure>
+      <img src="assets/manuales-rh/auto-24-cambio-clave.png?v=20260722-1705" alt="Pantalla de cambio de clave">
+      <figcaption>Figura 3. Pantalla de cambio de clave.</figcaption>
+    </figure>
+    <h3>Modalidades disponibles</h3>
+    <ul>
+      <li><strong>Cambio directo:</strong> solicita contrasena actual cuando aplica, nueva contrasena y confirmacion.</li>
+      <li><strong>Con verificacion 2FA:</strong> primero solicita un codigo de verificacion enviado al correo y luego permite confirmar el cambio.</li>
+    </ul>
+    <h3>Pasos para cambio directo</h3>
+    <ol>
+      <li>Abra el menu de usuario en el encabezado.</li>
+      <li>Seleccione <strong>Cambiar contrasena</strong>.</li>
+      <li>En la pestana <strong>Cambio directo</strong>, ingrese la contrasena actual si el sistema la solicita.</li>
+      <li>Ingrese la nueva contrasena.</li>
+      <li>Confirme la nueva contrasena.</li>
+      <li>Revise que cumpla los requisitos minimos: 8 caracteres, mayuscula, minuscula y numero.</li>
+      <li>Presione <strong>Cambiar contrasena</strong>.</li>
+    </ol>
+    <h3>Pasos para cambio con 2FA</h3>
+    <ol>
+      <li>Seleccione la pestana <strong>Con verificacion 2FA</strong>.</li>
+      <li>Presione <strong>Solicitar codigo de verificacion</strong>.</li>
+      <li>Revise el correo registrado y copie el codigo de 6 digitos.</li>
+      <li>Ingrese el codigo OTP.</li>
+      <li>Ingrese y confirme la nueva contrasena.</li>
+      <li>Presione <strong>Cambiar con codigo</strong>.</li>
+    </ol>
+    <div class="warning">
+      Despues del cambio de clave, el sistema puede cerrar sesiones activas en otros dispositivos por seguridad.
+    </div>
+
+    <h2 id="asistencia">4. Picada / registro de asistencia</h2>
+    <p>La pantalla <code>/attendance</code> permite registrar la entrada o salida diaria del empleado autenticado. El sistema usa la hora del servidor, solicita ubicacion si el navegador la permite y alterna automaticamente el siguiente tipo de marcacion segun la ultima picada registrada.</p>
+    <div class="route"><strong>Opcion en el sistema:</strong> Menu lateral &gt; Asistencia / Mi Control de Asistencia.</div>
+    <figure>
+      <img src="assets/manuales-rh/auto-02-asistencia.png?v=20260722-1705" alt="Pantalla Mi Control de Asistencia">
+      <figcaption>Figura 4. Pantalla principal de asistencia.</figcaption>
+    </figure>
+    <h3>Funcionalidad principal</h3>
+    <ul>
+      <li>Muestra la fecha y hora actual sincronizada con el servidor.</li>
+      <li>Indica el estado de conexion con la API.</li>
+      <li>Permite registrar entrada o salida desde un boton principal.</li>
+      <li>Muestra las marcaciones del dia y permite filtrar por todas, entradas o salidas.</li>
+      <li>Aplica un tiempo minimo de espera de 5 minutos entre marcaciones.</li>
+    </ul>
+    <h3>Pasos para registrar una picada</h3>
+    <ol>
+      <li>Ingrese al menu de asistencia.</li>
+      <li>Revise que el indicador muestre conexion con el servidor.</li>
+      <li>Confirme la hora actual presentada por el sistema.</li>
+      <li>Presione <strong>Registrar Entrada</strong> o <strong>Registrar Salida</strong>, segun corresponda.</li>
+      <li>Autorice la ubicacion si el navegador la solicita.</li>
+      <li>Espere el mensaje de confirmacion de la marcacion.</li>
+      <li>Verifique que la nueva picada aparezca en la tabla de marcaciones del dia.</li>
+    </ol>
+    <h3>Consulta por fechas</h3>
+    <p>El boton <strong>Consultar por Fechas</strong> abre una ventana donde se ingresa fecha inicial y fecha final para consultar marcaciones historicas del empleado.</p>
+    <figure>
+      <img src="assets/manuales-rh/auto-03-asistencia-consulta-rango.png?v=20260722-1705" alt="Modal de consulta de marcaciones por rango de fechas">
+      <figcaption>Figura 5. Consulta de marcaciones por rango de fechas.</figcaption>
+    </figure>
+
+    <h2 id="permisos">5. Permisos</h2>
+    <p>La pantalla <code>/permissions</code> concentra las solicitudes personales de permisos y vacaciones. En la pestana <strong>Permisos</strong>, el empleado puede consultar su historial, filtrar registros y crear nuevas solicitudes.</p>
+    <div class="route"><strong>Opcion en el sistema:</strong> Menu lateral &gt; Permisos y Vacaciones &gt; pestana Permisos.</div>
+    <figure>
+      <img src="assets/manuales-rh/auto-04-permisos-vacaciones.png?v=20260722-1705" alt="Pantalla Permisos y Vacaciones">
+      <figcaption>Figura 6. Bandeja de permisos y vacaciones.</figcaption>
+    </figure>
+    <h3>Funcionalidad principal</h3>
+    <ul>
+      <li>Consulta de permisos por empleado autenticado.</li>
+      <li>Filtros por texto, periodo, estado, tipo y rango de fechas.</li>
+      <li>Visualizacion de saldo de vacaciones y recuperacion pendiente.</li>
+      <li>Creacion de permisos de dia completo, varios dias o por horas.</li>
+      <li>Edicion solo cuando el permiso se encuentra en estado pendiente.</li>
+      <li>Carga de documentos cuando el tipo de permiso lo requiere.</li>
+    </ul>
+    <h3>Pasos para solicitar un permiso</h3>
+    <ol>
+      <li>Ingrese a <strong>Permisos y Vacaciones</strong>.</li>
+      <li>Seleccione la pestana <strong>Permisos</strong>.</li>
+      <li>Presione <strong>Nuevo permiso</strong>.</li>
+      <li>Seleccione el tipo de permiso.</li>
+      <li>Seleccione el modo: <strong>Todo el dia</strong>, <strong>Varios dias</strong> o <strong>Por horas</strong>.</li>
+      <li>Ingrese fecha de inicio y, si aplica, fecha fin u horas desde/hasta.</li>
+      <li>Revise los minutos calculados y el saldo disponible si el permiso descuenta vacaciones.</li>
+      <li>Escriba la justificacion.</li>
+      <li>Adjunte documentos si el tipo seleccionado los exige.</li>
+      <li>Presione <strong>Solicitar Permiso</strong>.</li>
+    </ol>
+    <figure>
+      <img src="assets/manuales-rh/auto-05-form-nuevo-permiso.png?v=20260722-1705" alt="Formulario de nuevo permiso">
+      <figcaption>Figura 7. Formulario de nueva solicitud de permiso.</figcaption>
+    </figure>
+    <h3>Controles y validaciones visibles</h3>
+    <ul>
+      <li>No permite fechas anteriores al dia actual.</li>
+      <li>No permite que la fecha fin sea menor a la fecha inicio.</li>
+      <li>En modo por horas, la hora fin debe ser mayor a la hora inicio.</li>
+      <li>Valida anticipacion minima configurada por tipo de permiso.</li>
+      <li>Valida cruces con permisos o vacaciones activas.</li>
+      <li>Valida saldo cuando el tipo descuenta vacaciones.</li>
+      <li>Bloquea el guardado si existe un error de validacion.</li>
+    </ul>
+
+    <h2 id="vacaciones">6. Vacaciones</h2>
+    <p>Las vacaciones de este manual corresponden al empleado normal. Se gestionan desde la pestana <strong>Vacaciones</strong> dentro de <code>/permissions</code>, usando el saldo disponible del empleado autenticado. Este flujo no corresponde a vacaciones de guardias ni a planes cargados por supervisor de guardias.</p>
+    <div class="route"><strong>Opcion en el sistema:</strong> Menu lateral &gt; Permisos y Vacaciones &gt; pestana Vacaciones. Esta no es la opcion de Guardias ni Planificacion Vacaciones.</div>
+    <figure>
+      <img src="assets/manuales-rh/auto-25-vacaciones-empleado-tab.png?v=20260722-1705" alt="Pestana vacaciones ordinarias del empleado dentro de permisos">
+      <figcaption>Figura 8. Pestana Vacaciones del empleado dentro de Permisos y Vacaciones.</figcaption>
+    </figure>
+    <h3>Pasos para solicitar vacaciones</h3>
+    <ol>
+      <li>Ingrese a <strong>Permisos y Vacaciones</strong>.</li>
+      <li>Seleccione la pestana <strong>Vacaciones</strong>.</li>
+      <li>Presione <strong>Nueva vacacion</strong>.</li>
+      <li>Ingrese la fecha de inicio.</li>
+      <li>Ingrese la fecha de fin.</li>
+      <li>Revise los dias concedidos y dias tomados calculados por el sistema.</li>
+      <li>Revise el saldo disponible y el tiempo solicitado.</li>
+      <li>Presione <strong>Solicitar Vacaciones</strong>.</li>
+    </ol>
+    <figure>
+      <img src="assets/manuales-rh/auto-26-form-nueva-vacacion-empleado.png?v=20260722-1705" alt="Formulario de nueva vacacion ordinaria del empleado">
+      <figcaption>Figura 9. Formulario de nueva solicitud de vacaciones ordinarias del empleado.</figcaption>
+    </figure>
+    <h3>Estados de referencia</h3>
+    <table>
+      <thead>
+        <tr><th>Estado</th><th>Significado operativo</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Planificado</td><td>Solicitud registrada, editable mientras permanezca en planificacion.</td></tr>
+        <tr><td>Aprobado</td><td>Solicitud validada por el responsable correspondiente.</td></tr>
+        <tr><td>En progreso</td><td>Periodo de vacaciones actualmente en curso.</td></tr>
+        <tr><td>Completado</td><td>Periodo finalizado.</td></tr>
+        <tr><td>Cancelado / Anulado</td><td>Solicitud sin efecto.</td></tr>
+      </tbody>
+    </table>
+
+    <h2 id="justificaciones">7. Justificaciones</h2>
+    <p>La pantalla <code>/justifications</code> permite registrar solicitudes para justificar picadas, horas o dias. El flujo asigna la solicitud al jefe inmediato del empleado autenticado.</p>
+    <div class="route"><strong>Opcion en el sistema:</strong> Menu lateral &gt; Justificacion de Marcaciones.</div>
+    <figure>
+      <img src="assets/manuales-rh/auto-10-justificaciones.png?v=20260722-1705" alt="Pantalla de justificaciones de marcaciones">
+      <figcaption>Figura 10. Bandeja de justificaciones.</figcaption>
+    </figure>
+    <h3>Funcionalidad principal</h3>
+    <ul>
+      <li>Resumen por total, pendientes, aprobadas, rechazadas y aplicadas.</li>
+      <li>Vista en lista y tarjetas.</li>
+      <li>Filtros por ano, estado, tipo y busqueda por motivo.</li>
+      <li>Detalle de cada justificacion.</li>
+      <li>Eliminacion disponible solo para solicitudes pendientes.</li>
+    </ul>
+    <h3>Pasos para crear una justificacion</h3>
+    <ol>
+      <li>Ingrese a <strong>Justificacion de Marcaciones</strong>.</li>
+      <li>Presione <strong>Nueva Justificacion</strong>.</li>
+      <li>Seleccione el tipo de justificacion.</li>
+      <li>Si el tipo corresponde a picada, seleccione el tipo de picada y la fecha/hora.</li>
+      <li>Si el tipo corresponde a horas, ingrese hora inicial y hora final del mismo dia.</li>
+      <li>Si el tipo corresponde a dias, ingrese fecha de inicio y fecha fin.</li>
+      <li>Escriba el motivo detallado.</li>
+      <li>Presione <strong>Enviar justificacion</strong>.</li>
+    </ol>
+    <figure>
+      <img src="assets/manuales-rh/auto-11-form-justificacion.png?v=20260722-1705" alt="Formulario de nueva justificacion">
+      <figcaption>Figura 11. Formulario de nueva justificacion.</figcaption>
+    </figure>
+    <h3>Controles importantes</h3>
+    <ul>
+      <li>Requiere que el usuario tenga empleado asociado.</li>
+      <li>Requiere jefe inmediato para enviar la solicitud.</li>
+      <li>Para justificacion por picada exige tipo de picada.</li>
+      <li>Para justificacion por horas exige que inicio y fin sean del mismo dia.</li>
+      <li>Calcula las horas solicitadas automaticamente.</li>
+    </ul>
+
+    <h2 id="aprobaciones">8. Aprobaciones de permisos, vacaciones y justificaciones</h2>
+    <p>La pantalla <code>/ApprovalsPermissions</code> concentra la bandeja de aprobacion del jefe inmediato. Desde esta vista se revisan las solicitudes de colaboradores a cargo y se aprueban o rechazan permisos, vacaciones ordinarias y justificaciones.</p>
+    <div class="route"><strong>Opcion en el sistema:</strong> Menu lateral &gt; Aprobaciones &gt; Aprobacion de permisos, vacaciones y justificaciones.</div>
+    <figure>
+      <img src="assets/manuales-rh/auto-08-aprobaciones.png?v=20260722-1705" alt="Pantalla de aprobaciones de permisos, vacaciones y justificaciones">
+      <figcaption>Figura 12. Bandeja de aprobaciones por jefatura.</figcaption>
+    </figure>
+    <h3>Permisos</h3>
+    <ol>
+      <li>Ingrese a <strong>Aprobaciones</strong>.</li>
+      <li>Seleccione la pestana <strong>Permisos</strong>.</li>
+      <li>Use los filtros de ano, estado, empleado, tipo o rango de fechas.</li>
+      <li>Revise empleado, tipo, fecha de solicitud, rango solicitado, horas/minutos y justificacion.</li>
+      <li>Si la solicitud esta pendiente, presione <strong>Aprobar</strong> o <strong>Rechazar</strong>.</li>
+      <li>Verifique que el estado cambie y que la solicitud deje de mostrarse como pendiente.</li>
+    </ol>
+    <h3>Vacaciones ordinarias</h3>
+    <ol>
+      <li>Ingrese a <strong>Aprobaciones</strong>.</li>
+      <li>Seleccione la pestana <strong>Vacaciones</strong>.</li>
+      <li>Filtre por estado <strong>Planeado/Planificado</strong> para ver solicitudes pendientes.</li>
+      <li>Revise empleado, fecha de creacion, fecha desde, fecha hasta y dias solicitados.</li>
+      <li>Presione <strong>Aprobar</strong> o <strong>Rechazar</strong> segun el analisis de la jefatura.</li>
+    </ol>
+    <h3>Justificaciones</h3>
+    <ol>
+      <li>Ingrese a <strong>Aprobaciones</strong>.</li>
+      <li>Seleccione la pestana <strong>Justificaciones</strong>.</li>
+      <li>Filtre por estado pendiente, empleado o rango de fechas.</li>
+      <li>Revise el motivo, fecha/hora justificada y horas solicitadas.</li>
+      <li>Presione <strong>Aprobar</strong> o <strong>Rechazar</strong>.</li>
+    </ol>
+    <h3>Permisos medicos</h3>
+    <p>La pantalla <code>/ApprovalsMedicalPermissions</code> separa la revision medica cuando el tipo de permiso requiere validacion por personal medico. Permite revisar adjuntos, abrir o descargar documentos y aprobar/rechazar el permiso medico.</p>
+    <figure>
+      <img src="assets/manuales-rh/auto-09-aprobaciones-medicas.png?v=20260722-1705" alt="Pantalla de aprobaciones medicas">
+      <figcaption>Figura 13. Bandeja de aprobacion de permisos medicos.</figcaption>
+    </figure>
+    <h3>Pasos para aprobar permisos medicos</h3>
+    <ol>
+      <li>Ingrese a <strong>Aprobacion de Permisos Medicos</strong>.</li>
+      <li>Use los filtros de busqueda, ano, estado o rango de fechas para ubicar la solicitud.</li>
+      <li>Revise empleado, tipo de permiso, fecha de creacion, rango solicitado, horas y motivo.</li>
+      <li>Presione <strong>Adjuntos</strong> para abrir la ventana de documentos del permiso.</li>
+      <li>Use <strong>Ver</strong> para previsualizar documentos compatibles, como PDF o imagenes.</li>
+      <li>Use <strong>Descargar</strong> si necesita conservar o revisar el archivo localmente.</li>
+      <li>Cuando la documentacion sea correcta, presione <strong>Aprobar</strong>.</li>
+      <li>Si la documentacion o el motivo no procede, presione <strong>Rechazar</strong>.</li>
+    </ol>
+    <h3>Controles de aprobacion medica</h3>
+    <ul>
+      <li>Solo permite aprobar o rechazar permisos en estado pendiente.</li>
+      <li>Consulta los documentos por entidad <code>PERMISSION</code> en el directorio <code>HRPERMISSION</code>.</li>
+      <li>Permite ver archivos previsualizables y descargar cualquier adjunto disponible.</li>
+      <li>Registra el aprobador medico y fecha de aprobacion/rechazo al actualizar la solicitud.</li>
+    </ul>
+
+    <h2 id="reportes">9. Reporteria anexa</h2>
+    <p>El centro de reportes permite consultar informacion consolidada relacionada con asistencia, atrasos, horas extra, cruces de asistencia y permisos concedidos. Estos reportes sirven para control, auditoria operativa y seguimiento de solicitudes.</p>
+    <div class="route"><strong>Opcion en el sistema:</strong> Menu lateral &gt; Reportes.</div>
+    <figure>
+      <img src="assets/manuales-rh/auto-12-centro-reportes.png?v=20260722-1705" alt="Centro de reportes">
+      <figcaption>Figura 14. Centro de reportes del sistema.</figcaption>
+    </figure>
+    <h3>Reportes asociados a asistencia y picadas</h3>
+    <ol>
+      <li>Ingrese a <strong>Reportes</strong>.</li>
+      <li>Seleccione <strong>Reporte de asistencia</strong> para revisar marcaciones por empleado o periodo.</li>
+      <li>Use <strong>Resumen de asistencia</strong> para consolidar informacion por rango.</li>
+      <li>Use <strong>Reporte de atrasos</strong> para identificar incumplimientos de horario.</li>
+      <li>Use <strong>Cruce de asistencia</strong> para comparar asistencia, permisos, vacaciones y justificaciones cuando aplique.</li>
+    </ol>
+    <figure>
+      <img src="assets/manuales-rh/auto-13-reporte-asistencia.png?v=20260722-1705" alt="Reporte de asistencia">
+      <figcaption>Figura 15. Reporte de asistencia.</figcaption>
+    </figure>
+    <figure>
+      <img src="assets/manuales-rh/auto-14-reporte-resumen-asistencia.png?v=20260722-1705" alt="Reporte de resumen de asistencia">
+      <figcaption>Figura 16. Reporte de resumen de asistencia.</figcaption>
+    </figure>
+    <figure>
+      <img src="assets/manuales-rh/auto-15-reporte-atrasos.png?v=20260722-1705" alt="Reporte de atrasos">
+      <figcaption>Figura 17. Reporte de atrasos.</figcaption>
+    </figure>
+    <figure>
+      <img src="assets/manuales-rh/auto-17-reporte-cruce-asistencia.png?v=20260722-1705" alt="Reporte de cruce de asistencia">
+      <figcaption>Figura 18. Reporte de cruce de asistencia.</figcaption>
+    </figure>
+    <h3>Reportes asociados a permisos y vacaciones</h3>
+    <ol>
+      <li>Ingrese a <strong>Reportes</strong>.</li>
+      <li>Seleccione <strong>Permisos concedidos</strong> para consultar permisos aprobados por periodo.</li>
+      <li>Revise empleado, tipo de permiso, fechas, tiempo concedido y estado.</li>
+      <li>Para vacaciones ordinarias, use la informacion de la bandeja de vacaciones y los cruces de asistencia cuando se requiera validar ausencia planificada.</li>
+    </ol>
+    <figure>
+      <img src="assets/manuales-rh/auto-18-reporte-permisos-concedidos.png?v=20260722-1705" alt="Reporte de permisos concedidos">
+      <figcaption>Figura 19. Reporte de permisos concedidos.</figcaption>
+    </figure>
+    <h3>Reportes asociados a horas extra</h3>
+    <p>El reporte de horas extra permite revisar los registros calculados o planificados para control posterior.</p>
+    <figure>
+      <img src="assets/manuales-rh/auto-16-reporte-horas-extra.png?v=20260722-1705" alt="Reporte de horas extra">
+      <figcaption>Figura 20. Reporte de horas extra.</figcaption>
+    </figure>
+
+    <h2 id="horas-extra">10. Planificacion de horas extras</h2>
+    <p>La pantalla <code>/overtime</code> permite que el jefe o responsable cree planificaciones de tiempo de tipo <strong>Overtime</strong>. La misma pantalla tambien administra planificaciones de recuperacion, cambiando el tipo dentro del formulario.</p>
+    <div class="route"><strong>Opcion en el sistema:</strong> Menu lateral &gt; Planificaciones &gt; Planificacion de tiempo.</div>
+    <figure>
+      <img src="assets/manuales-rh/auto-19-planificaciones-tiempo.png?v=20260722-1705" alt="Pantalla de planificaciones de horas extra y recuperacion">
+      <figcaption>Figura 21. Bandeja de planificaciones de tiempo.</figcaption>
+    </figure>
+    <h3>Funcionalidad principal</h3>
+    <ul>
+      <li>Listado de planificaciones creadas por el empleado autenticado.</li>
+      <li>Filtro por texto y estado.</li>
+      <li>Detalle de empleados asignados a cada planificacion.</li>
+      <li>Creacion de una nueva planificacion en estado borrador.</li>
+      <li>Asignacion de empleados subordinados del jefe autenticado.</li>
+    </ul>
+    <h3>Pasos para crear una planificacion de horas extras</h3>
+    <ol>
+      <li>Ingrese a <strong>Planificaciones</strong>.</li>
+      <li>Presione <strong>Nueva planificacion</strong>.</li>
+      <li>Seleccione el modo <strong>HE</strong>.</li>
+      <li>Ingrese titulo y descripcion.</li>
+      <li>Seleccione fecha desde y fecha hasta. El sistema exige fecha de inicio a partir del dia siguiente.</li>
+      <li>Seleccione hora de inicio y hora fin.</li>
+      <li>Revise el tipo de HE calculado por el sistema: ordinario, nocturno o feriado.</li>
+      <li>Revise el factor calculado segun la configuracion.</li>
+      <li>Active o desactive <strong>Requiere aprobacion</strong>, segun corresponda.</li>
+      <li>Busque y agregue subordinados.</li>
+      <li>Revise o ajuste las horas asignadas por empleado.</li>
+      <li>Presione <strong>Crear con empleados</strong>.</li>
+    </ol>
+    <figure>
+      <img src="assets/manuales-rh/auto-20-form-nueva-planificacion-tiempo.png?v=20260722-1705" alt="Formulario de nueva planificacion de horas extra o recuperacion">
+      <figcaption>Figura 22. Formulario de nueva planificacion de tiempo.</figcaption>
+    </figure>
+
+    <h2 id="recuperacion">11. Planificacion de recuperacion</h2>
+    <p>La planificacion de recuperacion usa el mismo flujo de <code>/overtime</code>, seleccionando el modo <strong>Recuperacion</strong> en el formulario de nueva planificacion. En este caso, el sistema calcula minutos a recuperar en lugar de tipo/factor de hora extra.</p>
+    <div class="route"><strong>Opcion en el sistema:</strong> Menu lateral &gt; Planificaciones &gt; Planificacion de tiempo &gt; modo Recuperacion.</div>
+    <h3>Pasos para crear una planificacion de recuperacion</h3>
+    <ol>
+      <li>Ingrese a <strong>Planificaciones</strong>.</li>
+      <li>Presione <strong>Nueva planificacion</strong>.</li>
+      <li>Seleccione <strong>Recuperacion</strong>.</li>
+      <li>Ingrese titulo y descripcion.</li>
+      <li>Seleccione fecha desde y fecha hasta.</li>
+      <li>Seleccione hora de inicio y hora fin.</li>
+      <li>Revise los minutos a recuperar calculados por el sistema.</li>
+      <li>Active o desactive <strong>Requiere aprobacion</strong>.</li>
+      <li>Busque y agregue subordinados.</li>
+      <li>Revise o ajuste los minutos asignados por empleado.</li>
+      <li>Presione <strong>Crear con empleados</strong>.</li>
+    </ol>
+    <h3>Planificacion de cambios de horario</h3>
+    <p>Existe una pantalla adicional en <code>/shedulerChangePlans</code> para registrar cambios de horario por jefatura. Permite seleccionar nuevo horario, fecha efectiva, duracion permanente o temporal y colaboradores afectados.</p>
+    <figure>
+      <img src="assets/manuales-rh/auto-21-planificacion-cambio-horario.png?v=20260722-1705" alt="Bandeja de planificacion de cambios de horario">
+      <figcaption>Figura 23. Bandeja de planificacion de cambios de horario.</figcaption>
+    </figure>
+    <h3>Pasos generales</h3>
+    <ol>
+      <li>Ingrese a <strong>Planificacion de cambios de horario</strong>.</li>
+      <li>Presione <strong>Nueva planificacion</strong>.</li>
+      <li>Ingrese titulo y justificacion.</li>
+      <li>Seleccione el nuevo horario activo.</li>
+      <li>Defina fecha efectiva.</li>
+      <li>Seleccione si el cambio es permanente o temporal.</li>
+      <li>Agregue colaboradores subordinados.</li>
+      <li>Revise el horario actual y el nuevo horario por colaborador.</li>
+      <li>Presione <strong>Guardar planificacion</strong>.</li>
+    </ol>
+    <figure>
+      <img src="assets/manuales-rh/auto-22-form-planificacion-cambio-horario.png?v=20260722-1705" alt="Formulario de planificacion de cambio de horario">
+      <figcaption>Figura 24. Formulario de planificacion de cambio de horario.</figcaption>
+    </figure>
+
+    <h2 id="controles">12. Controles verificados</h2>
+    <p>La siguiente verificacion fue realizada por revision del codigo fuente del frontend y contraste con las capturas existentes.</p>
+    <table>
+      <thead>
+        <tr><th>Modulo</th><th>Controles identificados</th><th>Resultado</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Asistencia</td>
+          <td>Conexion API, hora servidor, geolocalizacion, cooldown de 5 minutos, filtro por tipo, consulta por rango.</td>
+          <td>Implementado en la pantalla <code>/attendance</code>.</td>
+        </tr>
+        <tr>
+          <td>Dashboard</td>
+          <td>Resumen de datos personales, saldos, pendientes, ultima marcacion y accesos rapidos.</td>
+          <td>Implementado en <code>EmployeeSelfServicePage</code>.</td>
+        </tr>
+        <tr>
+          <td>Cambio de clave</td>
+          <td>Cambio directo, cambio con 2FA, validacion de fortaleza y confirmacion de contrasena.</td>
+          <td>Implementado en <code>ChangePasswordPage</code>.</td>
+        </tr>
+        <tr>
+          <td>Permisos</td>
+          <td>Tipo, modo, fechas, horas, saldo, anticipacion, cruce con permisos/vacaciones, documentos requeridos.</td>
+          <td>Implementado en <code>PermissionForm</code>.</td>
+        </tr>
+        <tr>
+          <td>Vacaciones</td>
+          <td>Fechas, dias calculados, saldo disponible, cruce con permisos/vacaciones, bloqueo por saldo insuficiente.</td>
+          <td>Implementado en <code>VacationForm</code>.</td>
+        </tr>
+        <tr>
+          <td>Justificaciones</td>
+          <td>Tipo dinamico, jefe inmediato, tipo de picada, rango de horas, calculo de horas, motivo requerido.</td>
+          <td>Implementado en <code>JustificationForm</code>.</td>
+        </tr>
+        <tr>
+          <td>Aprobaciones</td>
+          <td>Bandejas por jefe, filtros por ano/estado/rango, acciones aprobar/rechazar para permisos, vacaciones y justificaciones.</td>
+          <td>Implementado en <code>ApprovalsPermissions</code>.</td>
+        </tr>
+        <tr>
+          <td>Aprobaciones medicas</td>
+          <td>Revision de permisos medicos, consulta de adjuntos, vista/descarga de documentos, aprobacion o rechazo.</td>
+          <td>Implementado en <code>ApprovalsMedicalPermissions</code>.</td>
+        </tr>
+        <tr>
+          <td>Reporteria</td>
+          <td>Reportes de asistencia, resumen, atrasos, horas extra, cruce de asistencia y permisos concedidos.</td>
+          <td>Implementado en rutas <code>/reports/*</code>.</td>
+        </tr>
+        <tr>
+          <td>Horas extra / recuperacion</td>
+          <td>Tipo HE/Recuperacion, rango de fechas, horas, factor HE, empleados subordinados, aprobacion, estados.</td>
+          <td>Implementado en <code>CreatePlanningDialog</code>.</td>
+        </tr>
+        <tr>
+          <td>Cambio de horario</td>
+          <td>Jefe autenticado, nuevo horario activo, permanencia, subordinados, conflicto con planes activos.</td>
+          <td>Implementado en <code>ScheduleChangePlansPage</code>.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="warning">
+      Se valido autenticacion y navegacion con usuario administrador para capturar pantallas nuevas. No se crearon ni modificaron registros de prueba, para evitar alterar datos existentes sin una autorizacion explicita de escritura funcional.
+    </div>
+  </main>
+</body>
+</html>
+
+

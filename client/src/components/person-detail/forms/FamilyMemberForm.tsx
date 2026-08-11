@@ -1,8 +1,9 @@
 // client/src/components/person-detail/forms/FamilyMemberForm.tsx
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -13,6 +14,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -22,8 +24,17 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RefreshCw } from "lucide-react";
+import { ReusableFileUpload } from "@/components/ReusableFileUpload";
 import type { FamilyMember } from "@/types/person";
+import { CargasFamiliaresAPI, TiposReferenciaAPI, type RefType } from "@/lib/api";
+import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
+import { FAMILY_MEMBER_DOCUMENT_DIRECTORY_CODE, FAMILY_MEMBER_DOCUMENT_ENTITY_TYPE } from "@/features/constants";
 import { logger } from "@/lib/logger";
+import { useToast } from "@/hooks/use-toast";
+
+function getRefTypeId(t: any): number | undefined {
+  return t?.typeID ?? t?.typeId ?? t?.id;
+}
 
 const familyMemberFormSchema = z.object({
   firstName: z.string().min(1, "El nombre es requerido"),
@@ -46,6 +57,8 @@ const familyMemberFormSchema = z.object({
 
 type FamilyMemberFormData = z.infer<typeof familyMemberFormSchema>;
 
+const MAX_FILE_MB = 10;
+
 interface FamilyMemberFormProps {
   personId: number;
   familyMember?: FamilyMember;
@@ -53,6 +66,7 @@ interface FamilyMemberFormProps {
   onCancel: () => void;
   isLoading?: boolean;
   onDirtyChange?: (isDirty: boolean) => void;
+  closeAndRefresh?: () => void;
 }
 
 export default function FamilyMemberForm({
@@ -62,7 +76,21 @@ export default function FamilyMemberForm({
   onCancel,
   isLoading = false,
   onDirtyChange,
+  closeAndRefresh,
 }: FamilyMemberFormProps) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedDocTypeId, setSelectedDocTypeId] = useState<string>("");
+  const [isSavingWithDocument, setIsSavingWithDocument] = useState(false);
+  const [fileUploadKey, setFileUploadKey] = useState(0);
+
+  const { data: docTypesResp } = useQuery({
+    queryKey: ["refTypes", "CV_DOCUMENT_TYPE"],
+    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CV_DOCUMENT_TYPE),
+  });
+  const docTypes: RefType[] =
+    docTypesResp?.status === "success" ? (docTypesResp.data ?? []).filter((t: any) => t.isActive) : [];
   const form = useForm<FamilyMemberFormData>({
     resolver: zodResolver(familyMemberFormSchema) as any,
     defaultValues: {
@@ -107,7 +135,54 @@ export default function FamilyMemberForm({
     }
   }, [isStudying, form]);
 
+  const saving = isLoading || isSavingWithDocument;
+
   const handleSubmit = async (data: FamilyMemberFormData) => {
+    if (!familyMember && selectedFile) {
+      setIsSavingWithDocument(true);
+      try {
+        const formData = new FormData();
+        formData.append("PersonId", String(personId));
+        formData.append("DependentId", data.dependentId);
+        formData.append("IdentificationTypeId", data.identificationTypeId);
+        formData.append("FirstName", data.firstName);
+        formData.append("LastName", data.lastName);
+        formData.append("BirthDate", data.birthDate);
+        if (data.hasDisability && data.disabilityType) {
+          const disabilityTypeId = Number(data.disabilityType);
+          if (!Number.isNaN(disabilityTypeId)) {
+            formData.append("DisabilityTypeId", String(disabilityTypeId));
+          }
+        }
+        formData.append("File", selectedFile);
+        if (selectedDocTypeId) {
+          formData.append("DocumentTypeId", selectedDocTypeId);
+        }
+
+        await CargasFamiliaresAPI.createWithDocument(formData);
+        await queryClient.invalidateQueries({ queryKey: ["familyMembers", String(personId)] });
+        toast({
+          title: "Carga familiar registrada",
+          description: "El registro y el documento se guardaron correctamente.",
+        });
+        form.reset();
+        setSelectedFile(null);
+        setSelectedDocTypeId("");
+        setFileUploadKey((k) => k + 1);
+        closeAndRefresh?.();
+      } catch (error) {
+        logger.error("FamilyMemberForm", "Error creating family member with document:", error);
+        toast({
+          title: "Error",
+          description: "No se pudo registrar la carga familiar con el documento adjunto.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsSavingWithDocument(false);
+      }
+      return;
+    }
+
     try {
       await onSubmit(data);
       if (!familyMember) {
@@ -343,17 +418,55 @@ export default function FamilyMemberForm({
           )}
         </div>
 
+        {!familyMember && (
+          <div className="space-y-3 rounded-xl border border-dashed p-4">
+            <Label>Documento de soporte (opcional)</Label>
+            <ReusableFileUpload
+              key={fileUploadKey}
+              directoryCode={FAMILY_MEMBER_DOCUMENT_DIRECTORY_CODE}
+              relativePath={FAMILY_MEMBER_DOCUMENT_ENTITY_TYPE.toLowerCase()}
+              accept=".pdf,.jpg,.jpeg,.png"
+              maxSizeMB={MAX_FILE_MB}
+              label="Documento de soporte"
+              disabled={saving}
+              deferUpload
+              onFileSelected={setSelectedFile}
+            />
+            {selectedFile && docTypes.length > 0 && (
+              <div className="space-y-1">
+                <Label>Tipo de documento</Label>
+                <Select value={selectedDocTypeId} onValueChange={setSelectedDocTypeId} disabled={saving}>
+                  <SelectTrigger data-testid="select-document-type">
+                    <SelectValue placeholder="Seleccionar tipo de documento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {docTypes.map((t) => {
+                      const id = getRefTypeId(t);
+                      if (id == null) return null;
+                      return (
+                        <SelectItem key={id} value={String(id)}>
+                          {t.description}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex gap-2 pt-4">
           <Button
             type="submit"
-            disabled={isLoading}
+            disabled={saving}
             data-testid="button-submit"
             className="relative min-w-[100px]"
           >
-            {isLoading && (
+            {saving && (
               <RefreshCw className="h-4 w-4 animate-spin absolute left-3" />
             )}
-            {isLoading ? "Guardando..." : familyMember ? "Actualizar" : "Crear"}
+            {saving ? "Guardando..." : familyMember ? "Actualizar" : "Crear"}
           </Button>
           <Button
             type="button"

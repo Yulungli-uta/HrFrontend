@@ -32,10 +32,10 @@ import { useAuth } from "@/features/auth";
 import {
   PermisosAPI,
   TiposPermisosAPI,
-  VistaDetallesEmpleadosAPI,
   DocumentsAPI,
   handleApiError,
 } from "@/lib/api";
+import { useEmployeeLookupMap } from "@/hooks/useEmployeeLookupMap";
 import {
   Search,
   User,
@@ -85,12 +85,6 @@ interface PermissionType {
   name: string;
   isMedical?: boolean;
   requiresDocumentation?: boolean;
-}
-
-interface EmployeeLite {
-  employeeID: number;
-  fullName: string;
-  departmentName?: string;
 }
 
 interface PermissionDocument {
@@ -290,11 +284,7 @@ export default function ApprovalsMedicalPermissionsPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: employeesRes } = useQuery({
-    queryKey: ["/api/v1/rh/vw/EmployeeDetails"],
-    queryFn: () => VistaDetallesEmpleadosAPI.list(),
-    staleTime: 5 * 60 * 1000,
-  });
+  const { employeesMap } = useEmployeeLookupMap();
 
   const permissionTypes: PermissionType[] = useMemo(() => {
     if (typesRes?.status !== "success") return [];
@@ -302,29 +292,6 @@ export default function ApprovalsMedicalPermissionsPage() {
       .map(normalizePermissionType)
       .filter((t) => t.id != null);
   }, [typesRes]);
-
-  const employeesMap: Record<number, EmployeeLite> = useMemo(() => {
-    if (employeesRes?.status !== "success") return {};
-    const arr = safeArray(employeesRes.data);
-    const map: Record<number, EmployeeLite> = {};
-
-    for (const r of arr) {
-      const id = toNumber(pick(r, ["employeeID", "EmployeeID", "id", "Id", "ID"]));
-      const fullName =
-        pick(r, ["fullName", "FullName"]) ??
-        `${pick(r, ["firstName", "FirstName"]) ?? ""} ${pick(r, ["lastName", "LastName"]) ?? ""}`.trim();
-
-      if (id != null) {
-        map[id] = {
-          employeeID: id,
-          fullName: fullName || `#${id}`,
-          departmentName: pick(r, ["departmentName", "DepartmentName"]),
-        };
-      }
-    }
-
-    return map;
-  }, [employeesRes]);
 
   const getTypeName = (id?: number) =>
     id == null ? "—" : permissionTypes.find((t) => Number(t.id) === Number(id))?.name ?? "—";

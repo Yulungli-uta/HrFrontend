@@ -16,6 +16,7 @@ import type {
   GuardRotationGroupEmployeeDto,
   CreateGuardRotationGroupDto,
   UpdateGuardRotationGroupDto,
+  DuplicateGuardRotationGroupDto,
   AssignEmployeeToRotationGroupDto,
   RemoveEmployeeFromRotationGroupDto,
   GuardGroupRotationPatternDto,
@@ -40,6 +41,7 @@ import type {
   GuardDashboardDto,
   GuardShiftChangeDto,
   CreateGuardShiftReplacementDto,
+  CreateGuardShiftReassignmentDto,
   ApproveGuardShiftChangeDto,
   RejectGuardShiftChangeDto,
   EmployeeAvailabilityBlockDto,
@@ -134,6 +136,13 @@ export const GuardRotationGroupsAPI = {
   update: (id: number, dto: UpdateGuardRotationGroupDto): Promise<ApiResponse<GuardRotationGroupDto>> =>
     apiFetch<GuardRotationGroupDto>(`${BASE}/guard-rotation-groups/${id}`, {
       method: 'PUT',
+      body: JSON.stringify(dto),
+    }),
+
+  /** Crea un grupo nuevo copiando configuración (y empleados activos) de un grupo base. */
+  duplicate: (id: number, dto: DuplicateGuardRotationGroupDto): Promise<ApiResponse<GuardRotationGroupDto>> =>
+    apiFetch<GuardRotationGroupDto>(`${BASE}/guard-rotation-groups/${id}/duplicate`, {
+      method: 'POST',
       body: JSON.stringify(dto),
     }),
 
@@ -359,6 +368,13 @@ export const GuardShiftChangesAPI = {
 
   createReplacement: (dto: CreateGuardShiftReplacementDto): Promise<ApiResponse<GuardShiftChangeDto>> =>
     apiFetch<GuardShiftChangeDto>(`${BASE}/guard-shift-changes/replacement`, {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    }),
+
+  /** Reasigna el turno del mismo guardia titular a otra fecha/horario/ubicación (aplicación inmediata). */
+  createReassignment: (dto: CreateGuardShiftReassignmentDto): Promise<ApiResponse<GuardShiftChangeDto>> =>
+    apiFetch<GuardShiftChangeDto>(`${BASE}/guard-shift-changes/reassignment`, {
       method: 'POST',
       body: JSON.stringify(dto),
     }),

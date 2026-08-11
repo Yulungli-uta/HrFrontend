@@ -55,6 +55,12 @@ Thumbs.db
 # TypeScript
 *.tsbuildinfo
 
+# Documentation
+docs/assets/
+docs/guides/
+docs/migrations/
+docs/qa-evidence/
+
 # Vite / React build output
 client/dist/
 dist/

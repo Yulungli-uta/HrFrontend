@@ -46,6 +46,7 @@ export interface PersonnelActionDetail extends PersonnelActionSummary {
     swornDeclaration?: boolean | null;
     institutionalProcess?: number | null;
     managementLevel?: number | null;
+    managementLevelName?: string | null;
     employeeTypeId?: number | null;
     employeeTypeName?: string | null;
 
@@ -115,6 +116,9 @@ export interface CreatePersonnelActionRequest {
 
     generateDocument?: boolean;
     documentOverrides?: Record<string, string> | null;
+
+    /** true solo desde "Ingresar Histórico": el backend exige fechas anteriores a hoy. */
+    isHistoricalEntry?: boolean;
 }
 
 export interface UpdatePersonnelActionRequest
@@ -122,6 +126,16 @@ export interface UpdatePersonnelActionRequest
         CreatePersonnelActionRequest,
         'personId' | 'employeeId' | 'actionTypeId' | 'generateDocument' | 'documentOverrides'
     > { }
+
+/**
+ * Corrección auditable en cualquier estado (incluido VIGENTE/FINALIZADO) — a diferencia de
+ * UpdatePersonnelActionRequest (solo BORRADOR/GENERADO), exige motivo y queda en el
+ * historial de auditoría (ver /audit/corrections).
+ */
+export interface CorrectPersonnelActionRequest {
+    reason: string;
+    data: UpdatePersonnelActionRequest;
+}
 
 export interface ApprovePersonnelActionRequest {
     notes?: string | null;
@@ -163,6 +177,8 @@ export interface GenerateDocumentOverridesRequest {
 export interface UploadSignedDocumentRequest {
     storedFileId: number;
     comment?: string | null;
+    /** true solo desde "Ingresar Histórico": omite aprovisionamiento/bloqueo AD en backend. */
+    isHistoricalEntry?: boolean;
 }
 
 export interface CancelPersonnelActionRequest {

@@ -22,6 +22,7 @@ import {
   useScheduleBoard, usePlanningDetail,
 } from '@/hooks/guards/useGuards';
 import { ShiftReplacementDialog } from '@/components/guards/ShiftReplacementDialog';
+import { ShiftReassignDialog } from '@/components/guards/ShiftReassignDialog';
 import { ManualShiftAssignDialog } from '@/components/guards/ManualShiftAssignDialog';
 import { GuardReadinessPanel } from '@/components/guards/GuardReadinessPanel';
 import type {
@@ -156,6 +157,33 @@ function fmtDateFull(d: string) {
 
 type BoardRow = import('@/types/guards').ScheduleBoardRowDto;
 
+// Comparador natural de códigos de ubicación (ej. "90.2" antes de "92.1", no como texto).
+// Compara segmento a segmento separados por "." tratando cada uno como número; si algún
+// código falta, cae a comparar por nombre.
+function compareLocationCodes(
+  aCode: string | null | undefined, bCode: string | null | undefined,
+  aName: string, bName: string,
+): number {
+  if (!aCode && !bCode) return aName.localeCompare(bName);
+  if (!aCode) return 1;
+  if (!bCode) return -1;
+
+  const aParts = aCode.split('.');
+  const bParts = bCode.split('.');
+  const len = Math.max(aParts.length, bParts.length);
+  for (let i = 0; i < len; i++) {
+    const aNum = Number(aParts[i]);
+    const bNum = Number(bParts[i]);
+    if (!Number.isNaN(aNum) && !Number.isNaN(bNum)) {
+      if (aNum !== bNum) return aNum - bNum;
+      continue;
+    }
+    const cmp = (aParts[i] ?? '').localeCompare(bParts[i] ?? '');
+    if (cmp !== 0) return cmp;
+  }
+  return aCode.localeCompare(bCode);
+}
+
 type LocationHierarchyGroup = {
   parentRow: BoardRow | null;     // null = padre virtual (sin guardias propios en el tablero)
   parentId: number;
@@ -198,15 +226,16 @@ function buildLocationHierarchy(rows: BoardRow[]): {
         parentId,
         parentCode: parentRow?.locationCode ?? null,
         parentName: parentRow?.locationName ?? children[0]?.parentLocationName ?? '',
-        children: [...children].sort((a, b) => a.locationName.localeCompare(b.locationName)),
+        children: [...children].sort((a, b) =>
+          compareLocationCodes(a.locationCode, b.locationCode, a.locationName, b.locationName)),
       };
     })
-    .sort((a, b) => a.parentName.localeCompare(b.parentName));
+    .sort((a, b) => compareLocationCodes(a.parentCode, b.parentCode, a.parentName, b.parentName));
 
   // Filas independientes: sin padre Y no referenciadas como padre por nadie
   const standaloneRows = rows
     .filter(r => r.parentLocationId == null && !referencedParentIds.has(r.locationId))
-    .sort((a, b) => a.locationName.localeCompare(b.locationName));
+    .sort((a, b) => compareLocationCodes(a.locationCode, b.locationCode, a.locationName, b.locationName));
 
   return { groups, standaloneRows };
 }
@@ -424,10 +453,11 @@ function PlanningDetailPanel({ planningId, onClose }: { planningId: number | nul
   const { data, isLoading } = usePlanningDetail(planningId);
   const detail = data?.status === 'success' ? data.data : null;
   const [showReplacement, setShowReplacement] = useState(false);
+  const [showReassign, setShowReassign] = useState(false);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const { cancel } = usePlanningMutations(() => { setConfirmingCancel(false); onClose(); });
 
-  useEffect(() => { setConfirmingCancel(false); setShowReplacement(false); }, [planningId]);
+  useEffect(() => { setConfirmingCancel(false); setShowReplacement(false); setShowReassign(false); }, [planningId]);
 
   return (
     <>
@@ -506,6 +536,15 @@ function PlanningDetailPanel({ planningId, onClose }: { planningId: number | nul
                   )}
                   <Button size="sm" variant="outline" className="flex-1" onClick={onClose}>Cerrar</Button>
                 </div>
+                {detail.status !== 'CANCELLED' && detail.status !== 'REPLACED' && (
+                  <Button
+                    size="sm" variant="secondary"
+                    onClick={() => setShowReassign(true)}
+                  >
+                    <Calendar className="h-3.5 w-3.5 mr-1.5" />
+                    Reasignar
+                  </Button>
+                )}
                 {detail.status !== 'CANCELLED' && (
                   confirmingCancel ? (
                     <div className="flex gap-2">
@@ -538,6 +577,12 @@ function PlanningDetailPanel({ planningId, onClose }: { planningId: number | nul
         open={showReplacement}
         detail={detail}
         onClose={() => setShowReplacement(false)}
+      />
+
+      <ShiftReassignDialog
+        open={showReassign}
+        detail={detail}
+        onClose={() => setShowReassign(false)}
       />
     </>
   );

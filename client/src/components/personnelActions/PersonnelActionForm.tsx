@@ -127,6 +127,13 @@ type Props = {
   onSubmit: (data: CreatePersonnelActionRequest) => void;
   onCancel: () => void;
   onDirtyChange?: (isDirty: boolean) => void;
+  /**
+   * Fecha máxima permitida (YYYY-MM-DD) para actionDate/effectiveDate/endDate.
+   * Usado únicamente por la pantalla de "Ingresar Histórico" para exigir que
+   * las fechas sean anteriores a hoy — un registro histórico ya concluyó.
+   * Sin este prop, el comportamiento de creación normal no cambia.
+   */
+  maxDate?: string;
 };
 
 function toDateInput(iso?: string | null): string {
@@ -223,6 +230,7 @@ export function PersonnelActionForm({
   onSubmit,
   onCancel,
   onDirtyChange,
+  maxDate,
 }: Props) {
   const { toast } = useToast();
   const { jobs, actionTypes, isLoading } = usePersonnelActionLookups(true);
@@ -298,8 +306,10 @@ export function PersonnelActionForm({
       employeeId:    defaultValues?.employeeId ?? undefined,
       actionTypeId: defaultValues?.actionTypeId ?? undefined,
       actionNumber:  defaultValues?.actionNumber ?? '',
-      actionDate:    toDateInput(defaultValues?.actionDate) || today(),
-      effectiveDate: toDateInput(defaultValues?.effectiveDate) || today(),
+      // Con maxDate (pantalla de histórico) no se precarga hoy — hoy mismo violaría
+      // "debe ser anterior a hoy"; se deja vacío para forzar una elección explícita.
+      actionDate:    toDateInput(defaultValues?.actionDate) || (maxDate ? '' : today()),
+      effectiveDate: toDateInput(defaultValues?.effectiveDate) || (maxDate ? '' : today()),
       endDate:       toDateInput(defaultValues?.endDate),
       originDepartmentId:   defaultValues?.originDepartmentId ?? null,
       originJobId:          defaultValues?.originJobId ?? null,
@@ -481,9 +491,26 @@ export function PersonnelActionForm({
     reviewerId:           values.reviewerId ?? null,
     registrarId:          values.registrarId ?? null,
     generateDocument,
+    isHistoricalEntry: !!maxDate,
   });
 
   const handleFormSubmit = (values: FormValues) => {
+    // Registro histórico: el atributo `max` del <input type=date> no bloquea un valor ya
+    // asignado (default, texto pegado, etc.) — hay que revalidar aquí antes de enviar.
+    if (maxDate) {
+      if (values.actionDate > maxDate) {
+        form.setError('actionDate', { type: 'manual', message: 'Registro histórico: debe ser anterior a hoy.' });
+        return;
+      }
+      if (values.effectiveDate && values.effectiveDate > maxDate) {
+        form.setError('effectiveDate', { type: 'manual', message: 'Registro histórico: debe ser anterior a hoy.' });
+        return;
+      }
+      if (useEndDate && values.endDate && values.endDate > maxDate) {
+        form.setError('endDate', { type: 'manual', message: 'Registro histórico: debe ser anterior a hoy.' });
+        return;
+      }
+    }
     if (values.employeeId === 0) {
       const selectedType = actionTypeOptions.find(({ id }) => id === values.actionTypeId)?.item;
       if (!selectedType?.requiresAdUserCreation) {
@@ -580,7 +607,7 @@ export function PersonnelActionForm({
               name="actionTypeId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Tipo de Acción *</FormLabel>
+                  <FormLabel>Tipo de Acción <span className="text-destructive">*</span></FormLabel>
                   <Select
                     disabled={isLoading || isBusy}
                     value={field.value ? String(field.value) : ''}
@@ -642,7 +669,7 @@ export function PersonnelActionForm({
               name="employeeId"
               render={({ fieldState }) => (
                 <FormItem className="sm:col-span-2">
-                  <FormLabel>Persona / Empleado *</FormLabel>
+                  <FormLabel>Persona / Empleado <span className="text-destructive">*</span></FormLabel>
                   <FormControl>
                     {isEdit ? (
                       <Input
@@ -721,10 +748,13 @@ export function PersonnelActionForm({
               name="actionDate"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Fecha de Acción *</FormLabel>
+                  <FormLabel>Fecha de Acción <span className="text-destructive">*</span></FormLabel>
                   <FormControl>
-                    <Input type="date" {...field} disabled={isBusy} />
+                    <Input type="date" {...field} max={maxDate} disabled={isBusy} />
                   </FormControl>
+                  {maxDate && (
+                    <p className="text-xs text-muted-foreground">Registro histórico: debe ser anterior a hoy.</p>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}
@@ -736,7 +766,7 @@ export function PersonnelActionForm({
                 <FormItem>
                   <FormLabel>Fecha de Vigencia</FormLabel>
                   <FormControl>
-                    <Input type="date" {...field} value={field.value ?? ''} disabled={isBusy} />
+                    <Input type="date" {...field} value={field.value ?? ''} max={maxDate} disabled={isBusy} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -776,9 +806,13 @@ export function PersonnelActionForm({
                           {...field}
                           value={field.value ?? ''}
                           min={minDate}
+                          max={maxDate}
                           disabled={isBusy}
                         />
                       </FormControl>
+                    )}
+                    {useEndDate && maxDate && (
+                      <p className="text-xs text-muted-foreground">Registro histórico: debe ser anterior a hoy.</p>
                     )}
                     <FormMessage />
                   </FormItem>

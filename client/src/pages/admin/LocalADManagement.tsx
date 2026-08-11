@@ -116,6 +116,11 @@ function UsersTab() {
         setAllUsers(items);
         setPage(1);
         setHasMore(items.length === PAGE_SIZE);
+      } else {
+        // apiFetch nunca lanza excepción en errores HTTP (resuelve con {status:'error'}), así
+        // que sin este else la tabla quedaba vacía en silencio — sin toast, sin indicio de que
+        // el problema es de configuración de AD y no "no hay usuarios".
+        toast({ title: "Error al cargar usuarios de AD", description: parseApiError(res.error).message, variant: "destructive" });
       }
       return res;
     },
@@ -595,6 +600,9 @@ function GroupsTab() {
         setAllGroups(items);
         setPage(1);
         setHasMore(items.length === PAGE_SIZE);
+      } else {
+        // Mismo caso que UsersTab: sin este else la tabla quedaba vacía en silencio.
+        toast({ title: "Error al cargar grupos de AD", description: parseApiError(res.error).message, variant: "destructive" });
       }
       return res;
     },

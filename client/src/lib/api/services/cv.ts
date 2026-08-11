@@ -13,6 +13,8 @@
 import { createApiService } from '../core/pagination';
 import { apiFetch } from '../core/fetch';
 import type { ApiResponse } from '../core/fetch';
+import { fetchMultipart } from './documents';
+import { API_CONFIG } from '../core/config';
 
 const createCrudService = createApiService;
 // =============================================================================
@@ -67,6 +69,9 @@ export const PublicacionesAPI = {
 
   getByPersonId: (personId: number): Promise<ApiResponse<any>> =>
     apiFetch<any>(`/api/v1/rh/cv/publications/person/${personId}`),
+
+  createWithDocument: (formData: FormData): Promise<ApiResponse<any>> =>
+    fetchMultipart<any>(`${API_CONFIG.RH_BASE_URL}/api/v1/rh/cv/publications/with-document`, formData),
 };
 
 // =============================================================================
@@ -89,6 +94,9 @@ export const CapacitacionesAPI = {
 
   getByPersonId: (personId: number): Promise<ApiResponse<any>> =>
     apiFetch<any>(`/api/v1/rh/cv/trainings/person/${personId}`),
+
+  createWithDocument: (formData: FormData): Promise<ApiResponse<any>> =>
+    fetchMultipart<any>(`${API_CONFIG.RH_BASE_URL}/api/v1/rh/cv/trainings/with-document`, formData),
 };
 
 // =============================================================================
@@ -100,6 +108,9 @@ export const IdiomasAPI = {
 
   getByPersonId: (personId: number): Promise<ApiResponse<any>> =>
     apiFetch<any>(`/api/v1/rh/cv/languages/person/${personId}`),
+
+  createWithDocument: (formData: FormData): Promise<ApiResponse<any>> =>
+    fetchMultipart<any>(`${API_CONFIG.RH_BASE_URL}/api/v1/rh/cv/languages/with-document`, formData),
 };
 
 // =============================================================================
@@ -111,6 +122,9 @@ export const ExperienciasLaboralesAPI = {
 
   getByPersonId: (personId: number): Promise<ApiResponse<any>> =>
     apiFetch<any>(`/api/v1/rh/cv/work-experiences/person/${personId}`),
+
+  createWithDocument: (formData: FormData): Promise<ApiResponse<any>> =>
+    fetchMultipart<any>(`${API_CONFIG.RH_BASE_URL}/api/v1/rh/cv/work-experiences/with-document`, formData),
 };
 
 // =============================================================================
@@ -136,7 +150,12 @@ export const ParametersAPI = {
 };
 
 
-export const DireccionesAPI = createApiService<any, any>('/api/v1/rh/cv/addresses');
+export const DireccionesAPI = {
+  ...createApiService<any, any>('/api/v1/rh/cv/addresses'),
+
+  getByPersonId: (personId: number): Promise<ApiResponse<any>> =>
+    apiFetch<any>(`/api/v1/rh/cv/addresses/person/${personId}`),
+};
 
 export const ContactosEmergenciaAPI = {
   ...createApiService<any, any>('/api/v1/rh/cv/emergency-contacts'),
@@ -150,6 +169,9 @@ export const CargasFamiliaresAPI = {
 
   getByPersonId: (personId: number): Promise<ApiResponse<any>> =>
     apiFetch<any>(`/api/v1/rh/cv/family-burden/person/${personId}`),
+
+  createWithDocument: (formData: FormData): Promise<ApiResponse<any>> =>
+    fetchMultipart<any>(`${API_CONFIG.RH_BASE_URL}/api/v1/rh/cv/family-burden/with-document`, formData),
 };
 
 export const CuentasBancariasAPI = {
@@ -164,6 +186,9 @@ export const LibrosAPI = {
 
   getByPersonId: (personId: number): Promise<ApiResponse<any>> =>
     apiFetch<any>(`/api/v1/rh/cv/books/person/${personId}`),
+
+  createWithDocument: (formData: FormData): Promise<ApiResponse<any>> =>
+    fetchMultipart<any>(`${API_CONFIG.RH_BASE_URL}/api/v1/rh/cv/books/with-document`, formData),
 };
 
 export const EnfermedadesCatastroficasAPI = {
@@ -171,6 +196,33 @@ export const EnfermedadesCatastroficasAPI = {
 
   getByPersonId: (personId: number): Promise<ApiResponse<any>> =>
     apiFetch<any>(`/api/v1/rh/cv/catastrophic-illnesses/person/${personId}`),
+
+  /**
+   * Crea el registro y (opcionalmente) su certificado médico de respaldo en una sola
+   * llamada, con garantía transaccional en el backend entre el registro y el archivo.
+   */
+  createWithDocument: (formData: FormData): Promise<ApiResponse<any>> =>
+    fetchMultipart<any>(
+      `${API_CONFIG.RH_BASE_URL}/api/v1/rh/cv/catastrophic-illnesses/with-document`,
+      formData
+    ),
+};
+
+export const NivelesEducacionAPI = {
+  ...createApiService<any, any>('/api/v1/rh/cv/education-levels'),
+
+  getByPersonId: (personId: number): Promise<ApiResponse<any>> =>
+    apiFetch<any>(`/api/v1/rh/cv/education-levels/person/${personId}`),
+
+  /**
+   * Crea el registro y (opcionalmente) su documento de respaldo en una sola llamada,
+   * con garantía transaccional en el backend entre el registro y la metadata del archivo.
+   */
+  createWithDocument: (formData: FormData): Promise<ApiResponse<any>> =>
+    fetchMultipart<any>(
+      `${API_CONFIG.RH_BASE_URL}/api/v1/rh/cv/education-levels/with-document`,
+      formData
+    ),
 };
 
 // =============================================================================

@@ -24,6 +24,8 @@ export interface EmployeeLaborRegimeDto {
   effectiveTo?: string | null;
   isActive: boolean;
   isPrincipal: boolean;
+  /** SIIES INGRESO_POR_CONCURSO. Null/undefined = sin clasificar todavía. */
+  ingresoPorConcurso?: boolean | null;
 }
 
 export interface EmployeeLaborRegimeCreateDto {
@@ -37,10 +39,16 @@ export interface EmployeeLaborRegimeCreateDto {
   sourceContractId?: number | null;
   sourcePersonnelActionId?: number | null;
   effectiveFrom: string;
+  /** SIIES INGRESO_POR_CONCURSO. Opcional; puede completarse después con setIngresoPorConcurso. */
+  ingresoPorConcurso?: boolean | null;
 }
 
 export interface EmployeeLaborRegimeCloseDto {
   effectiveTo: string;
+}
+
+export interface EmployeeLaborRegimeIngresoPorConcursoDto {
+  ingresoPorConcurso: boolean;
 }
 
 function jsonBody<T>(data: T): { body: string } {
@@ -59,6 +67,15 @@ export const EmployeeLaborRegimesAPI = {
 
   close: (id: number, data: EmployeeLaborRegimeCloseDto): Promise<ApiResponse<EmployeeLaborRegimeDto>> =>
     apiFetch<EmployeeLaborRegimeDto>(`${BASE_PATH}/${id}/close`, {
+      method: 'POST',
+      ...jsonBody(data),
+    }),
+
+  setIngresoPorConcurso: (
+    id: number,
+    data: EmployeeLaborRegimeIngresoPorConcursoDto
+  ): Promise<ApiResponse<EmployeeLaborRegimeDto>> =>
+    apiFetch<EmployeeLaborRegimeDto>(`${BASE_PATH}/${id}/ingreso-por-concurso`, {
       method: 'POST',
       ...jsonBody(data),
     }),

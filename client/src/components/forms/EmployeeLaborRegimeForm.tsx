@@ -35,6 +35,8 @@ interface FormData {
   documentType: string;
   documentNumber: string;
   effectiveFrom: string;
+  /** SIIES INGRESO_POR_CONCURSO. "unset" = sin clasificar, "true"/"false" = SI/NO. */
+  ingresoPorConcurso: "unset" | "true" | "false";
 }
 
 const DOCUMENT_TYPE_OPTIONS = [
@@ -67,6 +69,7 @@ export function EmployeeLaborRegimeForm({
       documentType: "MIGRATION",
       documentNumber: "",
       effectiveFrom: new Date().toISOString().split("T")[0],
+      ingresoPorConcurso: "unset",
     },
   });
 
@@ -133,6 +136,7 @@ export function EmployeeLaborRegimeForm({
         documentType: data.documentType,
         documentNumber: data.documentNumber || null,
         effectiveFrom: data.effectiveFrom,
+        ingresoPorConcurso: data.ingresoPorConcurso === "unset" ? null : data.ingresoPorConcurso === "true",
       };
 
       createMutation.mutate(dto);
@@ -288,6 +292,29 @@ export function EmployeeLaborRegimeForm({
           <p className="text-xs text-destructive">{errors.effectiveFrom.message}</p>
         )}
       </div>
+
+      <Controller
+        name="ingresoPorConcurso"
+        control={control}
+        render={({ field }) => (
+          <div className="space-y-2">
+            <Label>Ingreso por concurso (SIIES)</Label>
+            <Select value={field.value} onValueChange={field.onChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="Sin clasificar" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="unset">Sin clasificar</SelectItem>
+                <SelectItem value="true">Sí</SelectItem>
+                <SelectItem value="false">No</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Requerido por el reporte SIIES Funcionarios. Si queda "sin clasificar", el reporte lo exporta como "NO" hasta que se complete.
+            </p>
+          </div>
+        )}
+      />
 
       <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/40 px-4 py-3">
         <input

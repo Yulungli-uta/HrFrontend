@@ -33,6 +33,8 @@ import type {
   CreateGuardShiftPlanningDto,
   GenerateGuardShiftPlanningRequestDto,
   CreateGuardShiftReplacementDto,
+  CreateGuardShiftReassignmentDto,
+  DuplicateGuardRotationGroupDto,
   ApproveGuardShiftChangeDto,
   RejectGuardShiftChangeDto,
   CreateManualAvailabilityBlockDto,
@@ -350,7 +352,11 @@ export function useGuardGroupMutations(onSuccess?: () => void) {
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: GUARD_KEYS.groups });
+    qc.invalidateQueries({ queryKey: ['guards', 'groups', 'paged'] });
+    qc.invalidateQueries({ queryKey: GUARD_KEYS.generalGroups });
+    qc.invalidateQueries({ queryKey: GUARD_KEYS.generalGroupsWithSubs });
     qc.invalidateQueries({ queryKey: GUARD_KEYS.locationSummary });
+    qc.invalidateQueries({ queryKey: ['guards', 'groups', 'by-location'] });
   };
 
   const create = useMutation({
@@ -378,6 +384,7 @@ export function useGuardGroupMutations(onSuccess?: () => void) {
     onSuccess: (res, { groupId }) => {
       if (res.status === 'success') {
         qc.invalidateQueries({ queryKey: GUARD_KEYS.groupEmployees(groupId) });
+        invalidate();
         toast({ title: 'Empleado asignado al grupo' });
         onSuccess?.();
       } else toast({ title: 'Error', description: res.error.message, variant: 'destructive' });
@@ -391,8 +398,7 @@ export function useGuardGroupMutations(onSuccess?: () => void) {
     onSuccess: (res, { groupId }) => {
       if (res.status === 'success') {
         qc.invalidateQueries({ queryKey: GUARD_KEYS.groupEmployees(groupId) });
-        qc.invalidateQueries({ queryKey: GUARD_KEYS.locationSummary });
-        qc.invalidateQueries({ queryKey: ['guards', 'groups', 'by-location'] });
+        invalidate();
         toast({ title: 'Empleado retirado del grupo' });
         onSuccess?.();
       } else toast({ title: 'Error', description: res.error.message, variant: 'destructive' });
@@ -412,8 +418,7 @@ export function useGuardGroupMutations(onSuccess?: () => void) {
     },
     onSuccess: (results, { groupId }) => {
       qc.invalidateQueries({ queryKey: GUARD_KEYS.groupEmployees(groupId) });
-      qc.invalidateQueries({ queryKey: GUARD_KEYS.locationSummary });
-      qc.invalidateQueries({ queryKey: ['guards', 'groups', 'by-location'] });
+      invalidate();
       const succeeded = results.filter(
         r => r.status === 'fulfilled' && (r.value as any).status === 'success'
       ).length;
@@ -431,14 +436,27 @@ export function useGuardGroupMutations(onSuccess?: () => void) {
     onError: (e) => toast({ title: 'Error', description: parseApiError(e).message, variant: 'destructive' }),
   });
 
-  return { create, update, assignEmployee, assignBatch, removeEmployee };
+  const duplicate = useMutation({
+    mutationFn: ({ groupId, dto }: { groupId: number; dto: DuplicateGuardRotationGroupDto }) =>
+      GuardRotationGroupsAPI.duplicate(groupId, dto),
+    onSuccess: (res) => {
+      if (res.status === 'success') { invalidate(); toast({ title: 'Grupo duplicado' }); onSuccess?.(); }
+      else toast({ title: 'Error al duplicar', description: res.error.message, variant: 'destructive' });
+    },
+    onError: (e) => toast({ title: 'Error', description: parseApiError(e).message, variant: 'destructive' }),
+  });
+
+  return { create, update, assignEmployee, assignBatch, removeEmployee, duplicate };
 }
 
 export function useRotationPatternMutations(onSuccess?: () => void) {
   const qc = useQueryClient();
   const { toast } = useToast();
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: GUARD_KEYS.patterns });
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: GUARD_KEYS.patterns });
+    qc.invalidateQueries({ queryKey: ['guards', 'patterns', 'paged'] });
+  };
 
   const create = useMutation({
     mutationFn: (dto: CreateRotationPatternDto) => RotationPatternsAPI.create(dto),
@@ -615,7 +633,22 @@ export function useShiftChangeMutations(onSuccess?: () => void) {
     onError: (e) => toast({ title: 'Error', description: parseApiError(e).message, variant: 'destructive' }),
   });
 
-  return { createReplacement, approve, reject };
+  const createReassignment = useMutation({
+    mutationFn: (dto: CreateGuardShiftReassignmentDto) => GuardShiftChangesAPI.createReassignment(dto),
+    onSuccess: (res) => {
+      if (res.status === 'success') {
+        invalidate();
+        qc.invalidateQueries({ queryKey: ['guards', 'calendar'] });
+        qc.invalidateQueries({ queryKey: ['guards', 'schedule-board'] });
+        qc.invalidateQueries({ queryKey: ['guards', 'planning'] });
+        toast({ title: 'Turno reasignado' });
+        onSuccess?.();
+      } else toast({ title: 'Error al reasignar', description: res.error.message, variant: 'destructive' });
+    },
+    onError: (e) => toast({ title: 'Error', description: parseApiError(e).message, variant: 'destructive' }),
+  });
+
+  return { createReplacement, approve, reject, createReassignment };
 }
 
 export function useGroupPatterns(groupId: number | null) {
@@ -732,6 +765,8 @@ export function useGroupPatternMutations(onSuccess?: () => void) {
       if (res.status === 'success') {
         qc.invalidateQueries({ queryKey: GUARD_KEYS.groupPatterns(groupId) });
         qc.invalidateQueries({ queryKey: GUARD_KEYS.groups });
+        qc.invalidateQueries({ queryKey: ['guards', 'groups', 'paged'] });
+        qc.invalidateQueries({ queryKey: GUARD_KEYS.generalGroupsWithSubs });
         qc.invalidateQueries({ queryKey: ['guards', 'groups', 'by-location'] });
         qc.invalidateQueries({ queryKey: GUARD_KEYS.locationSummary });
         toast({ title: 'Patrón asignado al grupo' });
@@ -747,6 +782,7 @@ export function useGroupPatternMutations(onSuccess?: () => void) {
     onSuccess: (res, { groupId }) => {
       if (res.status === 'success') {
         qc.invalidateQueries({ queryKey: GUARD_KEYS.groupPatterns(groupId) });
+        qc.invalidateQueries({ queryKey: GUARD_KEYS.generalGroupsWithSubs });
         qc.invalidateQueries({ queryKey: ['guards', 'groups', 'by-location'] });
         qc.invalidateQueries({ queryKey: GUARD_KEYS.locationSummary });
         toast({ title: 'Patrón desasignado del grupo' });

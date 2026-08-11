@@ -1,8 +1,8 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -23,15 +24,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { RefreshCw } from "lucide-react";
+import { ReusableFileUpload } from "@/components/ReusableFileUpload";
 
 import type { Publication } from "@/types/person";
 import {
   TiposReferenciaAPI,
   type RefType,
   AreaConocimientoAPI,
+  PublicacionesAPI,
 } from "@/lib/api";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
+import { PUBLICATION_DOCUMENT_DIRECTORY_CODE, PUBLICATION_DOCUMENT_ENTITY_TYPE } from "@/features/constants";
 import { logger } from "@/lib/logger";
+import { useToast } from "@/hooks/use-toast";
 
 // =============================
 // Zod schema
@@ -81,7 +86,10 @@ interface PublicationFormProps {
   onCancel: () => void;
   isLoading?: boolean;
   onDirtyChange?: (isDirty: boolean) => void;
+  closeAndRefresh?: () => void;
 }
+
+const MAX_FILE_MB = 15;
 
 // Helper RefType
 function getRefTypeId(t: any): number | undefined {
@@ -144,7 +152,22 @@ export default function PublicationForm({
   onCancel,
   isLoading = false,
   onDirtyChange,
+  closeAndRefresh,
 }: PublicationFormProps) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedDocTypeId, setSelectedDocTypeId] = useState<string>("");
+  const [isSavingWithDocument, setIsSavingWithDocument] = useState(false);
+  const [fileUploadKey, setFileUploadKey] = useState(0);
+
+  const { data: docTypesResp } = useQuery({
+    queryKey: ["refTypes", "CV_DOCUMENT_TYPE"],
+    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CV_DOCUMENT_TYPE),
+  });
+  const docTypes: RefType[] =
+    docTypesResp?.status === "success" ? (docTypesResp.data ?? []).filter((t: any) => t.isActive) : [];
+
   // =============================
   // QUERIES
   // =============================
@@ -336,6 +359,60 @@ export default function PublicationForm({
   const handleSubmit = async (data: PublicationFormData) => {
     const now = new Date();
 
+    // Camino con documento adjunto: solo al crear.
+    if (!publication && selectedFile) {
+      setIsSavingWithDocument(true);
+      try {
+        const formData = new FormData();
+        formData.append("PersonId", String(personId));
+        if (data.location) formData.append("Location", data.location);
+        formData.append("PublicationTypeId", String(data.publicationTypeId));
+        formData.append("IsIndexed", String(data.isIndexed ?? false));
+        if (data.journalTypeId) formData.append("JournalTypeId", String(data.journalTypeId));
+        if (data.issn_Isbn) formData.append("Issn_Isbn", data.issn_Isbn);
+        if (data.journalName) formData.append("JournalName", data.journalName);
+        if (data.journalNumber) formData.append("JournalNumber", data.journalNumber);
+        if (data.volume) formData.append("Volume", data.volume);
+        if (data.pages) formData.append("Pages", data.pages);
+        if (data.knowledgeAreaTypeId) formData.append("KnowledgeAreaTypeId", String(data.knowledgeAreaTypeId));
+        if (data.subAreaTypeId) formData.append("SubAreaTypeId", String(data.subAreaTypeId));
+        if (data.areaTypeId) formData.append("AreaTypeId", String(data.areaTypeId));
+        formData.append("Title", data.title);
+        if (data.organizedBy) formData.append("OrganizedBy", data.organizedBy);
+        if (data.eventName) formData.append("EventName", data.eventName);
+        if (data.eventEdition) formData.append("EventEdition", data.eventEdition);
+        formData.append(
+          "PublicationDate",
+          data.publicationDate && data.publicationDate !== "" ? data.publicationDate : now.toISOString().slice(0, 10)
+        );
+        formData.append("UTAffiliation", String(data.utAffiliation ?? true));
+        formData.append("File", selectedFile);
+        if (selectedDocTypeId) formData.append("DocumentTypeId", selectedDocTypeId);
+
+        const res = await PublicacionesAPI.createWithDocument(formData);
+        if (res.status === "error") {
+          throw new Error(res.error?.message || "No se pudo crear la publicación con el documento adjunto.");
+        }
+
+        await queryClient.invalidateQueries({ queryKey: ["publications", String(personId)] });
+        toast({ title: "✅ Éxito", description: "Publicación y documento registrados correctamente." });
+        form.reset();
+        setSelectedFile(null);
+        setFileUploadKey((k) => k + 1);
+        closeAndRefresh?.();
+      } catch (error: any) {
+        logger.error("PublicationForm", "[PublicationForm] createWithDocument ERROR", error);
+        toast({
+          title: "❌ Error",
+          description: error?.message || "No se pudo registrar la publicación con el documento.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsSavingWithDocument(false);
+      }
+      return;
+    }
+
     const toIntOrZero = (x: any) =>
       x !== null && x !== undefined && !Number.isNaN(Number(x))
         ? Number(x)
@@ -382,7 +459,7 @@ export default function PublicationForm({
     }
   };
 
-  const saving = isLoading;
+  const saving = isLoading || isSavingWithDocument;
 
   // =============================
   // UI
@@ -881,6 +958,49 @@ export default function PublicationForm({
             )}
           />
         </div>
+
+        {!publication && (
+          <div className="space-y-3 rounded-xl border border-dashed p-4">
+            <Label>Documento de la publicación (opcional)</Label>
+            <ReusableFileUpload
+              key={fileUploadKey}
+              directoryCode={PUBLICATION_DOCUMENT_DIRECTORY_CODE}
+              relativePath={PUBLICATION_DOCUMENT_ENTITY_TYPE.toLowerCase()}
+              accept=".pdf"
+              maxSizeMB={MAX_FILE_MB}
+              label="Documento de la publicación"
+              disabled={saving}
+              deferUpload
+              onFileSelected={setSelectedFile}
+            />
+
+            {selectedFile && docTypes.length > 0 && (
+              <div className="space-y-1">
+                <Label className="text-xs">Tipo de documento</Label>
+                <Select value={selectedDocTypeId} onValueChange={setSelectedDocTypeId} disabled={saving}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar tipo (opcional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {docTypes.map((t) => {
+                      const id = getRefTypeId(t);
+                      if (id == null) return null;
+                      return (
+                        <SelectItem key={id} value={String(id)}>
+                          {t.name ?? `Tipo ${id}`}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <p className="text-xs text-muted-foreground">
+              Si adjuntas un archivo, el registro y el documento se guardan juntos — si algo falla, no queda ninguno de los dos a medias.
+            </p>
+          </div>
+        )}
 
         {/* BOTONES */}
         <div className="flex justify-end gap-2 pt-2">

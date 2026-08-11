@@ -7,12 +7,17 @@ import { TiposReferenciaAPI, PersonasAPI, type ApiResponse } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
 import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
+import type { CatastrophicIllness } from "@/types/person";
 
 interface PersonFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   person: any;
   onSuccess: () => void;
+  catastrophicIllnesses?: CatastrophicIllness[];
+  onAddCatastrophicIllness?: () => void;
+  onEditCatastrophicIllness?: (item: CatastrophicIllness) => void;
+  onDeleteCatastrophicIllness?: (id: number) => void;
 }
 
 interface ApiRefType {
@@ -41,9 +46,19 @@ const REF_CATEGORIES = [
   "GENDER_TYPE",
   "SEX_TYPE",
   "DISABILITY_TYPE",
+  "CATASTROPHIC_ILLNESS_TYPE",
 ];
 
-export function PersonFormDialog({ open, onOpenChange, person, onSuccess }: PersonFormDialogProps) {
+export function PersonFormDialog({
+  open,
+  onOpenChange,
+  person,
+  onSuccess,
+  catastrophicIllnesses,
+  onAddCatastrophicIllness,
+  onEditCatastrophicIllness,
+  onDeleteCatastrophicIllness,
+}: PersonFormDialogProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { setIsFormDirty, handleOpenChange, confirmOpen, confirmExit, closeConfirm } =
@@ -194,6 +209,10 @@ export function PersonFormDialog({ open, onOpenChange, person, onSuccess }: Pers
             refTypesByCategory={refTypesByCategory}
             isRefTypesError={isErrorRefTypes}
             onDirtyChange={setIsFormDirty}
+            catastrophicIllnesses={catastrophicIllnesses}
+            onAddCatastrophicIllness={onAddCatastrophicIllness}
+            onEditCatastrophicIllness={onEditCatastrophicIllness}
+            onDeleteCatastrophicIllness={onDeleteCatastrophicIllness}
           />
         </DialogContent>
       </Dialog>

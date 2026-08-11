@@ -1,7 +1,8 @@
 import { Suspense } from "react";
-import { Switch, Route, Redirect } from "wouter";
+import { Switch, Route, Redirect, useRoute } from "wouter";
 import { useAuth } from "@/features/auth";
 import { Loader2 } from "lucide-react";
+import ExternalSignPage from "@/pages/electronicSignature/ExternalSignPage";
 
 // Componentes del layout y autorizaciones
 import Layout from "@/components/Layout";
@@ -41,6 +42,14 @@ function InitialLoadingScreen() {
 
 export default function AppRouter() {
   const { isAuthenticated, isLoading } = useAuth();
+  // Pagina publica de firmante externo: autorizacion por token en la URL, no por
+  // sesion. Debe resolverse ANTES del gate de auth de mas abajo (que redirige todo
+  // lo no autenticado a /login), sin pasar por Layout/ProtectedRoute.
+  const [isExternalSign] = useRoute("/firma-externa/:participantId");
+
+  if (isExternalSign) {
+    return <ExternalSignPage />;
+  }
 
   // Mientras AuthContext está comprobando sesión → pantalla de carga inicial
   if (isLoading) {

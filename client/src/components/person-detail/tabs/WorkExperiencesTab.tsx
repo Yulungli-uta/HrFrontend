@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ActionIconButton } from "@/components/ui/action-icon-button";
 import { Badge } from "@/components/ui/badge";
-import { Briefcase, Plus, Edit, Trash2, Calendar, MapPin, Globe, Building2 } from "lucide-react";
+import { Briefcase, Plus, Edit, Trash2, Calendar, MapPin, Globe, Building2, FileText, ChevronDown, ChevronUp } from "lucide-react";
 import { WorkExperience } from "@/types/person";
+import { ReusableDocumentManager } from "@/components/ReusableDocumentManager";
+import { WORK_EXPERIENCE_CERTIFICATE_DIRECTORY_CODE, WORK_EXPERIENCE_CERTIFICATE_ENTITY_TYPE } from "@/features/constants";
 
 interface WorkExperiencesTabProps {
   workExperiences: WorkExperience[];
@@ -13,6 +16,8 @@ interface WorkExperiencesTabProps {
   refTypesMap?: Record<number, string>;
   /** Mapa id → nombre de país */
   countryMap?: Record<number, string>;
+  /** Identificación de la persona — agrupa su expediente completo en una sola carpeta. */
+  personIdCard?: string;
 }
 
 export function WorkExperiencesTab({
@@ -21,7 +26,9 @@ export function WorkExperiencesTab({
   onDelete,
   refTypesMap = {},
   countryMap = {},
+  personIdCard,
 }: WorkExperiencesTabProps) {
+  const [expandedId, setExpandedId] = useState<number | null>(null);
   const formatDate = (dateString: string) => {
     if (!dateString) return "No especificada";
     return new Date(dateString).toLocaleDateString("es-EC", {
@@ -203,6 +210,40 @@ export function WorkExperiencesTab({
                               <p className="font-medium text-muted-foreground mb-0.5">Razón de salida:</p>
                               <p className="text-foreground line-clamp-2">{experience.exitReason}</p>
                             </div>
+                          )}
+
+                          {experienceId != null && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="self-start text-xs"
+                                onClick={() => setExpandedId(expandedId === experienceId ? null : experienceId)}
+                              >
+                                <FileText className="h-3.5 w-3.5 mr-1" />
+                                Certificado laboral
+                                {expandedId === experienceId ? (
+                                  <ChevronUp className="h-3.5 w-3.5 ml-1" />
+                                ) : (
+                                  <ChevronDown className="h-3.5 w-3.5 ml-1" />
+                                )}
+                              </Button>
+
+                              {expandedId === experienceId && (
+                                <ReusableDocumentManager
+                                  directoryCode={WORK_EXPERIENCE_CERTIFICATE_DIRECTORY_CODE}
+                                  entityType={WORK_EXPERIENCE_CERTIFICATE_ENTITY_TYPE}
+                                  entityId={experienceId}
+                                  relativePath={personIdCard ? `${personIdCard}/${WORK_EXPERIENCE_CERTIFICATE_ENTITY_TYPE.toLowerCase()}` : undefined}
+                                  accept=".pdf,.jpg,.jpeg,.png"
+                                  maxSizeMB={10}
+                                  label="Certificado de experiencia laboral"
+                                  entityReady={true}
+                                  allowReplace
+                                  documentType={{ enabled: true, category: "CV_DOCUMENT_TYPE", label: "Tipo de documento" }}
+                                />
+                              )}
+                            </>
                           )}
                         </div>
                       </div>

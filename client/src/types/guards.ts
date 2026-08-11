@@ -82,6 +82,7 @@ export interface GuardRotationGroupDto {
   groupLevelTypeName: string | null;
   colorCode: string | null;
   subgroupCount: number;
+  isSpecial: boolean;
 }
 
 export interface GuardRotationGroupWithSubgroupsDto {
@@ -95,6 +96,7 @@ export interface GuardRotationGroupWithSubgroupsDto {
   employeeCount: number;
   subgroupCount: number;
   subgroups: GuardRotationGroupDto[];
+  isSpecial: boolean;
 }
 
 export interface GuardRotationGroupEmployeeDto {
@@ -117,6 +119,7 @@ export interface CreateGuardRotationGroupDto {
   parentGroupId?: number;
   groupLevelTypeId?: number;
   colorCode?: string;
+  isSpecial: boolean;
 }
 
 export interface UpdateGuardRotationGroupDto {
@@ -127,6 +130,14 @@ export interface UpdateGuardRotationGroupDto {
   parentGroupId?: number;
   groupLevelTypeId?: number;
   colorCode?: string;
+  isSpecial: boolean;
+}
+
+/** Crea un grupo nuevo copiando configuración (y empleados activos) de un grupo base. */
+export interface DuplicateGuardRotationGroupDto {
+  newName: string;
+  newGroupCode?: string;
+  parentGroupIdOverride?: number;
 }
 
 export interface AssignEmployeeToRotationGroupDto {
@@ -187,6 +198,7 @@ export interface LocationGroupDetailDto {
   patternSequence: string | null;
   patternReadable: string | null;
   assignedEmployees: number;
+  isSpecial: boolean;
 }
 
 // ─── Patrones de Rotación ─────────────────────────────────────────────────────
@@ -422,6 +434,9 @@ export interface GuardShiftChangeDto {
   approvedByName: string | null;
   approvedAt: string | null;
   rejectionReason: string | null;
+  newWorkDate: string | null;
+  newLocationId: number | null;
+  newLocationName: string | null;
 }
 
 export interface CreateGuardShiftReplacementDto {
@@ -430,6 +445,16 @@ export interface CreateGuardShiftReplacementDto {
   changeTypeId: number;
   reason: string;
   newScheduleId?: number;
+}
+
+/** Reasigna el turno del mismo guardia titular a otra fecha/horario/ubicación.
+ * Aplicación inmediata (sin aprobación). */
+export interface CreateGuardShiftReassignmentDto {
+  planningId: number;
+  newWorkDate: string;
+  newLocationId: number;
+  newScheduleId: number;
+  reason: string;
 }
 
 export interface ApproveGuardShiftChangeDto {

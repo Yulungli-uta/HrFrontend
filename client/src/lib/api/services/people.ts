@@ -51,6 +51,8 @@ export interface PersonDto {
   cantonId?: string | null;
   yearsOfResidence?: number | null;
   ethnicityTypeId?: number | null;
+  /** SIIES NACIONALIDAD indígena (ref_Types categoría SIIES_INDIGENOUS_NATIONALITY). Solo aplica si ethnicityTypeId = INDIGENA. */
+  indigenousNationalityTypeId?: number | null;
   bloodTypeTypeId?: number | null;
   specialNeedsTypeId?: number | null;
   disabilityPercentage?: number | null;
@@ -79,6 +81,7 @@ export interface PersonCreateDto {
   cantonId?: string;
   yearsOfResidence?: number;
   ethnicityTypeId?: number;
+  indigenousNationalityTypeId?: number;
   bloodTypeTypeId?: number;
   specialNeedsTypeId?: number;
   disabilityPercentage?: number;
@@ -222,4 +225,15 @@ export const VistaDetallesEmpleadosAPI = {
   getAvailableFaculties: (): Promise<ApiResponse<any[]>> =>
     apiFetch<any[]>('/api/v1/rh/vw/EmployeeDetails/available/faculties'),
 
+  /** Cobertura de horario (total/con horario/sin horario), calculada en el servidor —
+   * evita traer la tabla completa de empleados al navegador solo para contar. */
+  scheduleCoverageStats: (): Promise<ApiResponse<ScheduleCoverageStatsDto>> =>
+    apiFetch<ScheduleCoverageStatsDto>('/api/v1/rh/vw/EmployeeDetails/stats/schedule-coverage'),
+
 };
+
+export interface ScheduleCoverageStatsDto {
+  total: number;
+  withSchedule: number;
+  withoutSchedule: number;
+}

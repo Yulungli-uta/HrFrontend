@@ -378,12 +378,18 @@ export default function JobActivitiesPage() {
       jobTypeId: number | null;
       groupId: number | null;
       isActive: boolean;
+      siiesTipoFuncionarioTypeId: number | null;
+      puestoJerarquicoSuperior: boolean;
+      referenceSalary: number | null;
     }) => {
       const payload = {
         description: data.description,
         jobTypeId: data.jobTypeId,
         groupId: data.groupId,
         isActive: data.isActive,
+        siiesTipoFuncionarioTypeId: data.siiesTipoFuncionarioTypeId,
+        puestoJerarquicoSuperior: data.puestoJerarquicoSuperior,
+        referenceSalary: data.referenceSalary,
       };
 
       if (data.jobID && data.jobID > 0) {
@@ -531,6 +537,9 @@ export default function JobActivitiesPage() {
       jobTypeId: null,
       groupId: null,
       isActive: true,
+      siiesTipoFuncionarioTypeId: null,
+      puestoJerarquicoSuperior: false,
+      referenceSalary: null,
       createdAt: undefined,
       updatedAt: undefined,
     });
@@ -548,6 +557,9 @@ export default function JobActivitiesPage() {
     jobTypeId: number | null;
     groupId: number | null;
     isActive: boolean;
+    siiesTipoFuncionarioTypeId: number | null;
+    puestoJerarquicoSuperior: boolean;
+    referenceSalary: number | null;
   }) => {
     if (!form.description.trim()) {
       toast({

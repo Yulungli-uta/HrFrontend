@@ -14,6 +14,7 @@ import {
   ProvinciasAPI,
   CantonesAPI,
   EmpleadosAPI,
+  InstitucionesAPI,
 } from "@/lib/api";
 
 import { PersonalInfoTab } from "@/components/person-detail/tabs/PersonalInfoTab";
@@ -24,6 +25,9 @@ import { TrainingsTab } from "@/components/person-detail/tabs/TrainingsTab";
 import { LanguagesTab } from "@/components/person-detail/tabs/LanguagesTab";
 import { BooksTab } from "@/components/person-detail/tabs/BooksTab";
 import { EmergencyContactsTab } from "@/components/person-detail/tabs/EmergencyContactsTab";
+import { EducationLevelsTab } from "@/components/person-detail/tabs/EducationLevelsTab";
+import { AddressesTab } from "@/components/person-detail/tabs/AddressesTab";
+import { BankAccountsTab } from "@/components/person-detail/tabs/BankAccountsTab";
 
 import { StatsDashboard } from "@/components/person-detail/StatsDashboard";
 import { PersonFormDialog } from "@/components/person-detail/PersonFormDialog";
@@ -42,6 +46,9 @@ import {
   Languages as LanguagesIcon,
   BookOpen,
   Phone,
+  Award,
+  MapPin,
+  Landmark,
 } from "lucide-react";
 
 type FormType =
@@ -51,6 +58,10 @@ type FormType =
   | "training"
   | "book"
   | "emergencyContact"
+  | "catastrophicIllness"
+  | "educationLevel"
+  | "address"
+  | "bankAccount"
   | null;
 
 interface FormState {
@@ -186,6 +197,13 @@ export default function PersonDetail() {
     refetchOnWindowFocus: false,
   });
 
+  const { data: institutionsResponse } = useQuery({
+    queryKey: ["institutions-list"],
+    queryFn: () => InstitucionesAPI.list(),
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+
   // ── Mapas derivados ──────────────────────────────────────────────────────────
 
   /**
@@ -247,6 +265,13 @@ export default function PersonDetail() {
     }
     return {};
   }, [cantonsResponse]);
+
+  const institutionMap = useMemo(() => {
+    if (institutionsResponse?.status === "success" && Array.isArray(institutionsResponse.data)) {
+      return buildNameMap(institutionsResponse.data, ["institutionId", "id"], ["name"]);
+    }
+    return {};
+  }, [institutionsResponse]);
 
   // ── Confirmación de eliminación ──────────────────────────────────────────────
 
@@ -334,14 +359,18 @@ export default function PersonDetail() {
   }
 
   const safeData = {
-    publications:      data?.publications      ?? [],
-    familyMembers:     data?.familyMembers      ?? [],
-    workExperiences:   data?.workExperiences    ?? [],
-    trainings:         data?.trainings          ?? [],
-    languages:         (data as any)?.languages ?? [],
-    books:             data?.books              ?? [],
-    emergencyContacts: data?.emergencyContacts  ?? [],
-    stats:             (data as any)?.stats     ?? null,
+    publications:          data?.publications          ?? [],
+    familyMembers:         data?.familyMembers          ?? [],
+    workExperiences:       data?.workExperiences        ?? [],
+    trainings:             data?.trainings              ?? [],
+    languages:             (data as any)?.languages     ?? [],
+    books:                 data?.books                  ?? [],
+    emergencyContacts:     data?.emergencyContacts      ?? [],
+    catastrophicIllnesses: (data as any)?.catastrophicIllnesses ?? [],
+    educationLevels:       (data as any)?.educationLevels      ?? [],
+    addresses:             (data as any)?.addresses            ?? [],
+    bankAccounts:          (data as any)?.bankAccounts         ?? [],
+    stats:                 (data as any)?.stats         ?? null,
   };
 
   return (
@@ -414,6 +443,7 @@ export default function PersonDetail() {
             <TabsList className="inline-flex h-auto p-1 bg-muted rounded-lg gap-0.5 min-w-max w-full sm:w-auto">
               {([
                 { value: "personal",     icon: User,          label: "Personal"       },
+                { value: "education",    icon: Award,         label: "Formación"      },
                 { value: "publications", icon: FileText,      label: "Publicaciones"  },
                 { value: "family",       icon: Users,         label: "Familia"        },
                 { value: "experience",   icon: Briefcase,     label: "Experiencia"    },
@@ -421,6 +451,8 @@ export default function PersonDetail() {
                 { value: "languages",    icon: LanguagesIcon, label: "Idiomas"        },
                 { value: "books",        icon: BookOpen,      label: "Libros"         },
                 { value: "emergency",    icon: Phone,         label: "Contactos"      },
+                { value: "addresses",    icon: MapPin,        label: "Direcciones"    },
+                { value: "bankAccounts", icon: Landmark,      label: "Cuentas"        },
               ] as const).map(({ value, icon: Icon, label }) => (
                 <TabsTrigger
                   key={value}
@@ -443,6 +475,31 @@ export default function PersonDetail() {
               countryMap={countryMap}
               provinceMap={provinceMap}
               cantonMap={cantonMap}
+              catastrophicIllnesses={safeData.catastrophicIllnesses}
+              onAddCatastrophicIllness={() => openForm("catastrophicIllness", null)}
+              onEditCatastrophicIllness={(item) => openForm("catastrophicIllness", item)}
+              onDeleteCatastrophicIllness={(id) =>
+                confirmDelete(
+                  "¿Está seguro de que desea eliminar este registro de enfermedad catastrófica?",
+                  () => mutations.catastrophicIllnesses.delete.mutate(id)
+                )
+              }
+            />
+          </TabsContent>
+
+          <TabsContent value="education" className="space-y-4">
+            <EducationLevelsTab
+              educationLevels={safeData.educationLevels}
+              onEdit={openForm as any}
+              onDelete={(id) =>
+                confirmDelete(
+                  "¿Está seguro de que desea eliminar este registro de formación académica?",
+                  () => mutations.educationLevels.delete.mutate(id)
+                )
+              }
+              refTypesMap={allRefTypesById}
+              institutionMap={institutionMap}
+              personIdCard={person!.idCard}
             />
           </TabsContent>
 
@@ -456,6 +513,7 @@ export default function PersonDetail() {
                   () => mutations.publications.delete.mutate(id)
                 )
               }
+              personIdCard={person!.idCard}
             />
           </TabsContent>
 
@@ -470,6 +528,7 @@ export default function PersonDetail() {
                 )
               }
               refTypesMap={allRefTypesById}
+              personIdCard={person!.idCard}
             />
           </TabsContent>
 
@@ -485,6 +544,7 @@ export default function PersonDetail() {
               }
               refTypesMap={allRefTypesById}
               countryMap={countryMap}
+              personIdCard={person!.idCard}
             />
           </TabsContent>
 
@@ -499,6 +559,7 @@ export default function PersonDetail() {
                 )
               }
               refTypesMap={allRefTypesById}
+              personIdCard={person!.idCard}
             />
           </TabsContent>
 
@@ -513,6 +574,7 @@ export default function PersonDetail() {
                 )
               }
               refTypesMap={allRefTypesById}
+              personIdCard={person!.idCard}
             />
           </TabsContent>
 
@@ -527,6 +589,7 @@ export default function PersonDetail() {
                 )
               }
               countryMap={countryMap}
+              personIdCard={person!.idCard}
             />
           </TabsContent>
 
@@ -543,6 +606,37 @@ export default function PersonDetail() {
               refTypesMap={allRefTypesById}
             />
           </TabsContent>
+
+          <TabsContent value="addresses" className="space-y-4">
+            <AddressesTab
+              addresses={safeData.addresses}
+              onEdit={openForm as any}
+              onDelete={(id) =>
+                confirmDelete(
+                  "¿Está seguro de que desea eliminar esta dirección?",
+                  () => mutations.addresses.delete.mutate(id)
+                )
+              }
+              refTypesMap={allRefTypesById}
+              countryMap={countryMap}
+              provinceMap={provinceMap}
+              cantonMap={cantonMap}
+            />
+          </TabsContent>
+
+          <TabsContent value="bankAccounts" className="space-y-4">
+            <BankAccountsTab
+              bankAccounts={safeData.bankAccounts}
+              onEdit={openForm as any}
+              onDelete={(id) =>
+                confirmDelete(
+                  "¿Está seguro de que desea eliminar esta cuenta bancaria?",
+                  () => mutations.bankAccounts.delete.mutate(id)
+                )
+              }
+              refTypesMap={allRefTypesById}
+            />
+          </TabsContent>
         </Tabs>
 
         {/* ── Dialogs ── */}
@@ -554,6 +648,15 @@ export default function PersonDetail() {
             setIsEditFormOpen(false);
             refetch();
           }}
+          catastrophicIllnesses={safeData.catastrophicIllnesses}
+          onAddCatastrophicIllness={() => openForm("catastrophicIllness", null)}
+          onEditCatastrophicIllness={(item) => openForm("catastrophicIllness", item)}
+          onDeleteCatastrophicIllness={(id) =>
+            confirmDelete(
+              "¿Está seguro de que desea eliminar este registro de enfermedad catastrófica?",
+              () => mutations.catastrophicIllnesses.delete.mutate(id)
+            )
+          }
         />
 
         <DynamicFormDialog
@@ -562,6 +665,7 @@ export default function PersonDetail() {
           onSuccess={handleFormSuccess}
           personId={personId}
           mutations={mutations}
+          allData={safeData}
         />
 
         <ConfirmDeleteDialog

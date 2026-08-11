@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ActionIconButton } from "@/components/ui/action-icon-button";
 import { Badge } from "@/components/ui/badge";
-import { GraduationCap, Plus, Edit, Trash2, Calendar, Clock, Award, Monitor, Users2 } from "lucide-react";
+import { GraduationCap, Plus, Edit, Trash2, Calendar, Clock, Award, Monitor, Users2, FileText, ChevronDown, ChevronUp } from "lucide-react";
 import { Training } from "@/types/person";
+import { ReusableDocumentManager } from "@/components/ReusableDocumentManager";
+import { TRAINING_CERTIFICATE_DIRECTORY_CODE, TRAINING_CERTIFICATE_ENTITY_TYPE } from "@/features/constants";
 
 interface TrainingsTabProps {
   trainings: Training[];
@@ -11,11 +14,14 @@ interface TrainingsTabProps {
   onDelete: (id: number) => void;
   /** Mapa id → nombre para resolver certificateTypeId y otros ref_types */
   refTypesMap?: Record<number, string>;
+  /** Identificación de la persona — agrupa su expediente completo en una sola carpeta. */
+  personIdCard?: string;
 }
 
 type ModalityVariant = "default" | "secondary" | "outline";
 
-export function TrainingsTab({ trainings, onEdit, onDelete, refTypesMap = {} }: TrainingsTabProps) {
+export function TrainingsTab({ trainings, onEdit, onDelete, refTypesMap = {}, personIdCard }: TrainingsTabProps) {
+  const [expandedId, setExpandedId] = useState<number | null>(null);
   const formatDate = (dateString: string) => {
     if (!dateString) return "No especificada";
     return new Date(dateString).toLocaleDateString("es-EC", {
@@ -162,6 +168,38 @@ export function TrainingsTab({ trainings, onEdit, onDelete, refTypesMap = {} }: 
                                 <strong>Duración:</strong> {training.hours} horas
                               </span>
                             </div>
+                          )}
+
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="self-start text-xs"
+                            onClick={() =>
+                              setExpandedId(expandedId === training.trainingId ? null : training.trainingId)
+                            }
+                          >
+                            <FileText className="h-3.5 w-3.5 mr-1" />
+                            Certificado
+                            {expandedId === training.trainingId ? (
+                              <ChevronUp className="h-3.5 w-3.5 ml-1" />
+                            ) : (
+                              <ChevronDown className="h-3.5 w-3.5 ml-1" />
+                            )}
+                          </Button>
+
+                          {expandedId === training.trainingId && (
+                            <ReusableDocumentManager
+                              directoryCode={TRAINING_CERTIFICATE_DIRECTORY_CODE}
+                              entityType={TRAINING_CERTIFICATE_ENTITY_TYPE}
+                              entityId={training.trainingId}
+                              relativePath={personIdCard ? `${personIdCard}/${TRAINING_CERTIFICATE_ENTITY_TYPE.toLowerCase()}` : undefined}
+                              accept=".pdf,.jpg,.jpeg,.png"
+                              maxSizeMB={10}
+                              label="Certificado de capacitación"
+                              entityReady={true}
+                              allowReplace
+                              documentType={{ enabled: true, category: "CV_DOCUMENT_TYPE", label: "Tipo de documento" }}
+                            />
                           )}
                         </div>
                       </div>

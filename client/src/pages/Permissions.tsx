@@ -1,5 +1,6 @@
 // src/pages/Permissions.tsx
 import { useEffect, useMemo, useState } from "react";
+import { DataPagination } from "@/components/ui/DataPagination";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -297,6 +298,15 @@ export default function PermissionsPage() {
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
 
+  // Paginación en cliente (esta pantalla es autoservicio: siempre trae el historial
+  // completo del empleado autenticado, no el listado global) — se ordena por fecha
+  // de registro descendente y se pagina sobre el resultado ya filtrado, así los
+  // filtros/búsqueda existentes siguen operando sobre todo el historial sin romperse.
+  const [permPage, setPermPage] = useState(1);
+  const [permPageSize, setPermPageSize] = useState(20);
+  const [vacPage, setVacPage] = useState(1);
+  const [vacPageSize, setVacPageSize] = useState(20);
+
   useEffect(() => {
     if (!DEBUG) return;
     console.group("✅ PermissionsPage init");
@@ -496,6 +506,40 @@ export default function PermissionsPage() {
       return id.includes(q) || status.includes(q);
     });
   }, [vacations, search, yearFilter, currentYear, statusFilter, dateFrom, dateTo]);
+
+  const getRegisteredAt = (r: any) =>
+    new Date(r?.createdAt ?? r?.CreatedAt ?? r?.startDate ?? r?.StartDate ?? 0).getTime();
+
+  const sortedPermissions = useMemo(
+    () => [...filteredPermissions].sort((a, b) => getRegisteredAt(b) - getRegisteredAt(a)),
+    [filteredPermissions]
+  );
+
+  const sortedVacations = useMemo(
+    () => [...filteredVacations].sort((a, b) => getRegisteredAt(b) - getRegisteredAt(a)),
+    [filteredVacations]
+  );
+
+  // Vuelve a la página 1 cuando cambian filtros/búsqueda/tab para no quedar en una
+  // página vacía si el nuevo resultado filtrado tiene menos páginas que antes.
+  useEffect(() => {
+    setPermPage(1);
+    setVacPage(1);
+  }, [search, yearFilter, statusFilter, typeFilter, dateFrom, dateTo, activeTab]);
+
+  const permTotalCount = sortedPermissions.length;
+  const permTotalPages = Math.max(1, Math.ceil(permTotalCount / permPageSize));
+  const pagedPermissions = useMemo(() => {
+    const start = (permPage - 1) * permPageSize;
+    return sortedPermissions.slice(start, start + permPageSize);
+  }, [sortedPermissions, permPage, permPageSize]);
+
+  const vacTotalCount = sortedVacations.length;
+  const vacTotalPages = Math.max(1, Math.ceil(vacTotalCount / vacPageSize));
+  const pagedVacations = useMemo(() => {
+    const start = (vacPage - 1) * vacPageSize;
+    return sortedVacations.slice(start, start + vacPageSize);
+  }, [sortedVacations, vacPage, vacPageSize]);
 
   const openCreatePermission = () => {
     setEditingPermission(null);
@@ -845,7 +889,7 @@ export default function PermissionsPage() {
               ) : (
                 <>
                   <div className="grid max-h-[calc(100vh-380px)] grid-cols-1 gap-3 overflow-auto pr-1 md:hidden">
-                    {filteredPermissions.map((p: any) => (
+                    {pagedPermissions.map((p: any) => (
                       <div
                         key={String(getPermissionId(p) ?? `${p?.startDate}-${p?.endDate}-${Math.random()}`)}
                         className="rounded-xl border bg-background p-3 shadow-sm"
@@ -895,7 +939,7 @@ export default function PermissionsPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredPermissions.map((p: any) => (
+                        {pagedPermissions.map((p: any) => (
                           <tr
                             key={String(getPermissionId(p) ?? `${p?.startDate}-${p?.endDate}-${Math.random()}`)}
                             className="border-t"
@@ -930,6 +974,20 @@ export default function PermissionsPage() {
                       </tbody>
                     </table>
                   </div>
+
+                  <DataPagination
+                    page={permPage}
+                    totalPages={permTotalPages}
+                    totalCount={permTotalCount}
+                    pageSize={permPageSize}
+                    hasPreviousPage={permPage > 1}
+                    hasNextPage={permPage < permTotalPages}
+                    onPageChange={setPermPage}
+                    onPageSizeChange={(size) => {
+                      setPermPageSize(size);
+                      setPermPage(1);
+                    }}
+                  />
                 </>
               )}
             </TabsContent>
@@ -940,7 +998,7 @@ export default function PermissionsPage() {
               ) : (
                 <>
                   <div className="grid max-h-[calc(100vh-380px)] grid-cols-1 gap-3 overflow-auto pr-1 md:hidden">
-                    {filteredVacations.map((v: any) => (
+                    {pagedVacations.map((v: any) => (
                       <div
                         key={String(v?.vacationId ?? v?.id ?? `${v?.startDate}-${v?.endDate}-${Math.random()}`)}
                         className="rounded-xl border bg-background p-3 shadow-sm"
@@ -989,7 +1047,7 @@ export default function PermissionsPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredVacations.map((v: any) => (
+                        {pagedVacations.map((v: any) => (
                           <tr
                             key={String(v?.vacationId ?? v?.id ?? `${v?.startDate}-${v?.endDate}-${Math.random()}`)}
                             className="border-t"
@@ -1023,6 +1081,20 @@ export default function PermissionsPage() {
                       </tbody>
                     </table>
                   </div>
+
+                  <DataPagination
+                    page={vacPage}
+                    totalPages={vacTotalPages}
+                    totalCount={vacTotalCount}
+                    pageSize={vacPageSize}
+                    hasPreviousPage={vacPage > 1}
+                    hasNextPage={vacPage < vacTotalPages}
+                    onPageChange={setVacPage}
+                    onPageSizeChange={(size) => {
+                      setVacPageSize(size);
+                      setVacPage(1);
+                    }}
+                  />
                 </>
               )}
             </TabsContent>

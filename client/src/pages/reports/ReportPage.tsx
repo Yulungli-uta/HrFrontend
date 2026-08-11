@@ -46,6 +46,10 @@ export function ReportPage({ reportType }: ReportPageProps) {
     await download({ type: reportType, format: 'excel', filter });
   }, [download, reportType, filter]);
 
+  const handleDownloadCsv = useCallback(async () => {
+    await download({ type: reportType, format: 'csv', filter });
+  }, [download, reportType, filter]);
+
   const handleDownloadFromPreview = useCallback(async () => {
     // descargamos y luego cerramos
     await handleDownloadPdf();
@@ -68,8 +72,9 @@ export function ReportPage({ reportType }: ReportPageProps) {
       {/* Acciones */}
       <ReportActions
         onPreview={handlePreview}
-        onDownloadPdf={handleDownloadPdf}
-        onDownloadExcel={handleDownloadExcel}
+        onDownloadPdf={reportConfig.availableFormats.includes('pdf') ? handleDownloadPdf : undefined}
+        onDownloadExcel={reportConfig.availableFormats.includes('excel') ? handleDownloadExcel : undefined}
+        onDownloadCsv={reportConfig.availableFormats.includes('csv') ? handleDownloadCsv : undefined}
         isPreviewing={isPreviewing}
         isDownloading={isDownloading}
         description={reportConfig.description}

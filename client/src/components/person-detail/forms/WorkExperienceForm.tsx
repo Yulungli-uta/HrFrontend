@@ -1,10 +1,10 @@
 // client/src/components/person-detail/forms/WorkExperienceForm.tsx
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -26,11 +27,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { RefreshCw } from "lucide-react";
+import { ReusableFileUpload } from "@/components/ReusableFileUpload";
 
 import type { WorkExperience } from "@/types/person";
-import { PaisesAPI, TiposReferenciaAPI, type RefType } from "@/lib/api";
+import { PaisesAPI, TiposReferenciaAPI, ExperienciasLaboralesAPI, type RefType } from "@/lib/api";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
+import { WORK_EXPERIENCE_CERTIFICATE_DIRECTORY_CODE, WORK_EXPERIENCE_CERTIFICATE_ENTITY_TYPE } from "@/features/constants";
 import { logger } from "@/lib/logger";
+import { useToast } from "@/hooks/use-toast";
 
 // =============================
 // Zod schema
@@ -125,7 +129,10 @@ interface WorkExperienceFormProps {
   onCancel: () => void;
   isLoading?: boolean;
   onDirtyChange?: (isDirty: boolean) => void;
+  closeAndRefresh?: () => void;
 }
+
+const MAX_FILE_MB = 10;
 
 // =============================
 // Componente
@@ -137,7 +144,21 @@ export default function WorkExperienceForm({
   onCancel,
   isLoading = false,
   onDirtyChange,
+  closeAndRefresh,
 }: WorkExperienceFormProps) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedDocTypeId, setSelectedDocTypeId] = useState<string>("");
+  const [isSavingWithDocument, setIsSavingWithDocument] = useState(false);
+  const [fileUploadKey, setFileUploadKey] = useState(0);
+
+  const { data: docTypesResp } = useQuery({
+    queryKey: ["refTypes", "CV_DOCUMENT_TYPE"],
+    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CV_DOCUMENT_TYPE),
+  });
+  const docTypes: RefType[] =
+    docTypesResp?.status === "success" ? (docTypesResp.data ?? []).filter((t: any) => t.isActive) : [];
   // =============================
   // QUERIES: Países
   // =============================
@@ -244,6 +265,51 @@ export default function WorkExperienceForm({
         ? undefined
         : data.endDate;
 
+    // Camino con documento adjunto: solo al crear (aún no existe un workExpId al que
+    // asociar el archivo si se está editando).
+    if (!workExperience && selectedFile) {
+      setIsSavingWithDocument(true);
+      try {
+        const formData = new FormData();
+        formData.append("PersonId", String(personId));
+        formData.append("CountryId", data.countryId);
+        formData.append("Company", data.company);
+        formData.append("InstitutionTypeId", String(data.institutionTypeId));
+        formData.append("EntryReason", data.entryReason);
+        if (data.exitReason) formData.append("ExitReason", data.exitReason);
+        formData.append("Position", data.position);
+        if (data.institutionAddress) formData.append("InstitutionAddress", data.institutionAddress);
+        formData.append("StartDate", data.startDate);
+        if (normalizedEndDate) formData.append("EndDate", normalizedEndDate);
+        formData.append("ExperienceTypeId", String(data.experienceTypeId));
+        formData.append("IsCurrent", String(data.isCurrent));
+        formData.append("File", selectedFile);
+        if (selectedDocTypeId) formData.append("DocumentTypeId", selectedDocTypeId);
+
+        const res = await ExperienciasLaboralesAPI.createWithDocument(formData);
+        if (res.status === "error") {
+          throw new Error(res.error?.message || "No se pudo crear la experiencia laboral con el documento adjunto.");
+        }
+
+        await queryClient.invalidateQueries({ queryKey: ["workExperiences", String(personId)] });
+        toast({ title: "✅ Éxito", description: "Experiencia laboral y documento registrados correctamente." });
+        form.reset();
+        setSelectedFile(null);
+        setFileUploadKey((k) => k + 1);
+        closeAndRefresh?.();
+      } catch (error: any) {
+        logger.error("WorkExperienceForm", "[WorkExperienceForm] createWithDocument ERROR", error);
+        toast({
+          title: "❌ Error",
+          description: error?.message || "No se pudo registrar la experiencia laboral con el documento.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsSavingWithDocument(false);
+      }
+      return;
+    }
+
     const payload: WorkExperienceFormData = {
       ...data,
       endDate: normalizedEndDate,
@@ -264,7 +330,7 @@ export default function WorkExperienceForm({
     }
   };
 
-  const saving = isLoading;
+  const saving = isLoading || isSavingWithDocument;
 
   // =============================
   // UI
@@ -381,12 +447,12 @@ export default function WorkExperienceForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>País</FormLabel>
-                <FormControl>
-                  <Select
-                    disabled={loadingCountries || !!countriesError || saving}
-                    value={field.value || ""}
-                    onValueChange={(v) => field.onChange(v)}
-                  >
+                <Select
+                  disabled={loadingCountries || !!countriesError || saving}
+                  value={field.value || ""}
+                  onValueChange={(v) => field.onChange(v)}
+                >
+                  <FormControl>
                     <SelectTrigger>
                       <SelectValue
                         placeholder={
@@ -398,19 +464,19 @@ export default function WorkExperienceForm({
                         }
                       />
                     </SelectTrigger>
-                    <SelectContent>
-                      {countries.map((c) => {
-                        const id = getCountryId(c);
-                        if (!id) return null;
-                        return (
-                          <SelectItem key={id} value={id}>
-                            {getCountryName(c)}
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                </FormControl>
+                  </FormControl>
+                  <SelectContent>
+                    {countries.map((c) => {
+                      const id = getCountryId(c);
+                      if (!id) return null;
+                      return (
+                        <SelectItem key={id} value={id}>
+                          {getCountryName(c)}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
                 <FormMessage />
                 {countriesError && (
                   <p className="text-xs text-destructive mt-1">
@@ -428,12 +494,12 @@ export default function WorkExperienceForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Tipo de institución</FormLabel>
-                <FormControl>
-                  <Select
-                    disabled={loadingInstTypes || !!instTypesError || saving}
-                    value={field.value ? String(field.value) : ""}
-                    onValueChange={(v) => field.onChange(Number(v))}
-                  >
+                <Select
+                  disabled={loadingInstTypes || !!instTypesError || saving}
+                  value={field.value ? String(field.value) : ""}
+                  onValueChange={(v) => field.onChange(Number(v))}
+                >
+                  <FormControl>
                     <SelectTrigger>
                       <SelectValue
                         placeholder={
@@ -445,19 +511,19 @@ export default function WorkExperienceForm({
                         }
                       />
                     </SelectTrigger>
-                    <SelectContent>
-                      {institutionTypes.map((t) => {
-                        const id = getRefTypeId(t);
-                        if (id == null) return null;
-                        return (
-                          <SelectItem key={id} value={String(id)}>
-                            {t.description ?? t.code ?? `Tipo ${id}`}
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                </FormControl>
+                  </FormControl>
+                  <SelectContent>
+                    {institutionTypes.map((t) => {
+                      const id = getRefTypeId(t);
+                      if (id == null) return null;
+                      return (
+                        <SelectItem key={id} value={String(id)}>
+                          {t.description ?? t.code ?? `Tipo ${id}`}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
                 <FormMessage />
                 {instTypesError && (
                   <p className="text-xs text-destructive mt-1">
@@ -475,12 +541,12 @@ export default function WorkExperienceForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Tipo de experiencia</FormLabel>
-                <FormControl>
-                  <Select
-                    disabled={loadingExpTypes || !!expTypesError || saving}
-                    value={field.value ? String(field.value) : ""}
-                    onValueChange={(v) => field.onChange(Number(v))}
-                  >
+                <Select
+                  disabled={loadingExpTypes || !!expTypesError || saving}
+                  value={field.value ? String(field.value) : ""}
+                  onValueChange={(v) => field.onChange(Number(v))}
+                >
+                  <FormControl>
                     <SelectTrigger>
                       <SelectValue
                         placeholder={
@@ -492,19 +558,19 @@ export default function WorkExperienceForm({
                         }
                       />
                     </SelectTrigger>
-                    <SelectContent>
-                      {experienceTypes.map((t) => {
-                        const id = getRefTypeId(t);
-                        if (id == null) return null;
-                        return (
-                          <SelectItem key={id} value={String(id)}>
-                            {t.description ?? t.code ?? `Tipo ${id}`}
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                </FormControl>
+                  </FormControl>
+                  <SelectContent>
+                    {experienceTypes.map((t) => {
+                      const id = getRefTypeId(t);
+                      if (id == null) return null;
+                      return (
+                        <SelectItem key={id} value={String(id)}>
+                          {t.description ?? t.code ?? `Tipo ${id}`}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
                 <FormMessage />
                 {expTypesError && (
                   <p className="text-xs text-destructive mt-1">
@@ -564,6 +630,49 @@ export default function WorkExperienceForm({
             </FormItem>
           )}
         />
+
+        {!workExperience && (
+          <div className="space-y-3 rounded-xl border border-dashed p-4">
+            <Label>Certificado de experiencia laboral (opcional)</Label>
+            <ReusableFileUpload
+              key={fileUploadKey}
+              directoryCode={WORK_EXPERIENCE_CERTIFICATE_DIRECTORY_CODE}
+              relativePath={WORK_EXPERIENCE_CERTIFICATE_ENTITY_TYPE.toLowerCase()}
+              accept=".pdf,.jpg,.jpeg,.png"
+              maxSizeMB={MAX_FILE_MB}
+              label="Certificado de experiencia laboral"
+              disabled={saving}
+              deferUpload
+              onFileSelected={setSelectedFile}
+            />
+
+            {selectedFile && docTypes.length > 0 && (
+              <div className="space-y-1">
+                <Label className="text-xs">Tipo de documento</Label>
+                <Select value={selectedDocTypeId} onValueChange={setSelectedDocTypeId} disabled={saving}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar tipo (opcional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {docTypes.map((t) => {
+                      const id = getRefTypeId(t);
+                      if (id == null) return null;
+                      return (
+                        <SelectItem key={id} value={String(id)}>
+                          {t.name ?? `Tipo ${id}`}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <p className="text-xs text-muted-foreground">
+              Si adjuntas un archivo, el registro y el documento se guardan juntos — si algo falla, no queda ninguno de los dos a medias.
+            </p>
+          </div>
+        )}
 
         {/* Botones */}
         <div className="flex gap-2 pt-4 justify-end">

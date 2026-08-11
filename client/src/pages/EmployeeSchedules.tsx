@@ -284,21 +284,9 @@ export default function EmployeeSchedules() {
 
   const { data: globalStats } = useQuery({
     queryKey: ["employee-details-schedule-stats"],
-    queryFn: () => VistaDetallesEmpleadosAPI.list(),
+    queryFn: () => VistaDetallesEmpleadosAPI.scheduleCoverageStats(),
     staleTime: 5 * 60 * 1000,
-    select: (res) => {
-      const all: any[] = res?.status === "success" ? (res.data ?? []) : [];
-      const withSchedule = all.filter((e) => {
-        const id   = e?.scheduleID   ?? e?.ScheduleID   ?? e?.scheduleId   ?? e?.ScheduleId;
-        const name = e?.scheduleName ?? e?.ScheduleName ?? e?.schedule     ?? e?.Schedule;
-        return Boolean(id || (typeof name === "string" && name.trim()));
-      }).length;
-      return {
-        total:           all.length,
-        withSchedule,
-        withoutSchedule: all.length - withSchedule,
-      };
-    },
+    select: (res) => (res?.status === "success" ? res.data : undefined),
   });
 
   const allSchedules: Schedule[] = useMemo(() => {

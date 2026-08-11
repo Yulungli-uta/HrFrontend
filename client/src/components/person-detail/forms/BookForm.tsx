@@ -1,9 +1,9 @@
 // client/src/components/person-detail/BookForm.tsx
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +15,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -23,16 +24,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { RefreshCw } from "lucide-react";
+import { ReusableFileUpload } from "@/components/ReusableFileUpload";
 
 import type { Book } from "@/types/person";
 import {
   PaisesAPI,
   TiposReferenciaAPI,
   AreaConocimientoAPI,
+  LibrosAPI,
   type RefType,
 } from "@/lib/api";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
+import { BOOK_DOCUMENT_DIRECTORY_CODE, BOOK_DOCUMENT_ENTITY_TYPE } from "@/features/constants";
 import { logger } from "@/lib/logger";
+import { useToast } from "@/hooks/use-toast";
 
 // =============================
 // Tipos auxiliares
@@ -130,7 +135,10 @@ interface BookFormProps {
   onCancel: () => void;
   isLoading?: boolean;
   onDirtyChange?: (isDirty: boolean) => void;
+  closeAndRefresh?: () => void;
 }
+
+const MAX_FILE_MB = 15;
 
 // =============================
 // Componente
@@ -142,7 +150,22 @@ export default function BookForm({
   onCancel,
   isLoading = false,
   onDirtyChange,
+  closeAndRefresh,
 }: BookFormProps) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedDocTypeId, setSelectedDocTypeId] = useState<string>("");
+  const [isSavingWithDocument, setIsSavingWithDocument] = useState(false);
+  const [fileUploadKey, setFileUploadKey] = useState(0);
+
+  const { data: docTypesResp } = useQuery({
+    queryKey: ["refTypes", "CV_DOCUMENT_TYPE"],
+    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CV_DOCUMENT_TYPE),
+  });
+  const docTypes: RefType[] =
+    docTypesResp?.status === "success" ? (docTypesResp.data ?? []).filter((t: any) => t.isActive) : [];
+
   // =============================
   // QUERIES: Países
   // =============================
@@ -302,6 +325,57 @@ export default function BookForm({
   const handleSubmit = async (data: BookFormData) => {
     const now = new Date();
 
+    // Camino con documento adjunto: solo al crear.
+    if (!book && selectedFile) {
+      setIsSavingWithDocument(true);
+      try {
+        const formData = new FormData();
+        formData.append("PersonId", String(personId));
+        formData.append("Title", data.title);
+        formData.append("PeerReviewed", String(data.peerReviewed ?? false));
+        if (data.isbn) formData.append("ISBN", data.isbn);
+        if (data.publisher) formData.append("Publisher", data.publisher);
+        formData.append("CountryId", data.countryId);
+        if (data.city) formData.append("City", data.city);
+        if (data.knowledgeAreaTypeId) formData.append("KnowledgeAreaTypeId", String(data.knowledgeAreaTypeId));
+        if (data.subAreaTypeId) formData.append("SubAreaTypeId", String(data.subAreaTypeId));
+        if (data.areaTypeId) formData.append("AreaTypeId", String(data.areaTypeId));
+        if (data.volumeCount) formData.append("VolumeCount", data.volumeCount);
+        formData.append("ParticipationTypeId", String(data.participationTypeId));
+        formData.append(
+          "PublicationDate",
+          data.publicationDate && data.publicationDate !== "" ? data.publicationDate : now.toISOString().slice(0, 10)
+        );
+        formData.append("UTAffiliation", String(data.utAffiliation ?? true));
+        formData.append("UTASponsorship", String(data.utaSponsorship ?? false));
+        formData.append("BookTypeId", String(data.bookTypeId));
+        formData.append("File", selectedFile);
+        if (selectedDocTypeId) formData.append("DocumentTypeId", selectedDocTypeId);
+
+        const res = await LibrosAPI.createWithDocument(formData);
+        if (res.status === "error") {
+          throw new Error(res.error?.message || "No se pudo crear el libro con el documento adjunto.");
+        }
+
+        await queryClient.invalidateQueries({ queryKey: ["books", String(personId)] });
+        toast({ title: "✅ Éxito", description: "Libro y documento registrados correctamente." });
+        form.reset();
+        setSelectedFile(null);
+        setFileUploadKey((k) => k + 1);
+        closeAndRefresh?.();
+      } catch (error: any) {
+        logger.error("BookForm", "[BookForm] createWithDocument ERROR", error);
+        toast({
+          title: "❌ Error",
+          description: error?.message || "No se pudo registrar el libro con el documento.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsSavingWithDocument(false);
+      }
+      return;
+    }
+
     const normalizeId = (value: number | null | undefined) =>
       value !== null && value !== undefined && value !== 0 ? value : undefined;
 
@@ -369,7 +443,7 @@ export default function BookForm({
     }
   };
 
-  const saving = isLoading;
+  const saving = isLoading || isSavingWithDocument;
 
   // =============================
   // UI
@@ -487,12 +561,12 @@ export default function BookForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>País</FormLabel>
-                  <FormControl>
-                    <Select
-                      disabled={loadingCountries || !!countriesError || saving}
-                      value={field.value || ""}
-                      onValueChange={(v) => field.onChange(v)}
-                    >
+                  <Select
+                    disabled={loadingCountries || !!countriesError || saving}
+                    value={field.value || ""}
+                    onValueChange={(v) => field.onChange(v)}
+                  >
+                    <FormControl>
                       <SelectTrigger>
                         <SelectValue
                           placeholder={
@@ -504,19 +578,19 @@ export default function BookForm({
                           }
                         />
                       </SelectTrigger>
-                      <SelectContent>
-                        {countries.map((c) => {
-                          const id = getCountryId(c);
-                          if (!id) return null;
-                          return (
-                            <SelectItem key={id} value={id}>
-                              {getCountryName(c)}
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
-                  </FormControl>
+                    </FormControl>
+                    <SelectContent>
+                      {countries.map((c) => {
+                        const id = getCountryId(c);
+                        if (!id) return null;
+                        return (
+                          <SelectItem key={id} value={id}>
+                            {getCountryName(c)}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                   {countriesError && (
                     <p className="text-xs text-destructive mt-1">
@@ -857,6 +931,49 @@ export default function BookForm({
             />
           </div>
         </div>
+
+        {!book && (
+          <div className="space-y-3 rounded-xl border border-dashed p-4">
+            <Label>Documento del libro (opcional)</Label>
+            <ReusableFileUpload
+              key={fileUploadKey}
+              directoryCode={BOOK_DOCUMENT_DIRECTORY_CODE}
+              relativePath={BOOK_DOCUMENT_ENTITY_TYPE.toLowerCase()}
+              accept=".pdf,.jpg,.jpeg,.png"
+              maxSizeMB={MAX_FILE_MB}
+              label="Portada o ficha del libro"
+              disabled={saving}
+              deferUpload
+              onFileSelected={setSelectedFile}
+            />
+
+            {selectedFile && docTypes.length > 0 && (
+              <div className="space-y-1">
+                <Label className="text-xs">Tipo de documento</Label>
+                <Select value={selectedDocTypeId} onValueChange={setSelectedDocTypeId} disabled={saving}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar tipo (opcional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {docTypes.map((t) => {
+                      const id = getRefTypeId(t);
+                      if (id == null) return null;
+                      return (
+                        <SelectItem key={id} value={String(id)}>
+                          {t.name ?? `Tipo ${id}`}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <p className="text-xs text-muted-foreground">
+              Si adjuntas un archivo, el registro y el documento se guardan juntos — si algo falla, no queda ninguno de los dos a medias.
+            </p>
+          </div>
+        )}
 
         {/* ==================== */}
         {/* BOTONES */}

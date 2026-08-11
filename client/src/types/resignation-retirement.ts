@@ -128,6 +128,19 @@ export interface CreateResignationRetirementRequest {
   additionalNotes?: string | null;
 }
 
+/**
+ * Creación por RRHH en nombre de un empleado que no puede/no logra hacer su propia
+ * solicitud. A diferencia de CreateResignationRetirementRequest, proposedExitDate SÍ
+ * puede ser una fecha ya pasada.
+ */
+export interface CreateResignationRetirementOnBehalfRequest {
+  employeeId: number;
+  requestType: ResignationRetirementRequestType;
+  proposedExitDate: string;
+  reason?: string | null;
+  additionalNotes?: string | null;
+}
+
 export interface UpdateResignationRetirementRequest {
   proposedExitDate: string;
   reason?: string | null;

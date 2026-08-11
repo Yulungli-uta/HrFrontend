@@ -119,6 +119,12 @@ type EmployeeFormData = {
   immediateBossId: number | null;
   hireDate: string;
   isActive: boolean;
+  /** SIIES TIPO_DOCENTE_LOSEP(LOES) — solo aplica si el cargo es Docente LOES; NO APLICA en el resto de casos. */
+  tipoDocenteLoesTypeId?: number | null;
+  /** SIIES CATEGORIA_DOCENTE_LOSEP(LOES) — solo aplica si el cargo es Docente LOES; NO APLICA en el resto de casos. */
+  categoriaDocenteLoesTypeId?: number | null;
+  /** Partida presupuestaria (ref_Types BUDGET_UNIT) — de dónde sale el sueldo del empleado, distinto de Departamento. */
+  budgetUnitTypeId?: number | null;
 };
 
 interface ComboboxOption {
@@ -235,6 +241,29 @@ export default function EmployeeForm({
     );
   }, [refTypes]);
 
+  const tipoDocenteLoesOptions = useMemo(() => {
+    const arr = refTypes?.status === "success" ? refTypes.data ?? [] : [];
+    return arr.filter(
+      (t) => t?.category === "SIIES_TIPO_DOCENTE_LOES" && typeof t.typeId === "number"
+    );
+  }, [refTypes]);
+
+  const categoriaDocenteLoesOptions = useMemo(() => {
+    const arr = refTypes?.status === "success" ? refTypes.data ?? [] : [];
+    return arr.filter(
+      (t) => t?.category === "SIIES_CATEGORIA_DOCENTE_LOES" && typeof t.typeId === "number"
+    );
+  }, [refTypes]);
+
+  // La categoría en BD se llama AP_NIVEL_GESTION (reutilizada — antes solo tenía
+  // 2 valores de prueba, ahora tiene las 38 partidas presupuestarias reales).
+  const budgetUnitOptions = useMemo(() => {
+    const arr = refTypes?.status === "success" ? refTypes.data ?? [] : [];
+    return arr.filter(
+      (t) => t?.category === "AP_NIVEL_GESTION" && typeof t.typeId === "number"
+    );
+  }, [refTypes]);
+
   const mapPerson = useCallback((p: PersonDto): ComboboxOption | null => {
     if (!p?.personId) return null;
     return {
@@ -300,6 +329,9 @@ export default function EmployeeForm({
       immediateBossId: employee?.immediateBossId ?? null,
       hireDate: toDateInputValue(employee?.hireDate ?? ""),
       isActive: employee?.isActive ?? true,
+      tipoDocenteLoesTypeId: (employee as any)?.tipoDocenteLoesTypeId ?? null,
+      categoriaDocenteLoesTypeId: (employee as any)?.categoriaDocenteLoesTypeId ?? null,
+      budgetUnitTypeId: (employee as any)?.budgetUnitTypeId ?? null,
       email: "",
     },
     mode: "onChange",
@@ -436,6 +468,11 @@ export default function EmployeeForm({
             viewSeed.employeeIsActive ??
             true;
 
+          const budgetUnitTypeId =
+            empData.budgetUnitTypeId ??
+            empData.BudgetUnitTypeId ??
+            null;
+
           setEmployeeIdForUpdate(employeeId);
 
           form.reset({
@@ -447,6 +484,7 @@ export default function EmployeeForm({
             hireDate,
             isActive,
             email,
+            budgetUnitTypeId,
           });
 
           const fullName =
@@ -532,6 +570,9 @@ export default function EmployeeForm({
         hireDate: data.hireDate,
         email: data.email,
         isActive: data.isActive,
+        tipoDocenteLoesTypeId: data.tipoDocenteLoesTypeId ?? null,
+        categoriaDocenteLoesTypeId: data.categoriaDocenteLoesTypeId ?? null,
+        budgetUnitTypeId: data.budgetUnitTypeId ?? null,
         createdAt: new Date().toISOString(),
       };
 
@@ -578,6 +619,9 @@ export default function EmployeeForm({
         hireDate: data.hireDate,
         email: data.email,
         isActive: data.isActive,
+        tipoDocenteLoesTypeId: data.tipoDocenteLoesTypeId ?? null,
+        categoriaDocenteLoesTypeId: data.categoriaDocenteLoesTypeId ?? null,
+        budgetUnitTypeId: data.budgetUnitTypeId ?? null,
       };
 
       const res = await EmpleadosAPI.update(empId, payload as any);
@@ -979,6 +1023,98 @@ export default function EmployeeForm({
                     </FormItem>
                   );
                 }}
+              />
+
+              {/* SIIES: Tipo/Categoría Docente LOSEP(LOES) — solo aplica cuando el cargo del
+                  empleado corresponde a Docente LOES; en el resto de casos debe quedar sin
+                  seleccionar (el reporte SIIES exporta "NO APLICA" automáticamente). */}
+              <FormField
+                control={form.control}
+                name="tipoDocenteLoesTypeId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo Docente LOSEP(LOES) — SIIES</FormLabel>
+                    <Select
+                      value={field.value ? String(field.value) : ""}
+                      onValueChange={(v) => field.onChange(v ? Number(v) : null)}
+                      disabled={disabling}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="No aplica" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {tipoDocenteLoesOptions.map((t) => (
+                          <SelectItem key={t.typeId} value={String(t.typeId)}>
+                            {t.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="categoriaDocenteLoesTypeId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Categoría Docente LOSEP(LOES) — SIIES</FormLabel>
+                    <Select
+                      value={field.value ? String(field.value) : ""}
+                      onValueChange={(v) => field.onChange(v ? Number(v) : null)}
+                      disabled={disabling}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="No aplica" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {categoriaDocenteLoesOptions.map((t) => (
+                          <SelectItem key={t.typeId} value={String(t.typeId)}>
+                            {t.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Partida presupuestaria (ref_Types BUDGET_UNIT) — de dónde sale el sueldo
+                  del empleado; distinta del Departamento (unidad organizacional). */}
+              <FormField
+                control={form.control}
+                name="budgetUnitTypeId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Partida Presupuestaria</FormLabel>
+                    <Select
+                      value={field.value ? String(field.value) : ""}
+                      onValueChange={(v) => field.onChange(v ? Number(v) : null)}
+                      disabled={disabling}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sin especificar" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {budgetUnitOptions.map((t) => (
+                          <SelectItem key={t.typeId} value={String(t.typeId)}>
+                            {t.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
 
               <FormField
