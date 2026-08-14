@@ -160,14 +160,38 @@ export default function UserRolesPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Búsqueda con debounce: evita una request por cada tecla presionada.
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setDebouncedSearch(filters.searchTerm.trim());
+    }, 350);
+    return () => clearTimeout(handle);
+  }, [filters.searchTerm]);
+
   const {
     data: usersResponse,
     isLoading: isLoadingUsers,
     error: usersError,
     refetch: refetchUsers,
   } = useQuery<ApiResponse<PagedResult<User>>>({
-    queryKey: ["auth-users"],
-    queryFn: () => AuthUsersAPI.list(1, 10000),
+    // 2026-08-15: antes usaba AuthUsersAPI.list(1, 10000) contra /api/users, que
+    // RepositoryUta recorta en silencio a 200 filas SIN ningún ORDER BY (Id es un
+    // GUID no secuencial) — un usuario recién creado podía simplemente no venir en
+    // ese subconjunto arbitrario, y el buscador de abajo solo filtraba en el
+    // navegador sobre lo ya cargado, así que escribir su email no encontraba nada.
+    // AuthUsersAPI.listPaged ya pega contra /api/users/paged, que sí busca por
+    // email/nombre en el servidor y ordena por último login (así un usuario que
+    // acaba de iniciar sesión por primera vez aparece primero).
+    queryKey: ["auth-users", debouncedSearch],
+    queryFn: () =>
+      AuthUsersAPI.listPaged({
+        page: 1,
+        pageSize: 200,
+        search: debouncedSearch || undefined,
+        sortBy: "lastlogin",
+        sortDirection: "desc",
+      }),
     refetchOnWindowFocus: true,
   });
 
@@ -304,16 +328,12 @@ export default function UserRolesPage() {
     return { totalUsers, activeUsers, usersWithRoles, totalAssignments };
   }, [users, userRolesGrouped, userRoles]);
 
+  // La búsqueda por texto ya la resuelve el servidor (ver query de arriba) —
+  // acá solo quedan los filtros que /api/users/paged no soporta (rol asignado
+  // o no) y los que sí soporta pero mantenemos client-side para que respondan
+  // sin esperar el debounce (estado, tipo de usuario).
   const filteredUsers = useMemo(() => {
     return users.filter((user) => {
-      const needle = filters.searchTerm.trim().toLowerCase();
-
-      const matchesSearch =
-        !needle ||
-        user.email.toLowerCase().includes(needle) ||
-        user.displayName?.toLowerCase().includes(needle) ||
-        user.id.toLowerCase().includes(needle);
-
       const matchesStatus =
         filters.status === "all" ||
         (filters.status === "active" && user.isActive) ||
@@ -330,7 +350,7 @@ export default function UserRolesPage() {
         (filters.hasRoles === "with-roles" && hasRoles) ||
         (filters.hasRoles === "without-roles" && !hasRoles);
 
-      return matchesSearch && matchesStatus && matchesUserType && matchesRoleFilter;
+      return matchesStatus && matchesUserType && matchesRoleFilter;
     });
   }, [users, filters, userRolesGrouped]);
 
@@ -518,7 +538,7 @@ export default function UserRolesPage() {
             <div className="relative flex-1 w-full lg:max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
               <Input
-                placeholder="Buscar usuarios, emails, IDs..."
+                placeholder="Buscar por email o nombre..."
                 value={filters.searchTerm}
                 onChange={(e) =>
                   setFilters((p) => ({ ...p, searchTerm: e.target.value }))
