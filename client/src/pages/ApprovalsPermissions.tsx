@@ -434,7 +434,11 @@ export default function ApprovalsPermissions() {
         const just = (p.justification ?? "").toLowerCase();
         const typeName = getTypeName(p.permissionTypeId).toLowerCase();
         const q = permFilters.q.toLowerCase();
-        const textOk = !q || empName.includes(q) || just.includes(q) || typeName.includes(q);
+        // Nombre: cada palabra escrita (ej. "Perez Juan") debe aparecer en el
+        // nombre, sin importar el orden.
+        const qWords = q.split(/\s+/).filter(Boolean);
+        const empNameOk = qWords.length > 0 && qWords.every((w) => empName.includes(w));
+        const textOk = !q || empNameOk || just.includes(q) || typeName.includes(q);
 
         const canon = canonicalPermissionStatus(p.status);
         const statusOk = permFilters.status === "all" || canon === permFilters.status;
@@ -472,7 +476,9 @@ export default function ApprovalsPermissions() {
           : "";
         const reason = (v.Reason ?? "").toLowerCase();
         const q = vacFilters.q.toLowerCase();
-        const textOk = !q || empName.includes(q) || reason.includes(q);
+        const qWords = q.split(/\s+/).filter(Boolean);
+        const empNameOk = qWords.length > 0 && qWords.every((w) => empName.includes(w));
+        const textOk = !q || empNameOk || reason.includes(q);
 
         const statusOk = vacFilters.status === "all" || v.Status === vacFilters.status;
 
@@ -509,7 +515,9 @@ export default function ApprovalsPermissions() {
           : "";
         const reason = (j.reason ?? "").toLowerCase();
         const q = justFilters.q.toLowerCase();
-        const textOk = !q || empName.includes(q) || reason.includes(q);
+        const qWords = q.split(/\s+/).filter(Boolean);
+        const empNameOk = qWords.length > 0 && qWords.every((w) => empName.includes(w));
+        const textOk = !q || empNameOk || reason.includes(q);
 
         const js = normalizeJustStatus(j.status);
         const statusOk = justFilters.status === "all" || js === justFilters.status;

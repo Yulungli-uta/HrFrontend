@@ -148,6 +148,7 @@ function TriStateCheckbox({
       id={id}
       className="h-4 w-4 rounded border-border cursor-pointer"
       checked={checked}
+      onClick={(e) => e.stopPropagation()}
       onChange={(e) => {
         e.stopPropagation();
         onToggle();
@@ -227,15 +228,9 @@ export default function RoleMenuItemsPage() {
     return map;
   }, [allMenus]);
 
-  const didAutoExpandRoots = useRef(false);
-
-  useEffect(() => {
-    if (!didAutoExpandRoots.current && tree.length) {
-      didAutoExpandRoots.current = true;
-      setExpanded(new Set(tree.map((r) => r.id)));
-    }
-  }, [tree]);
-
+  // El árbol de items de menú inicia contraído a propósito: el usuario lo va
+  // abriendo por rama según lo que necesite asignar (ver botón "Expandir todo"
+  // para el caso de querer verlo completo).
   useEffect(() => {
     if (!searchTerm.trim()) return;
     setExpanded((prev) => {

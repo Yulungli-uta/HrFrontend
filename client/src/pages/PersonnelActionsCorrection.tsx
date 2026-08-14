@@ -36,6 +36,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { DataPagination } from '@/components/ui/DataPagination';
 import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
+import { DepartmentSelect } from '@/components/departments/DepartmentSelect';
 import { ArrowLeft, Search, ShieldAlert, Loader2, Eye, Pencil } from 'lucide-react';
 import { PersonnelActionsAPI } from '@/lib/api/services/contracts';
 import { PersonnelActionForm } from '@/components/personnelActions/PersonnelActionForm';
@@ -97,8 +98,9 @@ export default function PersonnelActionsCorrection() {
   const [statusInput, setStatusInput] = useState<string>('all');
   const [dateFromInput, setDateFromInput] = useState('');
   const [dateToInput, setDateToInput] = useState('');
+  const [departmentIdInput, setDepartmentIdInput] = useState<number | null>(null);
   const [appliedFilters, setAppliedFilters] = useState<{
-    search?: string; status?: string; startDate?: string; endDate?: string;
+    search?: string; status?: string; startDate?: string; endDate?: string; departmentId?: number;
   } | null>(null);
 
   const [page, setPage] = useState(1);
@@ -133,6 +135,7 @@ export default function PersonnelActionsCorrection() {
       status: statusInput === 'all' ? undefined : statusInput,
       startDate: dateFromInput || undefined,
       endDate: dateToInput || undefined,
+      departmentId: departmentIdInput ?? undefined,
     });
   };
 
@@ -218,6 +221,15 @@ export default function PersonnelActionsCorrection() {
                   onKeyDown={(e) => { if (e.key === 'Enter') handleSearchClick(); }}
                   placeholder="Cédula, nombre del empleado o número de documento…"
                   className="pl-9"
+                />
+              </div>
+
+              <div className="space-y-1.5 sm:max-w-sm">
+                <Label className="text-xs text-muted-foreground">Dependencia / Departamento</Label>
+                <DepartmentSelect
+                  value={departmentIdInput}
+                  onChange={setDepartmentIdInput}
+                  placeholder="Todas"
                 />
               </div>
 

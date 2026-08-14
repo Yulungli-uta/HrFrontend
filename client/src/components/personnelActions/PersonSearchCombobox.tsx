@@ -60,7 +60,7 @@ export function PersonSearchCombobox({ value, staticLabel, onSelect, disabled }:
   const displayLabel =
     staticLabel ??
     (selectedPerson
-      ? `${selectedPerson.firstName} ${selectedPerson.lastName}`
+      ? `${selectedPerson.lastName} ${selectedPerson.firstName}`
       : value
         ? `Persona #${value}`
         : null);
@@ -170,7 +170,7 @@ export function PersonSearchCombobox({ value, staticLabel, onSelect, disabled }:
                     />
                     <div className="min-w-0">
                       <p className="font-medium">
-                        {p.firstName} {p.lastName}
+                        {p.lastName} {p.firstName}
                       </p>
                       <p className="text-xs text-muted-foreground">{p.idCard}</p>
                     </div>

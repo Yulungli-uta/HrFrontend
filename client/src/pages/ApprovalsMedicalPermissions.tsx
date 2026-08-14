@@ -323,7 +323,9 @@ export default function ApprovalsMedicalPermissionsPage() {
         const just = (p.justification ?? "").toLowerCase();
         const typeName = getTypeName(p.permissionTypeId).toLowerCase();
         const q = filters.q.toLowerCase();
-        const textOk = !q || empName.includes(q) || just.includes(q) || typeName.includes(q);
+        const qWords = q.split(/\s+/).filter(Boolean);
+        const empNameOk = qWords.length > 0 && qWords.every((w) => empName.includes(w));
+        const textOk = !q || empNameOk || just.includes(q) || typeName.includes(q);
 
         const canon = canonicalPermissionStatus(p.status);
         const statusOk = filters.status === "all" || canon === filters.status;

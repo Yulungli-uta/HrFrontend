@@ -61,6 +61,7 @@ export const ContractsRHAPI = {
     certificationId?: number | null;
     year?: number | null;
     employeeId?: number | null;
+    departmentId?: number | null;
     startDateFrom?: string | null;
     startDateTo?: string | null;
     sortDirection?: "asc" | "desc";
@@ -74,6 +75,7 @@ export const ContractsRHAPI = {
       ...(params.certificationId != null ? { certificationId: String(params.certificationId) } : {}),
       ...(params.year != null && params.year > 0 ? { year: String(params.year) } : {}),
       ...(params.employeeId != null ? { employeeId: String(params.employeeId) } : {}),
+      ...(params.departmentId != null ? { departmentId: String(params.departmentId) } : {}),
       ...(params.startDateFrom ? { startDateFrom: params.startDateFrom } : {}),
       ...(params.startDateTo ? { startDateTo: params.startDateTo } : {}),
     });

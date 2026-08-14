@@ -220,7 +220,7 @@ export default function TimePlanningEmployeeForm({
     if (!id || id <= 0) return null;
 
     const fullName = String(
-      e?.fullName ?? `${e?.firstName ?? ""} ${e?.lastName ?? ""}`.trim()
+      e?.fullName ?? `${e?.lastName ?? ""} ${e?.firstName ?? ""}`.trim()
     ).trim();
 
     return {

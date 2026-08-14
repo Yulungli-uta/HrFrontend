@@ -19,7 +19,6 @@ import {
   Users,
   Clock,
   Building,
-  ClipboardList,
   AlarmClock,
   Timer,
   LayoutGrid,
@@ -28,6 +27,19 @@ import {
   ChevronRight,
   FileBarChart2,
   FileSpreadsheet,
+  FileText,
+  FileCheck,
+  ClipboardSignature,
+  ClipboardCheck,
+  History,
+  CalendarCheck,
+  FilePlus,
+  BadgeCheck,
+  CalendarRange,
+  MapPin,
+  ArrowLeftRight,
+  ShieldCheck,
+  Utensils,
 } from "lucide-react";
 
 // ─── Tipos ─────────────────────────────────────────────────────────────────────
@@ -77,16 +89,12 @@ const REPORT_CARDS: ReportCard[] = [
     href: "/reports/departments",
     formats: ["PDF", "Excel"],
   },
-  {
-    id: "attendancesumary",
-    title: "Resumen de Asistencias",
-    description: "Resumen consolidado de asistencia por empleado con todas las novedades",
-    icon: ClipboardList,
-    category: "Asistencia",
-    badgeColor: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-    href: "/reports/attedancesumary",
-    formats: ["PDF", "Excel"],
-  },
+  // "attendancesumary" (Resumen de Asistencias) deprecado 2026-08-11: ~90% de sus
+  // columnas ya están cubiertas por "Reporte Cruzado de Asistencia" (attendance-cross),
+  // que además soporta el filtro de régimen laboral a nivel de consulta. Se ocultó
+  // también del menú lateral (auth.tbl_MenuItems.IsVisible=0) — no se borró el
+  // ReportSource/SP, la ruta /reports/attedancesumary sigue funcionando si alguien
+  // la tiene guardada.
 
   // ── Reportes v2 — Estructura organizacional ──────────────────────────────────
   {
@@ -151,6 +159,16 @@ const REPORT_CARDS: ReportCard[] = [
     href: "/reports/attendance-cross",
     formats: ["PDF", "Excel"],
   },
+  {
+    id: "food-subsidy-summary",
+    title: "Subsidio de Alimentación",
+    description: "Días efectivamente laborados por empleado en el período multiplicados por el valor diario parametrizado del subsidio de alimentación",
+    icon: Utensils,
+    category: "Asistencia",
+    badgeColor: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+    href: "/reports/food-subsidy-summary",
+    formats: ["PDF", "Excel"],
+  },
 
   // ── Reportes v2 — SIIES (CACES, Instructivo Carga Masiva v2S) ────────────────
   {
@@ -183,11 +201,165 @@ const REPORT_CARDS: ReportCard[] = [
     href: "/reports/siies-formacion-profesional",
     formats: ["PDF", "CSV"],
   },
+
+  // ── Reportes v2 — Gestión RH ──────────────────────────────────────────────────
+  {
+    id: "contracts",
+    title: "Reporte de Contratos",
+    description: "Contratos de personal con filtro por estado, departamento y período",
+    icon: FileText,
+    category: "Gestión RH",
+    badgeColor: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+    href: "/reports/contracts",
+    formats: ["PDF", "Excel"],
+  },
+  {
+    id: "active-contracts",
+    title: "Contratos Vigentes",
+    description: "Contratos activos a la fecha actual con filtro por tipo, régimen y creador",
+    icon: FileCheck,
+    category: "Gestión RH",
+    badgeColor: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+    href: "/reports/active-contracts",
+    formats: ["PDF", "Excel"],
+  },
+  {
+    id: "contract-requests",
+    title: "Reporte de Solicitudes de Contrato",
+    description: "Solicitudes de contratación por departamento con avance de cumplimiento",
+    icon: FilePlus,
+    category: "Gestión RH",
+    badgeColor: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+    href: "/reports/contract-requests",
+    formats: ["PDF", "Excel"],
+  },
+  {
+    id: "personnel-actions",
+    title: "Reporte de Acciones de Personal",
+    description: "Todas las acciones de personal con filtro por estado y período",
+    icon: ClipboardSignature,
+    category: "Gestión RH",
+    badgeColor: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+    href: "/reports/personnel-actions",
+    formats: ["PDF", "Excel"],
+  },
+  {
+    id: "active-personnel-actions",
+    title: "Acciones de Personal Vigentes",
+    description: "Acciones de movimiento, ingreso y económicas vigentes con filtro por período y empleado",
+    icon: ClipboardCheck,
+    category: "Gestión RH",
+    badgeColor: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+    href: "/reports/active-personnel-actions",
+    formats: ["PDF", "Excel"],
+  },
+  {
+    id: "employee-history",
+    title: "Historial del Empleado",
+    description: "Contratos y acciones de cambio de puesto por empleado (excluye disciplinarias)",
+    icon: History,
+    category: "Gestión RH",
+    badgeColor: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+    href: "/reports/employee-history",
+    formats: ["PDF", "Excel"],
+  },
+  {
+    id: "granted-permissions",
+    title: "Reporte de Permisos Otorgados",
+    description: "Permisos de personal con filtro por estado, período y departamento",
+    icon: CalendarCheck,
+    category: "Gestión RH",
+    badgeColor: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+    href: "/reports/granted-permissions",
+    formats: ["PDF", "Excel"],
+  },
+  {
+    id: "certifications",
+    title: "Reporte de Certificaciones Financieras",
+    description: "Certificaciones de disponibilidad presupuestaria con selección de estado",
+    icon: BadgeCheck,
+    category: "Gestión RH",
+    badgeColor: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+    href: "/reports/certifications",
+    formats: ["PDF", "Excel"],
+  },
+
+  // ── Reportes v2 — Guardias ────────────────────────────────────────────────────
+  {
+    id: "guard-shift-planning",
+    title: "Planificación de Turnos de Guardias",
+    description: "Detalle de turnos asignados por guardia, grupo y ubicación en un período",
+    icon: CalendarRange,
+    category: "Guardias",
+    badgeColor: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200",
+    href: "/reports/guard-shift-planning",
+    formats: ["PDF", "Excel"],
+  },
+  {
+    id: "guard-location-coverage",
+    title: "Cobertura de Guardias por Ubicación",
+    description: "Cantidad de guardias asignados por ubicación, fecha y turno; resalta ubicaciones sin cobertura",
+    icon: MapPin,
+    category: "Guardias",
+    badgeColor: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200",
+    href: "/reports/guard-location-coverage",
+    formats: ["PDF", "Excel"],
+  },
+  {
+    id: "guard-shift-changes",
+    title: "Cambios de Turno y Reemplazos",
+    description: "Intercambios, ausencias y reemplazos de guardias con estado de aprobación",
+    icon: ArrowLeftRight,
+    category: "Guardias",
+    badgeColor: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200",
+    href: "/reports/guard-shift-changes",
+    formats: ["PDF", "Excel"],
+  },
+  {
+    id: "guard-group-roster",
+    title: "Guardias por Grupo y Ubicación",
+    description: "Listado de guardias activos con su grupo, ubicación asignada y período de rotación vigente",
+    icon: Users,
+    category: "Guardias",
+    badgeColor: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200",
+    href: "/reports/guard-group-roster",
+    formats: ["PDF", "Excel"],
+  },
+  {
+    id: "guard-schedule-matrix",
+    title: "Cronograma Matricial de Guardias",
+    description: "Cronograma imprimible: filas = guardias, columnas = fechas, celdas = turno (M/T/N/L)",
+    icon: LayoutGrid,
+    category: "Guardias",
+    badgeColor: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200",
+    href: "/reports/guard-schedule-matrix",
+    formats: ["PDF", "Excel"],
+  },
+
+  // ── Auditoría ─────────────────────────────────────────────────────────────────
+  {
+    id: "audit",
+    title: "Auditoría de Reportes",
+    description: "Historial de reportes generados y descargados: quién, cuándo y con qué filtros",
+    icon: ShieldCheck,
+    category: "Auditoría",
+    badgeColor: "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200",
+    href: "/reports/audit",
+    formats: [],
+  },
 ];
 
 // ─── Agrupación por categoría ──────────────────────────────────────────────────
 
-const CATEGORY_ORDER = ["Personal", "Asistencia", "Organización", "SIIES (CACES)"];
+const CATEGORY_ORDER = [
+  "Personal",
+  "Asistencia",
+  "Organización",
+  "Gestión RH",
+  "Guardias",
+  "SIIES (CACES)",
+  "Auditoría",
+];
 
 function groupByCategory(cards: ReportCard[]): Record<string, ReportCard[]> {
   return cards.reduce<Record<string, ReportCard[]>>((acc, card) => {

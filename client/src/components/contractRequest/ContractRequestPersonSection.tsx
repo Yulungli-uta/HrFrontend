@@ -447,7 +447,7 @@ export const ContractRequestPersonSection = forwardRef<ContractRequestPersonSect
                   value={form.personId ?? null}
                   onSelect={(personId, person) => {
                     setForm((f) => ({ ...f, personId }));
-                    setSelectedPersonLabel(`${person.firstName} ${person.lastName}`);
+                    setSelectedPersonLabel(`${person.lastName} ${person.firstName}`);
                   }}
                 />
               </div>

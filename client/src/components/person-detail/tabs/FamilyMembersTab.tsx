@@ -53,6 +53,17 @@ export function FamilyMembersTab({
     return refTypesMap[Number(id)] ?? `Tipo ${id}`;
   };
 
+  const STATUS_BADGE_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+    REGISTRADO: "secondary",
+    APROBADO: "default",
+    RECHAZADO: "destructive",
+  };
+  const STATUS_LABEL: Record<string, string> = {
+    REGISTRADO: "Pendiente",
+    APROBADO: "Aprobado",
+    RECHAZADO: "Rechazado",
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -88,6 +99,7 @@ export function FamilyMembersTab({
               const age = calculateAge(member.birthDate ?? "");
               const idTypeName = resolveRefType(member.identificationTypeId as any);
               const disabilityTypeName = resolveRefType(member.disabilityTypeId as any);
+              const statusName = resolveRefType(member.statusTypeId) ?? "REGISTRADO";
 
               return (
                 <Card
@@ -101,11 +113,19 @@ export function FamilyMembersTab({
                           <h4 className="font-semibold text-foreground text-base leading-tight">
                             {member.firstName} {member.lastName}
                           </h4>
-                          {member.relationship && (
-                            <Badge variant="secondary" className="mt-1 text-xs">
-                              <HeartHandshake className="h-3 w-3 mr-1" />
-                              {member.relationship}
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {member.relationship && (
+                              <Badge variant="secondary" className="text-xs">
+                                <HeartHandshake className="h-3 w-3 mr-1" />
+                                {member.relationship}
+                              </Badge>
+                            )}
+                            <Badge variant={STATUS_BADGE_VARIANT[statusName] ?? "outline"} className="text-xs">
+                              {STATUS_LABEL[statusName] ?? statusName}
                             </Badge>
+                          </div>
+                          {statusName === "RECHAZADO" && member.rejectionReason && (
+                            <p className="text-xs text-destructive mt-1">Motivo: {member.rejectionReason}</p>
                           )}
                         </div>
                         <div className="flex gap-1 shrink-0">

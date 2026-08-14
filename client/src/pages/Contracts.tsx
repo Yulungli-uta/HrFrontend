@@ -146,7 +146,7 @@ export default function ContractsPage() {
     for (const p of lookups.people ?? []) {
       const id = (p as any).personId ?? (p as any).personID;
       if (id != null) {
-        const name = `${(p as any).firstName ?? ""} ${(p as any).lastName ?? ""}`.trim();
+        const name = `${(p as any).lastName ?? ""} ${(p as any).firstName ?? ""}`.trim();
         m.set(Number(id), name || `ID ${id}`);
       }
     }
@@ -159,7 +159,7 @@ export default function ContractsPage() {
       const id = (e as any).employeeID ?? (e as any).employeeId;
       if (id != null) {
         const name = (e as any).fullName
-          ?? `${(e as any).firstName ?? ""} ${(e as any).lastName ?? ""}`.trim();
+          ?? `${(e as any).lastName ?? ""} ${(e as any).firstName ?? ""}`.trim();
         m.set(Number(id), name || `Empleado ${id}`);
       }
     }

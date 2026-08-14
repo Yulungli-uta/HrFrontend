@@ -75,7 +75,9 @@ export function SearchableEntityPicker<TMeta = unknown>({
         .join(" ")
         .toLowerCase();
 
-      return haystack.includes(normalized);
+      // Cada palabra escrita (ej. "Perez Juan") debe aparecer en algún campo,
+      // sin importar el orden — antes exigía la frase completa consecutiva.
+      return normalized.split(/\s+/).filter(Boolean).every((word) => haystack.includes(word));
     });
   }, [options, term]);
 

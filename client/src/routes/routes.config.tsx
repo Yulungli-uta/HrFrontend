@@ -83,6 +83,7 @@ const ScheduleContractSummaryReportPage = lazy(() => import("@/pages/reports/Sch
 const LatenessReportPage = lazy(() => import("@/pages/reports/LatenessReport"));
 const OvertimeReportPage = lazy(() => import("@/pages/reports/OvertimeReport"));
 const AttendanceCrossReportPage = lazy(() => import("@/pages/reports/AttendanceCrossReport"));
+const FoodSubsidySummaryReportPage = lazy(() => import("@/pages/reports/FoodSubsidySummaryReport"));
 
 // Reportes v2 — Gestión RH
 const ContractsReportPage = lazy(() => import("@/pages/reports/ContractsReport"));
@@ -105,6 +106,8 @@ const GuardLocationCoverageReportPage = lazy(() => import("@/pages/reports/Guard
 const GuardShiftChangesReportPage = lazy(() => import("@/pages/reports/GuardShiftChangesReport"));
 const GuardGroupRosterReportPage = lazy(() => import("@/pages/reports/GuardGroupRosterReport"));
 const GuardScheduleMatrixReportPage = lazy(() => import("@/pages/reports/GuardScheduleMatrixReport"));
+const FamilySubsidyReportPage = lazy(() => import("@/pages/reports/FamilySubsidyReport"));
+const FamilyBurdenValidationPage = lazy(() => import("@/pages/FamilyBurdenValidation"));
 
 // Acciones de Personal
 const PersonnelActionsPage = lazy(() => import("@/pages/PersonnelActions"));
@@ -513,6 +516,11 @@ export const routes: RouteConfig[] = [
     component: AttendanceCrossReportPage,
     requiredPath: "/reports/attendance-cross"
   },
+  {
+    path: "/reports/food-subsidy-summary",
+    component: FoodSubsidySummaryReportPage,
+    requiredPath: "/reports/food-subsidy-summary"
+  },
 
   // ----- REPORTES V2 — GESTIÓN RH -----
   {
@@ -591,6 +599,16 @@ export const routes: RouteConfig[] = [
     path: "/reports/guard-group-roster",
     component: GuardGroupRosterReportPage,
     requiredPath: "/reports/guard-group-roster"
+  },
+  {
+    path: "/reports/family-subsidy-summary",
+    component: FamilySubsidyReportPage,
+    requiredPath: "/reports/family-subsidy-summary"
+  },
+  {
+    path: "/family-burden/validation",
+    component: FamilyBurdenValidationPage,
+    requiredPath: "/family-burden/validation"
   },
   {
     path: "/reports/guard-schedule-matrix",

@@ -268,7 +268,7 @@ export default function EmployeeForm({
     if (!p?.personId) return null;
     return {
       value: p.personId,
-      label: `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim(),
+      label: `${p.lastName ?? ""} ${p.firstName ?? ""}`.trim(),
       detail: p.idCard ?? undefined,
     };
   }, []);
@@ -284,7 +284,7 @@ export default function EmployeeForm({
     if (!id || id <= 0) return null;
 
     const name = String(
-      e?.fullName ?? `${e?.firstName ?? ""} ${e?.lastName ?? ""}`.trim()
+      e?.fullName ?? `${e?.lastName ?? ""} ${e?.firstName ?? ""}`.trim()
     );
 
     return {
@@ -489,7 +489,7 @@ export default function EmployeeForm({
 
           const fullName =
             viewSeed.fullName ??
-            `${viewSeed.firstName ?? ""} ${viewSeed.lastName ?? ""}`.trim();
+            `${viewSeed.lastName ?? ""} ${viewSeed.firstName ?? ""}`.trim();
 
           setPersonLabel(
             fullName
@@ -540,7 +540,7 @@ export default function EmployeeForm({
 
         const fullName =
           viewSeed.fullName ??
-          `${viewSeed.firstName ?? ""} ${viewSeed.lastName ?? ""}`.trim();
+          `${viewSeed.lastName ?? ""} ${viewSeed.firstName ?? ""}`.trim();
 
         setPersonLabel(
           fullName

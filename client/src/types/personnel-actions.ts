@@ -147,6 +147,7 @@ export interface PersonnelActionQueryFilter {
     actionTypeId?: number | null;
     status?: string | null;
     search?: string | null;
+    departmentId?: number | null;
     startDate?: string | null;
     endDate?: string | null;
     page?: number;

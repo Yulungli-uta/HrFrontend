@@ -87,6 +87,11 @@ export interface FamilyMember {
   hasDisability?: boolean;
   isStudying?: boolean;
   educationInstitution?: string;
+  statusTypeId?: number | null;
+  statusName?: string | null;
+  approvedAt?: string | null;
+  rejectedAt?: string | null;
+  rejectionReason?: string | null;
 }
 
 export interface WorkExperience {

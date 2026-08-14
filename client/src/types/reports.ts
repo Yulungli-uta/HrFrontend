@@ -20,6 +20,8 @@ export type ReportType =
   | 'lateness'
   | 'overtime'
   | 'attendance-cross'
+  | 'food-subsidy-summary'
+  | 'family-subsidy-summary'
   // Reportes v2 — Gestión RH
   | 'contracts'
   | 'active-contracts'
@@ -65,6 +67,10 @@ export interface ReportFilter {
   contractTypeId?: number;
   /** TypeId del régimen laboral (ref_Types categoría LABOR_REGIME). */
   laborRegimeId?: number;
+  /** TypeId del tipo de dependencia (ref_Types categoría DEPARTMENT_TYPE). */
+  departmentTypeId?: number;
+  /** TypeId del ámbito de dependencia (ref_Types categoría DEPARTMENT_SCOPE). */
+  departmentScopeId?: number;
   /** EmployeeId del empleado que creó el contrato. */
   createdByEmployeeId?: number;
   /** ID del tipo de acción de personal (tbl_PersonnelActionTypes). */
@@ -128,7 +134,7 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
     description: 'Información completa de empleados, salarios y contratos',
     icon: 'Users',
     availableFormats: ['pdf', 'excel'],
-    availableFilters: ['startDate', 'endDate', 'departmentId', 'employeeTypeId', 'isActive']
+    availableFilters: ['startDate', 'endDate', 'departmentId', 'isActive', 'laborRegimeId']
   },
   attendance: {
     type: 'attendance',
@@ -136,7 +142,7 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
     description: 'Registros de entrada/salida y horas trabajadas',
     icon: 'Clock',
     availableFormats: ['pdf', 'excel'],
-    availableFilters: ['startDate', 'endDate', 'employeeId', 'departmentId']
+    availableFilters: ['startDate', 'endDate', 'employeeId', 'departmentId', 'laborRegimeId']
   },
   departments: {
     type: 'departments',
@@ -164,7 +170,7 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
     description: 'Listado detallado de empleados agrupado por dependencia organizacional',
     icon: 'Users',
     availableFormats: ['pdf', 'excel'],
-    availableFilters: ['departmentId', 'employeeTypeId', 'isActive', 'orientation']
+    availableFilters: ['departmentId', 'employeeTypeId', 'isActive', 'laborRegimeId', 'orientation']
   },
   'department-contract-summary': {
     type: 'department-contract-summary',
@@ -172,7 +178,7 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
     description: 'Resumen consolidado de empleados agrupado por dependencia y tipo de contrato',
     icon: 'Building2',
     availableFormats: ['pdf', 'excel'],
-    availableFilters: ['departmentId', 'employeeTypeId', 'isActive', 'orientation']
+    availableFilters: ['departmentId', 'employeeTypeId', 'isActive', 'laborRegimeId', 'orientation']
   },
   'schedule-contract-summary': {
     type: 'schedule-contract-summary',
@@ -180,7 +186,7 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
     description: 'Resumen consolidado de empleados agrupado por horario asignado y tipo de contrato',
     icon: 'CalendarClock',
     availableFormats: ['pdf', 'excel'],
-    availableFilters: ['departmentId', 'employeeTypeId', 'isActive', 'orientation']
+    availableFilters: ['departmentId', 'employeeTypeId', 'isActive', 'laborRegimeId', 'departmentTypeId', 'departmentScopeId', 'orientation']
   },
 
   // ── Reportes v2 — AttendanceCalculations ───────────────────────────────────
@@ -190,7 +196,7 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
     description: 'Detalle de atrasos, tardanzas y salidas anticipadas por empleado en el período',
     icon: 'AlarmClock',
     availableFormats: ['pdf', 'excel'],
-    availableFilters: ['startDate', 'endDate', 'employeeId', 'departmentId', 'orientation']
+    availableFilters: ['startDate', 'endDate', 'employeeId', 'departmentId', 'laborRegimeId', 'orientation']
   },
   overtime: {
     type: 'overtime',
@@ -198,7 +204,7 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
     description: 'Horas extras ordinarias, nocturnas, feriado y fuera de horario por empleado',
     icon: 'Timer',
     availableFormats: ['pdf', 'excel'],
-    availableFilters: ['startDate', 'endDate', 'employeeId', 'departmentId', 'orientation']
+    availableFilters: ['startDate', 'endDate', 'employeeId', 'departmentId', 'laborRegimeId', 'orientation']
   },
   'attendance-cross': {
     type: 'attendance-cross',
@@ -206,9 +212,27 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
     description: 'Vista consolidada: horas trabajadas, permisos, vacaciones, justificaciones y licencias',
     icon: 'LayoutGrid',
     availableFormats: ['pdf', 'excel'],
-    availableFilters: ['startDate', 'endDate', 'employeeId', 'departmentId', 'orientation'],
+    availableFilters: ['startDate', 'endDate', 'employeeId', 'departmentId', 'laborRegimeId', 'orientation'],
     // Reporte con muchas columnas/filas: puede superar el timeout default de 30s.
     timeoutMs: 120_000,
+  },
+  'food-subsidy-summary': {
+    type: 'food-subsidy-summary',
+    title: 'Subsidio de Alimentación',
+    description: 'Días efectivamente laborados por empleado en el período multiplicados por el valor diario parametrizado del subsidio de alimentación',
+    icon: 'Utensils',
+    availableFormats: ['pdf', 'excel'],
+    // No filtra por régimen por defecto (el subsidio ya solo aplica a Código de Trabajo);
+    // se deja como filtro opcional junto con dependencia, empleado y cédula.
+    availableFilters: ['startDate', 'endDate', 'departmentId', 'laborRegimeId', 'employeeId', 'identification', 'orientation'],
+  },
+  'family-subsidy-summary': {
+    type: 'family-subsidy-summary',
+    title: 'Subsidio de Cargas Familiares',
+    description: 'Cantidad de cargas familiares aprobadas que califican por empleado (menores de la edad tope, o cualquier edad con discapacidad) multiplicada por el valor base parametrizado',
+    icon: 'Users',
+    availableFormats: ['pdf', 'excel'],
+    availableFilters: ['startDate', 'endDate', 'departmentId', 'laborRegimeId', 'employeeId', 'orientation'],
   },
 
   // ── Gestión RH ────────────────────────────────────────────────────────────
@@ -218,7 +242,7 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
     description: 'Contratos de personal con filtro por estado, departamento y período',
     icon: 'FileText',
     availableFormats: ['pdf', 'excel'],
-    availableFilters: ['startDate', 'endDate', 'departmentId', 'status', 'orientation'],
+    availableFilters: ['startDate', 'endDate', 'departmentId', 'laborRegimeId', 'status', 'orientation'],
     statusCategory: 'CONTRACT_STATUS',
   },
   'active-contracts': {
@@ -236,7 +260,7 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
     description: 'Todas las acciones de personal con filtro por estado y período',
     icon: 'ClipboardSignature',
     availableFormats: ['pdf', 'excel'],
-    availableFilters: ['startDate', 'endDate', 'employeeId', 'status', 'orientation'],
+    availableFilters: ['startDate', 'endDate', 'employeeId', 'laborRegimeId', 'status', 'orientation'],
     statusCategory: 'PERSONNEL_ACTION_STATUS',
   },
   'active-personnel-actions': {
@@ -245,7 +269,7 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
     description: 'Acciones de movimiento, ingreso y económicas vigentes con filtro por período y empleado',
     icon: 'ClipboardCheck',
     availableFormats: ['pdf', 'excel'],
-    availableFilters: ['startDate', 'endDate', 'employeeId', 'departmentId', 'actionTypeId', 'status', 'orientation'],
+    availableFilters: ['startDate', 'endDate', 'employeeId', 'departmentId', 'actionTypeId', 'laborRegimeId', 'status', 'orientation'],
     statusCategory: 'PERSONNEL_ACTION_STATUS',
   },
   'employee-history': {
@@ -254,7 +278,7 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
     description: 'Contratos y acciones de cambio de puesto por empleado (excluye disciplinarias)',
     icon: 'History',
     availableFormats: ['pdf', 'excel'],
-    availableFilters: ['employeeId', 'departmentId', 'orientation'],
+    availableFilters: ['employeeId', 'departmentId', 'laborRegimeId', 'orientation'],
   },
   'granted-permissions': {
     type: 'granted-permissions',

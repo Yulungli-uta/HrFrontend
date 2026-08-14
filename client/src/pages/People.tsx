@@ -145,7 +145,7 @@ const REF_CATEGORIES = [
 ];
 
 const personFullName = (person: Pick<PersonDto, "firstName" | "lastName">) =>
-  [person.firstName, person.lastName].filter(Boolean).join(" ").trim() || "Sin nombre";
+  [person.lastName, person.firstName].filter(Boolean).join(" ").trim() || "Sin nombre";
 
 const normalizePersonCreatePayload = (data: PersonFormValue): PersonCreateDto => ({
   firstName: data.firstName?.trim() ?? "",

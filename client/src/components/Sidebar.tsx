@@ -77,6 +77,30 @@ function collectPaths(nodes: NavNode[]): string[] {
   return paths;
 }
 
+/* ─── Helper: ids de ramas (no-hoja) cuyo subárbol contiene la ruta activa ── */
+function collectActiveBranchIds(nodes: NavNode[], currentPath: string, normalize: (p: string) => string): number[] {
+  const ids: number[] = [];
+  for (const n of nodes) {
+    const hasChildren = !!n.children && n.children.length > 0;
+    if (!hasChildren) continue;
+
+    const childIds = collectActiveBranchIds(n.children!, currentPath, normalize);
+    const ownMatches = n.path
+      ? (() => {
+          const p = normalize(n.path!);
+          return p === currentPath || (p !== "/" && currentPath.startsWith(p + "/"));
+        })()
+      : false;
+    const descendantMatches = collectPaths(n.children!).some(cp => {
+      const p = normalize(cp);
+      return p === currentPath || (p !== "/" && currentPath.startsWith(p + "/"));
+    });
+
+    if (ownMatches || descendantMatches) ids.push(n.id, ...childIds);
+  }
+  return ids;
+}
+
 /* ─── Helper: filtrar nodos recursivamente ───────────────────────────────── */
 function filterNodes(nodes: NavNode[], term: string): NavNode[] {
   return nodes
@@ -267,11 +291,24 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onLogout }) => {
       .filter(m => m.parentId === null || m.parentId === 0)
       .sort((a, b) => a.order - b.order);
 
+    // Al cargar el menú, todos los grupos inician colapsados salvo el que contiene
+    // la página actual (para no perder el contexto de "dónde estoy" si se entra
+    // directo o se recarga en una pantalla anidada). El resto se abre solo al clic.
+    const normalizePathForMatch = (p: string) => {
+      const t = (p || "/").replace(/\/+$/, "");
+      return t === "" ? "/" : t;
+    };
+    const currentPath = normalizePathForMatch(location);
+
     const groups: NavGroup[] = roots
       .map(root => {
         const IconComponent = iconMap[root.icon] || Folder;
         const items = buildSubNodes(root.id, normalized);
-        return { id: root.id, title: root.name, icon: IconComponent, initiallyOpen: items.length > 0, items };
+        const groupPaths = collectPaths(items).map(normalizePathForMatch);
+        const containsActive = groupPaths.some(p =>
+          p === currentPath || (p !== "/" && currentPath.startsWith(p + "/"))
+        );
+        return { id: root.id, title: root.name, icon: IconComponent, initiallyOpen: containsActive, items };
       })
       .filter(g => g.items.length > 0);
 
@@ -279,8 +316,17 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onLogout }) => {
     setNavGroups(groups);
 
     const initial: Record<string, boolean> = {};
-    groups.forEach(g => { initial[g.id.toString()] = g.initiallyOpen || false; });
+    groups.forEach(g => {
+      initial[g.id.toString()] = g.initiallyOpen || false;
+      if (g.initiallyOpen) {
+        collectActiveBranchIds(g.items, currentPath, normalizePathForMatch)
+          .forEach(id => { initial[id.toString()] = true; });
+      }
+    });
     setOpenNodes(initial);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `location` se toma
+    // deliberadamente solo al cargar el menú (mount), no en cada navegación, para
+    // no resetear los grupos que el usuario ya abrió/cerró manualmente.
   }, [user]);
 
   const toggleNode = (key: string) =>

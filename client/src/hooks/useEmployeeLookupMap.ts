@@ -44,7 +44,7 @@ export function useEmployeeLookupMap() {
       const id = toNumber(pick(r, ["employeeID", "EmployeeID", "id", "Id", "ID"]));
       const fullName =
         pick(r, ["fullName", "FullName"]) ??
-        `${pick(r, ["firstName", "FirstName"]) ?? ""} ${pick(r, ["lastName", "LastName"]) ?? ""}`.trim();
+        `${pick(r, ["lastName", "LastName"]) ?? ""} ${pick(r, ["firstName", "FirstName"]) ?? ""}`.trim();
       if (id != null) {
         map[id] = {
           employeeID: id,

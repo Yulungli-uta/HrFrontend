@@ -31,9 +31,18 @@ import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { FAMILY_MEMBER_DOCUMENT_DIRECTORY_CODE, FAMILY_MEMBER_DOCUMENT_ENTITY_TYPE } from "@/features/constants";
 import { logger } from "@/lib/logger";
 import { useToast } from "@/hooks/use-toast";
+import { parseApiError } from "@/lib/error-handling";
 
 function getRefTypeId(t: any): number | undefined {
   return t?.typeID ?? t?.typeId ?? t?.id;
+}
+
+const BIRTH_CERTIFICATE_DOC_TYPE_NAME = "DOCUMENTO DE CARGA FAMILIAR";
+const DISABILITY_CERTIFICATE_DOC_TYPE_NAME = "CERTIFICADO DE DISCAPACIDAD";
+
+function findDocTypeIdByName(docTypes: RefType[], name: string): number | undefined {
+  const match = docTypes.find((t: any) => String(t.name).toUpperCase() === name);
+  return match ? getRefTypeId(match) : undefined;
 }
 
 const familyMemberFormSchema = z.object({
@@ -81,7 +90,7 @@ export default function FamilyMemberForm({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [selectedDocTypeId, setSelectedDocTypeId] = useState<string>("");
+  const [selectedDisabilityFile, setSelectedDisabilityFile] = useState<File | null>(null);
   const [isSavingWithDocument, setIsSavingWithDocument] = useState(false);
   const [fileUploadKey, setFileUploadKey] = useState(0);
 
@@ -126,6 +135,7 @@ export default function FamilyMemberForm({
     if (!hasDisability) {
       form.setValue("disabilityType", "");
       form.setValue("disabilityPercentage", 0);
+      setSelectedDisabilityFile(null);
     }
   }, [hasDisability, form]);
 
@@ -137,8 +147,83 @@ export default function FamilyMemberForm({
 
   const saving = isLoading || isSavingWithDocument;
 
+  const disabilityFields = (
+    <>
+      <FormField
+        control={form.control as any}
+        name="hasDisability"
+        render={({ field }) => (
+          <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+            <FormControl>
+              <Checkbox
+                checked={field.value}
+                onCheckedChange={field.onChange}
+                data-testid="checkbox-has-disability"
+              />
+            </FormControl>
+            <div className="space-y-1 leading-none">
+              <FormLabel>Tiene discapacidad</FormLabel>
+            </div>
+          </FormItem>
+        )}
+      />
+
+      {hasDisability && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 ml-6">
+          <FormField
+            control={form.control as any}
+            name="disabilityType"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Tipo de Discapacidad</FormLabel>
+                <FormControl>
+                  <Input {...field} data-testid="input-disability-type" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control as any}
+            name="disabilityPercentage"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Porcentaje de Discapacidad (%)</FormLabel>
+                <FormControl>
+                  <div className="flex items-center space-x-2">
+                    <Input
+                      {...field}
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={field.value}
+                      onChange={(e) => field.onChange(Number(e.target.value))}
+                      data-testid="input-disability-percentage"
+                    />
+                    <span className="text-sm text-muted-foreground">%</span>
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+      )}
+    </>
+  );
+
   const handleSubmit = async (data: FamilyMemberFormData) => {
-    if (!familyMember && selectedFile) {
+    if (!familyMember) {
+      if (!selectedFile) {
+        toast({
+          title: "Documento obligatorio",
+          description: "Debe adjuntar el certificado de nacimiento (u otro soporte de carga familiar) para registrar.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       setIsSavingWithDocument(true);
       try {
         const formData = new FormData();
@@ -155,11 +240,29 @@ export default function FamilyMemberForm({
           }
         }
         formData.append("File", selectedFile);
-        if (selectedDocTypeId) {
-          formData.append("DocumentTypeId", selectedDocTypeId);
+        const birthCertTypeId = findDocTypeIdByName(docTypes, BIRTH_CERTIFICATE_DOC_TYPE_NAME);
+        if (birthCertTypeId != null) {
+          formData.append("DocumentTypeId", String(birthCertTypeId));
         }
 
-        await CargasFamiliaresAPI.createWithDocument(formData);
+        if (data.hasDisability && selectedDisabilityFile) {
+          formData.append("DisabilityFile", selectedDisabilityFile);
+          const disabilityCertTypeId = findDocTypeIdByName(docTypes, DISABILITY_CERTIFICATE_DOC_TYPE_NAME);
+          if (disabilityCertTypeId != null) {
+            formData.append("DisabilityDocumentTypeId", String(disabilityCertTypeId));
+          }
+        }
+
+        const res = await CargasFamiliaresAPI.createWithDocument(formData);
+        if (res.status === "error") {
+          toast({
+            title: "Error",
+            description: parseApiError(res.error).message,
+            variant: "destructive",
+          });
+          return;
+        }
+
         await queryClient.invalidateQueries({ queryKey: ["familyMembers", String(personId)] });
         toast({
           title: "Carga familiar registrada",
@@ -167,7 +270,7 @@ export default function FamilyMemberForm({
         });
         form.reset();
         setSelectedFile(null);
-        setSelectedDocTypeId("");
+        setSelectedDisabilityFile(null);
         setFileUploadKey((k) => k + 1);
         closeAndRefresh?.();
       } catch (error) {
@@ -318,67 +421,7 @@ export default function FamilyMemberForm({
         </div>
 
         <div className="space-y-4 border-t pt-4">
-          <FormField
-            control={form.control as any}
-            name="hasDisability"
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                <FormControl>
-                  <Checkbox
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                    data-testid="checkbox-has-disability"
-                  />
-                </FormControl>
-                <div className="space-y-1 leading-none">
-                  <FormLabel>Tiene discapacidad</FormLabel>
-                </div>
-              </FormItem>
-            )}
-          />
-
-          {hasDisability && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 ml-6">
-              <FormField
-                control={form.control as any}
-                name="disabilityType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tipo de Discapacidad</FormLabel>
-                    <FormControl>
-                      <Input {...field} data-testid="input-disability-type" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control as any}
-                name="disabilityPercentage"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Porcentaje de Discapacidad (%)</FormLabel>
-                    <FormControl>
-                      <div className="flex items-center space-x-2">
-                        <Input
-                          {...field}
-                          type="number"
-                          min="0"
-                          max="100"
-                          value={field.value}
-                          onChange={(e) => field.onChange(Number(e.target.value))}
-                          data-testid="input-disability-percentage"
-                        />
-                        <span className="text-sm text-muted-foreground">%</span>
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          )}
+          {familyMember && disabilityFields}
 
           <FormField
             control={form.control as any}
@@ -419,40 +462,48 @@ export default function FamilyMemberForm({
         </div>
 
         {!familyMember && (
-          <div className="space-y-3 rounded-xl border border-dashed p-4">
-            <Label>Documento de soporte (opcional)</Label>
-            <ReusableFileUpload
-              key={fileUploadKey}
-              directoryCode={FAMILY_MEMBER_DOCUMENT_DIRECTORY_CODE}
-              relativePath={FAMILY_MEMBER_DOCUMENT_ENTITY_TYPE.toLowerCase()}
-              accept=".pdf,.jpg,.jpeg,.png"
-              maxSizeMB={MAX_FILE_MB}
-              label="Documento de soporte"
-              disabled={saving}
-              deferUpload
-              onFileSelected={setSelectedFile}
-            />
-            {selectedFile && docTypes.length > 0 && (
-              <div className="space-y-1">
-                <Label>Tipo de documento</Label>
-                <Select value={selectedDocTypeId} onValueChange={setSelectedDocTypeId} disabled={saving}>
-                  <SelectTrigger data-testid="select-document-type">
-                    <SelectValue placeholder="Seleccionar tipo de documento" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {docTypes.map((t) => {
-                      const id = getRefTypeId(t);
-                      if (id == null) return null;
-                      return (
-                        <SelectItem key={id} value={String(id)}>
-                          {t.description}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+          <div className="space-y-4 rounded-xl border border-dashed p-4">
+            <div className="space-y-3">
+              <Label>
+                Certificado de nacimiento <span className="text-destructive">*</span>{" "}
+                <span className="text-muted-foreground font-normal">(obligatorio)</span>
+              </Label>
+              <ReusableFileUpload
+                key={`birth-${fileUploadKey}`}
+                directoryCode={FAMILY_MEMBER_DOCUMENT_DIRECTORY_CODE}
+                relativePath={FAMILY_MEMBER_DOCUMENT_ENTITY_TYPE.toLowerCase()}
+                accept=".pdf,.jpg,.jpeg,.png"
+                maxSizeMB={MAX_FILE_MB}
+                label="Certificado de nacimiento"
+                disabled={saving}
+                deferUpload
+                onFileSelected={setSelectedFile}
+              />
+            </div>
+
+            <div className="space-y-3 border-t pt-4">
+              {disabilityFields}
+
+              {hasDisability && (
+                <div className="space-y-3">
+                  <Label>
+                    Certificado de discapacidad{" "}
+                    <span className="text-muted-foreground font-normal">(opcional)</span>
+                  </Label>
+                  <ReusableFileUpload
+                    key={`disability-${fileUploadKey}`}
+                    directoryCode={FAMILY_MEMBER_DOCUMENT_DIRECTORY_CODE}
+                    relativePath={FAMILY_MEMBER_DOCUMENT_ENTITY_TYPE.toLowerCase()}
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    maxSizeMB={MAX_FILE_MB}
+                    label="Certificado de discapacidad"
+                    disabled={saving}
+                    deferUpload
+                    onFileSelected={setSelectedDisabilityFile}
+                  />
+                </div>
+              )}
+            </div>
           </div>
         )}
 

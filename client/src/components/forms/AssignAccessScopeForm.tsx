@@ -228,7 +228,7 @@ export default function AssignAccessScopeForm({ onSuccess, onCancel }: AssignAcc
             ) : (
               eligibleEmployees.map((e) => (
                 <SelectItem key={e.employeeID} value={String(e.employeeID)}>
-                  {e.firstName} {e.lastName} {e.email && `· ${e.email}`}
+                  {e.lastName} {e.firstName} {e.email && `· ${e.email}`}
                 </SelectItem>
               ))
             )}

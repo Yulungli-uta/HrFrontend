@@ -99,7 +99,7 @@ function normalizeEmployees(raw: any[]): EmployeeView[] {
       firstName: String(e.firstName ?? ""),
       lastName: String(e.lastName ?? ""),
       fullName: String(
-        e.fullName ?? `${e.firstName ?? ""} ${e.lastName ?? ""}`.trim()
+        e.fullName ?? `${e.lastName ?? ""} ${e.firstName ?? ""}`.trim()
       ),
       idCard: String(e.idCard ?? ""),
       email: String(e.email ?? ""),

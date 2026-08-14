@@ -438,7 +438,7 @@ export default function CreatePlanningDialog({
         const employeeID = Number(e.employeeID ?? e.employeeId ?? 0);
         const fullName =
           String(
-            e.fullName ?? `${e.firstName ?? ""} ${e.lastName ?? ""}`.trim()
+            e.fullName ?? `${e.lastName ?? ""} ${e.firstName ?? ""}`.trim()
           ).trim() || `Empleado #${employeeID}`;
 
         return {
@@ -452,10 +452,13 @@ export default function CreatePlanningDialog({
       .filter((e) => !selectedIds.has(e.employeeID))
       .filter((e) => {
         if (!q) return true;
-        return [e.fullName, e.detail || "", e.extra || ""]
+        // Cada palabra escrita (ej. "Perez Juan") debe aparecer en algún campo,
+        // sin importar el orden — antes exigía que la frase completa apareciera
+        // consecutiva, lo que fallaba si el nombre venía en otro orden.
+        const haystack = [e.fullName, e.detail || "", e.extra || ""]
           .join(" ")
-          .toLowerCase()
-          .includes(q);
+          .toLowerCase();
+        return q.split(/\s+/).filter(Boolean).every((word) => haystack.includes(word));
       });
   }, [bossSubordinates, employeeSearch, selectedIds]);
 

@@ -80,6 +80,7 @@ export default function ContractsCorrection() {
   const [dateFromInput, setDateFromInput] = useState('');
   const [dateToInput, setDateToInput] = useState('');
   const [employeeId, setEmployeeId] = useState<number | null>(null);
+  const [filterDepartmentId, setFilterDepartmentId] = useState<number | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
 
   const {
@@ -111,7 +112,7 @@ export default function ContractsCorrection() {
     // statusInput/dateFromInput/dateToInput/employeeId viajan en el queryKey (no solo en el
     // queryFn) para que React Query detecte el cambio y vuelva a consultar — usePaged solo
     // observa internamente page/pageSize/sortBy/sortDirection/search, no estos filtros extra.
-    queryKey: ['contracts-correction-search', statusInput, dateFromInput, dateToInput, employeeId],
+    queryKey: ['contracts-correction-search', statusInput, dateFromInput, dateToInput, employeeId, filterDepartmentId],
     queryFn: (params) =>
       ContractsRHAPI.listPaged({
         ...params,
@@ -119,6 +120,7 @@ export default function ContractsCorrection() {
         startDateFrom: dateFromInput || undefined,
         startDateTo: dateToInput || undefined,
         employeeId: employeeId ?? undefined,
+        departmentId: filterDepartmentId ?? undefined,
       }),
     initialPageSize: 20,
     enabled: !selected && hasSearched,
@@ -247,6 +249,15 @@ export default function ContractsCorrection() {
                   onKeyDown={(e) => { if (e.key === 'Enter') handleSearchClick(); }}
                   placeholder="Código o descripción del contrato…"
                   className="pl-9"
+                />
+              </div>
+
+              <div className="space-y-1.5 sm:max-w-sm">
+                <Label className="text-xs text-muted-foreground">Dependencia / Departamento</Label>
+                <DepartmentSelect
+                  value={filterDepartmentId}
+                  onChange={setFilterDepartmentId}
+                  placeholder="Todas"
                 />
               </div>
 

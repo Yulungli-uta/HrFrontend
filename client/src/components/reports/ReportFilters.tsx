@@ -29,7 +29,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { cn } from "@/lib/utils";
-import type { ReportFilter, ReportType, PageOrientation } from "@/types/reports";
+import type { ReportFilter, ReportType } from "@/types/reports";
 import { REPORT_CONFIGS } from "@/types/reports";
 
 import { ContractTypeAPI, TiposReferenciaAPI, VistaEmpleadosAPI } from "@/lib/api";
@@ -37,6 +37,7 @@ import { PersonnelActionTypeAPI } from "@/lib/api/services/contracts";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { GuardServiceLocationsAPI, GuardRotationGroupsAPI } from "@/lib/api/services/guards";
 import { DepartmentSelect } from "@/components/departments";
+import { ReportFormatOptions } from "@/components/reports/ReportFormatOptions";
 
 /* ---------------------------------- Types --------------------------------- */
 
@@ -79,7 +80,7 @@ function mapEmployeeOptions(raw: any[]): Option[] {
   return raw
     .map((e) => {
       const id = toNum(e.employeeID ?? e.employeeId ?? e.id);
-      const fullName = toStr(e.fullName) ?? toStr(`${e.firstName ?? ""} ${e.lastName ?? ""}`.trim());
+      const fullName = toStr(e.fullName) ?? toStr(`${e.lastName ?? ""} ${e.firstName ?? ""}`.trim());
       if (id == null || !fullName) return null;
       return { value: String(id), label: fullName };
     })
@@ -224,6 +225,8 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
   const [contractTypes, setContractTypes] = React.useState<LoadState<RefType>>({ loading: false, items: [] });
   const [contractKinds, setContractKinds] = React.useState<LoadState<ContractKind>>({ loading: false, items: [] });
   const [laborRegimes, setLaborRegimes] = React.useState<LoadState<RefType>>({ loading: false, items: [] });
+  const [departmentTypes, setDepartmentTypes] = React.useState<LoadState<RefType>>({ loading: false, items: [] });
+  const [departmentScopes, setDepartmentScopes] = React.useState<LoadState<RefType>>({ loading: false, items: [] });
   const [dynamicStatuses, setDynamicStatuses] = React.useState<LoadState<RefType>>({ loading: false, items: [] });
   const [actionTypes, setActionTypes] = React.useState<LoadState<ActionTypeOption>>({ loading: false, items: [] });
 
@@ -269,6 +272,34 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
       } catch {
         if (!alive) return;
         setLaborRegimes({ loading: false, items: [], error: "No se pudieron cargar regímenes" });
+      }
+    };
+
+    const loadDepartmentTypes = async () => {
+      if (!hasFilter("departmentTypeId")) return;
+      setDepartmentTypes({ loading: true, items: [] });
+      try {
+        const res = await TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.DEPARTMENT_TYPE);
+        const arr = extractArray(res);
+        if (!alive) return;
+        setDepartmentTypes({ loading: false, items: arr as any[] });
+      } catch {
+        if (!alive) return;
+        setDepartmentTypes({ loading: false, items: [], error: "No se pudieron cargar tipos de dependencia" });
+      }
+    };
+
+    const loadDepartmentScopes = async () => {
+      if (!hasFilter("departmentScopeId")) return;
+      setDepartmentScopes({ loading: true, items: [] });
+      try {
+        const res = await TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.DEPARTMENT_SCOPE);
+        const arr = extractArray(res);
+        if (!alive) return;
+        setDepartmentScopes({ loading: false, items: arr as any[] });
+      } catch {
+        if (!alive) return;
+        setDepartmentScopes({ loading: false, items: [], error: "No se pudieron cargar ámbitos de dependencia" });
       }
     };
 
@@ -361,6 +392,8 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
     void loadContractTypes();
     void loadContractKinds();
     void loadLaborRegimes();
+    void loadDepartmentTypes();
+    void loadDepartmentScopes();
     void loadActionTypes();
     void loadDynamicStatuses();
     void loadGuardLocations();
@@ -390,6 +423,16 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
   const laborRegimeOptions = React.useMemo<Option[]>(
     () => mapContractTypeOptions(laborRegimes.items as any[]),
     [laborRegimes.items]
+  );
+
+  const departmentTypeOptions = React.useMemo<Option[]>(
+    () => mapContractTypeOptions(departmentTypes.items as any[]),
+    [departmentTypes.items]
+  );
+
+  const departmentScopeOptions = React.useMemo<Option[]>(
+    () => mapContractTypeOptions(departmentScopes.items as any[]),
+    [departmentScopes.items]
   );
 
   const actionTypeOptions = React.useMemo<Option[]>(
@@ -578,47 +621,6 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
             </div>
           )}
 
-          {/* Orientación de cabecera del PDF (horizontal / vertical) */}
-          {hasFilter("verticalHeaders") && (
-            <div className="space-y-2">
-              <Label htmlFor="verticalHeaders">Cabecera del PDF</Label>
-              <Select
-                value={filter.verticalHeaders ? "true" : "false"}
-                onValueChange={(value) => setFilterValue("verticalHeaders", value === "true")}
-              >
-                <SelectTrigger id="verticalHeaders">
-                  <SelectValue placeholder="Horizontal" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="false">Horizontal</SelectItem>
-                  <SelectItem value="true">Vertical (rotada 90°)</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Vertical ayuda a que quepan más columnas en reportes angostos.
-              </p>
-            </div>
-          )}
-
-          {/* Repetir cabecera en cada página vs. solo primera página */}
-          {hasFilter("repeatHeaderOnEveryPage") && (
-            <div className="space-y-2">
-              <Label htmlFor="repeatHeaderOnEveryPage">Repetir cabecera</Label>
-              <Select
-                value={filter.repeatHeaderOnEveryPage === false ? "false" : "true"}
-                onValueChange={(value) => setFilterValue("repeatHeaderOnEveryPage", value === "true")}
-              >
-                <SelectTrigger id="repeatHeaderOnEveryPage">
-                  <SelectValue placeholder="Todas las páginas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="true">En todas las páginas</SelectItem>
-                  <SelectItem value="false">Solo en la primera página</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
           {/* Incluir Inactivos (select simple) */}
           {hasFilter("includeInactive") && (
             <div className="space-y-2">
@@ -669,6 +671,40 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
                 disabled={laborRegimes.loading}
               />
               {laborRegimes.error && <p className="text-xs text-destructive">{laborRegimes.error}</p>}
+            </div>
+          )}
+
+          {/* Tipo de Dependencia (ref_Types DEPARTMENT_TYPE) */}
+          {hasFilter("departmentTypeId") && (
+            <div className="space-y-2">
+              <Label>Tipo de Dependencia</Label>
+              <SearchableCombobox
+                value={filter.departmentTypeId != null ? String(filter.departmentTypeId) : "all"}
+                onChange={(v) => setFilterValue("departmentTypeId", v === "all" ? undefined : Number(v))}
+                options={departmentTypeOptions}
+                placeholder="Todos los tipos"
+                searchPlaceholder="Buscar tipo..."
+                emptyText={departmentTypes.loading ? "Cargando..." : "Sin resultados"}
+                disabled={departmentTypes.loading}
+              />
+              {departmentTypes.error && <p className="text-xs text-destructive">{departmentTypes.error}</p>}
+            </div>
+          )}
+
+          {/* Ámbito de Dependencia (ref_Types DEPARTMENT_SCOPE) */}
+          {hasFilter("departmentScopeId") && (
+            <div className="space-y-2">
+              <Label>Ámbito de Dependencia</Label>
+              <SearchableCombobox
+                value={filter.departmentScopeId != null ? String(filter.departmentScopeId) : "all"}
+                onChange={(v) => setFilterValue("departmentScopeId", v === "all" ? undefined : Number(v))}
+                options={departmentScopeOptions}
+                placeholder="Todos los ámbitos"
+                searchPlaceholder="Buscar ámbito..."
+                emptyText={departmentScopes.loading ? "Cargando..." : "Sin resultados"}
+                disabled={departmentScopes.loading}
+              />
+              {departmentScopes.error && <p className="text-xs text-destructive">{departmentScopes.error}</p>}
             </div>
           )}
 
@@ -770,34 +806,9 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
             </div>
           )}
 
-          {/* Orientación de página PDF (portrait / landscape) */}
-          {hasFilter("orientation") && (
-            <div className="space-y-2">
-              <Label htmlFor="orientation">Orientación del PDF</Label>
-              <Select
-                value={filter.orientation ?? "landscape"}
-                onValueChange={(value) =>
-                  setFilterValue("orientation", value as PageOrientation)
-                }
-              >
-                <SelectTrigger id="orientation">
-                  <SelectValue placeholder="Seleccionar orientación" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="landscape">
-                    ↔️ Horizontal (Landscape)
-                  </SelectItem>
-                  <SelectItem value="portrait">
-                    ↕️ Vertical (Portrait)
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Horizontal recomendado para reportes con muchas columnas
-              </p>
-            </div>
-          )}
         </div>
+
+        <ReportFormatOptions filter={filter} setFilterValue={setFilterValue} />
       </CardContent>
     </Card>
   );

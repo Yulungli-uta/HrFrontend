@@ -11,6 +11,7 @@
 // src/lib/api/services/cv.ts
 
 import { createApiService } from '../core/pagination';
+import type { PagedResult } from '../core/pagination';
 import { apiFetch } from '../core/fetch';
 import type { ApiResponse } from '../core/fetch';
 import { fetchMultipart } from './documents';
@@ -172,6 +173,33 @@ export const CargasFamiliaresAPI = {
 
   createWithDocument: (formData: FormData): Promise<ApiResponse<any>> =>
     fetchMultipart<any>(`${API_CONFIG.RH_BASE_URL}/api/v1/rh/cv/family-burden/with-document`, formData),
+
+  /** Contadores agregados (total, por estado, con discapacidad) para dato gerencial. */
+  getStats: (): Promise<ApiResponse<any>> =>
+    apiFetch<any>('/api/v1/rh/cv/family-burden/stats'),
+
+  /** Listado paginado para la pantalla de validación, filtrable por estado. */
+  getForValidation: (params: {
+    statusTypeId?: number | null;
+    page: number;
+    pageSize: number;
+  }): Promise<ApiResponse<PagedResult<any>>> => {
+    const qs = new URLSearchParams({
+      page: String(params.page),
+      pageSize: String(params.pageSize),
+      ...(params.statusTypeId != null ? { statusTypeId: String(params.statusTypeId) } : {}),
+    });
+    return apiFetch<PagedResult<any>>(`/api/v1/rh/cv/family-burden/validation?${qs.toString()}`);
+  },
+
+  approve: (id: number): Promise<ApiResponse<void>> =>
+    apiFetch<void>(`/api/v1/rh/cv/family-burden/${id}/approve`, { method: 'POST' }),
+
+  reject: (id: number, reason: string): Promise<ApiResponse<void>> =>
+    apiFetch<void>(`/api/v1/rh/cv/family-burden/${id}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    }),
 };
 
 export const CuentasBancariasAPI = {

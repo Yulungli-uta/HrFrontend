@@ -20,11 +20,14 @@ export default function BossSelector({ employees, isLoading, query, onQuery, sel
     const q = query.trim().toLowerCase();
     if (!employees) return [];
     if (!q) return employees.slice(0, 50);
-    return employees.filter(e =>
-      `${e.firstName ?? ""} ${e.lastName ?? ""} ${e.department ?? ""}`
-        .toLowerCase()
-        .includes(q)
-    ).slice(0, 50);
+    // Cada palabra escrita (ej. "Perez Juan") debe aparecer en algún campo, sin
+    // importar el orden — antes exigía que la frase completa apareciera
+    // consecutiva, lo que fallaba si el nombre venía en otro orden.
+    const words = q.split(/\s+/).filter(Boolean);
+    return employees.filter(e => {
+      const haystack = `${e.lastName ?? ""} ${e.firstName ?? ""} ${e.department ?? ""}`.toLowerCase();
+      return words.every(word => haystack.includes(word));
+    }).slice(0, 50);
   }, [employees, query]);
 
   return (
@@ -34,7 +37,7 @@ export default function BossSelector({ employees, isLoading, query, onQuery, sel
         {selected ? (
           <div className="flex items-center justify-between p-2 bg-primary/10 rounded">
             <div>
-              <p className="font-medium">{selected.firstName} {selected.lastName}</p>
+              <p className="font-medium">{selected.lastName} {selected.firstName}</p>
               <p className="text-sm text-muted-foreground">{selected.department}</p>
               <p className="text-xs text-muted-foreground">ID: {selected.employeeId}</p>
             </div>
@@ -64,7 +67,7 @@ export default function BossSelector({ employees, isLoading, query, onQuery, sel
                     onClick={() => onSelect(employee)}
                   >
                     <div>
-                      <p className="font-medium">{employee.firstName} {employee.lastName}</p>
+                      <p className="font-medium">{employee.lastName} {employee.firstName}</p>
                       <p className="text-sm text-muted-foreground">{employee.department}</p>
                       <p className="text-xs text-muted-foreground">ID: {employee.employeeId}</p>
                     </div>
