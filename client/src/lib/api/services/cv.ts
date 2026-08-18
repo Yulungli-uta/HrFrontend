@@ -11,7 +11,7 @@
 // src/lib/api/services/cv.ts
 
 import { createApiService } from '../core/pagination';
-import type { PagedResult } from '../core/pagination';
+import type { PagedResult, PagedRequest } from '../core/pagination';
 import { apiFetch } from '../core/fetch';
 import type { ApiResponse } from '../core/fetch';
 import { fetchMultipart } from './documents';
@@ -148,6 +148,16 @@ export const ParametersAPI = {
 
   getByName: (name: string): Promise<ApiResponse<any>> =>
     apiFetch<any>(`/api/v1/rh/cv/parameters/name/${name}`),
+
+  /** Paginado con búsqueda por nombre/descripción en el servidor. */
+  listPaged: (params: PagedRequest): Promise<ApiResponse<PagedResult<any>>> => {
+    const qs = new URLSearchParams({
+      page: String(params.page),
+      pageSize: String(params.pageSize),
+      ...(params.search?.trim() ? { search: params.search.trim() } : {}),
+    });
+    return apiFetch<PagedResult<any>>(`/api/v1/rh/cv/parameters/paged?${qs.toString()}`);
+  },
 };
 
 
@@ -178,9 +188,10 @@ export const CargasFamiliaresAPI = {
   getStats: (): Promise<ApiResponse<any>> =>
     apiFetch<any>('/api/v1/rh/cv/family-burden/stats'),
 
-  /** Listado paginado para la pantalla de validación, filtrable por estado. */
+  /** Listado paginado para la pantalla de validación, filtrable por estado y por cédula/nombre del empleado titular. */
   getForValidation: (params: {
     statusTypeId?: number | null;
+    search?: string;
     page: number;
     pageSize: number;
   }): Promise<ApiResponse<PagedResult<any>>> => {
@@ -188,6 +199,7 @@ export const CargasFamiliaresAPI = {
       page: String(params.page),
       pageSize: String(params.pageSize),
       ...(params.statusTypeId != null ? { statusTypeId: String(params.statusTypeId) } : {}),
+      ...(params.search?.trim() ? { search: params.search.trim() } : {}),
     });
     return apiFetch<PagedResult<any>>(`/api/v1/rh/cv/family-burden/validation?${qs.toString()}`);
   },

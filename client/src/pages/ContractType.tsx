@@ -57,7 +57,9 @@ import {
 } from "@/components/ui/table";
 
 import { ContractTypeForm } from "@/components/forms/ContractTypeForm";
-import { ContractTypeAPI, type ApiResponse } from "@/lib/api";
+import { ContractTypeAPI, type ApiResponse, type PagedResult } from "@/lib/api";
+import { usePaged } from "@/hooks/pagination/usePaged";
+import { DataPagination } from "@/components/ui/DataPagination";
 
 // ---------------- TIPOS ----------------
 
@@ -113,14 +115,46 @@ export default function ContractTypesPage() {
   const [isFormDirty, setIsFormDirty] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
 
+  const statusParam =
+    statusFilter === "all" ? undefined : statusFilter === "active" ? "1" : "0";
+
   const {
-    data: apiResponse,
+    items: pagedItems,
     isLoading,
-    error,
-  } = useQuery<ApiResponse<ContractType[]>>({
-    queryKey: ["/api/v1/rh/contract-type"],
+    isError,
+    errorMessage,
+    page,
+    pageSize,
+    totalCount: totalPagedCount,
+    totalPages,
+    hasPreviousPage,
+    hasNextPage,
+    goToPage,
+    setPageSize,
+    setSearch,
+  } = usePaged<ContractType>({
+    // statusParam entra en la queryKey para que cambiar el filtro de estado
+    // dispare un refetch (usePaged solo re-consulta cuando cambia su propia
+    // clave interna, no cuando cambia una variable externa cerrada en queryFn).
+    queryKey: ["/api/v1/rh/contract-type", "paged", statusParam],
+    queryFn: (params) =>
+      ContractTypeAPI.listPaged({ ...params, status: statusParam }) as Promise<
+        ApiResponse<PagedResult<ContractType>>
+      >,
+    initialPageSize: 20,
+  });
+
+  // Consulta aparte, SIN filtros de búsqueda/estado: alimenta las tarjetas de
+  // estadísticas para que sigan mostrando el total real del catálogo (39
+  // tipos hoy) tal como antes, sin importar qué se esté buscando/filtrando
+  // en la tabla paginada de arriba. El catálogo es chico, así que traerlo
+  // completo para este propósito es barato.
+  const { data: statsResponse } = useQuery<ApiResponse<PagedResult<ContractType>>>({
+    queryKey: ["/api/v1/rh/contract-type", "stats-all"],
     queryFn: () =>
-      ContractTypeAPI.list() as Promise<ApiResponse<ContractType[]>>,
+      ContractTypeAPI.listPaged({ page: 1, pageSize: 200 }) as Promise<
+        ApiResponse<PagedResult<ContractType>>
+      >,
   });
 
   // --------- Helpers de negocio ---------
@@ -145,56 +179,46 @@ export default function ContractTypesPage() {
     return 365;
   };
 
-  const contractTypes: UIContractType[] = useMemo(() => {
-    if (apiResponse?.status !== "success") return [];
+  const mapToUIContractType = (contract: ContractType): UIContractType => ({
+    contractTypeId: contract.contractTypeId,
+    name: contract.name,
+    code: contract.contractCode,
+    description: contract.description,
+    durationDays: getDurationDays(contract),
+    isRenewable: getIsRenewable(contract),
+    requiresProbation: contract.contractCode === "Administrativo",
+    probationDays:
+      contract.contractCode === "Administrativo" ? 90 : undefined,
+    isActive: contract.status === "1",
+    category: getCategoryFromCode(contract.contractCode),
+    minSalary: contract.contractCode === "DTH" ? 1500 : 800,
+    maxSalary: contract.contractCode === "DTH" ? 3000 : 2000,
+    legalRequirements:
+      "Cumplir con la Ley Orgánica de Educación Superior y Reglamento Interno",
+    contractText: contract.contractText,
+    personalContractTypeId: contract.personalContractTypeId,
+    status: contract.status,
+    requiresAdUserCreation: contract.requiresAdUserCreation ?? false,
+    requiresAdUserDisable: contract.requiresAdUserDisable ?? false,
+    requiresAdGroupAssignment: contract.requiresAdGroupAssignment ?? false,
+  });
 
-    return apiResponse.data.map((contract) => ({
-      contractTypeId: contract.contractTypeId,
-      name: contract.name,
-      code: contract.contractCode,
-      description: contract.description,
-      durationDays: getDurationDays(contract),
-      isRenewable: getIsRenewable(contract),
-      requiresProbation: contract.contractCode === "Administrativo",
-      probationDays:
-        contract.contractCode === "Administrativo" ? 90 : undefined,
-      isActive: contract.status === "1",
-      category: getCategoryFromCode(contract.contractCode),
-      minSalary: contract.contractCode === "DTH" ? 1500 : 800,
-      maxSalary: contract.contractCode === "DTH" ? 3000 : 2000,
-      legalRequirements:
-        "Cumplir con la Ley Orgánica de Educación Superior y Reglamento Interno",
-      contractText: contract.contractText,
-      personalContractTypeId: contract.personalContractTypeId,
-      status: contract.status,
-      requiresAdUserCreation: contract.requiresAdUserCreation ?? false,
-      requiresAdUserDisable: contract.requiresAdUserDisable ?? false,
-      requiresAdGroupAssignment: contract.requiresAdGroupAssignment ?? false,
-    }));
-  }, [apiResponse]);
+  // Vista actual (ya filtrada/paginada por el servidor).
+  const contractTypes: UIContractType[] = useMemo(
+    () => pagedItems.map(mapToUIContractType),
+    [pagedItems]
+  );
 
-  const filteredContractTypes = useMemo(() => {
-    const term = searchTerm.toLowerCase().trim();
+  // El buscador y el filtro de estado ya los resuelve el servidor (ver
+  // usePaged de arriba) — se mantiene el nombre "filteredContractTypes" para
+  // no tocar el resto del render, que ya lo usa en varios lugares.
+  const filteredContractTypes = contractTypes;
 
-    return contractTypes.filter((contractType) => {
-      if (statusFilter === "active" && !contractType.isActive) return false;
-      if (statusFilter === "inactive" && contractType.isActive) return false;
-
-      if (!term) return true;
-
-      const name = contractType.name.toLowerCase();
-      const code = contractType.code.toLowerCase();
-      const description = contractType.description?.toLowerCase() ?? "";
-      const category = contractType.category?.toLowerCase() ?? "";
-
-      return (
-        name.includes(term) ||
-        code.includes(term) ||
-        description.includes(term) ||
-        category.includes(term)
-      );
-    });
-  }, [contractTypes, searchTerm, statusFilter]);
+  // Catálogo completo sin filtrar, solo para las tarjetas de estadísticas.
+  const allContractTypesForStats: UIContractType[] = useMemo(() => {
+    if (statsResponse?.status !== "success") return [];
+    return statsResponse.data.items.map(mapToUIContractType);
+  }, [statsResponse]);
 
   const {
     totalContractTypes,
@@ -204,16 +228,16 @@ export default function ContractTypesPage() {
     probationContractTypes,
     avgDuration,
   } = useMemo(() => {
-    const total = contractTypes.length;
-    const active = contractTypes.filter((ct) => ct.isActive).length;
-    const inactive = contractTypes.filter((ct) => !ct.isActive).length;
-    const renewable = contractTypes.filter((ct) => ct.isRenewable).length;
-    const probation = contractTypes.filter((ct) => ct.requiresProbation).length;
+    const total = allContractTypesForStats.length;
+    const active = allContractTypesForStats.filter((ct) => ct.isActive).length;
+    const inactive = allContractTypesForStats.filter((ct) => !ct.isActive).length;
+    const renewable = allContractTypesForStats.filter((ct) => ct.isRenewable).length;
+    const probation = allContractTypesForStats.filter((ct) => ct.requiresProbation).length;
 
     const avg =
       total > 0
         ? Math.round(
-          contractTypes.reduce(
+          allContractTypesForStats.reduce(
             (sum, ct) => sum + (ct.durationDays || 0),
             0
           ) / total
@@ -274,28 +298,14 @@ export default function ContractTypesPage() {
     );
   }
 
-  if (error) {
+  if (isError) {
     return (
       <div className="container mx-auto p-4 lg:p-6">
         <Card className="border-destructive/30 bg-destructive/10">
           <CardContent className="pt-6">
             <p className="text-destructive">
-              Error al cargar los tipos de contrato. Intente nuevamente.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (apiResponse?.status === "error") {
-    return (
-      <div className="container mx-auto p-4 lg:p-6">
-        <Card className="border-destructive/30 bg-destructive/10">
-          <CardContent className="pt-6">
-            <p className="text-destructive">
-              Error al cargar los tipos de contrato:{" "}
-              {apiResponse.error.message}
+              Error al cargar los tipos de contrato
+              {errorMessage ? `: ${errorMessage}` : ". Intente nuevamente."}
             </p>
           </CardContent>
         </Card>
@@ -475,7 +485,7 @@ export default function ContractTypesPage() {
                 Legales
               </span>
               <Badge className="bg-destructive/20 text-destructive text-xs lg:text-sm">
-                {contractTypes.filter((ct) => ct.legalRequirements).length}
+                {allContractTypesForStats.filter((ct) => ct.legalRequirements).length}
               </Badge>
             </CardTitle>
           </CardHeader>
@@ -496,7 +506,13 @@ export default function ContractTypesPage() {
             aria-label="Buscar tipo de contrato"
             className="pl-10"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+              setSearchTerm(value);
+              // Búsqueda real en el servidor (usePaged.setSearch resetea a
+              // página 1 automáticamente).
+              setSearch(value);
+            }}
           />
         </div>
 
@@ -629,7 +645,7 @@ export default function ContractTypesPage() {
         <CardHeader>
           <CardTitle>Lista de Tipos de Contrato</CardTitle>
           <CardDescription>
-            {filteredContractTypes.length} de {totalContractTypes} tipos mostrados
+            {filteredContractTypes.length} de {totalPagedCount} tipos mostrados
             {searchTerm && ` - Filtrado por: "${searchTerm}"`}
             {statusFilter !== "all" &&
               ` - Estado: ${statusFilter === "active" ? "Activos" : "Inactivos"}`}
@@ -737,6 +753,18 @@ export default function ContractTypesPage() {
           )}
         </CardContent>
       </Card>
+
+      <DataPagination
+        page={page}
+        totalPages={totalPages}
+        totalCount={totalPagedCount}
+        pageSize={pageSize}
+        hasPreviousPage={hasPreviousPage}
+        hasNextPage={hasNextPage}
+        onPageChange={goToPage}
+        onPageSizeChange={setPageSize}
+        disabled={isLoading}
+      />
 
       {/* Confirmación de salida sin guardar */}
       <AlertDialog open={showExitConfirm} onOpenChange={setShowExitConfirm}>

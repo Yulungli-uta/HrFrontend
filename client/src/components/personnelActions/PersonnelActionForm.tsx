@@ -134,6 +134,13 @@ type Props = {
    * Sin este prop, el comportamiento de creación normal no cambia.
    */
   maxDate?: string;
+  /**
+   * Habilita editar "N° de Acción" (normalmente autogenerado/solo lectura). Usado
+   * ÚNICAMENTE por la pantalla de corrección (PersonnelActionsCorrection.tsx) para
+   * arreglar números de documento cargados mal — no afecta creación, histórico ni
+   * edición normal, que siguen dejando el campo automático.
+   */
+  allowActionNumberEdit?: boolean;
 };
 
 function toDateInput(iso?: string | null): string {
@@ -231,6 +238,7 @@ export function PersonnelActionForm({
   onCancel,
   onDirtyChange,
   maxDate,
+  allowActionNumberEdit,
 }: Props) {
   const { toast } = useToast();
   const { jobs, actionTypes, isLoading } = usePersonnelActionLookups(true);
@@ -652,9 +660,9 @@ export function PersonnelActionForm({
                     <Input
                       {...field}
                       value={field.value ?? ''}
-                      readOnly
-                      disabled
-                      className="bg-muted"
+                      readOnly={!allowActionNumberEdit}
+                      disabled={!allowActionNumberEdit}
+                      className={allowActionNumberEdit ? undefined : 'bg-muted'}
                       placeholder="Auto"
                     />
                   </FormControl>

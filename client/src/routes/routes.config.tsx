@@ -54,6 +54,7 @@ const AcademicLadderPage = lazy(() => import("@/pages/AcademicLadder"));
 const HolidaysPage = lazy(() => import("@/pages/Holidays"));
 const FilesUploadPage = lazy(() => import("@/pages/FilesUploadPage"));
 const DepartmentAuthoritiesPage = lazy(() => import("@/pages/DepartmentAuthorities"));
+const MassVacationPlansPage = lazy(() => import("@/pages/MassVacationPlans"));
 
 // Páginas de administración
 const UsersPage = lazy(() => import("@/pages/admin/Users"));
@@ -107,6 +108,7 @@ const GuardShiftChangesReportPage = lazy(() => import("@/pages/reports/GuardShif
 const GuardGroupRosterReportPage = lazy(() => import("@/pages/reports/GuardGroupRosterReport"));
 const GuardScheduleMatrixReportPage = lazy(() => import("@/pages/reports/GuardScheduleMatrixReport"));
 const FamilySubsidyReportPage = lazy(() => import("@/pages/reports/FamilySubsidyReport"));
+const SeniorityBonusReportPage = lazy(() => import("@/pages/reports/SeniorityBonusReport"));
 const FamilyBurdenValidationPage = lazy(() => import("@/pages/FamilyBurdenValidation"));
 
 // Acciones de Personal
@@ -606,9 +608,19 @@ export const routes: RouteConfig[] = [
     requiredPath: "/reports/family-subsidy-summary"
   },
   {
+    path: "/reports/seniority-bonus-summary",
+    component: SeniorityBonusReportPage,
+    requiredPath: "/reports/seniority-bonus-summary"
+  },
+  {
     path: "/family-burden/validation",
     component: FamilyBurdenValidationPage,
     requiredPath: "/family-burden/validation"
+  },
+  {
+    path: "/mass-vacation-plans",
+    component: MassVacationPlansPage,
+    requiredPath: "/mass-vacation-plans"
   },
   {
     path: "/reports/guard-schedule-matrix",

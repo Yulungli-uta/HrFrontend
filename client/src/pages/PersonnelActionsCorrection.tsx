@@ -1,7 +1,7 @@
 // src/pages/PersonnelActionsCorrection.tsx
 import { useState } from 'react';
 import { Link } from 'wouter';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
   Table,
@@ -92,6 +92,7 @@ function buildUpdatePayload(data: CreatePersonnelActionRequest): UpdatePersonnel
 
 export default function PersonnelActionsCorrection() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // ── Filtros (no se consulta nada hasta que el usuario presiona "Buscar") ──
   const [searchInput, setSearchInput] = useState('');
@@ -171,6 +172,8 @@ export default function PersonnelActionsCorrection() {
         title: '✅ Corrección aplicada',
         description: 'La acción fue corregida. Queda registrada en el historial de auditoría.',
       });
+      queryClient.invalidateQueries({ queryKey: ['personnel-actions-correction-search'] });
+      queryClient.invalidateQueries({ queryKey: ['personnel-action-detail-for-correction'] });
       setIsFormDirty(false);
       setConfirmOpen(false);
       setSelected(null);
@@ -418,6 +421,7 @@ export default function PersonnelActionsCorrection() {
                     onSubmit={handleFormSubmit}
                     onCancel={() => setViewMode('summary')}
                     onDirtyChange={setIsFormDirty}
+                    allowActionNumberEdit
                   />
                 )}
               </>

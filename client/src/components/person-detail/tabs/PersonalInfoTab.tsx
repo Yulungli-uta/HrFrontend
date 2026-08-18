@@ -174,7 +174,7 @@ export function PersonalInfoTab({
                   label="Fotografía de perfil"
                   entityReady={true}
                   allowReplace
-                  documentType={{ enabled: true, category: "CV_DOCUMENT_TYPE", label: "Tipo de documento", defaultValue: undefined }}
+                  documentType={{ enabled: false }}
                 />
               )}
             </div>

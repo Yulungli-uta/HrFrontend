@@ -77,6 +77,7 @@ type EmployeeViewSeed = {
   sex?: string;
   address?: string;
   hireDate?: string;
+  seniorityDate?: string | null;
   employeeIsActive?: boolean;
   employeeType?: number | null;
   employeeTypeName?: string | null;
@@ -118,6 +119,10 @@ type EmployeeFormData = {
   jobId: number | null;
   immediateBossId: number | null;
   hireDate: string;
+  /** Fecha de antigüedad para beneficios (ej. bono vacacional CT a los 5 años) — puede diferir
+   * de hireDate (ej. fecha de contrato indefinido). Opcional: si no se especifica, el backend
+   * usa hireDate como respaldo. */
+  seniorityDate?: string | null;
   isActive: boolean;
   /** SIIES TIPO_DOCENTE_LOSEP(LOES) — solo aplica si el cargo es Docente LOES; NO APLICA en el resto de casos. */
   tipoDocenteLoesTypeId?: number | null;
@@ -328,6 +333,7 @@ export default function EmployeeForm({
       jobId: null,
       immediateBossId: employee?.immediateBossId ?? null,
       hireDate: toDateInputValue(employee?.hireDate ?? ""),
+      seniorityDate: toDateInputValue((employee as any)?.seniorityDate ?? "") || null,
       isActive: employee?.isActive ?? true,
       tipoDocenteLoesTypeId: (employee as any)?.tipoDocenteLoesTypeId ?? null,
       categoriaDocenteLoesTypeId: (employee as any)?.categoriaDocenteLoesTypeId ?? null,
@@ -393,6 +399,7 @@ export default function EmployeeForm({
         jobId: null,
         immediateBossId: null,
         hireDate: "",
+        seniorityDate: null,
         isActive: true,
         email: "",
       });
@@ -462,6 +469,14 @@ export default function EmployeeForm({
               ""
           );
 
+          const seniorityDate =
+            toDateInputValue(
+              empData.seniorityDate ??
+                empData.SeniorityDate ??
+                viewSeed.seniorityDate ??
+                ""
+            ) || null;
+
           const isActive =
             empData.isActive ??
             empData.IsActive ??
@@ -482,6 +497,7 @@ export default function EmployeeForm({
             jobId,
             immediateBossId,
             hireDate,
+            seniorityDate,
             isActive,
             email,
             budgetUnitTypeId,
@@ -534,6 +550,7 @@ export default function EmployeeForm({
           jobId: null,
           immediateBossId: null,
           hireDate: toDateInputValue(viewSeed.hireDate),
+          seniorityDate: toDateInputValue(viewSeed.seniorityDate ?? "") || null,
           isActive: viewSeed.employeeIsActive ?? true,
           email: viewSeed.email ?? "",
         });
@@ -568,6 +585,7 @@ export default function EmployeeForm({
         jobId: data.jobId,
         immediateBossId: data.immediateBossId,
         hireDate: data.hireDate,
+        seniorityDate: data.seniorityDate || null,
         email: data.email,
         isActive: data.isActive,
         tipoDocenteLoesTypeId: data.tipoDocenteLoesTypeId ?? null,
@@ -617,6 +635,7 @@ export default function EmployeeForm({
         jobId: data.jobId,
         immediateBossId: data.immediateBossId,
         hireDate: data.hireDate,
+        seniorityDate: data.seniorityDate || null,
         email: data.email,
         isActive: data.isActive,
         tipoDocenteLoesTypeId: data.tipoDocenteLoesTypeId ?? null,
@@ -1258,6 +1277,32 @@ export default function EmployeeForm({
                         onChange={(e) => field.onChange(e.target.value)}
                       />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="seniorityDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Fecha de Antigüedad</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="date"
+                        data-testid="input-seniorityDate"
+                        max={new Date().toISOString().slice(0, 10)}
+                        disabled={disabling}
+                        {...field}
+                        value={field.value ?? ""}
+                        onChange={(e) => field.onChange(e.target.value || null)}
+                      />
+                    </FormControl>
+                    <p className="text-xs text-muted-foreground">
+                      Opcional. Solo si difiere de la fecha de contratación (ej. fecha de contrato
+                      indefinido). Si se deja vacío, se usa la fecha de contratación.
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}

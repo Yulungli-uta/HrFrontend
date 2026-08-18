@@ -148,6 +148,7 @@ export function ProtectedRoute({
         logger.debug("ProtectedRoute", 'Ruta requerida:', requiredPath);
       }
       if (showUnauthorized) {
+        return <UnauthorizedPage reason="route" requiredPath={requiredPath} />;
       }
       return <Redirect to={fallbackPath} />;
     }

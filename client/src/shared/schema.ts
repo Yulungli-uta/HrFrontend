@@ -68,6 +68,7 @@ export const employees = pgTable("employees", {
   departmentId: integer("department_id"),
   immediateBossId: integer("immediate_boss_id"),
   hireDate: date("hire_date"),
+  seniorityDate: date("seniority_date"),
   isActive: boolean("is_active"),
 });
 

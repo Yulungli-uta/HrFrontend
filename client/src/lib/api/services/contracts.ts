@@ -250,6 +250,21 @@ export const ContractsRHAPI = {
 export const ContractTypeAPI = {
   ...createCrudService<any, any>('/api/v1/rh/contract-type'),
 
+  /**
+   * Igual que la paginación genérica (listPaged de createCrudService), pero admite
+   * además filtrar por estado ("1" activo / "0" inactivo) — el backend expone ese
+   * filtro adicional en GET /api/v1/rh/contract-type/paged.
+   */
+  listPaged: (params: PagedRequest & { status?: string }): Promise<ApiResponse<PagedResult<any>>> => {
+    const qs = new URLSearchParams({
+      page: String(params.page),
+      pageSize: String(params.pageSize),
+      ...(params.search?.trim() ? { search: params.search.trim() } : {}),
+      ...(params.status ? { status: params.status } : {}),
+    });
+    return apiFetch<PagedResult<any>>(`/api/v1/rh/contract-type/paged?${qs.toString()}`);
+  },
+
   getWithTemplate: (id: number | string): Promise<ApiResponse<any>> =>
     apiFetch<any>(`/api/v1/rh/contract-type/${id}/template`),
 
@@ -310,6 +325,16 @@ export interface PersonnelActionTypeDto {
 export const PersonnelActionTypeAPI = {
   getAll: (): Promise<ApiResponse<PersonnelActionTypeDto[]>> =>
     apiFetch<PersonnelActionTypeDto[]>(PERSONNEL_ACTION_TYPE_BASE),
+
+  /** Paginado con búsqueda por nombre/código/descripción en el servidor. */
+  listPaged: (params: PagedRequest): Promise<ApiResponse<PagedResult<PersonnelActionTypeDto>>> => {
+    const qs = new URLSearchParams({
+      page: String(params.page),
+      pageSize: String(params.pageSize),
+      ...(params.search?.trim() ? { search: params.search.trim() } : {}),
+    });
+    return apiFetch<PagedResult<PersonnelActionTypeDto>>(`${PERSONNEL_ACTION_TYPE_BASE}/paged?${qs.toString()}`);
+  },
 
   getActive: (): Promise<ApiResponse<PersonnelActionTypeDto[]>> =>
     apiFetch<PersonnelActionTypeDto[]>(`${PERSONNEL_ACTION_TYPE_BASE}/active`),

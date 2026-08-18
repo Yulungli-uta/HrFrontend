@@ -136,6 +136,7 @@ export default function PersonnelActionsHistoricalEntry() {
             onCancel={() => guardedBack(false)}
             onDirtyChange={setIsFormDirty}
             maxDate={maxDate}
+            allowActionNumberEdit
           />
         </CardContent>
       </Card>

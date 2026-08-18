@@ -1,10 +1,11 @@
 // src/pages/Parameters.tsx
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Settings2, Edit, Trash2, Search, RefreshCw, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { ParametersAPI } from "@/lib/api";
+import { ParametersAPI, type ApiResponse, type PagedResult } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +16,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { parseApiError } from "@/lib/error-handling";
 import { logger } from "@/lib/logger";
+import { usePaged } from "@/hooks/pagination/usePaged";
+import { DataPagination } from "@/components/ui/DataPagination";
 
 interface Parameter {
   parameterId?: number;
@@ -29,8 +32,7 @@ const empty: Parameter = { name: "", pvalues: "", description: "", dataType: "NU
 
 export default function ParametersPage() {
   const { toast } = useToast();
-  const [items, setItems] = useState<Parameter[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Parameter | null>(null);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -38,28 +40,26 @@ export default function ParametersPage() {
   const [form, setForm] = useState<Parameter>(empty);
   const [searchTerm, setSearchTerm] = useState("");
 
-  const load = async () => {
-    try {
-      setIsLoading(true);
-      const res = await ParametersAPI.list();
-      setItems(res.status === "success" ? (res.data ?? []) : []);
-    } catch (error) {
-      logger.error("Parameters", "Error cargando parámetros", error);
-      toast({ title: "Error", description: "No se pudieron cargar los parámetros", variant: "destructive" });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const {
+    items: filtered,
+    isLoading,
+    page,
+    pageSize,
+    totalCount,
+    totalPages,
+    hasPreviousPage,
+    hasNextPage,
+    goToPage,
+    setPageSize,
+    setSearch,
+  } = usePaged<Parameter>({
+    queryKey: "parameters-paged",
+    queryFn: (params) =>
+      ParametersAPI.listPaged(params) as Promise<ApiResponse<PagedResult<Parameter>>>,
+    initialPageSize: 20,
+  });
 
-  useEffect(() => {
-    load();
-  }, []);
-
-  const filtered = useMemo(() => {
-    if (!searchTerm) return items;
-    const q = searchTerm.toLowerCase();
-    return items.filter((p) => p.name.toLowerCase().includes(q) || (p.description ?? "").toLowerCase().includes(q));
-  }, [items, searchTerm]);
+  const load = () => queryClient.invalidateQueries({ queryKey: ["parameters-paged"] });
 
   const handleSave = async () => {
     if (!form.name) {
@@ -209,12 +209,22 @@ export default function ParametersPage() {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <CardTitle>Parámetros registrados</CardTitle>
-              <CardDescription>{items.length} en total</CardDescription>
+              <CardDescription>{totalCount} en total</CardDescription>
             </div>
             <div className="flex gap-2 w-full sm:w-auto">
               <div className="relative flex-1 sm:flex-none">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Buscar por nombre o descripción..." className="pl-8" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                <Input
+                  placeholder="Buscar por nombre o descripción..."
+                  className="pl-8"
+                  value={searchTerm}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setSearchTerm(value);
+                    // Búsqueda real en el servidor (usePaged.setSearch resetea a página 1 automáticamente).
+                    setSearch(value);
+                  }}
+                />
               </div>
               <Button variant="outline" size="icon" onClick={load}><RefreshCw className="h-4 w-4" /></Button>
             </div>
@@ -259,6 +269,18 @@ export default function ParametersPage() {
               <p>No hay parámetros registrados.</p>
             </div>
           )}
+
+          <DataPagination
+            page={page}
+            totalPages={totalPages}
+            totalCount={totalCount}
+            pageSize={pageSize}
+            hasPreviousPage={hasPreviousPage}
+            hasNextPage={hasNextPage}
+            onPageChange={goToPage}
+            onPageSizeChange={setPageSize}
+            disabled={isLoading}
+          />
         </CardContent>
       </Card>
 

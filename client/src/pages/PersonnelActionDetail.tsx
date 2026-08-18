@@ -20,8 +20,7 @@ import { PersonnelActionForm } from '@/components/personnelActions/PersonnelActi
 import { DocumentPreviewPanel } from '@/components/personnelActions/DocumentPreviewPanel';
 import { StatusHistoryTimeline } from '@/components/personnelActions/StatusHistoryTimeline';
 import { ActionDocumentsPanel } from '@/components/personnelActions/ActionDocumentsPanel';
-import { DepartmentAuthoritiesAPI, TiposReferenciaAPI, VistaDetallesEmpleadosAPI } from '@/lib/api';
-import type { DepartmentAuthorityDto } from '@/lib/api/services/departmentAuthorities';
+import { TiposReferenciaAPI } from '@/lib/api';
 import { REF_TYPE_CATEGORIES } from '@/features/refTypeCategories';
 import type { VwJobWithDegreeAndGroup, VwDepartmentWithType } from '@/lib/api/services/views';
 import type { RefType } from '@/lib/api';
@@ -34,19 +33,7 @@ function formatCurrency(value: number): string {
 function buildDocumentOverrides(
   action: PersonnelActionDetail,
   jobs: VwJobWithDegreeAndGroup[],
-  departments: VwDepartmentWithType[],
-  authorities: DepartmentAuthorityDto[],
-  refTypes: {
-    institutionalProcessTypes: RefType[];
-    managementLevelTypes: RefType[];
-  },
-  resolvedEmployees: {
-    dthDir: any | null;
-    authNom: any | null;
-    elab: any | null;
-    reviewer: any | null;
-    registrar: any | null;
-  }
+  departments: VwDepartmentWithType[]
 ): Record<string, string> {
   const ov: Record<string, string> = {};
 
@@ -62,25 +49,12 @@ function buildDocumentOverrides(
     if (originDept.location) ov['CURRENT_WORKPLACE'] = originDept.location;
   }
 
-  // Proceso Institucional: desde el campo guardado en la acción (ref_type), fallback al tipo del dept
-  if (action.institutionalProcess) {
-    const t = refTypes.institutionalProcessTypes.find(
-      t => (t.typeID ?? (t as any).typeId) === action.institutionalProcess
-    );
-    if (t?.name) ov['CURRENT_INSTITUTIONAL_PROCESS'] = t.name;
-  } else if (originDept?.departmentTypeName) {
-    ov['CURRENT_INSTITUTIONAL_PROCESS'] = originDept.departmentTypeName;
-  }
-
-  // Nivel de Gestión: desde el campo guardado en la acción (ref_type), fallback al tipo del dept
-  if (action.managementLevel) {
-    const t = refTypes.managementLevelTypes.find(
-      t => (t.typeID ?? (t as any).typeId) === action.managementLevel
-    );
-    if (t?.name) ov['CURRENT_MANAGEMENT_LEVEL'] = t.name;
-  } else if (originDept?.departmentTypeDescription) {
-    ov['CURRENT_MANAGEMENT_LEVEL'] = originDept.departmentTypeDescription;
-  }
+  // CURRENT_/PROPOSED_INSTITUTIONAL_PROCESS y CURRENT_/PROPOSED_MANAGEMENT_LEVEL los
+  // resuelve el backend directamente (PersonnelActionService.BuildActionOverrides) —
+  // el campo único del formulario describe el DESTINO, y el de ORIGEN se deriva del tipo
+  // del departamento de origen. No se envían como overrides desde aquí para que crear y
+  // regenerar el documento den siempre el mismo resultado. Corregido 2026-08-18 (antes
+  // el campo del formulario se imprimía por error en SITUACIÓN ACTUAL).
 
   // Declaración juramentada: marca para la plantilla.
   // swornDeclaration=true → presentó la declaración (marca en SI); false → marca en NO APLICA.
@@ -99,8 +73,6 @@ function buildDocumentOverrides(
     if (destDept.departmentName) ov['PROPOSED_ADMIN_UNIT'] = destDept.departmentName;
     if (destDept.location) ov['PROPOSED_WORKPLACE'] = destDept.location;
     if (destDept.budgetCode) ov['PROPOSED_BUDGET_CODE'] = destDept.budgetCode;
-    if (destDept.departmentTypeName) ov['PROPOSED_INSTITUTIONAL_PROCESS'] = destDept.departmentTypeName;
-    if (destDept.departmentTypeDescription) ov['PROPOSED_MANAGEMENT_LEVEL'] = destDept.departmentTypeDescription;
   }
 
   if (action.newRmu != null) ov['PROPOSED_SALARY'] = formatCurrency(action.newRmu);
@@ -108,46 +80,15 @@ function buildDocumentOverrides(
   if (action.destinationBudgetCode && !ov['PROPOSED_BUDGET_CODE']) ov['PROPOSED_BUDGET_CODE'] = action.destinationBudgetCode;
   if (action.originBudgetCode && !ov['CURRENT_BUDGET_CODE']) ov['CURRENT_BUDGET_CODE'] = action.originBudgetCode;
 
-  // Responsables del documento: nombre y cargo desde la vista EmployeeDetails
-  // Si el ID está guardado y se resolvió el empleado, usar fullName + jobName
-  // Si no, caer en el nombre guardado en la acción, luego en DepartmentAuthority
-  const applyResponsible = (
-    emp: any | null,
-    savedName: string | null | undefined,
-    nameKey: string,
-    titleKey: string
-  ) => {
-    if (emp) {
-      if (emp.fullName) ov[nameKey] = emp.fullName;
-      if (emp.jobName) ov[titleKey] = emp.jobName;
-    } else if (savedName) {
-      ov[nameKey] = savedName;
-    }
-  };
-
-  applyResponsible(resolvedEmployees.dthDir,  action.dthDirectorName,        'DTH_DIRECTOR_NAME', 'DTH_DIRECTOR_TITLE');
-  applyResponsible(resolvedEmployees.authNom, action.authorityNominatorName,  'AUTHORITY_NAME',    'AUTHORITY_TITLE');
-  applyResponsible(resolvedEmployees.elab,    action.elaboratorName,          'ELABORATOR_NAME',   'ELABORATOR_TITLE');
-  applyResponsible(resolvedEmployees.reviewer,action.reviewerName,            'REVIEWER_NAME',     'REVIEWER_TITLE');
-  applyResponsible(resolvedEmployees.registrar,action.registrarName,          'REGISTRAR_NAME',    'REGISTRAR_TITLE');
-
-  // Fallback: auto-detectar desde DepartmentAuthority para roles sin ID guardado
-  for (const auth of authorities) {
-    const type = (auth.authorityTypeName ?? '').toUpperCase();
-    const name = auth.employeeFullName ?? '';
-    const title = auth.denomination ?? auth.jobName ?? auth.authorityTypeName ?? '';
-    if ((type.includes('TALENTO') || type.includes('DTH')) && !ov['DTH_DIRECTOR_NAME']) {
-      ov['DTH_DIRECTOR_NAME'] = name; ov['DTH_DIRECTOR_TITLE'] = title;
-    } else if ((type.includes('RECTOR') || type.includes('NOMIN') || type.includes('AUTORIDAD')) && !ov['AUTHORITY_NAME']) {
-      ov['AUTHORITY_NAME'] = name; ov['AUTHORITY_TITLE'] = title;
-    } else if (type.includes('ELABOR') && !ov['ELABORATOR_NAME']) {
-      ov['ELABORATOR_NAME'] = name; ov['ELABORATOR_TITLE'] = title;
-    } else if (type.includes('REVIS') && !ov['REVIEWER_NAME']) {
-      ov['REVIEWER_NAME'] = name; ov['REVIEWER_TITLE'] = title;
-    } else if ((type.includes('REGIST') || type.includes('CONTROL')) && !ov['REGISTRAR_NAME']) {
-      ov['REGISTRAR_NAME'] = name; ov['REGISTRAR_TITLE'] = title;
-    }
-  }
+  // Nombre y cargo de los 5 responsables (Director DTH, Autoridad Nominadora,
+  // Elaborador, Revisor, Registrador) los resuelve el backend directamente
+  // (PersonnelActionRepository.ResolveEmployeeAsync) a partir del ID guardado en la
+  // acción — incluye prioridad a HR.tbl_DepartmentAuthorities cuando la persona
+  // seleccionada tiene una autoridad institucional vigente. No se envían como
+  // overrides desde aquí: antes existía un fallback que, si el ID no resolvía,
+  // adivinaba el responsable tomando la primera autoridad activa que calzara por
+  // nombre de tipo (ej. "RECTOR"/"NOMIN") — podía asignar a la persona equivocada
+  // como firmante de un documento oficial. Eliminado 2026-08-18.
 
   return ov;
 }
@@ -198,14 +139,6 @@ export default function PersonnelActionDetail() {
 
   const { departments, jobs } = usePersonnelActionLookups(true);
 
-  const { data: authoritiesResp } = useQuery({
-    queryKey: ['department-authorities-active'],
-    queryFn: () => DepartmentAuthoritiesAPI.listPaged({ page: 1, pageSize: 100, onlyActive: true }),
-    staleTime: 5 * 60 * 1000,
-  });
-  const authorities: DepartmentAuthorityDto[] =
-    authoritiesResp?.status === 'success' ? (authoritiesResp.data?.items ?? []) : [];
-
   const { data: instProcResp } = useQuery({
     queryKey: ['ref-types', 'AP_PROCESO_INSTITUCIONAL'],
     queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.AP_PROCESO_INSTITUCIONAL),
@@ -222,31 +155,13 @@ export default function PersonnelActionDetail() {
   const managementLevelTypes: RefType[] =
     mgmtLevelResp?.status === 'success' ? (mgmtLevelResp.data ?? []) : [];
 
-  const handleGenerateDocument = async () => {
+  const handleGenerateDocument = () => {
     if (!action) return;
 
-    // Resolver nombre y cargo de cada responsable desde la vista EmployeeDetails
-    const resolveEmp = async (id: number | null | undefined): Promise<any | null> => {
-      if (!id) return null;
-      try {
-        const r = await VistaDetallesEmpleadosAPI.get(id);
-        return r.status === 'success' ? r.data : null;
-      } catch { return null; }
-    };
-
-    const [dthDir, authNom, elab, reviewer, registrar] = await Promise.all([
-      resolveEmp(action.dthDirectorId),
-      resolveEmp(action.authorityNominatorId),
-      resolveEmp(action.elaboratorId),
-      resolveEmp(action.reviewerId),
-      resolveEmp(action.registrarId),
-    ]);
-
-    const overrides = buildDocumentOverrides(
-      action, jobs, departments, authorities,
-      { institutionalProcessTypes, managementLevelTypes },
-      { dthDir, authNom, elab, reviewer, registrar }
-    );
+    // Nombre/cargo de los 5 responsables los resuelve el backend directamente
+    // (ver comentario en buildDocumentOverrides) — no se resuelven ni se envían
+    // como overrides desde aquí.
+    const overrides = buildDocumentOverrides(action, jobs, departments);
     generateDocument({ overrides: Object.keys(overrides).length > 0 ? overrides : null });
   };
 

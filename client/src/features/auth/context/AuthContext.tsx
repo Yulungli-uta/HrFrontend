@@ -342,9 +342,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       description: "Has cerrado sesión correctamente",
     });
 
-    setLocation("/login");
+    // No navegar manualmente aquí: AppRouter ya redirige incondicionalmente a
+    // /login en cuanto isAuthenticated pasa a false (ver App Router, gate superior).
+    // Llamar setLocation("/login") en este punto competía con la regla de AppRouter
+    // que rebota /login → / para usuarios autenticados: si ese re-render corría
+    // antes de que isAuthenticated terminara de propagarse, la app quedaba en "/"
+    // en vez de "/login" (bug reportado: algunas páginas volvían a / al expirar la sesión).
     logAuth("LOGOUT completado");
-  }, [setLocation, toast]);
+  }, [toast]);
   logoutRef.current = logout;
 
   // ─── Registrar callback de logout en fetch.ts ─────────────────────────────

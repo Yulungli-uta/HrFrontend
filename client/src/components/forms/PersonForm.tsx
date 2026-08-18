@@ -94,6 +94,11 @@ const personSchema = z.object({
     .string()
     .min(1, "La identificación es requerida")
     .max(20, "La identificación no puede exceder 20 caracteres"),
+  preferredDenomination: z
+    .string()
+    .max(200, "La denominación no puede exceder 200 caracteres")
+    .optional()
+    .or(z.literal("")),
   email: z
     .string()
     .email("Email institucional inválido")
@@ -422,6 +427,7 @@ export default function PersonForm({
       lastName: person.lastName ?? "",
       identType: (person as any).identType ?? identityTypes[0]?.id ?? 0,
       idCard: person.idCard ?? "",
+      preferredDenomination: (person as any).preferredDenomination || "",
       email: person.email ?? "",
       phone: person.phone || "",
       birthDate: person.birthDate
@@ -452,6 +458,7 @@ export default function PersonForm({
       lastName: "",
       identType: identityTypes[0]?.id || 0,
       idCard: "",
+      preferredDenomination: "",
       email: "",
       phone: "",
       birthDate: "",
@@ -690,6 +697,9 @@ export default function PersonForm({
         ? data.indigenousNationalityTypeId ?? null
         : null;
 
+      // Igual que arriba: preferredDenomination tampoco forma parte de InsertPerson.
+      (submitData as any).preferredDenomination = data.preferredDenomination?.trim() || undefined;
+
       onSubmit(submitData);
     } catch {
       toast({
@@ -880,6 +890,25 @@ export default function PersonForm({
                     </p>
                   )}
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="preferredDenomination">Denominación Formal (opcional)</Label>
+                <Input
+                  id="preferredDenomination"
+                  {...register("preferredDenomination")}
+                  placeholder='Ej: "Dra. Sara Camacho Estrada, PhD."'
+                  className={fieldClassName}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Solo afecta cómo aparece el nombre al firmar Acciones de Personal o Contratos.
+                  Si se deja vacío, se usa Apellidos + Nombres como siempre.
+                </p>
+                {errors.preferredDenomination && (
+                  <p className="text-sm text-destructive">
+                    {errors.preferredDenomination.message}
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

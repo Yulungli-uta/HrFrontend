@@ -238,6 +238,9 @@ export default function FamilyMemberForm({
           if (!Number.isNaN(disabilityTypeId)) {
             formData.append("DisabilityTypeId", String(disabilityTypeId));
           }
+          if (data.disabilityPercentage != null) {
+            formData.append("DisabilityPercentage", String(data.disabilityPercentage));
+          }
         }
         formData.append("File", selectedFile);
         const birthCertTypeId = findDocTypeIdByName(docTypes, BIRTH_CERTIFICATE_DOC_TYPE_NAME);

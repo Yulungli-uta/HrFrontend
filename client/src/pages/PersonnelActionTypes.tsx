@@ -51,6 +51,9 @@ import { PersonnelActionTypeForm } from "@/components/forms/PersonnelActionTypeF
 import { PersonnelActionTypeAPI } from "@/lib/api/services/contracts";
 import type { PersonnelActionTypeDto } from "@/lib/api/services/contracts";
 import { DocumentTemplatesAPI } from "@/lib/api/services/documentTemplates";
+import type { ApiResponse, PagedResult } from "@/lib/api";
+import { usePaged } from "@/hooks/pagination/usePaged";
+import { DataPagination } from "@/components/ui/DataPagination";
 
 export default function PersonnelActionTypesPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -63,15 +66,45 @@ export default function PersonnelActionTypesPage() {
   const [isFormDirty, setIsFormDirty] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
 
-  const { data: apiResponse, isLoading, error } = useQuery({
-    queryKey: ["/api/v1/rh/personnel-action-type"],
-    queryFn: () => PersonnelActionTypeAPI.getAll(),
+  const {
+    items: actionTypes,
+    isLoading,
+    isError,
+    errorMessage,
+    page,
+    pageSize,
+    totalCount: totalPagedCount,
+    totalPages,
+    hasPreviousPage,
+    hasNextPage,
+    goToPage,
+    setPageSize,
+    setSearch,
+  } = usePaged<PersonnelActionTypeDto>({
+    queryKey: ["/api/v1/rh/personnel-action-type", "paged"],
+    queryFn: (params) =>
+      PersonnelActionTypeAPI.listPaged(params) as Promise<
+        ApiResponse<PagedResult<PersonnelActionTypeDto>>
+      >,
+    initialPageSize: 20,
   });
 
-  const actionTypes: PersonnelActionTypeDto[] = useMemo(() => {
-    if (apiResponse?.status !== "success") return [];
-    return apiResponse.data;
-  }, [apiResponse]);
+  // Consulta aparte, SIN búsqueda: alimenta las tarjetas de estadísticas para
+  // que sigan mostrando el total real del catálogo (22 tipos hoy), sin
+  // importar qué se esté buscando en la tabla paginada de abajo. El catálogo
+  // es chico, así que traerlo completo para este propósito es barato.
+  const { data: statsResponse } = useQuery<ApiResponse<PagedResult<PersonnelActionTypeDto>>>({
+    queryKey: ["/api/v1/rh/personnel-action-type", "stats-all"],
+    queryFn: () =>
+      PersonnelActionTypeAPI.listPaged({ page: 1, pageSize: 200 }) as Promise<
+        ApiResponse<PagedResult<PersonnelActionTypeDto>>
+      >,
+  });
+
+  const allActionTypesForStats: PersonnelActionTypeDto[] = useMemo(() => {
+    if (statsResponse?.status !== "success") return [];
+    return statsResponse.data.items;
+  }, [statsResponse]);
 
   // Plantillas vigentes de tipo ACCION_PERSONAL, solo para mostrar el nombre en el detalle.
   const { data: templatesResponse } = useQuery({
@@ -86,25 +119,18 @@ export default function PersonnelActionTypesPage() {
     return map;
   }, [templatesResponse]);
 
-  const filtered = useMemo(() => {
-    const term = searchTerm.toLowerCase().trim();
-    if (!term) return actionTypes;
-    return actionTypes.filter(
-      (at) =>
-        at.name.toLowerCase().includes(term) ||
-        at.code.toLowerCase().includes(term) ||
-        (at.description ?? "").toLowerCase().includes(term)
-    );
-  }, [actionTypes, searchTerm]);
+  // La búsqueda ya la resuelve el servidor (ver usePaged de arriba) — se
+  // mantiene el nombre "filtered" para no tocar el resto del render.
+  const filtered = actionTypes;
 
   const stats = useMemo(() => {
-    const total = actionTypes.length;
-    const active = actionTypes.filter((a) => a.isActive).length;
-    const adCreate = actionTypes.filter((a) => a.requiresAdUserCreation).length;
-    const adDisable = actionTypes.filter((a) => a.requiresAdUserDisable).length;
-    const adGroups = actionTypes.filter((a) => a.requiresAdGroupAssignment).length;
+    const total = allActionTypesForStats.length;
+    const active = allActionTypesForStats.filter((a) => a.isActive).length;
+    const adCreate = allActionTypesForStats.filter((a) => a.requiresAdUserCreation).length;
+    const adDisable = allActionTypesForStats.filter((a) => a.requiresAdUserDisable).length;
+    const adGroups = allActionTypesForStats.filter((a) => a.requiresAdGroupAssignment).length;
     return { total, active, adCreate, adDisable, adGroups };
-  }, [actionTypes]);
+  }, [allActionTypesForStats]);
 
   function closeFormClean() {
     setIsFormDirty(false);
@@ -153,14 +179,14 @@ export default function PersonnelActionTypesPage() {
     );
   }
 
-  if (error || apiResponse?.status === "error") {
+  if (isError) {
     return (
       <div className="container mx-auto p-4 lg:p-6">
         <Card className="border-destructive/30 bg-destructive/10">
           <CardContent className="pt-6">
             <p className="text-destructive">
               Error al cargar los tipos de acción de personal.{" "}
-              {apiResponse?.status === "error" ? apiResponse.error.message : ""}
+              {errorMessage ?? ""}
             </p>
           </CardContent>
         </Card>
@@ -260,7 +286,13 @@ export default function PersonnelActionTypesPage() {
           placeholder="Buscar por nombre, código o descripción..."
           className="pl-10"
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={(e) => {
+            const value = e.target.value;
+            setSearchTerm(value);
+            // Búsqueda real en el servidor (usePaged.setSearch resetea a
+            // página 1 automáticamente).
+            setSearch(value);
+          }}
         />
       </div>
 
@@ -269,7 +301,7 @@ export default function PersonnelActionTypesPage() {
         <CardHeader>
           <CardTitle>Lista de Tipos de Acción</CardTitle>
           <CardDescription>
-            {filtered.length} de {stats.total} tipos mostrados
+            {filtered.length} de {totalPagedCount} tipos mostrados
             {searchTerm && ` — filtrado por: "${searchTerm}"`}
           </CardDescription>
         </CardHeader>
@@ -379,6 +411,18 @@ export default function PersonnelActionTypesPage() {
           )}
         </CardContent>
       </Card>
+
+      <DataPagination
+        page={page}
+        totalPages={totalPages}
+        totalCount={totalPagedCount}
+        pageSize={pageSize}
+        hasPreviousPage={hasPreviousPage}
+        hasNextPage={hasNextPage}
+        onPageChange={goToPage}
+        onPageSizeChange={setPageSize}
+        disabled={isLoading}
+      />
 
       {/* Confirmación de salida sin guardar */}
       <AlertDialog open={showExitConfirm} onOpenChange={setShowExitConfirm}>

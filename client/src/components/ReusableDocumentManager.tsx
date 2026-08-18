@@ -866,7 +866,7 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
                   <Label>Aplicación del tipo</Label>
 
                   <Select value={docTypeMode} onValueChange={(v) => onChangeDocTypeMode(v as DocTypeMode)} disabled={disabled || uploading}>
-                    <SelectTrigger className="w-full sm:w-[320px]">
+                    <SelectTrigger className="w-full sm:max-w-[320px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>

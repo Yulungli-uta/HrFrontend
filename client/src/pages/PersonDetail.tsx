@@ -30,6 +30,7 @@ import { AddressesTab } from "@/components/person-detail/tabs/AddressesTab";
 import { BankAccountsTab } from "@/components/person-detail/tabs/BankAccountsTab";
 
 import { StatsDashboard } from "@/components/person-detail/StatsDashboard";
+import { PersonAvatarPreview } from "@/components/person-detail/PersonAvatarPreview";
 import { PersonFormDialog } from "@/components/person-detail/PersonFormDialog";
 import { DynamicFormDialog } from "@/components/person-detail/DynamicFormDialog";
 import { ConfirmDeleteDialog } from "@/components/person-detail/ConfirmDeleteDialog";
@@ -404,6 +405,7 @@ export default function PersonDetail() {
                 </Button>
               </>
             )}
+            {person?.personId && <PersonAvatarPreview personId={person.personId} />}
             <div className="min-w-0 flex-1">
               <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground truncate">
                 {person?.firstName} {person?.lastName}

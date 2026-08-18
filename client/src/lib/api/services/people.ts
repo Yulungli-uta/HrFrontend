@@ -57,6 +57,10 @@ export interface PersonDto {
   specialNeedsTypeId?: number | null;
   disabilityPercentage?: number | null;
   conadisCard?: string | null;
+  /** Nombre/título formal preferido (ej. "Dra. Sara Camacho Estrada, PhD."). Si está
+   * lleno, reemplaza a apellido+nombre solo al firmar Acciones de Personal/Contratos —
+   * no cambia cómo se muestra el nombre en el resto del sistema. */
+  preferredDenomination?: string | null;
 }
 
 export interface PersonCreateDto {
@@ -86,6 +90,7 @@ export interface PersonCreateDto {
   specialNeedsTypeId?: number;
   disabilityPercentage?: number;
   conadisCard?: string;
+  preferredDenomination?: string;
 }
 
 // =============================================================================

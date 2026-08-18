@@ -22,6 +22,7 @@ export type ReportType =
   | 'attendance-cross'
   | 'food-subsidy-summary'
   | 'family-subsidy-summary'
+  | 'seniority-bonus-summary'
   // Reportes v2 — Gestión RH
   | 'contracts'
   | 'active-contracts'
@@ -232,7 +233,16 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
     description: 'Cantidad de cargas familiares aprobadas que califican por empleado (menores de la edad tope, o cualquier edad con discapacidad) multiplicada por el valor base parametrizado',
     icon: 'Users',
     availableFormats: ['pdf', 'excel'],
-    availableFilters: ['startDate', 'endDate', 'departmentId', 'laborRegimeId', 'employeeId', 'orientation'],
+    // includeInactive: por defecto solo empleados activos (ver FamilySubsidyReportSource.cs).
+    availableFilters: ['startDate', 'endDate', 'departmentId', 'laborRegimeId', 'employeeId', 'includeInactive', 'orientation'],
+  },
+  'seniority-bonus-summary': {
+    type: 'seniority-bonus-summary',
+    title: 'Subsidio por Antigüedad',
+    description: 'RMU actual por empleado multiplicado por el porcentaje parametrizado y los años completos de antigüedad (Cláusula 28, Décimo Octavo Contrato Colectivo)',
+    icon: 'CalendarClock',
+    availableFormats: ['pdf', 'excel'],
+    availableFilters: ['departmentId', 'laborRegimeId', 'employeeId', 'includeInactive', 'orientation'],
   },
 
   // ── Gestión RH ────────────────────────────────────────────────────────────

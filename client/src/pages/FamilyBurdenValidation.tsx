@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
@@ -22,25 +23,28 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { ShieldCheck, CheckCircle2, XCircle, Loader2, FileText, Users, Clock, Accessibility, ListChecks } from 'lucide-react';
-import { CargasFamiliaresAPI, TiposReferenciaAPI } from '@/lib/api';
+import { ShieldCheck, CheckCircle2, XCircle, Loader2, FileText, Users, Clock, Accessibility, ListChecks, Search } from 'lucide-react';
+import { CargasFamiliaresAPI, TiposReferenciaAPI, type ApiResponse, type PagedResult } from '@/lib/api';
 import { REF_TYPE_CATEGORIES } from '@/features/refTypeCategories';
 import { ReusableDocumentManager } from '@/components/ReusableDocumentManager';
 import { FAMILY_MEMBER_DOCUMENT_DIRECTORY_CODE, FAMILY_MEMBER_DOCUMENT_ENTITY_TYPE } from '@/features/constants';
 import { useToast } from '@/hooks/use-toast';
 import { parseApiError } from '@/lib/error-handling';
+import { usePaged } from '@/hooks/pagination/usePaged';
+import { DataPagination } from '@/components/ui/DataPagination';
 
 interface FamilyBurdenValidationItem {
   burdenId: number;
   personId: number;
   employeeFullName: string;
   employeeIdCard: string;
-  dependentId: string;
+  dependentId: string | null;
   firstName: string;
   lastName: string;
   birthDate: string;
   disabilityTypeId?: number | null;
   disabilityTypeName?: string | null;
+  disabilityPercentage?: number | null;
   statusTypeId?: number | null;
   statusName: string;
   createdAt?: string | null;
@@ -117,7 +121,7 @@ function DetailDialog({
         <div className="grid grid-cols-2 gap-3 text-sm bg-muted/30 rounded-md p-3">
           <div>
             <p className="text-xs text-muted-foreground">Identificación</p>
-            <p className="font-medium">{item.dependentId}</p>
+            <p className="font-medium">{item.dependentId ?? 'Sin cédula emitida'}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Fecha de nacimiento</p>
@@ -125,7 +129,11 @@ function DetailDialog({
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Discapacidad</p>
-            <p className="font-medium">{item.disabilityTypeName ?? 'No'}</p>
+            <p className="font-medium">
+              {item.disabilityTypeName
+                ? `${item.disabilityTypeName}${item.disabilityPercentage != null ? ` (${item.disabilityPercentage}%)` : ''}`
+                : 'No'}
+            </p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Estado</p>
@@ -267,8 +275,7 @@ export default function FamilyBurdenValidationPage() {
   const stats: FamilyBurdenStats | null = statsResp?.status === 'success' ? statsResp.data : null;
 
   const [statusFilter, setStatusFilter] = useState<string>('REGISTRADO');
-  const [page, setPage] = useState(1);
-  const pageSize = 20;
+  const [searchTerm, setSearchTerm] = useState('');
   const [selected, setSelected] = useState<FamilyBurdenValidationItem | null>(null);
   const [approvingId, setApprovingId] = useState<number | null>(null);
   const [rejectingId, setRejectingId] = useState<number | null>(null);
@@ -285,19 +292,32 @@ export default function FamilyBurdenValidationPage() {
 
   const selectedStatusTypeId = statusFilter === 'ALL' ? undefined : statusIdByName.get(statusFilter);
 
-  const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['family-burden-validation', statusFilter, selectedStatusTypeId, page],
-    queryFn: () =>
+  const {
+    items,
+    isLoading,
+    page,
+    totalCount,
+    totalPages,
+    pageSize,
+    hasPreviousPage,
+    hasNextPage,
+    goToPage,
+    setPageSize,
+    setSearch,
+  } = usePaged<FamilyBurdenValidationItem>({
+    // selectedStatusTypeId entra en la queryKey para que cambiar el filtro de
+    // estado dispare un refetch (usePaged solo re-consulta cuando cambia su
+    // propia clave interna, no cuando cambia una variable externa cerrada en
+    // queryFn).
+    queryKey: ['family-burden-validation', statusFilter, selectedStatusTypeId],
+    queryFn: (params) =>
       CargasFamiliaresAPI.getForValidation({
+        ...params,
         statusTypeId: selectedStatusTypeId ?? null,
-        page,
-        pageSize,
-      }),
+      }) as Promise<ApiResponse<PagedResult<FamilyBurdenValidationItem>>>,
+    initialPageSize: 20,
     enabled: statusFilter === 'ALL' || statusTypes.length > 0,
   });
-
-  const result = data?.status === 'success' ? data.data : null;
-  const items: FamilyBurdenValidationItem[] = result?.items ?? [];
 
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ['family-burden-validation'] });
@@ -353,19 +373,39 @@ export default function FamilyBurdenValidationPage() {
           <CardTitle className="text-sm text-muted-foreground uppercase tracking-wider">Filtro</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="max-w-xs space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Estado</Label>
-            <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="REGISTRADO">Pendientes de validar</SelectItem>
-                <SelectItem value="APROBADO">Aprobados</SelectItem>
-                <SelectItem value="RECHAZADO">Rechazados</SelectItem>
-                <SelectItem value="ALL">Todos</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="max-w-xs w-full space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Estado</Label>
+              <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); goToPage(1); }}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="REGISTRADO">Pendientes de validar</SelectItem>
+                  <SelectItem value="APROBADO">Aprobados</SelectItem>
+                  <SelectItem value="RECHAZADO">Rechazados</SelectItem>
+                  <SelectItem value="ALL">Todos</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="max-w-sm w-full space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Buscar por empleado (cédula o nombre)</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Cédula o nombre del empleado…"
+                  className="pl-9"
+                  value={searchTerm}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setSearchTerm(value);
+                    // Búsqueda real en el servidor (usePaged.setSearch resetea a
+                    // página 1 automáticamente).
+                    setSearch(value);
+                  }}
+                />
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -373,11 +413,11 @@ export default function FamilyBurdenValidationPage() {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-sm text-muted-foreground uppercase tracking-wider">
-            Resultados {result ? `(${result.totalCount})` : ''}
+            Resultados ({totalCount})
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoading || isFetching ? (
+          {isLoading ? (
             <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin" /> Cargando…
             </div>
@@ -460,24 +500,17 @@ export default function FamilyBurdenValidationPage() {
                 </Table>
               </div>
 
-              {result && result.totalPages > 1 && (
-                <div className="flex items-center justify-between text-sm text-muted-foreground mt-3">
-                  <span>Página {result.page} de {result.totalPages}</span>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-                      Anterior
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={page >= result.totalPages}
-                      onClick={() => setPage((p) => p + 1)}
-                    >
-                      Siguiente
-                    </Button>
-                  </div>
-                </div>
-              )}
+              <DataPagination
+                page={page}
+                totalPages={totalPages}
+                totalCount={totalCount}
+                pageSize={pageSize}
+                hasPreviousPage={hasPreviousPage}
+                hasNextPage={hasNextPage}
+                onPageChange={goToPage}
+                onPageSizeChange={setPageSize}
+                disabled={isLoading}
+              />
             </>
           )}
         </CardContent>

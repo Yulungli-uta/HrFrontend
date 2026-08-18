@@ -877,9 +877,11 @@ export function ContractDialog(props: {
     setValidationErrors([]);
 
     if (isCreate) {
-      // Reservar el código correlativo en el backend antes de crear
+      // Reservar el código correlativo en el backend antes de crear — salvo en registro
+      // histórico, donde el código ya lo escribió el usuario a mano (es el número real
+      // del documento que ya existía, no uno nuevo por generar).
       let finalContractCode = form.contractCode;
-      if (form.contractTypeID > 0) {
+      if (!maxDate && form.contractTypeID > 0) {
         setIsReservingCode(true);
         try {
           const numRes = await ContractTypeAPI.getNextNumber(form.contractTypeID);
@@ -2323,7 +2325,10 @@ export function ContractDialog(props: {
                             setForm((f) => ({
                               ...f,
                               contractTypeID: typeId,
-                              contractCode: typeId > 0 ? previewCode : f.contractCode,
+                              // Registro histórico: el código real ya lo escribe el usuario
+                              // (documento que ya existía) — no sobrescribir con el preview
+                              // del correlativo automático.
+                              contractCode: !maxDate && typeId > 0 ? previewCode : f.contractCode,
                               parentID: newIsAdendum ? f.parentID : null,
                               // NO limpiar certificationID al cambiar tipo de contrato
                             }));
@@ -2486,10 +2491,11 @@ export function ContractDialog(props: {
                       <Input
                         id="wizard-code"
                         value={form.contractCode}
-                        readOnly
-                        disabled
-                        className="bg-muted"
-                        placeholder="Seleccione tipo en paso 1"
+                        readOnly={!maxDate}
+                        disabled={!maxDate}
+                        onChange={maxDate ? (e) => setForm((f) => ({ ...f, contractCode: e.target.value })) : undefined}
+                        className={maxDate ? undefined : "bg-muted"}
+                        placeholder={maxDate ? "Número real del documento histórico" : "Seleccione tipo en paso 1"}
                       />
                     </div>
 

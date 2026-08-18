@@ -48,6 +48,7 @@ const schema = z.object({
   email:     z.string().email('Email inválido'),
   phone:     z.string().optional(),
   birthDate: z.string().min(1, 'Requerido'),
+  preferredDenomination: z.string().max(200, 'Máximo 200 caracteres').optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -75,6 +76,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
       email: '',
       phone: '',
       birthDate: '',
+      preferredDenomination: '',
     },
   });
 
@@ -125,6 +127,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
         email: values.email,
         phone: values.phone || undefined,
         birthDate: values.birthDate || undefined,
+        preferredDenomination: values.preferredDenomination?.trim() || undefined,
         isActive: true,
       }),
     onSuccess: (resp) => {
@@ -284,6 +287,29 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
                   <FormControl>
                     <Input type="email" {...field} disabled={mutation.isPending} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="preferredDenomination"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Denominación Formal (opcional)</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      value={field.value ?? ''}
+                      placeholder='Ej: "Dra. Sara Camacho Estrada, PhD."'
+                      disabled={mutation.isPending}
+                    />
+                  </FormControl>
+                  <p className="text-xs text-muted-foreground">
+                    Solo afecta cómo aparece el nombre al firmar Acciones de Personal o Contratos.
+                    Se puede completar ahora o después desde Personas.
+                  </p>
                   <FormMessage />
                 </FormItem>
               )}

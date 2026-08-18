@@ -62,6 +62,9 @@ export type {
 export * from './services/cv';
 export type { AttendanceCalculationRequestDto as CvAttendanceRequestDto } from './services/cv';
 
+// Planificación masiva de vacaciones
+export * from './services/massVacationPlans';
+
 // Asistencia
 export { 
   MarcacionesAPI,
