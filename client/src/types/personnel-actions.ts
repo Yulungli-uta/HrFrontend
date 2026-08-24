@@ -47,6 +47,11 @@ export interface PersonnelActionDetail extends PersonnelActionSummary {
     institutionalProcess?: number | null;
     managementLevel?: number | null;
     managementLevelName?: string | null;
+    /** FK a ref_Types (AP_LUGAR_TRABAJO) — lugar de trabajo propuesto de esta acción. */
+    workplace?: number | null;
+    workplaceName?: string | null;
+    /** Lugar de trabajo que quedó como propuesta en la acción anterior del empleado (situación actual). */
+    previousWorkplaceName?: string | null;
     employeeTypeId?: number | null;
     employeeTypeName?: string | null;
 
@@ -107,6 +112,7 @@ export interface CreatePersonnelActionRequest {
     swornDeclaration?: boolean | null;
     institutionalProcess?: number | null;
     managementLevel?: number | null;
+    workplace?: number | null;
 
     dthDirectorId?: number | null;
     authorityNominatorId?: number | null;

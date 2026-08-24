@@ -110,6 +110,7 @@ const schema = z.object({
   swornDeclaration:     z.boolean().default(false),
   institutionalProcess: z.coerce.number().optional().nullable(),
   managementLevel:      z.coerce.number().optional().nullable(),
+  workplace:            z.coerce.number().optional().nullable(),
   // Responsables del documento
   dthDirectorId:        z.coerce.number().optional().nullable(),
   authorityNominatorId: z.coerce.number().optional().nullable(),
@@ -260,6 +261,14 @@ export function PersonnelActionForm({
   const managementLevelOptions: RefType[] =
     mgmtLevelData?.status === 'success' ? (mgmtLevelData.data ?? []) : [];
 
+  const { data: workplaceData } = useQuery({
+    queryKey: ['ref-types', 'AP_LUGAR_TRABAJO'],
+    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.AP_LUGAR_TRABAJO),
+    staleTime: STALE,
+  });
+  const workplaceOptions: RefType[] =
+    workplaceData?.status === 'success' ? (workplaceData.data ?? []) : [];
+
   // Deshabilitado: los responsables ahora se seleccionan con EmployeeCombobox (búsqueda libre).
   // Descomentar si se requiere volver a poblar desde Autoridades de Departamento.
   // const { data: authoritiesResp } = useQuery({
@@ -333,6 +342,7 @@ export function PersonnelActionForm({
       swornDeclaration:     defaultValues?.swornDeclaration ?? false,
       institutionalProcess: defaultValues?.institutionalProcess ?? null,
       managementLevel:      defaultValues?.managementLevel ?? null,
+      workplace:            defaultValues?.workplace ?? null,
       employeeTypeId:       defaultValues?.employeeTypeId ?? null,
       dthDirectorId:        defaultValues?.dthDirectorId ?? null,
       authorityNominatorId: defaultValues?.authorityNominatorId ?? null,
@@ -371,6 +381,7 @@ export function PersonnelActionForm({
       swornDeclaration:     defaultValues.swornDeclaration ?? false,
       institutionalProcess: defaultValues.institutionalProcess ?? null,
       managementLevel:      defaultValues.managementLevel ?? null,
+      workplace:            defaultValues.workplace ?? null,
       employeeTypeId:       defaultValues.employeeTypeId ?? null,
       dthDirectorId:        defaultValues.dthDirectorId ?? null,
       authorityNominatorId: defaultValues.authorityNominatorId ?? null,
@@ -493,6 +504,7 @@ export function PersonnelActionForm({
     swornDeclaration:     values.swornDeclaration ?? false,
     institutionalProcess: values.institutionalProcess ?? null,
     managementLevel:      values.managementLevel ?? null,
+    workplace:            values.workplace ?? null,
     dthDirectorId:        values.dthDirectorId ?? null,
     authorityNominatorId: values.authorityNominatorId ?? null,
     elaboratorId:         values.elaboratorId ?? null,
@@ -902,6 +914,41 @@ export function PersonnelActionForm({
                 )}
               />
 
+              {/* Lugar de Trabajo (situación propuesta) — la situación actual se calcula
+                  sola en el documento a partir de la acción anterior del empleado. */}
+              <FormField
+                control={form.control}
+                name="workplace"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Lugar de Trabajo</FormLabel>
+                    <Select
+                      disabled={isBusy}
+                      value={field.value ? String(field.value) : 'none'}
+                      onValueChange={(v) => field.onChange(v === 'none' ? null : Number(v))}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="— Sin categoría —" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">— Sin categoría —</SelectItem>
+                        {workplaceOptions.map((t) => {
+                          const id = String(t.typeID ?? (t as any).typeId);
+                          return (
+                            <SelectItem key={id} value={id}>
+                              {t.name}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               {/* Declaración Juramentada */}
               <FormField
                 control={form.control}
@@ -1163,6 +1210,7 @@ export function PersonnelActionForm({
                           value={field.value ?? null}
                           onSelect={(id) => field.onChange(id)}
                           disabled={isBusy}
+                          showAuthorityBadge
                         />
                       </FormControl>
                       <FormMessage />

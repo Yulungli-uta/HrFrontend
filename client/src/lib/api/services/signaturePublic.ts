@@ -2,6 +2,7 @@
 // token de un solo uso en la URL (ver PublicSignatureController en el backend).
 import { apiFetch } from "../core/fetch";
 import { resolveBaseUrl } from "../core/config";
+import type { FirmaEcCertificateType } from "@/types/electronic-signature";
 
 export interface PublicParticipantInfo {
   participantId: number;
@@ -27,10 +28,15 @@ export const PublicSignatureAPI = {
     apiFetch<PublicParticipantInfo>(`${path(participantId)}?token=${encodeURIComponent(token)}`),
   documentUrl: (participantId: number, token: string) =>
     `${resolveBaseUrl(path(participantId))}${path(participantId)}/document?token=${encodeURIComponent(token)}`,
-  startSigning: (participantId: number, token: string, position?: { page: number; llx: number; lly: number; width?: number; height?: number }) =>
+  startSigning: (
+    participantId: number,
+    token: string,
+    position?: { page: number; llx: number; lly: number; width?: number; height?: number },
+    certificateType?: FirmaEcCertificateType
+  ) =>
     apiFetch<PublicStartSigningResult>(`${path(participantId)}/start-signing?token=${encodeURIComponent(token)}`, {
       method: "POST",
-      body: position ? JSON.stringify(position) : undefined,
+      body: JSON.stringify({ ...position, certificateType }),
     }),
   // El cliente movil de FirmaEC no notifica solo al terminar de firmar (su pantalla final
   // solo ofrece Visualizar/Verificar/Compartir/Regresar) — este endpoint permite subir el

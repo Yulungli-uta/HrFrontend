@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { SignatureProcessesAPI } from "@/lib/api";
+import type { FirmaEcCertificateType } from "@/types/electronic-signature";
 
 // El salto a "firmaec://" (protocolo personalizado) SOLO lo permiten los navegadores
 // moviles (Chrome/Safari) si ocurre de forma SINCRONA, directamente dentro del toque del
@@ -13,9 +14,13 @@ export function useFirmaEc() {
   const launchUrlRef = useRef<string | null>(null);
 
   const launch = useCallback(
-    async (processId: number, position?: { page: number; llx: number; lly: number; width?: number; height?: number }) => {
+    async (
+      processId: number,
+      position?: { page: number; llx: number; lly: number; width?: number; height?: number },
+      certificateType?: FirmaEcCertificateType
+    ) => {
       setState("launching");
-      const result = await SignatureProcessesAPI.startSigning(processId, position);
+      const result = await SignatureProcessesAPI.startSigning(processId, position, certificateType);
       if (result.status === "error") {
         setState("unavailable");
         return;

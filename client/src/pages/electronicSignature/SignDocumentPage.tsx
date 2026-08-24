@@ -7,6 +7,8 @@ import { ArrowLeft, Eye, Loader2, UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useFirmaEc } from "@/hooks/electronicSignature/useFirmaEc";
 import { FirmaEcNotInstalledDialog } from "@/components/electronicSignature/FirmaEcNotInstalledDialog";
 import { SignaturePositionPicker, type SignaturePosition } from "@/components/electronicSignature/SignaturePositionPicker";
@@ -15,6 +17,7 @@ import { SignatureProcessesAPI } from "@/lib/api";
 import { getProcessStatusMeta } from "@/features/electronicSignature/signatureStatus";
 import { isMobileDevice } from "@/lib/device";
 import { cn } from "@/lib/utils";
+import { FIRMA_EC_CERTIFICATE_TYPE, type FirmaEcCertificateType } from "@/types/electronic-signature";
 
 const NOT_ACTIVE_STATUSES = new Set(["COMPLETED", "REJECTED", "CANCELLED", "EXPIRED", "VALIDATIONFAILED"]);
 
@@ -30,6 +33,10 @@ export default function SignDocumentPage() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mobile = isMobileDevice();
+  // Sin valor por defecto a propósito: el firmante debe elegir explícitamente uno de los
+  // dos — FirmaEC inicializa la sesión en el modo que se le manda y la pestaña que no
+  // corresponde queda sin responder (ver useFirmaEc/FirmaEcClient.BuildLaunchUrl).
+  const [certificateType, setCertificateType] = useState<FirmaEcCertificateType | undefined>(undefined);
 
   const { data, isLoading } = useQuery({
     queryKey: ["signature-process-progress", processId],
@@ -81,7 +88,7 @@ export default function SignDocumentPage() {
 
   const handleConfirmPosition = (position: SignaturePosition) => {
     setPickerOpen(false);
-    f.launch(processId, position);
+    f.launch(processId, position, certificateType);
   };
 
   const handleUploadSigned = async (file: File | undefined) => {
@@ -122,6 +129,35 @@ export default function SignDocumentPage() {
         </Alert>
       )}
 
+      {/* El firmante debe elegir explícitamente Archivo o Token antes de poder firmar —
+          sin selección no hay valor por defecto que enviar, y FirmaEC necesita saber el
+          modo desde el lanzamiento (no se puede cambiar después dentro de la app). */}
+      {!isLoading && canSign && f.state === "idle" && (
+        <div className="rounded-lg border p-3 space-y-2">
+          <Label className="text-sm font-medium">Tipo de certificado *</Label>
+          <RadioGroup
+            value={certificateType != null ? String(certificateType) : ""}
+            onValueChange={(v) => setCertificateType(Number(v) as FirmaEcCertificateType)}
+            className="flex flex-row gap-6"
+          >
+            <div className="flex items-center gap-2">
+              <RadioGroupItem
+                value={String(FIRMA_EC_CERTIFICATE_TYPE.ARCHIVO)}
+                id="cert-type-archivo"
+              />
+              <Label htmlFor="cert-type-archivo" className="font-normal cursor-pointer">Archivo (.p12 / .pfx)</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <RadioGroupItem
+                value={String(FIRMA_EC_CERTIFICATE_TYPE.TOKEN)}
+                id="cert-type-token"
+              />
+              <Label htmlFor="cert-type-token" className="font-normal cursor-pointer">Token (dispositivo USB)</Label>
+            </div>
+          </RadioGroup>
+        </div>
+      )}
+
       {!isLoading && (
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={handlePreview} disabled={previewing}>
@@ -131,9 +167,12 @@ export default function SignDocumentPage() {
           {/* Solo en "idle": una vez lanzado (state "launched") no debe reaparecer este
               boton mientras el sondeo periodico todavia no confirma que ya se firmo —
               antes reaparecia con cualquier estado distinto de "ready", permitiendo
-              re-lanzar la firma en la ventana de unos segundos antes del refetch. */}
+              re-lanzar la firma en la ventana de unos segundos antes del refetch.
+              Deshabilitado hasta elegir tipo de certificado (ver bloque de arriba). */}
           {canSign && f.state === "idle" && (
-            <Button disabled={previewing} onClick={openPositionPicker}>Firmar documento</Button>
+            <Button disabled={previewing || !certificateType} onClick={openPositionPicker}>
+              Firmar documento
+            </Button>
           )}
           {f.state === "launching" && (
             <Button disabled>Preparando firma...</Button>

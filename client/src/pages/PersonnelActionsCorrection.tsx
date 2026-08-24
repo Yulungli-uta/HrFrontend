@@ -82,6 +82,7 @@ function buildUpdatePayload(data: CreatePersonnelActionRequest): UpdatePersonnel
     swornDeclaration: data.swornDeclaration,
     institutionalProcess: data.institutionalProcess,
     managementLevel: data.managementLevel,
+    workplace: data.workplace,
     dthDirectorId: data.dthDirectorId,
     authorityNominatorId: data.authorityNominatorId,
     elaboratorId: data.elaboratorId,

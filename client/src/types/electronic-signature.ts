@@ -1,3 +1,9 @@
+// Valores exactos que espera el backend (FirmaEcCertificateType) — se serializan como
+// número porque la API no usa JsonStringEnumConverter. Token=1, Archivo=2 vienen del
+// parametro "tipo_certificado" del enlace firmaec:// (proyecto oficial firmadigital-tester).
+export const FIRMA_EC_CERTIFICATE_TYPE = { TOKEN: 1, ARCHIVO: 2 } as const;
+export type FirmaEcCertificateType = typeof FIRMA_EC_CERTIFICATE_TYPE[keyof typeof FIRMA_EC_CERTIFICATE_TYPE];
+
 export interface SignerProgress { participantId:number; identification:string; fullName:string; status:string; signedAt?:string|null }
 export interface SigningProgress { processId:number; processNumber:string; status:string; totalRequiredSigners:number; signedRequiredSigners:number; progressPercentage:number; currentDocumentVersion:number; signers:SignerProgress[]; myParticipantId?:number|null }
 export interface SigningSession { signingSessionId:string; launchUrl:string; expiresAt:string }

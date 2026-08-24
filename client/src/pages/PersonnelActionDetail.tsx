@@ -155,6 +155,14 @@ export default function PersonnelActionDetail() {
   const managementLevelTypes: RefType[] =
     mgmtLevelResp?.status === 'success' ? (mgmtLevelResp.data ?? []) : [];
 
+  const { data: workplaceResp } = useQuery({
+    queryKey: ['ref-types', 'AP_LUGAR_TRABAJO'],
+    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.AP_LUGAR_TRABAJO),
+    staleTime: 10 * 60 * 1000,
+  });
+  const workplaceTypes: RefType[] =
+    workplaceResp?.status === 'success' ? (workplaceResp.data ?? []) : [];
+
   const handleGenerateDocument = () => {
     if (!action) return;
 
@@ -184,6 +192,7 @@ export default function PersonnelActionDetail() {
     swornDeclaration:     data.swornDeclaration,
     institutionalProcess: data.institutionalProcess,
     managementLevel:      data.managementLevel,
+    workplace:            data.workplace,
     dthDirectorId:        data.dthDirectorId,
     authorityNominatorId: data.authorityNominatorId,
     elaboratorId:         data.elaboratorId,
@@ -322,6 +331,17 @@ export default function PersonnelActionDetail() {
                 t => (t.typeID ?? (t as any).typeId) === action.managementLevel
               )?.name}
             />
+            <InfoRow
+              label="Lugar de Trabajo (propuesto)"
+              value={
+                workplaceTypes.find(
+                  t => (t.typeID ?? (t as any).typeId) === action.workplace
+                )?.name ?? action.workplaceName
+              }
+            />
+            {action.previousWorkplaceName && (
+              <InfoRow label="Lugar de Trabajo (actual)" value={action.previousWorkplaceName} />
+            )}
             <InfoRow
               label="Decl. Juramentada"
               value={action.swornDeclaration != null ? (action.swornDeclaration ? 'Sí' : 'No') : undefined}

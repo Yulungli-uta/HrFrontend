@@ -10,9 +10,10 @@ import {
   CommandEmpty,
 } from '@/components/ui/command';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Check, ChevronsUpDown, X, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { VistaDetallesEmpleadosAPI } from '@/lib/api';
+import { VistaDetallesEmpleadosAPI, DepartmentAuthoritiesAPI } from '@/lib/api';
 import type { ApiResponse } from '@/lib/api';
 import type { PagedResult } from '@/lib/api/core/pagination';
 
@@ -29,6 +30,14 @@ type Props = {
   searchFn?: (search: string) => Promise<ApiResponse<any[] | PagedResult<any>>>;
   /** Clave de caché única cuando se usa searchFn (para no compartir caché con el buscador genérico). */
   searchKey?: string;
+  /**
+   * Muestra una etiqueta "Autoridad vigente: <tipo>" junto a los empleados que tienen una
+   * autoridad activa en HR.tbl_DepartmentAuthorities (Rector, Decano, Director, etc.).
+   * Pensado para selectores de responsables de documentos, donde importa distinguir a simple
+   * vista si la persona elegida sigue vigente en su cargo de autoridad. Opt-in: no afecta a
+   * los demás usos de este combobox.
+   */
+  showAuthorityBadge?: boolean;
 };
 
 /**
@@ -44,6 +53,7 @@ export function EmployeeCombobox({
   placeholder = '— Sin especificar —',
   searchFn,
   searchKey = 'employee-details-search',
+  showAuthorityBadge = false,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -88,6 +98,24 @@ export function EmployeeCombobox({
     enabled: debouncedSearch.length >= 2,
     staleTime: 15_000,
   });
+
+  // Autoridades vigentes (Rector, Decano, Director, etc.) — solo se pide cuando el padre
+  // pide la etiqueta, y se cachea 1 minuto ya que cambia con poca frecuencia.
+  const { data: authoritiesData } = useQuery({
+    queryKey: ['active-authorities-badge'],
+    queryFn: () => DepartmentAuthoritiesAPI.listActiveFromView(),
+    enabled: showAuthorityBadge,
+    staleTime: 60_000,
+  });
+
+  const authorityByEmployeeId = new Map<number, string>();
+  if (authoritiesData?.status === 'success' && authoritiesData.data) {
+    for (const a of authoritiesData.data) {
+      if (!authorityByEmployeeId.has(a.employeeID)) {
+        authorityByEmployeeId.set(a.employeeID, a.denomination || a.authorityTypeName);
+      }
+    }
+  }
 
   const employees: any[] = data?.status === 'success'
     ? (Array.isArray(data.data) ? data.data : (data.data?.items ?? []))
@@ -193,8 +221,15 @@ export function EmployeeCombobox({
                         value === id ? 'opacity-100' : 'opacity-0'
                       )}
                     />
-                    <div className="min-w-0">
-                      <p className="font-medium truncate">{emp.fullName}</p>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium truncate">{emp.fullName}</p>
+                        {showAuthorityBadge && authorityByEmployeeId.has(id) && (
+                          <Badge variant="success" className="shrink-0 whitespace-nowrap">
+                            Autoridad vigente: {authorityByEmployeeId.get(id)}
+                          </Badge>
+                        )}
+                      </div>
                       <p className="text-xs text-muted-foreground truncate">
                         {[emp.idCard, emp.email].filter(Boolean).join(' · ')}
                       </p>

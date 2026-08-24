@@ -10,11 +10,14 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SignaturePositionPicker, type SignaturePosition } from "@/components/electronicSignature/SignaturePositionPicker";
 import { PublicSignatureAPI } from "@/lib/api/services/signaturePublic";
 import { getParticipantStatusMeta } from "@/features/electronicSignature/signatureStatus";
 import { isMobileDevice } from "@/lib/device";
 import { cn } from "@/lib/utils";
+import { FIRMA_EC_CERTIFICATE_TYPE, type FirmaEcCertificateType } from "@/types/electronic-signature";
 
 function useQueryParam(name: string): string {
   if (typeof window === "undefined") return "";
@@ -89,6 +92,9 @@ export default function ExternalSignPage() {
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mobile = isMobileDevice();
+  // Sin valor por defecto a propósito: el firmante debe elegir explícitamente uno de los
+  // dos — ver la misma nota en SignDocumentPage.tsx.
+  const [certificateType, setCertificateType] = useState<FirmaEcCertificateType | undefined>(undefined);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["public-participant", participantId, token],
@@ -154,7 +160,7 @@ export default function ExternalSignPage() {
     setPickerOpen(false);
     setLaunching(true);
     setLaunchError(null);
-    const result = await PublicSignatureAPI.startSigning(participantId, token, position);
+    const result = await PublicSignatureAPI.startSigning(participantId, token, position, certificateType);
     setLaunching(false);
     if (result.status === "error") {
       setLaunchError(result.error.message);
@@ -306,10 +312,37 @@ export default function ExternalSignPage() {
                   )}
 
                   {currentStep === "sign" && (
-                    <Button onClick={openPositionPicker} disabled={launching} size="lg" className="w-full">
-                      {launching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
-                      Firmar documento
-                    </Button>
+                    <>
+                      {/* El firmante debe elegir explícitamente Archivo o Token antes de
+                          poder firmar — ver la misma nota en SignDocumentPage.tsx. */}
+                      <div className="rounded-lg border p-3 space-y-2">
+                        <Label className="text-sm font-medium">Tipo de certificado *</Label>
+                        <RadioGroup
+                          value={certificateType != null ? String(certificateType) : ""}
+                          onValueChange={(v) => setCertificateType(Number(v) as FirmaEcCertificateType)}
+                          className="flex flex-row gap-6"
+                        >
+                          <div className="flex items-center gap-2">
+                            <RadioGroupItem
+                              value={String(FIRMA_EC_CERTIFICATE_TYPE.ARCHIVO)}
+                              id="ext-cert-type-archivo"
+                            />
+                            <Label htmlFor="ext-cert-type-archivo" className="font-normal cursor-pointer">Archivo (.p12 / .pfx)</Label>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <RadioGroupItem
+                              value={String(FIRMA_EC_CERTIFICATE_TYPE.TOKEN)}
+                              id="ext-cert-type-token"
+                            />
+                            <Label htmlFor="ext-cert-type-token" className="font-normal cursor-pointer">Token (dispositivo USB)</Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
+                      <Button onClick={openPositionPicker} disabled={launching || !certificateType} size="lg" className="w-full">
+                        {launching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
+                        Firmar documento
+                      </Button>
+                    </>
                   )}
 
                   {currentStep === "open" && (

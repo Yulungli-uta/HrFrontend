@@ -62,7 +62,7 @@ export default function AppRouter() {
       <Suspense fallback={<InitialLoadingScreen />}>
         <Switch>
           <Route path="/login" component={LoginPage} />
-          <Route path="/:rest*">
+          <Route path="*">
             {() => <Redirect to="/login" />}
           </Route>
         </Switch>
@@ -118,7 +118,7 @@ export default function AppRouter() {
           </Route>
 
           {/* ===== 404 (siempre al final) ===== */}
-          <Route path="/:rest*" component={NotFound} />
+          <Route path="*" component={NotFound} />
         </Switch>
       </Suspense>
     </Layout>

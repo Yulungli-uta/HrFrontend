@@ -1864,6 +1864,7 @@ export function ContractDialog(props: {
                             onSelect={(id) => setForm((f) => ({ ...f, authorityNominatorId: id }))}
                             placeholder="Buscar autoridad por nombre o cédula..."
                             disabled={isView}
+                            showAuthorityBadge
                           />
                         </div>
 
@@ -1874,6 +1875,7 @@ export function ContractDialog(props: {
                             onSelect={(id) => setForm((f) => ({ ...f, dthDirectorId: id }))}
                             placeholder="Buscar director por nombre o cédula..."
                             disabled={isView}
+                            showAuthorityBadge
                           />
                         </div>
                       </div>
@@ -2459,6 +2461,7 @@ export function ContractDialog(props: {
                           value={form.authorityNominatorId ?? null}
                           onSelect={(id) => setForm((f) => ({ ...f, authorityNominatorId: id }))}
                           placeholder="Buscar autoridad por nombre o cédula..."
+                          showAuthorityBadge
                         />
                       </div>
 
@@ -2468,6 +2471,7 @@ export function ContractDialog(props: {
                           value={form.dthDirectorId ?? null}
                           onSelect={(id) => setForm((f) => ({ ...f, dthDirectorId: id }))}
                           placeholder="Buscar director por nombre o cédula..."
+                          showAuthorityBadge
                         />
                       </div>
                     </div>

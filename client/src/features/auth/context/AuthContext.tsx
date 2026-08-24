@@ -153,6 +153,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // al recibir el deliveryCode por WebSocket (ver loginWithOffice365 y el efecto WS).
   const azureCodeVerifierRef = useRef<string | null>(null);
 
+  // Seguimiento del intento de login Office 365 en curso: antes el loading se apagaba
+  // apenas se abría el popup (no reflejaba la espera real de la MFA), y si el popup
+  // fallaba o se cerraba sin completar, el usuario se quedaba en la pantalla de login
+  // sin ningún aviso — parecía que "no había pasado nada" (bug reportado: MFA completo
+  // en Azure pero sin acceso a la app).
+  const azurePopupRef = useRef<Window | null>(null);
+  const azureLoginTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // NO se puede sondear popup.closed: una vez que el popup navega a un origen con
+  // Cross-Origin-Opener-Policy estricto (login.microsoftonline.com lo tiene), el navegador
+  // bloquea leer esa propiedad desde la ventana que lo abrió — y el aislamiento queda
+  // permanente para esa ventana aunque después vuelva a nuestro propio dominio (confirmado:
+  // "Cross-Origin-Opener-Policy policy would block the window.closed call" en consola).
+  // En su lugar, se usa que ESTA pestaña recupere el foco como señal de que el usuario
+  // volvió (típicamente porque cerró el popup) — no toca ninguna propiedad de la ventana
+  // emergente, solo escucha el evento "focus" de la propia ventana.
+  const azureFocusHandlerRef = useRef<(() => void) | null>(null);
+  const azureLoginSettledRef = useRef(true); // true = no hay login de Azure en curso
+
   // ─── Persistencia de detalles del empleado ────────────────────────────────
 
   const persistEmployeeDetails = useCallback(
@@ -448,6 +466,46 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setTimeout(() => logoutRef.current(), 300);
   }, [lastMessage, toast]);
 
+  // ─── Login Office 365: seguimiento de la ventana emergente ────────────────
+
+  const clearAzureLoginWatchers = useCallback(() => {
+    if (azureLoginTimeoutRef.current) {
+      clearTimeout(azureLoginTimeoutRef.current);
+      azureLoginTimeoutRef.current = null;
+    }
+    if (azureFocusHandlerRef.current) {
+      window.removeEventListener("focus", azureFocusHandlerRef.current);
+      azureFocusHandlerRef.current = null;
+    }
+    azurePopupRef.current = null;
+  }, []);
+
+  // Limpieza defensiva si AuthProvider llegara a desmontarse con un login Office 365 en
+  // curso (no ocurre en operación normal, pero evita temporizadores huérfanos).
+  useEffect(() => clearAzureLoginWatchers, [clearAzureLoginWatchers]);
+
+  // Cierra el intento de login Office 365 actual: éxito o fracaso. Idempotente (el guard
+  // azureLoginSettledRef evita doble toast si, por ejemplo, el timeout y la detección de
+  // ventana cerrada disparan casi al mismo tiempo).
+  const finishAzureLoginAttempt = useCallback(
+    (success: boolean, errorMessage?: string) => {
+      if (azureLoginSettledRef.current) return;
+      azureLoginSettledRef.current = true;
+      clearAzureLoginWatchers();
+      setIsLoading(false);
+      if (!success) {
+        toast({
+          title: "No se completó el inicio de sesión",
+          description:
+            errorMessage ??
+            "El inicio de sesión con Office 365 no se completó. Intenta de nuevo.",
+          variant: "destructive",
+        });
+      }
+    },
+    [toast, clearAzureLoginWatchers]
+  );
+
   // ─── WebSocket: LoginNotification → completar login AzureAD ──────────────
 
   useEffect(() => {
@@ -482,6 +540,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             logger.auth.error(
               "WS Login trajo deliveryCode pero no hay codeVerifier en memoria (pestaña recargada durante el login); se aborta"
             );
+            finishAzureLoginAttempt(
+              false,
+              "Se perdió el estado del inicio de sesión (¿recargaste la página?). Intenta de nuevo."
+            );
             return;
           }
           try {
@@ -492,7 +554,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
         }
 
-        if (!pair) return;
+        if (!pair) {
+          finishAzureLoginAttempt(
+            false,
+            "No se pudo completar el inicio de sesión (el enlace expiró o ya se usó). Intenta de nuevo."
+          );
+          return;
+        }
         tokenService.setTokens(pair);
         const adGroups = tokenService.extractAdGroups(pair.accessToken);
         if (adGroups.length > 0) {
@@ -512,15 +580,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           adGroups,
         };
         await doLoginStateRef.current(wsUser, true);
+        finishAzureLoginAttempt(true);
         setTimeout(() => setLocation("/"), 300);
         logAuth("LOGIN VIA WEBSOCKET COMPLETADO");
       } catch (e) {
         logger.auth.error("WS login handling error:", e);
+        finishAzureLoginAttempt(
+          false,
+          "Ocurrió un error al completar el inicio de sesión. Intenta de nuevo."
+        );
       } finally {
         isProcessingLoginRef.current = false;
       }
     })();
-  }, [lastMessage, setLocation]);
+  }, [lastMessage, setLocation, finishAzureLoginAttempt]);
 
   // ─── Chequeo inicial de sesión al montar ──────────────────────────────────
 
@@ -762,16 +835,71 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // El "state" de OAuth lo genera y valida RepositoryUta; el frontend no lo
       // consume (el login se completa vía WebSocket con clientId+browserId).
       const { url } = await authService.getAzureAuthUrl(codeChallenge);
-      window.open(url, "office365login", "width=600,height=700,left=200,top=100");
+      const popup = window.open(url, "office365login", "width=600,height=700,left=200,top=100");
+
+      if (!popup) {
+        setIsLoading(false);
+        azureCodeVerifierRef.current = null;
+        toast({
+          title: "No se pudo abrir la ventana de inicio de sesión",
+          description: "El navegador bloqueó la ventana emergente. Permite ventanas emergentes para este sitio e intenta de nuevo.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // A partir de aquí el login queda "en curso": isLoading se mantiene true hasta que
+      // finishAzureLoginAttempt() lo cierre (éxito por WebSocket, timeout, o ventana
+      // cerrada sin completar) — antes se apagaba apenas se abría el popup, sin reflejar
+      // la espera real de la MFA en Azure.
+      azurePopupRef.current = popup;
+      azureLoginSettledRef.current = false;
+
+      // B: si no llega ningún resultado (WS caído, deliveryCode perdido, etc.) en 3
+      // minutos, se avisa en vez de dejar la pantalla de login esperando en silencio.
+      azureLoginTimeoutRef.current = setTimeout(() => {
+        finishAzureLoginAttempt(
+          false,
+          "El inicio de sesión con Office 365 tardó demasiado. Intenta de nuevo."
+        );
+        try {
+          azurePopupRef.current?.close();
+        } catch {
+          /* ignore */
+        }
+      }, 3 * 60 * 1000);
+
+      // C: detecta que el usuario volvió a esta pestaña (típicamente porque cerró el popup,
+      // manualmente o solo tras la página de error/éxito del callback) sin leer NINGUNA
+      // propiedad del popup — ver la nota junto a azureFocusHandlerRef sobre por qué
+      // sondear popup.closed no es viable aquí. El servidor envía la notificación WS ANTES
+      // de responderle al popup (que recién ahí dispara su propio cierre), pero por las
+      // dudas se da un margen de 2s tras recuperar el foco antes de declarar el intento
+      // como fallido — evita un toast de error falso si el mensaje WS llega con una
+      // fracción de segundo de retraso, o si el usuario solo cambió de pestaña sin cerrar
+      // el popup (en ese caso el guard de azureLoginSettledRef ya lo habrá resuelto).
+      const onFocus = () => {
+        window.removeEventListener("focus", onFocus);
+        azureFocusHandlerRef.current = null;
+        setTimeout(() => {
+          finishAzureLoginAttempt(
+            false,
+            "No se detectó que el inicio de sesión se haya completado. Si ya cerraste la ventana de Office 365, intenta de nuevo."
+          );
+        }, 2000);
+      };
+      azureFocusHandlerRef.current = onFocus;
+      window.addEventListener("focus", onFocus);
     } catch (error: unknown) {
       logger.auth.error("[AUTH] Error en Office 365 login:", error);
+      setIsLoading(false);
+      azureLoginSettledRef.current = true;
+      azureCodeVerifierRef.current = null;
       toast({
         title: "Error de autenticación",
         description: parseApiError(error).message,
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
