@@ -103,9 +103,11 @@ function wantsBinaryResponse(finalHeaders: Headers, contentType: string): boolea
   if (ct.includes('application/pdf')) return true;
   if (ct.includes('application/vnd')) return true;
   if (ct.includes('application/octet-stream')) return true;
+  if (ct.includes('text/csv')) return true;
   if (accept.includes('application/pdf')) return true;
   if (accept.includes('application/vnd')) return true;
   if (accept.includes('application/octet-stream')) return true;
+  if (accept.includes('text/csv')) return true;
 
   return false;
 }

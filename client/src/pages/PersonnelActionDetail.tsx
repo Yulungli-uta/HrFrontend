@@ -26,6 +26,11 @@ import type { VwJobWithDegreeAndGroup, VwDepartmentWithType } from '@/lib/api/se
 import type { RefType } from '@/lib/api';
 import type { CreatePersonnelActionRequest, UpdatePersonnelActionRequest, PersonnelActionDetail } from '@/types/personnel-actions';
 
+// Estados en los que todavía se puede adjuntar archivos desde esta pantalla — fuera de estos
+// la acción ya avanzó de trámite; solo se debe poder visualizar lo ya cargado (para corregir
+// documentos de una acción ya avanzada, usar la página de Corrección).
+const EDITABLE_ACTION_STATUSES = ['BORRADOR', 'GENERADO'];
+
 function formatCurrency(value: number): string {
   return value.toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
@@ -299,7 +304,10 @@ export default function PersonnelActionDetail() {
       />
 
       {/* ── Documentos del trámite ───────────────────────── */}
-      <ActionDocumentsPanel actionId={actionId} />
+      <ActionDocumentsPanel
+        actionId={actionId}
+        disabled={!EDITABLE_ACTION_STATUSES.includes(action.status)}
+      />
 
       {/* ── Información del trámite ───────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

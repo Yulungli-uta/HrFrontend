@@ -15,7 +15,14 @@ import { REF_TYPE_CATEGORIES } from '@/features/refTypeCategories';
 // transiciona el estado a FIRMADO_CARGADO). Elegir aquí el tipo "Documento
 // Firmado" NUNCA cambia el estado de la acción; deja el registro exactamente
 // como estaba.
-export function ActionDocumentsPanel({ actionId }: { actionId: number }) {
+export function ActionDocumentsPanel({
+  actionId,
+  disabled = false,
+}: {
+  actionId: number;
+  /** true cuando la acción ya salió de BORRADOR/GENERADO — solo visualizar, no adjuntar nuevos. */
+  disabled?: boolean;
+}) {
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -35,6 +42,13 @@ export function ActionDocumentsPanel({ actionId }: { actionId: number }) {
           accept="*/*"
           maxSizeMB={20}
           maxFiles={20}
+          disabled={disabled}
+          roles={{
+            canUpload: !disabled,
+            canPreview: true,
+            canDownload: true,
+            canDelete: !disabled,
+          }}
           documentType={{
             enabled: true,
             category: REF_TYPE_CATEGORIES.PROCESS_ATTACHMENT_TYPE,

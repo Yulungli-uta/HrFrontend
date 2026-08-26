@@ -116,6 +116,11 @@ export default function PersonnelActionsCorrection() {
   const [pendingData, setPendingData] = useState<CreatePersonnelActionRequest | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
+  // ── Corrección de estado (independiente de la corrección de datos de arriba) ──
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [newStatus, setNewStatus] = useState('');
+  const [statusReason, setStatusReason] = useState('');
+
   const {
     setIsFormDirty,
     handleOpenChange: guardedBack,
@@ -185,6 +190,34 @@ export default function PersonnelActionsCorrection() {
     onError: (error: any) => {
       toast({ title: '❌ Error', description: parseApiError(error).message, variant: 'destructive' });
       setConfirmOpen(false);
+    },
+  });
+
+  const correctStatusMutation = useMutation({
+    mutationFn: () =>
+      PersonnelActionsAPI.correctStatus(selected!.actionId, {
+        reason: statusReason.trim(),
+        newStatus,
+      }),
+    onSuccess: (res) => {
+      if (res.status === 'error') {
+        toast({ title: '❌ Error', description: parseApiError(res.error).message, variant: 'destructive' });
+        return;
+      }
+      toast({
+        title: '✅ Estado corregido',
+        description: 'El estado de la acción fue corregido. Queda registrado en el historial.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['personnel-actions-correction-search'] });
+      queryClient.invalidateQueries({ queryKey: ['personnel-action-detail-for-correction'] });
+      setStatusDialogOpen(false);
+      setNewStatus('');
+      setStatusReason('');
+      setSelected(null);
+      setViewMode('summary');
+    },
+    onError: (error: any) => {
+      toast({ title: '❌ Error', description: parseApiError(error).message, variant: 'destructive' });
     },
   });
 
@@ -380,6 +413,12 @@ export default function PersonnelActionsCorrection() {
                   <Button variant="outline" onClick={() => setSelected(null)}>
                     Volver a la búsqueda
                   </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => { setNewStatus(''); setStatusReason(''); setStatusDialogOpen(true); }}
+                  >
+                    <ShieldAlert className="mr-2 h-4 w-4" /> Cambiar Estado
+                  </Button>
                   <Button onClick={() => setViewMode('edit')}>
                     <Pencil className="mr-2 h-4 w-4" /> Editar
                   </Button>
@@ -448,6 +487,59 @@ export default function PersonnelActionsCorrection() {
             >
               {correctMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Confirmar corrección
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cambiar estado</AlertDialogTitle>
+            <AlertDialogDescription>
+              Corrige el estado de la acción al que realmente corresponde. No dispara ningún
+              efecto secundario (sueldo, movimiento, régimen, AD) — esos solo ocurren al crear
+              una acción nueva por el flujo normal. Queda registrado en el historial de auditoría.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-4 px-1">
+            <div className="space-y-1.5">
+              <Label>Estado actual</Label>
+              <div>
+                <Badge className={STATUS_BADGE[selected?.status ?? ''] ?? ''}>{selected?.status}</Badge>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Nuevo estado <span className="text-destructive">*</span></Label>
+              <Select value={newStatus} onValueChange={setNewStatus}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona el estado…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUS_OPTIONS.filter((s) => s !== selected?.status).map((s) => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Motivo <span className="text-destructive">*</span></Label>
+              <Textarea
+                value={statusReason}
+                onChange={(e) => setStatusReason(e.target.value)}
+                placeholder="Ej: la acción quedó en GENERADO por error, ya está firmada y vigente"
+                rows={2}
+              />
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={correctStatusMutation.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={correctStatusMutation.isPending || !newStatus || statusReason.trim().length < 5}
+              onClick={(e) => { e.preventDefault(); correctStatusMutation.mutate(); }}
+            >
+              {correctStatusMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Confirmar cambio de estado
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

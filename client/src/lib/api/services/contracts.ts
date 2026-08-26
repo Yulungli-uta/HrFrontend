@@ -241,6 +241,20 @@ export const ContractsRHAPI = {
       method: 'PUT',
       body: JSON.stringify(payload),
     }),
+
+  /**
+   * Corrige directamente el estado del contrato (sin pasar por el flujo normal de
+   * transición ni disparar sus efectos secundarios: reversar cupo, anular contrato padre,
+   * etc.). Exige motivo y requiere el permiso elevado CONTRACTS.MANAGE.
+   */
+  correctStatus: (
+    id: number | string,
+    payload: { reason: string; toStatusTypeID: number }
+  ): Promise<ApiResponse<void>> =>
+    apiFetch<void>(`${CONTRACTS_BASE}/${id}/correct-status`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
 };
 
 // =============================================================================
@@ -663,6 +677,20 @@ export const PersonnelActionsAPI = {
    */
   correct: (id: number, payload: CorrectPersonnelActionRequest): Promise<ApiResponse<void>> =>
     apiFetch<void>(`${PERSONNEL_ACTIONS_BASE}/${id}/correct`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+
+  /**
+   * Corrige directamente el estado de la acción (sin pasar por el flujo normal de
+   * transición ni disparar sus efectos secundarios: SalaryHistory, movimiento/régimen, AD,
+   * etc.). Exige motivo y requiere el permiso elevado PERSONNEL_ACTIONS.MANAGE.
+   */
+  correctStatus: (
+    id: number,
+    payload: { reason: string; newStatus: string }
+  ): Promise<ApiResponse<void>> =>
+    apiFetch<void>(`${PERSONNEL_ACTIONS_BASE}/${id}/correct-status`, {
       method: 'PUT',
       body: JSON.stringify(payload),
     }),

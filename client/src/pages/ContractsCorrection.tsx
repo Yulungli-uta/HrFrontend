@@ -75,6 +75,11 @@ export default function ContractsCorrection() {
   const [description, setDescription] = useState('');
   const [confirmOpen, setConfirmOpen] = useState(false);
 
+  // ── Corrección de estado (independiente de la corrección de datos de arriba) ──
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [newStatusTypeId, setNewStatusTypeId] = useState<string>('');
+  const [statusReason, setStatusReason] = useState('');
+
   // ── Filtros (no se consulta nada hasta presionar "Buscar") ──
   const [searchInput, setSearchInput] = useState('');
   const [statusInput, setStatusInput] = useState<string>('all');
@@ -214,6 +219,33 @@ export default function ContractsCorrection() {
     onError: (error: any) => {
       toast({ title: '❌ Error', description: parseApiError(error).message, variant: 'destructive' });
       setConfirmOpen(false);
+    },
+  });
+
+  const correctStatusMutation = useMutation({
+    mutationFn: () =>
+      ContractsRHAPI.correctStatus(selected.contractID, {
+        reason: statusReason.trim(),
+        toStatusTypeID: Number(newStatusTypeId),
+      }),
+    onSuccess: (res) => {
+      if (res.status === 'error') {
+        toast({ title: '❌ Error', description: parseApiError(res.error).message, variant: 'destructive' });
+        return;
+      }
+      toast({
+        title: '✅ Estado corregido',
+        description: 'El estado del contrato fue corregido. Queda registrado en el historial.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['contracts-correction-search'] });
+      setStatusDialogOpen(false);
+      setNewStatusTypeId('');
+      setStatusReason('');
+      setSelected(null);
+      setViewMode('summary');
+    },
+    onError: (error: any) => {
+      toast({ title: '❌ Error', description: parseApiError(error).message, variant: 'destructive' });
     },
   });
 
@@ -431,6 +463,12 @@ export default function ContractsCorrection() {
                   <Button variant="outline" onClick={() => setSelected(null)}>
                     Volver a la búsqueda
                   </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => { setNewStatusTypeId(''); setStatusReason(''); setStatusDialogOpen(true); }}
+                  >
+                    <ShieldAlert className="mr-2 h-4 w-4" /> Cambiar Estado
+                  </Button>
                   <Button onClick={() => setViewMode('edit')}>
                     <Pencil className="mr-2 h-4 w-4" /> Editar
                   </Button>
@@ -573,6 +611,65 @@ export default function ContractsCorrection() {
             >
               {correctMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Confirmar corrección
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cambiar estado</AlertDialogTitle>
+            <AlertDialogDescription>
+              Corrige el estado del contrato al que realmente corresponde. No dispara ningún
+              efecto secundario (reversar cupo de solicitud, anular contrato padre, etc.) — esos
+              solo ocurren al avanzar un contrato por el flujo normal. Queda registrado en el
+              historial de auditoría.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-4 px-1">
+            <div className="space-y-1.5">
+              <Label>Estado actual</Label>
+              <div>
+                <Badge className={STATUS_BADGE[statusNameById.get(Number(selected?.status)) ?? ''] ?? ''}>
+                  {statusNameById.get(Number(selected?.status)) ?? selected?.status}
+                </Badge>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Nuevo estado <span className="text-destructive">*</span></Label>
+              <Select value={newStatusTypeId} onValueChange={setNewStatusTypeId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona el estado…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {statusTypes
+                    .filter((t: any) => Number(t.typeId ?? t.typeID) !== Number(selected?.status))
+                    .map((t: any) => {
+                      const id = String(t.typeId ?? t.typeID);
+                      return <SelectItem key={id} value={id}>{t.name}</SelectItem>;
+                    })}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Motivo <span className="text-destructive">*</span></Label>
+              <Textarea
+                value={statusReason}
+                onChange={(e) => setStatusReason(e.target.value)}
+                placeholder="Ej: el contrato quedó en GENERADO por error, ya está firmado y vigente"
+                rows={2}
+              />
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={correctStatusMutation.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={correctStatusMutation.isPending || !newStatusTypeId || statusReason.trim().length < 5}
+              onClick={(e) => { e.preventDefault(); correctStatusMutation.mutate(); }}
+            >
+              {correctStatusMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Confirmar cambio de estado
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

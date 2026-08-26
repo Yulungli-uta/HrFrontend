@@ -728,6 +728,11 @@ export function ContractDialog(props: {
     return s ? s.name : `Estado ${form.status}`;
   }, [wf.statuses, form.status]);
 
+  // Igual que ContractDetail.tsx: fuera de BORRADOR/GENERADO el contrato ya avanzó de
+  // trámite — no se debe poder entrar a modo edición (ni adjuntar archivos) desde aquí. Para
+  // corregir un contrato ya avanzado, usar la página de Corrección.
+  const isEditableContractStatus = isCreate || ['BORRADOR', 'GENERADO'].includes(statusPreview);
+
   const borradorStatusId = useMemo(() => {
     const s = wf.statuses.find((x: any) => x.name === "BORRADOR");
     return s?.typeID ?? null;
@@ -1961,12 +1966,12 @@ export function ContractDialog(props: {
                   accept="*/*"
                   maxSizeMB={20}
                   maxFiles={10}
-                  disabled={isView}
+                  disabled={isView || !isEditableContractStatus}
                   roles={{
-                    canUpload: !isView,
+                    canUpload: !isView && isEditableContractStatus,
                     canPreview: true,
                     canDownload: true,
-                    canDelete: !isView,
+                    canDelete: !isView && isEditableContractStatus,
                   }}
                   documentType={{ enabled: true, required: true }}
                   referenceFields={{
@@ -1974,7 +1979,7 @@ export function ContractDialog(props: {
                     numberLabel: "Número de resolución/oficio",
                     dateLabel: "Fecha de resolución/oficio",
                   }}
-                  allowReplace={!isView}
+                  allowReplace={!isView && isEditableContractStatus}
                 />
               </TabsContent>
 
@@ -2741,7 +2746,7 @@ export function ContractDialog(props: {
                   </div>
                 )}
 
-                {isView && (
+                {isView && isEditableContractStatus && (
                   <Button onClick={() => setMode("edit")}>
                     <Edit3 className="h-4 w-4 mr-2" />
                     Editar
