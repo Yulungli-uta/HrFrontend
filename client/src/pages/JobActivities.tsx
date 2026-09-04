@@ -333,12 +333,14 @@ export default function JobActivitiesPage() {
       description: string;
       degreeId: number;
       rmu: number;
+      uepScaleTypeId: number | null;
       isActive: boolean;
     }) => {
       const payload = {
         description: data.description,
         degreeId: data.degreeId,
         rmu: data.rmu,
+        uepScaleTypeId: data.uepScaleTypeId,
         isActive: data.isActive,
       };
 
@@ -381,6 +383,7 @@ export default function JobActivitiesPage() {
       siiesTipoFuncionarioTypeId: number | null;
       puestoJerarquicoSuperior: boolean;
       referenceSalary: number | null;
+      academicLadderId: number | null;
     }) => {
       const payload = {
         description: data.description,
@@ -390,6 +393,7 @@ export default function JobActivitiesPage() {
         siiesTipoFuncionarioTypeId: data.siiesTipoFuncionarioTypeId,
         puestoJerarquicoSuperior: data.puestoJerarquicoSuperior,
         referenceSalary: data.referenceSalary,
+        academicLadderId: data.academicLadderId,
       };
 
       if (data.jobID && data.jobID > 0) {
@@ -505,8 +509,11 @@ export default function JobActivitiesPage() {
 
   const unassignMutation = useMutation({
     mutationFn: async (jobActivity: JobActivity) => {
-      // Intento estándar: si backend soporta /job-activity/{id}
-      const res = await JobActivityAPI.remove(jobActivity.id);
+      // tbl_JobActivities tiene llave compuesta (JobID+ActivitiesID) — sin Id simple.
+      const res = await JobActivityAPI.removeByKeys(
+        jobActivity.jobID,
+        jobActivity.activitiesID
+      );
       return ensureSuccess(res, "Error al desasignar actividad");
     },
     onSuccess: () => {
@@ -540,6 +547,7 @@ export default function JobActivitiesPage() {
       siiesTipoFuncionarioTypeId: null,
       puestoJerarquicoSuperior: false,
       referenceSalary: null,
+      academicLadderId: null,
       createdAt: undefined,
       updatedAt: undefined,
     });
@@ -560,6 +568,7 @@ export default function JobActivitiesPage() {
     siiesTipoFuncionarioTypeId: number | null;
     puestoJerarquicoSuperior: boolean;
     referenceSalary: number | null;
+    academicLadderId: number | null;
   }) => {
     if (!form.description.trim()) {
       toast({
@@ -569,7 +578,8 @@ export default function JobActivitiesPage() {
       });
       return;
     }
-    jobMutation.mutate(form);
+    // Los cargos se guardan en mayúsculas (convención institucional, ver tbl_jobs.Description).
+    jobMutation.mutate({ ...form, description: form.description.trim().toUpperCase() });
   };
 
   const handleOpenNewDegree = () => {
@@ -611,6 +621,7 @@ export default function JobActivitiesPage() {
       description: "",
       degreeId: defaultDegreeId,
       rmu: 0,
+      uepScaleTypeId: null,
       isActive: true,
       createdAt: "",
       updatedAt: null,
@@ -628,6 +639,7 @@ export default function JobActivitiesPage() {
     description: string;
     degreeId: number;
     rmu: number;
+    uepScaleTypeId: number | null;
     isActive: boolean;
   }) => {
     if (!form.description.trim()) {

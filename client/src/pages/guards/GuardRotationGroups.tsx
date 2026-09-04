@@ -284,11 +284,14 @@ function GroupEmployeesPanel({ group }: { group: LocationGroupDetailDto }) {
   const periodAssignments = periodAssignmentsData?.status === 'success' ? periodAssignmentsData.data : [];
   const activePeriod = periods.find(p => p.isActive) ?? periods[0] ?? null;
 
-  // Sub-ubicaciones disponibles para este grupo (hijas de la ubicación asignada al grupo)
-  const groupParentLocationId = periodAssignments
-    .find(a => a.groupId === group.groupId && a.isActive)?.locationId ?? null;
-  const availableLocations = groupParentLocationId
-    ? allLocations.filter(l => l.parentLocationId === groupParentLocationId)
+  // Sub-ubicaciones disponibles para este grupo (hijas de TODAS las ubicaciones asignadas al
+  // grupo — un grupo puede cubrir varios campus a la vez, ej. AMARILLO cubre los 4; antes se
+  // tomaba solo la primera con .find() y se ocultaban las sub-ubicaciones de las demás).
+  const groupParentLocationIds = periodAssignments
+    .filter(a => a.groupId === group.groupId && a.isActive)
+    .map(a => a.locationId);
+  const availableLocations = groupParentLocationIds.length > 0
+    ? allLocations.filter(l => l.parentLocationId != null && groupParentLocationIds.includes(l.parentLocationId))
     : allLocations;
 
   // Estado de cambios de ubicación pendientes (empleadoId → { locationId, existingAssignmentId })

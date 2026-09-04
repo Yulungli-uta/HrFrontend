@@ -1,11 +1,14 @@
 // src/components/job-activities/OccupationalGroupForm.tsx
 
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, RefreshCw, XCircle } from "lucide-react";
 import type { OccupationalGroup, Degree } from "@/types/Job-activities";
+import { TiposReferenciaAPI, type ApiResponse } from "@/lib/api";
+import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 
 interface OccupationalGroupFormProps {
   group: OccupationalGroup;
@@ -16,9 +19,26 @@ interface OccupationalGroupFormProps {
     description: string;
     degreeId: number;
     rmu: number;
+    uepScaleTypeId: number | null;
     isActive: boolean;
   }) => void;
   onCancel: () => void;
+}
+
+interface RefType {
+  typeId: number;
+  category?: string;
+  code?: string;
+  name: string;
+  description: string;
+  isActive?: boolean;
+}
+
+function ensureSuccess<T>(res: ApiResponse<T>, defaultMessage: string): T {
+  if (res.status === "error") {
+    throw new Error(res.error.message || defaultMessage);
+  }
+  return res.data;
 }
 
 export function OccupationalGroupForm({
@@ -38,6 +58,27 @@ export function OccupationalGroupForm({
     group.rmu != null ? group.rmu.toString() : "0"
   );
   const [isActive, setIsActive] = useState<boolean>(group.isActive);
+  const [uepScaleTypeId, setUepScaleTypeId] = useState<string>(
+    group.uepScaleTypeId ? String(group.uepScaleTypeId) : ""
+  );
+
+  // ===========================
+  // CARGA ESCALA UEP (ref_Types / UEP_SCALE_TYPE)
+  // ===========================
+
+  const {
+    data: uepScaleTypes,
+    isLoading: loadingUepScaleTypes,
+    error: uepScaleTypesError,
+  } = useQuery<RefType[]>({
+    queryKey: ["/api/v1/rh/ref/types", "UEP_SCALE_TYPE"],
+    queryFn: async () => {
+      const res = await TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.UEP_SCALE_TYPE);
+      return ensureSuccess(res, "Error al cargar escala UEP");
+    },
+  });
+
+  const activeUepScaleTypes = (uepScaleTypes ?? []).filter((t) => t.isActive !== false);
 
   // Sincronizar cuando cambie el grupo a editar o cambie el listado de grados
   useEffect(() => {
@@ -49,6 +90,7 @@ export function OccupationalGroupForm({
     );
     setRmu(group.rmu != null ? group.rmu.toString() : "0");
     setIsActive(group.isActive);
+    setUepScaleTypeId(group.uepScaleTypeId ? String(group.uepScaleTypeId) : "");
   }, [
     group.groupId]);
   //   group.description,
@@ -64,6 +106,7 @@ export function OccupationalGroupForm({
       description: description.trim(),
       degreeId: degreeId ? Number(degreeId) : 0,
       rmu: Number(rmu) || 0,
+      uepScaleTypeId: uepScaleTypeId ? Number(uepScaleTypeId) : null,
       isActive,
     });
   };
@@ -109,6 +152,46 @@ export function OccupationalGroupForm({
             onChange={(e) => setRmu(e.target.value)}
           />
         </div>
+      </div>
+
+      {/* Escala UEP (ref_Types UEP_SCALE_TYPE) — clasificación adicional opcional, no reemplaza RMU/Grado */}
+      <div>
+        <Label className="text-sm font-medium">Escala UEP (opcional)</Label>
+
+        {uepScaleTypesError && (
+          <p className="text-xs text-destructive mb-1">
+            Error al cargar escala UEP. Intente refrescar la página.
+          </p>
+        )}
+
+        <select
+          className="border border-input rounded-md px-3 py-2 text-sm w-full bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          value={uepScaleTypeId}
+          onChange={(e) => setUepScaleTypeId(e.target.value)}
+          disabled={loadingUepScaleTypes || !!uepScaleTypesError}
+        >
+          {loadingUepScaleTypes && (
+            <option key="loading" value="">
+              Cargando escala UEP...
+            </option>
+          )}
+
+          {!loadingUepScaleTypes && (
+            <>
+              <option key="no-uep" value="">
+                (sin clasificar)
+              </option>
+              {activeUepScaleTypes.map((t) => (
+                <option key={t.typeId} value={t.typeId}>
+                  {t.name}
+                </option>
+              ))}
+            </>
+          )}
+        </select>
+        <p className="text-xs text-muted-foreground mt-1">
+          Solo si este grupo ocupacional también se identifica bajo la nomenclatura UEP. No reemplaza el RMU/Grado.
+        </p>
       </div>
 
       <div className="flex items-center gap-2">

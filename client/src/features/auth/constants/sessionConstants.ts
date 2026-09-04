@@ -52,3 +52,16 @@ export const ACTIVITY_EVENTS = [
 ] as const;
 
 export type ActivityEvent = (typeof ACTIVITY_EVENTS)[number];
+
+// ─── Login AzureAD vía popup (backend Python) ─────────────────────────────────
+
+/**
+ * Nombre del BroadcastChannel usado para avisar a la pestaña que abrió el popup
+ * de login AzureAD que el backend (RepositoryUta en Python) ya entregó el
+ * resultado. Reemplaza a window.opener.postMessage: login.microsoftonline.com
+ * envía Cross-Origin-Opener-Policy: same-origin, que corta window.opener de
+ * forma permanente en cuanto el popup navega ahí — BroadcastChannel no depende
+ * de esa relación y solo requiere compartir origen (por eso el popup pasa por
+ * /auth/azure/relay, del mismo origen que esta pestaña, antes de avisar).
+ */
+export const AZURE_LOGIN_BROADCAST_CHANNEL = "wsuta-azure-login-delivery";

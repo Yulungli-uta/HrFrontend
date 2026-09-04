@@ -13,6 +13,8 @@ export interface OccupationalGroup {
   description: string;
   rmu: number;
   degreeId: number;
+  /** FK a ref_Types (Category='UEP_SCALE_TYPE') — clasificación "Escala UEP" adicional, cuando aplica. */
+  uepScaleTypeId: number | null;
   isActive: boolean;
   createdAt?: string;
   updatedAt?: string | null;
@@ -30,6 +32,8 @@ export interface Job {
   puestoJerarquicoSuperior: boolean;
   /** Sueldo de referencia/vigente del cargo. No es el sueldo real de ninguna persona en particular. */
   referenceSalary: number | null;
+  /** FK a tbl_AcademicLadder — escalón real de escalafón docente (Profesor Titular Auxiliar/Agregado/Principal). Nulo para cargos administrativos (esos usan groupId). */
+  academicLadderId: number | null;
   createdAt?: string;
   updatedAt?: string | null;
 }
@@ -83,6 +87,8 @@ export function normalizeOccupationalGroup(raw: any): OccupationalGroup {
     ),
     degreeId:
       raw.degreeId ?? raw.DegreeId ?? raw.degreeID ?? 0,
+    uepScaleTypeId:
+      raw.uepScaleTypeId ?? raw.UepScaleTypeId ?? raw.uepScaleTypeID ?? null,
     isActive: raw.isActive ?? raw.IsActive ?? true,
     createdAt: raw.createdAt ?? raw.CreatedAt,
     updatedAt: raw.updatedAt ?? raw.UpdatedAt ?? null,
@@ -104,6 +110,8 @@ export function normalizeJob(raw: any): Job {
       raw.puestoJerarquicoSuperior ?? raw.PuestoJerarquicoSuperior ?? false,
     referenceSalary:
       raw.referenceSalary ?? raw.ReferenceSalary ?? null,
+    academicLadderId:
+      raw.academicLadderId ?? raw.AcademicLadderId ?? raw.academicLadderID ?? null,
     createdAt: raw.createdAt ?? raw.CreatedAt,
     updatedAt: raw.updatedAt ?? raw.UpdatedAt ?? null,
   };

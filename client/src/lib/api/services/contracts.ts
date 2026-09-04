@@ -603,7 +603,14 @@ export const DegreeAPI = createCrudService<any, any>('/api/v1/rh/degree');
 // API de Actividades de Cargos
 // =============================================================================
 
-export const JobActivityAPI = createCrudService<any, any>('/api/v1/rh/job-activity');
+export const JobActivityAPI = {
+  ...createCrudService<any, any>('/api/v1/rh/job-activity'),
+
+  // tbl_JobActivities tiene llave compuesta real (JobID + ActivitiesID) — el .remove(id)
+  // genérico de createCrudService no aplica aquí (no existe un Id simple en esta entidad).
+  removeByKeys: (jobId: number, activitiesId: number): Promise<ApiResponse<void>> =>
+    apiFetch<void>(`/api/v1/rh/job-activity/${jobId}/${activitiesId}`, { method: 'DELETE' }),
+};
 
 // =============================================================================
 // API de Grupos Ocupacionales

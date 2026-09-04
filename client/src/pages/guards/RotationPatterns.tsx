@@ -23,7 +23,11 @@ import type {
 
 type DialogMode = 'create-header' | 'create-details' | 'edit-header' | 'edit-details';
 
+// `id` es solo una clave local para React/edición — nunca se envía al backend. Un mismo `dayOrder`
+// puede repetirse en más de una fila cuando ese día del ciclo tiene varios horarios en paralelo
+// (ej. sábado mañana + sábado velada); el backend ya soporta esto (ver RotationPatternService).
 type DetailRow = {
+  id: string;
   dayOrder: number;
   scheduleId: number | null;
   scheduleLabel: string;
@@ -31,8 +35,12 @@ type DetailRow = {
   notes: string;
 };
 
+let detailRowSeq = 0;
+function newRowId() { return `row-${++detailRowSeq}`; }
+
 function buildDefaultDetails(cycleDays: number): DetailRow[] {
   return Array.from({ length: cycleDays }, (_, i) => ({
+    id: newRowId(),
     dayOrder: i + 1,
     scheduleId: null,
     scheduleLabel: '',
@@ -81,14 +89,18 @@ function Hint({ children }: { children: React.ReactNode }) {
 // ── Day summary ────────────────────────────────────────────────────────────────
 
 function DaySummary({ rows }: { rows: DetailRow[] }) {
-  const work = rows.filter(r => !r.isRestDay).length;
-  const rest = rows.filter(r => r.isRestDay).length;
-  const withSchedule = rows.filter(r => !r.isRestDay && r.scheduleId).length;
+  const dayOrders = Array.from(new Set(rows.map(r => r.dayOrder)));
+  const rest = dayOrders.filter(d => rows.find(r => r.dayOrder === d)?.isRestDay).length;
+  const work = dayOrders.length - rest;
+  const workShifts = rows.filter(r => !r.isRestDay);
+  const withSchedule = workShifts.filter(r => r.scheduleId).length;
+  const extraShifts = workShifts.length - work;
   return (
     <div className="flex gap-3 text-xs text-muted-foreground mb-2">
       <span className="flex items-center gap-1">
         <Sun className="h-3 w-3 text-amber-500" /> {work} trabajo
-        {withSchedule < work && <span className="text-orange-500 ml-1">({work - withSchedule} sin horario)</span>}
+        {extraShifts > 0 && <span className="ml-1">({extraShifts} con 2do horario)</span>}
+        {withSchedule < workShifts.length && <span className="text-orange-500 ml-1">({workShifts.length - withSchedule} sin horario)</span>}
       </span>
       <span className="flex items-center gap-1">
         <Moon className="h-3 w-3 text-indigo-400" /> {rest} descanso
@@ -141,22 +153,29 @@ export default function RotationPatternsPage() {
 
   const openEditDetails = (p: RotationPatternDto) => {
     setSelected(p);
-    setDetailsRows(
-      Array.from({ length: p.cycleDays }, (_, i) => {
-        const existing = p.details.find(d => d.dayOrder === i + 1);
-        const labelParts = [
-          existing?.scheduleDescription,
-          existing?.scheduleCode ? `(${existing.scheduleCode})` : null,
-        ].filter(Boolean);
-        return {
-          dayOrder: i + 1,
-          scheduleId: existing?.scheduleId ?? null,
-          scheduleLabel: labelParts.join(' '),
-          isRestDay: existing?.isRestDay ?? false,
-          notes: existing?.notes ?? '',
-        };
-      })
-    );
+    // Un día puede tener más de un detalle (horarios en paralelo) — se cargan TODOS los que
+    // devuelve el backend para ese dayOrder, no solo el primero.
+    const rows: DetailRow[] = p.details.map(existing => {
+      const labelParts = [
+        existing.scheduleDescription,
+        existing.scheduleCode ? `(${existing.scheduleCode})` : null,
+      ].filter(Boolean);
+      return {
+        id: newRowId(),
+        dayOrder: existing.dayOrder,
+        scheduleId: existing.scheduleId ?? null,
+        scheduleLabel: labelParts.join(' '),
+        isRestDay: existing.isRestDay,
+        notes: existing.notes ?? '',
+      };
+    });
+    for (let day = 1; day <= p.cycleDays; day++) {
+      if (!rows.some(r => r.dayOrder === day)) {
+        rows.push({ id: newRowId(), dayOrder: day, scheduleId: null, scheduleLabel: '', isRestDay: false, notes: '' });
+      }
+    }
+    rows.sort((a, b) => a.dayOrder - b.dayOrder);
+    setDetailsRows(rows);
     setMode('edit-details');
     setOpen(true);
   };
@@ -540,6 +559,34 @@ function DetailsTable({
   rows: DetailRow[];
   onChange: (rows: DetailRow[]) => void;
 }) {
+  const dayOrders = Array.from(new Set(rows.map(r => r.dayOrder))).sort((a, b) => a - b);
+
+  const updateRow = (id: string, patch: Partial<DetailRow>) =>
+    onChange(rows.map(r => (r.id === id ? { ...r, ...patch } : r)));
+
+  const addExtraShift = (dayOrder: number) => {
+    const lastIdx = rows.map(r => r.dayOrder).lastIndexOf(dayOrder);
+    const updated = [...rows];
+    updated.splice(lastIdx + 1, 0, {
+      id: newRowId(), dayOrder, scheduleId: null, scheduleLabel: '', isRestDay: false, notes: '',
+    });
+    onChange(updated);
+  };
+
+  const removeRow = (id: string) => onChange(rows.filter(r => r.id !== id));
+
+  const setRestDay = (dayOrder: number, row: DetailRow, isRestDay: boolean) => {
+    if (isRestDay) {
+      // Un día de descanso no puede combinar con otros horarios de trabajo ese mismo día.
+      onChange([
+        ...rows.filter(r => r.dayOrder !== dayOrder),
+        { ...row, isRestDay: true, scheduleId: null, scheduleLabel: '' },
+      ]);
+      return;
+    }
+    updateRow(row.id, { isRestDay: false });
+  };
+
   return (
     <div className="rounded-md border overflow-hidden">
       <Table>
@@ -549,71 +596,89 @@ function DetailsTable({
             <TableHead>Horario rotativo</TableHead>
             <TableHead className="w-28 text-center">Descanso</TableHead>
             <TableHead>Notas</TableHead>
+            <TableHead className="w-16 text-center">Turnos</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {rows.map((row, idx) => (
-            <TableRow
-              key={row.dayOrder}
-              className={row.isRestDay ? 'bg-indigo-50/60' : ''}
-            >
-              <TableCell className="text-center font-bold text-sm py-1.5">
-                <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs
-                  ${row.isRestDay ? 'bg-indigo-100 text-indigo-600' : 'bg-amber-100 text-amber-700'}`}>
-                  {row.dayOrder}
-                </span>
-              </TableCell>
-              <TableCell className="py-1.5">
-                {row.isRestDay ? (
-                  <span className="text-xs text-indigo-500 flex items-center gap-1">
-                    <Moon className="h-3 w-3" /> Día de descanso
-                  </span>
-                ) : (
-                  <ScheduleCombobox
-                    value={row.scheduleId}
-                    label={row.scheduleLabel || null}
-                    onlyRotating
-                    placeholder="Seleccionar horario rotativo…"
-                    onSelect={(id, s) => {
-                      const updated = [...rows];
-                      const label = s
-                        ? `${s.description} · ${s.entryTime?.slice(0, 5) ?? ''}–${s.exitTime?.slice(0, 5) ?? ''}`
-                        : '';
-                      updated[idx] = { ...updated[idx], scheduleId: id, scheduleLabel: label };
-                      onChange(updated);
-                    }}
+          {dayOrders.map(dayOrder => {
+            const dayRows = rows.filter(r => r.dayOrder === dayOrder);
+            const isRest = dayRows[0]?.isRestDay ?? false;
+            return dayRows.map((row, i) => (
+              <TableRow key={row.id} className={row.isRestDay ? 'bg-indigo-50/60' : ''}>
+                <TableCell className="text-center font-bold text-sm py-1.5">
+                  {i === 0 && (
+                    <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs
+                      ${row.isRestDay ? 'bg-indigo-100 text-indigo-600' : 'bg-amber-100 text-amber-700'}`}>
+                      {row.dayOrder}
+                    </span>
+                  )}
+                </TableCell>
+                <TableCell className="py-1.5">
+                  {row.isRestDay ? (
+                    <span className="text-xs text-indigo-500 flex items-center gap-1">
+                      <Moon className="h-3 w-3" /> Día de descanso
+                    </span>
+                  ) : (
+                    <div className="flex items-center gap-1">
+                      {dayRows.length > 1 && (
+                        <span className="text-[10px] text-muted-foreground w-14 shrink-0">Turno {i + 1}</span>
+                      )}
+                      <ScheduleCombobox
+                        value={row.scheduleId}
+                        label={row.scheduleLabel || null}
+                        onlyRotating
+                        placeholder="Seleccionar horario rotativo…"
+                        onSelect={(id, s) => {
+                          const label = s
+                            ? `${s.description} · ${s.entryTime?.slice(0, 5) ?? ''}–${s.exitTime?.slice(0, 5) ?? ''}`
+                            : '';
+                          updateRow(row.id, { scheduleId: id, scheduleLabel: label });
+                        }}
+                      />
+                    </div>
+                  )}
+                </TableCell>
+                <TableCell className="text-center py-1.5">
+                  {i === 0 && (
+                    <Switch
+                      checked={row.isRestDay}
+                      onCheckedChange={v => setRestDay(dayOrder, row, v)}
+                    />
+                  )}
+                </TableCell>
+                <TableCell className="py-1.5">
+                  <Input
+                    className="h-7 text-xs"
+                    value={row.notes}
+                    onChange={e => updateRow(row.id, { notes: e.target.value })}
+                    placeholder="Observación…"
                   />
-                )}
-              </TableCell>
-              <TableCell className="text-center py-1.5">
-                <Switch
-                  checked={row.isRestDay}
-                  onCheckedChange={v => {
-                    const updated = [...rows];
-                    updated[idx] = {
-                      ...updated[idx],
-                      isRestDay: v,
-                      scheduleId: v ? null : updated[idx].scheduleId,
-                      scheduleLabel: v ? '' : updated[idx].scheduleLabel,
-                    };
-                    onChange(updated);
-                  }}
-                />
-              </TableCell>
-              <TableCell className="py-1.5">
-                <Input
-                  className="h-7 text-xs"
-                  value={row.notes}
-                  onChange={e => {
-                    const updated = [...rows];
-                    updated[idx] = { ...updated[idx], notes: e.target.value };
-                    onChange(updated);
-                  }}
-                  placeholder="Observación…"
-                />
-              </TableCell>
-            </TableRow>
-          ))}
+                </TableCell>
+                <TableCell className="py-1.5 text-center whitespace-nowrap">
+                  {!isRest && i === dayRows.length - 1 && (
+                    <button
+                      type="button"
+                      title="Agregar otro horario este día (ej. velada)"
+                      className="text-muted-foreground hover:text-primary"
+                      onClick={() => addExtraShift(dayOrder)}
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                  {!isRest && dayRows.length > 1 && (
+                    <button
+                      type="button"
+                      title="Quitar este horario"
+                      className="text-muted-foreground hover:text-destructive ml-1.5"
+                      onClick={() => removeRow(row.id)}
+                    >
+                      ×
+                    </button>
+                  )}
+                </TableCell>
+              </TableRow>
+            ));
+          })}
         </TableBody>
       </Table>
     </div>

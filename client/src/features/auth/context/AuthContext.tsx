@@ -30,6 +30,7 @@ import {
   INACTIVITY_CHECK_INTERVAL_MS,
   REFRESH_MARGIN_MS,
   ACTIVITY_EVENTS,
+  AZURE_LOGIN_BROADCAST_CHANNEL,
 } from "../constants/sessionConstants";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
@@ -594,6 +595,103 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     })();
   }, [lastMessage, setLocation, finishAzureLoginAttempt]);
+
+  // ─── BroadcastChannel: LoginNotification (backend Python) → completar login AzureAD ──
+  // Aditivo al efecto de WebSocket de arriba, NO lo reemplaza: mientras el backend
+  // activo sea el .NET, este listener queda inerte — el popup de .NET solo se
+  // cierra a sí mismo (setTimeout(() => window.close())) y nunca publica en este
+  // canal (verificado en AuthController.cs, acción AzureCallback). Cuando el
+  // backend activo es el nuevo RepositoryUta en Python, su callback
+  // (routers/auth.py::azure_callback) redirige el popup a /auth/azure/relay
+  // (mismo origen que esta pestaña), que publica el deliveryCode en este
+  // BroadcastChannel — reemplaza a window.opener.postMessage porque
+  // login.microsoftonline.com envía Cross-Origin-Opener-Policy: same-origin, que
+  // corta window.opener de forma permanente en cuanto el popup navega ahí.
+  // BroadcastChannel no depende de esa relación, solo de compartir origen.
+  // Los dos mecanismos (WS y este) nunca compiten por el mismo intento de login:
+  // cada uno solo lo dispara el backend que efectivamente respondió el popup.
+  useEffect(() => {
+    const channel = new BroadcastChannel(AZURE_LOGIN_BROADCAST_CHANNEL);
+
+    const handleAzureDeliveryMessage = (event: MessageEvent) => {
+      const payload = event.data;
+      if (!payload || payload.type !== "AZURE_LOGIN_DELIVERY") return;
+
+      logAuth("BROADCASTCHANNEL LOGIN EVENT", { payload });
+
+      const eventKey = `bc:${payload.deliveryCode ?? payload.pair?.accessToken ?? Date.now()}`;
+      if (processedLoginEventsRef.current.has(eventKey)) return;
+      processedLoginEventsRef.current.add(eventKey);
+      if (isProcessingLoginRef.current) return;
+      isProcessingLoginRef.current = true;
+
+      (async () => {
+        try {
+          let pair = payload.pair as
+            | { accessToken: string; refreshToken: string }
+            | undefined;
+
+          // PKCE (RFC 7636): mismo canje que el flujo WS — el codeVerifier nunca
+          // salió de esta pestaña.
+          if (payload.deliveryCode) {
+            const verifier = azureCodeVerifierRef.current;
+            if (!verifier) {
+              logger.auth.error(
+                "BroadcastChannel trajo deliveryCode pero no hay codeVerifier en memoria (pestaña recargada durante el login); se aborta"
+              );
+              finishAzureLoginAttempt(
+                false,
+                "Se perdió el estado del inicio de sesión (¿recargaste la página?). Intenta de nuevo."
+              );
+              return;
+            }
+            try {
+              pair = await authService.exchangeAzureDeliveryCode(
+                payload.deliveryCode,
+                verifier
+              );
+            } finally {
+              azureCodeVerifierRef.current = null;
+            }
+          }
+
+          if (!pair) {
+            finishAzureLoginAttempt(
+              false,
+              "No se pudo completar el inicio de sesión (el enlace expiró o ya se usó). Intenta de nuevo."
+            );
+            return;
+          }
+
+          tokenService.setTokens(pair);
+          // A diferencia del flujo WS (que arma el UserSession directo desde el
+          // payload del mensaje), aquí no viene un campo "data" — se resuelve el
+          // usuario igual que en el login local/refreshAuth, vía /api/auth/me.
+          // getCurrentUser ya incluye los grupos AD extraídos del JWT (ver
+          // authService.ts), así que no se pierde nada respecto al flujo WS.
+          const userInfo = await authService.getCurrentUser(pair.accessToken);
+          await doLoginStateRef.current(userInfo, true);
+          finishAzureLoginAttempt(true);
+          setTimeout(() => setLocation("/"), 300);
+          logAuth("LOGIN VIA BROADCASTCHANNEL COMPLETADO");
+        } catch (e) {
+          logger.auth.error("BroadcastChannel login handling error:", e);
+          finishAzureLoginAttempt(
+            false,
+            "Ocurrió un error al completar el inicio de sesión. Intenta de nuevo."
+          );
+        } finally {
+          isProcessingLoginRef.current = false;
+        }
+      })();
+    };
+
+    channel.addEventListener("message", handleAzureDeliveryMessage);
+    return () => {
+      channel.removeEventListener("message", handleAzureDeliveryMessage);
+      channel.close();
+    };
+  }, [setLocation, finishAzureLoginAttempt]);
 
   // ─── Chequeo inicial de sesión al montar ──────────────────────────────────
 

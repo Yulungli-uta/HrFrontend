@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle2, RefreshCw, XCircle } from "lucide-react";
 
 import type { Job, OccupationalGroup } from "@/types/Job-activities";
-import { TiposReferenciaAPI, type ApiResponse } from "@/lib/api";
+import { TiposReferenciaAPI, AcademicLadderAPI, type ApiResponse } from "@/lib/api";
+import type { AcademicLadderDto } from "@/lib/api/services/catalogs";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 
 // ------------------ TIPOS ------------------
@@ -28,6 +29,7 @@ interface JobDetailFormProps {
     siiesTipoFuncionarioTypeId: number | null;
     puestoJerarquicoSuperior: boolean;
     referenceSalary: number | null;
+    academicLadderId: number | null;
   }) => void;
   inlineMode?: boolean;
   onCancel?: () => void;
@@ -78,6 +80,9 @@ export function JobDetailForm({
   const [referenceSalary, setReferenceSalary] = useState<string>(
     job.referenceSalary != null ? String(job.referenceSalary) : ""
   );
+  const [academicLadderId, setAcademicLadderId] = useState<string>(
+    job.academicLadderId ? String(job.academicLadderId) : ""
+  );
 
   // ===========================
   // CARGA TIPOS DE CARGO (ref_Types / CONTRACT_TYPE)
@@ -120,6 +125,24 @@ export function JobDetailForm({
   );
 
   // ===========================
+  // CARGA ESCALAFÓN DOCENTE (tbl_AcademicLadder)
+  // ===========================
+
+  const {
+    data: academicLadders,
+    isLoading: loadingAcademicLadders,
+    error: academicLaddersError,
+  } = useQuery<AcademicLadderDto[]>({
+    queryKey: ["/api/v1/rh/academic-ladder"],
+    queryFn: async () => {
+      const res = await AcademicLadderAPI.getAll();
+      return ensureSuccess(res, "Error al cargar escalafón docente");
+    },
+  });
+
+  const activeAcademicLadders = (academicLadders ?? []).filter((l) => l.isActive !== false);
+
+  // ===========================
   // SINCRONIZAR FORM AL CAMBIAR CARGO
   // ===========================
 
@@ -133,6 +156,7 @@ export function JobDetailForm({
     );
     setPuestoJerarquicoSuperior(job.puestoJerarquicoSuperior);
     setReferenceSalary(job.referenceSalary != null ? String(job.referenceSalary) : "");
+    setAcademicLadderId(job.academicLadderId ? String(job.academicLadderId) : "");
   }, [
     job.jobID,
     job.description,
@@ -142,6 +166,7 @@ export function JobDetailForm({
     job.siiesTipoFuncionarioTypeId,
     job.puestoJerarquicoSuperior,
     job.referenceSalary,
+    job.academicLadderId,
   ]);
 
   // ===========================
@@ -160,6 +185,7 @@ export function JobDetailForm({
         : null,
       puestoJerarquicoSuperior,
       referenceSalary: referenceSalary ? Number(referenceSalary) : null,
+      academicLadderId: academicLadderId ? Number(academicLadderId) : null,
     });
   };
 
@@ -289,6 +315,46 @@ export function JobDetailForm({
           >
             Puesto Jerárquico Superior (SIIES)
           </Label>
+        </div>
+
+        {/* Escalafón docente (tbl_AcademicLadder) — solo aplica a cargos docentes (Profesor Titular). Nulo para cargos administrativos. */}
+        <div>
+          <Label className="text-sm font-medium">Escalafón docente</Label>
+
+          {academicLaddersError && (
+            <p className="text-xs text-destructive mb-1">
+              Error al cargar escalafón docente. Intente refrescar la página.
+            </p>
+          )}
+
+          <select
+            className="border border-input rounded-md px-3 py-2 text-sm w-full bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            value={academicLadderId}
+            onChange={(e) => setAcademicLadderId(e.target.value)}
+            disabled={loadingAcademicLadders || !!academicLaddersError}
+          >
+            {loadingAcademicLadders && (
+              <option key="loading" value="">
+                Cargando escalafón docente...
+              </option>
+            )}
+
+            {!loadingAcademicLadders && (
+              <>
+                <option key="no-ladder" value="">
+                  (no aplica / cargo administrativo)
+                </option>
+                {activeAcademicLadders.map((l) => (
+                  <option key={l.ladderId} value={l.ladderId}>
+                    {l.code ? `${l.code} – ${l.name}` : l.name}
+                  </option>
+                ))}
+              </>
+            )}
+          </select>
+          <p className="text-xs text-muted-foreground mt-1">
+            Solo para cargos docentes (Profesor Titular Auxiliar/Agregado/Principal). Dejar en blanco para cargos administrativos.
+          </p>
         </div>
       </div>
 

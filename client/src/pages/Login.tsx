@@ -156,12 +156,12 @@ export default function LoginPage() {
 
         <CardContent>
           {/* Estado WebSocket */}
-          <div
+          {/* <div
             className={`mb-4 text-sm text-center ${isWebSocketConnected ? "text-success" : "text-warning"
               }`}
           >
             WebSocket: {isWebSocketConnected ? "✓ Conectado" : "○ Desconectado"}
-          </div>
+          </div> */}
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2">

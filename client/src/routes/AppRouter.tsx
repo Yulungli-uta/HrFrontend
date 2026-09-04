@@ -3,6 +3,7 @@ import { Switch, Route, Redirect, useRoute } from "wouter";
 import { useAuth } from "@/features/auth";
 import { Loader2 } from "lucide-react";
 import ExternalSignPage from "@/pages/electronicSignature/ExternalSignPage";
+import AzureLoginRelay from "@/pages/AzureLoginRelay";
 
 // Componentes del layout y autorizaciones
 import Layout from "@/components/Layout";
@@ -46,9 +47,16 @@ export default function AppRouter() {
   // sesion. Debe resolverse ANTES del gate de auth de mas abajo (que redirige todo
   // lo no autenticado a /login), sin pasar por Layout/ProtectedRoute.
   const [isExternalSign] = useRoute("/firma-externa/:participantId");
+  // Pagina de relevo del popup de login AzureAD (backend Python): sin sesion,
+  // debe resolverse ANTES del gate de auth por la misma razon que /firma-externa.
+  const [isAzureLoginRelay] = useRoute("/auth/azure/relay");
 
   if (isExternalSign) {
     return <ExternalSignPage />;
+  }
+
+  if (isAzureLoginRelay) {
+    return <AzureLoginRelay />;
   }
 
   // Mientras AuthContext está comprobando sesión → pantalla de carga inicial

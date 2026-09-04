@@ -142,12 +142,24 @@ const SCHEDULE_LABEL: Record<string, string> = {
 
 // ─── Utilidades ───────────────────────────────────────────────────────────────
 
+// Nombre completo si entra en el espacio disponible; si no, "un apellido + un nombre"
+// (no los dos apellidos) — varios guardias comparten ambos apellidos y "Apellido Apellido"
+// no alcanza a distinguirlos. maxChars es una aproximación por longitud de texto, no una
+// medición real de layout, calibrada al ancho de columna de cada vista.
+function displayGuardName(fullName: string, shortName: string, maxChars: number) {
+  return fullName.length <= maxChars ? fullName : (shortName || fullName);
+}
+
 function todayStr() { return new Date().toISOString().split('T')[0]; }
 function addDays(d: string, n: number) {
   const dt = new Date(d); dt.setDate(dt.getDate() + n); return dt.toISOString().split('T')[0];
 }
 function fmtDate(d: string) {
   return new Date(d + 'T00:00:00').toLocaleDateString('es-EC', { day: '2-digit', month: 'short' });
+}
+function fmtDayName(d: string) {
+  const name = new Date(d + 'T00:00:00').toLocaleDateString('es-EC', { weekday: 'short' });
+  return name.charAt(0).toUpperCase() + name.slice(1).replace('.', '');
 }
 function fmtDateFull(d: string) {
   return new Date(d + 'T00:00:00').toLocaleDateString('es-EC', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' });
@@ -285,7 +297,7 @@ function BoardCells({
                       title={`${emp.fullName}${emp.groupName ? ` — ${emp.groupName}` : ''} · ${STATUS_LABEL[cell.status] ?? cell.status}`}
                     >
                       {emp.isReplacement && <span className="font-bold mr-0.5" style={{ color: '#7c3aed' }}>R</span>}
-                      {emp.fullName.split(' ').slice(0, 2).join(' ')}
+                      {displayGuardName(emp.fullName, emp.shortName, 16)}
                     </button>
                   );
                 })}
@@ -350,7 +362,8 @@ function ShiftBoard({
               <th className="border px-3 py-2 text-left sticky left-0 bg-muted z-10 min-w-[180px]">Turno / Ubicación</th>
               {board.dates.map(d => (
                 <th key={d} className="border px-1 py-2 text-center min-w-[90px] font-medium whitespace-nowrap">
-                  {fmtDate(d)}
+                  <div>{fmtDayName(d)}</div>
+                  <div className="font-normal text-muted-foreground">{fmtDate(d)}</div>
                 </th>
               ))}
             </tr>
@@ -964,19 +977,37 @@ export default function GuardShiftPlanningPage() {
   const [activeTab, setActiveTab] = useState('cronograma');
 
   const { data: boardResp, isLoading: boardLoading, refetch } = useScheduleBoard(boardFilter);
+  // Mismos filtros que la pestaña "Por ubicación" (boardFilter), para que "Por guardia" y
+  // "Conflictos" (que comparten `items`) no muestren datos fuera de lo que el usuario filtró.
   const { data: calendarResp, isLoading: calLoading } = useGuardCalendar(
-    { startDate: boardFilter.startDate, endDate: boardFilter.endDate }, true
+    {
+      startDate: boardFilter.startDate,
+      endDate: boardFilter.endDate,
+      groupId: boardFilter.groupId,
+      locationId: boardFilter.locationId,
+      status: boardFilter.status,
+    },
+    true
   );
   const { data: groupsResp } = useGuardRotationGroups();
   const { data: locationsResp } = useGuardLocationsAssignable();
 
   const board = boardResp?.status === 'success' ? boardResp.data : null;
-  const items = calendarResp?.status === 'success' ? calendarResp.data : [];
+  // El backend de /calendar incluye canceladas (necesarias en algún momento para depurar
+  // datos) y no filtra por scheduleCode — ambos se resuelven aquí en cliente.
+  const calendarItems = calendarResp?.status === 'success' ? calendarResp.data : [];
+  // "Por guardia" debe alinearse con "Por ubicación": esa vista nunca muestra turnos
+  // cancelados, así que el cronograma por guardia tampoco.
+  const items = calendarItems
+    .filter(i => i.status !== 'CANCELLED')
+    .filter(i => !boardFilter.scheduleCode || i.scheduleCode === boardFilter.scheduleCode);
   const groups = groupsResp?.status === 'success' ? groupsResp.data : [];
   const locations = locationsResp?.status === 'success' ? locationsResp.data : [];
 
-  const conflicts = items.filter(
-    i => i.status === 'CANCELLED' || i.hasPermissionConflict || i.hasVacationConflict || i.hasValidationWarning
+  // Un turno cancelado ya está resuelto — no es un conflicto que requiera atención, así que
+  // no cuenta aquí (antes se incluía por error).
+  const conflicts = calendarItems.filter(
+    i => i.status !== 'CANCELLED' && (i.hasPermissionConflict || i.hasVacationConflict || i.hasValidationWarning)
   );
   const isLoading = boardLoading || calLoading;
 
@@ -1254,11 +1285,11 @@ function GuardCronograma({
   items: import('@/types/guards').GuardShiftCalendarItemDto[];
   onCellClick: (planningId: number) => void;
 }) {
-  const empMap = new Map<number, { name: string; shifts: Map<string, import('@/types/guards').GuardShiftCalendarItemDto> }>();
+  const empMap = new Map<number, { fullName: string; shortName: string; shifts: Map<string, import('@/types/guards').GuardShiftCalendarItemDto> }>();
 
   for (const item of items) {
     if (!empMap.has(item.employeeId)) {
-      empMap.set(item.employeeId, { name: item.employeeFullName, shifts: new Map() });
+      empMap.set(item.employeeId, { fullName: item.employeeFullName, shortName: item.employeeShortName, shifts: new Map() });
     }
     empMap.get(item.employeeId)!.shifts.set(item.workDate, item);
   }
@@ -1287,17 +1318,23 @@ function GuardCronograma({
       <table className="w-full border-collapse text-xs">
         <thead>
           <tr className="bg-muted/60">
-            <th className="border px-3 py-2 text-left sticky left-0 bg-muted z-10 min-w-[150px]">Guardia</th>
+            <th className="border px-3 py-2 text-left sticky left-0 bg-muted z-10 min-w-[190px]">Guardia</th>
             {dates.map(d => (
-              <th key={d} className="border px-1 py-2 text-center min-w-[44px] font-medium whitespace-nowrap">{fmtDate(d)}</th>
+              <th key={d} className="border px-1 py-2 text-center min-w-[44px] font-medium whitespace-nowrap">
+                <div>{fmtDayName(d)}</div>
+                <div className="font-normal text-muted-foreground">{fmtDate(d)}</div>
+              </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {Array.from(empMap.entries()).map(([empId, { name, shifts }]) => (
+          {Array.from(empMap.entries()).map(([empId, { fullName, shortName, shifts }]) => (
             <tr key={empId} className="hover:bg-muted/20">
-              <td className="border px-3 py-1.5 sticky left-0 bg-background z-10 font-medium text-xs truncate max-w-[150px]">
-                {name.split(' ').slice(0, 2).join(' ')}
+              <td
+                className="border px-3 py-1.5 sticky left-0 bg-background z-10 font-medium text-xs truncate max-w-[190px]"
+                title={fullName}
+              >
+                {displayGuardName(fullName, shortName, 24)}
               </td>
               {dates.map(d => {
                 const shift = shifts.get(d);

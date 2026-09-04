@@ -320,6 +320,7 @@ export interface GuardShiftCalendarItemDto {
   planningId: number;
   employeeId: number;
   employeeFullName: string;
+  employeeShortName: string;
   locationId: number;
   locationName: string;
   scheduleId: number;
@@ -581,6 +582,7 @@ export interface ScheduleBoardFilterDto {
 export interface ScheduleBoardCellEmployeeDto {
   employeeId: number;
   fullName: string;
+  shortName: string;
   isReplacement: boolean;
   planningId: number;
   groupId?: number | null;
