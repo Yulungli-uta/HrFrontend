@@ -34,6 +34,7 @@ import type {
   GuardShiftCalendarItemDto,
   GuardShiftCalendarFilterDto,
   CreateGuardShiftPlanningDto,
+  CreateRecurringGuardShiftPlanningDto,
   GenerateGuardShiftPlanningRequestDto,
   GuardShiftPlanningResultDto,
   ValidateGuardAssignmentRequestDto,
@@ -282,6 +283,12 @@ export const GuardShiftPlanningAPI = {
 
   create: (dto: CreateGuardShiftPlanningDto): Promise<ApiResponse<GuardShiftPlanningDto>> =>
     apiFetch<GuardShiftPlanningDto>(`${BASE}/guard-shift-planning`, {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    }),
+
+  createRecurring: (dto: CreateRecurringGuardShiftPlanningDto): Promise<ApiResponse<GuardShiftPlanningResultDto>> =>
+    apiFetch<GuardShiftPlanningResultDto>(`${BASE}/guard-shift-planning/create-recurring`, {
       method: 'POST',
       body: JSON.stringify(dto),
     }),

@@ -165,7 +165,7 @@ function PendingTab({ onApprove, onReject }: { onApprove: (c: GuardShiftChangeDt
 function AllTab({ onApprove, onReject }: { onApprove: (c: GuardShiftChangeDto) => void; onReject: (c: GuardShiftChangeDto) => void }) {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('PENDING');
   const { data: resp, isLoading, refetch } = useAllChangesPaged(page, pageSize, statusFilter || undefined);
   const pagedData = resp?.status === 'success' ? resp.data : null;
   const changes = pagedData?.items ?? [];

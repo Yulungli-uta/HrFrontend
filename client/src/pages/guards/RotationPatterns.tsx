@@ -112,7 +112,7 @@ function DaySummary({ rows }: { rows: DetailRow[] }) {
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function RotationPatternsPage() {
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('active');
   const isActiveParam = statusFilter === 'all' ? undefined : statusFilter === 'active';
 
   const {

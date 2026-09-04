@@ -125,7 +125,7 @@ export default function GuardServiceLocationsPage() {
   const [editId, setEditId] = useState<number | null>(null);
   const [form, setForm] = useState<LocationFormState>(DEFAULT_FORM);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('active');
 
   const tree = resp?.status === 'success' ? resp.data : [];
   const filteredTree = filterLocationTree(tree, search, statusFilter);

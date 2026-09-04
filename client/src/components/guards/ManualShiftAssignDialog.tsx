@@ -11,6 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { EmployeeCombobox } from '@/components/ui/EmployeeCombobox';
 import { ScheduleCombobox } from '@/components/ui/ScheduleCombobox';
 import { useQuery } from '@tanstack/react-query';
+import { Switch } from '@/components/ui/switch';
 import { usePlanningMutations } from '@/hooks/guards/useGuards';
 import { GuardShiftPlanningAPI, GuardServiceLocationsAPI, GuardRotationGroupsAPI } from '@/lib/api/services/guards';
 import { TiposReferenciaAPI } from '@/lib/api/services/catalogs';
@@ -41,7 +42,7 @@ type Props = {
 // ─── Componente ───────────────────────────────────────────────────────────────
 
 export function ManualShiftAssignDialog({ open, onClose, preselectedDate }: Props) {
-  const { create } = usePlanningMutations(() => handleClose());
+  const { create, createRecurring } = usePlanningMutations(() => handleClose());
 
   const [employeeId,  setEmployeeId]  = useState<number | null>(null);
   const [workDate,    setWorkDate]    = useState(preselectedDate ?? today());
@@ -50,6 +51,8 @@ export function ManualShiftAssignDialog({ open, onClose, preselectedDate }: Prop
   const [groupId,     setGroupId]     = useState<number | null>(null);
   const [notes,       setNotes]       = useState('');
   const [overrideConflict, setOverrideConflict] = useState(false);
+  const [repeatWeekly, setRepeatWeekly] = useState(false);
+  const [repeatWeeks,  setRepeatWeeks]  = useState(4);
 
   // Validación de doble turno
   const [conflictLoading, setConflictLoading] = useState(false);
@@ -140,12 +143,30 @@ export function ManualShiftAssignDialog({ open, onClose, preselectedDate }: Prop
     setConflicts([]);
     setConflictChecked(false);
     setOverrideConflict(false);
+    setRepeatWeekly(false);
+    setRepeatWeeks(4);
+    createRecurring.reset();
     onClose();
   };
 
   const handleSubmit = () => {
     if (!employeeId || !locationId || !scheduleId || !workDate) return;
     if (!manualSourceTypeId || !plannedStatusTypeId) return;
+
+    if (repeatWeekly) {
+      createRecurring.mutate({
+        employeeId,
+        locationId,
+        startDate: workDate,
+        scheduleId,
+        repeatWeeks,
+        groupId:             groupId ?? undefined,
+        notes:               notes.trim() || undefined,
+        planningSourceTypeId: manualSourceTypeId,
+        statusTypeId:         plannedStatusTypeId,
+      });
+      return;
+    }
 
     create.mutate({
       employeeId,
@@ -159,17 +180,22 @@ export function ManualShiftAssignDialog({ open, onClose, preselectedDate }: Prop
     });
   };
 
-  const isSaving    = create.isPending;
+  const isSaving    = create.isPending || createRecurring.isPending;
   const hasConflict = conflicts.length > 0;
   const typesReady  = !!manualSourceTypeId && !!plannedStatusTypeId;
+  const recurringResult = createRecurring.data?.status === 'success' ? createRecurring.data.data : null;
 
   const canSubmit =
     !!employeeId &&
     !!locationId &&
     !!scheduleId &&
     !!workDate &&
+    !!repeatWeeks && repeatWeeks >= 1 && repeatWeeks <= 52 &&
     typesReady &&
-    (!hasConflict || overrideConflict) &&
+    // En modo recurrente el backend valida y omite cada semana con conflicto por su
+    // cuenta (ver resumen al terminar) — no se bloquea el envío por el conflicto del
+    // primer día como en la asignación de un solo turno.
+    (repeatWeekly || !hasConflict || overrideConflict) &&
     !conflictLoading;
 
   return (
@@ -208,23 +234,68 @@ export function ManualShiftAssignDialog({ open, onClose, preselectedDate }: Prop
             />
           </div>
 
-          {/* Verificación de doble turno */}
-          {employeeId && conflictLoading && (
+          {/* Repetir semanalmente */}
+          {!recurringResult && (
+            <div className="flex items-center justify-between gap-3 rounded-md border p-2">
+              <div>
+                <Label className="text-xs">Repetir semanalmente</Label>
+                <p className="text-[11px] text-muted-foreground">
+                  Crea el mismo turno cada semana a partir de la fecha de arriba.
+                </p>
+              </div>
+              <Switch checked={repeatWeekly} onCheckedChange={setRepeatWeekly} />
+            </div>
+          )}
+          {!recurringResult && repeatWeekly && (
+            <div>
+              <Label htmlFor="repeatWeeks" className="text-xs">Cantidad de semanas *</Label>
+              <Input
+                id="repeatWeeks"
+                type="number"
+                min={1}
+                max={52}
+                value={repeatWeeks}
+                onChange={e => setRepeatWeeks(Math.max(1, Math.min(52, Number(e.target.value) || 1)))}
+                className="mt-1 w-28"
+              />
+            </div>
+          )}
+
+          {/* Resumen de asignación recurrente */}
+          {recurringResult && (
+            <div className="rounded-md border p-3 bg-muted/30 space-y-1.5 text-xs">
+              <p className="font-semibold">
+                {recurringResult.generated} de {recurringResult.generated + recurringResult.skipped + recurringResult.errors} semana(s) creadas
+                {recurringResult.skipped > 0 && `, ${recurringResult.skipped} omitida(s) por conflicto`}
+                {recurringResult.errors > 0 && `, ${recurringResult.errors} error(es)`}
+              </p>
+              {recurringResult.messages.length > 1 && (
+                <ul className="space-y-0.5 max-h-32 overflow-y-auto text-muted-foreground">
+                  {recurringResult.messages.slice(1).map((m, i) => <li key={i}>{m}</li>)}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {/* Verificación de doble turno (informativa para la primera fecha; en modo
+              recurrente cada semana se valida/omite por separado en el backend) */}
+          {!recurringResult && employeeId && conflictLoading && (
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
               Verificando turnos del guardia en esa fecha…
             </div>
           )}
 
-          {employeeId && conflictChecked && !hasConflict && !conflictLoading && (
+          {!recurringResult && employeeId && conflictChecked && !hasConflict && !conflictLoading && (
             <div className="flex items-center gap-2 text-xs text-green-600">
               <CheckCircle2 className="h-3.5 w-3.5" />
               El guardia no tiene turnos asignados ese día.
             </div>
           )}
 
-          {/* Alerta de doble turno */}
-          {hasConflict && !conflictLoading && (
+          {/* Alerta de doble turno (no aplica en modo recurrente: cada semana se valida y
+              omite por separado, ver resumen al final) */}
+          {!recurringResult && !repeatWeekly && hasConflict && !conflictLoading && (
             <Alert variant="destructive" className="py-3">
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle className="text-sm">Conflicto: doble turno detectado</AlertTitle>
@@ -350,14 +421,20 @@ export function ManualShiftAssignDialog({ open, onClose, preselectedDate }: Prop
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose} disabled={isSaving}>
-            Cancelar
-          </Button>
-          <Button onClick={handleSubmit} disabled={isSaving || !canSubmit}>
-            {isSaving
-              ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />Guardando…</>
-              : 'Asignar turno'}
-          </Button>
+          {recurringResult ? (
+            <Button onClick={handleClose}>Cerrar</Button>
+          ) : (
+            <>
+              <Button variant="outline" onClick={handleClose} disabled={isSaving}>
+                Cancelar
+              </Button>
+              <Button onClick={handleSubmit} disabled={isSaving || !canSubmit}>
+                {isSaving
+                  ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />Guardando…</>
+                  : repeatWeekly ? `Asignar ${repeatWeeks} semana(s)` : 'Asignar turno'}
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

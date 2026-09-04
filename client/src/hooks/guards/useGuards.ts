@@ -593,7 +593,22 @@ export function usePlanningMutations(onSuccess?: () => void) {
     onError: (e) => toast({ title: 'Error', description: parseApiError(e).message, variant: 'destructive' }),
   });
 
-  return { create, generate, preview, confirm, cancel, cancelRange };
+  // No dispara onSuccess() del diálogo (a diferencia de `create`) — el resultado trae un
+  // resumen por semana (creadas/omitidas por conflicto) que el usuario debe poder revisar
+  // antes de cerrar, así que el cierre lo maneja el componente, no esta mutación.
+  const createRecurring = useMutation({
+    mutationFn: (dto: import('@/types/guards').CreateRecurringGuardShiftPlanningDto) => GuardShiftPlanningAPI.createRecurring(dto),
+    onSuccess: (res) => {
+      if (res.status === 'success') {
+        invalidateAll();
+        const d = res.data;
+        toast({ title: `Asignación recurrente: ${d.generated} de ${d.generated + d.skipped + d.errors} semana(s) creadas` });
+      } else toast({ title: 'Error al asignar', description: res.error.message, variant: 'destructive' });
+    },
+    onError: (e) => toast({ title: 'Error', description: parseApiError(e).message, variant: 'destructive' }),
+  });
+
+  return { create, generate, preview, confirm, cancel, cancelRange, createRecurring };
 }
 
 export function useShiftChangeMutations(onSuccess?: () => void) {

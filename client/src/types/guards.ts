@@ -353,6 +353,18 @@ export interface CreateGuardShiftPlanningDto {
   notes?: string;
 }
 
+export interface CreateRecurringGuardShiftPlanningDto {
+  employeeId: number;
+  groupId?: number;
+  locationId: number;
+  startDate: string;
+  scheduleId: number;
+  repeatWeeks: number;
+  planningSourceTypeId: number;
+  statusTypeId: number;
+  notes?: string;
+}
+
 export interface CancelGuardShiftPlanningDto {
   notes?: string;
 }
@@ -563,6 +575,7 @@ export interface GeneratePreviewResponseDto {
   doubleShiftConflicts: number;
   overlapConflicts: number;
   missingLocation: number;
+  specialRuleOverrideConflicts: number;
   items: GeneratePreviewItemDto[];
 }
 

@@ -774,7 +774,7 @@ function HierarchyView({
   const [patternPanel, setPatternPanel] = useState<LocationGroupDetailDto | null>(null);
   const [duplicateTarget, setDuplicateTarget] = useState<GuardRotationGroupDto | GuardRotationGroupWithSubgroupsDto | null>(null);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('active');
 
   const matchesStatus = (isActive: boolean) =>
     statusFilter === 'all' || (statusFilter === 'active') === isActive;
@@ -1061,7 +1061,7 @@ function AllGroupsView({
   const [patternPanel, setPatternPanel] = useState<LocationGroupDetailDto | null>(null);
   const [duplicateTarget, setDuplicateTarget] = useState<GuardRotationGroupDto | null>(null);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('active');
   const [parentFilter, setParentFilter] = useState('all');
   const [levelFilter, setLevelFilter] = useState('all');
   const [specialFilter, setSpecialFilter] = useState<'all' | 'special' | 'normal'>('all');

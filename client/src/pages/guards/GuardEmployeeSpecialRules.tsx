@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useSpecialRulesPaged, useSpecialRulesMutations, useGuardLocationsAssignable } from '@/hooks/guards/useGuards';
 import { EmployeeCombobox } from '@/components/ui/EmployeeCombobox';
+import { ScheduleCombobox } from '@/components/ui/ScheduleCombobox';
 import type {
   GuardEmployeeSpecialRuleDto,
   CreateGuardEmployeeSpecialRuleDto,
@@ -21,6 +22,8 @@ import type {
 type RuleForm = {
   employeeId: number | '';
   fixedLocationId: number | '';
+  fixedScheduleId: number | '';
+  fixedScheduleLabel: string;
   noNightShift: boolean;
   onlyWeekDays: boolean;
   weekendPriority: boolean;
@@ -48,6 +51,9 @@ function RuleFormDialog({
     ? {
         employeeId: editTarget.employeeId,
         fixedLocationId: editTarget.fixedLocationId ?? '',
+        fixedScheduleId: editTarget.fixedScheduleId ?? '',
+        fixedScheduleLabel: [editTarget.fixedScheduleDescription, editTarget.fixedScheduleCode ? `(${editTarget.fixedScheduleCode})` : null]
+          .filter(Boolean).join(' '),
         noNightShift: editTarget.noNightShift,
         onlyWeekDays: editTarget.onlyWeekDays,
         weekendPriority: editTarget.weekendPriority,
@@ -59,7 +65,7 @@ function RuleFormDialog({
         isActive: editTarget.isActive,
       }
     : {
-        employeeId: '', fixedLocationId: '',
+        employeeId: '', fixedLocationId: '', fixedScheduleId: '', fixedScheduleLabel: '',
         noNightShift: false, onlyWeekDays: false, weekendPriority: false, nightPriority: false,
         reason: '', validFrom: today, validTo: '', requiresApproval: false, isActive: true,
       }
@@ -74,6 +80,7 @@ function RuleFormDialog({
     if (editTarget) {
       const dto: UpdateGuardEmployeeSpecialRuleDto = {
         fixedLocationId: form.fixedLocationId !== '' ? Number(form.fixedLocationId) : undefined,
+        fixedScheduleId: form.fixedScheduleId !== '' ? Number(form.fixedScheduleId) : undefined,
         noNightShift: form.noNightShift, onlyWeekDays: form.onlyWeekDays,
         weekendPriority: form.weekendPriority, nightPriority: form.nightPriority,
         reason: form.reason || undefined,
@@ -86,6 +93,7 @@ function RuleFormDialog({
       const dto: CreateGuardEmployeeSpecialRuleDto = {
         employeeId: Number(form.employeeId),
         fixedLocationId: form.fixedLocationId !== '' ? Number(form.fixedLocationId) : undefined,
+        fixedScheduleId: form.fixedScheduleId !== '' ? Number(form.fixedScheduleId) : undefined,
         noNightShift: form.noNightShift, onlyWeekDays: form.onlyWeekDays,
         weekendPriority: form.weekendPriority, nightPriority: form.nightPriority,
         reason: form.reason || undefined,
@@ -137,6 +145,24 @@ function RuleFormDialog({
                 </option>
               ))}
             </select>
+          </div>
+
+          <div>
+            <Label>Horario fijo (opcional)</Label>
+            <div className="mt-1">
+              <ScheduleCombobox
+                value={form.fixedScheduleId === '' ? null : form.fixedScheduleId}
+                label={form.fixedScheduleLabel || null}
+                onlyRotating
+                placeholder="Sin horario fijo"
+                onSelect={(id, s) => {
+                  const label = s
+                    ? `${s.description}${s.scheduleCode ? ` (${s.scheduleCode})` : ''}`
+                    : '';
+                  setForm(p => ({ ...p, fixedScheduleId: id ?? '', fixedScheduleLabel: label }));
+                }}
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

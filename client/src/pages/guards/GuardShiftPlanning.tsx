@@ -2,7 +2,7 @@
 import { useState, useEffect, Fragment } from 'react';
 import {
   Calendar, RefreshCw, Zap, AlertTriangle, CheckCircle2, X,
-  MapPin, Users, ChevronDown, ChevronRight, Info, ArrowLeftRight, Building2, UserPlus,
+  MapPin, Users, ChevronDown, ChevronRight, ChevronLeft, Info, ArrowLeftRight, Building2, UserPlus,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -153,6 +153,20 @@ function displayGuardName(fullName: string, shortName: string, maxChars: number)
 function todayStr() { return new Date().toISOString().split('T')[0]; }
 function addDays(d: string, n: number) {
   const dt = new Date(d); dt.setDate(dt.getDate() + n); return dt.toISOString().split('T')[0];
+}
+// Domingo de la semana que contiene `d` (0 = domingo en JS Date#getDay).
+function startOfWeek(d: string) {
+  const dt = new Date(d + 'T00:00:00');
+  dt.setDate(dt.getDate() - dt.getDay());
+  return dt.toISOString().split('T')[0];
+}
+function fmtWeekLabel(startDate: string, endDate: string) {
+  const start = new Date(startDate + 'T00:00:00');
+  const end = new Date(endDate + 'T00:00:00');
+  const opts: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'short' };
+  const startLabel = start.toLocaleDateString('es-EC', opts);
+  const endLabel = end.toLocaleDateString('es-EC', { ...opts, year: 'numeric' });
+  return `${startLabel} – ${endLabel}`;
 }
 function fmtDate(d: string) {
   return new Date(d + 'T00:00:00').toLocaleDateString('es-EC', { day: '2-digit', month: 'short' });
@@ -307,6 +321,56 @@ function BoardCells({
         );
       })}
     </>
+  );
+}
+
+// ─── Navegador de semana (domingo-sábado) — patrón estándar tipo calendario:
+// botón "Hoy" + flechas conectadas alrededor del rango + salto directo a fecha. ──────
+function WeekNavigator({
+  startDate, endDate, isCurrentWeek, onPrev, onNext, onToday, onPickDate,
+}: {
+  startDate: string;
+  endDate: string;
+  isCurrentWeek: boolean;
+  onPrev: () => void;
+  onNext: () => void;
+  onToday: () => void;
+  onPickDate: (date: string) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <Button variant="outline" size="sm" className="h-8" onClick={onToday} disabled={isCurrentWeek}>
+        Hoy
+      </Button>
+      <div className="flex items-center border rounded-md h-8">
+        <button
+          type="button"
+          className="h-full w-8 flex items-center justify-center hover:bg-muted rounded-l-md transition-colors"
+          onClick={onPrev}
+          title="Semana anterior"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        <span className="px-3 text-sm font-medium min-w-[170px] text-center border-x h-full flex items-center justify-center">
+          {fmtWeekLabel(startDate, endDate)}
+        </span>
+        <button
+          type="button"
+          className="h-full w-8 flex items-center justify-center hover:bg-muted rounded-r-md transition-colors"
+          onClick={onNext}
+          title="Semana siguiente"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
+      <Input
+        type="date"
+        className="w-36 h-8"
+        value={startDate}
+        onChange={e => e.target.value && onPickDate(e.target.value)}
+        title="Ir a la semana que contiene esta fecha"
+      />
+    </div>
   );
 }
 
@@ -672,6 +736,7 @@ function GenerateDialog({
         {/* Paso 1: formulario */}
         {step === 'form' && (
           <div className="space-y-4 py-2">
+            <GuardReadinessPanel targetDate={form.startDate} />
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Modo</Label>
@@ -963,11 +1028,33 @@ function Stat({ label, value, color }: { label: string; value: number; color: 'b
 
 export default function GuardShiftPlanningPage() {
   const today = todayStr();
+  const currentWeekStart = startOfWeek(today);
 
   const [boardFilter, setBoardFilter] = useState<ScheduleBoardFilterDto>({
-    startDate: today,
-    endDate: addDays(today, 13),
+    startDate: currentWeekStart,
+    endDate: addDays(currentWeekStart, 6),
     viewMode: 'BY_LOCATION',
+    status: 'PLANNED',
+  });
+
+  // Navegación semanal (domingo a sábado) — solo para "Por ubicación", que muestra siempre
+  // 7 columnas fijas sin scroll horizontal.
+  const goToWeek = (offsetWeeks: number) => {
+    setBoardFilter(f => {
+      const newStart = addDays(f.startDate, 7 * offsetWeeks);
+      return { ...f, startDate: newStart, endDate: addDays(newStart, 6) };
+    });
+  };
+  const goToWeekOf = (dateStr: string) => {
+    const weekStart = startOfWeek(dateStr);
+    setBoardFilter(f => ({ ...f, startDate: weekStart, endDate: addDays(weekStart, 6) }));
+  };
+
+  // "Por guardia" usa su propio rango de fechas libre (independiente de la semana de "Por
+  // ubicación") — un guardia se suele revisar en un rango más largo, no solo una semana.
+  const [guardDateRange, setGuardDateRange] = useState({
+    startDate: currentWeekStart,
+    endDate: addDays(currentWeekStart, 13),
   });
 
   const [showGenDialog,    setShowGenDialog]    = useState(false);
@@ -977,12 +1064,13 @@ export default function GuardShiftPlanningPage() {
   const [activeTab, setActiveTab] = useState('cronograma');
 
   const { data: boardResp, isLoading: boardLoading, refetch } = useScheduleBoard(boardFilter);
-  // Mismos filtros que la pestaña "Por ubicación" (boardFilter), para que "Por guardia" y
-  // "Conflictos" (que comparten `items`) no muestren datos fuera de lo que el usuario filtró.
+  // Grupo/Ubicación/Estado/Turno se comparten con "Por ubicación" (boardFilter) para que
+  // "Por guardia" y "Conflictos" no muestren datos fuera de lo que el usuario filtró — pero
+  // el rango de fechas es propio de esta pestaña (guardDateRange), no la semana de boardFilter.
   const { data: calendarResp, isLoading: calLoading } = useGuardCalendar(
     {
-      startDate: boardFilter.startDate,
-      endDate: boardFilter.endDate,
+      startDate: guardDateRange.startDate,
+      endDate: guardDateRange.endDate,
       groupId: boardFilter.groupId,
       locationId: boardFilter.locationId,
       status: boardFilter.status,
@@ -1014,8 +1102,8 @@ export default function GuardShiftPlanningPage() {
   return (
     <div className="p-6 space-y-4">
 
-      {/* Pre-requisitos de configuración */}
-      <GuardReadinessPanel targetDate={boardFilter.startDate} />
+      {/* Pre-requisitos de configuración: se revisan al abrir "Generar turnos", no aquí
+          (ocupaba espacio permanente en la pantalla incluso cuando ya no hacía falta). */}
 
       {/* Cabecera */}
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -1047,16 +1135,6 @@ export default function GuardShiftPlanningPage() {
       <Card>
         <CardContent className="pt-4">
           <div className="flex flex-wrap gap-3 items-end">
-            <div>
-              <Label className="text-xs">Desde</Label>
-              <Input type="date" className="w-36" value={boardFilter.startDate}
-                onChange={e => setBoardFilter(f => ({ ...f, startDate: e.target.value }))} />
-            </div>
-            <div>
-              <Label className="text-xs">Hasta</Label>
-              <Input type="date" className="w-36" value={boardFilter.endDate}
-                onChange={e => setBoardFilter(f => ({ ...f, endDate: e.target.value }))} />
-            </div>
             <div>
               <Label className="text-xs">Ubicación</Label>
               <select
@@ -1133,11 +1211,20 @@ export default function GuardShiftPlanningPage() {
         {/* ── Cronograma por turno / ubicación ── */}
         <TabsContent value="cronograma">
           <Card>
-            <CardHeader className="pb-2">
+            <CardHeader className="pb-2 space-y-3">
               <CardTitle className="text-base flex items-center gap-2">
                 Cronograma por turno y ubicación
                 {isLoading && <RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
               </CardTitle>
+              <WeekNavigator
+                startDate={boardFilter.startDate}
+                endDate={boardFilter.endDate}
+                isCurrentWeek={boardFilter.startDate === currentWeekStart}
+                onPrev={() => goToWeek(-1)}
+                onNext={() => goToWeek(1)}
+                onToday={() => goToWeekOf(today)}
+                onPickDate={goToWeekOf}
+              />
             </CardHeader>
             <CardContent className="p-0">
               {!board || board.rows.length === 0 ? (
@@ -1154,8 +1241,30 @@ export default function GuardShiftPlanningPage() {
         {/* ── Cronograma por guardia ── */}
         <TabsContent value="guardias">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Cronograma por guardia</CardTitle>
+            <CardHeader className="space-y-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                Cronograma por guardia
+                {calLoading && <RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+              </CardTitle>
+              <div className="flex items-end gap-3 flex-wrap">
+                <div>
+                  <Label className="text-xs">Desde</Label>
+                  <Input
+                    type="date" className="w-36 h-8 mt-1"
+                    value={guardDateRange.startDate}
+                    onChange={e => setGuardDateRange(r => ({ ...r, startDate: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Hasta</Label>
+                  <Input
+                    type="date" className="w-36 h-8 mt-1"
+                    value={guardDateRange.endDate}
+                    min={guardDateRange.startDate}
+                    onChange={e => setGuardDateRange(r => ({ ...r, endDate: e.target.value }))}
+                  />
+                </div>
+              </div>
             </CardHeader>
             <CardContent className="overflow-x-auto p-0">
               {items.length === 0 ? (
