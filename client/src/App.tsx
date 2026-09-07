@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/features/auth";
 import { ErrorBoundary, FallbackProps } from "react-error-boundary";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { BrowserCompatibilityDialog } from "@/components/BrowserCompatibilityDialog";
 import AppRouter from "./routes/AppRouter";
 
 function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
@@ -38,6 +39,7 @@ export default function App() {
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <TooltipProvider>
+              <BrowserCompatibilityDialog />
               <AppRouter />
               <Toaster />
             </TooltipProvider>
