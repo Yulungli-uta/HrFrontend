@@ -1,6 +1,6 @@
 // src/pages/guards/GuardLocationRotation.tsx
 import { useState } from 'react';
-import { MapPin, Plus, Loader2, ChevronLeft, ChevronRight, Users, Building2, Trash2 } from 'lucide-react';
+import { MapPin, Plus, Loader2, ChevronLeft, ChevronRight, Users, Building2, Trash2, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,12 +12,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import {
   useLocationRotationPeriods, useLocationRotationPeriodsPaged,
   useLocationRotationAssignments, useLocationRotationMutations,
+  useLocationRotationCoverage,
   useGuardLocationsAssignable, useGuardRotationGroups,
 } from '@/hooks/guards/useGuards';
 import type {
   GuardLocationRotationPeriodDto, GuardLocationRotationAssignmentDto,
   CreateGuardLocationRotationPeriodDto, UpdateGuardLocationRotationPeriodDto,
   CreateGuardLocationRotationAssignmentDto,
+  GuardLocationCoverageResponseDto, GuardLocationCoveragePersonDto,
 } from '@/types/guards';
 
 // ─── Period form dialog ────────────────────────────────────────────────────────
@@ -196,7 +198,140 @@ function AssignmentFormDialog({
   );
 }
 
+// ─── Coverage view (por ubicación / por grupo) ─────────────────────────────────
+
+function SourceBadge({ source }: { source: GuardLocationCoveragePersonDto['source'] }) {
+  if (source === 'INDIVIDUAL') return <Badge className="text-xs">Individual</Badge>;
+  if (source === 'GROUP') return <Badge variant="outline" className="text-xs">Por grupo</Badge>;
+  return <Badge variant="destructive" className="text-xs">Sin asignar</Badge>;
+}
+
+function CoverageByLocation({
+  coverage, search, groupFilter,
+}: {
+  coverage: GuardLocationCoverageResponseDto;
+  search: string;
+  groupFilter: number | '';
+}) {
+  const term = search.trim().toLowerCase();
+  const matches = (p: GuardLocationCoveragePersonDto) =>
+    (groupFilter === '' || p.groupId === groupFilter) &&
+    (term === '' || p.fullName.toLowerCase().includes(term));
+
+  const byLocation = coverage.byLocation
+    .map(loc => ({ ...loc, people: loc.people.filter(matches) }))
+    .filter(loc => loc.people.length > 0);
+  const unassigned = coverage.unassigned.filter(matches);
+
+  if (byLocation.length === 0 && unassigned.length === 0) {
+    return <p className="text-sm text-muted-foreground text-center py-10">Sin resultados para el filtro aplicado.</p>;
+  }
+  return (
+    <div className="space-y-4">
+      {byLocation.map(loc => (
+        <Card key={loc.locationId}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Building2 className="h-4 w-4 text-primary shrink-0" />
+              <span>{loc.locationCode ? `[${loc.locationCode}] ` : ''}{loc.locationName}</span>
+              <Badge variant="secondary" className="ml-auto text-xs">
+                {loc.people.length} persona{loc.people.length !== 1 ? 's' : ''}
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <ul className="text-sm divide-y">
+              {loc.people.map(p => (
+                <li key={`${p.employeeId}-${p.groupId}`} className="flex items-center justify-between py-1.5 gap-2">
+                  <span>{p.fullName} <span className="text-xs text-muted-foreground">— {p.groupName}</span></span>
+                  <SourceBadge source={p.source} />
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      ))}
+
+      {unassigned.length > 0 && (
+        <Card className="border-destructive/40">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              Sin asignar ({unassigned.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <ul className="text-sm divide-y">
+              {unassigned.map(p => (
+                <li key={`${p.employeeId}-${p.groupId}`} className="py-1.5">
+                  {p.fullName} <span className="text-xs text-muted-foreground">— {p.groupName}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function CoverageByGroup({
+  coverage, search, locationFilter,
+}: {
+  coverage: GuardLocationCoverageResponseDto;
+  search: string;
+  locationFilter: number | '';
+}) {
+  const term = search.trim().toLowerCase();
+  const matches = (p: GuardLocationCoveragePersonDto) =>
+    (locationFilter === '' || p.locationId === locationFilter) &&
+    (term === '' || p.fullName.toLowerCase().includes(term));
+
+  const byGroup = coverage.byGroup
+    .map(grp => ({ ...grp, people: grp.people.filter(matches) }))
+    .filter(grp => grp.people.length > 0);
+
+  if (byGroup.length === 0) {
+    return <p className="text-sm text-muted-foreground text-center py-10">Sin resultados para el filtro aplicado.</p>;
+  }
+  return (
+    <div className="space-y-4">
+      {byGroup.map(grp => (
+        <Card key={grp.groupId}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Users className="h-4 w-4 text-primary shrink-0" />
+              <span>{grp.groupName}</span>
+              <Badge variant="secondary" className="ml-auto text-xs">
+                {grp.people.length} persona{grp.people.length !== 1 ? 's' : ''}
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <ul className="text-sm divide-y">
+              {grp.people.map(p => (
+                <li key={p.employeeId} className="flex items-center justify-between py-1.5 gap-2">
+                  <span>{p.fullName}</span>
+                  {p.locationName ? (
+                    <span className="text-xs text-muted-foreground">
+                      {p.locationCode ? `[${p.locationCode}] ` : ''}{p.locationName}
+                    </span>
+                  ) : (
+                    <Badge variant="destructive" className="text-xs">Sin asignar</Badge>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 // ─── Period detail view ────────────────────────────────────────────────────────
+
+type CoverageView = 'list' | 'location' | 'group';
 
 function PeriodDetailView({
   period, onBack,
@@ -210,6 +345,14 @@ function PeriodDetailView({
     data?.status === 'success' ? (data.data ?? []) : [];
 
   const [showCreate, setShowCreate] = useState(false);
+  const [view, setView] = useState<CoverageView>('list');
+  const [coverageSearch, setCoverageSearch] = useState('');
+  const [coverageGroupFilter, setCoverageGroupFilter] = useState<number | ''>('');
+  const [coverageLocationFilter, setCoverageLocationFilter] = useState<number | ''>('');
+
+  const { data: coverageRes, isLoading: coverageLoading } =
+    useLocationRotationCoverage(view !== 'list' ? period.locationRotationPeriodId : null);
+  const coverage = coverageRes?.status === 'success' ? coverageRes.data : null;
 
   return (
     <div className="space-y-4">
@@ -228,7 +371,74 @@ function PeriodDetailView({
         </div>
       </div>
 
-      {isLoading ? (
+      <div className="flex items-center gap-1 border-b">
+        {([
+          ['list', 'Lista'],
+          ['location', 'Por ubicación'],
+          ['group', 'Por grupo'],
+        ] as const).map(([key, label]) => (
+          <button
+            key={key}
+            onClick={() => setView(key)}
+            className={`px-3 py-1.5 text-sm border-b-2 -mb-px transition-colors ${
+              view === key
+                ? 'border-primary text-primary font-medium'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {view !== 'list' && coverage && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Input
+            placeholder="Buscar por nombre…"
+            value={coverageSearch}
+            onChange={e => setCoverageSearch(e.target.value)}
+            className="max-w-xs h-8 text-sm"
+          />
+          {view === 'location' && (
+            <select
+              className="h-8 border rounded-md px-2 text-sm bg-background"
+              value={coverageGroupFilter}
+              onChange={e => setCoverageGroupFilter(e.target.value === '' ? '' : Number(e.target.value))}
+            >
+              <option value="">Todos los grupos</option>
+              {coverage.byGroup.map(g => <option key={g.groupId} value={g.groupId}>{g.groupName}</option>)}
+            </select>
+          )}
+          {view === 'group' && (
+            <select
+              className="h-8 border rounded-md px-2 text-sm bg-background"
+              value={coverageLocationFilter}
+              onChange={e => setCoverageLocationFilter(e.target.value === '' ? '' : Number(e.target.value))}
+            >
+              <option value="">Todas las ubicaciones</option>
+              {coverage.byLocation.map(l => (
+                <option key={l.locationId} value={l.locationId}>
+                  {l.locationCode ? `[${l.locationCode}] ` : ''}{l.locationName}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+      )}
+
+      {view !== 'list' && (
+        coverageLoading ? (
+          <div className="flex items-center gap-2 py-10 justify-center text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin" />Cargando…
+          </div>
+        ) : coverage ? (
+          view === 'location'
+            ? <CoverageByLocation coverage={coverage} search={coverageSearch} groupFilter={coverageGroupFilter} />
+            : <CoverageByGroup coverage={coverage} search={coverageSearch} locationFilter={coverageLocationFilter} />
+        ) : null
+      )}
+
+      {view === 'list' && (isLoading ? (
         <div className="flex items-center gap-2 py-10 justify-center text-muted-foreground">
           <Loader2 className="h-5 w-5 animate-spin" />Cargando…
         </div>
@@ -288,7 +498,7 @@ function PeriodDetailView({
             </TableBody>
           </Table>
         </div>
-      )}
+      ))}
 
       <AssignmentFormDialog
         open={showCreate}

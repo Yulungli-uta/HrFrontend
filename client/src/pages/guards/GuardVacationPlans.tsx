@@ -16,6 +16,7 @@ import {
   useVacationRequestMutations,
 } from '@/hooks/guards/useGuards';
 import { EmployeeCombobox } from '@/components/ui/EmployeeCombobox';
+import { GuardRotationGroupsAPI } from '@/lib/api/services/guards';
 import type {
   CreateGuardVacationPlanDto,
   GuardVacationPlanDto,
@@ -111,7 +112,9 @@ function PlanFormDialog({ open, onClose }: { open: boolean; onClose: () => void 
           <div>
             <Label>Guardia *</Label>
             <EmployeeCombobox value={form.employeeId !== '' ? Number(form.employeeId) : null}
-              onSelect={(id) => f('employeeId', id ?? '')} placeholder="Buscar guardia…" />
+              onSelect={(id) => f('employeeId', id ?? '')} placeholder="Buscar guardia…"
+              searchFn={(term) => GuardRotationGroupsAPI.getActiveGroupEmployees(term)}
+              searchKey="guard-active-group-employees-search" />
           </div>
           <div>
             <Label>Año de vacaciones *</Label>

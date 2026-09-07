@@ -14,6 +14,7 @@ import {
   useAvailabilityBlocksPaged, useAvailabilityMutations,
   useGuardRefTypes,
 } from '@/hooks/guards/useGuards';
+import { GuardRotationGroupsAPI } from '@/lib/api/services/guards';
 import { REF_TYPE_CATEGORIES } from '@/features/refTypeCategories';
 import { DataPagination } from '@/components/ui/DataPagination';
 import type {
@@ -152,6 +153,8 @@ export default function EmployeeAvailabilityPage() {
                   value={filterEmployeeId}
                   onSelect={handleEmployeeFilterChange}
                   placeholder="Todos los empleados"
+                  searchFn={(term) => GuardRotationGroupsAPI.getActiveGroupEmployees(term)}
+                  searchKey="guard-active-group-employees-search"
                 />
               </div>
             </div>
@@ -272,6 +275,8 @@ export default function EmployeeAvailabilityPage() {
                   value={manualForm.employeeId}
                   onSelect={id => setManualForm(f => ({ ...f, employeeId: id }))}
                   placeholder="Buscar empleado…"
+                  searchFn={(term) => GuardRotationGroupsAPI.getActiveGroupEmployees(term)}
+                  searchKey="guard-active-group-employees-search"
                 />
               </div>
             </div>

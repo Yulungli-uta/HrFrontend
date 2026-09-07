@@ -573,6 +573,7 @@ function GroupFormDialog({
   const { data: refData } = useGuardRefTypes('GUARD_GROUP_LEVEL_TYPE');
   const levelTypes = refData?.status === 'success' ? refData.data : [];
   const { create, update } = useGuardGroupMutations(() => onClose());
+  const [colorConflictMessage, setColorConflictMessage] = useState<string | null>(null);
 
   const [form, setForm] = useState<GroupForm>(() => {
     if (!mode) return { name: '', groupCode: '', description: '', colorCode: '', parentGroupId: '', groupLevelTypeId: '', isActive: true, isSpecial: false };
@@ -580,10 +581,15 @@ function GroupFormDialog({
     return mode.current;
   });
 
-  const f = <K extends keyof GroupForm>(k: K, v: GroupForm[K]) => setForm(p => ({ ...p, [k]: v }));
+  const f = <K extends keyof GroupForm>(k: K, v: GroupForm[K]) => { setColorConflictMessage(null); setForm(p => ({ ...p, [k]: v })); };
 
-  const handleSave = () => {
+  // El backend avisa (sin bloquear del todo) si el color ya lo usa otro grupo activo — se
+  // detecta por el prefijo del mensaje y se ofrece confirmar en vez de forzar a elegir otro
+  // color (hallazgo real 2026-09-07: colisión de color resuelta en silencio en el tablero).
+  const handleSave = (confirmDuplicateColor = false) => {
     if (!form.name.trim()) return;
+    const onColorConflict = (msg: string) => { if (msg.startsWith("El color '")) setColorConflictMessage(msg); };
+
     if (mode?.kind === 'create') {
       const dto: CreateGuardRotationGroupDto = {
         name: form.name.trim(),
@@ -593,8 +599,9 @@ function GroupFormDialog({
         parentGroupId: form.parentGroupId !== '' ? Number(form.parentGroupId) : undefined,
         groupLevelTypeId: form.groupLevelTypeId !== '' ? Number(form.groupLevelTypeId) : undefined,
         isSpecial: form.isSpecial,
+        confirmDuplicateColor,
       };
-      create.mutate(dto);
+      create.mutate(dto, { onSuccess: (res) => { if (res.status === 'error') onColorConflict(res.error.message); } });
     } else if (mode?.kind === 'edit') {
       const dto: UpdateGuardRotationGroupDto = {
         name: form.name.trim(),
@@ -605,8 +612,9 @@ function GroupFormDialog({
         parentGroupId: form.parentGroupId !== '' ? Number(form.parentGroupId) : undefined,
         groupLevelTypeId: form.groupLevelTypeId !== '' ? Number(form.groupLevelTypeId) : undefined,
         isSpecial: form.isSpecial,
+        confirmDuplicateColor,
       };
-      update.mutate({ id: mode.groupId, dto });
+      update.mutate({ id: mode.groupId, dto }, { onSuccess: (res) => { if (res.status === 'error') onColorConflict(res.error.message); } });
     }
   };
 
@@ -640,6 +648,14 @@ function GroupFormDialog({
               </div>
             </div>
           </div>
+          {colorConflictMessage && (
+            <div className="rounded-md border border-amber-300 bg-amber-50 p-2.5 text-xs text-amber-800 space-y-1.5">
+              <p>{colorConflictMessage}</p>
+              <Button size="sm" variant="outline" className="h-7" onClick={() => handleSave(true)} disabled={isSaving}>
+                Usar este color de todas formas
+              </Button>
+            </div>
+          )}
           <div>
             <Label>Descripción</Label>
             <Input value={form.description} onChange={e => f('description', e.target.value)} placeholder="Descripción opcional" />
@@ -684,7 +700,7 @@ function GroupFormDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={isSaving}>Cancelar</Button>
-          <Button onClick={handleSave} disabled={isSaving || !form.name.trim()}>
+          <Button onClick={() => handleSave(false)} disabled={isSaving || !form.name.trim()}>
             {isSaving ? 'Guardando…' : mode?.kind === 'create' ? 'Crear' : 'Guardar'}
           </Button>
         </DialogFooter>

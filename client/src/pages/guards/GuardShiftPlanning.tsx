@@ -78,27 +78,23 @@ function hexToGroupStyle(hex: string) {
   return { backgroundColor: hex + '22', color: darkenForText(hex), borderColor: hex + '88' };
 }
 
-// Construye mapa groupId → { hex, name } garantizando colores únicos.
-// Si dos grupos comparten el mismo colorCode, al segundo se le asigna un fallback.
+// Construye mapa groupId → { hex, name }. El color mostrado es siempre el configurado en el
+// grupo (HR.tbl_GuardRotationGroups.ColorCode) — la creación/edición de grupo ya advierte y
+// exige confirmación explícita si el color coincide con el de otro grupo activo, así que si
+// el usuario decidió mantenerlo igual de todas formas, el cronograma debe respetarlo tal cual
+// y no sustituirlo en silencio (antes lo hacía, ver hallazgo real 2026-09-07). El fallback solo
+// aplica a grupos sin color configurado.
 function buildGroupMeta(rows: import('@/types/guards').ScheduleBoardRowDto[]) {
   const map = new Map<number, { name: string; hex: string }>();
-  const usedColors = new Set<string>();
   let fallbackIdx = 0;
 
   for (const row of rows) {
     for (const cell of row.cells) {
       for (const emp of cell.employees) {
         if (emp.groupId == null || map.has(emp.groupId)) continue;
-        let hex = emp.groupColorCode?.trim() ?? '';
-        if (!hex || usedColors.has(hex.toLowerCase())) {
-          // buscar fallback no usado
-          while (usedColors.has(FALLBACK_COLORS[fallbackIdx % FALLBACK_COLORS.length].toLowerCase())) {
-            fallbackIdx++;
-          }
-          hex = FALLBACK_COLORS[fallbackIdx % FALLBACK_COLORS.length];
-          fallbackIdx++;
-        }
-        usedColors.add(hex.toLowerCase());
+        const configured = emp.groupColorCode?.trim();
+        const hex = configured || FALLBACK_COLORS[fallbackIdx % FALLBACK_COLORS.length];
+        if (!configured) fallbackIdx++;
         map.set(emp.groupId, { name: emp.groupName ?? `Grupo ${emp.groupId}`, hex });
       }
     }
@@ -714,6 +710,11 @@ function GenerateDialog({
 
   const { preview, confirm } = usePlanningMutations(() => { setStep('done'); });
 
+  // Filtros del detalle de conflictos: por grupo (clic en la tabla de desglose) y por
+  // tipo (chips). Se combinan (AND) cuando ambos están activos.
+  const [conflictGroupFilter, setConflictGroupFilter] = useState<number | null>(null);
+  const [conflictTypeFilter, setConflictTypeFilter] = useState<string | null>(null);
+
   const isStartDateInvalid = !form.startDate || form.startDate < today;
   const isEndDateInvalid = !form.endDate || (form.startDate && form.endDate < form.startDate);
   const isFormInvalid = isStartDateInvalid || isEndDateInvalid
@@ -721,6 +722,8 @@ function GenerateDialog({
     || (form.mode === 'BY_LOCATION' && !form.locationId);
 
   const handlePreview = () => {
+    setConflictGroupFilter(null);
+    setConflictTypeFilter(null);
     preview.mutate(form, {
       onSuccess: (r) => {
         if (r.status === 'success') { setPreviewData(r.data); setStep('preview'); }
@@ -735,12 +738,20 @@ function GenerateDialog({
   const handleClose = () => {
     setStep('form');
     setPreviewData(null);
+    setConflictGroupFilter(null);
+    setConflictTypeFilter(null);
     onClose();
   };
 
+  const isBusy = preview.isPending || confirm.isPending;
+
   return (
-    <Dialog open={open} onOpenChange={v => !v && handleClose()}>
-      <DialogContent className="max-w-lg">
+    <Dialog open={open} onOpenChange={v => !v && !isBusy && handleClose()}>
+      <DialogContent
+        className="max-w-lg"
+        onEscapeKeyDown={e => isBusy && e.preventDefault()}
+        onInteractOutside={e => isBusy && e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>Generar planificación automática</DialogTitle>
         </DialogHeader>
@@ -862,22 +873,73 @@ function GenerateDialog({
             </div>
 
             {/* Desglose por grupo: evita tener que revisar la lista completa a mano para
-                saber qué grupo aportó cuántos turnos, sobre todo en modo "Todos los grupos". */}
-            <GroupBreakdownTable items={previewData.items} />
+                saber qué grupo aportó cuántos turnos, sobre todo en modo "Todos los grupos".
+                Clic en una fila filtra el detalle de conflictos a ese grupo. */}
+            <GroupBreakdownTable
+              items={previewData.items}
+              selectedGroupId={conflictGroupFilter}
+              onSelectGroup={id => setConflictGroupFilter(prev => prev === id ? null : id)}
+            />
 
-            {previewData.conflicts > 0 && (
-              <div className="space-y-1 text-xs max-h-48 overflow-y-auto border rounded p-2 bg-muted/30">
-                <p className="font-semibold text-muted-foreground mb-1">Detalle de conflictos</p>
-                {previewData.items.filter(i => i.hasConflict).slice(0, 30).map((item, idx) => (
-                  <div key={idx} className="text-red-700">
-                    <span className="font-medium">{item.workDate}</span> — {item.employeeFullName}: [{item.conflictType}] {item.conflictMessage}
+            {previewData.conflicts > 0 && (() => {
+              const allConflicts = previewData.items.filter(i => i.hasConflict);
+              const typeCounts = new Map<string, number>();
+              for (const c of allConflicts) {
+                const key = MAIN_CONFLICT_TYPES.includes(c.conflictType ?? '') ? c.conflictType! : 'OTHER';
+                typeCounts.set(key, (typeCounts.get(key) ?? 0) + 1);
+              }
+              const filtered = allConflicts.filter(i =>
+                (!conflictGroupFilter || i.groupId === conflictGroupFilter) &&
+                (!conflictTypeFilter || (conflictTypeFilter === 'OTHER'
+                  ? !MAIN_CONFLICT_TYPES.includes(i.conflictType ?? '')
+                  : i.conflictType === conflictTypeFilter))
+              );
+              const hasActiveFilter = conflictGroupFilter !== null || conflictTypeFilter !== null;
+
+              return (
+                <div className="space-y-2">
+                  <div className="flex flex-wrap gap-1.5">
+                    {Array.from(typeCounts.entries()).map(([type, count]) => (
+                      <button
+                        key={type}
+                        onClick={() => setConflictTypeFilter(prev => prev === type ? null : type)}
+                        className={`text-[10px] px-2 py-1 rounded-full border transition-colors ${
+                          conflictTypeFilter === type
+                            ? 'bg-red-600 text-white border-red-600'
+                            : 'bg-background text-muted-foreground border-border hover:border-red-300'
+                        }`}
+                      >
+                        {CONFLICT_TYPE_LABELS[type] ?? 'Otros'} ({count})
+                      </button>
+                    ))}
                   </div>
-                ))}
-                {previewData.items.filter(i => i.hasConflict).length > 30 && (
-                  <p className="text-muted-foreground">…y {previewData.items.filter(i => i.hasConflict).length - 30} más</p>
-                )}
-              </div>
-            )}
+
+                  <div className="space-y-1 text-xs max-h-48 overflow-y-auto border rounded p-2 bg-muted/30">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="font-semibold text-muted-foreground">
+                        Detalle de conflictos {hasActiveFilter && `(${filtered.length} de ${allConflicts.length})`}
+                      </p>
+                      {hasActiveFilter && (
+                        <button
+                          className="text-[10px] text-primary hover:underline"
+                          onClick={() => { setConflictGroupFilter(null); setConflictTypeFilter(null); }}
+                        >
+                          Ver todos ✕
+                        </button>
+                      )}
+                    </div>
+                    {filtered.slice(0, 30).map((item, idx) => (
+                      <div key={idx} className="text-red-700">
+                        <span className="font-medium">{item.workDate}</span> — {item.employeeFullName} [{item.groupName}]: [{item.conflictType}] {item.conflictMessage}
+                      </div>
+                    ))}
+                    {filtered.length > 30 && (
+                      <p className="text-muted-foreground">…y {filtered.length - 30} más</p>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
 
             <p className="text-xs text-muted-foreground">
               Se guardarán <strong>{previewData.totalToGenerate}</strong> turnos válidos.
@@ -896,7 +958,7 @@ function GenerateDialog({
         )}
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose}>
+          <Button variant="outline" onClick={handleClose} disabled={isBusy}>
             {step === 'done' ? 'Cerrar' : 'Cancelar'}
           </Button>
           {step === 'form' && (
@@ -904,6 +966,7 @@ function GenerateDialog({
               onClick={handlePreview}
               disabled={preview.isPending || isFormInvalid}
             >
+              {preview.isPending && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
               {preview.isPending ? 'Calculando…' : 'Vista previa'}
             </Button>
           )}
@@ -912,6 +975,7 @@ function GenerateDialog({
               onClick={handleConfirm}
               disabled={confirm.isPending || previewData?.totalToGenerate === 0}
             >
+              {confirm.isPending && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
               {confirm.isPending ? 'Guardando…' : `Confirmar ${previewData?.totalToGenerate ?? 0} turnos`}
             </Button>
           )}
@@ -1040,14 +1104,34 @@ function Stat({ label, value, color }: { label: string; value: number; color: 'b
   );
 }
 
+// Conflictos "principales" con su propio filtro; el resto (ej. reglas especiales) se
+// agrupa bajo "Otros" para no saturar la barra de chips con tipos poco frecuentes.
+const MAIN_CONFLICT_TYPES = ['GROUP_OVERLAP', 'DOUBLE_SHIFT', 'MISSING_LOCATION', 'PERMISSION_CONFLICT', 'VACATION_CONFLICT', 'OVERLAP'];
+const CONFLICT_TYPE_LABELS: Record<string, string> = {
+  GROUP_OVERLAP: 'Grupos cruzados',
+  DOUBLE_SHIFT: 'Doble turno',
+  MISSING_LOCATION: 'Sin ubicación',
+  PERMISSION_CONFLICT: 'Permisos',
+  VACATION_CONFLICT: 'Vacaciones',
+  OVERLAP: 'Solapamiento',
+  OTHER: 'Otros',
+};
+
 // Agrupa los items de la vista previa por grupo para mostrar cuántos turnos se generan,
 // omiten o tienen conflicto por cada uno — sin esto había que revisar la lista completa a
 // mano para saber si un grupo en particular quedó cubierto (sobre todo en "Todos los grupos").
-function GroupBreakdownTable({ items }: { items: GeneratePreviewResponseDto['items'] }) {
-  const byGroup = new Map<number, { groupName: string; generar: number; omitidos: number; conflictos: number }>();
+// Las filas son clickeables para filtrar el detalle de conflictos a un grupo específico.
+function GroupBreakdownTable({
+  items, selectedGroupId, onSelectGroup,
+}: {
+  items: GeneratePreviewResponseDto['items'];
+  selectedGroupId: number | null;
+  onSelectGroup: (groupId: number) => void;
+}) {
+  const byGroup = new Map<number, { groupId: number; groupName: string; generar: number; omitidos: number; conflictos: number }>();
   for (const item of items) {
     if (!byGroup.has(item.groupId)) {
-      byGroup.set(item.groupId, { groupName: item.groupName, generar: 0, omitidos: 0, conflictos: 0 });
+      byGroup.set(item.groupId, { groupId: item.groupId, groupName: item.groupName, generar: 0, omitidos: 0, conflictos: 0 });
     }
     const row = byGroup.get(item.groupId)!;
     if (item.hasConflict) row.conflictos++;
@@ -1071,7 +1155,13 @@ function GroupBreakdownTable({ items }: { items: GeneratePreviewResponseDto['ite
         </thead>
         <tbody>
           {rows.map(r => (
-            <tr key={r.groupName} className="border-t">
+            <tr
+              key={r.groupName}
+              onClick={() => r.conflictos > 0 && onSelectGroup(r.groupId)}
+              className={`border-t ${r.conflictos > 0 ? 'cursor-pointer hover:bg-muted/50' : ''} ${
+                selectedGroupId === r.groupId ? 'bg-red-50' : ''
+              }`}
+            >
               <td className="px-2 py-1">{r.groupName}</td>
               <td className="text-right px-2 py-1 text-blue-600 font-medium">{r.generar}</td>
               <td className="text-right px-2 py-1 text-yellow-600">{r.omitidos}</td>

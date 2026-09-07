@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useSpecialRulesPaged, useSpecialRulesMutations, useGuardLocationsAssignable } from '@/hooks/guards/useGuards';
 import { EmployeeCombobox } from '@/components/ui/EmployeeCombobox';
 import { ScheduleCombobox } from '@/components/ui/ScheduleCombobox';
+import { GuardRotationGroupsAPI } from '@/lib/api/services/guards';
 import type {
   GuardEmployeeSpecialRuleDto,
   CreateGuardEmployeeSpecialRuleDto,
@@ -136,6 +137,8 @@ function RuleFormDialog({
                   if (emp) setEmpName(emp.fullName ?? '');
                 }}
                 placeholder="Buscar guardia…"
+                searchFn={(term) => GuardRotationGroupsAPI.getActiveGroupEmployees(term)}
+                searchKey="guard-active-group-employees-search"
               />
             </div>
           )}

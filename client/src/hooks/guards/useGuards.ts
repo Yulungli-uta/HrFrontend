@@ -35,6 +35,7 @@ import type {
   GenerateGuardShiftPlanningRequestDto,
   CreateGuardShiftReplacementDto,
   CreateGuardShiftReassignmentDto,
+  CreateRecurringGuardShiftReassignmentDto,
   DuplicateGuardRotationGroupDto,
   ApproveGuardShiftChangeDto,
   RejectGuardShiftChangeDto,
@@ -87,6 +88,7 @@ export const GUARD_KEYS = {
   locationRotationPeriod: (id: number) => ['guards', 'location-rotation', 'periods', id],
   locationRotationAssignments: (periodId: number) => ['guards', 'location-rotation', 'periods', periodId, 'assignments'],
   locationRotationAssignmentsByEmployee: (employeeId: number) => ['guards', 'location-rotation', 'assignments', 'employee', employeeId],
+  locationRotationCoverage: (periodId: number) => ['guards', 'location-rotation', 'periods', periodId, 'coverage'],
   specialRules:           ['guards', 'special-rules'],
   specialRulesByEmployee: (employeeId: number) => ['guards', 'special-rules', 'employee', employeeId],
   vacationPlans:          ['guards', 'vacation-plans'],
@@ -664,6 +666,22 @@ export function useShiftChangeMutations(onSuccess?: () => void) {
     onError: (e) => toast({ title: 'Error', description: parseApiError(e).message, variant: 'destructive' }),
   });
 
+  const createRecurringReassignment = useMutation({
+    mutationFn: (dto: CreateRecurringGuardShiftReassignmentDto) => GuardShiftChangesAPI.createRecurringReassignment(dto),
+    onSuccess: (res) => {
+      if (res.status === 'success') {
+        invalidate();
+        qc.invalidateQueries({ queryKey: ['guards', 'calendar'] });
+        qc.invalidateQueries({ queryKey: ['guards', 'schedule-board'] });
+        qc.invalidateQueries({ queryKey: ['guards', 'planning'] });
+        toast({ title: 'Reasignación recurrente aplicada' });
+        // Sin onSuccess?.() a propósito — el diálogo se queda abierto mostrando el resumen
+        // por semana, igual que createRecurring en usePlanningMutations.
+      } else toast({ title: 'Error al reasignar', description: res.error.message, variant: 'destructive' });
+    },
+    onError: (e) => toast({ title: 'Error', description: parseApiError(e).message, variant: 'destructive' }),
+  });
+
   const revertReassignment = useMutation({
     mutationFn: (shiftChangeId: number) => GuardShiftChangesAPI.revertReassignment(shiftChangeId),
     onSuccess: (res) => {
@@ -679,7 +697,7 @@ export function useShiftChangeMutations(onSuccess?: () => void) {
     onError: (e) => toast({ title: 'Error', description: parseApiError(e).message, variant: 'destructive' }),
   });
 
-  return { createReplacement, approve, reject, createReassignment, revertReassignment };
+  return { createReplacement, approve, reject, createReassignment, createRecurringReassignment, revertReassignment };
 }
 
 export function useGroupPatterns(groupId: number | null) {
@@ -745,6 +763,15 @@ export function useLocationRotationAssignments(periodId: number | null) {
   return useQuery({
     queryKey: GUARD_KEYS.locationRotationAssignments(periodId ?? 0),
     queryFn: () => GuardLocationRotationAPI.getAssignmentsByPeriod(periodId!),
+    enabled: periodId !== null,
+    staleTime: 60_000,
+  });
+}
+
+export function useLocationRotationCoverage(periodId: number | null) {
+  return useQuery({
+    queryKey: GUARD_KEYS.locationRotationCoverage(periodId ?? 0),
+    queryFn: () => GuardLocationRotationAPI.getPeriodCoverage(periodId!),
     enabled: periodId !== null,
     staleTime: 60_000,
   });

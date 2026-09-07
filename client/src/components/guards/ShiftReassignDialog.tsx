@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Switch } from '@/components/ui/switch';
 import { ScheduleCombobox } from '@/components/ui/ScheduleCombobox';
 import { useQuery } from '@tanstack/react-query';
 import { useShiftChangeMutations } from '@/hooks/guards/useGuards';
@@ -27,7 +28,7 @@ type Props = {
 };
 
 export function ShiftReassignDialog({ open, detail, onClose }: Props) {
-  const { createReassignment } = useShiftChangeMutations(() => onClose());
+  const { createReassignment, createRecurringReassignment } = useShiftChangeMutations(() => onClose());
 
   const [newWorkDate, setNewWorkDate] = useState('');
   const [newLocationId, setNewLocationId] = useState<number | null>(null);
@@ -35,6 +36,8 @@ export function ShiftReassignDialog({ open, detail, onClose }: Props) {
   const [newScheduleLabel, setNewScheduleLabel] = useState<string | null>(null);
   const [reason, setReason] = useState('');
   const [overrideConflict, setOverrideConflict] = useState(false);
+  const [repeatWeekly, setRepeatWeekly] = useState(false);
+  const [repeatWeeks, setRepeatWeeks] = useState(4);
 
   const [conflictLoading, setConflictLoading] = useState(false);
   const [conflicts, setConflicts] = useState<GuardShiftCalendarItemDto[]>([]);
@@ -105,29 +108,51 @@ export function ShiftReassignDialog({ open, detail, onClose }: Props) {
     setConflicts([]);
     setConflictChecked(false);
     setOverrideConflict(false);
+    setRepeatWeekly(false);
+    setRepeatWeeks(4);
+    createRecurringReassignment.reset();
     onClose();
   };
 
   const handleSubmit = () => {
     if (!detail || !newWorkDate || !newLocationId || !newScheduleId || !reason.trim()) return;
+
+    if (repeatWeekly) {
+      createRecurringReassignment.mutate({
+        planningId: detail.planningId,
+        newWorkDate,
+        newLocationId,
+        newScheduleId,
+        reason: reason.trim(),
+        repeatWeeks,
+        overrideConflict,
+      });
+      return;
+    }
+
     createReassignment.mutate({
       planningId: detail.planningId,
       newWorkDate,
       newLocationId,
       newScheduleId,
       reason: reason.trim(),
+      overrideConflict,
     });
   };
 
-  const isSaving = createReassignment.isPending;
+  const isSaving = createReassignment.isPending || createRecurringReassignment.isPending;
   const hasConflict = conflicts.length > 0;
+  const recurringResult = createRecurringReassignment.data?.status === 'success' ? createRecurringReassignment.data.data : null;
 
   const canSubmit =
     !!newWorkDate &&
     !!newLocationId &&
     !!newScheduleId &&
     reason.trim().length > 0 &&
-    (!hasConflict || overrideConflict) &&
+    !!repeatWeeks && repeatWeeks >= 1 && repeatWeeks <= 52 &&
+    // En modo recurrente el backend valida y omite cada semana con conflicto por su cuenta
+    // (ver resumen al terminar) — no se bloquea el envío por el conflicto de la primera fecha.
+    (repeatWeekly || !hasConflict || overrideConflict) &&
     !conflictLoading;
 
   return (
@@ -192,21 +217,64 @@ export function ShiftReassignDialog({ open, detail, onClose }: Props) {
             </select>
           </div>
 
-          {conflictLoading && (
+          {/* Repetir semanalmente */}
+          {!recurringResult && (
+            <div className="flex items-center justify-between gap-3 rounded-md border p-2">
+              <div>
+                <Label className="text-xs">Repetir semanalmente</Label>
+                <p className="text-[11px] text-muted-foreground">
+                  Aplica la misma reasignación cada semana, buscando el turno equivalente del guardia.
+                </p>
+              </div>
+              <Switch checked={repeatWeekly} onCheckedChange={setRepeatWeekly} />
+            </div>
+          )}
+          {!recurringResult && repeatWeekly && (
+            <div>
+              <Label htmlFor="repeatWeeks" className="text-xs">Cantidad de semanas *</Label>
+              <Input
+                id="repeatWeeks"
+                type="number"
+                min={1}
+                max={52}
+                value={repeatWeeks}
+                onChange={e => setRepeatWeeks(Math.max(1, Math.min(52, Number(e.target.value) || 1)))}
+                className="mt-1 w-28"
+              />
+            </div>
+          )}
+
+          {/* Resumen de reasignación recurrente */}
+          {recurringResult && (
+            <div className="rounded-md border p-3 bg-muted/30 space-y-1.5 text-xs">
+              <p className="font-semibold">
+                {recurringResult.generated} de {recurringResult.generated + recurringResult.skipped + recurringResult.errors} semana(s) aplicadas
+                {recurringResult.skipped > 0 && `, ${recurringResult.skipped} omitida(s)`}
+                {recurringResult.errors > 0 && `, ${recurringResult.errors} error(es)`}
+              </p>
+              {recurringResult.messages.length > 1 && (
+                <ul className="space-y-0.5 max-h-32 overflow-y-auto text-muted-foreground">
+                  {recurringResult.messages.slice(1).map((m, i) => <li key={i}>{m}</li>)}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {!recurringResult && conflictLoading && (
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
               Verificando disponibilidad del guardia en esa fecha…
             </div>
           )}
 
-          {conflictChecked && !hasConflict && !conflictLoading && (
+          {!recurringResult && conflictChecked && !hasConflict && !conflictLoading && (
             <div className="flex items-center gap-2 text-xs text-green-600">
               <CheckCircle2 className="h-3.5 w-3.5" />
               El guardia no tiene otro turno asignado esa fecha.
             </div>
           )}
 
-          {hasConflict && !conflictLoading && (
+          {!recurringResult && !repeatWeekly && hasConflict && !conflictLoading && (
             <Alert variant="destructive" className="py-3">
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle className="text-sm">Conflicto de doble turno</AlertTitle>
@@ -249,14 +317,20 @@ export function ShiftReassignDialog({ open, detail, onClose }: Props) {
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose} disabled={isSaving}>
-            Cancelar
-          </Button>
-          <Button onClick={handleSubmit} disabled={isSaving || !canSubmit}>
-            {isSaving
-              ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />Reasignando…</>
-              : 'Reasignar turno'}
-          </Button>
+          {recurringResult ? (
+            <Button onClick={handleClose}>Cerrar</Button>
+          ) : (
+            <>
+              <Button variant="outline" onClick={handleClose} disabled={isSaving}>
+                Cancelar
+              </Button>
+              <Button onClick={handleSubmit} disabled={isSaving || !canSubmit}>
+                {isSaving
+                  ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />Reasignando…</>
+                  : repeatWeekly ? `Reasignar ${repeatWeeks} semana(s)` : 'Reasignar turno'}
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

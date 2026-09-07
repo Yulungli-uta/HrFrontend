@@ -120,6 +120,7 @@ export interface CreateGuardRotationGroupDto {
   groupLevelTypeId?: number;
   colorCode?: string;
   isSpecial: boolean;
+  confirmDuplicateColor?: boolean;
 }
 
 export interface UpdateGuardRotationGroupDto {
@@ -131,6 +132,7 @@ export interface UpdateGuardRotationGroupDto {
   groupLevelTypeId?: number;
   colorCode?: string;
   isSpecial: boolean;
+  confirmDuplicateColor?: boolean;
 }
 
 /** Crea un grupo nuevo copiando configuración (y empleados activos) de un grupo base. */
@@ -476,6 +478,17 @@ export interface CreateGuardShiftReassignmentDto {
   newLocationId: number;
   newScheduleId: number;
   reason: string;
+  overrideConflict?: boolean;
+}
+
+export interface CreateRecurringGuardShiftReassignmentDto {
+  planningId: number;
+  newWorkDate: string;
+  newLocationId: number;
+  newScheduleId: number;
+  reason: string;
+  repeatWeeks: number;
+  overrideConflict?: boolean;
 }
 
 export interface ApproveGuardShiftChangeDto {
@@ -735,6 +748,38 @@ export interface UpdateGuardLocationRotationAssignmentDto {
   isFixedSchedule: boolean;
   notes?: string;
   isActive: boolean;
+}
+
+export interface GuardLocationCoveragePersonDto {
+  employeeId: number;
+  fullName: string;
+  groupId: number;
+  groupName: string;
+  locationId: number | null;
+  locationName: string | null;
+  locationCode: string | null;
+  source: 'INDIVIDUAL' | 'GROUP' | 'UNASSIGNED';
+}
+
+export interface GuardLocationCoverageLocationDto {
+  locationId: number;
+  locationName: string;
+  locationCode: string | null;
+  people: GuardLocationCoveragePersonDto[];
+}
+
+export interface GuardLocationCoverageGroupDto {
+  groupId: number;
+  groupName: string;
+  people: GuardLocationCoveragePersonDto[];
+}
+
+export interface GuardLocationCoverageResponseDto {
+  periodId: number;
+  periodName: string;
+  byLocation: GuardLocationCoverageLocationDto[];
+  byGroup: GuardLocationCoverageGroupDto[];
+  unassigned: GuardLocationCoveragePersonDto[];
 }
 
 // ─── Reglas Especiales de Guardias ────────────────────────────────────────────

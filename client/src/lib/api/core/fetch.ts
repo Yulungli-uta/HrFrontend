@@ -252,8 +252,13 @@ async function parseErrorResponse(
 
   if (parsed && typeof parsed === 'object') {
     const p = parsed as Record<string, unknown>;
+    // "detail" es el campo real del mensaje en las respuestas ProblemDetails (RFC 7807) que
+    // devuelve el backend — "title" ahí es solo la categoría genérica del error ("No se puede
+    // completar la operación"), nunca el mensaje específico. Sin leer "detail", el usuario
+    // solo veía el título genérico y nunca el motivo real del rechazo (hallazgo real 2026-09-07).
     errorMessage =
       (p.message as string) ||
+      (p.detail as string) ||
       (p.error as string) ||
       (p.title as string) ||
       errorMessage;

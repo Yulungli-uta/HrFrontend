@@ -44,6 +44,7 @@ import type {
   GuardShiftChangeDto,
   CreateGuardShiftReplacementDto,
   CreateGuardShiftReassignmentDto,
+  CreateRecurringGuardShiftReassignmentDto,
   ApproveGuardShiftChangeDto,
   RejectGuardShiftChangeDto,
   EmployeeAvailabilityBlockDto,
@@ -62,6 +63,7 @@ import type {
   GuardLocationRotationAssignmentDto,
   CreateGuardLocationRotationAssignmentDto,
   UpdateGuardLocationRotationAssignmentDto,
+  GuardLocationCoverageResponseDto,
   GuardEmployeeSpecialRuleDto,
   CreateGuardEmployeeSpecialRuleDto,
   UpdateGuardEmployeeSpecialRuleDto,
@@ -119,6 +121,12 @@ export const GuardRotationGroupsAPI = {
    * diferencia del buscador genérico de empleados). */
   getEligibleEmployees: (search: string): Promise<ApiResponse<import('@/types/guards').EligibleEmployeeDto[]>> =>
     apiFetch(`${BASE}/guard-rotation-groups/eligible-employees?search=${encodeURIComponent(search)}`),
+
+  /** Empleados con membresía activa en algún grupo de rotación (guardia o supervisor —
+   * Supervisor es un grupo más). Para pantallas que solo deben ofrecer personal que YA es
+   * guardia/supervisor activo: Vacaciones, Reglas Especiales, Disponibilidad. */
+  getActiveGroupEmployees: (search: string): Promise<ApiResponse<import('@/types/guards').EligibleEmployeeDto[]>> =>
+    apiFetch(`${BASE}/guard-rotation-groups/active-group-employees?search=${encodeURIComponent(search)}`),
 
   listPaged: (params: PagedRequest): Promise<ApiResponse<PagedResult<GuardRotationGroupDto>>> => {
     const qs = new URLSearchParams({ page: String(params.page), pageSize: String(params.pageSize) });
@@ -393,6 +401,13 @@ export const GuardShiftChangesAPI = {
       body: JSON.stringify(dto),
     }),
 
+  /** Repite la misma reasignación varias semanas: busca el turno equivalente (+7*n días) cada semana. */
+  createRecurringReassignment: (dto: CreateRecurringGuardShiftReassignmentDto): Promise<ApiResponse<GuardShiftPlanningResultDto>> =>
+    apiFetch<GuardShiftPlanningResultDto>(`${BASE}/guard-shift-changes/reassignment/recurring`, {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    }),
+
   /** Deshace una reasignación activa, restaurando la fecha/ubicación/horario originales del turno. */
   revertReassignment: (shiftChangeId: number): Promise<ApiResponse<GuardShiftChangeDto>> =>
     apiFetch<GuardShiftChangeDto>(`${BASE}/guard-shift-changes/${shiftChangeId}/revert`, {
@@ -523,6 +538,9 @@ export const GuardLocationRotationAPI = {
 
   deleteAssignment: (id: number): Promise<ApiResponse<void>> =>
     apiFetch<void>(`${BASE}/guard-location-rotation/assignments/${id}`, { method: 'DELETE' }),
+
+  getPeriodCoverage: (periodId: number): Promise<ApiResponse<GuardLocationCoverageResponseDto>> =>
+    apiFetch<GuardLocationCoverageResponseDto>(`${BASE}/guard-location-rotation/periods/${periodId}/coverage`),
 };
 
 // =============================================================================
