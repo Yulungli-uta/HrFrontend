@@ -175,6 +175,14 @@ export interface AssignPatternToGroupDto {
   notes?: string;
 }
 
+export interface UpdateGroupPatternDto {
+  patternId: number;
+  startCycleDate: string;
+  validFrom: string;
+  validTo?: string;
+  notes?: string;
+}
+
 // ─── Resumen por Ubicación ────────────────────────────────────────────────────
 
 export interface LocationSummaryDto {

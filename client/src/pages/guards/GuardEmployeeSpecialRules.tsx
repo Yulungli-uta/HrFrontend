@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Shield, Plus, Loader2, Search } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -35,6 +35,32 @@ type RuleForm = {
   isActive: boolean;
 };
 
+function buildRuleForm(editTarget: GuardEmployeeSpecialRuleDto | null, today: string): RuleForm {
+  if (!editTarget) {
+    return {
+      employeeId: '', fixedLocationId: '', fixedScheduleId: '', fixedScheduleLabel: '',
+      noNightShift: false, onlyWeekDays: false, weekendPriority: false, nightPriority: false,
+      reason: '', validFrom: today, validTo: '', requiresApproval: false, isActive: true,
+    };
+  }
+  return {
+    employeeId: editTarget.employeeId,
+    fixedLocationId: editTarget.fixedLocationId ?? '',
+    fixedScheduleId: editTarget.fixedScheduleId ?? '',
+    fixedScheduleLabel: [editTarget.fixedScheduleDescription, editTarget.fixedScheduleCode ? `(${editTarget.fixedScheduleCode})` : null]
+      .filter(Boolean).join(' '),
+    noNightShift: editTarget.noNightShift,
+    onlyWeekDays: editTarget.onlyWeekDays,
+    weekendPriority: editTarget.weekendPriority,
+    nightPriority: editTarget.nightPriority,
+    reason: editTarget.reason ?? '',
+    validFrom: editTarget.validFrom,
+    validTo: editTarget.validTo ?? '',
+    requiresApproval: editTarget.requiresApproval,
+    isActive: editTarget.isActive,
+  };
+}
+
 function RuleFormDialog({
   open, onClose, editTarget,
 }: {
@@ -47,32 +73,21 @@ function RuleFormDialog({
   const locations = locData?.status === 'success' ? locData.data : [];
   const { create, update } = useSpecialRulesMutations(() => onClose());
 
-  const [form, setForm] = useState<RuleForm>(() => editTarget
-    ? {
-        employeeId: editTarget.employeeId,
-        fixedLocationId: editTarget.fixedLocationId ?? '',
-        fixedScheduleId: editTarget.fixedScheduleId ?? '',
-        fixedScheduleLabel: [editTarget.fixedScheduleDescription, editTarget.fixedScheduleCode ? `(${editTarget.fixedScheduleCode})` : null]
-          .filter(Boolean).join(' '),
-        noNightShift: editTarget.noNightShift,
-        onlyWeekDays: editTarget.onlyWeekDays,
-        weekendPriority: editTarget.weekendPriority,
-        nightPriority: editTarget.nightPriority,
-        reason: editTarget.reason ?? '',
-        validFrom: editTarget.validFrom,
-        validTo: editTarget.validTo ?? '',
-        requiresApproval: editTarget.requiresApproval,
-        isActive: editTarget.isActive,
-      }
-    : {
-        employeeId: '', fixedLocationId: '', fixedScheduleId: '', fixedScheduleLabel: '',
-        noNightShift: false, onlyWeekDays: false, weekendPriority: false, nightPriority: false,
-        reason: '', validFrom: today, validTo: '', requiresApproval: false, isActive: true,
-      }
-  );
+  const [form, setForm] = useState<RuleForm>(() => buildRuleForm(editTarget, today));
+  const [empName, setEmpName] = useState(editTarget?.employeeFullName ?? '');
+
+  // El diálogo se mantiene montado entre distintos clics de "Editar" (no se remonta), así
+  // que el useState de arriba solo corre una vez. Sin este efecto, abrir "Editar" en
+  // cualquier registro mostraba siempre los datos del primer montaje del diálogo, nunca
+  // los de la regla realmente clickeada (bug real reportado 2026-09-07).
+  useEffect(() => {
+    if (!open) return;
+    setForm(buildRuleForm(editTarget, today));
+    setEmpName(editTarget?.employeeFullName ?? '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, editTarget]);
 
   const f = <K extends keyof RuleForm>(k: K, v: RuleForm[K]) => setForm(p => ({ ...p, [k]: v }));
-  const [empName, setEmpName] = useState(editTarget?.employeeFullName ?? '');
   const isSaving = create.isPending || update.isPending;
 
   const handleSave = () => {

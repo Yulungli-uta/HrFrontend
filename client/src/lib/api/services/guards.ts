@@ -21,6 +21,7 @@ import type {
   RemoveEmployeeFromRotationGroupDto,
   GuardGroupRotationPatternDto,
   AssignPatternToGroupDto,
+  UpdateGroupPatternDto,
   LocationSummaryDto,
   LocationGroupDetailDto,
   RotationPatternDto,
@@ -174,6 +175,12 @@ export const GuardRotationGroupsAPI = {
   assignPattern: (groupId: number, dto: AssignPatternToGroupDto): Promise<ApiResponse<GuardGroupRotationPatternDto>> =>
     apiFetch<GuardGroupRotationPatternDto>(`${BASE}/guard-rotation-groups/${groupId}/patterns`, {
       method: 'POST',
+      body: JSON.stringify(dto),
+    }),
+
+  updatePattern: (groupId: number, groupPatternId: number, dto: UpdateGroupPatternDto): Promise<ApiResponse<GuardGroupRotationPatternDto>> =>
+    apiFetch<GuardGroupRotationPatternDto>(`${BASE}/guard-rotation-groups/${groupId}/patterns/${groupPatternId}`, {
+      method: 'PUT',
       body: JSON.stringify(dto),
     }),
 

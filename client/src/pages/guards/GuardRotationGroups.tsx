@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/table';
 import { EmployeeCombobox } from '@/components/ui/EmployeeCombobox';
 import { GroupPatternAssignmentDialog } from '@/components/guards/GroupPatternAssignmentDialog';
+import { GroupLocationAssignmentDialog } from '@/components/guards/GroupLocationAssignmentDialog';
 import { GuardRotationGroupsAPI } from '@/lib/api/services/guards';
 import {
   useLocationSummary, useGroupsByLocation, useGuardGroupEmployees,
@@ -772,6 +773,7 @@ function HierarchyView({
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [empPanel, setEmpPanel] = useState<LocationGroupDetailDto | null>(null);
   const [patternPanel, setPatternPanel] = useState<LocationGroupDetailDto | null>(null);
+  const [locationPanel, setLocationPanel] = useState<LocationGroupDetailDto | null>(null);
   const [duplicateTarget, setDuplicateTarget] = useState<GuardRotationGroupDto | GuardRotationGroupWithSubgroupsDto | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('active');
@@ -896,6 +898,10 @@ function HierarchyView({
                     onClick={() => setPatternPanel(toLocationDetail(g))}>
                     <RotateCw className="h-3 w-3 mr-1" />Patrón
                   </Button>
+                  <Button variant="outline" size="sm" className="h-7 text-xs"
+                    onClick={() => setLocationPanel(toLocationDetail(g))}>
+                    <MapPin className="h-3 w-3 mr-1" />Ubicación
+                  </Button>
                   <Button variant="ghost" size="sm" className="h-7 text-xs"
                     onClick={() => onOpenForm(toEditModeGeneral(g))}>Editar</Button>
                   <Button variant="outline" size="sm" className="h-7 text-xs"
@@ -950,6 +956,10 @@ function HierarchyView({
                             <Button variant="outline" size="sm" className="h-7 text-xs"
                               onClick={() => setPatternPanel(toLocationDetail(sub))}>
                               <RotateCw className="h-3 w-3 mr-1" />Patrón
+                            </Button>
+                            <Button variant="outline" size="sm" className="h-7 text-xs"
+                              onClick={() => setLocationPanel(toLocationDetail(sub))}>
+                              <MapPin className="h-3 w-3 mr-1" />Ubicación
                             </Button>
                             <Button variant="ghost" size="sm" className="h-7 text-xs"
                               onClick={() => onOpenForm(toEditMode(sub))}>Editar</Button>
@@ -1010,6 +1020,10 @@ function HierarchyView({
                                     onClick={() => setPatternPanel(toLocationDetail(sub))}>
                                     <RotateCw className="h-3 w-3 mr-1" />Patrón
                                   </Button>
+                                  <Button variant="outline" size="sm" className="h-7 text-xs"
+                                    onClick={() => setLocationPanel(toLocationDetail(sub))}>
+                                    <MapPin className="h-3 w-3 mr-1" />Ubicación
+                                  </Button>
                                   <Button variant="ghost" size="sm" className="h-7 text-xs"
                                     onClick={() => onOpenForm(toEditMode(sub))}>Editar</Button>
                                   <Button variant="outline" size="sm" className="h-7 text-xs"
@@ -1032,6 +1046,7 @@ function HierarchyView({
       })}
 
       <GroupPatternAssignmentDialog open={!!patternPanel} group={patternPanel} onClose={() => setPatternPanel(null)} />
+      <GroupLocationAssignmentDialog open={!!locationPanel} group={locationPanel} onClose={() => setLocationPanel(null)} />
 
       <DuplicateGroupDialog baseGroup={duplicateTarget} onClose={() => setDuplicateTarget(null)} />
 
@@ -1059,6 +1074,7 @@ function AllGroupsView({
 
   const [empPanel, setEmpPanel] = useState<LocationGroupDetailDto | null>(null);
   const [patternPanel, setPatternPanel] = useState<LocationGroupDetailDto | null>(null);
+  const [locationPanel, setLocationPanel] = useState<LocationGroupDetailDto | null>(null);
   const [duplicateTarget, setDuplicateTarget] = useState<GuardRotationGroupDto | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('active');
@@ -1219,6 +1235,9 @@ function AllGroupsView({
                     <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setPatternPanel(toLocationDetail(g))}>
                       <RotateCw className="h-3 w-3 mr-1" />Patron
                     </Button>
+                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setLocationPanel(toLocationDetail(g))}>
+                      <MapPin className="h-3 w-3 mr-1" />Ubicación
+                    </Button>
                     <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => onOpenForm(toEditMode(g))}>Editar</Button>
                     <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setDuplicateTarget(g)}>
                       <Copy className="h-3 w-3 mr-1" />Duplicar
@@ -1284,6 +1303,9 @@ function AllGroupsView({
                         <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setPatternPanel(toLocationDetail(g))}>
                           <RotateCw className="h-3 w-3 mr-1" />Patron
                         </Button>
+                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setLocationPanel(toLocationDetail(g))}>
+                          <MapPin className="h-3 w-3 mr-1" />Ubicación
+                        </Button>
                         <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => onOpenForm(toEditMode(g))}>Editar</Button>
                         <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setDuplicateTarget(g)}>
                           <Copy className="h-3 w-3 mr-1" />Duplicar
@@ -1299,6 +1321,7 @@ function AllGroupsView({
       )}
 
       <GroupPatternAssignmentDialog open={!!patternPanel} group={patternPanel} onClose={() => setPatternPanel(null)} />
+      <GroupLocationAssignmentDialog open={!!locationPanel} group={locationPanel} onClose={() => setLocationPanel(null)} />
       <DuplicateGroupDialog baseGroup={duplicateTarget} onClose={() => setDuplicateTarget(null)} />
       <Dialog open={!!empPanel} onOpenChange={v => { if (!v) setEmpPanel(null); }}>
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
@@ -1324,6 +1347,7 @@ function LocationGroupsView({
 
   const [employeePanelGroup, setEmployeePanelGroup] = useState<LocationGroupDetailDto | null>(null);
   const [patternDialogGroup, setPatternDialogGroup] = useState<LocationGroupDetailDto | null>(null);
+  const [locationDialogGroup, setLocationDialogGroup] = useState<LocationGroupDetailDto | null>(null);
 
   const openEdit = (g: LocationGroupDetailDto) => onOpenForm({
     kind: 'edit',
@@ -1396,6 +1420,9 @@ function LocationGroupsView({
                     <Button variant="outline" size="sm" onClick={() => setPatternDialogGroup(g)}>
                       <RotateCw className="h-3.5 w-3.5 mr-1" />Patrón
                     </Button>
+                    <Button variant="outline" size="sm" onClick={() => setLocationDialogGroup(g)}>
+                      <MapPin className="h-3.5 w-3.5 mr-1" />Ubicación
+                    </Button>
                     <Button variant="ghost" size="sm" onClick={() => openEdit(g)}>Editar</Button>
                   </div>
                 </CardContent>
@@ -1452,6 +1479,9 @@ function LocationGroupsView({
                         <Button variant="outline" size="sm" onClick={() => setPatternDialogGroup(g)}>
                           <RotateCw className="h-3.5 w-3.5 mr-1" />Patrón
                         </Button>
+                        <Button variant="outline" size="sm" onClick={() => setLocationDialogGroup(g)}>
+                          <MapPin className="h-3.5 w-3.5 mr-1" />Ubicación
+                        </Button>
                         <Button variant="ghost" size="sm" onClick={() => openEdit(g)}>Editar</Button>
                       </div>
                     </TableCell>
@@ -1464,6 +1494,7 @@ function LocationGroupsView({
       )}
 
       <GroupPatternAssignmentDialog open={!!patternDialogGroup} group={patternDialogGroup} onClose={() => setPatternDialogGroup(null)} />
+      <GroupLocationAssignmentDialog open={!!locationDialogGroup} group={locationDialogGroup} onClose={() => setLocationDialogGroup(null)} />
 
       <Dialog open={!!employeePanelGroup} onOpenChange={v => { if (!v) setEmployeePanelGroup(null); }}>
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { RotateCw, Loader2 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useRotationPatterns, useGroupPatterns, useGroupPatternMutations } from '@/hooks/guards/useGuards';
-import type { LocationGroupDetailDto, RotationPatternDto, RotationPatternDetailDto } from '@/types/guards';
+import type { LocationGroupDetailDto, RotationPatternDto, RotationPatternDetailDto, GuardGroupRotationPatternDto } from '@/types/guards';
 
 const today = new Date().toISOString().slice(0, 10);
 
@@ -57,36 +57,59 @@ type Props = {
   onClose: () => void;
 };
 
+const BLANK_FORM = { patternId: '', startCycleDate: today, validFrom: today, validTo: '', notes: '' };
+
 export function GroupPatternAssignmentDialog({ open, group, onClose }: Props) {
   const { data: patternsResp } = useRotationPatterns();
   const { data: currentResp, isLoading: loadingCurrent } = useGroupPatterns(group?.groupId ?? null);
-  const { assign, remove } = useGroupPatternMutations(() => onClose());
+  const { assign, update, remove } = useGroupPatternMutations(() => { setEditingId(null); onClose(); });
 
-  const [form, setForm] = useState({
-    patternId: '',
-    startCycleDate: today,
-    validFrom: today,
-    validTo: '',
-    notes: '',
-  });
+  const [form, setForm] = useState(BLANK_FORM);
+  const [editingId, setEditingId] = useState<number | null>(null);
+
+  // Al abrir el diálogo (o cambiar de grupo) siempre se parte en modo "asignar nuevo" —
+  // "Editar" en la tarjeta del patrón activo es lo que carga sus datos reales al formulario.
+  useEffect(() => {
+    if (!open) return;
+    setForm(BLANK_FORM);
+    setEditingId(null);
+  }, [open, group?.groupId]);
 
   const patterns = patternsResp?.status === 'success' ? patternsResp.data : [];
   const currentPatterns = currentResp?.status === 'success' ? currentResp.data : [];
   const activePattern = currentPatterns.find(p => p.isActive);
   const selectedPattern = patterns.find(p => String(p.patternId) === form.patternId) ?? null;
 
+  const handleStartEdit = (p: GuardGroupRotationPatternDto) => {
+    setEditingId(p.groupPatternId);
+    setForm({
+      patternId: String(p.patternId),
+      startCycleDate: p.startCycleDate,
+      validFrom: p.validFrom,
+      validTo: p.validTo ?? '',
+      notes: p.notes ?? '',
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setForm(BLANK_FORM);
+  };
+
   const handleAssign = () => {
     if (!group || !form.patternId || !form.startCycleDate || !form.validFrom) return;
-    assign.mutate({
-      groupId: group.groupId,
-      dto: {
-        patternId: Number(form.patternId),
-        startCycleDate: form.startCycleDate,
-        validFrom: form.validFrom,
-        validTo: form.validTo || undefined,
-        notes: form.notes || undefined,
-      },
-    });
+    const dto = {
+      patternId: Number(form.patternId),
+      startCycleDate: form.startCycleDate,
+      validFrom: form.validFrom,
+      validTo: form.validTo || undefined,
+      notes: form.notes || undefined,
+    };
+    if (editingId !== null) {
+      update.mutate({ groupId: group.groupId, groupPatternId: editingId, dto });
+    } else {
+      assign.mutate({ groupId: group.groupId, dto });
+    }
   };
 
   const handleRemove = (groupPatternId: number) => {
@@ -94,7 +117,7 @@ export function GroupPatternAssignmentDialog({ open, group, onClose }: Props) {
     remove.mutate({ groupId: group.groupId, groupPatternId });
   };
 
-  const isSaving = assign.isPending || remove.isPending;
+  const isSaving = assign.isPending || update.isPending || remove.isPending;
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
@@ -128,11 +151,23 @@ export function GroupPatternAssignmentDialog({ open, group, onClose }: Props) {
                 <div>
                   <p className="text-sm font-semibold">{activePattern.patternName}</p>
                   <p className="text-xs text-muted-foreground">
-                    Vigente desde {activePattern.validFrom} · Inicio ciclo: {activePattern.startCycleDate}
+                    Vigente desde {activePattern.validFrom}
+                    {activePattern.validTo ? ` hasta ${activePattern.validTo}` : ' (sin fecha fin)'}
+                    {' '}· Inicio ciclo: {activePattern.startCycleDate}
                   </p>
+                  {activePattern.notes && (
+                    <p className="text-xs text-muted-foreground italic">{activePattern.notes}</p>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <Badge variant="default" className="text-xs">Activo</Badge>
+                  <Button
+                    variant="ghost" size="sm" className="text-xs h-7 px-2"
+                    disabled={isSaving}
+                    onClick={() => handleStartEdit(activePattern)}
+                  >
+                    Editar
+                  </Button>
                   <Button
                     variant="ghost" size="sm" className="text-destructive text-xs h-7 px-2"
                     disabled={isSaving}
@@ -153,9 +188,18 @@ export function GroupPatternAssignmentDialog({ open, group, onClose }: Props) {
 
         <Separator />
 
-        {/* Formulario nuevo patrón */}
+        {/* Formulario nuevo patrón / edición del patrón activo */}
         <div className="space-y-3">
-          <p className="text-xs font-semibold uppercase text-muted-foreground">Asignar nuevo patrón</p>
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase text-muted-foreground">
+              {editingId !== null ? 'Editar patrón asignado' : 'Asignar nuevo patrón'}
+            </p>
+            {editingId !== null && (
+              <Button variant="ghost" size="sm" className="text-xs h-6 px-2" onClick={handleCancelEdit} disabled={isSaving}>
+                Cancelar edición
+              </Button>
+            )}
+          </div>
 
           {/* Selector de patrón con preview */}
           <div>
@@ -238,9 +282,9 @@ export function GroupPatternAssignmentDialog({ open, group, onClose }: Props) {
             onClick={handleAssign}
             disabled={isSaving || !form.patternId || !form.startCycleDate || !form.validFrom}
           >
-            {assign.isPending
-              ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />Asignando…</>
-              : <><RotateCw className="h-3.5 w-3.5 mr-2" />Asignar patrón</>}
+            {assign.isPending || update.isPending
+              ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />{editingId !== null ? 'Guardando…' : 'Asignando…'}</>
+              : <><RotateCw className="h-3.5 w-3.5 mr-2" />{editingId !== null ? 'Guardar cambios' : 'Asignar patrón'}</>}
           </Button>
         </DialogFooter>
       </DialogContent>

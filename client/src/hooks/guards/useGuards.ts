@@ -25,6 +25,7 @@ import type {
   AssignEmployeeToRotationGroupDto,
   RemoveEmployeeFromRotationGroupDto,
   AssignPatternToGroupDto,
+  UpdateGroupPatternDto,
   CreateRotationPatternDto,
   UpdateRotationPatternDto,
   UpsertRotationPatternDetailsDto,
@@ -791,6 +792,24 @@ export function useGroupPatternMutations(onSuccess?: () => void) {
     onError: (e) => toast({ title: 'Error', description: parseApiError(e).message, variant: 'destructive' }),
   });
 
+  const update = useMutation({
+    mutationFn: ({ groupId, groupPatternId, dto }: { groupId: number; groupPatternId: number; dto: UpdateGroupPatternDto }) =>
+      GuardRotationGroupsAPI.updatePattern(groupId, groupPatternId, dto),
+    onSuccess: (res, { groupId }) => {
+      if (res.status === 'success') {
+        qc.invalidateQueries({ queryKey: GUARD_KEYS.groupPatterns(groupId) });
+        qc.invalidateQueries({ queryKey: GUARD_KEYS.groups });
+        qc.invalidateQueries({ queryKey: ['guards', 'groups', 'paged'] });
+        qc.invalidateQueries({ queryKey: GUARD_KEYS.generalGroupsWithSubs });
+        qc.invalidateQueries({ queryKey: ['guards', 'groups', 'by-location'] });
+        qc.invalidateQueries({ queryKey: GUARD_KEYS.locationSummary });
+        toast({ title: 'Patrón del grupo actualizado' });
+        onSuccess?.();
+      } else toast({ title: 'Error al actualizar', description: res.error.message, variant: 'destructive' });
+    },
+    onError: (e) => toast({ title: 'Error', description: parseApiError(e).message, variant: 'destructive' }),
+  });
+
   const remove = useMutation({
     mutationFn: ({ groupId, groupPatternId }: { groupId: number; groupPatternId: number }) =>
       GuardRotationGroupsAPI.removePattern(groupId, groupPatternId),
@@ -807,7 +826,7 @@ export function useGroupPatternMutations(onSuccess?: () => void) {
     onError: (e) => toast({ title: 'Error', description: parseApiError(e).message, variant: 'destructive' }),
   });
 
-  return { assign, remove };
+  return { assign, update, remove };
 }
 
 export function useAvailabilityMutations(onSuccess?: () => void) {
