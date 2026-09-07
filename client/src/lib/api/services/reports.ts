@@ -149,6 +149,25 @@ class ReportService {
 export const reportService = new ReportService();
 export default reportService;
 
+// ─── Resumen de atrasos (JSON en pantalla, no genera archivo) ─────────────────
+
+export interface LatenessSummaryRow {
+  employeeId: number;
+  idCard: string;
+  fullName: string;
+  departmentName: string | null;
+  contractType: string | null;
+  lateDaysCount: number;
+  totalMinutesLate: number;
+}
+
+export function getLatenessSummary(filter: ReportFilter): Promise<ApiResponse<LatenessSummaryRow[]>> {
+  return apiFetch<LatenessSummaryRow[]>('/api/v1/rh/reports/lateness-summary', {
+    method: 'POST',
+    body: JSON.stringify(filter),
+  });
+}
+
 export function downloadBlob(blob: Blob, fileName: string): void {
   const url = window.URL.createObjectURL(blob);
   const link = document.createElement('a');

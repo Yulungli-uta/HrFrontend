@@ -82,6 +82,7 @@ const ScheduleContractSummaryReportPage = lazy(() => import("@/pages/reports/Sch
 
 // Reportes v2 — AttendanceCalculations
 const LatenessReportPage = lazy(() => import("@/pages/reports/LatenessReport"));
+const LatenessSummaryPage = lazy(() => import("@/pages/reports/LatenessSummary"));
 const OvertimeReportPage = lazy(() => import("@/pages/reports/OvertimeReport"));
 const AttendanceCrossReportPage = lazy(() => import("@/pages/reports/AttendanceCrossReport"));
 const FoodSubsidySummaryReportPage = lazy(() => import("@/pages/reports/FoodSubsidySummaryReport"));
@@ -507,6 +508,11 @@ export const routes: RouteConfig[] = [
     path: "/reports/lateness",
     component: LatenessReportPage,
     requiredPath: "/reports/lateness"
+  },
+  {
+    path: "/reports/lateness-summary",
+    component: LatenessSummaryPage,
+    requiredPath: "/reports/lateness-summary"
   },
   {
     path: "/reports/overtime",
