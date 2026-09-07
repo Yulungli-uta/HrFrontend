@@ -10,6 +10,7 @@
 // src/lib/api/services/reports.ts
 
 import { apiFetch, type ApiResponse } from '../core/fetch';
+import type { PagedResult } from '../core/pagination';
 import type {
   ReportType,
   ReportFormat,
@@ -161,8 +162,13 @@ export interface LatenessSummaryRow {
   totalMinutesLate: number;
 }
 
-export function getLatenessSummary(filter: ReportFilter): Promise<ApiResponse<LatenessSummaryRow[]>> {
-  return apiFetch<LatenessSummaryRow[]>('/api/v1/rh/reports/lateness-summary', {
+export function getLatenessSummary(
+  filter: ReportFilter,
+  page: number,
+  pageSize: number
+): Promise<ApiResponse<PagedResult<LatenessSummaryRow>>> {
+  const qs = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+  return apiFetch<PagedResult<LatenessSummaryRow>>(`/api/v1/rh/reports/lateness-summary?${qs}`, {
     method: 'POST',
     body: JSON.stringify(filter),
   });

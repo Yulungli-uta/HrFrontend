@@ -93,6 +93,8 @@ export interface ReportFilter {
   identType?: 'CEDULA' | 'PASAPORTE';
   /** Filtra por número de identificación exacto (cédula o pasaporte), para un solo registro. */
   identification?: string;
+  /** Búsqueda parcial por cédula o nombre completo (contiene, no exacta). Solo usado hoy por el resumen de atrasos. */
+  searchText?: string;
   /** Rota 90° el texto de las cabeceras del PDF. Por defecto horizontal (false). */
   verticalHeaders?: boolean;
   /** Si es false, la cabecera del PDF aparece solo en la primera página. Por defecto true. */
