@@ -849,6 +849,10 @@ function GenerateDialog({
               <Stat label="Conflictos" value={previewData.conflicts} color="red" />
             </div>
 
+            {/* Desglose por grupo: evita tener que revisar la lista completa a mano para
+                saber qué grupo aportó cuántos turnos, sobre todo en modo "Todos los grupos". */}
+            <GroupBreakdownTable items={previewData.items} />
+
             {previewData.conflicts > 0 && (
               <div className="space-y-1 text-xs max-h-48 overflow-y-auto border rounded p-2 bg-muted/30">
                 <p className="font-semibold text-muted-foreground mb-1">Detalle de conflictos</p>
@@ -1020,6 +1024,50 @@ function Stat({ label, value, color }: { label: string; value: number; color: 'b
     <div className={`rounded p-2 ${colors[color]}`}>
       <div className="text-xl font-bold">{value}</div>
       <div className="text-muted-foreground">{label}</div>
+    </div>
+  );
+}
+
+// Agrupa los items de la vista previa por grupo para mostrar cuántos turnos se generan,
+// omiten o tienen conflicto por cada uno — sin esto había que revisar la lista completa a
+// mano para saber si un grupo en particular quedó cubierto (sobre todo en "Todos los grupos").
+function GroupBreakdownTable({ items }: { items: GeneratePreviewResponseDto['items'] }) {
+  const byGroup = new Map<number, { groupName: string; generar: number; omitidos: number; conflictos: number }>();
+  for (const item of items) {
+    if (!byGroup.has(item.groupId)) {
+      byGroup.set(item.groupId, { groupName: item.groupName, generar: 0, omitidos: 0, conflictos: 0 });
+    }
+    const row = byGroup.get(item.groupId)!;
+    if (item.hasConflict) row.conflictos++;
+    else if (item.willSkip) row.omitidos++;
+    else if (item.isValid && !item.isRestDay) row.generar++;
+  }
+
+  const rows = Array.from(byGroup.values()).sort((a, b) => a.groupName.localeCompare(b.groupName));
+  if (rows.length <= 1) return null;
+
+  return (
+    <div className="rounded-md border overflow-hidden">
+      <table className="w-full text-xs">
+        <thead className="bg-muted/50">
+          <tr>
+            <th className="text-left px-2 py-1 font-medium">Grupo</th>
+            <th className="text-right px-2 py-1 font-medium">Se generan</th>
+            <th className="text-right px-2 py-1 font-medium">Omitidos</th>
+            <th className="text-right px-2 py-1 font-medium">Conflictos</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(r => (
+            <tr key={r.groupName} className="border-t">
+              <td className="px-2 py-1">{r.groupName}</td>
+              <td className="text-right px-2 py-1 text-blue-600 font-medium">{r.generar}</td>
+              <td className="text-right px-2 py-1 text-yellow-600">{r.omitidos}</td>
+              <td className="text-right px-2 py-1 text-red-600">{r.conflictos}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
