@@ -19,7 +19,7 @@ import {
 import {
   useGuardCalendar, usePlanningMutations,
   useGuardRotationGroups, useGuardLocationsAssignable,
-  useScheduleBoard, usePlanningDetail,
+  useScheduleBoard, usePlanningDetail, useShiftChangeMutations,
 } from '@/hooks/guards/useGuards';
 import { ShiftReplacementDialog } from '@/components/guards/ShiftReplacementDialog';
 import { ShiftReassignDialog } from '@/components/guards/ShiftReassignDialog';
@@ -533,6 +533,8 @@ function PlanningDetailPanel({ planningId, onClose }: { planningId: number | nul
   const [showReassign, setShowReassign] = useState(false);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const { cancel } = usePlanningMutations(() => { setConfirmingCancel(false); onClose(); });
+  const { revertReassignment } = useShiftChangeMutations();
+  const activeReassignment = detail?.changes.find(c => c.changeType === 'REASSIGNMENT' && c.isActiveForAttendance);
 
   useEffect(() => { setConfirmingCancel(false); setShowReplacement(false); setShowReassign(false); }, [planningId]);
 
@@ -620,6 +622,16 @@ function PlanningDetailPanel({ planningId, onClose }: { planningId: number | nul
                   >
                     <Calendar className="h-3.5 w-3.5 mr-1.5" />
                     Reasignar
+                  </Button>
+                )}
+                {activeReassignment && (
+                  <Button
+                    size="sm" variant="outline"
+                    disabled={revertReassignment.isPending}
+                    onClick={() => revertReassignment.mutate(activeReassignment.shiftChangeId)}
+                  >
+                    <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                    {revertReassignment.isPending ? 'Deshaciendo…' : 'Deshacer reasignación'}
                   </Button>
                 )}
                 {detail.status !== 'CANCELLED' && (

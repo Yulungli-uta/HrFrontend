@@ -664,7 +664,22 @@ export function useShiftChangeMutations(onSuccess?: () => void) {
     onError: (e) => toast({ title: 'Error', description: parseApiError(e).message, variant: 'destructive' }),
   });
 
-  return { createReplacement, approve, reject, createReassignment };
+  const revertReassignment = useMutation({
+    mutationFn: (shiftChangeId: number) => GuardShiftChangesAPI.revertReassignment(shiftChangeId),
+    onSuccess: (res) => {
+      if (res.status === 'success') {
+        invalidate();
+        qc.invalidateQueries({ queryKey: ['guards', 'calendar'] });
+        qc.invalidateQueries({ queryKey: ['guards', 'schedule-board'] });
+        qc.invalidateQueries({ queryKey: ['guards', 'planning'] });
+        toast({ title: 'Reasignación deshecha' });
+        onSuccess?.();
+      } else toast({ title: 'Error al deshacer', description: res.error.message, variant: 'destructive' });
+    },
+    onError: (e) => toast({ title: 'Error', description: parseApiError(e).message, variant: 'destructive' }),
+  });
+
+  return { createReplacement, approve, reject, createReassignment, revertReassignment };
 }
 
 export function useGroupPatterns(groupId: number | null) {

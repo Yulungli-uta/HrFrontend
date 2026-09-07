@@ -393,6 +393,12 @@ export const GuardShiftChangesAPI = {
       body: JSON.stringify(dto),
     }),
 
+  /** Deshace una reasignación activa, restaurando la fecha/ubicación/horario originales del turno. */
+  revertReassignment: (shiftChangeId: number): Promise<ApiResponse<GuardShiftChangeDto>> =>
+    apiFetch<GuardShiftChangeDto>(`${BASE}/guard-shift-changes/${shiftChangeId}/revert`, {
+      method: 'POST',
+    }),
+
   approve: (id: number, dto: ApproveGuardShiftChangeDto): Promise<ApiResponse<GuardShiftChangeDto>> =>
     apiFetch<GuardShiftChangeDto>(`${BASE}/guard-shift-changes/${id}/approve`, {
       method: 'POST',
