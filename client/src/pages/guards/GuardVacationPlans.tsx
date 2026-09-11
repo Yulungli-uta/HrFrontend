@@ -1,6 +1,6 @@
 //src/pages/guards/GuardVacationPlans.tsx
-import { useState } from 'react';
-import { CalendarDays, Plus, Loader2, Send, XCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { CalendarDays, Plus, Loader2, Send, XCircle, Pencil, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
+import { DataPagination } from '@/components/ui/DataPagination';
 import {
   useVacationPlansPaged,
   useVacationRequestsPaged,
@@ -19,12 +20,49 @@ import { EmployeeCombobox } from '@/components/ui/EmployeeCombobox';
 import { GuardRotationGroupsAPI } from '@/lib/api/services/guards';
 import type {
   CreateGuardVacationPlanDto,
+  UpdateGuardVacationPlanDto,
   GuardVacationPlanDto,
   GuardVacationRequestDto,
   SubmitToDirectionDto,
   RejectGuardVacationPlanDto,
   RejectGuardVacationRequestDto,
 } from '@/types/guards';
+import type { UsePagedResult } from '@/hooks/pagination/usePaged';
+
+// ─── Buscador por cédula/nombre (server-side, vía usePaged.setSearch) ─────────
+
+function SearchBox({ onSearch, placeholder }: { onSearch: (term: string) => void; placeholder: string }) {
+  const [term, setTerm] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => onSearch(term), 350);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [term]);
+  return (
+    <div className="relative max-w-xs">
+      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+      <Input className="h-9 pl-8 text-sm" value={term} onChange={e => setTerm(e.target.value)}
+        placeholder={placeholder} />
+    </div>
+  );
+}
+
+// ─── Footer de paginación estándar ─────────────────────────────────────────────
+
+function PagedFooter({ q }: { q: UsePagedResult<unknown> }) {
+  return (
+    <DataPagination
+      page={q.page}
+      totalPages={q.totalPages}
+      totalCount={q.totalCount}
+      pageSize={q.pageSize}
+      hasPreviousPage={q.hasPreviousPage}
+      hasNextPage={q.hasNextPage}
+      onPageChange={q.goToPage}
+      onPageSizeChange={q.setPageSize}
+    />
+  );
+}
 
 // ─── Status badge helpers ─────────────────────────────────────────────────────
 
@@ -63,64 +101,94 @@ const TYPE_LABEL: Record<string, string> = {
   ACCUMULATE_NEXT_YEAR: 'Acumular al siguiente año',
 };
 
-// ─── Nuevo plan dialog ────────────────────────────────────────────────────────
+// ─── Nuevo plan / editar plan dialog ───────────────────────────────────────────
 
-function PlanFormDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+function PlanFormDialog({ open, onClose, plan }: { open: boolean; onClose: () => void; plan?: GuardVacationPlanDto | null }) {
   const today = new Date().toISOString().slice(0, 10);
   const currentYear = new Date().getFullYear();
-  const { create } = useVacationPlanMutations(() => onClose());
+  const isEditing = !!plan;
+  const { create, update } = useVacationPlanMutations(() => onClose());
 
-  const initialForm = {
-    employeeId: '' as number | '',
-    vacationYear: currentYear,
-    plannedStartDate: today,
-    plannedEndDate: today,
-    notes: '',
-  };
-  const [form, setForm] = useState(initialForm);
-  const f = <K extends keyof typeof form>(k: K, v: typeof form[K]) =>
+  const buildInitialForm = (p?: GuardVacationPlanDto | null) => ({
+    employeeId: (p?.employeeId ?? '') as number | '',
+    employeeFullName: p?.employeeFullName ?? '',
+    vacationYear: p?.vacationYear ?? currentYear,
+    plannedStartDate: p?.plannedStartDate ?? today,
+    plannedEndDate: p?.plannedEndDate ?? today,
+    notes: p?.notes ?? '',
+  });
+  const [form, setForm] = useState(() => buildInitialForm(plan));
+  const f = <K extends keyof ReturnType<typeof buildInitialForm>>(k: K, v: ReturnType<typeof buildInitialForm>[K]) =>
     setForm(p => ({ ...p, [k]: v }));
 
+  // Resincroniza el formulario cada vez que se abre el diálogo con un plan distinto
+  // (o en modo "nuevo"), en vez de dejar residuos de una edición anterior.
+  useEffect(() => {
+    if (open) setForm(buildInitialForm(plan));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, plan?.guardVacationPlanId]);
+
   const handleOpenChange = (v: boolean) => {
-    if (!v) { setForm(initialForm); onClose(); }
+    if (!v) onClose();
   };
+
+  const isPending = create.isPending || update.isPending;
 
   const handleSave = () => {
     if (form.employeeId === '' || !form.plannedStartDate || !form.plannedEndDate) return;
     if (form.plannedStartDate < today) return;
     if (form.vacationYear < currentYear) return;
-    const dto: CreateGuardVacationPlanDto = {
-      employeeId: Number(form.employeeId),
-      vacationYear: form.vacationYear,
-      plannedStartDate: form.plannedStartDate,
-      plannedEndDate: form.plannedEndDate,
-      notes: form.notes || undefined,
-    };
-    create.mutate(dto);
+    if (isEditing && plan) {
+      const dto: UpdateGuardVacationPlanDto = {
+        plannedStartDate: form.plannedStartDate,
+        plannedEndDate: form.plannedEndDate,
+        notes: form.notes || undefined,
+      };
+      update.mutate({ id: plan.guardVacationPlanId, dto });
+    } else {
+      const dto: CreateGuardVacationPlanDto = {
+        employeeId: Number(form.employeeId),
+        vacationYear: form.vacationYear,
+        plannedStartDate: form.plannedStartDate,
+        plannedEndDate: form.plannedEndDate,
+        notes: form.notes || undefined,
+      };
+      create.mutate(dto);
+    }
   };
 
   const startDateInvalid = !!form.plannedStartDate && form.plannedStartDate < today;
   const yearInvalid = form.vacationYear < currentYear;
-  const canSave = !create.isPending && form.employeeId !== '' && !!form.plannedStartDate &&
+  const canSave = !isPending && form.employeeId !== '' && !!form.plannedStartDate &&
     !!form.plannedEndDate && !startDateInvalid && !yearInvalid;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-sm" aria-describedby={undefined}>
-        <DialogHeader><DialogTitle>Nuevo plan de vacaciones</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{isEditing ? 'Editar plan de vacaciones' : 'Nuevo plan de vacaciones'}</DialogTitle></DialogHeader>
         <div className="space-y-3 py-1">
           <div>
             <Label>Guardia *</Label>
-            <EmployeeCombobox value={form.employeeId !== '' ? Number(form.employeeId) : null}
-              onSelect={(id) => f('employeeId', id ?? '')} placeholder="Buscar guardia…"
-              searchFn={(term) => GuardRotationGroupsAPI.getActiveGroupEmployees(term)}
-              searchKey="guard-active-group-employees-search" />
+            {isEditing ? (
+              <p className="text-sm font-medium h-9 flex items-center px-3 border rounded-md bg-muted/40">{form.employeeFullName}</p>
+            ) : (
+              <EmployeeCombobox value={form.employeeId !== '' ? Number(form.employeeId) : null}
+                onSelect={(id) => f('employeeId', id ?? '')} placeholder="Buscar guardia…"
+                searchFn={(term) => GuardRotationGroupsAPI.getActiveGroupEmployees(term)}
+                searchKey="guard-active-group-employees-search" />
+            )}
           </div>
           <div>
             <Label>Año de vacaciones *</Label>
-            <Input type="number" value={form.vacationYear} min={currentYear} max={currentYear + 5}
-              onChange={e => f('vacationYear', Number(e.target.value))} />
-            {yearInvalid && <p className="text-xs text-destructive mt-1">El año no puede ser anterior al año en curso.</p>}
+            {isEditing ? (
+              <p className="text-sm font-medium h-9 flex items-center px-3 border rounded-md bg-muted/40">{form.vacationYear}</p>
+            ) : (
+              <>
+                <Input type="number" value={form.vacationYear} min={currentYear} max={currentYear + 5}
+                  onChange={e => f('vacationYear', Number(e.target.value))} />
+                {yearInvalid && <p className="text-xs text-destructive mt-1">El año no puede ser anterior al año en curso.</p>}
+              </>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -141,9 +209,9 @@ function PlanFormDialog({ open, onClose }: { open: boolean; onClose: () => void 
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={create.isPending}>Cancelar</Button>
+          <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={isPending}>Cancelar</Button>
           <Button onClick={handleSave} disabled={!canSave}>
-            {create.isPending ? 'Guardando…' : 'Crear'}
+            {isPending ? 'Guardando…' : isEditing ? 'Guardar cambios' : 'Crear'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -240,6 +308,10 @@ export default function GuardVacationPlansPage() {
 
   const [createOpen, setCreateOpen] = useState(false);
 
+  // Editar plan (solo disponible en estado PLANNED — la pestaña "Planes pendientes"
+  // ya filtra status: 'PLANNED', así que cualquier fila de esa tabla es editable)
+  const [editPlan, setEditPlan] = useState<GuardVacationPlanDto | null>(null);
+
   // Send plan to direction
   const [submitPlan, setSubmitPlan] = useState<GuardVacationPlanDto | null>(null);
   const [rejectPlan, setRejectPlan] = useState<GuardVacationPlanDto | null>(null);
@@ -290,7 +362,8 @@ export default function GuardVacationPlansPage() {
         </TabsList>
 
         {/* ── Planes PLANNED ── */}
-        <TabsContent value="plans" className="mt-4">
+        <TabsContent value="plans" className="mt-4 space-y-3">
+          <SearchBox onSearch={plansQ.setSearch} placeholder="Buscar por cédula o nombre…" />
           {plansQ.isLoading ? (
             <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin" />Cargando…
@@ -322,6 +395,9 @@ export default function GuardVacationPlansPage() {
                         <TableCell className="text-xs text-muted-foreground max-w-[140px] truncate">{p.notes ?? '—'}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
+                            <Button size="sm" variant="outline" onClick={() => setEditPlan(p)}>
+                              <Pencil className="h-3.5 w-3.5 mr-1" />Editar
+                            </Button>
                             <Button size="sm" variant="outline" onClick={() => setSubmitPlan(p)}>
                               <Send className="h-3.5 w-3.5 mr-1" />Enviar a dirección
                             </Button>
@@ -335,20 +411,14 @@ export default function GuardVacationPlansPage() {
                   </TableBody>
                 </Table>
               </div>
-              <div className="flex items-center justify-between text-sm text-muted-foreground mt-3">
-                <span>{plansQ.totalCount} planes</span>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" disabled={plansQ.page <= 1} onClick={() => plansQ.goToPage(plansQ.page - 1)}>Anterior</Button>
-                  <span className="flex items-center px-2">Pág {plansQ.page} / {plansQ.totalPages}</span>
-                  <Button variant="outline" size="sm" disabled={plansQ.page >= plansQ.totalPages} onClick={() => plansQ.goToPage(plansQ.page + 1)}>Siguiente</Button>
-                </div>
-              </div>
+              <PagedFooter q={plansQ} />
             </>
           )}
         </TabsContent>
 
         {/* ── Solicitudes REQUESTED ── */}
-        <TabsContent value="requests" className="mt-4">
+        <TabsContent value="requests" className="mt-4 space-y-3">
+          <SearchBox onSearch={requestsQ.setSearch} placeholder="Buscar por cédula o nombre…" />
           {requestsQ.isLoading ? (
             <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin" />Cargando…
@@ -399,20 +469,14 @@ export default function GuardVacationPlansPage() {
                   </TableBody>
                 </Table>
               </div>
-              <div className="flex items-center justify-between text-sm text-muted-foreground mt-3">
-                <span>{requestsQ.totalCount} solicitudes</span>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" disabled={requestsQ.page <= 1} onClick={() => requestsQ.goToPage(requestsQ.page - 1)}>Anterior</Button>
-                  <span className="flex items-center px-2">Pág {requestsQ.page} / {requestsQ.totalPages}</span>
-                  <Button variant="outline" size="sm" disabled={requestsQ.page >= requestsQ.totalPages} onClick={() => requestsQ.goToPage(requestsQ.page + 1)}>Siguiente</Button>
-                </div>
-              </div>
+              <PagedFooter q={requestsQ} />
             </>
           )}
         </TabsContent>
 
         {/* ── Historial ── */}
-        <TabsContent value="history" className="mt-4">
+        <TabsContent value="history" className="mt-4 space-y-3">
+          <SearchBox onSearch={historyPlansQ.setSearch} placeholder="Buscar por cédula o nombre…" />
           {historyPlansQ.isLoading ? (
             <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin" />Cargando…
@@ -462,20 +526,14 @@ export default function GuardVacationPlansPage() {
                   </TableBody>
                 </Table>
               </div>
-              <div className="flex items-center justify-between text-sm text-muted-foreground mt-3">
-                <span>{historyPlansQ.totalCount} planes</span>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" disabled={historyPlansQ.page <= 1} onClick={() => historyPlansQ.goToPage(historyPlansQ.page - 1)}>Anterior</Button>
-                  <span className="flex items-center px-2">Pág {historyPlansQ.page} / {historyPlansQ.totalPages}</span>
-                  <Button variant="outline" size="sm" disabled={historyPlansQ.page >= historyPlansQ.totalPages} onClick={() => historyPlansQ.goToPage(historyPlansQ.page + 1)}>Siguiente</Button>
-                </div>
-              </div>
+              <PagedFooter q={historyPlansQ} />
             </>
           )}
         </TabsContent>
       </Tabs>
 
       <PlanFormDialog open={createOpen} onClose={() => setCreateOpen(false)} />
+      <PlanFormDialog open={!!editPlan} onClose={() => setEditPlan(null)} plan={editPlan} />
 
       {/* Enviar plan a dirección */}
       <SubmitToDirectionDialog

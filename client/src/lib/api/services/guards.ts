@@ -590,6 +590,7 @@ export const GuardVacationPlansAPI = {
     if (filters?.employeeId) qs.set('employeeId', String(filters.employeeId));
     if (filters?.startDate)  qs.set('startDate',  filters.startDate);
     if (filters?.endDate)    qs.set('endDate',     filters.endDate);
+    if (params.search?.trim()) qs.set('search', params.search.trim());
     return apiFetch<PagedResult<GuardVacationPlanDto>>(`${BASE}/guard-vacation-plans/paged?${qs}`);
   },
 
@@ -641,6 +642,7 @@ export const GuardVacationRequestsAPI = {
     if (filters?.employeeId) qs.set('employeeId', String(filters.employeeId));
     if (filters?.startDate)  qs.set('startDate',  filters.startDate);
     if (filters?.endDate)    qs.set('endDate',     filters.endDate);
+    if (params.search?.trim()) qs.set('search', params.search.trim());
     return apiFetch<PagedResult<GuardVacationRequestDto>>(`${BASE}/guard-vacation-requests/paged?${qs}`);
   },
 

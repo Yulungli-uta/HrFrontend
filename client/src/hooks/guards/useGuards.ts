@@ -389,6 +389,11 @@ export function useGuardGroupMutations(onSuccess?: () => void) {
         qc.invalidateQueries({ queryKey: GUARD_KEYS.groupEmployees(groupId) });
         invalidate();
         toast({ title: 'Empleado asignado al grupo' });
+        // 2026-09-10: aviso no bloqueante de GROUP_OVERLAP -- el empleado ya
+        // quedo asignado, solo se notifica para que se revise la doble membresia.
+        if (res.data.overlapWarning) {
+          toast({ title: 'Atención: posible solapamiento', description: res.data.overlapWarning, variant: 'destructive' });
+        }
         onSuccess?.();
       } else toast({ title: 'Error', description: res.error.message, variant: 'destructive' });
     },
@@ -434,6 +439,18 @@ export function useGuardGroupMutations(onSuccess?: () => void) {
           variant: 'destructive',
         });
       }
+      // 2026-09-10: aviso no bloqueante de GROUP_OVERLAP para cada asignacion
+      // exitosa que quedo con doble membresia activa.
+      const overlaps = results
+        .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled' && r.value?.status === 'success' && r.value.data?.overlapWarning)
+        .map(r => `${r.value.data.employeeFullName}: ${r.value.data.overlapWarning}`);
+      if (overlaps.length > 0) {
+        toast({
+          title: `Atención: ${overlaps.length} con posible solapamiento`,
+          description: overlaps.join('\n'),
+          variant: 'destructive',
+        });
+      }
       onSuccess?.();
     },
     onError: (e) => toast({ title: 'Error', description: parseApiError(e).message, variant: 'destructive' }),
@@ -443,7 +460,21 @@ export function useGuardGroupMutations(onSuccess?: () => void) {
     mutationFn: ({ groupId, dto }: { groupId: number; dto: DuplicateGuardRotationGroupDto }) =>
       GuardRotationGroupsAPI.duplicate(groupId, dto),
     onSuccess: (res) => {
-      if (res.status === 'success') { invalidate(); toast({ title: 'Grupo duplicado' }); onSuccess?.(); }
+      if (res.status === 'success') {
+        invalidate();
+        toast({ title: 'Grupo duplicado' });
+        // 2026-09-10: aviso no bloqueante -- miembros copiados que ya estan
+        // activos en otro grupo (normalmente el grupo base, por diseño de
+        // Duplicar). El grupo nuevo SI se crea con todos los miembros.
+        if (res.data.overlapWarnings && res.data.overlapWarnings.length > 0) {
+          toast({
+            title: `Atención: ${res.data.overlapWarnings.length} guardia(s) con posible solapamiento`,
+            description: res.data.overlapWarnings.join('\n'),
+            variant: 'destructive',
+          });
+        }
+        onSuccess?.();
+      }
       else toast({ title: 'Error al duplicar', description: res.error.message, variant: 'destructive' });
     },
     onError: (e) => toast({ title: 'Error', description: parseApiError(e).message, variant: 'destructive' }),

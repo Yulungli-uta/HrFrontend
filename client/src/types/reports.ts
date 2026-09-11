@@ -95,6 +95,11 @@ export interface ReportFilter {
   identification?: string;
   /** Búsqueda parcial por cédula o nombre completo (contiene, no exacta). Solo usado hoy por el resumen de atrasos. */
   searchText?: string;
+  /**
+   * Período académico (ej. "47", "48") — usado por SIIES Profesores para la matriz 5.4
+   * (Distribución de Horas). Vacío = usa el período más reciente disponible por profesor.
+   */
+  periodCode?: string;
   /** Rota 90° el texto de las cabeceras del PDF. Por defecto horizontal (false). */
   verticalHeaders?: boolean;
   /** Si es false, la cabecera del PDF aparece solo en la primera página. Por defecto true. */
@@ -388,18 +393,18 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
   'siies-profesores': {
     type: 'siies-profesores',
     title: 'SIIES - Profesores',
-    description: 'Matrices 5.2/5.3 (Contratos IES) y 5.4 (Distribución Horas) fusionadas. Use el filtro "Tipo de identificación" para elegir Cédula o Pasaporte — cada exportación genera un único archivo, nunca mezclados. Exporta CSV UTF-8 con separador ";".',
+    description: 'Matrices 5.2/5.3 (Contratos IES) y 5.4 (Distribución Horas) fusionadas. Use el filtro "Tipo de identificación" para elegir Cédula o Pasaporte — cada exportación genera un único archivo, nunca mezclados. El filtro "Período académico" controla la matriz 5.4 (vacío = período más reciente por profesor). Exporta CSV UTF-8 con separador ";".',
     icon: 'FileSpreadsheet',
     availableFormats: ['pdf', 'csv'],
-    availableFilters: ['identType', 'identification', 'includeInactive', 'verticalHeaders', 'repeatHeaderOnEveryPage'],
+    availableFilters: ['identType', 'identification', 'periodCode', 'includeInactive', 'verticalHeaders', 'repeatHeaderOnEveryPage'],
   },
   'siies-formacion-profesional': {
     type: 'siies-formacion-profesional',
     title: 'SIIES - Formación Profesional',
-    description: 'Matriz 5.5 del Instructivo CACES (Formación Profesional Terminado). Una fila por título académico de cada docente. Exporta CSV UTF-8 con separador ";".',
+    description: 'Matriz 5.5 del Instructivo CACES (Formación Profesional Terminado). Una fila por título académico de cada docente. El filtro "Período académico" limita la lista a profesores con actividad en ese período (vacío = todos). Exporta CSV UTF-8 con separador ";".',
     icon: 'FileSpreadsheet',
     availableFormats: ['pdf', 'csv'],
-    availableFilters: ['identification', 'includeInactive', 'verticalHeaders', 'repeatHeaderOnEveryPage'],
+    availableFilters: ['identification', 'periodCode', 'includeInactive', 'verticalHeaders', 'repeatHeaderOnEveryPage'],
   },
 };
 

@@ -200,6 +200,24 @@ export const VistaEmpleadosAPI = {
 export const VistaDetallesEmpleadosAPI = {
   ...createApiService<any, any>('/api/v1/rh/vw/EmployeeDetails'),
 
+  /** Sobrescribe listPaged para soportar el filtro de horarios especiales
+   * (sustituto/maternidad/lactancia/otro), además de search/paginación. */
+  listPaged: (params: PagedRequest & {
+    onlySpecialSchedule?: boolean;
+  }): Promise<ApiResponse<PagedResult<any>>> => {
+    const qs = new URLSearchParams({
+      page: String(params.page),
+      pageSize: String(params.pageSize),
+      ...(params.sortBy ? { sortBy: params.sortBy } : {}),
+      ...(params.sortDirection ? { sortDirection: params.sortDirection } : {}),
+      ...(params.search?.trim() ? { search: params.search.trim() } : {}),
+      ...(params.onlySpecialSchedule !== undefined
+        ? { onlySpecialSchedule: String(params.onlySpecialSchedule) }
+        : {}),
+    });
+    return apiFetch<PagedResult<any>>(`/api/v1/rh/vw/EmployeeDetails/paged?${qs.toString()}`);
+  },
+
   byEmail: (email: string): Promise<ApiResponse<any>> =>
     apiFetch<any>(`/api/v1/rh/vw/EmployeeDetails/email/${encodeURIComponent(email)}`),
 
@@ -241,4 +259,5 @@ export interface ScheduleCoverageStatsDto {
   total: number;
   withSchedule: number;
   withoutSchedule: number;
+  specialSchedules: number;
 }

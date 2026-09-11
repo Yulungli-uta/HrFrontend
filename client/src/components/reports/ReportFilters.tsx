@@ -621,6 +621,24 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
             </div>
           )}
 
+          {/* Período académico (SIIES Profesores: controla la matriz 5.4 Distribución de Horas) */}
+          {hasFilter("periodCode") && (
+            <div className="space-y-2">
+              <Label htmlFor="periodCode">Período Académico (opcional)</Label>
+              <Input
+                id="periodCode"
+                type="text"
+                value={filter.periodCode ?? ""}
+                onChange={(e) => setFilterValue("periodCode", e.target.value)}
+                placeholder="Ej: 48"
+              />
+              <p className="text-xs text-muted-foreground">
+                Controla las horas de la matriz 5.4. Vacío = usa el período más reciente
+                disponible por cada profesor.
+              </p>
+            </div>
+          )}
+
           {/* Incluir Inactivos (select simple) */}
           {hasFilter("includeInactive") && (
             <div className="space-y-2">

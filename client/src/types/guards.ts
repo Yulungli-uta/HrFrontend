@@ -83,6 +83,8 @@ export interface GuardRotationGroupDto {
   colorCode: string | null;
   subgroupCount: number;
   isSpecial: boolean;
+  /** Avisos no bloqueantes de solapamiento (GROUP_OVERLAP) — poblado solo al duplicar. */
+  overlapWarnings: string[] | null;
 }
 
 export interface GuardRotationGroupWithSubgroupsDto {
@@ -110,6 +112,8 @@ export interface GuardRotationGroupEmployeeDto {
   validTo: string | null;
   isActive: boolean;
   notes: string | null;
+  /** Aviso no bloqueante: el empleado ya está activo en otro grupo de rotación. */
+  overlapWarning: string | null;
 }
 
 export interface CreateGuardRotationGroupDto {
@@ -618,6 +622,7 @@ export interface ScheduleBoardCellEmployeeDto {
   fullName: string;
   shortName: string;
   isReplacement: boolean;
+  isReassigned: boolean;
   planningId: number;
   groupId?: number | null;
   groupName?: string | null;

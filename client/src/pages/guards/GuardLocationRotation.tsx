@@ -13,8 +13,9 @@ import {
   useLocationRotationPeriods, useLocationRotationPeriodsPaged,
   useLocationRotationAssignments, useLocationRotationMutations,
   useLocationRotationCoverage,
-  useGuardLocationsAssignable, useGuardRotationGroups,
+  useGuardRotationGroups,
 } from '@/hooks/guards/useGuards';
+import { LocationHierarchySelect } from '@/components/guards/LocationHierarchySelect';
 import type {
   GuardLocationRotationPeriodDto, GuardLocationRotationAssignmentDto,
   CreateGuardLocationRotationPeriodDto, UpdateGuardLocationRotationPeriodDto,
@@ -112,9 +113,7 @@ function AssignmentFormDialog({
   onClose: () => void;
   periodId: number;
 }) {
-  const { data: locData } = useGuardLocationsAssignable();
   const { data: grpData } = useGuardRotationGroups();
-  const locations = locData?.status === 'success' ? locData.data : [];
   const groups = grpData?.status === 'success' ? grpData.data : [];
   const { createAssignment } = useLocationRotationMutations(() => onClose());
 
@@ -159,18 +158,7 @@ function AssignmentFormDialog({
           </div>
           <div>
             <Label>Ubicación asignada *</Label>
-            <select
-              className="w-full h-9 border rounded-md px-3 text-sm bg-background mt-1"
-              value={form.locationId}
-              onChange={e => f('locationId', e.target.value !== '' ? Number(e.target.value) : '')}
-            >
-              <option value="">Seleccionar…</option>
-              {locations.map(l => (
-                <option key={l.locationId} value={l.locationId}>
-                  {l.locationCode ? `[${l.locationCode}] ` : ''}{l.locationName}
-                </option>
-              ))}
-            </select>
+            <LocationHierarchySelect value={form.locationId} onChange={v => f('locationId', v)} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="flex items-center gap-2">
@@ -525,7 +513,7 @@ export default function GuardLocationRotationPage() {
       <div className="p-4 sm:p-6 space-y-5">
         <div className="flex items-center gap-3">
           <MapPin className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">Rotación de Ubicaciones</h1>
+          <h1 className="text-2xl font-bold">Asignación de Ubicaciones</h1>
         </div>
         <PeriodDetailView period={selected} onBack={() => setSelected(null)} />
       </div>
@@ -537,7 +525,7 @@ export default function GuardLocationRotationPage() {
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3">
           <MapPin className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">Rotación de Ubicaciones</h1>
+          <h1 className="text-2xl font-bold">Asignación de Ubicaciones</h1>
         </div>
         <Button size="sm" onClick={() => setPeriodForm({ open: true, edit: null })}>
           <Plus className="h-4 w-4 mr-1" />Nuevo periodo

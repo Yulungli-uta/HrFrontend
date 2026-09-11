@@ -165,7 +165,11 @@ function PendingTab({ onApprove, onReject }: { onApprove: (c: GuardShiftChangeDt
 function AllTab({ onApprove, onReject }: { onApprove: (c: GuardShiftChangeDto) => void; onReject: (c: GuardShiftChangeDto) => void }) {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [statusFilter, setStatusFilter] = useState('PENDING');
+  // Por defecto "Todos": la reasignación (el flujo real que usa el módulo hoy) se
+  // auto-aprueba al crearse y nunca queda PENDING, así que filtrar por PENDING por
+  // defecto en una pestaña llamada "Todas las solicitudes" la mostraba vacía aunque
+  // sí existan cambios (2026-09-09, reporte real del usuario).
+  const [statusFilter, setStatusFilter] = useState('');
   const { data: resp, isLoading, refetch } = useAllChangesPaged(page, pageSize, statusFilter || undefined);
   const pagedData = resp?.status === 'success' ? resp.data : null;
   const changes = pagedData?.items ?? [];

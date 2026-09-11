@@ -1,6 +1,6 @@
 // src/components/schedules/AssignScheduleForm.tsx
 import { useState, useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -12,9 +12,10 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/features/auth";
-import { HorariosEmpleadosAPI, handleApiError } from "@/lib/api";
+import { HorariosEmpleadosAPI, TiposReferenciaAPI, handleApiError } from "@/lib/api";
 import type { Employee, Schedule, EmployeeSchedule } from "@/types/schedule";
 import { parseApiError } from "@/lib/error-handling";
 import { logger } from "@/lib/logger";
@@ -56,11 +57,33 @@ export default function AssignScheduleForm({
   const { toast } = useToast();
   const { employeeDetails } = useAuth();
   const queryClient = useQueryClient();
-  
+
+  // Catálogo vs. horario especial individual (sustituto/maternidad/lactancia/otro)
+  const [mode, setMode] = useState<"catalog" | "special">("catalog");
+  const caseTypesQuery = useQuery({
+    queryKey: ["ref-types", "EMPLOYEE_SPECIAL_SCHEDULE_TYPE"],
+    queryFn: () => TiposReferenciaAPI.byCategory("EMPLOYEE_SPECIAL_SCHEDULE_TYPE"),
+    enabled: mode === "special",
+    staleTime: 300_000,
+  });
+  const caseTypes = caseTypesQuery.data?.status === "success" ? caseTypesQuery.data.data : [];
+
   const [formData, setFormData] = useState({
     scheduleId: "",
     validFrom: getTomorrow(), // Por defecto empieza mañana
     validTo: getMaxDate(),
+  });
+
+  const [specialData, setSpecialData] = useState({
+    caseTypeId: "",
+    entryTime: "",
+    exitTime: "",
+    hasLunchBreak: false,
+    lunchStart: "",
+    lunchEnd: "",
+    reason: "",
+    documentReference: "",
+    requiresApproval: false,
   });
 
   // Efecto para inicializar el formulario cuando cambia el empleado
@@ -96,6 +119,18 @@ export default function AssignScheduleForm({
         validTo: getMaxDate(),
       });
     }
+    setMode("catalog");
+    setSpecialData({
+      caseTypeId: "",
+      entryTime: "",
+      exitTime: "",
+      hasLunchBreak: false,
+      lunchStart: "",
+      lunchEnd: "",
+      reason: "",
+      documentReference: "",
+      requiresApproval: false,
+    });
   };
 
   const assignScheduleMutation = useMutation({
@@ -125,9 +160,8 @@ export default function AssignScheduleForm({
       }
 
       // Luego creamos el nuevo horario que empieza mañana (o hoy si no hay horario anterior)
-      const payload = {
+      const payload: Record<string, unknown> = {
         employeeId: employee!.employeeID,
-        scheduleId: parseInt(data.scheduleId),
         validFrom: data.validFrom,
         validTo: data.validTo || getMaxDate(),
         createdBy: currentUser.employeeID,
@@ -135,6 +169,21 @@ export default function AssignScheduleForm({
         updatedBy: currentUser.employeeID,
         updatedAt: new Date().toISOString(),
       };
+
+      if (mode === "special") {
+        payload.scheduleId = null;
+        payload.specialCaseTypeId = parseInt(specialData.caseTypeId);
+        payload.specialEntryTime = specialData.entryTime;
+        payload.specialExitTime = specialData.exitTime;
+        payload.specialHasLunchBreak = specialData.hasLunchBreak;
+        payload.specialLunchStart = specialData.hasLunchBreak ? specialData.lunchStart : null;
+        payload.specialLunchEnd = specialData.hasLunchBreak ? specialData.lunchEnd : null;
+        payload.specialReason = specialData.reason || null;
+        payload.specialDocumentReference = specialData.documentReference || null;
+        payload.specialRequiresApproval = specialData.requiresApproval;
+      } else {
+        payload.scheduleId = parseInt(data.scheduleId);
+      }
 
       logger.debug("AssignScheduleForm", "Creando nuevo horario:", payload);
       const createRes = await HorariosEmpleadosAPI.create(payload);
@@ -172,8 +221,8 @@ export default function AssignScheduleForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!employee || !formData.scheduleId) {
+
+    if (!employee) {
       toast({
         title: "Error",
         description: "Por favor complete todos los campos requeridos",
@@ -182,14 +231,26 @@ export default function AssignScheduleForm({
       return;
     }
 
-    const selectedSchedule = schedules.find(s => s.scheduleId?.toString() === formData.scheduleId);
-    if (!selectedSchedule) {
-      toast({
-        title: "Error",
-        description: "Horario seleccionado no válido",
-        variant: "destructive",
-      });
-      return;
+    if (mode === "catalog") {
+      const selectedSchedule = schedules.find(s => s.scheduleId?.toString() === formData.scheduleId);
+      if (!formData.scheduleId || !selectedSchedule) {
+        toast({
+          title: "Error",
+          description: "Horario seleccionado no válido",
+          variant: "destructive",
+        });
+        return;
+      }
+    } else {
+      if (!specialData.caseTypeId || !specialData.entryTime || !specialData.exitTime
+          || (specialData.hasLunchBreak && (!specialData.lunchStart || !specialData.lunchEnd))) {
+        toast({
+          title: "Error",
+          description: "Complete tipo de caso, entrada, salida y almuerzo (si aplica) del horario especial",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     // Validar que la fecha de inicio sea al menos mañana si hay horario existente
@@ -283,12 +344,100 @@ export default function AssignScheduleForm({
             </div>
           )}
 
-          {/* Selección de horario */}
+          {/* Catálogo vs. horario especial individual */}
+          <div className="space-y-2">
+            <Label>Tipo de horario *</Label>
+            <div className="flex gap-2">
+              <Button type="button" size="sm" variant={mode === "catalog" ? "default" : "outline"}
+                onClick={() => setMode("catalog")} disabled={assignScheduleMutation.isPending}>
+                Horario del catálogo
+              </Button>
+              <Button type="button" size="sm" variant={mode === "special" ? "default" : "outline"}
+                onClick={() => setMode("special")} disabled={assignScheduleMutation.isPending}>
+                Horario especial 
+              </Button>
+            </div>
+          </div>
+
+          {mode === "special" && (
+            <div className="space-y-3 p-3 border rounded-lg">
+              <div className="space-y-2">
+                <Label htmlFor="specialCaseType">Tipo de caso *</Label>
+                <Select
+                  value={specialData.caseTypeId}
+                  onValueChange={(value) => setSpecialData(f => ({ ...f, caseTypeId: value }))}
+                  disabled={assignScheduleMutation.isPending}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccione el tipo de caso" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {caseTypes.map((ct: any) => (
+                      <SelectItem key={ct.typeId} value={String(ct.typeId)}>{ct.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="specialEntryTime">Entrada *</Label>
+                  <Input id="specialEntryTime" type="time" value={specialData.entryTime}
+                    onChange={(e) => setSpecialData(f => ({ ...f, entryTime: e.target.value }))}
+                    disabled={assignScheduleMutation.isPending} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="specialExitTime">Salida *</Label>
+                  <Input id="specialExitTime" type="time" value={specialData.exitTime}
+                    onChange={(e) => setSpecialData(f => ({ ...f, exitTime: e.target.value }))}
+                    disabled={assignScheduleMutation.isPending} />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch checked={specialData.hasLunchBreak}
+                  onCheckedChange={(v) => setSpecialData(f => ({ ...f, hasLunchBreak: v }))}
+                  disabled={assignScheduleMutation.isPending} />
+                <Label>Tiene almuerzo (jornada partida)</Label>
+              </div>
+              {specialData.hasLunchBreak && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="specialLunchStart">Salida almuerzo *</Label>
+                    <Input id="specialLunchStart" type="time" value={specialData.lunchStart}
+                      onChange={(e) => setSpecialData(f => ({ ...f, lunchStart: e.target.value }))}
+                      disabled={assignScheduleMutation.isPending} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="specialLunchEnd">Regreso almuerzo *</Label>
+                    <Input id="specialLunchEnd" type="time" value={specialData.lunchEnd}
+                      onChange={(e) => setSpecialData(f => ({ ...f, lunchEnd: e.target.value }))}
+                      disabled={assignScheduleMutation.isPending} />
+                  </div>
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label htmlFor="specialReason">Motivo</Label>
+                <Input id="specialReason" value={specialData.reason}
+                  onChange={(e) => setSpecialData(f => ({ ...f, reason: e.target.value }))}
+                  placeholder="Ej. Sustitución, licencia por maternidad…"
+                  disabled={assignScheduleMutation.isPending} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="specialDocumentReference">Referencia documental</Label>
+                <Input id="specialDocumentReference" value={specialData.documentReference}
+                  onChange={(e) => setSpecialData(f => ({ ...f, documentReference: e.target.value }))}
+                  placeholder="Ej. Memorando Nro. UTA-XXX-2026-000-M"
+                  disabled={assignScheduleMutation.isPending} />
+              </div>
+            </div>
+          )}
+
+          {/* Selección de horario del catálogo */}
+          {mode === "catalog" && (
           <div className="space-y-2">
             <Label htmlFor="scheduleId">
               {hasExistingSchedule ? "Nuevo Horario *" : "Horario *"}
             </Label>
-            <Select 
+            <Select
               value={formData.scheduleId} 
               onValueChange={(value) => setFormData(f => ({ ...f, scheduleId: value }))}
               disabled={assignScheduleMutation.isPending}
@@ -307,6 +456,7 @@ export default function AssignScheduleForm({
               </SelectContent>
             </Select>
           </div>
+          )}
 
           {/* Detalles del horario seleccionado */}
           {selectedSchedule && (
@@ -390,7 +540,7 @@ export default function AssignScheduleForm({
             </Button>
             <Button 
               type="submit" 
-              disabled={assignScheduleMutation.isPending || !formData.scheduleId}
+              disabled={assignScheduleMutation.isPending || (mode === "catalog" ? !formData.scheduleId : !specialData.caseTypeId || !specialData.entryTime || !specialData.exitTime)}
             >
               {assignScheduleMutation.isPending 
                 ? hasExistingSchedule ? "Actualizando..." : "Asignando..." 

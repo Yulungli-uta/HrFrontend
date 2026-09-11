@@ -9,8 +9,9 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import {
   useLocationRotationPeriods, useLocationRotationAssignments,
-  useLocationRotationMutations, useGuardLocationsAssignable,
+  useLocationRotationMutations,
 } from '@/hooks/guards/useGuards';
+import { LocationHierarchySelect } from '@/components/guards/LocationHierarchySelect';
 import type { LocationGroupDetailDto, GuardLocationRotationAssignmentDto } from '@/types/guards';
 
 type Props = {
@@ -33,9 +34,6 @@ export function GroupLocationAssignmentDialog({ open, group, onClose }: Props) {
   const { data: assignmentsResp, isLoading: loadingAssignments } = useLocationRotationAssignments(activePeriod?.locationRotationPeriodId ?? null);
   const assignments = assignmentsResp?.status === 'success' ? assignmentsResp.data : [];
   const activeAssignment = assignments.find(a => a.groupId === group?.groupId && a.isActive) ?? null;
-
-  const { data: locData } = useGuardLocationsAssignable();
-  const locations = locData?.status === 'success' ? locData.data : [];
 
   const { createAssignment, updateAssignment } = useLocationRotationMutations(() => { setEditing(false); onClose(); });
 
@@ -127,7 +125,7 @@ export function GroupLocationAssignmentDialog({ open, group, onClose }: Props) {
         {!activePeriod ? (
           <p className="text-sm text-muted-foreground">
             No hay un periodo de rotación de ubicaciones activo que cubra la fecha de hoy.
-            Crea o ajusta uno primero en <strong>Rotación de Ubicaciones</strong>.
+            Crea o ajusta uno primero en <strong>Asignación de Ubicaciones</strong>.
           </p>
         ) : (
           <>
@@ -183,18 +181,10 @@ export function GroupLocationAssignmentDialog({ open, group, onClose }: Props) {
 
               <div>
                 <Label className="text-xs">Ubicación *</Label>
-                <select
-                  className="w-full h-9 border rounded-md px-3 text-sm bg-background mt-1"
-                  value={locationId}
-                  onChange={e => setLocationId(e.target.value)}
-                >
-                  <option value="">Seleccionar ubicación…</option>
-                  {locations.map(l => (
-                    <option key={l.locationId} value={l.locationId}>
-                      {l.locationCode ? `[${l.locationCode}] ` : ''}{l.locationName}
-                    </option>
-                  ))}
-                </select>
+                <LocationHierarchySelect
+                  value={locationId !== '' ? Number(locationId) : ''}
+                  onChange={v => setLocationId(v === '' ? '' : String(v))}
+                />
               </div>
 
               <div>

@@ -302,11 +302,12 @@ function BoardCells({
                     <button
                       key={emp.planningId}
                       onClick={() => onCellClick(emp.planningId)}
-                      className={`w-full text-left px-1.5 py-0.5 rounded border text-[10px] font-medium truncate transition-opacity hover:opacity-75 ${emp.isReplacement ? 'ring-1 ring-purple-400' : ''}`}
+                      className={`w-full text-left px-1.5 py-0.5 rounded border text-[10px] font-medium truncate transition-opacity hover:opacity-75 ${emp.isReplacement ? 'ring-1 ring-purple-400' : emp.isReassigned ? 'ring-1 ring-blue-400' : ''}`}
                       style={meta ? hexToGroupStyle(meta.hex) : { backgroundColor: '#f3f4f6', color: '#374151', borderColor: '#d1d5db' }}
                       title={`${emp.fullName}${emp.groupName ? ` — ${emp.groupName}` : ''} · ${STATUS_LABEL[cell.status] ?? cell.status}`}
                     >
                       {emp.isReplacement && <span className="font-bold mr-0.5" style={{ color: '#7c3aed' }}>R</span>}
+                      {emp.isReassigned && <span className="font-bold mr-0.5" style={{ color: '#2563eb' }}>M</span>}
                       {displayGuardName(emp.fullName, emp.shortName, 16)}
                     </button>
                   );

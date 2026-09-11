@@ -40,7 +40,7 @@ function normalizeBase(base: string | undefined): string {
 }
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, __dirname, "");
+  const env = loadEnv(mode, import.meta.dirname, "");
   const base = normalizeBase(env.VITE_BASE_PATH);
 
   return {
@@ -49,9 +49,9 @@ export default defineConfig(({ mode }) => {
 
     resolve: {
       alias: {
-        "@": path.resolve(__dirname, "./src"),
-        "@shared": path.resolve(__dirname, "../shared"),
-        "@assets": path.resolve(__dirname, "../attached_assets"),
+        "@": path.resolve(import.meta.dirname, "./src"),
+        "@shared": path.resolve(import.meta.dirname, "../shared"),
+        "@assets": path.resolve(import.meta.dirname, "../attached_assets"),
       },
     },
 

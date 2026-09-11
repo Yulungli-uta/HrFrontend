@@ -187,6 +187,13 @@ const normalizeEmployee = (e: any): Employee => {
     scheduleName: cleanDisplayText(rawScheduleName, ""),
     startTime: pick(e, ["startTime", "StartTime"]),
     endTime: pick(e, ["endTime", "EndTime"]),
+    isSpecialSchedule: Boolean(
+      pick(e, ["isSpecialSchedule", "IsSpecialSchedule"]) ?? false
+    ),
+    specialScheduleCaseType: pick(e, [
+      "specialScheduleCaseType",
+      "SpecialScheduleCaseType",
+    ]),
   } as any;
 };
 
@@ -276,6 +283,30 @@ export default function EmployeeSchedules() {
     return (rawEmployees || []).map(normalizeEmployee);
   }, [rawEmployees]);
 
+  // Filtro "Solo horarios especiales": solo hay 12 casos reales hoy y pueden
+  // caer en cualquier página del listado paginado normal, así que en vez de
+  // filtrar client-side sobre la página ya cargada (que los perdería si no
+  // están en esa página), se hace una consulta server-side dedicada cuando
+  // el filtro está activo.
+  const {
+    data: specialRes,
+    isLoading: loadingSpecial,
+  } = useQuery({
+    queryKey: ["employee-details-special-schedules"],
+    queryFn: () =>
+      VistaDetallesEmpleadosAPI.listPaged({
+        page: 1,
+        pageSize: 200,
+        onlySpecialSchedule: true,
+      }),
+    enabled: filters.status === "special",
+    select: (res) => (res?.status === "success" ? res.data.items : []),
+  });
+
+  const specialEmployees: Employee[] = useMemo(() => {
+    return (specialRes || []).map(normalizeEmployee);
+  }, [specialRes]);
+
   const { data: schedulesRes } = useQuery({
     queryKey: ["schedules"],
     queryFn: async () => await HorariosAPI.list(),
@@ -364,13 +395,21 @@ export default function EmployeeSchedules() {
   }, [employees]);
 
   const filteredEmployees = useMemo(() => {
-    return employees.filter((emp) => {
+    const sourceEmployees =
+      filters.status === "special" ? specialEmployees : employees;
+
+    return sourceEmployees.filter((emp) => {
       const departmentValue = normalizeText(emp.departmentName);
       const selectedDepartment = normalizeText(filters.department);
 
       const matchesDepartment =
         filters.department === "all" ||
         departmentValue === selectedDepartment;
+
+      if (filters.status === "special") {
+        // Ya viene filtrado server-side por onlySpecialSchedule=true.
+        return matchesDepartment;
+      }
 
       const { hasAssignedSchedule } = getEmployeeScheduleInfo(emp);
 
@@ -381,7 +420,7 @@ export default function EmployeeSchedules() {
 
       return matchesDepartment && matchesStatus;
     });
-  }, [employees, filters, schedulesByEmployee]);
+  }, [employees, specialEmployees, filters, schedulesByEmployee]);
 
   const handleAssignSchedule = (employee: Employee) => {
     setSelectedEmployee(employee);
@@ -478,7 +517,7 @@ export default function EmployeeSchedules() {
       </div>
 
       {totalCount > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card className="bg-primary/10 border-primary/30">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="bg-primary p-2 rounded-full">
@@ -520,6 +559,33 @@ export default function EmployeeSchedules() {
                   {globalStats?.withoutSchedule ?? "—"}
                 </p>
                 <p className="text-xs text-muted-foreground">Sin asignación</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card
+            className="cursor-pointer bg-violet-500/10 border-violet-500/30"
+            onClick={() =>
+              setFilters((f) => ({
+                ...f,
+                status: f.status === "special" ? "all" : "special",
+              }))
+            }
+          >
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="bg-violet-500 p-2 rounded-full">
+                <Clock className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-violet-600">
+                  Horario Especial
+                </p>
+                <p className="text-2xl font-bold text-violet-600">
+                  {globalStats?.specialSchedules ?? "—"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Sustituto/maternidad/lactancia/otro
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -578,6 +644,9 @@ export default function EmployeeSchedules() {
                   <SelectItem value="all">Todos</SelectItem>
                   <SelectItem value="withSchedule">Con horario</SelectItem>
                   <SelectItem value="withoutSchedule">Sin horario</SelectItem>
+                  <SelectItem value="special">
+                    Horario especial (sustituto/maternidad/lactancia/otro)
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -597,7 +666,12 @@ export default function EmployeeSchedules() {
         </CardHeader>
 
         <CardContent className="p-0">
-          {filteredEmployees.length === 0 ? (
+          {filters.status === "special" && loadingSpecial ? (
+            <div className="py-8 text-center text-muted-foreground">
+              <div className="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600" />
+              <p className="mt-4">Cargando horarios especiales...</p>
+            </div>
+          ) : filteredEmployees.length === 0 ? (
             <div className="py-8 text-center text-muted-foreground">
               {employees.length === 0 ? (
                 <div>
@@ -692,7 +766,7 @@ export default function EmployeeSchedules() {
                       </TableCell>
 
                       <TableCell>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span>{scheduleLabel || "—"}</span>
                           {hasSchedule && (
                             <Badge
@@ -705,6 +779,14 @@ export default function EmployeeSchedules() {
                               {isActive
                                 ? statusChip.active.label
                                 : statusChip.expired.label}
+                            </Badge>
+                          )}
+                          {employee.isSpecialSchedule && (
+                            <Badge className="bg-violet-500/15 text-violet-600">
+                              Especial
+                              {employee.specialScheduleCaseType
+                                ? `: ${employee.specialScheduleCaseType}`
+                                : ""}
                             </Badge>
                           )}
                         </div>

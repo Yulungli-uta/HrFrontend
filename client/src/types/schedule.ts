@@ -22,6 +22,9 @@ export interface Employee {
   scheduleID?: number; // Añadir este campo
   schedule?: any; // Añadir este campo
   scheduleName?: string;
+  /** Horario especial (sustituto/maternidad/lactancia/otro) en vez de catálogo. */
+  isSpecialSchedule?: boolean;
+  specialScheduleCaseType?: string;
 }
 
 export interface EmployeeSchedule {

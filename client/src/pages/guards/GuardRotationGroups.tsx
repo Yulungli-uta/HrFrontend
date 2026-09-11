@@ -1,5 +1,5 @@
 //src/pages/guards/GuardRotationGroups.tsx
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Users, Plus, MapPin, Shield, ChevronRight, ChevronLeft,
   Loader2, UserMinus, X, Building2, RotateCw, ChevronDown, ChevronUp,
@@ -29,13 +29,14 @@ import {
   useGuardGroupMutations, useGeneralGroupsWithSubgroups, useGeneralGroups,
   useGuardRotationGroups,
   useGuardRefTypes, useEmployeeLocationAssignments, useLocationRotationMutations,
-  useGuardLocationsAssignable, useLocationRotationPeriods, useLocationRotationAssignments,
+  useGuardLocationsAssignable, useGuardLocationsTree, useLocationRotationPeriods, useLocationRotationAssignments,
   useGroupPatterns,
 } from '@/hooks/guards/useGuards';
 import type {
   LocationSummaryDto, LocationGroupDetailDto,
   GuardRotationGroupDto, GuardRotationGroupWithSubgroupsDto,
   GuardRotationGroupEmployeeDto,
+  GuardServiceLocationTreeDto,
   CreateGuardRotationGroupDto, UpdateGuardRotationGroupDto,
   DuplicateGuardRotationGroupDto,
   RemoveEmployeeFromRotationGroupDto, AssignEmployeeToRotationGroupDto,
@@ -168,7 +169,7 @@ function EmployeeLocationSection({
   onCancelPending,
 }: {
   employeeId: number;
-  locations: { locationId: number; locationCode: string | null; locationName: string }[];
+  locations: { locationId: number; locationCode: string | null; locationName: string; level: number; parentLabel: string }[];
   activePeriod: { locationRotationPeriodId: number; name: string } | null;
   pendingLocationId: number | '';
   pendingDelete: boolean;
@@ -180,6 +181,16 @@ function EmployeeLocationSection({
   const assignments: GuardLocationRotationAssignmentDto[] =
     data?.status === 'success' ? data.data : [];
   const currentAssignment = assignments.length > 0 ? assignments[0] : null;
+
+  // Agrupa las sub-ubicaciones por su ubicación padre (un grupo puede cubrir varios
+  // campus a la vez) para que el filtro/selección sea clara cuando hay varias — cada
+  // grupo muestra el nivel real de sus ubicaciones (HR.tbl_GuardServiceLocations.Level).
+  const locationGroups = new Map<string, typeof locations>();
+  for (const l of locations) {
+    const arr = locationGroups.get(l.parentLabel) ?? [];
+    arr.push(l);
+    locationGroups.set(l.parentLabel, arr);
+  }
 
   if (isLoading) return (
     <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
@@ -245,10 +256,14 @@ function EmployeeLocationSection({
         <option value="">
           {currentAssignment ? '— Cambiar ubicación —' : 'Seleccionar sub-ubicación…'}
         </option>
-        {locations.map(l => (
-          <option key={l.locationId} value={l.locationId}>
-            {l.locationCode ? `[${l.locationCode}] ` : ''}{l.locationName}
-          </option>
+        {Array.from(locationGroups.entries()).map(([parentLabel, items]) => (
+          <optgroup key={parentLabel} label={parentLabel}>
+            {items.map(l => (
+              <option key={l.locationId} value={l.locationId}>
+                {l.locationCode ? `[${l.locationCode}] ` : ''}{l.locationName} · Nivel {l.level}
+              </option>
+            ))}
+          </optgroup>
         ))}
       </select>
       {isPending && (
@@ -275,6 +290,7 @@ function GroupEmployeesPanel({ group }: { group: LocationGroupDetailDto }) {
   const { assignBatch, removeEmployee } = useGuardGroupMutations();
   const { data: periodsData } = useLocationRotationPeriods();
   const { data: locData } = useGuardLocationsAssignable();
+  const { data: treeData } = useGuardLocationsTree();
   const { createAssignment, updateAssignment, deleteAssignment } = useLocationRotationMutations();
   const { data: periodAssignmentsData } = useLocationRotationAssignments(
     (periodsData?.status === 'success' ? (periodsData.data.find(p => p.isActive) ?? periodsData.data[0] ?? null) : null)?.locationRotationPeriodId ?? null
@@ -294,6 +310,31 @@ function GroupEmployeesPanel({ group }: { group: LocationGroupDetailDto }) {
   const availableLocations = groupParentLocationIds.length > 0
     ? allLocations.filter(l => l.parentLocationId != null && groupParentLocationIds.includes(l.parentLocationId))
     : allLocations;
+
+  // Nombre de cada ubicación por Id (raíz incluida) desde el árbol completo — sirve para
+  // resolver el nombre del padre de cada sub-ubicación y así agruparlas/identificarlas
+  // mejor cuando el grupo cubre varios campus a la vez.
+  const locationNameById = useMemo(() => {
+    const map = new Map<number, string>();
+    const walk = (nodes: GuardServiceLocationTreeDto[]) => {
+      for (const n of nodes) {
+        map.set(n.locationId, n.locationName);
+        if (n.children.length > 0) walk(n.children);
+      }
+    };
+    if (treeData?.status === 'success') walk(treeData.data);
+    return map;
+  }, [treeData]);
+
+  const availableLocationsWithLevel = availableLocations.map(l => ({
+    locationId: l.locationId,
+    locationCode: l.locationCode,
+    locationName: l.locationName,
+    level: l.level,
+    parentLabel: l.parentLocationId != null
+      ? (locationNameById.get(l.parentLocationId) ?? 'Otras ubicaciones')
+      : 'Otras ubicaciones',
+  }));
 
   // Estado de cambios de ubicación pendientes (empleadoId → { locationId, existingAssignmentId })
   const [pendingLocations, setPendingLocations] = useState<Map<number, PendingLocation>>(new Map());
@@ -459,7 +500,7 @@ function GroupEmployeesPanel({ group }: { group: LocationGroupDetailDto }) {
                   </div>
                   <EmployeeLocationSection
                     employeeId={e.employeeId}
-                    locations={availableLocations}
+                    locations={availableLocationsWithLevel}
                     activePeriod={activePeriod}
                     pendingLocationId={pendingLocations.get(e.employeeId)?.locationId ?? ''}
                     pendingDelete={pendingDeletes.has(e.employeeId)}
