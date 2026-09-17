@@ -248,6 +248,32 @@ export const EnfermedadesCatastroficasAPI = {
     ),
 };
 
+/** Un título de la previsualización de sincronización SENESCYT/DINARDAP. */
+export interface TituloSyncPreviewItem {
+  numeroRegistro: string | null;
+  nombreTitulo: string;
+  institucion: string | null;
+  nivelNombreOriginal: string | null;
+  yaExiste: boolean;
+  requiereRevision: boolean;
+  motivoRevision: string | null;
+}
+
+export interface TituloSyncPreview {
+  personId: number;
+  totalEncontrados: number;
+  totalNuevos: number;
+  totalYaExistentes: number;
+  items: TituloSyncPreviewItem[];
+}
+
+export interface TituloSyncResult {
+  personId: number;
+  titulosCreados: number;
+  titulosOmitidos: number;
+  requierenRevision: number;
+}
+
 export const NivelesEducacionAPI = {
   ...createApiService<any, any>('/api/v1/rh/cv/education-levels'),
 
@@ -263,6 +289,16 @@ export const NivelesEducacionAPI = {
       `${API_CONFIG.RH_BASE_URL}/api/v1/rh/cv/education-levels/with-document`,
       formData
     ),
+
+  /** Previsualiza la sincronización con SENESCYT (vía DINARDAP) - no persiste nada todavía. */
+  previewSenescytSync: (personId: number): Promise<ApiResponse<TituloSyncPreview>> =>
+    apiFetch<TituloSyncPreview>(`/api/v1/rh/cv/education-levels/person/${personId}/senescyt-sync/preview`),
+
+  /** Confirma la sincronización: crea únicamente los títulos que no existían todavía. */
+  confirmSenescytSync: (personId: number): Promise<ApiResponse<TituloSyncResult>> =>
+    apiFetch<TituloSyncResult>(`/api/v1/rh/cv/education-levels/person/${personId}/senescyt-sync/confirm`, {
+      method: 'POST',
+    }),
 };
 
 // =============================================================================

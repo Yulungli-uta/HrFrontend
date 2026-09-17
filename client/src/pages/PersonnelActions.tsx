@@ -11,6 +11,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import {
   Select,
@@ -387,6 +388,9 @@ export default function PersonnelActionsPage() {
         <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Nueva Acción de Personal</DialogTitle>
+            <DialogDescription>
+              Completa los datos para registrar una nueva acción de personal.
+            </DialogDescription>
           </DialogHeader>
           <PersonnelActionForm
             isBusy={createMutation.isPending}

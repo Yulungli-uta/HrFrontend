@@ -3,8 +3,9 @@
 import React, { useMemo, useState } from 'react';
 import { AttendanceCalculationAPI, ScheduledJobsAPI } from '@/lib/api';
 import type { AttendanceCalculationRequestDto } from '@/lib/api';
-import type { StudentEnrollmentSyncResult } from '@/lib/api';
+import type { StudentEnrollmentSyncResult, DinardapSenescytSyncResponse } from '@/lib/api';
 import { parseApiError } from '@/lib/error-handling';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface ExecutionState {
   loading: boolean;
@@ -92,6 +93,11 @@ const JobExecution: React.FC = () => {
   const [periodCode, setPeriodCode] = useState<string>('');
   const [previousPeriod, setPreviousPeriod] = useState<string>('');
   const [studentSyncState, setStudentSyncState] =
+    useState<ExecutionState>(initialExecutionState);
+
+  // ── Sincronización SENESCYT/DINARDAP ──────────────────────────────────────
+  const [dinardapPersonId, setDinardapPersonId] = useState<string>('');
+  const [dinardapSyncState, setDinardapSyncState] =
     useState<ExecutionState>(initialExecutionState);
 
   const validateDates = (): boolean => {
@@ -218,6 +224,34 @@ const JobExecution: React.FC = () => {
       }
     } catch (error: unknown) {
       setStudentSyncState({
+        loading: false, success: false, message: '',
+        error: parseApiError(error).message ?? 'Error inesperado.',
+      });
+    }
+  };
+
+  const executeDinardapSenescytSync = async (personId?: number) => {
+    setDinardapSyncState({ loading: true, success: null, message: '', error: null });
+
+    try {
+      const response = await ScheduledJobsAPI.runDinardapSenescytSync(personId);
+
+      if (response.status === 'success') {
+        const d = response.data as DinardapSenescytSyncResponse;
+        setDinardapSyncState({
+          loading: false,
+          success: true,
+          message: d.message ?? 'Sincronización completada.',
+          error: null,
+        });
+      } else {
+        setDinardapSyncState({
+          loading: false, success: false, message: '',
+          error: response.error?.message ?? 'Error al ejecutar la sincronización.',
+        });
+      }
+    } catch (error: unknown) {
+      setDinardapSyncState({
         loading: false, success: false, message: '',
         error: parseApiError(error).message ?? 'Error inesperado.',
       });
@@ -482,6 +516,98 @@ const JobExecution: React.FC = () => {
             <li>Configure <span className="font-mono text-xs">StudentEmployeeTypeIds = [0]</span> en RepositoryUta appsettings.</li>
           </ul>
         </div>
+      </div>
+
+      {/* ── Sección: Sincronización SENESCYT/DINARDAP ───────────────────────── */}
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-md">
+        <h2 className="mb-6 border-b border-border pb-4 text-2xl font-bold text-foreground">
+          Formación Académica — Sincronización SENESCYT
+        </h2>
+
+        <Tabs defaultValue="manual" className="w-full">
+          <TabsList>
+            <TabsTrigger value="manual">Ejecución manual</TabsTrigger>
+            <TabsTrigger value="programada">Ejecución programada</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="manual" className="mt-4">
+            <div className="rounded-2xl border border-border bg-background p-6">
+              <h3 className="mb-4 text-lg font-semibold text-foreground">Parámetros (opcional)</h3>
+              <div>
+                <label htmlFor="dinardapPersonId" className="mb-2 block text-sm font-medium text-foreground">
+                  ID de Persona (opcional)
+                </label>
+                <input
+                  type="number"
+                  id="dinardapPersonId"
+                  value={dinardapPersonId}
+                  onChange={(e) => setDinardapPersonId(e.target.value)}
+                  placeholder="Dejar vacío para sincronizar todos los empleados activos"
+                  className="w-full max-w-sm rounded-md border border-border bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+            </div>
+
+            <div className="mt-4 space-y-4">
+              <div className="rounded-2xl border border-border bg-card p-4 transition-colors hover:border-primary/40">
+                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                  <div className="flex-1">
+                    <h3 className="text-lg font-medium text-foreground">Sincronizar Formación Académica</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Consulta DINARDAP (Títulos SENESCYT) para el empleado indicado, o para{' '}
+                      <span className="font-medium text-foreground">todos los empleados activos</span> si
+                      se deja el campo vacío.
+                    </p>
+                    <ul className="mt-3 list-inside list-disc space-y-1 text-sm text-muted-foreground">
+                      <li>Solo crea los títulos que no existían todavía (nunca duplica)</li>
+                      <li>Un fallo puntual de DINARDAP para una persona se omite y continúa con las demás</li>
+                      <li>Sobre todos los activos puede tardar varios minutos</li>
+                    </ul>
+                  </div>
+
+                  <button
+                    onClick={() =>
+                      executeDinardapSenescytSync(
+                        dinardapPersonId.trim() ? Number(dinardapPersonId.trim()) : undefined
+                      )
+                    }
+                    disabled={dinardapSyncState.loading}
+                    className="mt-2 rounded-md bg-emerald-600 px-6 py-2 font-medium text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground md:mt-0"
+                  >
+                    {dinardapSyncState.loading
+                      ? 'Ejecutando...'
+                      : dinardapPersonId.trim()
+                        ? 'Sincronizar esta persona'
+                        : 'Sincronizar todos los activos'}
+                  </button>
+                </div>
+
+                <ExecutionStatus state={dinardapSyncState} />
+              </div>
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+              <h3 className="mb-2 text-sm font-semibold text-emerald-400">Consideraciones</h3>
+              <ul className="list-inside list-disc space-y-1 text-sm text-emerald-400">
+                <li>Requiere el permiso <span className="font-mono text-xs">DINARDAP_HR.READ</span>.</li>
+                <li>Dedup por número de registro SENESCYT — nunca modifica un título ya existente.</li>
+                <li>
+                  Los niveles/grados que DINARDAP no tiene catalogados quedan marcados para revisión
+                  manual, no se pierden.
+                </li>
+              </ul>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="programada" className="mt-4">
+            <div className="rounded-2xl border border-dashed border-border bg-background p-6 text-center text-sm text-muted-foreground">
+              Sin cron configurado todavía — el job existe (
+              <span className="font-mono text-xs">DinardapSenescytSyncJob</span>) y está registrado
+              como disparable a demanda, pero no corre solo hasta que se confirme la periodicidad
+              deseada (diario/semanal). Mientras tanto, use la pestaña "Ejecución manual".
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
 
     </div>

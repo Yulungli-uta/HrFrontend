@@ -24,8 +24,9 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { ShieldCheck, CheckCircle2, XCircle, Loader2, FileText, Users, Clock, Accessibility, ListChecks, Search } from 'lucide-react';
-import { CargasFamiliaresAPI, TiposReferenciaAPI, type ApiResponse, type PagedResult } from '@/lib/api';
+import { CargasFamiliaresAPI, type ApiResponse, type PagedResult } from '@/lib/api';
 import { REF_TYPE_CATEGORIES } from '@/features/refTypeCategories';
+import { useRefTypesByCategory } from '@/hooks/useRefTypes';
 import { ReusableDocumentManager } from '@/components/ReusableDocumentManager';
 import { FAMILY_MEMBER_DOCUMENT_DIRECTORY_CODE, FAMILY_MEMBER_DOCUMENT_ENTITY_TYPE } from '@/features/constants';
 import { useToast } from '@/hooks/use-toast';
@@ -280,12 +281,8 @@ export default function FamilyBurdenValidationPage() {
   const [approvingId, setApprovingId] = useState<number | null>(null);
   const [rejectingId, setRejectingId] = useState<number | null>(null);
 
-  const { data: statusTypesResp } = useQuery({
-    queryKey: ['reftypes', 'FAMILY_BURDEN_STATUS'],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.FAMILY_BURDEN_STATUS),
-    staleTime: 10 * 60 * 1000,
-  });
-  const statusTypes: any[] = statusTypesResp?.status === 'success' ? statusTypesResp.data ?? [] : [];
+  const { data: statusTypesData } = useRefTypesByCategory(REF_TYPE_CATEGORIES.FAMILY_BURDEN_STATUS);
+  const statusTypes: any[] = statusTypesData ?? [];
   const statusIdByName = new Map<string, number>(
     statusTypes.map((t: any) => [String(t.name), Number(t.typeId ?? t.typeID)])
   );

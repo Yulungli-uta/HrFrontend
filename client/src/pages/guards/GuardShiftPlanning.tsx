@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
@@ -755,6 +755,7 @@ function GenerateDialog({
       >
         <DialogHeader>
           <DialogTitle>Generar planificación automática</DialogTitle>
+          <DialogDescription>Genera la planificación de turnos de guardias de forma automática.</DialogDescription>
         </DialogHeader>
 
         {/* Paso 1: formulario */}
@@ -1022,6 +1023,7 @@ function CancelRangeDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Cancelar planificación</DialogTitle>
+          <DialogDescription>Confirma la cancelación de esta planificación de turnos.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">

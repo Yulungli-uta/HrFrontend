@@ -6,6 +6,7 @@ import { Plus, ClipboardCheck, Trash2, RefreshCw, Edit, FolderPlus } from "lucid
 import { useToast } from "@/hooks/use-toast";
 import { TramiteRequirementsAPI, TiposReferenciaAPI } from "@/lib/api";
 import type { AccessibleModuleDto, TramiteRequirementDto } from "@/lib/api";
+import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,7 +27,6 @@ export default function TramiteRequirementsPage() {
   const [modules, setModules] = useState<AccessibleModuleDto[]>([]);
   const [selectedModuleId, setSelectedModuleId] = useState<number | null>(null);
   const [requirements, setRequirements] = useState<TramiteRequirementDto[]>([]);
-  const [documentTypes, setDocumentTypes] = useState<DocumentTypeOption[]>([]);
   const [isLoadingModules, setIsLoadingModules] = useState(true);
   const [isLoadingRequirements, setIsLoadingRequirements] = useState(false);
 
@@ -47,9 +47,14 @@ export default function TramiteRequirementsPage() {
   const [isCreatingModule, setIsCreatingModule] = useState(false);
   const [moduleForm, setModuleForm] = useState<{ name: string; description: string }>({ name: '', description: '' });
 
+  const { data: documentTypesData } = useRefTypesByCategory('DOCUMENT_TYPE');
+  const documentTypes: DocumentTypeOption[] = documentTypesData.map((rt: any) => ({
+    typeId: rt.typeId ?? rt.typeID,
+    name: rt.name,
+  }));
+
   useEffect(() => {
     loadModules();
-    loadDocumentTypes();
   }, []);
 
   useEffect(() => {
@@ -84,18 +89,6 @@ export default function TramiteRequirementsPage() {
       }
     } catch (error) {
       logger.error("TramiteRequirements", 'Error reloading modules:', error);
-    }
-  }
-
-  async function loadDocumentTypes() {
-    try {
-      const res = await TiposReferenciaAPI.byCategory('DOCUMENT_TYPE');
-      if (res.status === 'success') {
-        const list = (res.data ?? []).map((rt: any) => ({ typeId: rt.typeId ?? rt.typeID, name: rt.name }));
-        setDocumentTypes(list);
-      }
-    } catch (error) {
-      logger.error("TramiteRequirements", 'Error loading document types:', error);
     }
   }
 

@@ -1,34 +1,20 @@
-import { useState, useEffect, useCallback } from "react";
-import { TiposReferenciaAPI, handleApiError, type ApiResponse } from "@/lib/api";
+import { useMemo } from "react";
 import type { ReferenceType } from "@/types/department";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
+import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 
 const DEPT_TYPE_CATEGORY = REF_TYPE_CATEGORIES.DEPARTMENT_TYPE;
 
 export const useReferenceTypes = () => {
-  const [refTypes, setRefTypes] = useState<ReferenceType[]>([]);
-  const [loading, setLoading] = useState(false);
+  const { data, isLoading, refetch } = useRefTypesByCategory(DEPT_TYPE_CATEGORY);
 
-  const loadTypes = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res: ApiResponse<ReferenceType[]> = await TiposReferenciaAPI.byCategory(DEPT_TYPE_CATEGORY);
-      if (res.status === "success") {
-        const activeTypes = (res.data || [])
-          .filter(t => t.isActive)
-          .sort((a, b) => a.name.localeCompare(b.name));
-        setRefTypes(activeTypes);
-      }
-    } catch {
-      setRefTypes([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const refTypes = useMemo(
+    () =>
+      (data as unknown as ReferenceType[])
+        .filter((t) => t.isActive)
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [data]
+  );
 
-  useEffect(() => {
-    loadTypes();
-  }, [loadTypes]);
-
-  return { refTypes, loading, refetch: loadTypes };
+  return { refTypes, loading: isLoading, refetch };
 };

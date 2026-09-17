@@ -39,7 +39,8 @@ import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, RefreshCw, Upload } from "lucide-react";
 
 import { EmployeeCombobox } from "@/components/ui/EmployeeCombobox";
-import { TimeBalanceAPI, TiposReferenciaAPI, EmployeeLaborRegimesAPI } from "@/lib/api";
+import { TimeBalanceAPI, EmployeeLaborRegimesAPI } from "@/lib/api";
+import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import type {
   VacationBalanceAdjustmentMode,
   VacationBalanceBulkAdjustmentItem,
@@ -465,11 +466,8 @@ function BulkAdjustmentTab() {
   const [allowNegativeResult, setAllowNegativeResult] = useState(true);
   const [results, setResults] = useState<VacationBalanceBulkAdjustmentRowResult[] | null>(null);
 
-  const { data: regimesResp } = useQuery({
-    queryKey: ["refTypes", REF_TYPE_CATEGORIES.CONTRACT_TYPE],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CONTRACT_TYPE),
-  });
-  const regimes = regimesResp?.status === "success" ? (regimesResp.data ?? []).filter((r: any) => r.isActive) : [];
+  const { data: regimesData } = useRefTypesByCategory(REF_TYPE_CATEGORIES.CONTRACT_TYPE);
+  const regimes = (regimesData ?? []).filter((r: any) => r.isActive);
 
   const negativeCount = useMemo(() => parsedRows.filter((r) => r.valueMinutes < 0).length, [parsedRows]);
 

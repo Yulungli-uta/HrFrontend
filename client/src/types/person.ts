@@ -223,7 +223,9 @@ export interface EducationLevel {
   educationId: number;
   personId: number;
   educationLevelTypeId: number;
-  institutionId: number;
+  /** Nullable desde 2026-09-16: un título sincronizado sin institución catalogada
+   * queda en null - ver institutionNameOriginal. */
+  institutionId: number | null;
   title: string;
   specialty: string | null;
   startDate: string | null;
@@ -232,6 +234,20 @@ export interface EducationLevel {
   location: string | null;
   score: number | null;
   senescytRegistrationNumber: string | null;
+  /** Solo aplica cuando educationLevelTypeId es Cuarto Nivel (Doctor/Maestría/Especialista/Diplomado). */
+  siiesGradoTypeId: number | null;
+  /** fechaGrado de DINARDAP - distinto de startDate/endDate (fechas de estudio). */
+  senescytGraduationDate: string | null;
+  /** fechaRegistro de DINARDAP (fecha de registro en SENESCYT) - distinto de senescytRegistrationNumber (el número). */
+  senescytRegistrationDate: string | null;
+  /** "NACIONALES" / "EXTRANJEROS" tal como lo manda DINARDAP. */
+  senescytType: string | null;
+  /** Texto crudo del nivel tal como lo manda DINARDAP - solo lectura, nunca editable. */
+  senescytNivelNombreOriginal: string | null;
+  /** Nombre libre de la institución tal como lo manda DINARDAP - solo lectura, se usa cuando institutionId es null. */
+  institutionNameOriginal: string | null;
+  /** "Manual" o "Dinardap" - gobierna qué campos quedan bloqueados en el formulario. */
+  source: string;
   createdAt?: string;
 }
 

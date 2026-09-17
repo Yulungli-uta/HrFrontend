@@ -1,7 +1,8 @@
 // src/pages/HrParametersPage.tsx
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { TiposReferenciaAPI } from '@/lib/api';
+import { useRefTypes, REF_TYPES_QUERY_KEY } from '@/hooks/useRefTypes';
 import { HR_PARAMETER_DOMAINS, HR_PARAMETER_CATEGORIES, type ParameterDomain } from '@/features/constants';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -54,29 +55,25 @@ export default function HrParametersPage() {
   // Categorías disponibles en el formulario — siempre del dominio activo
   const [formCategories, setFormCategories] = useState<string[]>([]);
 
-  const { data: allItems = [], isLoading, refetch } = useQuery({
-    queryKey: ['ref-types', 'all'],
-    queryFn: async () => {
-      const res = await TiposReferenciaAPI.list();
-      if (res.status !== 'success') return [];
-      const arr: any[] = Array.isArray(res.data) ? res.data : [];
-      return arr
-        .filter(x => HR_PARAMETER_CATEGORIES.includes(x.category ?? ''))
-        .map<RefItem>(x => ({
-          typeId: x.typeId ?? x.typeID ?? 0,
-          category: x.category ?? '',
-          name: x.name ?? '',
-          description: x.description ?? null,
-          isActive: x.isActive === true || x.isActive === 1,
-        }));
-    },
-    staleTime: 60_000,
-  });
+  const { data: allRefTypesResp, isLoading, refetch } = useRefTypes();
+  const allItems: RefItem[] = (() => {
+    if (allRefTypesResp?.status !== 'success') return [];
+    const arr: any[] = Array.isArray(allRefTypesResp.data) ? allRefTypesResp.data : [];
+    return arr
+      .filter(x => HR_PARAMETER_CATEGORIES.includes(x.category ?? ''))
+      .map<RefItem>(x => ({
+        typeId: x.typeId ?? x.typeID ?? 0,
+        category: x.category ?? '',
+        name: x.name ?? '',
+        description: x.description ?? null,
+        isActive: x.isActive === true || x.isActive === 1,
+      }));
+  })();
 
   const createMutation = useMutation({
     mutationFn: (payload: object) => TiposReferenciaAPI.create(payload),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['ref-types'] });
+      qc.invalidateQueries({ queryKey: REF_TYPES_QUERY_KEY });
       toast({ title: 'Creado', description: 'Tipo de referencia creado correctamente.' });
       closeForm();
     },
@@ -89,7 +86,7 @@ export default function HrParametersPage() {
     mutationFn: ({ id, payload }: { id: number; payload: object }) =>
       TiposReferenciaAPI.update(id, payload),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['ref-types'] });
+      qc.invalidateQueries({ queryKey: REF_TYPES_QUERY_KEY });
       toast({ title: 'Actualizado', description: 'Tipo de referencia actualizado.' });
       closeForm();
     },
@@ -101,7 +98,7 @@ export default function HrParametersPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: number) => TiposReferenciaAPI.remove(id),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['ref-types'] });
+      qc.invalidateQueries({ queryKey: REF_TYPES_QUERY_KEY });
       toast({ title: 'Eliminado', description: 'Tipo de referencia eliminado.' });
       setDeleteItem(null);
     },

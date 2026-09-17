@@ -28,15 +28,15 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Loader2, Save, FileText, Eye, Download, AlertCircle, CheckCircle2, ArrowLeft, ArrowRight } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { useQuery } from '@tanstack/react-query';
 import { usePersonnelActionLookups } from '@/hooks/personnelActions/usePersonnelActionLookups';
-import { EmpleadosAPI, TiposReferenciaAPI /*, DepartmentAuthoritiesAPI */ } from '@/lib/api';
-import type { RefType } from '@/lib/api';
+import { EmpleadosAPI /*, DepartmentAuthoritiesAPI */ } from '@/lib/api';
+import { useRefTypesByCategory } from '@/hooks/useRefTypes';
 import { REF_TYPE_CATEGORIES } from '@/features/refTypeCategories';
 import { PersonSearchCombobox } from './PersonSearchCombobox';
 import { DepartmentSelect } from '@/components/departments/DepartmentSelect';
@@ -192,6 +192,9 @@ function EmployeeSelectDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Seleccionar empleado</DialogTitle>
+          <DialogDescription>
+            Se encontraron varios registros de empleado para esta persona — elige el correcto.
+          </DialogDescription>
         </DialogHeader>
         <p className="text-sm text-muted-foreground mb-2">
           Esta persona tiene múltiples registros de empleado activo.
@@ -244,30 +247,9 @@ export function PersonnelActionForm({
   const { toast } = useToast();
   const { jobs, actionTypes, isLoading } = usePersonnelActionLookups(true);
 
-  const STALE = 5 * 60 * 1000;
-  const { data: instProcData } = useQuery({
-    queryKey: ['ref-types', 'AP_PROCESO_INSTITUCIONAL'],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.AP_PROCESO_INSTITUCIONAL),
-    staleTime: STALE,
-  });
-  const institutionalProcessOptions: RefType[] =
-    instProcData?.status === 'success' ? (instProcData.data ?? []) : [];
-
-  const { data: mgmtLevelData } = useQuery({
-    queryKey: ['ref-types', 'AP_NIVEL_GESTION'],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.AP_NIVEL_GESTION),
-    staleTime: STALE,
-  });
-  const managementLevelOptions: RefType[] =
-    mgmtLevelData?.status === 'success' ? (mgmtLevelData.data ?? []) : [];
-
-  const { data: workplaceData } = useQuery({
-    queryKey: ['ref-types', 'AP_LUGAR_TRABAJO'],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.AP_LUGAR_TRABAJO),
-    staleTime: STALE,
-  });
-  const workplaceOptions: RefType[] =
-    workplaceData?.status === 'success' ? (workplaceData.data ?? []) : [];
+  const { data: institutionalProcessOptions } = useRefTypesByCategory(REF_TYPE_CATEGORIES.AP_PROCESO_INSTITUCIONAL);
+  const { data: managementLevelOptions } = useRefTypesByCategory(REF_TYPE_CATEGORIES.AP_NIVEL_GESTION);
+  const { data: workplaceOptions } = useRefTypesByCategory(REF_TYPE_CATEGORIES.AP_LUGAR_TRABAJO);
 
   // Deshabilitado: los responsables ahora se seleccionan con EmployeeCombobox (búsqueda libre).
   // Descomentar si se requiere volver a poblar desde Autoridades de Departamento.
@@ -296,14 +278,9 @@ export function PersonnelActionForm({
   // true cuando el tipo de acción seleccionado requiere crear usuario (ingreso nuevo)
   const [actionRequiresUserCreation, setActionRequiresUserCreation] = useState(false);
 
-  const { data: contractTypeData } = useQuery({
-    queryKey: ['ref-types', 'CONTRACT_TYPE'],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CONTRACT_TYPE),
-    staleTime: STALE,
+  const { data: contractTypeOptions } = useRefTypesByCategory(REF_TYPE_CATEGORIES.CONTRACT_TYPE, {
     enabled: actionRequiresUserCreation && personHasNoEmployee,
   });
-  const contractTypeOptions: RefType[] =
-    contractTypeData?.status === 'success' ? (contractTypeData.data ?? []) : [];
   // paso actual del wizard (solo en modo creación)
   const [wizardStep, setWizardStep] = useState(1);
 

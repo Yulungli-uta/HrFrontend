@@ -20,8 +20,9 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/features/auth";
-import { TiposPermisosAPI, TiposReferenciaAPI } from "@/lib/api";
+import { TiposPermisosAPI } from "@/lib/api";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
+import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -131,7 +132,10 @@ export default function PermissionTypesPage() {
   const [permissionTypes, setPermissionTypes] = useState<PermissionTypeUI[]>([]);
   const [filteredTypes, setFilteredTypes] = useState<PermissionTypeUI[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [contractTypes, setContractTypes] = useState<{ typeId: number; name: string }[]>([]);
+  const { data: contractTypesData } = useRefTypesByCategory(REF_TYPE_CATEGORIES.CONTRACT_TYPE);
+  const contractTypes = contractTypesData
+    .filter((r: any) => r.isActive)
+    .map((r: any) => ({ typeId: r.typeId, name: r.name }));
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingType, setEditingType] = useState<PermissionTypeUI | null>(null);
@@ -153,10 +157,6 @@ export default function PermissionTypesPage() {
 
   useEffect(() => {
     loadPermissionTypes();
-    TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CONTRACT_TYPE).then((res: any) => {
-      const items = Array.isArray(res?.data) ? res.data : [];
-      setContractTypes(items.filter((r: any) => r.isActive).map((r: any) => ({ typeId: r.typeId, name: r.name })));
-    }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

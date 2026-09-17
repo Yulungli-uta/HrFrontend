@@ -1,6 +1,6 @@
 // src/components/schedules/AssignScheduleForm.tsx
 import { useState, useEffect } from "react";
-import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -15,7 +15,8 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/features/auth";
-import { HorariosEmpleadosAPI, TiposReferenciaAPI, handleApiError } from "@/lib/api";
+import { HorariosEmpleadosAPI, handleApiError } from "@/lib/api";
+import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import type { Employee, Schedule, EmployeeSchedule } from "@/types/schedule";
 import { parseApiError } from "@/lib/error-handling";
 import { logger } from "@/lib/logger";
@@ -60,13 +61,7 @@ export default function AssignScheduleForm({
 
   // Catálogo vs. horario especial individual (sustituto/maternidad/lactancia/otro)
   const [mode, setMode] = useState<"catalog" | "special">("catalog");
-  const caseTypesQuery = useQuery({
-    queryKey: ["ref-types", "EMPLOYEE_SPECIAL_SCHEDULE_TYPE"],
-    queryFn: () => TiposReferenciaAPI.byCategory("EMPLOYEE_SPECIAL_SCHEDULE_TYPE"),
-    enabled: mode === "special",
-    staleTime: 300_000,
-  });
-  const caseTypes = caseTypesQuery.data?.status === "success" ? caseTypesQuery.data.data : [];
+  const { data: caseTypes } = useRefTypesByCategory("EMPLOYEE_SPECIAL_SCHEDULE_TYPE", { enabled: mode === "special" });
 
   const [formData, setFormData] = useState({
     scheduleId: "",

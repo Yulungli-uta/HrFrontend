@@ -10,7 +10,7 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from '@/components/ui/sheet';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { parseApiError } from '@/lib/error-handling';
@@ -77,11 +77,11 @@ function CreateVersionDialog({
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle>Nueva versión</DialogTitle>
+          <DialogDescription>
+            Se creará una copia del contenido actual como nueva versión en estado Borrador.
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Se creará una copia del contenido actual como nueva versión en estado Borrador.
-          </p>
           <div>
             <Label>Número de versión *</Label>
             <Input

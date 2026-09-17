@@ -25,7 +25,8 @@ import {
 } from "@/components/ui/select";
 
 import type { Address } from "@/types/person";
-import { TiposReferenciaAPI, PaisesAPI, ProvinciasAPI, CantonesAPI, type RefType } from "@/lib/api";
+import { PaisesAPI, ProvinciasAPI, CantonesAPI, type RefType } from "@/lib/api";
+import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { logger } from "@/lib/logger";
 
@@ -72,13 +73,10 @@ export default function AddressForm({
   onDirtyChange,
 }: AddressFormProps) {
   const {
-    data: addressTypesResp,
+    data: addressTypesRaw,
     isLoading: loadingAddressTypes,
     error: addressTypesError,
-  } = useQuery({
-    queryKey: ["refTypes", "ADDRESS_TYPE"],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.ADDRESS_TYPE),
-  });
+  } = useRefTypesByCategory(REF_TYPE_CATEGORIES.ADDRESS_TYPE);
 
   const { data: countriesResp } = useQuery({
     queryKey: ["countries"],
@@ -93,10 +91,7 @@ export default function AddressForm({
     queryFn: () => CantonesAPI.list(),
   });
 
-  const addressTypes: RefType[] =
-    addressTypesResp?.status === "success"
-      ? (addressTypesResp.data ?? []).filter((t: any) => t.isActive)
-      : [];
+  const addressTypes: RefType[] = addressTypesRaw.filter((t: any) => t.isActive);
 
   const countries: any[] = countriesResp?.status === "success" ? countriesResp.data ?? [] : [];
   const allProvinces: any[] = provincesResp?.status === "success" ? provincesResp.data ?? [] : [];

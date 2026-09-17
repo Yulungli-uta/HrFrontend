@@ -1,9 +1,10 @@
 // client/src/components/person-detail/PersonFormDialog.tsx
 import { useMemo } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import PersonForm from "@/components/forms/PersonForm";
-import { TiposReferenciaAPI, PersonasAPI, type ApiResponse } from "@/lib/api";
+import { PersonasAPI } from "@/lib/api";
+import { useRefTypes } from "@/hooks/useRefTypes";
 import { useToast } from "@/hooks/use-toast";
 import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
 import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
@@ -68,11 +69,7 @@ export function PersonFormDialog({
     data: refTypesResponse,
     isLoading: isLoadingRefTypes,
     isError: isErrorRefTypes,
-  } = useQuery<ApiResponse<ApiRefType[]>>({
-    queryKey: ["person-detail-dialog-refTypes"],
-    queryFn: () => TiposReferenciaAPI.list(),
-    enabled: open,
-  });
+  } = useRefTypes({ enabled: open });
 
   const refTypesByCategory = useMemo(() => {
     if (
@@ -80,23 +77,24 @@ export function PersonFormDialog({
       Array.isArray(refTypesResponse.data)
     ) {
       return refTypesResponse.data.reduce((acc, ref) => {
-        if (!REF_CATEGORIES.includes(ref.category)) {
+        const category = ref.category ?? "";
+        if (!REF_CATEGORIES.includes(category)) {
           return acc;
         }
 
         const normalized: RefType = {
           id: Number(ref.typeId ?? ref.typeID ?? 0),
-          category: ref.category,
+          category,
           name: ref.name,
           description: ref.description ?? undefined,
           isActive: ref.isActive,
         };
 
-        if (!acc[ref.category]) {
-          acc[ref.category] = [];
+        if (!acc[category]) {
+          acc[category] = [];
         }
 
-        acc[ref.category].push(normalized);
+        acc[category].push(normalized);
         return acc;
       }, {} as Record<string, RefType[]>);
     }
@@ -199,6 +197,9 @@ export function PersonFormDialog({
             <DialogTitle className="text-lg sm:text-xl">
               Modificar Información Personal
             </DialogTitle>
+            <DialogDescription>
+              Actualiza los datos personales, de contacto y de salud de esta persona.
+            </DialogDescription>
           </DialogHeader>
 
           <PersonForm

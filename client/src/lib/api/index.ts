@@ -54,6 +54,7 @@ export {
 export type {
   PersonDto,
   PersonCreateDto,
+  DinardapRegistroCivilDto,
   ContractTypeStatDto,
   EmployeeCompleteStatsDto,
 } from './services/people';
@@ -239,7 +240,13 @@ export type {
 
 // Jobs programados (ejecución manual)
 export { ScheduledJobsAPI } from './services/jobs';
-export type { ContractExpirationResult, StudentEnrollmentSyncResult } from './services/jobs';
+export type {
+  ContractExpirationResult,
+  StudentEnrollmentSyncResult,
+  DinardapSenescytBulkSyncResult,
+  DinardapSenescytSyncOneResult,
+  DinardapSenescytSyncResponse,
+} from './services/jobs';
 
 // Aprovisionamiento académico (estudiantes)
 export { StudentProvisioningAPI } from './services/academic/studentProvisioning';

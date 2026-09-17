@@ -48,7 +48,8 @@ import {
   type DepartmentAuthorityCreateDto,
   type DepartmentAuthorityUpdateDto,
 } from "@/lib/api";
-import { TiposReferenciaAPI, CargosAPI } from "@/lib/api";
+import { CargosAPI } from "@/lib/api";
+import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { DepartmentSelect } from "@/components/departments/DepartmentSelect";
 import { EmployeeCombobox } from "@/components/ui/EmployeeCombobox";
@@ -273,11 +274,7 @@ export function DepartmentAuthorityForm({
   // ── Carga de datos para los Comboboxes ──────────────────────────────────────
 
   /** Tipos de autoridad — filtrados por categoría AUTHORITY_TYPE */
-  const { data: authTypeData, isLoading: loadingAuthTypes } = useQuery({
-    queryKey: ["ref-types-authority"],
-    queryFn:  () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.AUTHORITY_TYPE),
-    staleTime: 10 * 60 * 1000,
-  });
+  const { data: authTypeData, isLoading: loadingAuthTypes } = useRefTypesByCategory(REF_TYPE_CATEGORIES.AUTHORITY_TYPE);
 
   /** Cargos (Jobs) */
   const { data: jobData, isLoading: loadingJobs } = useQuery({

@@ -1,7 +1,6 @@
 // src/pages/PersonnelActionDetail.tsx
 import { useState } from 'react';
 import { useParams, Link } from 'wouter';
-import { useQuery } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +10,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Loader2, ArrowLeft, History } from 'lucide-react';
 import { usePersonnelActionDetail } from '@/hooks/personnelActions/usePersonnelActionDetail';
@@ -20,10 +20,9 @@ import { PersonnelActionForm } from '@/components/personnelActions/PersonnelActi
 import { DocumentPreviewPanel } from '@/components/personnelActions/DocumentPreviewPanel';
 import { StatusHistoryTimeline } from '@/components/personnelActions/StatusHistoryTimeline';
 import { ActionDocumentsPanel } from '@/components/personnelActions/ActionDocumentsPanel';
-import { TiposReferenciaAPI } from '@/lib/api';
+import { useRefTypesByCategory } from '@/hooks/useRefTypes';
 import { REF_TYPE_CATEGORIES } from '@/features/refTypeCategories';
 import type { VwJobWithDegreeAndGroup, VwDepartmentWithType } from '@/lib/api/services/views';
-import type { RefType } from '@/lib/api';
 import type { CreatePersonnelActionRequest, UpdatePersonnelActionRequest, PersonnelActionDetail } from '@/types/personnel-actions';
 
 // Estados en los que todavía se puede adjuntar archivos desde esta pantalla — fuera de estos
@@ -144,29 +143,9 @@ export default function PersonnelActionDetail() {
 
   const { departments, jobs } = usePersonnelActionLookups(true);
 
-  const { data: instProcResp } = useQuery({
-    queryKey: ['ref-types', 'AP_PROCESO_INSTITUCIONAL'],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.AP_PROCESO_INSTITUCIONAL),
-    staleTime: 10 * 60 * 1000,
-  });
-  const institutionalProcessTypes: RefType[] =
-    instProcResp?.status === 'success' ? (instProcResp.data ?? []) : [];
-
-  const { data: mgmtLevelResp } = useQuery({
-    queryKey: ['ref-types', 'AP_NIVEL_GESTION'],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.AP_NIVEL_GESTION),
-    staleTime: 10 * 60 * 1000,
-  });
-  const managementLevelTypes: RefType[] =
-    mgmtLevelResp?.status === 'success' ? (mgmtLevelResp.data ?? []) : [];
-
-  const { data: workplaceResp } = useQuery({
-    queryKey: ['ref-types', 'AP_LUGAR_TRABAJO'],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.AP_LUGAR_TRABAJO),
-    staleTime: 10 * 60 * 1000,
-  });
-  const workplaceTypes: RefType[] =
-    workplaceResp?.status === 'success' ? (workplaceResp.data ?? []) : [];
+  const { data: institutionalProcessTypes } = useRefTypesByCategory(REF_TYPE_CATEGORIES.AP_PROCESO_INSTITUCIONAL);
+  const { data: managementLevelTypes } = useRefTypesByCategory(REF_TYPE_CATEGORIES.AP_NIVEL_GESTION);
+  const { data: workplaceTypes } = useRefTypesByCategory(REF_TYPE_CATEGORIES.AP_LUGAR_TRABAJO);
 
   const handleGenerateDocument = () => {
     if (!action) return;
@@ -418,6 +397,7 @@ export default function PersonnelActionDetail() {
         <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar Acción de Personal</DialogTitle>
+            <DialogDescription>Modifica los datos de esta acción de personal.</DialogDescription>
           </DialogHeader>
           <PersonnelActionForm
             defaultValues={action}
@@ -436,6 +416,7 @@ export default function PersonnelActionDetail() {
             <DialogTitle className="flex items-center gap-2">
               <History className="h-5 w-5" /> Historial de Estados
             </DialogTitle>
+            <DialogDescription>Registro cronológico de los cambios de estado de esta acción de personal.</DialogDescription>
           </DialogHeader>
           <StatusHistoryTimeline actionId={actionId} />
         </DialogContent>

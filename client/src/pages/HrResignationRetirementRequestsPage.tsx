@@ -23,8 +23,8 @@ import {
 } from '@/components/ui/dialog';
 import { ClipboardList, Loader2, AlertCircle, ChevronLeft, ChevronRight, UserPlus } from 'lucide-react';
 import { EmployeeCombobox } from '@/components/ui/EmployeeCombobox';
-import { TiposReferenciaAPI } from '@/lib/api';
 import { REF_TYPE_CATEGORIES } from '@/features/refTypeCategories';
+import { useRefTypesByCategory } from '@/hooks/useRefTypes';
 import { ResignationRetirementAPI } from '@/lib/api/services/resignationRetirement';
 import { parseApiError } from '@/lib/api/utils/error-handling';
 import { useToast } from '@/hooks/use-toast';
@@ -190,12 +190,8 @@ export default function HrResignationRetirementRequestsPage() {
     queryFn: () => ResignationRetirementAPI.getPaged(filter),
   });
 
-  const { data: requestTypesResp } = useQuery({
-    queryKey: ['ref-types', REF_TYPE_CATEGORIES.RESIGNATION_RETIREMENT_TYPE],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.RESIGNATION_RETIREMENT_TYPE),
-    staleTime: 5 * 60_000,
-  });
-  const requestTypeOptions = requestTypesResp?.status === 'success' ? requestTypesResp.data : [];
+  const { data: requestTypeOptionsData } = useRefTypesByCategory(REF_TYPE_CATEGORIES.RESIGNATION_RETIREMENT_TYPE);
+  const requestTypeOptions = requestTypeOptionsData ?? [];
   const requestTypeLabel: Record<string, string> = Object.fromEntries(
     requestTypeOptions.map((t) => [t.name, t.description])
   );

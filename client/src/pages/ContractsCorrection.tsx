@@ -1,7 +1,7 @@
 // src/pages/ContractsCorrection.tsx
 import { useState } from 'react';
 import { Link } from 'wouter';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
   Table,
@@ -40,7 +40,8 @@ import { EmployeeCombobox } from '@/components/ui/EmployeeCombobox';
 import { DepartmentSelect } from '@/components/departments/DepartmentSelect';
 import { JobSelect } from '@/components/ui/JobSelect';
 import { FolderOpen, ArrowLeft, Search, ShieldAlert, Loader2, Eye, Pencil, X } from 'lucide-react';
-import { ContractsRHAPI, TiposReferenciaAPI } from '@/lib/api';
+import { ContractsRHAPI } from '@/lib/api';
+import { useRefTypesByCategory } from '@/hooks/useRefTypes';
 import { REF_TYPE_CATEGORIES } from '@/features/refTypeCategories';
 import { ReusableDocumentManager } from '@/components/ReusableDocumentManager';
 import { CONTRACT_DIRECTORY_CODE, CONTRACT_ENTITY_TYPE } from '@/features/constants';
@@ -137,12 +138,7 @@ export default function ContractsCorrection() {
     setHasSearched(true);
   };
 
-  const qStatusTypes = useQuery({
-    queryKey: ['reftypes', 'CONTRACT_STATUS'],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CONTRACT_STATUS),
-    staleTime: 10 * 60 * 1000,
-  });
-  const statusTypes: any[] = qStatusTypes.data?.status === 'success' ? qStatusTypes.data.data ?? [] : [];
+  const { data: statusTypes } = useRefTypesByCategory(REF_TYPE_CATEGORIES.CONTRACT_STATUS);
   const statusNameById = new Map<number, string>(
     statusTypes.map((t: any) => [Number(t.typeId ?? t.typeID), t.name as string])
   );

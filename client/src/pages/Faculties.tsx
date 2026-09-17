@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Building2, User, Plus } from "lucide-react";
 import type { Faculty } from "@/shared/schema";
 import FacultyForm from "@/components/forms/FacultyForm";
@@ -93,6 +93,10 @@ export default function FacultiesPage() {
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Nueva Facultad</DialogTitle>
+              <DialogDescription>Completa los datos para registrar una nueva facultad.</DialogDescription>
+            </DialogHeader>
             <FacultyForm
               onSuccess={close}
               onCancel={close}

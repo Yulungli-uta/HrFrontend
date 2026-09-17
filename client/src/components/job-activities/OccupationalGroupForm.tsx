@@ -1,13 +1,12 @@
 // src/components/job-activities/OccupationalGroupForm.tsx
 
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, RefreshCw, XCircle } from "lucide-react";
 import type { OccupationalGroup, Degree } from "@/types/Job-activities";
-import { TiposReferenciaAPI, type ApiResponse } from "@/lib/api";
+import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 
 interface OccupationalGroupFormProps {
@@ -23,22 +22,6 @@ interface OccupationalGroupFormProps {
     isActive: boolean;
   }) => void;
   onCancel: () => void;
-}
-
-interface RefType {
-  typeId: number;
-  category?: string;
-  code?: string;
-  name: string;
-  description: string;
-  isActive?: boolean;
-}
-
-function ensureSuccess<T>(res: ApiResponse<T>, defaultMessage: string): T {
-  if (res.status === "error") {
-    throw new Error(res.error.message || defaultMessage);
-  }
-  return res.data;
 }
 
 export function OccupationalGroupForm({
@@ -70,15 +53,9 @@ export function OccupationalGroupForm({
     data: uepScaleTypes,
     isLoading: loadingUepScaleTypes,
     error: uepScaleTypesError,
-  } = useQuery<RefType[]>({
-    queryKey: ["/api/v1/rh/ref/types", "UEP_SCALE_TYPE"],
-    queryFn: async () => {
-      const res = await TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.UEP_SCALE_TYPE);
-      return ensureSuccess(res, "Error al cargar escala UEP");
-    },
-  });
+  } = useRefTypesByCategory(REF_TYPE_CATEGORIES.UEP_SCALE_TYPE);
 
-  const activeUepScaleTypes = (uepScaleTypes ?? []).filter((t) => t.isActive !== false);
+  const activeUepScaleTypes = uepScaleTypes.filter((t) => t.isActive !== false);
 
   // Sincronizar cuando cambie el grupo a editar o cambie el listado de grados
   useEffect(() => {

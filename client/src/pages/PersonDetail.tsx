@@ -8,12 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { usePersonData, usePersonMutations } from "@/hooks/personDetails/usePersonData";
+import { useRefTypes } from "@/hooks/useRefTypes";
 import {
-  TiposReferenciaAPI,
   PaisesAPI,
   ProvinciasAPI,
   CantonesAPI,
-  EmpleadosAPI,
+  VistaDetallesEmpleadosAPI,
   InstitucionesAPI,
 } from "@/lib/api";
 
@@ -128,15 +128,17 @@ export default function PersonDetail() {
   const urlId = id ? Number(id) : null;
   const isOwnProfileMode = !(hasPeoplePermission && urlId && !isNaN(urlId));
 
-  // Red de seguridad: AuthContext.fetchEmployeeDetails resuelve personId con una
-  // llamada adicional (VwEmployeeDetails no lo trae) que puede fallar en silencio.
-  // Si eso pasa, /perfil se queda con un spinner infinito (personId=0 para siempre).
-  // Aquí lo resolvemos de nuevo, directo, sin depender de ese caché.
+  // Red de seguridad: AuthContext.fetchEmployeeDetails resuelve personId leyendo
+  // vw_EmployeeDetails (que ya trae PersonID — ver Database/hr/04_views.sql), pero esa
+  // llamada corre en background y puede no haber terminado aún cuando este componente
+  // monta (o puede fallar en silencio). Si eso pasa, /perfil se queda con un spinner
+  // infinito (personId=0 para siempre). Aquí lo resolvemos de nuevo, directo, contra la
+  // misma vista, sin depender de ese caché.
   const needsPersonIdFallback = isOwnProfileMode && !employeeDetails?.personId && !!employeeDetails?.employeeID;
 
   const { data: personIdFallbackResponse } = useQuery({
     queryKey: ["person-id-fallback", employeeDetails?.employeeID],
-    queryFn: () => EmpleadosAPI.get(employeeDetails!.employeeID),
+    queryFn: () => VistaDetallesEmpleadosAPI.get(employeeDetails!.employeeID),
     enabled: needsPersonIdFallback,
     staleTime: 5 * 60_000,
     retry: 1,
@@ -170,12 +172,7 @@ export default function PersonDetail() {
 
   // ── Lookups remotos ──────────────────────────────────────────────────────────
 
-  const { data: refTypesResponse } = useQuery({
-    queryKey: ["person-detail-ref-types"],
-    queryFn: () => TiposReferenciaAPI.list(),
-    staleTime: 5 * 60_000,
-    refetchOnWindowFocus: false,
-  });
+  const { data: refTypesResponse } = useRefTypes();
 
   const { data: countriesResponse } = useQuery({
     queryKey: ["countries"],
@@ -502,6 +499,7 @@ export default function PersonDetail() {
               refTypesMap={allRefTypesById}
               institutionMap={institutionMap}
               personIdCard={person!.idCard}
+              personId={person!.personId}
             />
           </TabsContent>
 

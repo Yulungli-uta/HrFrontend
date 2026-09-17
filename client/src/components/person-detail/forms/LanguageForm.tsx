@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -26,7 +26,8 @@ import { RefreshCw } from "lucide-react";
 import { ReusableFileUpload } from "@/components/ReusableFileUpload";
 
 import type { Language } from "@/types/person";
-import { TiposReferenciaAPI, IdiomasAPI, type RefType } from "@/lib/api";
+import { IdiomasAPI, type RefType } from "@/lib/api";
+import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { LANGUAGE_CERTIFICATION_DIRECTORY_CODE, LANGUAGE_CERTIFICATION_ENTITY_TYPE } from "@/features/constants";
 import { logger } from "@/lib/logger";
@@ -94,42 +95,26 @@ export default function LanguageForm({
   const [isSavingWithDocument, setIsSavingWithDocument] = useState(false);
   const [fileUploadKey, setFileUploadKey] = useState(0);
 
-  const { data: docTypesResp } = useQuery({
-    queryKey: ["refTypes", "CV_DOCUMENT_TYPE"],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CV_DOCUMENT_TYPE),
-  });
-  const docTypes: RefType[] =
-    docTypesResp?.status === "success" ? (docTypesResp.data ?? []).filter((t: any) => t.isActive) : [];
+  const { data: docTypesRaw } = useRefTypesByCategory(REF_TYPE_CATEGORIES.CV_DOCUMENT_TYPE);
+  const docTypes: RefType[] = docTypesRaw.filter((t: any) => t.isActive);
 
   // LANGUAGE
   const {
-    data: languagesResponse,
+    data: languagesRaw,
     isLoading: loadingLanguages,
     error: languagesError,
-  } = useQuery({
-    queryKey: ["refTypes", "LANGUAGE"],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.LANGUAGE),
-  });
+  } = useRefTypesByCategory(REF_TYPE_CATEGORIES.LANGUAGE);
 
-  const languageOptions: RefType[] =
-    languagesResponse?.status === "success"
-      ? (languagesResponse.data ?? []).filter((t: any) => t.isActive)
-      : [];
+  const languageOptions: RefType[] = languagesRaw.filter((t: any) => t.isActive);
 
   // LANGUAGE_LEVEL
   const {
-    data: levelsResponse,
+    data: levelsRaw,
     isLoading: loadingLevels,
     error: levelsError,
-  } = useQuery({
-    queryKey: ["refTypes", "LANGUAGE_LEVEL"],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.LANGUAGE_LEVEL),
-  });
+  } = useRefTypesByCategory(REF_TYPE_CATEGORIES.LANGUAGE_LEVEL);
 
-  const levelOptions: RefType[] =
-    levelsResponse?.status === "success"
-      ? (levelsResponse.data ?? []).filter((t: any) => t.isActive)
-      : [];
+  const levelOptions: RefType[] = levelsRaw.filter((t: any) => t.isActive);
 
   const form = useForm<LanguageFormData>({
     resolver: zodResolver(languageFormSchema) as any,

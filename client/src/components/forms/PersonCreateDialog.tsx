@@ -9,6 +9,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import {
   Form,
@@ -29,10 +30,11 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2, ShieldCheck, AlertTriangle, ServerCrash } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { PersonasAPI } from '@/lib/api';
 import type { PersonDto } from '@/lib/api';
+import { useDinardapLookup } from '@/hooks/useDinardapLookup';
 
 const IDENT_TYPES = [
   { value: 1, label: 'Cédula' },
@@ -80,13 +82,28 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
     },
   });
 
+  const dinardap = useDinardapLookup({
+    onFound: (d) => {
+      const nombres = d.nombres?.trim();
+      const apellidos = [d.apellido1, d.apellido2].filter(Boolean).join(' ').trim();
+      if (nombres) form.setValue('firstName', nombres, { shouldValidate: true });
+      if (apellidos) form.setValue('lastName', apellidos, { shouldValidate: true });
+      if (d.fechaNacimiento) {
+        // "2013-06-20T00:00:00" -> "2013-06-20" para <input type="date">
+        form.setValue('birthDate', d.fechaNacimiento.slice(0, 10), { shouldValidate: true });
+      }
+    },
+  });
+
   // Limpiar estado al cerrar
   useEffect(() => {
     if (!open) {
       form.reset();
       setDuplicateFound(null);
       setAcknowledgedDuplicate(false);
+      dinardap.reset();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, form]);
 
   async function checkDuplicate(idCardValue: string) {
@@ -143,13 +160,23 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
     onError: () => toast({ variant: 'destructive', title: 'Error al registrar la persona.' }),
   });
 
-  const submitDisabled = mutation.isPending || (duplicateFound !== null && !acknowledgedDuplicate);
+  const submitDisabled =
+    mutation.isPending || dinardap.isChecking || (duplicateFound !== null && !acknowledgedDuplicate);
+
+  // Bloqueado solo si DINARDAP respondió Y trajo un valor real para ese campo puntual - si
+  // vino null (DINARDAP no tiene el dato) o el servicio no respondió, queda editable.
+  const nombresLocked = dinardap.status === 'found' && !!dinardap.data?.nombres?.trim();
+  const apellidosLocked = dinardap.status === 'found' && !!(dinardap.data?.apellido1 || dinardap.data?.apellido2);
+  const fechaNacimientoLocked = dinardap.status === 'found' && !!dinardap.data?.fechaNacimiento;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Registrar Nueva Persona</DialogTitle>
+          <DialogDescription>
+            Ingresa la cédula para verificar contra Registro Civil y completa los datos básicos.
+          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
@@ -165,7 +192,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
                   <FormItem>
                     <FormLabel>Nombres *</FormLabel>
                     <FormControl>
-                      <Input {...field} disabled={mutation.isPending} />
+                      <Input {...field} disabled={mutation.isPending || nombresLocked || dinardap.isChecking} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -178,7 +205,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
                   <FormItem>
                     <FormLabel>Apellidos *</FormLabel>
                     <FormControl>
-                      <Input {...field} disabled={mutation.isPending} />
+                      <Input {...field} disabled={mutation.isPending || apellidosLocked || dinardap.isChecking} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -201,7 +228,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
                         setDuplicateFound(null);
                         setAcknowledgedDuplicate(false);
                       }}
-                      disabled={mutation.isPending}
+                      disabled={mutation.isPending || dinardap.isChecking}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -232,17 +259,49 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
                         disabled={mutation.isPending}
                         onChange={(e) => {
                           field.onChange(e);
-                          // Limpiar duplicado al editar
+                          // Limpiar duplicado y auto-relleno al editar la cédula
                           setDuplicateFound(null);
                           setAcknowledgedDuplicate(false);
+                          dinardap.reset();
                         }}
                         onBlur={(e) => {
                           field.onBlur();
                           checkDuplicate(e.target.value);
+                          dinardap.check(e.target.value);
                         }}
                       />
                     </FormControl>
                     <FormMessage />
+                    {dinardap.status === 'checking' && (
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        Consultando Registro Civil…
+                      </p>
+                    )}
+                    {dinardap.status === 'found' && (
+                      <p className="text-xs text-emerald-600 flex items-center gap-1">
+                        <ShieldCheck className="h-3 w-3" />
+                        Verificado con Registro Civil
+                      </p>
+                    )}
+                    {dinardap.status === 'not-found' && (
+                      <p className="text-xs text-amber-600 flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        Datos no encontrados en Registro Civil para esta cédula — completa manualmente.
+                      </p>
+                    )}
+                    {dinardap.status === 'unavailable' && (
+                      <p className="text-xs text-amber-600 flex items-center gap-1">
+                        <ServerCrash className="h-3 w-3" />
+                        Servicio DINARDAP en mantenimiento o no disponible — completa manualmente.
+                      </p>
+                    )}
+                    {dinardap.status === 'error' && (
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        No se pudo verificar con Registro Civil — completa manualmente.
+                      </p>
+                    )}
                     {isCheckingDuplicate && (
                       <p className="text-xs text-muted-foreground flex items-center gap-1">
                         <Loader2 className="h-3 w-3 animate-spin" />
@@ -285,7 +344,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
                 <FormItem>
                   <FormLabel>Email *</FormLabel>
                   <FormControl>
-                    <Input type="email" {...field} disabled={mutation.isPending} />
+                    <Input type="email" {...field} disabled={mutation.isPending || dinardap.isChecking} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -303,7 +362,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
                       {...field}
                       value={field.value ?? ''}
                       placeholder='Ej: "Dra. Sara Camacho Estrada, PhD."'
-                      disabled={mutation.isPending}
+                      disabled={mutation.isPending || dinardap.isChecking}
                     />
                   </FormControl>
                   <p className="text-xs text-muted-foreground">
@@ -323,7 +382,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
                   <FormItem>
                     <FormLabel>Fecha de Nacimiento *</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} disabled={mutation.isPending} />
+                      <Input type="date" {...field} disabled={mutation.isPending || fechaNacimientoLocked || dinardap.isChecking} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -336,7 +395,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
                   <FormItem>
                     <FormLabel>Teléfono</FormLabel>
                     <FormControl>
-                      <Input {...field} value={field.value ?? ''} disabled={mutation.isPending} />
+                      <Input {...field} value={field.value ?? ''} disabled={mutation.isPending || dinardap.isChecking} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

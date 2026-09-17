@@ -86,11 +86,11 @@ import {
   DocumentsAPI,
   AcademicLadderAPI,
   VwAuthorityAPI,
-  TiposReferenciaAPI,
 } from "@/lib/api";
 import { Switch } from "@/components/ui/switch";
 import type { VwJobWithDegreeAndGroup } from "@/lib/api";
 import { JobSelect } from "@/components/ui/JobSelect";
+import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import { DepartmentSelect } from "@/components/departments/DepartmentSelect";
 import { EmployeeCombobox } from "@/components/ui/EmployeeCombobox";
 
@@ -362,17 +362,11 @@ export function ContractDialog(props: {
     closeConfirm,
   } = useUnsavedChangesGuard(onOpenChange);
 
-  const [contractsModuleId, setContractsModuleId] = useState<number | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const res = await TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.ACCESS_MODULE_TYPE);
-      if (cancelled || res.status !== "success") return;
-      const contractsModule = (res.data ?? []).find((rt: any) => rt.name === "CONTRACTS");
-      if (contractsModule) setContractsModuleId(contractsModule.typeId ?? contractsModule.typeID);
-    })();
-    return () => { cancelled = true; };
-  }, []);
+  const { data: accessModuleTypes } = useRefTypesByCategory(REF_TYPE_CATEGORIES.ACCESS_MODULE_TYPE);
+  const contractsModuleId = useMemo(() => {
+    const contractsModule = accessModuleTypes.find((rt: any) => rt.name === "CONTRACTS");
+    return contractsModule ? ((contractsModule as any).typeId ?? (contractsModule as any).typeID ?? null) : null;
+  }, [accessModuleTypes]);
 
   const [form, setForm] = useState<ContractsCreateDto>(() =>
     buildEmptyForm(initial)

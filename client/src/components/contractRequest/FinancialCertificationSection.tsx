@@ -58,25 +58,22 @@ export function FinancialCertificationSection({ requestId, readOnly = false, cre
   const maxSizeMB = Number(dirParam?.maxSizeMb ?? 25);
   const relativePath = dirParam?.relativePath?.trim() || "/financial-certifications/";
 
-  const { data: certStatusTypesResp } = useCertStatusTypes();
+  const { data: certStatusTypes } = useCertStatusTypes();
   const statusById = useMemo(() => {
     const map = new Map<number, string>();
-    if (certStatusTypesResp?.status === "success") {
-      for (const rt of certStatusTypesResp.data ?? []) {
-        const id: number | undefined = (rt as any).typeId ?? (rt as any).typeID;
-        if (id != null) map.set(id, (rt as any).name);
-      }
+    for (const rt of certStatusTypes ?? []) {
+      const id: number | undefined = (rt as any).typeId ?? (rt as any).typeID;
+      if (id != null) map.set(id, (rt as any).name);
     }
     return map;
-  }, [certStatusTypesResp]);
+  }, [certStatusTypes]);
 
   const pendingRevisionStatusId = useMemo(() => {
-    if (certStatusTypesResp?.status !== "success") return null;
-    const found = (certStatusTypesResp.data ?? []).find(
+    const found = (certStatusTypes ?? []).find(
       (rt: any) => (rt.name ?? "").toUpperCase() === "PENDIENTE_REVISION"
     );
     return found ? Number((found as any).typeId ?? (found as any).typeID) : null;
-  }, [certStatusTypesResp]);
+  }, [certStatusTypes]);
 
   const listQ = useQuery({
     queryKey: ["financialCertifications", "byRequest", requestId],

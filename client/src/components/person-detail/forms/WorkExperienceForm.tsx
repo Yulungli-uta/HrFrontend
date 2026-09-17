@@ -30,7 +30,8 @@ import { RefreshCw } from "lucide-react";
 import { ReusableFileUpload } from "@/components/ReusableFileUpload";
 
 import type { WorkExperience } from "@/types/person";
-import { PaisesAPI, TiposReferenciaAPI, ExperienciasLaboralesAPI, type RefType } from "@/lib/api";
+import { PaisesAPI, ExperienciasLaboralesAPI, type RefType } from "@/lib/api";
+import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { WORK_EXPERIENCE_CERTIFICATE_DIRECTORY_CODE, WORK_EXPERIENCE_CERTIFICATE_ENTITY_TYPE } from "@/features/constants";
 import { logger } from "@/lib/logger";
@@ -153,12 +154,8 @@ export default function WorkExperienceForm({
   const [isSavingWithDocument, setIsSavingWithDocument] = useState(false);
   const [fileUploadKey, setFileUploadKey] = useState(0);
 
-  const { data: docTypesResp } = useQuery({
-    queryKey: ["refTypes", "CV_DOCUMENT_TYPE"],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CV_DOCUMENT_TYPE),
-  });
-  const docTypes: RefType[] =
-    docTypesResp?.status === "success" ? (docTypesResp.data ?? []).filter((t: any) => t.isActive) : [];
+  const { data: docTypesRaw } = useRefTypesByCategory(REF_TYPE_CATEGORIES.CV_DOCUMENT_TYPE);
+  const docTypes: RefType[] = docTypesRaw.filter((t: any) => t.isActive);
   // =============================
   // QUERIES: Países
   // =============================
@@ -180,35 +177,23 @@ export default function WorkExperienceForm({
   // QUERIES: Tipos de institución
   // =============================
   const {
-    data: instTypesResp,
+    data: institutionTypesRaw,
     isLoading: loadingInstTypes,
     error: instTypesError,
-  } = useQuery({
-    queryKey: ["refTypes", "CV_INSTITUTION_TYPE"],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CV_INSTITUTION_TYPE),
-  });
+  } = useRefTypesByCategory(REF_TYPE_CATEGORIES.CV_INSTITUTION_TYPE);
 
-  const institutionTypes: RefType[] =
-    instTypesResp?.status === "success"
-      ? (instTypesResp.data ?? []).filter((t: any) => t.isActive)
-      : [];
+  const institutionTypes: RefType[] = institutionTypesRaw.filter((t: any) => t.isActive);
 
   // =============================
   // QUERIES: Tipos de experiencia
   // =============================
   const {
-    data: expTypesResp,
+    data: experienceTypesRaw,
     isLoading: loadingExpTypes,
     error: expTypesError,
-  } = useQuery({
-    queryKey: ["refTypes", "EXPERIENCE_TYPE"],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.EXPERIENCE_TYPE),
-  });
+  } = useRefTypesByCategory(REF_TYPE_CATEGORIES.EXPERIENCE_TYPE);
 
-  const experienceTypes: RefType[] =
-    expTypesResp?.status === "success"
-      ? (expTypesResp.data ?? []).filter((t: any) => t.isActive)
-      : [];
+  const experienceTypes: RefType[] = experienceTypesRaw.filter((t: any) => t.isActive);
 
   const loadingOptions =
     loadingCountries || loadingInstTypes || loadingExpTypes;

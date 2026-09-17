@@ -1,7 +1,6 @@
 // src/pages/ContractDetail.tsx
 import { useMemo, useRef, useState } from 'react';
 import { useParams, Link } from 'wouter';
-import { useQuery } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,12 +10,13 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Loader2, ArrowLeft, History, CheckCircle2, Clock, XCircle, Edit3, FolderOpen, Lock } from 'lucide-react';
 import { useContractDetail } from '@/hooks/contracts/useContractDetail';
 import { useContractLookups } from '@/hooks/contracts/useContractLookups';
 import { useAuth } from '@/features/auth';
-import { TiposReferenciaAPI } from '@/lib/api';
+import { useRefTypesByCategory } from '@/hooks/useRefTypes';
 import { REF_TYPE_CATEGORIES } from '@/features/refTypeCategories';
 import { ContractActions } from '@/components/contracts/ContractActions';
 import { DocumentPreviewPanel } from '@/components/personnelActions/DocumentPreviewPanel';
@@ -127,12 +127,7 @@ export default function ContractDetail() {
   // Lookups para resolver IDs → nombres
   const lookups = useContractLookups({ enabled: !!contract });
 
-  const qStatusTypes = useQuery({
-    queryKey: ['reftypes', 'CONTRACT_STATUS'],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CONTRACT_STATUS),
-    staleTime: 10 * 60 * 1000,
-  });
-  const statusTypes = qStatusTypes.data?.status === 'success' ? qStatusTypes.data.data ?? [] : [];
+  const { data: statusTypes } = useRefTypesByCategory(REF_TYPE_CATEGORIES.CONTRACT_STATUS);
 
   const statusById = useMemo(() => {
     const m = new Map<number, string>();
@@ -466,6 +461,7 @@ export default function ContractDetail() {
             <DialogTitle className="flex items-center gap-2">
               <History className="h-5 w-5" /> Historial de Estados
             </DialogTitle>
+            <DialogDescription>Registro cronológico de los cambios de estado de este contrato.</DialogDescription>
           </DialogHeader>
           {statusHistory.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4">Sin historial de estados.</p>

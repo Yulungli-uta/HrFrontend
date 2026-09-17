@@ -49,9 +49,9 @@ import {
   ScheduleChangePlansAPI,
   HorariosAPI,
   VistaDetallesEmpleadosAPI,
-  TiposReferenciaAPI,
 } from "@/lib/api";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
+import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 
 import { ActiveSchedulePicker } from "@/components/schedules/ActiveSchedulePicker";
 import { SubordinateEmployeePicker } from "@/components/employees/SubordinateEmployeePicker";
@@ -712,11 +712,7 @@ export default function ScheduleChangePlansPage() {
     staleTime: 5 * 60_000,
   });
 
-  const { data: planStatusResponse } = useQuery({
-    queryKey: ["refTypes", "SCHEDULE_CHANGE_STATUS"],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.SCHEDULE_CHANGE_STATUS),
-    staleTime: 10 * 60_000,
-  });
+  const { data: planStatusItems } = useRefTypesByCategory(REF_TYPE_CATEGORIES.SCHEDULE_CHANGE_STATUS);
 
   // Todos los horarios para visualización histórica
   const schedules = useMemo<ScheduleOption[]>(() => {
@@ -733,10 +729,7 @@ export default function ScheduleChangePlansPage() {
   );
 
   const statusCatalog = useMemo(() => {
-    const items =
-      planStatusResponse?.status === "success" && Array.isArray(planStatusResponse.data)
-        ? planStatusResponse.data
-        : [];
+    const items = planStatusItems;
 
     return Object.fromEntries(
       items.map((item: any) => [
@@ -746,7 +739,7 @@ export default function ScheduleChangePlansPage() {
         },
       ])
     ) as Record<number, { label: string }>;
-  }, [planStatusResponse]);
+  }, [planStatusItems]);
 
   const bossPlans = useMemo(() => {
     if (bossPlansResponse?.status !== "success") return [];
@@ -943,9 +936,7 @@ export default function ScheduleChangePlansPage() {
                         <Filter className="h-4 w-4 mr-2" /> Todos
                       </div>
                     </SelectItem>
-                    {planStatusResponse?.status === "success" &&
-                      Array.isArray(planStatusResponse.data) &&
-                      planStatusResponse.data.map((s: any) => {
+                    {planStatusItems.map((s: any) => {
                         const typeId = s.typeId || s.typeID;
                         return (
                           <SelectItem key={typeId} value={String(typeId)}>

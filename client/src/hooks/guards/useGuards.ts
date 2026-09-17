@@ -59,7 +59,7 @@ import type {
   SubmitToDirectionDto,
 } from '@/types/guards';
 import { parseApiError } from '@/lib/error-handling';
-import { TiposReferenciaAPI } from '@/lib/api';
+import { useRefTypesByCategory } from '@/hooks/useRefTypes';
 
 // ─── Keys de caché ───────────────────────────────────────────────────────────
 
@@ -83,7 +83,6 @@ export const GUARD_KEYS = {
   pendingChanges:         ['guards', 'changes', 'pending'],
   planningChanges:        (planningId: number) => ['guards', 'changes', planningId],
   availabilityBlocks:     (filter: EmployeeAvailabilityFilterDto) => ['guards', 'availability', filter],
-  refTypes:               (category: string) => ['guards', 'ref-types', category],
   locationRotation:       ['guards', 'location-rotation'],
   locationRotationPeriod: (id: number) => ['guards', 'location-rotation', 'periods', id],
   locationRotationAssignments: (periodId: number) => ['guards', 'location-rotation', 'periods', periodId, 'assignments'],
@@ -741,11 +740,7 @@ export function useGroupPatterns(groupId: number | null) {
 }
 
 export function useGuardRefTypes(category: string) {
-  return useQuery({
-    queryKey: GUARD_KEYS.refTypes(category),
-    queryFn: () => TiposReferenciaAPI.byCategory(category),
-    staleTime: 300_000,
-  });
+  return useRefTypesByCategory(category);
 }
 
 export function useGeneralGroups() {

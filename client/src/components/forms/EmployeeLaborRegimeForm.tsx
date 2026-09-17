@@ -14,7 +14,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { TiposReferenciaAPI, CargosAPI, EmployeeLaborRegimesAPI } from "@/lib/api";
+import { CargosAPI, EmployeeLaborRegimesAPI } from "@/lib/api";
+import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import type { EmployeeLaborRegimeCreateDto } from "@/lib/api/services/employeeLaborRegimes";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { DepartmentSelect } from "@/components/departments/DepartmentSelect";
@@ -75,12 +76,7 @@ export function EmployeeLaborRegimeForm({
 
   useMemo(() => onDirtyChange?.(isDirty), [isDirty, onDirtyChange]);
 
-  const { data: regimeTypesResp, isLoading: loadingRegimes } = useQuery({
-    queryKey: ["reftypes", REF_TYPE_CATEGORIES.CONTRACT_TYPE],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CONTRACT_TYPE),
-    staleTime: 10 * 60 * 1000,
-  });
-  const regimeTypes = regimeTypesResp?.status === "success" ? (regimeTypesResp.data ?? []) : [];
+  const { data: regimeTypes, isLoading: loadingRegimes } = useRefTypesByCategory(REF_TYPE_CATEGORIES.CONTRACT_TYPE);
 
   const { data: jobsResp, isLoading: loadingJobs } = useQuery({
     queryKey: ["jobs-list"],

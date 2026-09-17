@@ -1,7 +1,7 @@
 // client/src/components/person-detail/forms/CatastrophicIllnessForm.tsx
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Loader2 } from "lucide-react";
@@ -28,7 +28,8 @@ import {
 import { ReusableFileUpload } from "@/components/ReusableFileUpload";
 
 import type { CatastrophicIllness } from "@/types/person";
-import { TiposReferenciaAPI, EnfermedadesCatastroficasAPI, type RefType } from "@/lib/api";
+import { EnfermedadesCatastroficasAPI, type RefType } from "@/lib/api";
+import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import {
   CATASTROPHIC_ILLNESS_CERTIFICATE_DIRECTORY_CODE,
@@ -108,27 +109,16 @@ export default function CatastrophicIllnessForm({
   const [fileUploadKey, setFileUploadKey] = useState(0);
 
   const {
-    data: illnessTypesResp,
+    data: illnessTypesRaw,
     isLoading: loadingIllnessTypes,
     error: illnessTypesError,
-  } = useQuery({
-    queryKey: ["refTypes", "CATASTROPHIC_ILLNESS_TYPE"],
-    queryFn: () =>
-      TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CATASTROPHIC_ILLNESS_TYPE),
-  });
+  } = useRefTypesByCategory(REF_TYPE_CATEGORIES.CATASTROPHIC_ILLNESS_TYPE);
 
-  const { data: docTypesResp } = useQuery({
-    queryKey: ["refTypes", "CV_DOCUMENT_TYPE"],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CV_DOCUMENT_TYPE),
-  });
+  const { data: docTypesRaw } = useRefTypesByCategory(REF_TYPE_CATEGORIES.CV_DOCUMENT_TYPE);
 
-  const illnessTypes: RefType[] =
-    illnessTypesResp?.status === "success"
-      ? (illnessTypesResp.data ?? []).filter((t: any) => t.isActive)
-      : [];
+  const illnessTypes: RefType[] = illnessTypesRaw.filter((t: any) => t.isActive);
 
-  const docTypes: RefType[] =
-    docTypesResp?.status === "success" ? (docTypesResp.data ?? []).filter((t: any) => t.isActive) : [];
+  const docTypes: RefType[] = docTypesRaw.filter((t: any) => t.isActive);
 
   const form = useForm<CatastrophicIllnessFormData>({
     resolver: zodResolver(catastrophicIllnessFormSchema),

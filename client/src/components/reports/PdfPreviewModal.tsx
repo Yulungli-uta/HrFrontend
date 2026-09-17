@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { X, Download, ZoomIn, ZoomOut } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -75,6 +75,7 @@ export function PdfPreviewModal({ isOpen, onClose, base64Data, reportName, onDow
               </Button>
             </div>
           </DialogTitle>
+          <DialogDescription>Previsualización del reporte en PDF antes de descargarlo.</DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-auto bg-muted rounded-md">

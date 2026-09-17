@@ -54,13 +54,13 @@ import {
 import {
   PersonasAPI,
   EmpleadosAPI,
-  TiposReferenciaAPI,
   VistaEmpleadosAPI,
   CargosAPI,
   type ApiResponse,
   type PagedResult,
 } from "@/lib/api";
 import type { PersonDto } from "@/lib/api/services/people";
+import { useRefTypes } from "@/hooks/useRefTypes";
 import { cn } from "@/lib/utils";
 import { DepartmentSelect } from "@/components/departments/DepartmentSelect";
 import { logger } from "@/lib/logger";
@@ -232,12 +232,7 @@ export default function EmployeeForm({
   const [bossLabel, setBossLabel] = useState<string | null>(null);
   const [jobLabel, setJobLabel] = useState<string | null>(null);
 
-  const { data: refTypes, isLoading: loadingRefTypes } = useQuery<
-    ApiResponse<RefType[]>
-  >({
-    queryKey: ["refTypes"],
-    queryFn: TiposReferenciaAPI.list,
-  });
+  const { data: refTypes, isLoading: loadingRefTypes } = useRefTypes();
 
   const contractOptions = useMemo(() => {
     const arr = refTypes?.status === "success" ? refTypes.data ?? [] : [];

@@ -13,9 +13,10 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { TiposReferenciaAPI, JustificationsAPI } from "@/lib/api";
+import { JustificationsAPI } from "@/lib/api";
 import { useAuth } from "@/features/auth";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
+import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import JustificationForm from "@/components/justifications/JustificationForm";
 
 type Status = "PENDING" | "APPROVED" | "REJECTED" | "APPLIED";
@@ -105,14 +106,7 @@ export default function JustificationsPage() {
   const [typeFilter, setTypeFilter] = useState<number | "ALL">("ALL");
   const [searchText, setSearchText] = useState<string>("");
 
-  const { data: types } = useQuery({
-    queryKey: ["justificationTypes"],
-    queryFn: async () => {
-      const resp = await TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.JUSTIFICATION);
-      if (resp.status === "error") throw new Error(resp.error.message);
-      return resp.data || [];
-    },
-  });
+  const { data: types } = useRefTypesByCategory(REF_TYPE_CATEGORIES.JUSTIFICATION);
 
   const typeNameById = useMemo(() => {
     const map = new Map<number, string>();

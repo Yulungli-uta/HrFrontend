@@ -15,7 +15,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, AlertTriangle, FileText, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { TiposReferenciaAPI } from '@/lib/api';
+import { useRefTypesByCategory } from '@/hooks/useRefTypes';
 import { REF_TYPE_CATEGORIES } from '@/features/refTypeCategories';
 import { ResignationRetirementAPI } from '@/lib/api/services/resignationRetirement';
 import { parseApiError } from '@/lib/api/utils/error-handling';
@@ -85,13 +85,11 @@ export function RequestForm({ existing, onSuccess, onCancel, onDirtyChange }: Pr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requestType, proposedExitDate, reason, additionalNotes, createdRequestId]);
 
-  const { data: requestTypesResp } = useQuery({
-    queryKey: ['ref-types', REF_TYPE_CATEGORIES.RESIGNATION_RETIREMENT_TYPE],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.RESIGNATION_RETIREMENT_TYPE),
-    enabled: !existing,
-    staleTime: 5 * 60_000,
-  });
-  const requestTypeOptions = requestTypesResp?.status === 'success' ? requestTypesResp.data : [];
+  const { data: requestTypeOptionsData } = useRefTypesByCategory(
+    REF_TYPE_CATEGORIES.RESIGNATION_RETIREMENT_TYPE,
+    { enabled: !existing }
+  );
+  const requestTypeOptions = requestTypeOptionsData ?? [];
 
   const { data: employeeInfoResp } = useQuery({
     queryKey: ['resignation-retirement-current-employee-info'],

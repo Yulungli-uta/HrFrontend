@@ -28,11 +28,11 @@ import { ReusableFileUpload } from "@/components/ReusableFileUpload";
 
 import type { Training } from "@/types/person";
 import {
-  TiposReferenciaAPI,
   type RefType,
   AreaConocimientoAPI,
   CapacitacionesAPI,
 } from "@/lib/api";
+import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { TRAINING_CERTIFICATE_DIRECTORY_CODE, TRAINING_CERTIFICATE_ENTITY_TYPE } from "@/features/constants";
 import { logger } from "@/lib/logger";
@@ -136,12 +136,8 @@ export default function TrainingForm({
   const [isSavingWithDocument, setIsSavingWithDocument] = useState(false);
   const [fileUploadKey, setFileUploadKey] = useState(0);
 
-  const { data: docTypesResp } = useQuery({
-    queryKey: ["refTypes", "CV_DOCUMENT_TYPE"],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CV_DOCUMENT_TYPE),
-  });
-  const docTypes: RefType[] =
-    docTypesResp?.status === "success" ? (docTypesResp.data ?? []).filter((t: any) => t.isActive) : [];
+  const { data: docTypesRaw } = useRefTypesByCategory(REF_TYPE_CATEGORIES.CV_DOCUMENT_TYPE);
+  const docTypes: RefType[] = docTypesRaw.filter((t: any) => t.isActive);
 
   // =============================
   // TIPOS DE REFERENCIA
@@ -149,48 +145,30 @@ export default function TrainingForm({
 
   // EVENT_TYPE
   const {
-    data: eventTypesResponse,
+    data: eventTypesRaw,
     isLoading: loadingEventTypes,
     error: eventTypesError,
-  } = useQuery({
-    queryKey: ["refTypes", "EVENT_TYPE"],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.EVENT_TYPE),
-  });
+  } = useRefTypesByCategory(REF_TYPE_CATEGORIES.EVENT_TYPE);
 
-  const eventTypes: RefType[] =
-    eventTypesResponse?.status === "success"
-      ? (eventTypesResponse.data ?? []).filter((t: any) => t.isActive)
-      : [];
+  const eventTypes: RefType[] = eventTypesRaw.filter((t: any) => t.isActive);
 
   // CERTIFICATION_TYPE
   const {
-    data: certTypesResponse,
+    data: certTypesRaw,
     isLoading: loadingCertTypes,
     error: certTypesError,
-  } = useQuery({
-    queryKey: ["refTypes", "CERTIFICATION_TYPE"],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CERTIFICATION_TYPE),
-  });
+  } = useRefTypesByCategory(REF_TYPE_CATEGORIES.CERTIFICATION_TYPE);
 
-  const certTypes: RefType[] =
-    certTypesResponse?.status === "success"
-      ? (certTypesResponse.data ?? []).filter((t: any) => t.isActive)
-      : [];
+  const certTypes: RefType[] = certTypesRaw.filter((t: any) => t.isActive);
 
   // CERT_APPROVAL_TYPE
   const {
-    data: approvalTypesResponse,
+    data: approvalTypesRaw,
     isLoading: loadingApprovalTypes,
     error: approvalTypesError,
-  } = useQuery({
-    queryKey: ["refTypes", "CERT_APPROVAL_TYPE"],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CERT_APPROVAL_TYPE),
-  });
+  } = useRefTypesByCategory(REF_TYPE_CATEGORIES.CERT_APPROVAL_TYPE);
 
-  const approvalTypes: RefType[] =
-    approvalTypesResponse?.status === "success"
-      ? (approvalTypesResponse.data ?? []).filter((t: any) => t.isActive)
-      : [];
+  const approvalTypes: RefType[] = approvalTypesRaw.filter((t: any) => t.isActive);
 
   // =============================
   // ÁREAS DE CONOCIMIENTO (simple)

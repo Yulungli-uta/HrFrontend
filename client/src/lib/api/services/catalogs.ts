@@ -29,6 +29,7 @@ export interface RefType {
   code?: string;
   name: string;
   description: string;
+  metadata?: string | null;
   isActive: boolean;
   createdAt?: string;
   updatedAt?: string | null;

@@ -28,11 +28,11 @@ import { ReusableFileUpload } from "@/components/ReusableFileUpload";
 
 import type { Publication } from "@/types/person";
 import {
-  TiposReferenciaAPI,
   type RefType,
   AreaConocimientoAPI,
   PublicacionesAPI,
 } from "@/lib/api";
+import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { PUBLICATION_DOCUMENT_DIRECTORY_CODE, PUBLICATION_DOCUMENT_ENTITY_TYPE } from "@/features/constants";
 import { logger } from "@/lib/logger";
@@ -161,33 +161,21 @@ export default function PublicationForm({
   const [isSavingWithDocument, setIsSavingWithDocument] = useState(false);
   const [fileUploadKey, setFileUploadKey] = useState(0);
 
-  const { data: docTypesResp } = useQuery({
-    queryKey: ["refTypes", "CV_DOCUMENT_TYPE"],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CV_DOCUMENT_TYPE),
-  });
-  const docTypes: RefType[] =
-    docTypesResp?.status === "success" ? (docTypesResp.data ?? []).filter((t: any) => t.isActive) : [];
+  const { data: docTypesRaw } = useRefTypesByCategory(REF_TYPE_CATEGORIES.CV_DOCUMENT_TYPE);
+  const docTypes: RefType[] = docTypesRaw.filter((t: any) => t.isActive);
 
   // =============================
   // QUERIES
   // =============================
   const {
-    data: publicationTypesResponse,
+    data: publicationTypesData,
     isLoading: loadingPublicationTypes,
     error: publicationTypesError,
-  } = useQuery({
-    queryKey: ["refTypes", "PUBLICATION_TYPE"],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.PUBLICATION_TYPE),
-  });
+  } = useRefTypesByCategory(REF_TYPE_CATEGORIES.PUBLICATION_TYPE);
 
   const selectedPublicationTypeId = publication
     ? getNumericId(publication, "publicationTypeId", "publicationType")
     : undefined;
-
-  const publicationTypesData: RefType[] =
-    publicationTypesResponse?.status === "success"
-      ? (publicationTypesResponse.data ?? [])
-      : [];
 
   // Mantener el seleccionado aunque esté inactivo
   const publicationTypes: RefType[] = publicationTypesData.filter((t: any) => {
@@ -200,22 +188,14 @@ export default function PublicationForm({
   });
 
   const {
-    data: journalTypesResponse,
+    data: journalTypesData,
     isLoading: loadingJournalTypes,
     error: journalTypesError,
-  } = useQuery({
-    queryKey: ["refTypes", "JOURNAL_TYPE"],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.JOURNAL_TYPE),
-  });
+  } = useRefTypesByCategory(REF_TYPE_CATEGORIES.JOURNAL_TYPE);
 
   const selectedJournalTypeId = publication
     ? getNumericId(publication, "journalTypeId", "journalType")
     : undefined;
-
-  const journalTypesData: RefType[] =
-    journalTypesResponse?.status === "success"
-      ? (journalTypesResponse.data ?? [])
-      : [];
 
   const journalTypes: RefType[] = journalTypesData.filter((t: any) => {
     const id = getRefTypeId(t);

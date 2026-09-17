@@ -34,7 +34,7 @@ import {
 } from "../constants/sessionConstants";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { VistaDetallesEmpleadosAPI, EmpleadosAPI } from "@/lib/api";
+import { VistaDetallesEmpleadosAPI } from "@/lib/api";
 import {
   useNotificationWebSocket,
   WebSocketMessage,
@@ -194,30 +194,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const response = await VistaDetallesEmpleadosAPI.byEmail(email);
         if (response.status === "success" && response.data) {
           const empDetails = { ...response.data };
-          try {
-            const empResponse = await EmpleadosAPI.get(empDetails.employeeID);
-            if (empResponse.status === "success" && empResponse.data) {
-              const rawId = empResponse.data.personID ?? empResponse.data.personId;
-              empDetails.personId = rawId != null ? Number(rawId) : undefined;
-              if (empDetails.personId == null) {
-                logger.auth.error(
-                  "fetchEmployeeDetails: la respuesta de EmpleadosAPI.get no trae personID/personId",
-                  { employeeID: empDetails.employeeID, data: empResponse.data }
-                );
-              }
-            } else {
-              logger.auth.error(
-                "fetchEmployeeDetails: EmpleadosAPI.get no devolvió éxito al resolver personId",
-                { employeeID: empDetails.employeeID, response: empResponse }
-              );
-            }
-          } catch (personIdError) {
-            // No bloquea el flujo principal (el resto del perfil sigue funcionando),
-            // pero sin este log era imposible saber por qué /perfil se quedaba cargando
-            // indefinidamente (personId nunca se llenaba y PersonDetail.tsx no reintentaba).
+          // vw_EmployeeDetails ya trae PersonID (Database/hr/04_views.sql) — ya no hace
+          // falta una segunda llamada a EmpleadosAPI.get solo para resolver este valor.
+          const rawId = (response.data as any).personID ?? (response.data as any).personId;
+          empDetails.personId = rawId != null ? Number(rawId) : undefined;
+          if (empDetails.personId == null) {
+            // No debería ocurrir con la vista actualizada; se deja el log porque sin él
+            // era imposible saber por qué /perfil se quedaba cargando indefinidamente
+            // (personId nunca se llenaba y PersonDetail.tsx no reintentaba).
             logger.auth.error(
-              "fetchEmployeeDetails: error al resolver personId vía EmpleadosAPI.get",
-              { employeeID: empDetails.employeeID, error: personIdError }
+              "fetchEmployeeDetails: vw_EmployeeDetails no trajo PersonID",
+              { employeeID: empDetails.employeeID, data: response.data }
             );
           }
           persistEmployeeDetails(empDetails);
@@ -432,11 +419,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 );
                 logAuth("REFRESH AUTH / SESSION + CACHED DETAILS");
               } else {
-                await fetchEmployeeDetails(userSession.email);
+                // En background (no bloquea isLoading): igual que doLoginState, ningún
+                // consumidor de employeeDetails asume que está listo de inmediato.
+                fetchEmployeeDetails(userSession.email);
                 logAuth("REFRESH AUTH / SESSION + API DETAILS (personId missing)");
               }
             } else {
-              await fetchEmployeeDetails(userSession.email);
+              fetchEmployeeDetails(userSession.email);
               logAuth("REFRESH AUTH / SESSION + API DETAILS");
             }
           }
@@ -752,11 +741,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                   );
                   logAuth("CHECK AUTH / SESSION + CACHED DETAILS");
                 } else {
-                  await fetchEmployeeDetailsRef.current(userSession.email);
+                  // En background (no bloquea isLoading): igual que doLoginState, ningún
+                  // consumidor de employeeDetails asume que está listo de inmediato.
+                  fetchEmployeeDetailsRef.current(userSession.email);
                   logAuth("CHECK AUTH / SESSION + API DETAILS (personId missing)");
                 }
               } else {
-                await fetchEmployeeDetailsRef.current(userSession.email);
+                fetchEmployeeDetailsRef.current(userSession.email);
                 logAuth("CHECK AUTH / SESSION + API DETAILS");
               }
             }

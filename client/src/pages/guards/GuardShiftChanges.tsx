@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { RefreshCw, Check, X, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -282,6 +282,7 @@ export default function GuardShiftChangesPage() {
               <Check className="h-5 w-5" />
               Aprobar cambio de turno
             </DialogTitle>
+            <DialogDescription>Confirma la aprobación de este cambio de turno solicitado.</DialogDescription>
           </DialogHeader>
           {actionDialog && (
             <div className="space-y-3 py-2">
@@ -329,6 +330,7 @@ export default function GuardShiftChangesPage() {
               <X className="h-5 w-5" />
               Rechazar cambio de turno
             </DialogTitle>
+            <DialogDescription>Confirma el rechazo de este cambio de turno solicitado.</DialogDescription>
           </DialogHeader>
           {actionDialog && (
             <div className="space-y-3 py-2">

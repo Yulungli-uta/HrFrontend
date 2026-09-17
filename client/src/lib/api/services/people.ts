@@ -97,6 +97,32 @@ export interface PersonCreateDto {
 // DTOs de estadísticas de empleados
 // =============================================================================
 
+/**
+ * Respuesta de Registro Civil vía DINARDAP (WsUtaDinardap.Api), usada para auto-rellenar
+ * PersonCreateDialog/FamilyBurdenForm. Un campo en null significa que DINARDAP simplemente
+ * no tiene ese dato (queda editable); que la llamada entera falle (status 'error') significa
+ * que el servicio no respondió - ahí todo el formulario queda editable.
+ */
+export interface DinardapRegistroCivilDto {
+  codigo?: string | null;
+  nombreCompleto?: string | null;
+  nombres?: string | null;
+  apellido1?: string | null;
+  apellido2?: string | null;
+  genero?: string | null;
+  condicionCiudadano?: string | null;
+  fechaNacimiento?: string | null;
+  lugarNacimiento?: string | null;
+  lugarNacimientoProvincia?: string | null;
+  lugarNacimientoCiudad?: string | null;
+  lugarNacimientoParroquia?: string | null;
+  nacionalidad?: string | null;
+  estadoCivil?: string | null;
+  conyuge?: string | null;
+  nombrePadre?: string | null;
+  nombreMadre?: string | null;
+}
+
 export interface ContractTypeStatDto {
   employeeType: number;
   count: number;
@@ -124,6 +150,14 @@ export const PersonasAPI = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ identifications }),
     }),
+
+  /**
+   * Consulta Registro Civil (DINARDAP) por cédula. status:'error' (cualquier código, incluido
+   * 503) significa que no se pudo consultar - el llamador debe dejar todo el formulario
+   * editable en ese caso, no solo el/los campo(s) puntual(es).
+   */
+  dinardapLookup: (cedula: string): Promise<ApiResponse<DinardapRegistroCivilDto>> =>
+    apiFetch<DinardapRegistroCivilDto>(`/api/v1/rh/people/dinardap-lookup/${encodeURIComponent(cedula)}`),
 };
 
 // =============================================================================

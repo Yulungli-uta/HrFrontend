@@ -40,8 +40,8 @@ import {
   ConfigHorasExtrasAPI,
   ParametersAPI,
   VistaDetallesEmpleadosAPI,
-  TiposReferenciaAPI,
 } from "@/lib/api";
+import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import { useAuth } from "@/features/auth";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { parseApiError } from "@/lib/error-handling";
@@ -253,17 +253,8 @@ export default function CreatePlanningDialog({
 
   const isPlanStatusesReady = borradorTypeId !== null;
 
-  const { data: employeePlanStatusResp } = useQuery({
-    queryKey: ["ref-types", "EMPLOYEE_PLAN_STATUS"],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.EMPLOYEE_PLAN_STATUS),
-    staleTime: 5 * 60_000,
-    enabled: open,
-  });
-
-  const employeePlanStatuses: RefStatus[] =
-    employeePlanStatusResp?.status === "success"
-      ? employeePlanStatusResp.data || []
-      : [];
+  const { data: employeePlanStatusesRaw } = useRefTypesByCategory(REF_TYPE_CATEGORIES.EMPLOYEE_PLAN_STATUS, { enabled: open });
+  const employeePlanStatuses = employeePlanStatusesRaw as unknown as RefStatus[];
 
   const asignadoTypeId = useMemo(() => {
     const item = employeePlanStatuses.find(

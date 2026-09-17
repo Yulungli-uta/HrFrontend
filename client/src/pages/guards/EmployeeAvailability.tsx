@@ -3,7 +3,7 @@ import { Ban, RefreshCw, Plus, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -73,12 +73,12 @@ export default function EmployeeAvailabilityPage() {
   });
 
   const { data: resp, isLoading } = useAvailabilityBlocksPaged(filter, page, pageSize, true);
-  const { data: blockSourceResp } = useGuardRefTypes(REF_TYPE_CATEGORIES.GUARD_BLOCK_SOURCE);
+  const { data: blockSourceTypesData } = useGuardRefTypes(REF_TYPE_CATEGORIES.GUARD_BLOCK_SOURCE);
   const { createManual, syncPermissions, syncVacations } = useAvailabilityMutations();
 
   const pagedData = resp?.status === 'success' ? resp.data : null;
   const blocks = pagedData?.items ?? [];
-  const blockSourceTypes = blockSourceResp?.status === 'success' ? blockSourceResp.data : [];
+  const blockSourceTypes = blockSourceTypesData ?? [];
 
   const handleEmployeeFilterChange = (id: number | null) => {
     setFilterEmployeeId(id);
@@ -266,6 +266,7 @@ export default function EmployeeAvailabilityPage() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Crear bloqueo manual</DialogTitle>
+            <DialogDescription>Bloquea manualmente la disponibilidad de un empleado en un rango de fechas.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
@@ -336,6 +337,7 @@ export default function EmployeeAvailabilityPage() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Sincronizar bloqueos de disponibilidad</DialogTitle>
+            <DialogDescription>Sincroniza los bloqueos de disponibilidad con las fuentes configuradas.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <p className="text-sm text-muted-foreground">

@@ -14,9 +14,11 @@ import {
   ChevronDown,
   ChevronUp,
   ShieldCheck,
+  RefreshCw,
 } from "lucide-react";
 import { EducationLevel } from "@/types/person";
 import { ReusableDocumentManager } from "@/components/ReusableDocumentManager";
+import { SenescytSyncDialog } from "@/components/person-detail/SenescytSyncDialog";
 import { EDUCATION_CERTIFICATE_DIRECTORY_CODE, EDUCATION_CERTIFICATE_ENTITY_TYPE } from "@/features/constants";
 
 interface EducationLevelsTabProps {
@@ -29,6 +31,8 @@ interface EducationLevelsTabProps {
   institutionMap?: Record<number, string>;
   /** Identificación de la persona — agrupa su expediente completo en una sola carpeta. */
   personIdCard?: string;
+  /** Requerido para el botón "Sincronizar" (consulta/crea títulos vía DINARDAP). */
+  personId?: number;
 }
 
 export function EducationLevelsTab({
@@ -38,8 +42,10 @@ export function EducationLevelsTab({
   refTypesMap = {},
   institutionMap = {},
   personIdCard,
+  personId,
 }: EducationLevelsTabProps) {
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [syncDialogOpen, setSyncDialogOpen] = useState(false);
 
   const formatDate = (dateString?: string | null) => {
     if (!dateString) return null;
@@ -62,15 +68,27 @@ export function EducationLevelsTab({
           </Badge>
         </CardTitle>
 
-        <Button
-          size="sm"
-          className="bg-primary hover:bg-primary/90"
-          onClick={() => onEdit("educationLevel", null)}
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Nueva Formación
-        </Button>
+        <div className="flex gap-2">
+          {personId != null && (
+            <Button size="sm" variant="outline" onClick={() => setSyncDialogOpen(true)}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Sincronizar
+            </Button>
+          )}
+          <Button
+            size="sm"
+            className="bg-primary hover:bg-primary/90"
+            onClick={() => onEdit("educationLevel", null)}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Nueva Formación
+          </Button>
+        </div>
       </CardHeader>
+
+      {personId != null && (
+        <SenescytSyncDialog open={syncDialogOpen} onOpenChange={setSyncDialogOpen} personId={personId} />
+      )}
 
       <CardContent>
         {educationLevels.length === 0 ? (
@@ -87,7 +105,8 @@ export function EducationLevelsTab({
               .sort((a, b) => new Date(b.startDate ?? 0).getTime() - new Date(a.startDate ?? 0).getTime())
               .map((edu) => {
                 const levelName = resolveName(edu.educationLevelTypeId, refTypesMap);
-                const institutionName = resolveName(edu.institutionId, institutionMap);
+                // Fallback al nombre libre de DINARDAP cuando la institución no está catalogada.
+                const institutionName = resolveName(edu.institutionId, institutionMap) ?? edu.institutionNameOriginal;
                 const isExpanded = expandedId === edu.educationId;
 
                 return (
@@ -130,6 +149,12 @@ export function EducationLevelsTab({
                             {edu.grade && (
                               <Badge variant="outline" className="text-xs">
                                 {edu.grade}
+                              </Badge>
+                            )}
+                            {edu.source === "Dinardap" && (
+                              <Badge className="text-xs bg-emerald-100 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-400">
+                                <ShieldCheck className="mr-1 h-3 w-3" />
+                                Sincronizado con SENESCYT
                               </Badge>
                             )}
                           </div>

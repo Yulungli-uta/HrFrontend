@@ -32,7 +32,8 @@ import { cn } from "@/lib/utils";
 import type { ReportFilter, ReportType } from "@/types/reports";
 import { REPORT_CONFIGS } from "@/types/reports";
 
-import { ContractTypeAPI, TiposReferenciaAPI, VistaEmpleadosAPI } from "@/lib/api";
+import { ContractTypeAPI, VistaEmpleadosAPI } from "@/lib/api";
+import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import { PersonnelActionTypeAPI } from "@/lib/api/services/contracts";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { GuardServiceLocationsAPI, GuardRotationGroupsAPI } from "@/lib/api/services/guards";
@@ -222,13 +223,72 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
   const [guardLocations, setGuardLocations] = React.useState<LoadState<GuardLocation>>({ loading: false, items: [] });
   const [guardGroups, setGuardGroups] = React.useState<LoadState<GuardGroup>>({ loading: false, items: [] });
   const [employees, setEmployees] = React.useState<LoadState<EmployeeView>>({ loading: false, items: [] });
-  const [contractTypes, setContractTypes] = React.useState<LoadState<RefType>>({ loading: false, items: [] });
   const [contractKinds, setContractKinds] = React.useState<LoadState<ContractKind>>({ loading: false, items: [] });
-  const [laborRegimes, setLaborRegimes] = React.useState<LoadState<RefType>>({ loading: false, items: [] });
-  const [departmentTypes, setDepartmentTypes] = React.useState<LoadState<RefType>>({ loading: false, items: [] });
-  const [departmentScopes, setDepartmentScopes] = React.useState<LoadState<RefType>>({ loading: false, items: [] });
-  const [dynamicStatuses, setDynamicStatuses] = React.useState<LoadState<RefType>>({ loading: false, items: [] });
   const [actionTypes, setActionTypes] = React.useState<LoadState<ActionTypeOption>>({ loading: false, items: [] });
+
+  // Estos 5 catálogos son categorías de HR.ref_Types (algunos incluso comparten la MISMA
+  // categoría, ej. contractTypes y laborRegimes ambos piden CONTRACT_TYPE) — antes cada uno
+  // hacía su propio fetch+estado manual; ahora comparten la caché única de useRefTypes().
+  const contractTypesQ = useRefTypesByCategory(REF_TYPE_CATEGORIES.CONTRACT_TYPE, {
+    enabled: hasFilter("employeeType") || hasFilter("employeeTypeId"),
+  });
+  const contractTypes: LoadState<RefType> = React.useMemo(
+    () => ({
+      loading: contractTypesQ.isLoading,
+      items: contractTypesQ.data as unknown as RefType[],
+      error: contractTypesQ.isError ? "No se pudo cargar CONTRACT_TYPE" : undefined,
+    }),
+    [contractTypesQ.data, contractTypesQ.isLoading, contractTypesQ.isError]
+  );
+
+  const laborRegimesQ = useRefTypesByCategory(REF_TYPE_CATEGORIES.CONTRACT_TYPE, {
+    enabled: hasFilter("laborRegimeId"),
+  });
+  const laborRegimes: LoadState<RefType> = React.useMemo(
+    () => ({
+      loading: laborRegimesQ.isLoading,
+      items: laborRegimesQ.data as unknown as RefType[],
+      error: laborRegimesQ.isError ? "No se pudieron cargar regímenes" : undefined,
+    }),
+    [laborRegimesQ.data, laborRegimesQ.isLoading, laborRegimesQ.isError]
+  );
+
+  const departmentTypesQ = useRefTypesByCategory(REF_TYPE_CATEGORIES.DEPARTMENT_TYPE, {
+    enabled: hasFilter("departmentTypeId"),
+  });
+  const departmentTypes: LoadState<RefType> = React.useMemo(
+    () => ({
+      loading: departmentTypesQ.isLoading,
+      items: departmentTypesQ.data as unknown as RefType[],
+      error: departmentTypesQ.isError ? "No se pudieron cargar tipos de dependencia" : undefined,
+    }),
+    [departmentTypesQ.data, departmentTypesQ.isLoading, departmentTypesQ.isError]
+  );
+
+  const departmentScopesQ = useRefTypesByCategory(REF_TYPE_CATEGORIES.DEPARTMENT_SCOPE, {
+    enabled: hasFilter("departmentScopeId"),
+  });
+  const departmentScopes: LoadState<RefType> = React.useMemo(
+    () => ({
+      loading: departmentScopesQ.isLoading,
+      items: departmentScopesQ.data as unknown as RefType[],
+      error: departmentScopesQ.isError ? "No se pudieron cargar ámbitos de dependencia" : undefined,
+    }),
+    [departmentScopesQ.data, departmentScopesQ.isLoading, departmentScopesQ.isError]
+  );
+
+  const dynamicStatusesCategory = hasFilter("status") ? reportConfig.statusCategory : undefined;
+  const dynamicStatusesQ = useRefTypesByCategory(dynamicStatusesCategory, {
+    enabled: !!dynamicStatusesCategory,
+  });
+  const dynamicStatuses: LoadState<RefType> = React.useMemo(
+    () => ({
+      loading: dynamicStatusesQ.isLoading,
+      items: dynamicStatusesQ.data as unknown as RefType[],
+      error: dynamicStatusesQ.isError ? "No se pudieron cargar estados" : undefined,
+    }),
+    [dynamicStatusesQ.data, dynamicStatusesQ.isLoading, dynamicStatusesQ.isError]
+  );
 
   const setFilterValue = React.useCallback((key: keyof ReportFilter, value: any) => {
     setFilter((prev) => ({
@@ -260,49 +320,6 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
       }
     };
 
-    const loadLaborRegimes = async () => {
-      if (!hasFilter("laborRegimeId")) return;
-      setLaborRegimes({ loading: true, items: [] });
-      try {
-        // Los contratos usan CONTRACT_TYPE para LaborRegimeID (LOES, LOSEP, etc.)
-        const res = await TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CONTRACT_TYPE);
-        const arr = extractArray(res);
-        if (!alive) return;
-        setLaborRegimes({ loading: false, items: arr as any[] });
-      } catch {
-        if (!alive) return;
-        setLaborRegimes({ loading: false, items: [], error: "No se pudieron cargar regímenes" });
-      }
-    };
-
-    const loadDepartmentTypes = async () => {
-      if (!hasFilter("departmentTypeId")) return;
-      setDepartmentTypes({ loading: true, items: [] });
-      try {
-        const res = await TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.DEPARTMENT_TYPE);
-        const arr = extractArray(res);
-        if (!alive) return;
-        setDepartmentTypes({ loading: false, items: arr as any[] });
-      } catch {
-        if (!alive) return;
-        setDepartmentTypes({ loading: false, items: [], error: "No se pudieron cargar tipos de dependencia" });
-      }
-    };
-
-    const loadDepartmentScopes = async () => {
-      if (!hasFilter("departmentScopeId")) return;
-      setDepartmentScopes({ loading: true, items: [] });
-      try {
-        const res = await TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.DEPARTMENT_SCOPE);
-        const arr = extractArray(res);
-        if (!alive) return;
-        setDepartmentScopes({ loading: false, items: arr as any[] });
-      } catch {
-        if (!alive) return;
-        setDepartmentScopes({ loading: false, items: [], error: "No se pudieron cargar ámbitos de dependencia" });
-      }
-    };
-
     const loadActionTypes = async () => {
       if (!hasFilter("actionTypeId")) return;
       setActionTypes({ loading: true, items: [] });
@@ -314,20 +331,6 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
       } catch {
         if (!alive) return;
         setActionTypes({ loading: false, items: [], error: "No se pudieron cargar tipos de acción" });
-      }
-    };
-
-    const loadDynamicStatuses = async () => {
-      if (!hasFilter("status") || !reportConfig.statusCategory) return;
-      setDynamicStatuses({ loading: true, items: [] });
-      try {
-        const res = await TiposReferenciaAPI.byCategory(reportConfig.statusCategory);
-        const arr = extractArray(res);
-        if (!alive) return;
-        setDynamicStatuses({ loading: false, items: arr as any[] });
-      } catch {
-        if (!alive) return;
-        setDynamicStatuses({ loading: false, items: [], error: "No se pudieron cargar estados" });
       }
     };
 
@@ -343,20 +346,6 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
       } catch {
         if (!alive) return;
         setEmployees({ loading: false, items: [], error: "No se pudieron cargar empleados" });
-      }
-    };
-
-    const loadContractTypes = async () => {
-      if (!hasFilter("employeeType") && !hasFilter("employeeTypeId")) return;
-      setContractTypes({ loading: true, items: [] });
-      try {
-        const res = await TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CONTRACT_TYPE);
-        const arr = extractArray(res);
-        if (!alive) return;
-        setContractTypes({ loading: false, items: arr as any[] });
-      } catch {
-        if (!alive) return;
-        setContractTypes({ loading: false, items: [], error: "No se pudo cargar CONTRACT_TYPE" });
       }
     };
 
@@ -389,13 +378,8 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
     };
 
     void loadEmployees();
-    void loadContractTypes();
     void loadContractKinds();
-    void loadLaborRegimes();
-    void loadDepartmentTypes();
-    void loadDepartmentScopes();
     void loadActionTypes();
-    void loadDynamicStatuses();
     void loadGuardLocations();
     void loadGuardGroups();
 

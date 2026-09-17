@@ -20,7 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Loader2, Plus, Edit, Trash2 } from "lucide-react";
+import { AlertCircle, Loader2, Plus, Edit, Trash2, ShieldCheck, AlertTriangle, ServerCrash } from "lucide-react";
 import { ActionIconButton } from "@/components/ui/action-icon-button";
 
 import { useToast } from "@/hooks/use-toast";
@@ -28,6 +28,7 @@ import type { Person, InsertPerson } from "@/shared/schema";
 import type { CatastrophicIllness } from "@/types/person";
 import { PaisesAPI, ProvinciasAPI, CantonesAPI } from "@/lib/api";
 import type { ApiResponse } from "@/lib/api";
+import { useDinardapLookup } from "@/hooks/useDinardapLookup";
 
 // ---------------------- Tipos auxiliares ----------------------
 
@@ -497,6 +498,31 @@ export default function PersonForm({
     defaultValues,
   });
 
+  // Auto-relleno desde Registro Civil (DINARDAP) - solo aplica al crear (idCard ya está
+  // deshabilitado al editar, ver más abajo). No se auto-mapean sexo/género/estado civil/
+  // país-provincia-cantón aunque DINARDAP los traiga - requeriría resolver texto libre contra
+  // los catálogos de ref_Types/geografía sin una regla de coincidencia definida, y asignar mal
+  // un ID de catálogo es peor que dejarlo en blanco para que RRHH lo complete a mano.
+  const dinardap = useDinardapLookup({
+    skip: isEditing,
+    onFound: (d) => {
+      const nombres = d.nombres?.trim();
+      const apellidos = [d.apellido1, d.apellido2].filter(Boolean).join(" ").trim();
+      if (nombres) setValue("firstName", nombres, { shouldValidate: true });
+      if (apellidos) setValue("lastName", apellidos, { shouldValidate: true });
+      if (d.fechaNacimiento) {
+        setValue("birthDate", d.fechaNacimiento.slice(0, 10), { shouldValidate: true });
+      }
+      if (d.nombreMadre?.trim()) setValue("motherName", d.nombreMadre.trim(), { shouldValidate: true });
+      if (d.nombrePadre?.trim()) setValue("fatherName", d.nombrePadre.trim(), { shouldValidate: true });
+    },
+  });
+  const nombresLocked = dinardap.status === "found" && !!dinardap.data?.nombres?.trim();
+  const apellidosLocked = dinardap.status === "found" && !!(dinardap.data?.apellido1 || dinardap.data?.apellido2);
+  const fechaNacimientoLocked = dinardap.status === "found" && !!dinardap.data?.fechaNacimiento;
+  const motherNameLocked = dinardap.status === "found" && !!dinardap.data?.nombreMadre?.trim();
+  const fatherNameLocked = dinardap.status === "found" && !!dinardap.data?.nombrePadre?.trim();
+
   const _onDirtyChangeRef = useRef(onDirtyChange);
   _onDirtyChangeRef.current = onDirtyChange;
   useEffect(() => {
@@ -623,6 +649,7 @@ export default function PersonForm({
     }
 
     setValue("idCard", value, { shouldValidate: true, shouldDirty: true });
+    dinardap.reset();
   };
 
   const handleToggleDisability = (checked: boolean) => {
@@ -791,6 +818,13 @@ export default function PersonForm({
         </TabsList>
 
         <form onSubmit={handleSubmit(onSubmitForm as any)} className="space-y-6">
+        {/* Bloquea TODOS los campos/botones de las 4 pestañas de una sola vez mientras se
+            resuelve la consulta a DINARDAP - más simple y menos propenso a error que agregar
+            `disabled` campo por campo en un formulario de este tamaño. `fieldset disabled`
+            deshabilita nativamente cualquier <input>/<select>/<button>/<textarea> descendiente
+            (los componentes de shadcn/Radix usan esos elementos internamente), sin afectar el
+            layout porque usa display:contents. */}
+        <fieldset disabled={dinardap.isChecking} className="contents">
           <TabsContent value="basic" className="space-y-6">
             <SectionCard title="Información de Identificación">
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -828,6 +862,10 @@ export default function PersonForm({
                     id="idCard"
                     {...register("idCard")}
                     onChange={handleIdCardChange}
+                    onBlur={(e) => {
+                      register("idCard").onBlur(e);
+                      dinardap.check(e.target.value);
+                    }}
                     placeholder={
                       cedulaType && selectedIdentType === cedulaType.id
                         ? "1234567890"
@@ -845,6 +883,36 @@ export default function PersonForm({
                       {errors.idCard.message}
                     </p>
                   )}
+                  {!isEditing && dinardap.status === "checking" && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Consultando Registro Civil…
+                    </p>
+                  )}
+                  {!isEditing && dinardap.status === "found" && (
+                    <p className="text-xs text-emerald-600 flex items-center gap-1">
+                      <ShieldCheck className="h-3 w-3" />
+                      Verificado con Registro Civil
+                    </p>
+                  )}
+                  {!isEditing && dinardap.status === "not-found" && (
+                    <p className="text-xs text-amber-600 flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3" />
+                      Datos no encontrados en Registro Civil para esta cédula — completa manualmente.
+                    </p>
+                  )}
+                  {!isEditing && dinardap.status === "unavailable" && (
+                    <p className="text-xs text-amber-600 flex items-center gap-1">
+                      <ServerCrash className="h-3 w-3" />
+                      Servicio DINARDAP en mantenimiento o no disponible — completa manualmente.
+                    </p>
+                  )}
+                  {!isEditing && dinardap.status === "error" && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3" />
+                      No se pudo verificar con Registro Civil — completa manualmente.
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -857,6 +925,7 @@ export default function PersonForm({
                     id="firstName"
                     {...register("firstName")}
                     placeholder="Juan Carlos"
+                    disabled={nombresLocked}
                     data-testid="input-firstName"
                     className={`${fieldClassName} ${errors.firstName
                       ? "border-destructive focus-visible:ring-destructive/20"
@@ -878,6 +947,7 @@ export default function PersonForm({
                     id="lastName"
                     {...register("lastName")}
                     placeholder="Pérez González"
+                    disabled={apellidosLocked}
                     data-testid="input-lastName"
                     className={`${fieldClassName} ${errors.lastName
                       ? "border-destructive focus-visible:ring-destructive/20"
@@ -966,6 +1036,7 @@ export default function PersonForm({
                     id="birthDate"
                     type="date"
                     {...register("birthDate")}
+                    disabled={fechaNacimientoLocked}
                     data-testid="input-birthDate"
                     className={fieldClassName}
                   />
@@ -1186,6 +1257,7 @@ export default function PersonForm({
                     id="motherName"
                     {...register("motherName")}
                     placeholder="Nombre completo de la madre"
+                    disabled={motherNameLocked}
                     className={fieldClassName}
                   />
                 </div>
@@ -1196,6 +1268,7 @@ export default function PersonForm({
                     id="fatherName"
                     {...register("fatherName")}
                     placeholder="Nombre completo del padre"
+                    disabled={fatherNameLocked}
                     className={fieldClassName}
                   />
                 </div>
@@ -1577,6 +1650,7 @@ export default function PersonForm({
               </Button>
             </div>
           </div>
+        </fieldset>
         </form>
       </Tabs>
 

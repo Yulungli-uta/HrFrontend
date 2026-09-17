@@ -8,8 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DataPagination } from '@/components/ui/DataPagination';
 import { DepartmentSelect } from '@/components/departments';
-import { TiposReferenciaAPI } from '@/lib/api';
 import { REF_TYPE_CATEGORIES } from '@/features/refTypeCategories';
+import { useRefTypesByCategory } from '@/hooks/useRefTypes';
 import { getLatenessSummary } from '@/lib/api/services/reports';
 import type { ReportFilter } from '@/types/reports';
 
@@ -34,13 +34,9 @@ export default function LatenessSummaryPage() {
   // página que ya no existe para el nuevo resultado filtrado.
   const updateFilter = (fn: () => void) => { fn(); setPage(1); };
 
-  const { data: regimesResp } = useQuery({
-    queryKey: ['ref-types', REF_TYPE_CATEGORIES.CONTRACT_TYPE],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CONTRACT_TYPE),
-    staleTime: 300_000,
-  });
+  const { data: laborRegimesData } = useRefTypesByCategory(REF_TYPE_CATEGORIES.CONTRACT_TYPE);
   const laborRegimes: Array<{ typeId?: number; typeID?: number; id?: number; name: string }> =
-    regimesResp?.status === 'success' ? regimesResp.data : [];
+    laborRegimesData;
 
   const filter: ReportFilter = {
     startDate,

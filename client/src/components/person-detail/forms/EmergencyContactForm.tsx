@@ -1,7 +1,6 @@
 // client/src/components/person-detail/EmergencyContactForm.tsx
 import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
-import { useQuery } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -24,7 +23,8 @@ import {
 } from "@/components/ui/select";
 
 import type { EmergencyContact } from "@/types/person";
-import { TiposReferenciaAPI, type RefType } from "@/lib/api";
+import { type RefType } from "@/lib/api";
+import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { logger } from "@/lib/logger";
 
@@ -127,35 +127,23 @@ export default function EmergencyContactForm({
   // Catálogo RELATIONSHIP
   // =============================
   const {
-    data: relationshipTypesResp,
+    data: relationshipTypesRaw,
     isLoading: loadingRelationshipTypes,
     error: relationshipTypesError,
-  } = useQuery({
-    queryKey: ["refTypes", "RELATIONSHIP"],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.RELATIONSHIP),
-  });
+  } = useRefTypesByCategory(REF_TYPE_CATEGORIES.RELATIONSHIP);
 
-  const relationshipTypes: RefType[] =
-    relationshipTypesResp?.status === "success"
-      ? (relationshipTypesResp.data ?? []).filter((t: any) => t.isActive)
-      : [];
+  const relationshipTypes: RefType[] = relationshipTypesRaw.filter((t: any) => t.isActive);
 
   // =============================
   // Catálogo IDENTITY_TYPE
   // =============================
   const {
-    data: identityTypesResp,
+    data: identityTypesRaw,
     isLoading: loadingIdentityTypes,
     error: identityTypesError,
-  } = useQuery({
-    queryKey: ["refTypes", "IDENTITY_TYPE"],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.IDENTITY_TYPE),
-  });
+  } = useRefTypesByCategory(REF_TYPE_CATEGORIES.IDENTITY_TYPE);
 
-  const identityTypes: RefType[] =
-    identityTypesResp?.status === "success"
-      ? (identityTypesResp.data ?? []).filter((t: any) => t.isActive)
-      : [];
+  const identityTypes: RefType[] = identityTypesRaw.filter((t: any) => t.isActive);
 
   // =============================
   // useForm

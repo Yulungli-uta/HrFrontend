@@ -61,29 +61,26 @@ export default function FinancialCertificationPage() {
   useEffect(() => { setPage(1); }, [searchTerm, statusFilter]);
 
   const { data: apiResponse, isLoading, error } = useCertifications();
-  const { data: certStatusTypesResp } = useCertStatusTypes();
+  const { data: certStatusTypes } = useCertStatusTypes();
   const { createMutation, updateMutation, approveMutation, rejectMutation, rejectTemporaryMutation, resendMutation } = useCertificationMutations();
 
   // Mapa typeId → name para resolver statusName cuando el backend lo omite
   const statusById = useMemo(() => {
     const map = new Map<number, string>();
-    if (certStatusTypesResp?.status === "success") {
-      for (const rt of (certStatusTypesResp.data ?? [])) {
-        const id: number | undefined = rt.typeId ?? rt.typeID;
-        if (id != null) map.set(id, rt.name as string);
-      }
+    for (const rt of (certStatusTypes ?? [])) {
+      const id: number | undefined = (rt as any).typeId ?? (rt as any).typeID;
+      if (id != null) map.set(id, rt.name as string);
     }
     return map;
-  }, [certStatusTypesResp]);
+  }, [certStatusTypes]);
 
   // Opciones del dropdown — provienen del catálogo, no de los datos
   const statusOptions = useMemo(() => {
-    if (certStatusTypesResp?.status !== "success") return [];
-    return (certStatusTypesResp.data ?? []).map((rt: any) => {
+    return (certStatusTypes ?? []).map((rt: any) => {
       const name = (rt.name as string).toUpperCase();
       return { name, text: statusTextFromName(rt.name as string) };
     });
-  }, [certStatusTypesResp]);
+  }, [certStatusTypes]);
 
   // Todos los certs enriquecidos con statusName resuelto del catálogo si venía null
   const allCerts = useMemo(() => {

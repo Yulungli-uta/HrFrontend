@@ -4,8 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Plus, Building2, Edit, Trash2, Search, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { InstitucionesAPI, PaisesAPI, ProvinciasAPI, CantonesAPI, TiposReferenciaAPI } from "@/lib/api";
+import { InstitucionesAPI, PaisesAPI, ProvinciasAPI, CantonesAPI } from "@/lib/api";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
+import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,10 +50,12 @@ export default function InstitutionsPage() {
   const [form, setForm] = useState<Institution>(emptyInstitution);
   const [searchTerm, setSearchTerm] = useState("");
 
-  const [institutionTypes, setInstitutionTypes] = useState<any[]>([]);
   const [countries, setCountries] = useState<any[]>([]);
   const [provinces, setProvinces] = useState<any[]>([]);
   const [cantons, setCantons] = useState<any[]>([]);
+
+  const { data: institutionTypesData } = useRefTypesByCategory(REF_TYPE_CATEGORIES.INSTITUTION_TYPE);
+  const institutionTypes = institutionTypesData.filter((t: any) => t.isActive);
 
   const load = async () => {
     try {
@@ -69,9 +72,6 @@ export default function InstitutionsPage() {
 
   useEffect(() => {
     load();
-    TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.INSTITUTION_TYPE).then((r) => {
-      if (r.status === "success") setInstitutionTypes((r.data ?? []).filter((t: any) => t.isActive));
-    });
     PaisesAPI.list().then((r) => setCountries(r.status === "success" ? (r.data ?? []) : []));
   }, []);
 

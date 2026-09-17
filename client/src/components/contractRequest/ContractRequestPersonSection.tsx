@@ -22,7 +22,8 @@ import {
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 
-import { TiposReferenciaAPI, ContractRequestAPI, type ApiResponse } from "@/lib/api";
+import { ContractRequestAPI, type ApiResponse } from "@/lib/api";
+import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import type { CreateContractRequestPersonDto, ContractRequestPersonDto, BulkValidatedRow } from "@/types/contractRequestPerson";
 import { CargosEspecializadosAPI } from "@/lib/api/services/contracts";
 import { PersonSearchCombobox } from "@/components/personnelActions/PersonSearchCombobox";
@@ -107,11 +108,8 @@ export const ContractRequestPersonSection = forwardRef<ContractRequestPersonSect
     });
 
     // Catálogo JOB_TYPE
-    const jobTypesQ = useQuery<ApiResponse<any[]>>({
-      queryKey: ["refTypes", JOB_TYPE_CATEGORY],
-      queryFn: () => TiposReferenciaAPI.byCategory(JOB_TYPE_CATEGORY) as Promise<ApiResponse<any[]>>,
-    });
-    const jobTypes: any[] = jobTypesQ.data?.status === "success" ? jobTypesQ.data.data : [];
+    const jobTypesQ = useRefTypesByCategory(JOB_TYPE_CATEGORY);
+    const jobTypes: any[] = jobTypesQ.data;
 
     const selectedTypeName = useMemo(() => {
       if (!form.requestPersonType) return "";

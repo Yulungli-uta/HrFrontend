@@ -1,6 +1,5 @@
 // src/components/shared/RefTypeDescriptionHint.tsx
-import { useEffect, useState } from 'react';
-import { TiposReferenciaAPI } from '@/lib/api';
+import { useRefTypesByCategory } from '@/hooks/useRefTypes';
 import type { RefTypeCategory } from '@/features/refTypeCategories';
 
 /**
@@ -25,25 +24,15 @@ type Props = {
 };
 
 export function RefTypeDescriptionHint({ description, category, typeId, name, className }: Props) {
-  const [fetched, setFetched] = useState<string | null>(null);
   const shouldFetch = description === undefined && !!category && (typeId != null || !!name);
 
-  useEffect(() => {
-    if (!shouldFetch) {
-      setFetched(null);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      const res = await TiposReferenciaAPI.byCategory(category!);
-      if (cancelled || res.status !== 'success') return;
-      const match = (res.data ?? []).find((rt: any) =>
+  const { data: categoryTypes } = useRefTypesByCategory(shouldFetch ? category : null);
+
+  const fetched = shouldFetch
+    ? categoryTypes.find((rt: any) =>
         typeId != null ? (rt.typeId ?? rt.typeID) === typeId : rt.name === name
-      );
-      setFetched(match?.description || null);
-    })();
-    return () => { cancelled = true; };
-  }, [shouldFetch, category, typeId, name]);
+      )?.description || null
+    : null;
 
   const text = description !== undefined ? description : fetched;
   if (!text) return null;

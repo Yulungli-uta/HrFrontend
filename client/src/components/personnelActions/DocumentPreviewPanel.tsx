@@ -7,6 +7,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
 import { FileText, Download, Printer, Eye, Loader2 } from 'lucide-react';
@@ -146,6 +147,7 @@ export function DocumentPreviewPanel({
         <DialogContent className="w-[95vw] sm:max-w-4xl h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Vista Previa — {displayName}</DialogTitle>
+            <DialogDescription>Previsualización del documento antes de confirmarlo.</DialogDescription>
           </DialogHeader>
 
           <div className="flex-1 min-h-0 border rounded-lg overflow-hidden">

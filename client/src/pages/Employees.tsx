@@ -41,7 +41,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { VistaEmpleadosAPI, TiposReferenciaAPI } from "@/lib/api";
+import { VistaEmpleadosAPI } from "@/lib/api";
+import { useRefTypes } from "@/hooks/useRefTypes";
 import { DepartmentSelect } from "@/components/departments";
 import { useToast } from "@/hooks/use-toast";
 import { usePaged } from "@/hooks/pagination/usePaged";
@@ -258,12 +259,7 @@ export default function EmployeesPage() {
     [rawEmployees]
   );
 
-  const { data: refTypesResp } = useQuery({
-  queryKey: ["/api/v1/rh/ref/types"],
-  queryFn: TiposReferenciaAPI.list,
-  refetchOnWindowFocus: false,
-  staleTime: 5 * 60_000,
-});
+  const { data: refTypesResp } = useRefTypes();
 
 const refTypes = useMemo(
   () => normalizeRefTypes(refTypesResp),

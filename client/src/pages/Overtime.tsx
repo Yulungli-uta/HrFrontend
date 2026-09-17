@@ -52,11 +52,11 @@ import {
 
 import {
   TimePlanningsAPI,
-  TiposReferenciaAPI,
   type ApiResponse,
 } from "@/lib/api";
 import { useAuth } from "@/features/auth";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
+import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import TimePlanningEmployeeForm from "@/components/forms/TimePlanningEmployeeForm";
 import CreatePlanningDialog from "@/components/planning/CreatePlanningDialog";
 
@@ -147,14 +147,8 @@ export default function OvertimePage() {
   const [isEmployeesOpen, setIsEmployeesOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
-  const { data: refPlanStatusResp } = useQuery<ApiResponse<RefType[]>>({
-    queryKey: ["ref-types", "PLAN_STATUS"],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.PLAN_STATUS),
-    staleTime: 5 * 60_000,
-  });
-
-  const planStatuses =
-    refPlanStatusResp?.status === "success" ? refPlanStatusResp.data || [] : [];
+  const { data: planStatusesData } = useRefTypesByCategory(REF_TYPE_CATEGORIES.PLAN_STATUS);
+  const planStatuses = planStatusesData as unknown as RefType[];
 
   const {
     data: plansResp,

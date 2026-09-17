@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2 } from "lucide-react";
+import { Loader2, ShieldCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -28,7 +28,8 @@ import {
 import { ReusableFileUpload } from "@/components/ReusableFileUpload";
 
 import type { EducationLevel } from "@/types/person";
-import { TiposReferenciaAPI, InstitucionesAPI, NivelesEducacionAPI, type RefType } from "@/lib/api";
+import { InstitucionesAPI, NivelesEducacionAPI, type RefType } from "@/lib/api";
+import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { EDUCATION_CERTIFICATE_DIRECTORY_CODE, EDUCATION_CERTIFICATE_ENTITY_TYPE } from "@/features/constants";
 import { logger } from "@/lib/logger";
@@ -43,13 +44,9 @@ const educationLevelFormSchema = z.object({
     .int()
     .positive(),
 
-  institutionId: z
-    .number({
-      required_error: "La institución es requerida",
-      invalid_type_error: "La institución es requerida",
-    })
-    .int()
-    .positive(),
+  // Opcional desde 2026-09-16: un título sincronizado puede no tener institución catalogada
+  // (queda en institutionNameOriginal en su lugar - ver EducationLevel.institutionId).
+  institutionId: z.number().int().positive().optional(),
 
   title: z.string().min(1, "El título obtenido es requerido"),
   specialty: z.string().optional(),
@@ -63,6 +60,11 @@ const educationLevelFormSchema = z.object({
       message: "Debe ser un número",
     }),
   senescytRegistrationNumber: z.string().optional(),
+  // Integración DINARDAP (2026-09-16)
+  siiesGradoTypeId: z.number().int().positive().optional(),
+  senescytGraduationDate: z.string().optional(),
+  senescytRegistrationDate: z.string().optional(),
+  senescytType: z.string().optional(),
 });
 
 export type EducationLevelFormData = z.infer<typeof educationLevelFormSchema>;
@@ -102,13 +104,10 @@ export default function EducationLevelForm({
   const [fileUploadKey, setFileUploadKey] = useState(0);
 
   const {
-    data: levelTypesResp,
+    data: levelTypesRaw,
     isLoading: loadingLevelTypes,
     error: levelTypesError,
-  } = useQuery({
-    queryKey: ["refTypes", "ACADEMIC_LEVEL"],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.ACADEMIC_LEVEL),
-  });
+  } = useRefTypesByCategory(REF_TYPE_CATEGORIES.ACADEMIC_LEVEL);
 
   const {
     data: institutionsResp,
@@ -119,21 +118,18 @@ export default function EducationLevelForm({
     queryFn: () => InstitucionesAPI.list(),
   });
 
-  const { data: docTypesResp } = useQuery({
-    queryKey: ["refTypes", "CV_DOCUMENT_TYPE"],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CV_DOCUMENT_TYPE),
-  });
+  const { data: docTypesRaw } = useRefTypesByCategory(REF_TYPE_CATEGORIES.CV_DOCUMENT_TYPE);
 
-  const levelTypes: RefType[] =
-    levelTypesResp?.status === "success"
-      ? (levelTypesResp.data ?? []).filter((t: any) => t.isActive)
-      : [];
+  const { data: gradosRaw } = useRefTypesByCategory(REF_TYPE_CATEGORIES.SIIES_GRADO);
+
+  const levelTypes: RefType[] = levelTypesRaw.filter((t: any) => t.isActive);
 
   const institutions: any[] =
     institutionsResp?.status === "success" ? institutionsResp.data ?? [] : [];
 
-  const docTypes: RefType[] =
-    docTypesResp?.status === "success" ? (docTypesResp.data ?? []).filter((t: any) => t.isActive) : [];
+  const docTypes: RefType[] = docTypesRaw.filter((t: any) => t.isActive);
+
+  const grados: RefType[] = gradosRaw.filter((t: any) => t.isActive);
 
   const form = useForm<EducationLevelFormData>({
     resolver: zodResolver(educationLevelFormSchema),
@@ -143,7 +139,7 @@ export default function EducationLevelForm({
           ? Number(educationLevel.educationLevelTypeId)
           : 0,
       institutionId:
-        educationLevel?.institutionId != null ? Number(educationLevel.institutionId) : 0,
+        educationLevel?.institutionId != null ? Number(educationLevel.institutionId) : undefined,
       title: educationLevel?.title ?? "",
       specialty: educationLevel?.specialty ?? "",
       startDate: educationLevel?.startDate ? educationLevel.startDate.split("T")[0] : "",
@@ -151,6 +147,10 @@ export default function EducationLevelForm({
       grade: educationLevel?.grade ?? "",
       score: educationLevel?.score != null ? String(educationLevel.score) : "",
       senescytRegistrationNumber: educationLevel?.senescytRegistrationNumber ?? "",
+      siiesGradoTypeId: educationLevel?.siiesGradoTypeId != null ? Number(educationLevel.siiesGradoTypeId) : undefined,
+      senescytGraduationDate: educationLevel?.senescytGraduationDate ? educationLevel.senescytGraduationDate.split("T")[0] : "",
+      senescytRegistrationDate: educationLevel?.senescytRegistrationDate ? educationLevel.senescytRegistrationDate.split("T")[0] : "",
+      senescytType: educationLevel?.senescytType ?? "",
     },
   });
 
@@ -165,7 +165,7 @@ export default function EducationLevelForm({
     if (educationLevel) {
       form.reset({
         educationLevelTypeId: Number(educationLevel.educationLevelTypeId) || 0,
-        institutionId: Number(educationLevel.institutionId) || 0,
+        institutionId: educationLevel.institutionId != null ? Number(educationLevel.institutionId) : undefined,
         title: educationLevel.title ?? "",
         specialty: educationLevel.specialty ?? "",
         startDate: educationLevel.startDate ? educationLevel.startDate.split("T")[0] : "",
@@ -173,11 +173,15 @@ export default function EducationLevelForm({
         grade: educationLevel.grade ?? "",
         score: educationLevel.score != null ? String(educationLevel.score) : "",
         senescytRegistrationNumber: educationLevel.senescytRegistrationNumber ?? "",
+        siiesGradoTypeId: educationLevel.siiesGradoTypeId != null ? Number(educationLevel.siiesGradoTypeId) : undefined,
+        senescytGraduationDate: educationLevel.senescytGraduationDate ? educationLevel.senescytGraduationDate.split("T")[0] : "",
+        senescytRegistrationDate: educationLevel.senescytRegistrationDate ? educationLevel.senescytRegistrationDate.split("T")[0] : "",
+        senescytType: educationLevel.senescytType ?? "",
       });
     } else {
       form.reset({
         educationLevelTypeId: 0,
-        institutionId: 0,
+        institutionId: undefined,
         title: "",
         specialty: "",
         startDate: "",
@@ -185,9 +189,27 @@ export default function EducationLevelForm({
         grade: "",
         score: "",
         senescytRegistrationNumber: "",
+        siiesGradoTypeId: undefined,
+        senescytGraduationDate: "",
+        senescytRegistrationDate: "",
+        senescytType: "",
       });
     }
   }, [educationLevel, form]);
+
+  // Bloqueo por campo: solo si el registro vino de DINARDAP Y ese campo puntual trae un valor
+  // real - si vino null (DINARDAP no tenía ese dato) queda editable igual que uno manual.
+  const isDinardapSourced = educationLevel?.source === "Dinardap";
+  const institutionLocked = isDinardapSourced && educationLevel?.institutionId != null;
+  const gradoLocked = isDinardapSourced && educationLevel?.siiesGradoTypeId != null;
+  const graduationDateLocked = isDinardapSourced && !!educationLevel?.senescytGraduationDate;
+  const registrationDateLocked = isDinardapSourced && !!educationLevel?.senescytRegistrationDate;
+  const senescytTypeLocked = isDinardapSourced && !!educationLevel?.senescytType;
+
+  const selectedLevelTypeId = form.watch("educationLevelTypeId");
+  const selectedLevel = levelTypes.find((t) => getRefTypeId(t) === selectedLevelTypeId);
+  // El grado (Doctor/Maestría/Especialista/Diplomado) solo aplica a Cuarto Nivel.
+  const isCuartoNivel = selectedLevel?.name === "NIVEL_4";
 
   const handleSubmit = async (data: EducationLevelFormData) => {
     // Camino con documento adjunto: solo aplica al crear (aún no existe un educationId
@@ -199,7 +221,7 @@ export default function EducationLevelForm({
         const formData = new FormData();
         formData.append("PersonId", String(personId));
         formData.append("EducationLevelTypeId", String(data.educationLevelTypeId));
-        formData.append("InstitutionId", String(data.institutionId));
+        if (data.institutionId) formData.append("InstitutionId", String(data.institutionId));
         formData.append("Title", data.title);
         if (data.specialty) formData.append("Specialty", data.specialty);
         if (data.startDate) formData.append("StartDate", data.startDate);
@@ -209,6 +231,10 @@ export default function EducationLevelForm({
         if (data.senescytRegistrationNumber) {
           formData.append("SenescytRegistrationNumber", data.senescytRegistrationNumber);
         }
+        if (data.siiesGradoTypeId) formData.append("SiiesGradoTypeId", String(data.siiesGradoTypeId));
+        if (data.senescytGraduationDate) formData.append("SenescytGraduationDate", data.senescytGraduationDate);
+        if (data.senescytRegistrationDate) formData.append("SenescytRegistrationDate", data.senescytRegistrationDate);
+        if (data.senescytType) formData.append("SenescytType", data.senescytType);
         formData.append("File", selectedFile);
         if (selectedDocTypeId) formData.append("DocumentTypeId", selectedDocTypeId);
 
@@ -240,7 +266,7 @@ export default function EducationLevelForm({
       educationId: educationLevel?.educationId ?? 0,
       personId,
       educationLevelTypeId: data.educationLevelTypeId,
-      institutionId: data.institutionId,
+      institutionId: data.institutionId ?? null,
       title: data.title,
       specialty: data.specialty || null,
       startDate: data.startDate || null,
@@ -248,6 +274,10 @@ export default function EducationLevelForm({
       grade: data.grade || null,
       score: data.score ? Number(data.score) : null,
       senescytRegistrationNumber: data.senescytRegistrationNumber || null,
+      siiesGradoTypeId: data.siiesGradoTypeId ?? null,
+      senescytGraduationDate: data.senescytGraduationDate || null,
+      senescytRegistrationDate: data.senescytRegistrationDate || null,
+      senescytType: data.senescytType || null,
     };
 
     try {
@@ -269,6 +299,16 @@ export default function EducationLevelForm({
         className="space-y-4"
         data-testid="education-level-form"
       >
+        {isDinardapSourced && (
+          <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-400">
+            <ShieldCheck className="h-4 w-4 shrink-0" />
+            <span>
+              Sincronizado desde SENESCYT — los campos con dato real quedan bloqueados; los que
+              vinieron vacíos se pueden completar a mano.
+            </span>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Nivel de formación */}
           <FormField
@@ -305,21 +345,27 @@ export default function EducationLevelForm({
                 {levelTypesError && (
                   <p className="text-xs text-destructive mt-1">No se pudieron cargar los niveles.</p>
                 )}
+                {educationLevel?.senescytNivelNombreOriginal && (
+                  <p className="text-xs text-muted-foreground">
+                    Según SENESCYT: <em>{educationLevel.senescytNivelNombreOriginal}</em>
+                  </p>
+                )}
               </FormItem>
             )}
           />
 
-          {/* Institución */}
+          {/* Institución - opcional desde 2026-09-16: un título sincronizado puede no tener
+              institución catalogada, ver institutionNameOriginal más abajo. */}
           <FormField
             control={form.control}
             name="institutionId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Institución</FormLabel>
+                <FormLabel>Institución {institutionLocked ? "" : "(opcional si no está en el catálogo)"}</FormLabel>
                 <Select
-                  disabled={loadingInstitutions || !!institutionsError || saving}
+                  disabled={loadingInstitutions || !!institutionsError || saving || institutionLocked}
                   value={field.value ? String(field.value) : ""}
-                  onValueChange={(v) => field.onChange(Number(v))}
+                  onValueChange={(v) => field.onChange(v ? Number(v) : undefined)}
                 >
                   <FormControl>
                     <SelectTrigger data-testid="select-institution">
@@ -343,6 +389,17 @@ export default function EducationLevelForm({
               </FormItem>
             )}
           />
+
+          {/* Nombre libre de la institución tal como lo manda DINARDAP, cuando no está
+              catalogada arriba (institutionId null) — como campo visible, no como nota. */}
+          {!form.watch("institutionId") && educationLevel?.institutionNameOriginal && (
+            <FormItem>
+              <FormLabel>Institución según SENESCYT (no catalogada)</FormLabel>
+              <FormControl>
+                <Input value={educationLevel.institutionNameOriginal} disabled readOnly />
+              </FormControl>
+            </FormItem>
+          )}
         </div>
 
         {/* Título obtenido */}
@@ -386,9 +443,107 @@ export default function EducationLevelForm({
                 <FormControl>
                   <Input {...field} placeholder="Ej: 1234-2020-1234567" />
                 </FormControl>
-                <FormDescription>
+                {/* <FormDescription>
                   Requerido para justificar la escala salarial (RMU) en instituciones públicas.
                 </FormDescription>
+                <FormMessage /> */}
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Tipo (Nacional/Extranjero) */}
+          <FormField
+            control={form.control}
+            name="senescytType"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Tipo de título (opcional)</FormLabel>
+                <Select
+                  disabled={saving || senescytTypeLocked}
+                  value={field.value || ""}
+                  onValueChange={field.onChange}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar tipo" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="NACIONALES">Nacional</SelectItem>
+                    <SelectItem value="EXTRANJEROS">Extranjero</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Grado (Doctor/Maestría/Especialista/Diplomado) - solo Cuarto Nivel */}
+          {isCuartoNivel && (
+            <FormField
+              control={form.control}
+              name="siiesGradoTypeId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Grado (opcional)</FormLabel>
+                  <Select
+                    disabled={saving || gradoLocked}
+                    value={field.value ? String(field.value) : ""}
+                    onValueChange={(v) => field.onChange(v ? Number(v) : undefined)}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar grado" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {grados.map((g) => {
+                        const id = getRefTypeId(g);
+                        if (id == null) return null;
+                        return (
+                          <SelectItem key={id} value={String(id)}>
+                            {g.name}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>Doctorado, Maestría, Especialista o Diplomado Superior.</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Fecha de grado / registro SENESCYT - distintas de fecha de inicio/fin de estudio */}
+          <FormField
+            control={form.control}
+            name="senescytGraduationDate"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Fecha de grado (opcional)</FormLabel>
+                <FormControl>
+                  <Input {...field} type="date" disabled={saving || graduationDateLocked} />
+                </FormControl>
+                {/* <FormDescription>Fecha en que se otorgó el título — distinta de la fecha de finalización de estudios.</FormDescription>
+                <FormMessage /> */}
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="senescytRegistrationDate"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Fecha de registro SENESCYT (opcional)</FormLabel>
+                <FormControl>
+                  <Input {...field} type="date" disabled={saving || registrationDateLocked} />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}

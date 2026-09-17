@@ -13,8 +13,8 @@ import {
 } from '@/components/ui/select';
 import { FileBadge, Plus, Loader2, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { TiposReferenciaAPI } from '@/lib/api';
 import { REF_TYPE_CATEGORIES } from '@/features/refTypeCategories';
+import { useRefTypesByCategory } from '@/hooks/useRefTypes';
 import { EmployeeCertificatesAPI } from '@/lib/api/services/employeeSelfService';
 import { parseApiError } from '@/lib/api/utils/error-handling';
 import { StatusBadge } from '@/components/shared/StatusBadge';
@@ -56,12 +56,7 @@ export default function MyCertificatesPage() {
     queryFn: () => EmployeeCertificatesAPI.getMy({ page: 1, pageSize: 20 }),
   });
 
-  const { data: certTypesResp } = useQuery({
-    queryKey: ['ref-types', REF_TYPE_CATEGORIES.EMPLOYEE_CERTIFICATE_TYPE],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.EMPLOYEE_CERTIFICATE_TYPE),
-    staleTime: 5 * 60_000,
-  });
-  const certTypeOptions = certTypesResp?.status === 'success' ? certTypesResp.data : [];
+  const { data: certTypeOptions } = useRefTypesByCategory(REF_TYPE_CATEGORIES.EMPLOYEE_CERTIFICATE_TYPE);
 
   const result = data?.status === 'success' ? data.data : null;
   const items = result?.items ?? [];

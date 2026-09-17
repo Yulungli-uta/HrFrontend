@@ -3,7 +3,7 @@ import { MapPin, Plus, RefreshCw, ChevronRight, ChevronDown, Pencil, Search } fr
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -269,6 +269,11 @@ export default function GuardServiceLocationsPage() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{mode === 'create' ? 'Nueva ubicación' : 'Editar ubicación'}</DialogTitle>
+            <DialogDescription>
+              {mode === 'create'
+                ? 'Registra una nueva ubicación de servicio de guardias.'
+                : 'Modifica la ubicación de servicio seleccionada.'}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>

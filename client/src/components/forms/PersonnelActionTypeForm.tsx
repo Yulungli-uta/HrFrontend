@@ -3,10 +3,10 @@ import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { PersonnelActionTypeAPI } from "@/lib/api/services/contracts";
-import { TiposReferenciaAPI, type ApiResponse } from "@/lib/api";
+import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { TemplateSelect } from "@/components/shared/TemplateSelect";
 
@@ -79,17 +79,8 @@ export function PersonnelActionTypeForm({
 }: PersonnelActionTypeFormProps) {
   const queryClient = useQueryClient();
 
-  const { data: siiesRelacionIesResponse, isLoading: isLoadingSiiesRelacionIes } =
-    useQuery<ApiResponse<any[]>>({
-      queryKey: ["refTypes", REF_TYPE_CATEGORIES.SIIES_RELACION_IES],
-      queryFn: () =>
-        TiposReferenciaAPI.byCategory(
-          REF_TYPE_CATEGORIES.SIIES_RELACION_IES
-        ) as Promise<ApiResponse<any[]>>,
-    });
-
-  const siiesRelacionIesOptions =
-    siiesRelacionIesResponse?.status === "success" ? siiesRelacionIesResponse.data : [];
+  const { data: siiesRelacionIesOptions, isLoading: isLoadingSiiesRelacionIes } =
+    useRefTypesByCategory(REF_TYPE_CATEGORIES.SIIES_RELACION_IES);
 
   const form = useForm<PersonnelActionTypeFormValues>({
     resolver: zodResolver(schema),

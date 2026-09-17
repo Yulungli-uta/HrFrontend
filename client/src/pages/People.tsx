@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useCrudMutation } from "@/hooks/useCrudMutation";
-import type { Employee } from "@/shared/schema";
 import PersonForm from "@/components/forms/PersonForm";
 import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
 import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
@@ -44,11 +43,11 @@ import {
 
 import {
   PersonasAPI,
-  EmpleadosAPI,
-  TiposReferenciaAPI,
+  VistaEmpleadosAPI,
 } from "@/lib/api";
-import type { ApiResponse } from "@/lib/api";
+import type { ApiResponse, EmployeeCompleteStatsDto } from "@/lib/api";
 import { usePaged } from "@/hooks/pagination/usePaged";
+import { useRefTypes } from "@/hooks/useRefTypes";
 import { DataPagination } from "@/components/ui/DataPagination";
 
 interface ApiRefType {
@@ -270,28 +269,28 @@ export default function People() {
     initialPageSize: 20,
   });
 
-  const { data: employeesResponse } = useQuery<ApiResponse<Employee[]>>({
-    queryKey: ["employees"],
-    queryFn: () => EmpleadosAPI.list(),
+  // [2026-09-17] Antes traía TODA la tabla de empleados (EmpleadosAPI.list(), sin paginar) solo
+  // para calcular activos/inactivos en el navegador — causaba la demora real de esta página.
+  // VistaEmpleadosAPI.stats() ya calcula esto en el servidor (mismo endpoint que usa
+  // Employees.tsx), sin traer ni una fila de empleado.
+  const { data: employeeStatsResponse } = useQuery<ApiResponse<EmployeeCompleteStatsDto>>({
+    queryKey: ["employee-stats"],
+    queryFn: () => VistaEmpleadosAPI.stats(),
     staleTime: 5 * 60_000,
   });
 
-  const employees = useMemo(() => {
-    if (employeesResponse?.status === "success") {
-      return employeesResponse.data || [];
+  const employeeStats = useMemo(() => {
+    if (employeeStatsResponse?.status === "success" && employeeStatsResponse.data) {
+      return employeeStatsResponse.data;
     }
-    return [];
-  }, [employeesResponse]);
+    return { total: 0, active: 0, inactive: 0, byContractType: [] };
+  }, [employeeStatsResponse]);
 
   const {
     data: refTypesResponse,
     isLoading: isLoadingRefTypes,
     isError: isErrorRefTypes,
-  } = useQuery<ApiResponse<ApiRefType[]>>({
-    queryKey: ["refTypes"],
-    queryFn: () => TiposReferenciaAPI.list(),
-    staleTime: 5 * 60_000,
-  });
+  } = useRefTypes();
 
   const refTypesByCategory = useMemo(() => {
     if (
@@ -299,46 +298,27 @@ export default function People() {
       Array.isArray(refTypesResponse.data)
     ) {
       return refTypesResponse.data.reduce((acc, ref) => {
-        if (REF_CATEGORIES.length && !REF_CATEGORIES.includes(ref.category)) {
+        const category = ref.category ?? "";
+        if (REF_CATEGORIES.length && !REF_CATEGORIES.includes(category)) {
           return acc;
         }
         const normalized: RefType = {
-          id: ref.typeId,
-          category: ref.category,
+          id: Number(ref.typeId ?? ref.typeID ?? 0),
+          category,
           name: ref.name,
           description: ref.description ?? undefined,
           isActive: ref.isActive,
           createdAt: ref.createdAt,
-          updatedAt: ref.updatedAt,
+          updatedAt: ref.updatedAt ?? undefined,
         };
-        if (!acc[ref.category]) {
-          acc[ref.category] = [];
+        if (!acc[category]) {
+          acc[category] = [];
         }
-        acc[ref.category].push(normalized);
+        acc[category].push(normalized);
         return acc;
       }, {} as Record<string, RefType[]>);
     }
     return {};
-  }, [refTypesResponse]);
-
-  const contractTypes = useMemo<RefType[]>(() => {
-    if (
-      refTypesResponse?.status === "success" &&
-      Array.isArray(refTypesResponse.data)
-    ) {
-      return refTypesResponse.data
-        .filter((ref) => ref.category === "CONTRACT_TYPE")
-        .map<RefType>((ref) => ({
-          id: ref.typeId,
-          category: ref.category,
-          name: ref.name,
-          description: ref.description ?? undefined,
-          isActive: ref.isActive,
-          createdAt: ref.createdAt,
-          updatedAt: ref.updatedAt,
-        }));
-    }
-    return [];
   }, [refTypesResponse]);
 
   const { create: createPersonMutation } = useCrudMutation<PersonDto, PersonCreateDto>({
@@ -361,46 +341,14 @@ export default function People() {
     window.location.href = `/people/${id}`;
   };
 
-  const stats = useMemo(() => {
-    const activeEmployees = employees.filter((emp: any) => emp.isActive);
-    const inactiveEmployees = employees.filter((emp: any) => !emp.isActive);
-
-    const byContractTypeId = new Map<number, number>();
-    let withoutType = 0;
-
-    activeEmployees.forEach((emp: any) => {
-      const employeeTypeId = emp.employeeType;
-      if (
-        employeeTypeId === null ||
-        employeeTypeId === undefined ||
-        employeeTypeId === "" ||
-        employeeTypeId === 0
-      ) {
-        withoutType++;
-        return;
-      }
-      const typeId = Number(employeeTypeId);
-      if (Number.isNaN(typeId)) {
-        withoutType++;
-        return;
-      }
-      const matchedType = contractTypes.find((ct) => ct.id === typeId);
-      if (matchedType) {
-        const current = byContractTypeId.get(matchedType.id) ?? 0;
-        byContractTypeId.set(matchedType.id, current + 1);
-      } else {
-        withoutType++;
-      }
-    });
-
-    return {
+  const stats = useMemo(
+    () => ({
       totalPeople: totalCount,
-      activeEmployees: activeEmployees.length,
-      inactiveEmployees: inactiveEmployees.length,
-      byContractTypeId,
-      withoutType,
-    };
-  }, [employees, contractTypes, totalCount]);
+      activeEmployees: employeeStats.active,
+      inactiveEmployees: employeeStats.inactive,
+    }),
+    [totalCount, employeeStats]
+  );
 
   const filteredPeople = useMemo(() => {
     if (activeFilter === "all") return people;
@@ -503,48 +451,9 @@ export default function People() {
         </Card>
       </div>
 
-      {/* Distribución por régimen laboral */}
-      {contractTypes.length > 0 && (
-        <div>
-          <p className="text-sm font-medium text-muted-foreground mb-2">
-            Distribución por régimen laboral
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {contractTypes.map((ct) => (
-              <Card key={ct.id} className="border-border/60 bg-card/95 shadow-sm">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="bg-secondary p-2 rounded-full shrink-0">
-                    <UserCheck className="h-4 w-4 text-secondary-foreground" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium text-muted-foreground truncate">{ct.name}</p>
-                    <p className="text-xl font-bold text-foreground">
-                      {stats.byContractTypeId.get(ct.id) ?? 0}
-                    </p>
-                    <p className="text-xs text-muted-foreground">Activos</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-            {stats.withoutType > 0 && (
-              <Card className="border-border/60 bg-muted/30 shadow-sm">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="bg-muted-foreground/20 p-2 rounded-full shrink-0">
-                    <UserX className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium text-muted-foreground">Sin régimen</p>
-                    <p className="text-xl font-bold text-muted-foreground">
-                      {stats.withoutType}
-                    </p>
-                    <p className="text-xs text-muted-foreground">Sin asignación</p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </div>
-      )}
+      {/* [2026-09-17] "Distribución por régimen laboral" se quitó de aquí — quedó duplicada
+          con la misma sección en Employees.tsx (que ya usa VistaEmpleadosAPI.stats() como
+          fuente), esa es su ubicación correcta. */}
 
       {/* Controles: filtros + toggle vista + búsqueda */}
       <div className="flex flex-col gap-2">

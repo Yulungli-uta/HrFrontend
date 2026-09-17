@@ -7,9 +7,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   ContractTypeAPI,
-  TiposReferenciaAPI,
   type ApiResponse,
 } from "@/lib/api";
+import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import { TemplateSelect } from "@/components/shared/TemplateSelect";
 import { useToast } from "@/hooks/use-toast";
 
@@ -140,31 +140,13 @@ export function ContractTypeForm({
 
   // ------- Cargar opciones de reftype para el Select -------
   const {
-    data: refTypesResponse,
+    data: refTypes,
     isLoading: isLoadingRefTypes,
     error: refTypesError,
-  } = useQuery<ApiResponse<any[]>>({
-    queryKey: ["refTypes", PERSONAL_CONTRACT_TYPE_CATEGORY],
-    queryFn: () =>
-      TiposReferenciaAPI.byCategory(
-        PERSONAL_CONTRACT_TYPE_CATEGORY
-      ) as Promise<ApiResponse<any[]>>,
-  });
+  } = useRefTypesByCategory(PERSONAL_CONTRACT_TYPE_CATEGORY);
 
-  const refTypes =
-    refTypesResponse?.status === "success" ? refTypesResponse.data : [];
-
-  const { data: siiesRelacionIesResponse, isLoading: isLoadingSiiesRelacionIes } =
-    useQuery<ApiResponse<any[]>>({
-      queryKey: ["refTypes", SIIES_RELACION_IES_CATEGORY],
-      queryFn: () =>
-        TiposReferenciaAPI.byCategory(
-          SIIES_RELACION_IES_CATEGORY
-        ) as Promise<ApiResponse<any[]>>,
-    });
-
-  const siiesRelacionIesOptions =
-    siiesRelacionIesResponse?.status === "success" ? siiesRelacionIesResponse.data : [];
+  const { data: siiesRelacionIesOptions, isLoading: isLoadingSiiesRelacionIes } =
+    useRefTypesByCategory(SIIES_RELACION_IES_CATEGORY);
 
   // ------- Formulario RHF -------
   const form = useForm<ContractTypeFormValues>({

@@ -26,9 +26,15 @@ export const queryClient = new QueryClient({
       refetchOnWindowFocus: false,
       staleTime: Infinity,
       retry: (failureCount, error) => {
-        // No reintentar errores de cliente (4xx) excepto 429
-        if (error instanceof Error && error.message.includes("4")) {
-          const status = parseInt(error.message.split(":")[0]);
+        // No reintentar errores de cliente (4xx) excepto 429.
+        // [2026-09-17] El parseo anterior (`error.message.split(":")[0]`) asumía que el
+        // mensaje empezaba con el status ("404: ..."), pero el formato real usado en la
+        // app es "HTTP 404: ..." (ver permissionService.ts) — parseInt("HTTP 404") da NaN,
+        // así que la condición nunca se cumplía y SIEMPRE se reintentaba, incluso en 4xx.
+        // Se busca el primer número de 3 dígitos en el mensaje en vez de asumir su posición.
+        if (error instanceof Error) {
+          const match = error.message.match(/\b(\d{3})\b/);
+          const status = match ? parseInt(match[1], 10) : NaN;
           if (status >= 400 && status < 500 && status !== 429) {
             return false;
           }

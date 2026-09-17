@@ -8,9 +8,8 @@ import React, {
   forwardRef,
   useImperativeHandle,
 } from "react";
-import { useQuery } from "@tanstack/react-query";
-
-import { DocumentsAPI, handleApiError, TiposReferenciaAPI } from "@/lib/api";
+import { DocumentsAPI, handleApiError } from "@/lib/api";
+import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import type { StoredFileDto, DocumentUploadResultDto } from "@/types/documents";
 
 import { Button } from "@/components/ui/button";
@@ -289,20 +288,12 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
     }, [docTypeEnabled, documentType?.defaultValue]);
 
     const {
-      data: refTypesResponse,
+      data: refTypes,
       isLoading: isLoadingRefTypes,
       isFetching: isFetchingRefTypes,
       error: refTypesError,
       refetch: refetchRefTypes,
-    } = useQuery({
-      enabled: docTypeEnabled && !!docTypeCategory,
-      queryKey: ["refTypes", docTypeCategory],
-      queryFn: () => TiposReferenciaAPI.byCategory(docTypeCategory) as any,
-      staleTime: 5 * 60 * 1000,
-    });
-
-    const refTypes: RefTypeItem[] =
-      refTypesResponse?.status === "success" ? refTypesResponse.data : [];
+    } = useRefTypesByCategory(docTypeCategory, { enabled: docTypeEnabled && !!docTypeCategory });
 
     const docTypeMap = useMemo(() => {
       const m = new Map<string, string>();

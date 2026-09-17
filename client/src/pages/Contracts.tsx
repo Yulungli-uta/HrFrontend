@@ -27,7 +27,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-import { ContractsRHAPI, TiposReferenciaAPI, FinancialCertificationAPI } from "@/lib/api";
+import { ContractsRHAPI, FinancialCertificationAPI } from "@/lib/api";
+import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { usePaged } from "@/hooks/pagination/usePaged";
 import { DataPagination } from "@/components/ui/DataPagination";
@@ -92,13 +93,7 @@ export default function ContractsPage() {
 
   const lookups = useContractLookups({ enabled: true });
 
-  const qStatusTypes = useQuery({
-    queryKey: ["reftypes", "CONTRACT_STATUS"],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CONTRACT_STATUS),
-    staleTime: 10 * 60 * 1000,
-  });
-  const statusTypes =
-    qStatusTypes.data?.status === "success" ? qStatusTypes.data.data ?? [] : [];
+  const { data: statusTypes } = useRefTypesByCategory(REF_TYPE_CATEGORIES.CONTRACT_STATUS);
 
   const statusLabelById = useMemo(() => {
     const m = new Map<number, string>();

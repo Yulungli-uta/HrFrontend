@@ -29,9 +29,9 @@ import { useToast } from "@/hooks/use-toast";
 import {
   TimePlanningEmployeesAPI,
   TimePlanningExecutionsAPI,
-  TiposReferenciaAPI,
   VistaEmpleadosAPI,
 } from "@/lib/api";
+import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import {
   RefreshCw,
@@ -149,7 +149,7 @@ export default function TimePlanningEmployeeForm({
   const { toast } = useToast();
 
   const [employees, setEmployees] = useState<TimePlanningEmployee[]>([]);
-  const [employeeStatusTypes, setEmployeeStatusTypes] = useState<RefType[]>([]);
+  const { data: employeeStatusTypes } = useRefTypesByCategory(REF_TYPE_CATEGORIES.EMPLOYEE_PLAN_STATUS);
   const [isLoading, setIsLoading] = useState(false);
 
   const [execDialogOpen, setExecDialogOpen] = useState(false);
@@ -192,21 +192,9 @@ export default function TimePlanningEmployeeForm({
     }
   };
 
-  const loadEmployeeStatusTypes = async () => {
-    try {
-      const response = await TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.EMPLOYEE_PLAN_STATUS);
-      if (response.status === "success") {
-        setEmployeeStatusTypes(response.data || []);
-      }
-    } catch {
-      // silencioso
-    }
-  };
-
   useEffect(() => {
     if (planningId) {
       loadEmployees();
-      loadEmployeeStatusTypes();
     }
   }, [planningId]);
 

@@ -10,8 +10,9 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle2, RefreshCw, XCircle } from "lucide-react";
 
 import type { Job, OccupationalGroup } from "@/types/Job-activities";
-import { TiposReferenciaAPI, AcademicLadderAPI, type ApiResponse } from "@/lib/api";
+import { AcademicLadderAPI, type ApiResponse } from "@/lib/api";
 import type { AcademicLadderDto } from "@/lib/api/services/catalogs";
+import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 
 // ------------------ TIPOS ------------------
@@ -92,17 +93,9 @@ export function JobDetailForm({
     data: contractTypes,
     isLoading: loadingContractTypes,
     error: contractTypesError,
-  } = useQuery<RefType[]>({
-    queryKey: ["/api/v1/rh/ref/types", "CONTRACT_TYPE"],
-    queryFn: async () => {
-      const res = await TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CONTRACT_TYPE);
-      return ensureSuccess(res, "Error al cargar tipos de cargo");
-    },
-  });
+  } = useRefTypesByCategory(REF_TYPE_CATEGORIES.CONTRACT_TYPE);
 
-  const activeContractTypes = (contractTypes ?? []).filter(
-    (t) => t.isActive !== false
-  );
+  const activeContractTypes = contractTypes.filter((t) => t.isActive !== false);
 
   // ===========================
   // CARGA TIPO DE FUNCIONARIO SIIES (ref_Types / SIIES_TIPO_FUNCIONARIO)
@@ -112,15 +105,9 @@ export function JobDetailForm({
     data: siiesTipoFuncionarioTypes,
     isLoading: loadingSiiesTipoFuncionario,
     error: siiesTipoFuncionarioError,
-  } = useQuery<RefType[]>({
-    queryKey: ["/api/v1/rh/ref/types", "SIIES_TIPO_FUNCIONARIO"],
-    queryFn: async () => {
-      const res = await TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.SIIES_TIPO_FUNCIONARIO);
-      return ensureSuccess(res, "Error al cargar tipos de funcionario SIIES");
-    },
-  });
+  } = useRefTypesByCategory(REF_TYPE_CATEGORIES.SIIES_TIPO_FUNCIONARIO);
 
-  const activeSiiesTipoFuncionarioTypes = (siiesTipoFuncionarioTypes ?? []).filter(
+  const activeSiiesTipoFuncionarioTypes = siiesTipoFuncionarioTypes.filter(
     (t) => t.isActive !== false
   );
 

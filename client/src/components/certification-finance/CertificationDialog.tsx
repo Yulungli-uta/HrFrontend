@@ -30,8 +30,8 @@ import { useToast } from "@/hooks/use-toast";
 import type { DialogMode, FinancialCertification, UIFinancialCertification } from "@/types/certificationFinance";
 import type { DirectoryParameter } from "@/types/directoryParameter";
 
-import { useQuery } from "@tanstack/react-query";
-import { FinancialCertificationAPI, TiposReferenciaAPI, type ApiResponse } from "@/lib/api";
+import { FinancialCertificationAPI } from "@/lib/api";
+import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 
 // ✅ ContractRequest (para requestId + preview + documentos)
 import { useContractRequest } from "@/hooks/contractRequest/useContractRequests";
@@ -224,23 +224,16 @@ export function CertificationDialog(props: {
   // 1) Estados desde TiposReferenciaAPI (Select "Estado *")
   // =========================
   const {
-    data: refTypesResponse,
+    data: refTypes,
     isLoading: isLoadingRefTypes,
     error: refTypesError,
-  } = useQuery<ApiResponse<any[]>>({
-    queryKey: ["refTypes", FIN_CERT_STATUS_CATEGORY],
-    queryFn: () =>
-      TiposReferenciaAPI.byCategory(FIN_CERT_STATUS_CATEGORY) as Promise<ApiResponse<any[]>>,
-    enabled: open,
-  });
-
-  const refTypes = refTypesResponse?.status === "success" ? refTypesResponse.data : [];
+  } = useRefTypesByCategory(FIN_CERT_STATUS_CATEGORY, { enabled: open });
 
   // ID del estado PENDIENTE_REVISION — comparar por ID es robusto aunque statusName llegue null
   const pendingRevisionStatusId = useMemo(() => {
     const found = refTypes.find((rt: any) => (rt.name ?? "").toUpperCase() === "PENDIENTE_REVISION");
     if (!found) return null;
-    const id = found.id ?? found.refTypeId ?? found.typeId ?? found.valueId;
+    const id = (found as any).id ?? (found as any).refTypeId ?? (found as any).typeId ?? (found as any).valueId;
     return id != null ? Number(id) : null;
   }, [refTypes]);
 
@@ -252,7 +245,7 @@ export function CertificationDialog(props: {
   const pendingCorrectionStatusId = useMemo(() => {
     const found = refTypes.find((rt: any) => (rt.name ?? "").toUpperCase() === "PENDIENTE_CORRECCION");
     if (!found) return null;
-    const id = found.id ?? found.refTypeId ?? found.typeId ?? found.valueId;
+    const id = (found as any).id ?? (found as any).refTypeId ?? (found as any).typeId ?? (found as any).valueId;
     return id != null ? Number(id) : null;
   }, [refTypes]);
 
@@ -373,7 +366,7 @@ export function CertificationDialog(props: {
     if (!isCreate || form.status != null || refTypes.length === 0) return;
     const found = refTypes.find((rt: any) => (rt.name ?? "").toUpperCase() === "PENDIENTE_REVISION");
     if (!found) return;
-    const id = found.id ?? found.refTypeId ?? found.typeId ?? found.valueId;
+    const id = (found as any).id ?? (found as any).refTypeId ?? (found as any).typeId ?? (found as any).valueId;
     if (id != null) setForm((f) => ({ ...f, status: Number(id) }));
   }, [refTypes, isCreate, form.status]);
 

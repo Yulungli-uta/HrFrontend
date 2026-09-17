@@ -17,7 +17,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import {
@@ -90,6 +90,7 @@ function CreateTemplateDialog({ open, onClose }: { open: boolean; onClose: () =>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Nueva Plantilla</DialogTitle>
+          <DialogDescription>Define el código y los datos base de la nueva plantilla de documento.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div>

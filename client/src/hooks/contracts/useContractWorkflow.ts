@@ -1,20 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
-import { ContractsRHAPI, TiposReferenciaAPI } from "@/lib/api";
+import { ContractsRHAPI } from "@/lib/api";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
+import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 
 export const CONTRACT_STATUS_CATEGORY = REF_TYPE_CATEGORIES.CONTRACT_STATUS;
 
 export function useContractWorkflow(params: { enabled: boolean; currentStatusTypeId?: number | null }) {
   const { enabled, currentStatusTypeId } = params;
 
-  const qStatuses = useQuery({
-    queryKey: ["reftypes", CONTRACT_STATUS_CATEGORY],
-    queryFn: () => TiposReferenciaAPI.byCategory(CONTRACT_STATUS_CATEGORY),
-    enabled,
-    staleTime: 10 * 60 * 1000,
-  });
+  const qStatuses = useRefTypesByCategory(CONTRACT_STATUS_CATEGORY, { enabled });
 
-  const statuses = qStatuses.data?.status === "success" ? qStatuses.data.data : [];
+  const statuses = qStatuses.data ?? [];
 
   const qAllowed = useQuery({
     queryKey: ["contracts", "allowed-next-statuses", currentStatusTypeId],

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -23,15 +23,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Loader2, ShieldCheck, AlertTriangle, ServerCrash } from "lucide-react";
 import { ReusableFileUpload } from "@/components/ReusableFileUpload";
 import type { FamilyMember } from "@/types/person";
-import { CargasFamiliaresAPI, TiposReferenciaAPI, type RefType } from "@/lib/api";
+import { CargasFamiliaresAPI, type RefType } from "@/lib/api";
+import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { FAMILY_MEMBER_DOCUMENT_DIRECTORY_CODE, FAMILY_MEMBER_DOCUMENT_ENTITY_TYPE } from "@/features/constants";
 import { logger } from "@/lib/logger";
 import { useToast } from "@/hooks/use-toast";
 import { parseApiError } from "@/lib/error-handling";
+import { useDinardapLookup } from "@/hooks/useDinardapLookup";
 
 function getRefTypeId(t: any): number | undefined {
   return t?.typeID ?? t?.typeId ?? t?.id;
@@ -94,12 +96,8 @@ export default function FamilyMemberForm({
   const [isSavingWithDocument, setIsSavingWithDocument] = useState(false);
   const [fileUploadKey, setFileUploadKey] = useState(0);
 
-  const { data: docTypesResp } = useQuery({
-    queryKey: ["refTypes", "CV_DOCUMENT_TYPE"],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CV_DOCUMENT_TYPE),
-  });
-  const docTypes: RefType[] =
-    docTypesResp?.status === "success" ? (docTypesResp.data ?? []).filter((t: any) => t.isActive) : [];
+  const { data: docTypesRaw } = useRefTypesByCategory(REF_TYPE_CATEGORIES.CV_DOCUMENT_TYPE);
+  const docTypes: RefType[] = docTypesRaw.filter((t: any) => t.isActive);
   const form = useForm<FamilyMemberFormData>({
     resolver: zodResolver(familyMemberFormSchema) as any,
     defaultValues: {
@@ -120,6 +118,28 @@ export default function FamilyMemberForm({
       educationInstitution: familyMember?.educationInstitution || "",
     },
   });
+
+  // Auto-relleno desde Registro Civil (DINARDAP) - solo aplica al crear (dependentId nuevo),
+  // al editar no se re-consulta. Bloqueado por campo solo si DINARDAP trajo un valor real;
+  // editable si vino null o el servicio no respondió.
+  const dinardap = useDinardapLookup({
+    skip: !!familyMember,
+    onFound: (d) => {
+      const nombres = d.nombres?.trim();
+      const apellidos = [d.apellido1, d.apellido2].filter(Boolean).join(" ").trim();
+      if (nombres) form.setValue("firstName", nombres, { shouldValidate: true });
+      if (apellidos) form.setValue("lastName", apellidos, { shouldValidate: true });
+      if (d.fechaNacimiento) {
+        form.setValue("birthDate", d.fechaNacimiento.slice(0, 10), { shouldValidate: true });
+      }
+    },
+  });
+  // Bloquea el resto del formulario mientras se resuelve la consulta - antes solo se veía un
+  // texto pequeño junto al campo de cédula y el resto quedaba editable durante la consulta.
+  const formBlockedByDinardap = dinardap.isChecking;
+  const nombresLocked = dinardap.status === "found" && !!dinardap.data?.nombres?.trim();
+  const apellidosLocked = dinardap.status === "found" && !!(dinardap.data?.apellido1 || dinardap.data?.apellido2);
+  const fechaNacimientoLocked = dinardap.status === "found" && !!dinardap.data?.fechaNacimiento;
 
   const _onDirtyChangeRef = useRef(onDirtyChange);
   _onDirtyChangeRef.current = onDirtyChange;
@@ -158,6 +178,7 @@ export default function FamilyMemberForm({
               <Checkbox
                 checked={field.value}
                 onCheckedChange={field.onChange}
+                disabled={formBlockedByDinardap}
                 data-testid="checkbox-has-disability"
               />
             </FormControl>
@@ -177,7 +198,7 @@ export default function FamilyMemberForm({
               <FormItem>
                 <FormLabel>Tipo de Discapacidad</FormLabel>
                 <FormControl>
-                  <Input {...field} data-testid="input-disability-type" />
+                  <Input {...field} disabled={formBlockedByDinardap} data-testid="input-disability-type" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -199,6 +220,7 @@ export default function FamilyMemberForm({
                       max="100"
                       value={field.value}
                       onChange={(e) => field.onChange(Number(e.target.value))}
+                      disabled={formBlockedByDinardap}
                       data-testid="input-disability-percentage"
                     />
                     <span className="text-sm text-muted-foreground">%</span>
@@ -303,34 +325,8 @@ export default function FamilyMemberForm({
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit as any)} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={form.control as any}
-            name="firstName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Nombres</FormLabel>
-                <FormControl>
-                  <Input {...field} data-testid="input-first-name" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control as any}
-            name="lastName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Apellidos</FormLabel>
-                <FormControl>
-                  <Input {...field} data-testid="input-last-name" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
+          {/* Identificación primero - dispara la consulta a DINARDAP antes de llegar a
+              Nombres/Apellidos/Fecha de Nacimiento, que dependen de esa respuesta. */}
           <FormField
             control={form.control as any}
             name="identificationTypeId"
@@ -341,6 +337,7 @@ export default function FamilyMemberForm({
                   onValueChange={field.onChange}
                   value={field.value}
                   defaultValue={field.value}
+                  disabled={formBlockedByDinardap}
                 >
                   <FormControl>
                     <SelectTrigger data-testid="select-identification-type">
@@ -366,7 +363,76 @@ export default function FamilyMemberForm({
               <FormItem>
                 <FormLabel>Número de Identificación</FormLabel>
                 <FormControl>
-                  <Input {...field} data-testid="input-dependent-id" />
+                  <Input
+                    {...field}
+                    onChange={(e) => {
+                      field.onChange(e);
+                      dinardap.reset();
+                    }}
+                    onBlur={(e) => {
+                      field.onBlur();
+                      dinardap.check(e.target.value);
+                    }}
+                    data-testid="input-dependent-id"
+                  />
+                </FormControl>
+                <FormMessage />
+                {dinardap.status === "checking" && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Consultando Registro Civil…
+                  </p>
+                )}
+                {dinardap.status === "found" && (
+                  <p className="text-xs text-emerald-600 flex items-center gap-1">
+                    <ShieldCheck className="h-3 w-3" />
+                    Verificado con Registro Civil
+                  </p>
+                )}
+                {dinardap.status === "not-found" && (
+                  <p className="text-xs text-amber-600 flex items-center gap-1">
+                    <AlertTriangle className="h-3 w-3" />
+                    Datos no encontrados en Registro Civil para esta cédula — completa manualmente.
+                  </p>
+                )}
+                {dinardap.status === "unavailable" && (
+                  <p className="text-xs text-amber-600 flex items-center gap-1">
+                    <ServerCrash className="h-3 w-3" />
+                    Servicio DINARDAP en mantenimiento o no disponible — completa manualmente.
+                  </p>
+                )}
+                {dinardap.status === "error" && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <AlertTriangle className="h-3 w-3" />
+                    No se pudo verificar con Registro Civil — completa manualmente.
+                  </p>
+                )}
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control as any}
+            name="firstName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Nombres</FormLabel>
+                <FormControl>
+                  <Input {...field} disabled={nombresLocked || formBlockedByDinardap} data-testid="input-first-name" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control as any}
+            name="lastName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Apellidos</FormLabel>
+                <FormControl>
+                  <Input {...field} disabled={apellidosLocked || formBlockedByDinardap} data-testid="input-last-name" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -383,6 +449,7 @@ export default function FamilyMemberForm({
                   <Input
                     {...field}
                     type="date"
+                    disabled={fechaNacimientoLocked || formBlockedByDinardap}
                     data-testid="input-birth-date"
                     max={new Date().toISOString().split("T")[0]}
                   />
@@ -402,6 +469,7 @@ export default function FamilyMemberForm({
                   onValueChange={field.onChange}
                   value={field.value}
                   defaultValue={field.value}
+                  disabled={formBlockedByDinardap}
                 >
                   <FormControl>
                     <SelectTrigger data-testid="select-relationship">
@@ -435,6 +503,7 @@ export default function FamilyMemberForm({
                   <Checkbox
                     checked={field.value}
                     onCheckedChange={field.onChange}
+                    disabled={formBlockedByDinardap}
                     data-testid="checkbox-is-studying"
                   />
                 </FormControl>
@@ -454,7 +523,7 @@ export default function FamilyMemberForm({
                   <FormItem>
                     <FormLabel>Institución Educativa</FormLabel>
                     <FormControl>
-                      <Input {...field} data-testid="input-education-institution" />
+                      <Input {...field} disabled={formBlockedByDinardap} data-testid="input-education-institution" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -478,7 +547,7 @@ export default function FamilyMemberForm({
                 accept=".pdf,.jpg,.jpeg,.png"
                 maxSizeMB={MAX_FILE_MB}
                 label="Certificado de nacimiento"
-                disabled={saving}
+                disabled={saving || formBlockedByDinardap}
                 deferUpload
                 onFileSelected={setSelectedFile}
               />
@@ -500,7 +569,7 @@ export default function FamilyMemberForm({
                     accept=".pdf,.jpg,.jpeg,.png"
                     maxSizeMB={MAX_FILE_MB}
                     label="Certificado de discapacidad"
-                    disabled={saving}
+                    disabled={saving || formBlockedByDinardap}
                     deferUpload
                     onFileSelected={setSelectedDisabilityFile}
                   />
@@ -513,7 +582,7 @@ export default function FamilyMemberForm({
         <div className="flex gap-2 pt-4">
           <Button
             type="submit"
-            disabled={saving}
+            disabled={saving || formBlockedByDinardap}
             data-testid="button-submit"
             className="relative min-w-[100px]"
           >

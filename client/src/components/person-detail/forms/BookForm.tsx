@@ -29,11 +29,11 @@ import { ReusableFileUpload } from "@/components/ReusableFileUpload";
 import type { Book } from "@/types/person";
 import {
   PaisesAPI,
-  TiposReferenciaAPI,
   AreaConocimientoAPI,
   LibrosAPI,
   type RefType,
 } from "@/lib/api";
+import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { BOOK_DOCUMENT_DIRECTORY_CODE, BOOK_DOCUMENT_ENTITY_TYPE } from "@/features/constants";
 import { logger } from "@/lib/logger";
@@ -159,12 +159,8 @@ export default function BookForm({
   const [isSavingWithDocument, setIsSavingWithDocument] = useState(false);
   const [fileUploadKey, setFileUploadKey] = useState(0);
 
-  const { data: docTypesResp } = useQuery({
-    queryKey: ["refTypes", "CV_DOCUMENT_TYPE"],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.CV_DOCUMENT_TYPE),
-  });
-  const docTypes: RefType[] =
-    docTypesResp?.status === "success" ? (docTypesResp.data ?? []).filter((t: any) => t.isActive) : [];
+  const { data: docTypesRaw } = useRefTypesByCategory(REF_TYPE_CATEGORIES.CV_DOCUMENT_TYPE);
+  const docTypes: RefType[] = docTypesRaw.filter((t: any) => t.isActive);
 
   // =============================
   // QUERIES: Países
@@ -187,32 +183,20 @@ export default function BookForm({
   // QUERIES: Tipos referencia
   // =============================
   const {
-    data: participationTypesResp,
+    data: participationTypesRaw,
     isLoading: loadingParticipationTypes,
     error: participationTypesError,
-  } = useQuery({
-    queryKey: ["refTypes", "BOOK_PARTIC_TYPE"],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.BOOK_PARTIC_TYPE),
-  });
+  } = useRefTypesByCategory(REF_TYPE_CATEGORIES.BOOK_PARTIC_TYPE);
 
-  const participationTypes: RefType[] =
-    participationTypesResp?.status === "success"
-      ? (participationTypesResp.data ?? []).filter((t: any) => t.isActive)
-      : [];
+  const participationTypes: RefType[] = participationTypesRaw.filter((t: any) => t.isActive);
 
   const {
-    data: bookTypesResp,
+    data: bookTypesRaw,
     isLoading: loadingBookTypes,
     error: bookTypesError,
-  } = useQuery({
-    queryKey: ["refTypes", "BOOK_TYPE"],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.BOOK_TYPE),
-  });
+  } = useRefTypesByCategory(REF_TYPE_CATEGORIES.BOOK_TYPE);
 
-  const bookTypes: RefType[] =
-    bookTypesResp?.status === "success"
-      ? (bookTypesResp.data ?? []).filter((t: any) => t.isActive)
-      : [];
+  const bookTypes: RefType[] = bookTypesRaw.filter((t: any) => t.isActive);
 
   // =============================
   // QUERIES: Áreas de conocimiento

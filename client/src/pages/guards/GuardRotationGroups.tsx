@@ -611,8 +611,8 @@ function GroupFormDialog({
   onClose: () => void;
   generalGroups: GuardRotationGroupDto[];
 }) {
-  const { data: refData } = useGuardRefTypes('GUARD_GROUP_LEVEL_TYPE');
-  const levelTypes = refData?.status === 'success' ? refData.data : [];
+  const { data: levelTypesData } = useGuardRefTypes('GUARD_GROUP_LEVEL_TYPE');
+  const levelTypes = levelTypesData ?? [];
   const { create, update } = useGuardGroupMutations(() => onClose());
   const [colorConflictMessage, setColorConflictMessage] = useState<string | null>(null);
 

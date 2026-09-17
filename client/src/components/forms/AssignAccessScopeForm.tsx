@@ -13,13 +13,12 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import {
-  TiposReferenciaAPI,
   UserAccessScopesAPI,
   VwDepartmentWithTypeAPI,
   VistaDetallesEmpleadosAPI,
 } from "@/lib/api";
+import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import type { VwDepartmentWithType } from "@/lib/api/services/views";
-import type { ReferenceType } from "@/types/department";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { DepartmentSelect } from "@/components/departments/DepartmentSelect";
 
@@ -86,19 +85,10 @@ export default function AssignAccessScopeForm({ onSuccess, onCancel }: AssignAcc
     queryKey: ["vw-departments-all"],
     queryFn: () => VwDepartmentWithTypeAPI.getActive(),
   });
-  const { data: moduleTypesResp, isLoading: moduleTypesLoading } = useQuery({
-    queryKey: ["reftypes", REF_TYPE_CATEGORIES.ACCESS_MODULE_TYPE],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.ACCESS_MODULE_TYPE),
-  });
-  const { data: scopeTypesResp, isLoading: scopeTypesLoading } = useQuery({
-    queryKey: ["reftypes", REF_TYPE_CATEGORIES.ACCESS_SCOPE_TYPE],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.ACCESS_SCOPE_TYPE),
-  });
+  const { data: moduleTypes, isLoading: moduleTypesLoading } = useRefTypesByCategory(REF_TYPE_CATEGORIES.ACCESS_MODULE_TYPE);
+  const { data: scopeTypes, isLoading: scopeTypesLoading } = useRefTypesByCategory(REF_TYPE_CATEGORIES.ACCESS_SCOPE_TYPE);
 
   const allDepts: VwDepartmentWithType[] = allDeptsResp?.status === "success" ? (allDeptsResp.data ?? []) : [];
-
-  const moduleTypes: ReferenceType[] = moduleTypesResp?.status === "success" ? (moduleTypesResp.data ?? []) : [];
-  const scopeTypes: ReferenceType[] = scopeTypesResp?.status === "success" ? (scopeTypesResp.data ?? []) : [];
 
   const selectedModule = moduleTypes.find((m) => String(m.typeId) === moduleTypeId);
   const selectedScope = scopeTypes.find((s) => String(s.typeId) === scopeTypeId);

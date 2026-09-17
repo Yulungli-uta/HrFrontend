@@ -7,7 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/features/auth";
-import { JustificationsAPI, HorariosAPI, TiposReferenciaAPI, handleApiError } from "@/lib/api";
+import { JustificationsAPI, HorariosAPI, handleApiError } from "@/lib/api";
+import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { getBossFromEmployeeDetails } from "@/components/employees/AuthBoss";
 import { parseApiError } from '@/lib/error-handling';
@@ -97,9 +98,9 @@ export default function JustificationForm({ onCreated, onCancel }: Props) {
   const [reason, setReason] = useState<string>("");
 
   // Estados para los tipos
-  const [justificationTypes, setJustificationTypes] = useState<any[]>([]);
-  const [punchTypes, setPunchTypes] = useState<any[]>([]);
-  const [loadingTypes, setLoadingTypes] = useState<boolean>(true);
+  const { data: justificationTypes, isLoading: loadingJustificationTypes } = useRefTypesByCategory(REF_TYPE_CATEGORIES.JUSTIFICATION);
+  const { data: punchTypes, isLoading: loadingPunchTypes } = useRefTypesByCategory(REF_TYPE_CATEGORIES.PUNCH_TYPE);
+  const loadingTypes = loadingJustificationTypes || loadingPunchTypes;
 
   // Estados para el horario del empleado
   const [employeeSchedule, setEmployeeSchedule] = useState<any>(null);
@@ -110,50 +111,6 @@ export default function JustificationForm({ onCreated, onCancel }: Props) {
   const schedulerID = useMemo(() => {
     return (employeeDetails as any)?.schedulerID || employeeDetails?.scheduleID;
   }, [employeeDetails]);
-
-  // Cargar tipos desde la API
-  useEffect(() => {
-    const loadTypes = async () => {
-      try {
-        setLoadingTypes(true);
-
-        // Cargar tipos de justificación
-        const justificationResponse = await TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.JUSTIFICATION);
-        if (justificationResponse.status === "success") {
-          setJustificationTypes(justificationResponse.data);
-        } else {
-          toast({
-            title: "Error",
-            description: "No se pudieron cargar los tipos de justificación.",
-            variant: "destructive",
-          });
-        }
-
-        // Cargar tipos de picada
-        const punchResponse = await TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.PUNCH_TYPE);
-        if (punchResponse.status === "success") {
-          setPunchTypes(punchResponse.data);
-        } else {
-          toast({
-            title: "Error",
-            description: "No se pudieron cargar los tipos de picada.",
-            variant: "destructive",
-          });
-        }
-      } catch (error) {
-        logger.error("JustificationForm", "Error loading types:", error);
-        toast({
-          title: "Error",
-          description: "Error al cargar los tipos de justificación.",
-          variant: "destructive",
-        });
-      } finally {
-        setLoadingTypes(false);
-      }
-    };
-
-    loadTypes();
-  }, [toast]);
 
   // Derivados
   const selectedType = useMemo(

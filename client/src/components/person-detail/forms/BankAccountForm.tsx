@@ -1,7 +1,6 @@
 // client/src/components/person-detail/forms/BankAccountForm.tsx
 import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
-import { useQuery } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Loader2 } from "lucide-react";
@@ -25,7 +24,8 @@ import {
 } from "@/components/ui/select";
 
 import type { BankAccount } from "@/types/person";
-import { TiposReferenciaAPI, type RefType } from "@/lib/api";
+import { type RefType } from "@/lib/api";
+import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { logger } from "@/lib/logger";
 
@@ -68,18 +68,12 @@ export default function BankAccountForm({
   onDirtyChange,
 }: BankAccountFormProps) {
   const {
-    data: accountTypesResp,
+    data: accountTypesRaw,
     isLoading: loadingAccountTypes,
     error: accountTypesError,
-  } = useQuery({
-    queryKey: ["refTypes", "BANK_ACCOUNT_TYPE"],
-    queryFn: () => TiposReferenciaAPI.byCategory(REF_TYPE_CATEGORIES.BANK_ACCOUNT_TYPE),
-  });
+  } = useRefTypesByCategory(REF_TYPE_CATEGORIES.BANK_ACCOUNT_TYPE);
 
-  const accountTypes: RefType[] =
-    accountTypesResp?.status === "success"
-      ? (accountTypesResp.data ?? []).filter((t: any) => t.isActive)
-      : [];
+  const accountTypes: RefType[] = accountTypesRaw.filter((t: any) => t.isActive);
 
   const form = useForm<BankAccountFormData>({
     resolver: zodResolver(bankAccountFormSchema),
