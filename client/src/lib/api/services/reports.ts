@@ -174,6 +174,34 @@ export function getLatenessSummary(
   });
 }
 
+// ─── Novedades de asistencia (JSON en pantalla, no genera archivo) ────────────
+
+export interface AttendanceNoveltyRow {
+  employeeId: number;
+  idCard: string;
+  fullName: string;
+  departmentName: string | null;
+  workDate: string;
+  journeyNumber: number;
+  noveltyType: string;
+  noveltyLabel: string;
+  observation: string;
+  scheduledEntryTime: string | null;
+  scheduledExitTime: string | null;
+}
+
+export function getAttendanceNoveltiesSummary(
+  filter: ReportFilter,
+  page: number,
+  pageSize: number
+): Promise<ApiResponse<PagedResult<AttendanceNoveltyRow>>> {
+  const qs = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+  return apiFetch<PagedResult<AttendanceNoveltyRow>>(`/api/v1/rh/reports/attendance-novelties-summary?${qs}`, {
+    method: 'POST',
+    body: JSON.stringify(filter),
+  });
+}
+
 export function downloadBlob(blob: Blob, fileName: string): void {
   const url = window.URL.createObjectURL(blob);
   const link = document.createElement('a');

@@ -219,6 +219,27 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
 
   const [filter, setFilter] = React.useState<ReportFilter>(initialFilter);
 
+  // [2026-09-21] SIIES Profesores/Formación Profesional son los únicos reportes que ofrecen
+  // "Período académico" Y "Fecha Inicio/Fin" a la vez — sin este selector, ambos aparecían
+  // juntos en el mismo panel sin dejar claro que son formas alternativas de filtrar por
+  // tiempo (confuso: un período académico ya tiene sus propias fechas por dentro). El resto
+  // de reportes (solo startDate/endDate, sin periodCode) no se ven afectados por esto.
+  const hasPeriodAndRangeFilters = hasFilter("periodCode") && hasFilter("startDate", "endDate");
+  const [timeFilterMode, setTimeFilterMode] = React.useState<"period" | "range">("period");
+  const showPeriodCode = !hasPeriodAndRangeFilters || timeFilterMode === "period";
+  const showDateRange = !hasPeriodAndRangeFilters || timeFilterMode === "range";
+
+  // Al cambiar de modo se limpia el campo del modo que se oculta - evita enviar al backend
+  // un valor obsoleto que el usuario ya no ve en pantalla.
+  const handleTimeFilterModeChange = React.useCallback((mode: "period" | "range") => {
+    setTimeFilterMode(mode);
+    setFilter((prev) =>
+      mode === "period"
+        ? { ...prev, startDate: undefined, endDate: undefined }
+        : { ...prev, periodCode: undefined }
+    );
+  }, []);
+
   // estados de catálogos
   const [guardLocations, setGuardLocations] = React.useState<LoadState<GuardLocation>>({ loading: false, items: [] });
   const [guardGroups, setGuardGroups] = React.useState<LoadState<GuardGroup>>({ loading: false, items: [] });
@@ -451,8 +472,32 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
 
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Selector de modo: Período académico vs Rango de fechas — solo cuando el reporte
+              ofrece ambos (hoy: SIIES Profesores y Formación Profesional). */}
+          {hasPeriodAndRangeFilters && (
+            <div className="space-y-2 md:col-span-2 lg:col-span-3">
+              <Label htmlFor="timeFilterMode">Filtrar por</Label>
+              <Select
+                value={timeFilterMode}
+                onValueChange={(value) => handleTimeFilterModeChange(value as "period" | "range")}
+              >
+                <SelectTrigger id="timeFilterMode" className="w-full md:w-80">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="period">Período académico</SelectItem>
+                  <SelectItem value="range">Rango de fechas (búsqueda histórica)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                "Período académico" usa las horas cargadas para ese período. "Rango de fechas"
+                trae a quien trabajó en algún momento del rango, esté o no activo hoy.
+              </p>
+            </div>
+          )}
+
           {/* Fecha Inicio */}
-          {hasFilter("startDate") && (
+          {hasFilter("startDate") && showDateRange && (
             <div className="space-y-2">
               <Label htmlFor="startDate">Fecha Inicio</Label>
               <Input
@@ -465,7 +510,7 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
           )}
 
           {/* Fecha Fin */}
-          {hasFilter("endDate") && (
+          {hasFilter("endDate") && showDateRange && (
             <div className="space-y-2">
               <Label htmlFor="endDate">Fecha Fin</Label>
               <Input
@@ -578,8 +623,8 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
                   <SelectValue placeholder="Seleccionar tipo" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="CEDULA">Cédula (matriz 5.7)</SelectItem>
-                  <SelectItem value="PASAPORTE">Pasaporte (matriz 5.8)</SelectItem>
+                  <SelectItem value="CEDULA">Cédula </SelectItem>
+                  <SelectItem value="PASAPORTE">Pasaporte </SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
@@ -606,7 +651,7 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
           )}
 
           {/* Período académico (SIIES Profesores: controla la matriz 5.4 Distribución de Horas) */}
-          {hasFilter("periodCode") && (
+          {hasFilter("periodCode") && showPeriodCode && (
             <div className="space-y-2">
               <Label htmlFor="periodCode">Período Académico (opcional)</Label>
               <Input

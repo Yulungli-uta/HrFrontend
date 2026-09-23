@@ -21,8 +21,10 @@ export type ReportType =
   | 'overtime'
   | 'attendance-cross'
   | 'food-subsidy-summary'
+  | 'food-subsidy-by-schedule'
   | 'family-subsidy-summary'
   | 'seniority-bonus-summary'
+  | 'attendance-novelties'
   // Reportes v2 — Gestión RH
   | 'contracts'
   | 'active-contracts'
@@ -93,8 +95,10 @@ export interface ReportFilter {
   identType?: 'CEDULA' | 'PASAPORTE';
   /** Filtra por número de identificación exacto (cédula o pasaporte), para un solo registro. */
   identification?: string;
-  /** Búsqueda parcial por cédula o nombre completo (contiene, no exacta). Solo usado hoy por el resumen de atrasos. */
+  /** Búsqueda parcial por cédula o nombre completo (contiene, no exacta). Usado por el resumen de atrasos y novedades de asistencia. */
   searchText?: string;
+  /** Filtra la pantalla de novedades de asistencia por un solo tipo (ej. "LATE_ARRIVAL"). Vacío = todos. */
+  noveltyType?: string;
   /**
    * Período académico (ej. "47", "48") — usado por SIIES Profesores para la matriz 5.4
    * (Distribución de Horas). Vacío = usa el período más reciente disponible por profesor.
@@ -232,6 +236,22 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
     availableFormats: ['pdf', 'excel'],
     // No filtra por régimen por defecto (el subsidio ya solo aplica a Código de Trabajo);
     // se deja como filtro opcional junto con dependencia, empleado y cédula.
+    availableFilters: ['startDate', 'endDate', 'departmentId', 'laborRegimeId', 'employeeId', 'identification', 'orientation'],
+  },
+  'food-subsidy-by-schedule': {
+    type: 'food-subsidy-by-schedule',
+    title: 'Subsidio de Alimentación por Horario',
+    description: 'Detalle por jornada trabajada de cada empleado que calificó para el subsidio de alimentación en el período, con fecha y horario, ordenado por nombre',
+    icon: 'Clock',
+    availableFormats: ['pdf', 'excel'],
+    availableFilters: ['startDate', 'endDate', 'departmentId', 'laborRegimeId', 'employeeId', 'identification', 'orientation'],
+  },
+  'attendance-novelties': {
+    type: 'attendance-novelties',
+    title: 'Novedades de Asistencia',
+    description: 'Ausencias injustificadas, atrasos, salidas anticipadas, ajustes manuales, horas fuera de horario, recuperaciones y reemplazos de guardia, con observación estándar por caso',
+    icon: 'AlertTriangle',
+    availableFormats: ['pdf', 'excel'],
     availableFilters: ['startDate', 'endDate', 'departmentId', 'laborRegimeId', 'employeeId', 'identification', 'orientation'],
   },
   'family-subsidy-summary': {
@@ -385,26 +405,26 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
   'siies-funcionarios': {
     type: 'siies-funcionarios',
     title: 'SIIES - Funcionarios',
-    description: 'Matrices 5.7/5.8 del Instructivo CACES. Use el filtro "Tipo de identificación" para elegir Cédula o Pasaporte — cada exportación genera un único archivo, nunca mezclados. Exporta CSV UTF-8 con separador ";".',
+    description: 'Matrices 5.7/5.8 del Instructivo CACES. Use el filtro "Tipo de identificación" para elegir Cédula o Pasaporte — cada exportación genera un único archivo, nunca mezclados. "Fecha Inicio"/"Fecha Fin" activan búsqueda histórica: trae a quien estuvo vigente (régimen, contrato o acción de personal) en algún momento del rango, esté o no activo hoy — si se dejan vacías, muestra la vigencia actual. Exporta CSV UTF-8 con separador ";".',
     icon: 'FileSpreadsheet',
     availableFormats: ['pdf', 'csv'],
-    availableFilters: ['identType', 'identification', 'includeInactive', 'verticalHeaders', 'repeatHeaderOnEveryPage'],
+    availableFilters: ['startDate', 'endDate', 'identType', 'identification', 'includeInactive', 'verticalHeaders', 'repeatHeaderOnEveryPage'],
   },
   'siies-profesores': {
     type: 'siies-profesores',
     title: 'SIIES - Profesores',
-    description: 'Matrices 5.2/5.3 (Contratos IES) y 5.4 (Distribución Horas) fusionadas. Use el filtro "Tipo de identificación" para elegir Cédula o Pasaporte — cada exportación genera un único archivo, nunca mezclados. El filtro "Período académico" controla la matriz 5.4 (vacío = período más reciente por profesor). Exporta CSV UTF-8 con separador ";".',
+    description: 'Matrices 5.2/5.3 (Contratos IES) y 5.4 (Distribución Horas) fusionadas. Use el filtro "Tipo de identificación" para elegir Cédula o Pasaporte — cada exportación genera un único archivo, nunca mezclados. El filtro "Período académico" controla la matriz 5.4 (vacío = período más reciente por profesor). "Fecha Inicio"/"Fecha Fin" activan búsqueda histórica: trae a quien trabajó en algún momento del rango (según distributivo de horas cargado), esté o no activo hoy — no se combina con "Período académico". Exporta CSV UTF-8 con separador ";".',
     icon: 'FileSpreadsheet',
     availableFormats: ['pdf', 'csv'],
-    availableFilters: ['identType', 'identification', 'periodCode', 'includeInactive', 'verticalHeaders', 'repeatHeaderOnEveryPage'],
+    availableFilters: ['startDate', 'endDate', 'identType', 'identification', 'periodCode', 'includeInactive', 'verticalHeaders', 'repeatHeaderOnEveryPage'],
   },
   'siies-formacion-profesional': {
     type: 'siies-formacion-profesional',
     title: 'SIIES - Formación Profesional',
-    description: 'Matriz 5.5 del Instructivo CACES (Formación Profesional Terminado). Una fila por título académico de cada docente. El filtro "Período académico" limita la lista a profesores con actividad en ese período (vacío = todos). Exporta CSV UTF-8 con separador ";".',
+    description: 'Matriz 5.5 del Instructivo CACES (Formación Profesional Terminado). Una fila por título académico de cada docente. El filtro "Período académico" limita la lista a profesores con actividad en ese período (vacío = todos). "Fecha Inicio"/"Fecha Fin" activan búsqueda histórica equivalente por rango de fechas — no se combina con "Período académico". Exporta CSV UTF-8 con separador ";".',
     icon: 'FileSpreadsheet',
     availableFormats: ['pdf', 'csv'],
-    availableFilters: ['identification', 'periodCode', 'includeInactive', 'verticalHeaders', 'repeatHeaderOnEveryPage'],
+    availableFilters: ['startDate', 'endDate', 'identification', 'periodCode', 'includeInactive', 'verticalHeaders', 'repeatHeaderOnEveryPage'],
   },
 };
 

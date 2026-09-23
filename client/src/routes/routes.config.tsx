@@ -86,6 +86,8 @@ const LatenessSummaryPage = lazy(() => import("@/pages/reports/LatenessSummary")
 const OvertimeReportPage = lazy(() => import("@/pages/reports/OvertimeReport"));
 const AttendanceCrossReportPage = lazy(() => import("@/pages/reports/AttendanceCrossReport"));
 const FoodSubsidySummaryReportPage = lazy(() => import("@/pages/reports/FoodSubsidySummaryReport"));
+const FoodSubsidyByScheduleReportPage = lazy(() => import("@/pages/reports/FoodSubsidyByScheduleReport"));
+const AttendanceNoveltiesReportPage = lazy(() => import("@/pages/reports/AttendanceNoveltiesReport"));
 
 // Reportes v2 — Gestión RH
 const ContractsReportPage = lazy(() => import("@/pages/reports/ContractsReport"));
@@ -528,6 +530,16 @@ export const routes: RouteConfig[] = [
     path: "/reports/food-subsidy-summary",
     component: FoodSubsidySummaryReportPage,
     requiredPath: "/reports/food-subsidy-summary"
+  },
+  {
+    path: "/reports/food-subsidy-by-schedule",
+    component: FoodSubsidyByScheduleReportPage,
+    requiredPath: "/reports/food-subsidy-by-schedule"
+  },
+  {
+    path: "/reports/attendance-novelties",
+    component: AttendanceNoveltiesReportPage,
+    requiredPath: "/reports/attendance-novelties"
   },
 
   // ----- REPORTES V2 — GESTIÓN RH -----

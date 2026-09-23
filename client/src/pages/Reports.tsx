@@ -40,6 +40,7 @@ import {
   ArrowLeftRight,
   ShieldCheck,
   Utensils,
+  AlertTriangle,
 } from "lucide-react";
 
 // ─── Tipos ─────────────────────────────────────────────────────────────────────
@@ -167,6 +168,26 @@ const REPORT_CARDS: ReportCard[] = [
     category: "Asistencia",
     badgeColor: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
     href: "/reports/food-subsidy-summary",
+    formats: ["PDF", "Excel"],
+  },
+  {
+    id: "food-subsidy-by-schedule",
+    title: "Subsidio de Alimentación por Horario",
+    description: "Detalle por jornada trabajada de cada empleado que calificó para el subsidio de alimentación en el período, con fecha y horario, ordenado por nombre",
+    icon: Clock,
+    category: "Gestión RH",
+    badgeColor: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+    href: "/reports/food-subsidy-by-schedule",
+    formats: ["PDF", "Excel"],
+  },
+  {
+    id: "attendance-novelties",
+    title: "Novedades de Asistencia",
+    description: "Ausencias injustificadas, atrasos, salidas anticipadas, ajustes manuales, horas fuera de horario, recuperaciones y reemplazos de guardia, con observación estándar por caso",
+    icon: AlertTriangle,
+    category: "Asistencia",
+    badgeColor: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+    href: "/reports/attendance-novelties",
     formats: ["PDF", "Excel"],
   },
 
