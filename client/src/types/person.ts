@@ -231,7 +231,6 @@ export interface EducationLevel {
   startDate: string | null;
   endDate: string | null;
   grade: string | null;
-  location: string | null;
   score: number | null;
   senescytRegistrationNumber: string | null;
   /** Solo aplica cuando educationLevelTypeId es Cuarto Nivel (Doctor/Maestría/Especialista/Diplomado). */
@@ -246,6 +245,10 @@ export interface EducationLevel {
   senescytNivelNombreOriginal: string | null;
   /** Nombre libre de la institución tal como lo manda DINARDAP - solo lectura, se usa cuando institutionId es null. */
   institutionNameOriginal: string | null;
+  /** País donde se obtuvo el título (SIIES PAIS_ESTUDIO) - FK a tbl_Countries. DINARDAP no lo informa, solo carga manual. */
+  countryOfStudyId: string | null;
+  /** Subárea de conocimiento UNESCO/ISCED-F del título (SIIES CODIGO_SUBAREA_CONOCIMIENTO_ESPECIFICO_UNESCO) - FK a ref_Types categoría SIIES_UNESCO_SUBAREA. DINARDAP no lo informa, solo carga manual. */
+  unescoSubareaTypeId: number | null;
   /** "Manual" o "Dinardap" - gobierna qué campos quedan bloqueados en el formulario. */
   source: string;
   createdAt?: string;

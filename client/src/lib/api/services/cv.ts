@@ -299,6 +299,19 @@ export const NivelesEducacionAPI = {
     apiFetch<TituloSyncResult>(`/api/v1/rh/cv/education-levels/person/${personId}/senescyt-sync/confirm`, {
       method: 'POST',
     }),
+
+  /**
+   * Un renglón por docente activo (Titular + Ocasional) con el Nivel/Grado de su título de
+   * mayor jerarquía y su departamento — para el gráfico "Docentes activos por grado y nivel"
+   * del Dashboard de Talento Humano (pestaña Gestión de Personal), filtrable por
+   * Nivel/Grado/Departamento o Facultad.
+   */
+  getActiveProfessorStats: (): Promise<
+    ApiResponse<{ employeeId: number; departmentId: number | null; nivel: string; grado: string | null }[]>
+  > =>
+    apiFetch<{ employeeId: number; departmentId: number | null; nivel: string; grado: string | null }[]>(
+      `/api/v1/rh/cv/education-levels/stats/active-professors`
+    ),
 };
 
 // =============================================================================

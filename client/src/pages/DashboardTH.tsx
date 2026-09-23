@@ -24,17 +24,14 @@ import {
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  Command, CommandInput, CommandList, CommandItem, CommandEmpty,
-} from "@/components/ui/command";
+import { DepartmentCombobox } from "@/components/ui/DepartmentCombobox";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Users, Building2, Briefcase, RefreshCw,
   ChevronRight, UserCheck, FileText, Search, Loader2,
-  TrendingUp, ShieldCheck, Check, ChevronsUpDown, Maximize2,
+  TrendingUp, ShieldCheck, Maximize2,
   Calendar, AlertTriangle, ScrollText,
 } from "lucide-react";
 
@@ -45,6 +42,7 @@ import {
   VwAuthorityAPI,
   ContractsRHAPI,
   ContractTypeAPI,
+  NivelesEducacionAPI,
 } from "@/lib/api";
 import { PersonnelActionsAPI } from "@/lib/api/services/contracts";
 
@@ -215,9 +213,12 @@ export default function DashboardTH() {
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<number | null>(null);
   const [selectedDeptTypeId, setSelectedDeptTypeId]     = useState<string>("Todos");
   const [selectedDeptScopeId, setSelectedDeptScopeId]   = useState<string>("Todos");
-  const [deptComboOpen, setDeptComboOpen]     = useState(false);
-  const [deptComboSearch, setDeptComboSearch] = useState("");
   const [deptExpandOpen, setDeptExpandOpen]   = useState(false);
+
+  // Filtros gráfico "Docentes activos por grado y nivel"
+  const [profStatsNivel, setProfStatsNivel]           = useState<string>("Todos");
+  const [profStatsGrado, setProfStatsGrado]           = useState<string>("Todos");
+  const [profStatsDepartmentId, setProfStatsDepartmentId] = useState<number | null>(null);
 
   // Filtros tabla Contratos próximos a vencer
   const [contractRegimeFilter, setContractRegimeFilter]   = useState<string>("Todos");
@@ -253,6 +254,8 @@ export default function DashboardTH() {
     useQuery({ queryKey: ["th-jobs"],        queryFn: () => VwJobWithDegreeAndGroupAPI.getAll(), staleTime: 10 * 60_000 });
   const { data: authRes,    isLoading: loadingAuth,    isFetching: fetchingAuth,    isError: isErrorAuth, refetch: refetchAuth } =
     useQuery({ queryKey: ["th-authorities"], queryFn: () => VwAuthorityAPI.getActive(),          staleTime: 5 * 60_000 });
+  const { data: profStatsRes, isLoading: loadingProfStats, isFetching: fetchingProfStats, isError: isErrorProfStats, refetch: refetchProfStats } =
+    useQuery({ queryKey: ["th-professor-stats"], queryFn: () => NivelesEducacionAPI.getActiveProfessorStats(), staleTime: 5 * 60_000 });
   const { data: actionsRes, isLoading: loadingActions, isFetching: fetchingActions, isError: isErrorActions, refetch: refetchActions } =
     useQuery({
       queryKey: ["th-actions"],
@@ -283,6 +286,7 @@ export default function DashboardTH() {
   const stats       = useMemo(() => (statsRes as any)?.data ?? statsRes ?? null, [statsRes]);
   const employees   = useMemo(() => safeArray(empRes),  [empRes]);
   const departments = useMemo(() => safeArray(deptRes), [deptRes]);
+  const professorStats = useMemo(() => safeArray((profStatsRes as any)?.data ?? profStatsRes), [profStatsRes]);
   const allActions  = useMemo(() => safeArray((actionsRes as any)?.data ?? actionsRes), [actionsRes]);
   const allAuth     = useMemo(() => safeArray(authRes), [authRes]);
   const contracts   = useMemo(() => safeArray((contractsRes as any)?.data ?? contractsRes), [contractsRes]);
@@ -430,6 +434,59 @@ export default function DashboardTH() {
   }, [activeFiltered]);
 
   const byDepartment = useMemo(() => byDepartmentAll.slice(0, 12), [byDepartmentAll]);
+
+  // ── Docentes activos por grado y nivel ─────────────────────────────────────
+  const SIN_GRADO_LABEL = "Sin grado";
+
+  const profStatsNivelOptions = useMemo(() => {
+    const set = new Set<string>();
+    professorStats.forEach((r: any) => set.add(r.nivel));
+    return Array.from(set).sort();
+  }, [professorStats]);
+
+  const profStatsGradoOptions = useMemo(() => {
+    const set = new Set<string>();
+    professorStats.forEach((r: any) => set.add(r.grado ?? SIN_GRADO_LABEL));
+    return Array.from(set).sort();
+  }, [professorStats]);
+
+  const profStatsFiltered = useMemo(() =>
+    professorStats.filter((r: any) => {
+      if (profStatsNivel !== "Todos" && r.nivel !== profStatsNivel) return false;
+      const grado = r.grado ?? SIN_GRADO_LABEL;
+      if (profStatsGrado !== "Todos" && grado !== profStatsGrado) return false;
+      if (profStatsDepartmentId != null && r.departmentId !== profStatsDepartmentId) return false;
+      return true;
+    }),
+    [professorStats, profStatsNivel, profStatsGrado, profStatsDepartmentId]
+  );
+
+
+  const profStatsTotal = profStatsFiltered.length;
+
+  const profStatsPieData = useMemo(() => {
+    const nivelOrder = ["CUARTO NIVEL", "TERCER NIVEL", "SIN DATO"];
+    const gradoOrder = ["DOCTOR (Ph.D)", "MAESTRÍA O EQUIVALENTE", "ESPECIALISTA ÁREA SALUD", "ESPECIALISTA", "DIPLOMA SUPERIOR", SIN_GRADO_LABEL];
+    const map: Record<string, number> = {};
+    profStatsFiltered.forEach((r: any) => {
+      const grado = r.grado ?? SIN_GRADO_LABEL;
+      // Cuando el nivel no se filtró a uno solo, se distingue por nivel también (ej. dos
+      // grupos "Sin grado": uno de Cuarto Nivel sin clasificar, otro de Tercer Nivel que
+      // nunca tiene grado) - evita mezclar cosas distintas en una sola porción.
+      const key = profStatsNivel === "Todos" ? `${r.nivel} · ${grado}` : grado;
+      map[key] = (map[key] ?? 0) + 1;
+    });
+    return Object.entries(map)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => {
+        const na = a.name.split(" · ").pop() ?? a.name;
+        const nb = b.name.split(" · ").pop() ?? b.name;
+        const ia = gradoOrder.indexOf(na), ib = gradoOrder.indexOf(nb);
+        if (ia !== ib) return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+        const nla = a.name.split(" · ")[0], nlb = b.name.split(" · ")[0];
+        return nivelOrder.indexOf(nla) - nivelOrder.indexOf(nlb);
+      });
+  }, [profStatsFiltered, profStatsNivel]);
 
   const jobsByGroup = useMemo((): JobGroup[] => {
     const map: Record<string, number> = {};
@@ -757,52 +814,11 @@ export default function DashboardTH() {
                     </SelectContent>
                   </Select>
 
-                  <Popover open={deptComboOpen} onOpenChange={(v) => { setDeptComboOpen(v); if (!v) setDeptComboSearch(""); }}>
-                    <PopoverTrigger asChild>
-                      <Button type="button" variant="outline" role="combobox"
-                        className="h-8 w-full sm:w-64 justify-between font-normal text-xs">
-                        <span className={`truncate text-left flex-1 ${selectedDepartmentId == null ? "text-muted-foreground" : ""}`}>
-                          {selectedDepartmentId == null
-                            ? "Todos los departamentos"
-                            : departmentOptions.find((d: any) => d.departmentID === selectedDepartmentId)?.departmentName ?? "Departamento"}
-                        </span>
-                        <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start" side="bottom">
-                      <Command shouldFilter={false}>
-                        <CommandInput placeholder="Buscar departamento…" value={deptComboSearch} onValueChange={setDeptComboSearch} />
-                        <CommandList>
-                          <CommandItem value="__none__" onSelect={() => { setSelectedDepartmentId(null); setDeptComboOpen(false); }}
-                            className="cursor-pointer italic text-muted-foreground">
-                            <Check className={`mr-2 h-4 w-4 shrink-0 ${selectedDepartmentId == null ? "opacity-100" : "opacity-0"}`} />
-                            Todos los departamentos
-                          </CommandItem>
-                          {(() => {
-                            const term = deptComboSearch.toLowerCase().trim();
-                            const filtered = !term ? departmentOptions
-                              : departmentOptions.filter((d: any) =>
-                                  d.departmentName.toLowerCase().includes(term) ||
-                                  (d.departmentTypeName?.toLowerCase().includes(term) ?? false) ||
-                                  (d.departmentScopeName?.toLowerCase().includes(term) ?? false));
-                            if (filtered.length === 0) return <CommandEmpty>Sin resultados para "{deptComboSearch}".</CommandEmpty>;
-                            return filtered.map((d: any) => (
-                              <CommandItem key={d.departmentID} value={String(d.departmentID)} className="cursor-pointer"
-                                onSelect={() => { setSelectedDepartmentId(d.departmentID); setDeptComboOpen(false); setDeptComboSearch(""); }}>
-                                <Check className={`mr-2 h-4 w-4 shrink-0 ${selectedDepartmentId === d.departmentID ? "opacity-100" : "opacity-0"}`} />
-                                <div className="min-w-0 flex-1">
-                                  <p className="font-medium truncate">{d.departmentName}</p>
-                                  <p className="text-xs text-muted-foreground truncate">
-                                    {d.departmentTypeName ?? "Sin tipo"} · {d.departmentScopeName ?? "Sin ámbito"}
-                                  </p>
-                                </div>
-                              </CommandItem>
-                            ));
-                          })()}
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
+                  <DepartmentCombobox
+                    departments={departmentOptions}
+                    value={selectedDepartmentId}
+                    onChange={setSelectedDepartmentId}
+                  />
                 </div>
               )}
 
@@ -1012,6 +1028,111 @@ export default function DashboardTH() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Docentes activos por grado y nivel */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                <div>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <UserCheck className="h-4 w-4" /> Docentes activos por grado y nivel
+                  </CardTitle>
+                  <CardDescription>
+                    {loadingProfStats
+                      ? "Calculando…"
+                      : `${profStatsFiltered.length.toLocaleString()} docentes (Titulares + Ocasionales)`}
+                  </CardDescription>
+                </div>
+              </div>
+
+              {!loadingProfStats && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  <Select value={profStatsNivel} onValueChange={setProfStatsNivel}>
+                    <SelectTrigger className="h-8 w-full sm:w-44 text-xs"><SelectValue placeholder="Nivel" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Todos">Todos los niveles</SelectItem>
+                      {profStatsNivelOptions.map((n) => <SelectItem key={n} value={n}>{n}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={profStatsGrado} onValueChange={setProfStatsGrado}>
+                    <SelectTrigger className="h-8 w-full sm:w-52 text-xs"><SelectValue placeholder="Grado" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Todos">Todos los grados</SelectItem>
+                      {profStatsGradoOptions.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+
+                  <DepartmentCombobox
+                    departments={departmentOptions}
+                    value={profStatsDepartmentId}
+                    onChange={setProfStatsDepartmentId}
+                    placeholder="Todos los departamentos / facultades"
+                    className="h-8 w-full sm:w-64"
+                  />
+                </div>
+              )}
+            </CardHeader>
+
+            <CardContent>
+              {(loadingProfStats || fetchingProfStats) ? (
+                <ChartLoader height={280} />
+              ) : isErrorProfStats ? (
+                <div className="h-[280px] flex flex-col items-center justify-center text-destructive text-sm gap-2">
+                  <span>Error al cargar información</span>
+                  <Button size="sm" variant="outline" onClick={() => refetchProfStats()}>Reintentar</Button>
+                </div>
+              ) : profStatsPieData.length === 0 ? (
+                <div className="h-[280px] flex items-center justify-center text-muted-foreground text-sm text-center">
+                  No hay información disponible para los filtros seleccionados
+                </div>
+              ) : (
+                <div className="relative">
+                  <ResponsiveContainer width="100%" height={340}>
+                    <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+                      <Pie
+                        data={profStatsPieData}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={110}
+                        innerRadius={60}
+                        paddingAngle={1}
+                        label={({ cx, cy, midAngle, outerRadius, percent }) => {
+                          const RAD = Math.PI / 180;
+                          const angle = midAngle ?? 0;
+                          const r = outerRadius + 16;
+                          const x = cx + r * Math.cos(-angle * RAD);
+                          const y = cy + r * Math.sin(-angle * RAD);
+                          return (
+                            <text x={x} y={y} textAnchor={x > cx ? "start" : "end"} dominantBaseline="middle"
+                              style={{ fontSize: 11, fill: "var(--foreground)" }}>
+                              {`${((percent ?? 0) * 100).toFixed(1)}%`}
+                            </text>
+                          );
+                        }}
+                        labelLine={false}
+                      >
+                        {profStatsPieData.map((d, i) => (
+                          <Cell key={i} fill={d.name.includes(SIN_GRADO_LABEL) ? "var(--muted-foreground)" : COLORS[i % COLORS.length]} strokeWidth={0} />
+                        ))}
+                      </Pie>
+                      <Tooltip content={<CustomPieTooltip />} />
+                      <Legend iconType="circle" iconSize={8}
+                        formatter={(val) => <span style={{ fontSize: 11, color: "var(--foreground)" }}>{val}</span>}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  {/* Total al centro de la dona */}
+                  <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center" style={{ marginBottom: 40 }}>
+                    <span className="text-2xl font-bold text-foreground tabular-nums">{profStatsTotal.toLocaleString()}</span>
+                    <span className="text-xs text-muted-foreground">docentes</span>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
         </TabsContent>
 

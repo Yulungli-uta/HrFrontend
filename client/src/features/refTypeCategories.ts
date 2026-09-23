@@ -28,6 +28,8 @@ export const REF_TYPE_CATEGORIES = {
   ACADEMIC_LEVEL: "ACADEMIC_LEVEL",
   /** Grado dentro de Cuarto Nivel (Doctor/Maestría/Especialista/Diplomado) - integración DINARDAP 2026-09-16. */
   SIIES_GRADO: "SIIES_GRADO",
+  /** Subárea de conocimiento UNESCO/ISCED-F (CODIGO_SUBAREA_CONOCIMIENTO_ESPECIFICO_UNESCO) - 175 códigos del anexo del instructivo CACES v2S, 2026-09-18. Catálogo propio, no confundir con KNOWLEDGE_AREA (selector de Publicaciones, otra codificación). */
+  SIIES_UNESCO_SUBAREA: "SIIES_UNESCO_SUBAREA",
   CV_INSTITUTION_TYPE: "CV_INSTITUTION_TYPE",
   INSTITUTION_TYPE: "INSTITUTION_TYPE",
   CV_DOCUMENT_TYPE: "CV_DOCUMENT_TYPE",

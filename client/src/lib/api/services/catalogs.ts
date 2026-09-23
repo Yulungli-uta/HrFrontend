@@ -30,6 +30,8 @@ export interface RefType {
   name: string;
   description: string;
   metadata?: string | null;
+  siiesLabel?: string | null;
+  sortOrder?: number;
   isActive: boolean;
   createdAt?: string;
   updatedAt?: string | null;

@@ -30,6 +30,7 @@ type ReferenceTypeRaw = {
   isActive?: boolean | number | string;
   createdAt?: string | number;
   siiesLabel?: string | null;
+  sortOrder?: number;
 };
 
 interface ReferenceType {
@@ -41,6 +42,10 @@ interface ReferenceType {
   CreatedAt?: string;
   /** Denominación exacta del catálogo SIIES (CACES) para este valor, cuando aplica. */
   SiiesLabel?: string;
+  /** Orden/jerarquía dentro de la categoría (mayor = más alto). Usado por reportes que deben
+   * elegir "el valor más alto" de un conjunto (ej. Nivel/Grado académico) sin hardcodear la
+   * jerarquía en código. */
+  SortOrder?: number;
 }
 
 // Helpers de normalización
@@ -54,6 +59,7 @@ const normalizeRefType = (raw: ReferenceTypeRaw): ReferenceType => ({
   IsActive: toBool(raw?.isActive ?? true),
   CreatedAt: raw?.createdAt ? String(raw.createdAt) : undefined,
   SiiesLabel: (raw?.siiesLabel ?? undefined) || undefined,
+  SortOrder: raw?.sortOrder ?? 0,
 });
 
 const toRaw = (ui: ReferenceType): ReferenceTypeRaw => ({
@@ -64,6 +70,7 @@ const toRaw = (ui: ReferenceType): ReferenceTypeRaw => ({
   isActive: ui.IsActive,
   createdAt: ui.CreatedAt,
   siiesLabel: ui.SiiesLabel ?? null,
+  sortOrder: ui.SortOrder ?? 0,
 });
 
 // “Bonito” para la categoría en UI (sin afectar filtros/API)
@@ -96,6 +103,7 @@ interface BatchReferenceType {
   Name: string;
   Description?: string;
   IsActive: boolean;
+  SortOrder?: number;
 }
 
 export default function ReferenceTypesPage() {
@@ -116,13 +124,14 @@ export default function ReferenceTypesPage() {
     Name: '',
     Description: '',
     IsActive: true,
-    SiiesLabel: ''
+    SiiesLabel: '',
+    SortOrder: 0
   });
 
   // Estados para inserción múltiple
   const [batchMode, setBatchMode] = useState(false);
   const [batchTypes, setBatchTypes] = useState<BatchReferenceType[]>([
-    { Name: '', Description: '', IsActive: true }
+    { Name: '', Description: '', IsActive: true, SortOrder: 0 }
   ]);
 
   // Modo para categoría (select vs personalizada)
@@ -318,7 +327,8 @@ export default function ReferenceTypesPage() {
           Category: newType.Category,
           Name: type.Name,
           Description: type.Description,
-          IsActive: type.IsActive
+          IsActive: type.IsActive,
+          SortOrder: type.SortOrder ?? 0
         }))
       );
 
@@ -405,7 +415,8 @@ export default function ReferenceTypesPage() {
       Name: '',
       Description: '',
       IsActive: true,
-      SiiesLabel: ''
+      SiiesLabel: '',
+      SortOrder: 0
     });
     setCategoryMode('select');
     setBatchMode(false);
@@ -413,7 +424,7 @@ export default function ReferenceTypesPage() {
 
   // Resetear formulario de inserción múltiple
   const resetBatchForm = () => {
-    setBatchTypes([{ Name: '', Description: '', IsActive: true }]);
+    setBatchTypes([{ Name: '', Description: '', IsActive: true, SortOrder: 0 }]);
     setNewType({
       Category: '',
       Name: '',
@@ -433,7 +444,7 @@ export default function ReferenceTypesPage() {
 
   // Manejar inserción múltiple
   const addBatchRow = () => {
-    setBatchTypes([...batchTypes, { Name: '', Description: '', IsActive: true }]);
+    setBatchTypes([...batchTypes, { Name: '', Description: '', IsActive: true, SortOrder: 0 }]);
   };
 
   const removeBatchRow = (index: number) => {
@@ -442,7 +453,7 @@ export default function ReferenceTypesPage() {
     }
   };
 
-  const updateBatchRow = (index: number, field: keyof BatchReferenceType, value: string | boolean) => {
+  const updateBatchRow = (index: number, field: keyof BatchReferenceType, value: string | boolean | number) => {
     const updated = [...batchTypes];
     updated[index] = { ...updated[index], [field]: value };
     setBatchTypes(updated);
@@ -606,6 +617,12 @@ export default function ReferenceTypesPage() {
                             value={batchType.Description || ''}
                             onChange={(e) => updateBatchRow(index, 'Description', e.target.value)}
                           />
+                          <Input
+                            type="number"
+                            placeholder="Orden / jerarquía (opcional, 0 por defecto)"
+                            value={batchType.SortOrder ?? 0}
+                            onChange={(e) => updateBatchRow(index, 'SortOrder', Number(e.target.value) || 0)}
+                          />
                         </div>
                         <div className="flex flex-col gap-2">
                           <div className="flex items-center space-x-2">
@@ -665,6 +682,22 @@ export default function ReferenceTypesPage() {
                     <p className="text-xs text-muted-foreground">
                       Valor exacto exigido por el catálogo SIIES (CACES) cuando este tipo se usa en el
                       reporte SIIES Funcionarios. Dejar vacío si no aplica.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="sortOrder">Orden / jerarquía (opcional)</Label>
+                    <Input
+                      id="sortOrder"
+                      type="number"
+                      value={newType.SortOrder ?? 0}
+                      onChange={(e) => setNewType({ ...newType, SortOrder: Number(e.target.value) || 0 })}
+                      placeholder="0"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Mayor número = más alto/preferido dentro de esta categoría. Usado por reportes
+                      que eligen automáticamente "el valor más alto" (ej. el título de mayor nivel de
+                      un profesor). Dejar en 0 si esta categoría no necesita jerarquía.
                     </p>
                   </div>
 
@@ -844,6 +877,7 @@ export default function ReferenceTypesPage() {
                           <TableHead>Nombre</TableHead>
                           <TableHead className="hidden md:table-cell">Descripción</TableHead>
                           <TableHead className="hidden xl:table-cell">SIIES</TableHead>
+                          <TableHead className="hidden xl:table-cell">Orden</TableHead>
                           <TableHead>Estado</TableHead>
                           <TableHead className="hidden lg:table-cell">Creado</TableHead>
                           <TableHead>Acciones</TableHead>
@@ -862,6 +896,9 @@ export default function ReferenceTypesPage() {
                             </TableCell>
                             <TableCell className="hidden xl:table-cell text-sm font-mono">
                               {type.SiiesLabel || '—'}
+                            </TableCell>
+                            <TableCell className="hidden xl:table-cell text-sm font-mono">
+                              {type.SortOrder ?? 0}
                             </TableCell>
                             <TableCell>
                               <Badge variant={type.IsActive ? "default" : "secondary"} className="text-xs">

@@ -26,8 +26,9 @@ import { ActionIconButton } from "@/components/ui/action-icon-button";
 import { useToast } from "@/hooks/use-toast";
 import type { Person, InsertPerson } from "@/shared/schema";
 import type { CatastrophicIllness } from "@/types/person";
-import { PaisesAPI, ProvinciasAPI, CantonesAPI } from "@/lib/api";
+import { ProvinciasAPI, CantonesAPI } from "@/lib/api";
 import type { ApiResponse } from "@/lib/api";
+import { CountrySelect } from "@/components/ui/CountrySelect";
 import { useDinardapLookup } from "@/hooks/useDinardapLookup";
 
 // ---------------------- Tipos auxiliares ----------------------
@@ -46,13 +47,6 @@ interface RawRefType {
 interface RefOption {
   id: number;
   name: string;
-}
-
-interface Country {
-  countryId: string;
-  countryCode: string;
-  countryName: string;
-  createdAt?: string;
 }
 
 interface Province {
@@ -565,11 +559,6 @@ export default function PersonForm({
     }
   }, [watchIdentType]);
 
-  const { data: countriesResp } = useQuery<ApiResponse<Country[]>>({
-    queryKey: ["countries"],
-    queryFn: () => PaisesAPI.list(),
-  });
-
   const { data: provincesResp } = useQuery<ApiResponse<Province[]>>({
     queryKey: ["provinces"],
     queryFn: () => ProvinciasAPI.list(),
@@ -579,11 +568,6 @@ export default function PersonForm({
     queryKey: ["cantons"],
     queryFn: () => CantonesAPI.list(),
   });
-
-  const countries = useMemo(
-    () => (countriesResp?.status === "success" ? countriesResp.data || [] : []),
-    [countriesResp]
-  );
 
   const allProvinces = useMemo(
     () => (provincesResp?.status === "success" ? provincesResp.data || [] : []),
@@ -1106,36 +1090,15 @@ export default function PersonForm({
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                 <div className="space-y-2">
                   <Label htmlFor="countryId">País</Label>
-                  {countries.length === 0 ? (
-                    <Input
-                      value="No hay países disponibles"
-                      disabled
-                      className={disabledFieldClassName}
-                    />
-                  ) : (
-                    <Select
-                      value={watchCountryId || ""}
-                      onValueChange={(value) =>
-                        setValue("countryId", value, {
-                          shouldValidate: true,
-                        })
-                      }
-                    >
-                      <SelectTrigger id="countryId" className={fieldClassName}>
-                        <SelectValue placeholder="Seleccione país" />
-                      </SelectTrigger>
-                      <SelectContent className="border-border bg-popover text-popover-foreground dark:border-slate-800 dark:bg-slate-950">
-                        {countries.map((country) => (
-                          <SelectItem
-                            key={country.countryId}
-                            value={country.countryId}
-                          >
-                            {country.countryName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
+                  <CountrySelect
+                    value={watchCountryId || null}
+                    onChange={(value) =>
+                      setValue("countryId", value ?? "", {
+                        shouldValidate: true,
+                      })
+                    }
+                    placeholder="Seleccione país"
+                  />
                 </div>
 
                 <div className="space-y-2">

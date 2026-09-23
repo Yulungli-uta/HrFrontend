@@ -1,5 +1,5 @@
 // client/src/components/person-detail/forms/EducationLevelForm.tsx
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -26,9 +26,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ReusableFileUpload } from "@/components/ReusableFileUpload";
+import { SearchableSelect, type SearchItem } from "@/components/contracts/SearchableSelect";
 
 import type { EducationLevel } from "@/types/person";
 import { InstitucionesAPI, NivelesEducacionAPI, type RefType } from "@/lib/api";
+import { CountrySelect } from "@/components/ui/CountrySelect";
 import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { EDUCATION_CERTIFICATE_DIRECTORY_CODE, EDUCATION_CERTIFICATE_ENTITY_TYPE } from "@/features/constants";
@@ -65,6 +67,10 @@ const educationLevelFormSchema = z.object({
   senescytGraduationDate: z.string().optional(),
   senescytRegistrationDate: z.string().optional(),
   senescytType: z.string().optional(),
+  // Backfill SIIES Formación Profesional (2026-09-18) - DINARDAP no informa ninguno de
+  // los 2, solo se llenan a mano.
+  countryOfStudyId: z.string().optional(),
+  unescoSubareaTypeId: z.number().int().positive().optional(),
 });
 
 export type EducationLevelFormData = z.infer<typeof educationLevelFormSchema>;
@@ -109,27 +115,61 @@ export default function EducationLevelForm({
     error: levelTypesError,
   } = useRefTypesByCategory(REF_TYPE_CATEGORIES.ACADEMIC_LEVEL);
 
+  // Institución y País de estudio - búsqueda paginada en servidor (378 instituciones / 233
+  // países, demasiado grande para traer entero, ver Database/hr sección 10). Debounce igual
+  // que EmployeeCombobox.tsx (patrón ya establecido en el proyecto).
+  const [institutionSearch, setInstitutionSearch] = useState("");
+  const [debouncedInstitutionSearch, setDebouncedInstitutionSearch] = useState("");
+  const institutionSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (institutionSearchTimerRef.current) clearTimeout(institutionSearchTimerRef.current);
+    institutionSearchTimerRef.current = setTimeout(
+      () => setDebouncedInstitutionSearch(institutionSearch.trim()),
+      300
+    );
+    return () => {
+      if (institutionSearchTimerRef.current) clearTimeout(institutionSearchTimerRef.current);
+    };
+  }, [institutionSearch]);
+
   const {
-    data: institutionsResp,
-    isLoading: loadingInstitutions,
+    data: institutionsPagedResp,
+    isFetching: loadingInstitutions,
     error: institutionsError,
   } = useQuery({
-    queryKey: ["institutions-list"],
-    queryFn: () => InstitucionesAPI.list(),
+    queryKey: ["institutions-paged", debouncedInstitutionSearch],
+    queryFn: () => InstitucionesAPI.listPaged({ page: 1, pageSize: 20, search: debouncedInstitutionSearch }),
   });
 
   const { data: docTypesRaw } = useRefTypesByCategory(REF_TYPE_CATEGORIES.CV_DOCUMENT_TYPE);
 
   const { data: gradosRaw } = useRefTypesByCategory(REF_TYPE_CATEGORIES.SIIES_GRADO);
 
+  const { data: unescoSubareasRaw } = useRefTypesByCategory(REF_TYPE_CATEGORIES.SIIES_UNESCO_SUBAREA);
+
   const levelTypes: RefType[] = levelTypesRaw.filter((t: any) => t.isActive);
 
-  const institutions: any[] =
-    institutionsResp?.status === "success" ? institutionsResp.data ?? [] : [];
+  const institutionItems: SearchItem[] = useMemo(() => {
+    const list = institutionsPagedResp?.status === "success" ? institutionsPagedResp.data?.items ?? [] : [];
+    return list.map((i: any) => ({ value: String(i.institutionId), label: i.name }));
+  }, [institutionsPagedResp]);
 
   const docTypes: RefType[] = docTypesRaw.filter((t: any) => t.isActive);
 
   const grados: RefType[] = gradosRaw.filter((t: any) => t.isActive);
+
+  const unescoSubareas: RefType[] = unescoSubareasRaw.filter((t: any) => t.isActive);
+  const unescoSubareaItems: SearchItem[] = useMemo(
+    () =>
+      unescoSubareas
+        .map((u) => {
+          const id = getRefTypeId(u);
+          if (id == null) return null;
+          return { value: String(id), label: `${u.name} — ${u.siiesLabel ?? u.name}` } as SearchItem;
+        })
+        .filter((x): x is SearchItem => x !== null),
+    [unescoSubareas]
+  );
 
   const form = useForm<EducationLevelFormData>({
     resolver: zodResolver(educationLevelFormSchema),
@@ -151,6 +191,8 @@ export default function EducationLevelForm({
       senescytGraduationDate: educationLevel?.senescytGraduationDate ? educationLevel.senescytGraduationDate.split("T")[0] : "",
       senescytRegistrationDate: educationLevel?.senescytRegistrationDate ? educationLevel.senescytRegistrationDate.split("T")[0] : "",
       senescytType: educationLevel?.senescytType ?? "",
+      countryOfStudyId: educationLevel?.countryOfStudyId ?? "",
+      unescoSubareaTypeId: educationLevel?.unescoSubareaTypeId != null ? Number(educationLevel.unescoSubareaTypeId) : undefined,
     },
   });
 
@@ -177,6 +219,8 @@ export default function EducationLevelForm({
         senescytGraduationDate: educationLevel.senescytGraduationDate ? educationLevel.senescytGraduationDate.split("T")[0] : "",
         senescytRegistrationDate: educationLevel.senescytRegistrationDate ? educationLevel.senescytRegistrationDate.split("T")[0] : "",
         senescytType: educationLevel.senescytType ?? "",
+        countryOfStudyId: educationLevel.countryOfStudyId ?? "",
+        unescoSubareaTypeId: educationLevel.unescoSubareaTypeId != null ? Number(educationLevel.unescoSubareaTypeId) : undefined,
       });
     } else {
       form.reset({
@@ -193,6 +237,8 @@ export default function EducationLevelForm({
         senescytGraduationDate: "",
         senescytRegistrationDate: "",
         senescytType: "",
+        countryOfStudyId: "",
+        unescoSubareaTypeId: undefined,
       });
     }
   }, [educationLevel, form]);
@@ -210,6 +256,25 @@ export default function EducationLevelForm({
   const selectedLevel = levelTypes.find((t) => getRefTypeId(t) === selectedLevelTypeId);
   // El grado (Doctor/Maestría/Especialista/Diplomado) solo aplica a Cuarto Nivel.
   const isCuartoNivel = selectedLevel?.name === "NIVEL_4";
+
+  // Al editar, el valor ya guardado (institutionId/countryOfStudyId) puede no estar en la
+  // primera página de la búsqueda paginada — se resuelve aparte por ID (mismo patrón que
+  // EmployeeCombobox.tsx) para que el combobox no se vea vacío al abrir "Editar".
+  const watchedInstitutionId = form.watch("institutionId");
+  const { data: resolvedInstitution } = useQuery({
+    queryKey: ["institution-resolve", watchedInstitutionId],
+    queryFn: () => InstitucionesAPI.get(watchedInstitutionId as number),
+    enabled: watchedInstitutionId != null,
+  });
+  const institutionItemsResolved: SearchItem[] = useMemo(() => {
+    if (watchedInstitutionId == null) return institutionItems;
+    const idStr = String(watchedInstitutionId);
+    if (institutionItems.some((i) => i.value === idStr)) return institutionItems;
+    const resolvedName =
+      resolvedInstitution?.status === "success" ? (resolvedInstitution.data as any)?.name : undefined;
+    if (!resolvedName) return institutionItems;
+    return [{ value: idStr, label: resolvedName }, ...institutionItems];
+  }, [institutionItems, watchedInstitutionId, resolvedInstitution]);
 
   const handleSubmit = async (data: EducationLevelFormData) => {
     // Camino con documento adjunto: solo aplica al crear (aún no existe un educationId
@@ -235,6 +300,8 @@ export default function EducationLevelForm({
         if (data.senescytGraduationDate) formData.append("SenescytGraduationDate", data.senescytGraduationDate);
         if (data.senescytRegistrationDate) formData.append("SenescytRegistrationDate", data.senescytRegistrationDate);
         if (data.senescytType) formData.append("SenescytType", data.senescytType);
+        if (data.countryOfStudyId) formData.append("CountryOfStudyId", data.countryOfStudyId);
+        if (data.unescoSubareaTypeId) formData.append("UnescoSubareaTypeId", String(data.unescoSubareaTypeId));
         formData.append("File", selectedFile);
         if (selectedDocTypeId) formData.append("DocumentTypeId", selectedDocTypeId);
 
@@ -278,6 +345,8 @@ export default function EducationLevelForm({
       senescytGraduationDate: data.senescytGraduationDate || null,
       senescytRegistrationDate: data.senescytRegistrationDate || null,
       senescytType: data.senescytType || null,
+      countryOfStudyId: data.countryOfStudyId || null,
+      unescoSubareaTypeId: data.unescoSubareaTypeId ?? null,
     };
 
     try {
@@ -335,7 +404,7 @@ export default function EducationLevelForm({
                       if (id == null) return null;
                       return (
                         <SelectItem key={id} value={String(id)}>
-                          {t.name ?? `Nivel ${id}`}
+                          {t.siiesLabel ?? t.name ?? `Nivel ${id}`}
                         </SelectItem>
                       );
                     })}
@@ -355,33 +424,25 @@ export default function EducationLevelForm({
           />
 
           {/* Institución - opcional desde 2026-09-16: un título sincronizado puede no tener
-              institución catalogada, ver institutionNameOriginal más abajo. */}
+              institución catalogada, ver institutionNameOriginal más abajo. Búsqueda paginada
+              en servidor (378 instituciones del catálogo oficial CACES + creadas a mano). */}
           <FormField
             control={form.control}
             name="institutionId"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Institución {institutionLocked ? "" : "(opcional si no está en el catálogo)"}</FormLabel>
-                <Select
-                  disabled={loadingInstitutions || !!institutionsError || saving || institutionLocked}
-                  value={field.value ? String(field.value) : ""}
-                  onValueChange={(v) => field.onChange(v ? Number(v) : undefined)}
-                >
-                  <FormControl>
-                    <SelectTrigger data-testid="select-institution">
-                      <SelectValue
-                        placeholder={loadingInstitutions ? "Cargando instituciones..." : "Seleccionar institución"}
-                      />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {institutions.map((inst) => (
-                      <SelectItem key={inst.institutionId} value={String(inst.institutionId)}>
-                        {inst.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={field.value ? String(field.value) : null}
+                  items={institutionItemsResolved}
+                  disabled={saving || institutionLocked}
+                  isLoading={loadingInstitutions}
+                  placeholder="Seleccionar institución"
+                  searchPlaceholder="Escribe el nombre de la institución..."
+                  emptyText="No se encontraron instituciones."
+                  onSearchChange={setInstitutionSearch}
+                  onChange={(v) => field.onChange(v ? Number(v) : undefined)}
+                />
                 <FormMessage />
                 {institutionsError && (
                   <p className="text-xs text-destructive mt-1">No se pudieron cargar las instituciones.</p>
@@ -544,6 +605,53 @@ export default function EducationLevelForm({
                 <FormControl>
                   <Input {...field} type="date" disabled={saving || registrationDateLocked} />
                 </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* País de estudio (opcional) - reporte SIIES Formación Profesional, DINARDAP no lo
+              informa. CountrySelect trae su propia búsqueda paginada (233 países). */}
+          <FormField
+            control={form.control}
+            name="countryOfStudyId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>País de estudio (opcional)</FormLabel>
+                <CountrySelect
+                  value={field.value ?? null}
+                  onChange={field.onChange}
+                  disabled={saving}
+                  placeholder="Seleccionar país"
+                />
+                <FormDescription>Para el reporte SIIES Formación Profesional.</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Subárea de conocimiento UNESCO/ISCED-F (opcional) - reporte SIIES, DINARDAP no lo
+              informa. Catálogo chico de ref_Types (175, excepción documentada a la regla de
+              paginación) - filtra en el cliente sobre lo que useRefTypesByCategory ya tiene
+              cacheado, sin llamada nueva al servidor. */}
+          <FormField
+            control={form.control}
+            name="unescoSubareaTypeId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Subárea de conocimiento UNESCO (opcional)</FormLabel>
+                <SearchableSelect
+                  value={field.value ? String(field.value) : null}
+                  items={unescoSubareaItems}
+                  disabled={saving}
+                  placeholder="Seleccionar subárea"
+                  searchPlaceholder="Escribe para buscar la subárea..."
+                  emptyText="No se encontraron subáreas."
+                  onChange={(v) => field.onChange(v ? Number(v) : undefined)}
+                />
+                <FormDescription>Código CODIGO_SUBAREA_CONOCIMIENTO_ESPECIFICO_UNESCO del reporte SIIES.</FormDescription>
                 <FormMessage />
               </FormItem>
             )}

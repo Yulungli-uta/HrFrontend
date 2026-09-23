@@ -28,42 +28,16 @@ import { ReusableFileUpload } from "@/components/ReusableFileUpload";
 
 import type { Book } from "@/types/person";
 import {
-  PaisesAPI,
   AreaConocimientoAPI,
   LibrosAPI,
   type RefType,
 } from "@/lib/api";
+import { CountrySelect } from "@/components/ui/CountrySelect";
 import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { BOOK_DOCUMENT_DIRECTORY_CODE, BOOK_DOCUMENT_ENTITY_TYPE } from "@/features/constants";
 import { logger } from "@/lib/logger";
 import { useToast } from "@/hooks/use-toast";
-
-// =============================
-// Tipos auxiliares
-// =============================
-interface CountryDto {
-  countryId?: string;
-  id?: number | string;
-  name?: string;
-  countryName?: string;
-  [key: string]: unknown;
-}
-
-function getCountryId(c: CountryDto): string | undefined {
-  const raw = c.countryId ?? c.id;
-  if (raw === undefined || raw === null) return undefined;
-  return String(raw);
-}
-
-function getCountryName(c: CountryDto): string {
-  return (
-    (c as any).countryName ??
-    (c as any).name ??
-    (c as any).description ??
-    "País"
-  );
-}
 
 function getRefTypeId(t: any): number | undefined {
   return t?.typeID ?? t?.typeId ?? t?.id;
@@ -161,23 +135,6 @@ export default function BookForm({
 
   const { data: docTypesRaw } = useRefTypesByCategory(REF_TYPE_CATEGORIES.CV_DOCUMENT_TYPE);
   const docTypes: RefType[] = docTypesRaw.filter((t: any) => t.isActive);
-
-  // =============================
-  // QUERIES: Países
-  // =============================
-  const {
-    data: countriesResp,
-    isLoading: loadingCountries,
-    error: countriesError,
-  } = useQuery({
-    queryKey: ["countries"],
-    queryFn: () => PaisesAPI.list(),
-  });
-
-  const countries: CountryDto[] =
-    countriesResp?.status === "success" && Array.isArray(countriesResp.data)
-      ? (countriesResp.data as CountryDto[])
-      : [];
 
   // =============================
   // QUERIES: Tipos referencia
@@ -300,8 +257,7 @@ export default function BookForm({
       ? (level3Response.data as KnowledgeArea[]).filter((a) => a.isActive)
       : [];
 
-  const loadingOptions =
-    loadingCountries || loadingParticipationTypes || loadingBookTypes;
+  const loadingOptions = loadingParticipationTypes || loadingBookTypes;
 
   // =============================
   // SUBMIT
@@ -545,42 +501,13 @@ export default function BookForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>País</FormLabel>
-                  <Select
-                    disabled={loadingCountries || !!countriesError || saving}
-                    value={field.value || ""}
-                    onValueChange={(v) => field.onChange(v)}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue
-                          placeholder={
-                            loadingCountries
-                              ? "Cargando países..."
-                              : countriesError
-                              ? "Error cargando países"
-                              : "Seleccione un país"
-                          }
-                        />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {countries.map((c) => {
-                        const id = getCountryId(c);
-                        if (!id) return null;
-                        return (
-                          <SelectItem key={id} value={id}>
-                            {getCountryName(c)}
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
+                  <CountrySelect
+                    value={field.value || null}
+                    onChange={(v) => field.onChange(v ?? "")}
+                    disabled={saving}
+                    placeholder="Seleccione un país"
+                  />
                   <FormMessage />
-                  {countriesError && (
-                    <p className="text-xs text-destructive mt-1">
-                      No se pudieron cargar los países.
-                    </p>
-                  )}
                 </FormItem>
               )}
             />

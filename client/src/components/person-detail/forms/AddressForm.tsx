@@ -25,7 +25,8 @@ import {
 } from "@/components/ui/select";
 
 import type { Address } from "@/types/person";
-import { PaisesAPI, ProvinciasAPI, CantonesAPI, type RefType } from "@/lib/api";
+import { ProvinciasAPI, CantonesAPI, type RefType } from "@/lib/api";
+import { CountrySelect } from "@/components/ui/CountrySelect";
 import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { logger } from "@/lib/logger";
@@ -78,10 +79,6 @@ export default function AddressForm({
     error: addressTypesError,
   } = useRefTypesByCategory(REF_TYPE_CATEGORIES.ADDRESS_TYPE);
 
-  const { data: countriesResp } = useQuery({
-    queryKey: ["countries"],
-    queryFn: () => PaisesAPI.list(),
-  });
   const { data: provincesResp } = useQuery({
     queryKey: ["provinces"],
     queryFn: () => ProvinciasAPI.list(),
@@ -93,7 +90,6 @@ export default function AddressForm({
 
   const addressTypes: RefType[] = addressTypesRaw.filter((t: any) => t.isActive);
 
-  const countries: any[] = countriesResp?.status === "success" ? countriesResp.data ?? [] : [];
   const allProvinces: any[] = provincesResp?.status === "success" ? provincesResp.data ?? [] : [];
   const allCantons: any[] = cantonsResp?.status === "success" ? cantonsResp.data ?? [] : [];
 
@@ -235,20 +231,12 @@ export default function AddressForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>País</FormLabel>
-                <Select disabled={isLoading} value={field.value || ""} onValueChange={field.onChange}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar país" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {countries.map((c) => (
-                      <SelectItem key={c.countryId} value={c.countryId}>
-                        {c.countryName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <CountrySelect
+                  value={field.value || null}
+                  onChange={(v) => field.onChange(v ?? "")}
+                  disabled={isLoading}
+                  placeholder="Seleccionar país"
+                />
                 <FormMessage />
               </FormItem>
             )}
