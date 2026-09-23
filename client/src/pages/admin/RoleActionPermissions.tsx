@@ -51,8 +51,12 @@ function groupByModule(permissions: Permission[]): Map<string, Permission[]> {
 /* =========================
  * Página
  * ========================= */
-export default function RoleActionPermissionsPage() {
-  const [selectedRoleId, setSelectedRoleId] = useState<string>("");
+export default function RoleActionPermissionsPage({
+  initialRoleId,
+}: {
+  initialRoleId?: string;
+} = {}) {
+  const [selectedRoleId, setSelectedRoleId] = useState<string>(initialRoleId ?? "");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [dirty, setDirty] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>("");

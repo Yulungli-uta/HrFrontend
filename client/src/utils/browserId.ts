@@ -43,3 +43,47 @@ export function getBrowserId(): string {
     return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   }
 }
+
+/**
+ * Descripción legible del dispositivo ("Chrome 130 | Windows") a partir del
+ * User-Agent. El backend ya guarda el User-Agent crudo aparte — esto es solo
+ * una versión corta pensada para mostrarse directo en la pantalla de admin
+ * de Sesiones Activas, sin tener que parsear el User-Agent completo ahí.
+ */
+export function getDeviceInfo(): string {
+  if (typeof navigator === "undefined") return "server";
+
+  const ua = navigator.userAgent;
+
+  const browserMatch =
+    ua.match(/(Edg)\/(\d+)/) ||
+    ua.match(/(Chrome)\/(\d+)/) ||
+    ua.match(/(Firefox)\/(\d+)/) ||
+    ua.match(/(Version)\/(\d+).*Safari/) ||
+    null;
+
+  const browserName = browserMatch
+    ? browserMatch[1] === "Edg"
+      ? "Edge"
+      : browserMatch[1] === "Version"
+        ? "Safari"
+        : browserMatch[1]
+    : "Navegador";
+  const browserVersion = browserMatch ? browserMatch[2] : "";
+
+  const os = ua.includes("Windows")
+    ? "Windows"
+    : ua.includes("Mac OS")
+      ? "macOS"
+      : ua.includes("Linux")
+        ? "Linux"
+        : ua.includes("Android")
+          ? "Android"
+          : ua.includes("iPhone") || ua.includes("iPad")
+            ? "iOS"
+            : "";
+
+  return [`${browserName}${browserVersion ? " " + browserVersion : ""}`, os]
+    .filter(Boolean)
+    .join(" | ");
+}

@@ -19,6 +19,7 @@ import {
 import { useAuth } from "@/features/auth";
 import logoPath from "@/assets/LogoUTA.png";
 import { logger } from "@/lib/logger";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 const DEBUG = import.meta.env.VITE_DEBUG_AUTH === "true";
 const logSidebar = (...args: any[]) => { if (DEBUG) logger.debug("Sidebar", "[SIDEBAR]", ...args); };
@@ -202,18 +203,23 @@ const NavNodeItem: React.FC<NavNodeItemProps> = ({
   if (isLeaf && node.path) {
     const active = isActivePath(node.path);
     return (
-      <Link
-        href={node.path}
-        className={`sidebar-item group relative ${active ? "sidebar-item-active font-semibold" : ""}`}
-        aria-current={active ? "page" : undefined}
-      >
-        {active && (
-          <span className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-[10px]
-                           w-0.5 h-4 rounded-full bg-sidebar-primary-foreground" />
-        )}
-        <Icon className="h-3.5 w-3.5 shrink-0" />
-        {!collapsed && <span className="truncate text-[11px]">{node.label}</span>}
-      </Link>
+      <Tooltip delayDuration={400}>
+        <TooltipTrigger asChild>
+          <Link
+            href={node.path}
+            className={`sidebar-item group relative ${active ? "sidebar-item-active font-semibold" : ""}`}
+            aria-current={active ? "page" : undefined}
+          >
+            {active && (
+              <span className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-[10px]
+                               w-0.5 h-4 rounded-full bg-sidebar-primary-foreground" />
+            )}
+            <Icon className="h-3.5 w-3.5 shrink-0" />
+            {!collapsed && <span className="truncate text-[11px]">{node.label}</span>}
+          </Link>
+        </TooltipTrigger>
+        <TooltipContent side="right">{node.label}</TooltipContent>
+      </Tooltip>
     );
   }
 
@@ -222,24 +228,29 @@ const NavNodeItem: React.FC<NavNodeItemProps> = ({
 
   return (
     <div>
-      <button
-        onClick={() => onToggle(key)}
-        aria-expanded={isOpen}
-        className="sidebar-item w-full justify-between"
-      >
-        <span className="flex items-center gap-2 min-w-0">
-          <Icon className="h-3.5 w-3.5 shrink-0" />
-          {!collapsed && <span className="truncate text-[11px]">{node.label}</span>}
-        </span>
-        {!collapsed && (
-          <span
-            className="shrink-0 transition-transform duration-200"
-            style={{ transform: isOpen ? "rotate(0deg)" : "rotate(-90deg)" }}
+      <Tooltip delayDuration={400}>
+        <TooltipTrigger asChild>
+          <button
+            onClick={() => onToggle(key)}
+            aria-expanded={isOpen}
+            className="sidebar-item w-full justify-between"
           >
-            <ChevronDown className="h-3 w-3" />
-          </span>
-        )}
-      </button>
+            <span className="flex items-center gap-2 min-w-0">
+              <Icon className="h-3.5 w-3.5 shrink-0" />
+              {!collapsed && <span className="truncate text-[11px]">{node.label}</span>}
+            </span>
+            {!collapsed && (
+              <span
+                className="shrink-0 transition-transform duration-200"
+                style={{ transform: isOpen ? "rotate(0deg)" : "rotate(-90deg)" }}
+              >
+                <ChevronDown className="h-3 w-3" />
+              </span>
+            )}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="right">{node.label}</TooltipContent>
+      </Tooltip>
       {isOpen && node.children && (
         <div className="ml-2 mt-0.5 mb-0.5 space-y-0.5 border-l-2 border-sidebar-border pl-2">
           {node.children.map(child => (

@@ -76,6 +76,7 @@ export interface LoginRequest {
   email: string;
   password: string;
   rememberMe?: boolean;
+  browserId?: string;
 }
 
 export interface RefreshRequest {

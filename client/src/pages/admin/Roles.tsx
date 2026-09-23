@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -33,7 +34,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-import { Shield, Plus, Edit, Trash2, Search } from "lucide-react";
+import { Shield, Plus, Edit, Trash2, Search, KeyRound } from "lucide-react";
 import { RolesAPI } from "@/lib/api";
 import { usePaged } from "@/hooks/pagination/usePaged";
 import { DataPagination } from "@/components/ui/DataPagination";
@@ -45,6 +46,7 @@ import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
 import { parseApiError } from "@/lib/error-handling";
 
 export default function RolesPage() {
+  const [, setLocation] = useLocation();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [deleteRoleId, setDeleteRoleId] = useState<number | null>(null);
@@ -269,6 +271,12 @@ export default function RolesPage() {
                           label="Editar rol"
                           tone="primary"
                           onClick={() => handleEdit(role)}
+                        />
+                        <ActionIconButton
+                          icon={KeyRound}
+                          label="Configurar menús y permisos"
+                          tone="primary"
+                          onClick={() => setLocation(`/admin/role-editor?roleId=${role.id}`)}
                         />
                         <ActionIconButton
                           icon={Trash2}

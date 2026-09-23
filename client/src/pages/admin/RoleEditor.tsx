@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+import { useSearch } from "wouter";
 import { Settings, KeyRound } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import RoleMenuItemsPage from "@/pages/admin/RoleMenuItems";
@@ -15,6 +17,12 @@ import RoleActionPermissionsPage from "@/pages/admin/RoleActionPermissions";
  * selector de rol — no comparten selección entre sí.
  */
 export default function RoleEditorPage() {
+  const search = useSearch();
+  const initialRoleId = useMemo(() => {
+    const roleId = new URLSearchParams(search).get("roleId");
+    return roleId ?? undefined;
+  }, [search]);
+
   return (
     <div className="container mx-auto p-6 pb-0">
       <div className="mb-2">
@@ -38,13 +46,13 @@ export default function RoleEditorPage() {
 
         <TabsContent value="menus" className="mt-0">
           <div className="-mx-6">
-            <RoleMenuItemsPage />
+            <RoleMenuItemsPage initialRoleId={initialRoleId} />
           </div>
         </TabsContent>
 
         <TabsContent value="permisos" className="mt-0">
           <div className="-mx-6">
-            <RoleActionPermissionsPage />
+            <RoleActionPermissionsPage initialRoleId={initialRoleId} />
           </div>
         </TabsContent>
       </Tabs>

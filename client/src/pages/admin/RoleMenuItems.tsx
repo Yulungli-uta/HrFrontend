@@ -161,8 +161,12 @@ function TriStateCheckbox({
 /* =========================
  * Página
  * ========================= */
-export default function RoleMenuItemsPage() {
-  const [selectedRoleId, setSelectedRoleId] = useState<string>("");
+export default function RoleMenuItemsPage({
+  initialRoleId,
+}: {
+  initialRoleId?: string;
+} = {}) {
+  const [selectedRoleId, setSelectedRoleId] = useState<string>(initialRoleId ?? "");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [dirty, setDirty] = useState<boolean>(false);

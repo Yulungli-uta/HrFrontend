@@ -2,7 +2,7 @@
 import { ApiResponse } from "@/lib/api";
 import { TokenPair, UserSession, LoginRequest } from "../types/authTypes";
 import { tokenService } from "./tokenService";
-import { getBrowserId } from "@/utils/browserId";
+import { getBrowserId, getDeviceInfo } from "@/utils/browserId";
 import { logger } from "@/lib/logger";
 
 const AUTH_API_BASE_URL =
@@ -100,7 +100,8 @@ export const authService = {
       message: string;
     }>("/api/auth/login", {
       method: "POST",
-      body: JSON.stringify(credentials),
+      headers: { "X-Device-Info": getDeviceInfo() },
+      body: JSON.stringify({ ...credentials, browserId: getBrowserId() }),
     });
 
     if (res.status === "error") {
@@ -213,6 +214,7 @@ export const authService = {
     const params = new URLSearchParams({
       clientId: APP_CLIENT_ID,
       browserId, // 🔥 CLAVE para Opción A
+      deviceInfo: getDeviceInfo(),
       ...(codeChallenge ? { codeChallenge } : {}),
     });
 
