@@ -60,6 +60,10 @@ docs/assets/
 docs/guides/
 docs/migrations/
 docs/qa-evidence/
+docs/*.pdf
+
+# Scratchpad temporal (capturas, respaldos sueltos)
+.tmp/
 
 # Vite / React build output
 client/dist/
