@@ -19,16 +19,17 @@ async function authFetch<T = any>(
 ): Promise<ApiResponse<T>> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
+  const { headers: initHeaders, ...requestInit } = init;
 
   try {
     const res = await fetch(`${AUTH_API_BASE_URL}${path}`, {
       credentials: "include",
+      ...requestInit,
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
-        ...(init.headers ?? {}),
+        ...(initHeaders ?? {}),
       },
-      ...init,
       signal: controller.signal,
     });
 
