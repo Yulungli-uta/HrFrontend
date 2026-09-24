@@ -53,7 +53,6 @@ const familyMemberFormSchema = z.object({
   identificationTypeId: z.string().min(1, "El tipo de identificación es requerido"),
   dependentId: z.string().min(1, "El número de identificación es requerido"),
   birthDate: z.string().min(1, "La fecha de nacimiento es requerida"),
-  relationship: z.string().min(1, "La relación es requerida"),
   hasDisability: z.boolean().default(false),
   disabilityType: z.string().optional(),
   disabilityPercentage: z.coerce
@@ -98,6 +97,11 @@ export default function FamilyMemberForm({
 
   const { data: docTypesRaw } = useRefTypesByCategory(REF_TYPE_CATEGORIES.CV_DOCUMENT_TYPE);
   const docTypes: RefType[] = docTypesRaw.filter((t: any) => t.isActive);
+  // IDENTITY_TYPE ya existe como catalogo (CEDULA/PASAPORTE) — antes este selector tenia
+  // valores "1".."4" hardcodeados que en realidad correspondian a MARITAL_STATUS en la BD
+  // real (Soltero/a, Casado/a...), corrompiendo silenciosamente el dato guardado.
+  const { data: identTypesRaw } = useRefTypesByCategory(REF_TYPE_CATEGORIES.IDENTITY_TYPE);
+  const identTypes: RefType[] = identTypesRaw.filter((t: any) => t.isActive);
   const form = useForm<FamilyMemberFormData>({
     resolver: zodResolver(familyMemberFormSchema) as any,
     defaultValues: {
@@ -108,7 +112,6 @@ export default function FamilyMemberForm({
       birthDate: familyMember?.birthDate
         ? new Date(familyMember.birthDate).toISOString().split("T")[0]
         : "",
-      relationship: familyMember?.relationship || "",
       hasDisability: familyMember?.hasDisability || false,
       disabilityType: familyMember?.disabilityTypeId != null
         ? String(familyMember.disabilityTypeId)
@@ -345,10 +348,11 @@ export default function FamilyMemberForm({
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="1">Cédula</SelectItem>
-                    <SelectItem value="2">Pasaporte</SelectItem>
-                    <SelectItem value="3">RUC</SelectItem>
-                    <SelectItem value="4">Otro</SelectItem>
+                    {identTypes.map((t) => (
+                      <SelectItem key={getRefTypeId(t)} value={String(getRefTypeId(t))}>
+                        {(t as any).name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -459,36 +463,6 @@ export default function FamilyMemberForm({
             )}
           />
 
-          <FormField
-            control={form.control as any}
-            name="relationship"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Relación</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  value={field.value}
-                  defaultValue={field.value}
-                  disabled={formBlockedByDinardap}
-                >
-                  <FormControl>
-                    <SelectTrigger data-testid="select-relationship">
-                      <SelectValue placeholder="Seleccionar relación" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="Cónyuge">Cónyuge</SelectItem>
-                    <SelectItem value="Hijo/a">Hijo/a</SelectItem>
-                    <SelectItem value="Padre">Padre</SelectItem>
-                    <SelectItem value="Madre">Madre</SelectItem>
-                    <SelectItem value="Hermano/a">Hermano/a</SelectItem>
-                    <SelectItem value="Otro">Otro</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
         </div>
 
         <div className="space-y-4 border-t pt-4">

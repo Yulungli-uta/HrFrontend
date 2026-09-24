@@ -14,7 +14,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -73,8 +72,6 @@ const publicationFormSchema = z.object({
   publicationDate: z.string().optional(),
 
   utAffiliation: z.boolean().optional().default(true),
-
-  notes: z.string().optional(),
 });
 
 export type PublicationFormData = z.infer<typeof publicationFormSchema>;
@@ -242,7 +239,6 @@ export default function PublicationForm({
       eventEdition: "",
       publicationDate: "",
       utAffiliation: true,
-      notes: "",
     },
   });
 
@@ -328,8 +324,6 @@ export default function PublicationForm({
       publicationDate: publication.publicationDate ?? "",
 
       utAffiliation: (publication as any)?.utAffiliation ?? true,
-
-      notes: (publication as any)?.notes ?? "",
     });
   }, [publication, form]);
 
@@ -429,7 +423,6 @@ export default function PublicationForm({
 
       utAffiliation: data.utAffiliation ?? true,
       createdAt: (publication as any)?.createdAt ?? now.toISOString(),
-      notes: data.notes ?? "",
     };
 
     try {
@@ -500,7 +493,7 @@ export default function PublicationForm({
                         if (id == null) return null;
                         return (
                           <SelectItem key={id} value={String(id)}>
-                            {t.description ?? t.code ?? `Tipo ${id}`}
+                            {t.name ?? t.description ?? `Tipo ${id}`}
                           </SelectItem>
                         );
                       })}
@@ -628,7 +621,7 @@ export default function PublicationForm({
                         if (id == null) return null;
                         return (
                           <SelectItem key={id} value={String(id)}>
-                            {t.description ?? t.code ?? `Tipo ${id}`}
+                            {t.name ?? t.description ?? `Tipo ${id}`}
                           </SelectItem>
                         );
                       })}
@@ -918,25 +911,6 @@ export default function PublicationForm({
               )}
             />
           </div>
-        </div>
-
-        {/* NOTAS */}
-        <div className="space-y-2">
-          <h3 className="text-base sm:text-lg font-semibold">Notas</h3>
-
-          <FormField
-            control={form.control as any}
-            name="notes"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Observaciones</FormLabel>
-                <FormControl>
-                  <Textarea {...field} rows={3} placeholder="Notas" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
         </div>
 
         {!publication && (

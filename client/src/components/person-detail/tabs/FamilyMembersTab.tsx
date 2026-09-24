@@ -3,10 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ActionIconButton } from "@/components/ui/action-icon-button";
 import { Badge } from "@/components/ui/badge";
-import { Users, Plus, Edit, Trash2, Calendar, IdCard, GraduationCap, HeartHandshake, FileText, ChevronDown, ChevronUp } from "lucide-react";
+import { Users, Plus, Edit, Trash2, Calendar, IdCard, GraduationCap, FileText, ChevronDown, ChevronUp } from "lucide-react";
 import { FamilyMember } from "@/types/person";
 import { ReusableDocumentManager } from "@/components/ReusableDocumentManager";
 import { FAMILY_MEMBER_DOCUMENT_DIRECTORY_CODE, FAMILY_MEMBER_DOCUMENT_ENTITY_TYPE } from "@/features/constants";
+import { useCvListState, buildFilterOptions, type CvSortOption, type CvFilterField } from "@/hooks/personDetails/useCvListState";
+import { CvListToolbar } from "@/components/person-detail/CvListToolbar";
+import { CvFilterBar } from "@/components/person-detail/CvFilterBar";
+import { DataPagination } from "@/components/ui/DataPagination";
 
 interface FamilyMembersTabProps {
   familyMembers: FamilyMember[];
@@ -64,6 +68,47 @@ export function FamilyMembersTab({
     RECHAZADO: "Rechazado",
   };
 
+  const sortOptions: CvSortOption<FamilyMember>[] = [
+    {
+      value: "name_asc",
+      label: "Nombre (A-Z)",
+      compare: (a, b) => `${a.firstName ?? ""} ${a.lastName ?? ""}`.localeCompare(`${b.firstName ?? ""} ${b.lastName ?? ""}`),
+    },
+    {
+      value: "birthDate_desc",
+      label: "Más jóvenes primero",
+      compare: (a, b) => new Date(b.birthDate ?? 0).getTime() - new Date(a.birthDate ?? 0).getTime(),
+    },
+    {
+      value: "birthDate_asc",
+      label: "Mayores primero",
+      compare: (a, b) => new Date(a.birthDate ?? 0).getTime() - new Date(b.birthDate ?? 0).getTime(),
+    },
+  ];
+
+  const getStatusName = (m: FamilyMember) => resolveRefType(m.statusTypeId) ?? "REGISTRADO";
+
+  const filterFields: CvFilterField<FamilyMember>[] = [
+    {
+      key: "status",
+      label: "Estado",
+      options: [
+        { value: "REGISTRADO", label: "Pendiente" },
+        { value: "APROBADO", label: "Aprobado" },
+        { value: "RECHAZADO", label: "Rechazado" },
+      ],
+      getValue: (m) => getStatusName(m),
+    },
+  ];
+
+  const list = useCvListState({
+    items: familyMembers,
+    searchText: (m) => `${m.firstName ?? ""} ${m.lastName ?? ""}`,
+    sortOptions,
+    defaultSort: "name_asc",
+    filterFields,
+  });
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -94,8 +139,29 @@ export function FamilyMembersTab({
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {familyMembers.map((member) => {
+          <>
+            <CvListToolbar
+              search={list.search}
+              onSearchChange={list.setSearch}
+              searchPlaceholder="Buscar por nombre..."
+              sortValue={list.sortValue}
+              onSortChange={list.setSortValue}
+              sortOptions={sortOptions}
+            />
+            <CvFilterBar
+              fields={list.filterFields}
+              values={list.filterValues}
+              onChange={list.setFilterValue}
+              onClear={list.clearFilters}
+            />
+
+            {list.totalCount === 0 ? (
+              <div className="text-center py-8 text-sm text-muted-foreground">
+                No se encontraron cargas familiares con ese criterio.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {list.paginatedItems.map((member) => {
               const age = calculateAge(member.birthDate ?? "");
               const idTypeName = resolveRefType(member.identificationTypeId as any);
               const disabilityTypeName = resolveRefType(member.disabilityTypeId as any);
@@ -104,22 +170,20 @@ export function FamilyMembersTab({
               return (
                 <Card
                   key={`family-member-${member.burdenId}`}
-                  className="hover:shadow-md transition-shadow"
+                  className="hover:shadow-md transition-shadow border-l-4 border-l-success"
                 >
-                  <CardContent className="p-4">
+                  <CardContent className="p-3">
                     <div className="flex flex-col h-full">
-                      <div className="flex items-start justify-between mb-3 gap-2">
-                        <div className="min-w-0">
-                          <h4 className="font-semibold text-foreground text-base leading-tight">
+                      <div className="flex items-start justify-between mb-2 gap-2">
+                        <div className="flex items-start gap-2 min-w-0">
+                          <div className="flex items-center justify-center h-8 w-8 rounded-md bg-success/10 shrink-0">
+                            <Users className="h-4 w-4 text-success" />
+                          </div>
+                          <div className="min-w-0">
+                          <h4 className="font-semibold text-foreground text-sm leading-tight">
                             {member.firstName} {member.lastName}
                           </h4>
                           <div className="flex flex-wrap gap-1 mt-1">
-                            {member.relationship && (
-                              <Badge variant="secondary" className="text-xs">
-                                <HeartHandshake className="h-3 w-3 mr-1" />
-                                {member.relationship}
-                              </Badge>
-                            )}
                             <Badge variant={STATUS_BADGE_VARIANT[statusName] ?? "outline"} className="text-xs">
                               {STATUS_LABEL[statusName] ?? statusName}
                             </Badge>
@@ -127,6 +191,7 @@ export function FamilyMembersTab({
                           {statusName === "RECHAZADO" && member.rejectionReason && (
                             <p className="text-xs text-destructive mt-1">Motivo: {member.rejectionReason}</p>
                           )}
+                          </div>
                         </div>
                         <div className="flex gap-1 shrink-0">
                           <ActionIconButton
@@ -146,28 +211,27 @@ export function FamilyMembersTab({
                         </div>
                       </div>
 
-                      <div className="space-y-2 text-sm text-muted-foreground flex-1">
-                        {member.identificationTypeId != null && member.dependentId && (
-                          <div className="flex items-center gap-2">
-                            <IdCard className="h-4 w-4 text-muted-foreground/70 shrink-0" />
-                            <span>
-                              <strong>{idTypeName ?? "Identificación"}:</strong>{" "}
-                              {member.dependentId}
-                            </span>
-                          </div>
-                        )}
-
-                        {member.birthDate && (
-                          <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-muted-foreground/70 shrink-0" />
-                            <span>
-                              <strong>Nac.:</strong> {formatDate(member.birthDate)}
-                              {age !== null && (
-                                <span className="text-muted-foreground ml-1">
-                                  ({age} años)
+                      <div className="space-y-1.5 text-xs text-muted-foreground flex-1">
+                        {((member.identificationTypeId != null && member.dependentId) || member.birthDate) && (
+                          <div className="flex flex-wrap gap-x-3 gap-y-1">
+                            {member.identificationTypeId != null && member.dependentId && (
+                              <div className="flex items-center gap-1">
+                                <IdCard className="h-3.5 w-3.5 text-muted-foreground/70 shrink-0" />
+                                <span>
+                                  {idTypeName ?? "Identificación"}: {member.dependentId}
                                 </span>
-                              )}
-                            </span>
+                              </div>
+                            )}
+
+                            {member.birthDate && (
+                              <div className="flex items-center gap-1">
+                                <Calendar className="h-3.5 w-3.5 text-muted-foreground/70 shrink-0" />
+                                <span>
+                                  {formatDate(member.birthDate)}
+                                  {age !== null && ` (${age} años)`}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         )}
 
@@ -204,7 +268,7 @@ export function FamilyMembersTab({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="self-start text-xs -ml-2"
+                          className="self-start text-xs -ml-2 h-7"
                           onClick={() =>
                             setExpandedId(expandedId === member.burdenId ? null : member.burdenId)
                           }
@@ -238,7 +302,21 @@ export function FamilyMembersTab({
                 </Card>
               );
             })}
-          </div>
+              </div>
+            )}
+
+            <DataPagination
+              page={list.page}
+              totalPages={list.totalPages}
+              totalCount={list.totalCount}
+              pageSize={list.pageSize}
+              hasPreviousPage={list.hasPreviousPage}
+              hasNextPage={list.hasNextPage}
+              onPageChange={list.setPage}
+              onPageSizeChange={list.setPageSize}
+              pageSizeOptions={[6, 12, 24, 48]}
+            />
+          </>
         )}
       </CardContent>
     </Card>

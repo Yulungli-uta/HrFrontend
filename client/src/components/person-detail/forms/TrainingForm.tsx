@@ -14,7 +14,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -87,8 +86,6 @@ const trainingFormSchema = z.object({
     .int()
     .nonnegative()
     .optional(),
-
-  notes: z.string().optional(),
 });
 
 export type TrainingFormData = z.infer<typeof trainingFormSchema>;
@@ -220,8 +217,6 @@ export default function TrainingForm({
       endDate: training?.endDate ?? "",
 
       hours: training?.hours ? Number(training.hours) : undefined,
-
-      notes: "",
     },
   });
 
@@ -324,9 +319,6 @@ export default function TrainingForm({
     if (approvalTypeId !== undefined) {
       payload.approvalTypeId = approvalTypeId;
     }
-
-    // Aquí podrías incluir notes si el backend lo soporta
-    // payload.notes = data.notes || null;
 
     try {
       await onSubmit(payload);
@@ -449,7 +441,7 @@ export default function TrainingForm({
                         if (id == null) return null;
                         return (
                           <SelectItem key={id} value={String(id)}>
-                            {t.description ?? t.code ?? `Tipo ${id}`}
+                            {t.name ?? t.description ?? `Tipo ${id}`}
                           </SelectItem>
                         );
                       })}
@@ -490,7 +482,7 @@ export default function TrainingForm({
                         if (id == null) return null;
                         return (
                           <SelectItem key={id} value={String(id)}>
-                            {t.description ?? t.code ?? `Tipo ${id}`}
+                            {t.name ?? t.description ?? `Tipo ${id}`}
                           </SelectItem>
                         );
                       })}
@@ -531,7 +523,7 @@ export default function TrainingForm({
                         if (id == null) return null;
                         return (
                           <SelectItem key={id} value={String(id)}>
-                            {t.description ?? t.code ?? `Tipo ${id}`}
+                            {t.name ?? t.description ?? `Tipo ${id}`}
                           </SelectItem>
                         );
                       })}
@@ -660,25 +652,6 @@ export default function TrainingForm({
               )}
             />
           </div>
-        </div>
-
-        {/* NOTAS */}
-        <div className="space-y-2">
-          <h3 className="text-base sm:text-lg font-semibold">Notas</h3>
-
-          <FormField
-            control={form.control as any}
-            name="notes"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Observaciones</FormLabel>
-                <FormControl>
-                  <Textarea {...field} rows={3} placeholder="Notas" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
         </div>
 
         {!training && (

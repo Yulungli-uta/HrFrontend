@@ -81,7 +81,6 @@ export interface FamilyMember {
   dependentId: string;
   identificationTypeId: number;
   birthDate: string;
-  relationship: string;
   disabilityTypeId?: number;
   disabilityPercentage?: number;
   hasDisability?: boolean;

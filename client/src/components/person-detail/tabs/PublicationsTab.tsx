@@ -7,6 +7,10 @@ import { FileText, Plus, Edit, Trash2, Calendar, BookOpen, MapPin, ChevronDown, 
 import { Publication } from "@/types/person";
 import { ReusableDocumentManager } from "@/components/ReusableDocumentManager";
 import { PUBLICATION_DOCUMENT_DIRECTORY_CODE, PUBLICATION_DOCUMENT_ENTITY_TYPE } from "@/features/constants";
+import { useCvListState, buildFilterOptions, type CvSortOption, type CvFilterField } from "@/hooks/personDetails/useCvListState";
+import { CvListToolbar } from "@/components/person-detail/CvListToolbar";
+import { CvFilterBar } from "@/components/person-detail/CvFilterBar";
+import { DataPagination } from "@/components/ui/DataPagination";
 
 interface PublicationsTabProps {
   publications: Publication[];
@@ -29,6 +33,41 @@ export function PublicationsTab({ publications, onEdit, onDelete, personIdCard }
 
   const resolveId = (pub: Publication): number =>
     (pub as any).publicationId ?? (pub as any).id ?? 0;
+
+  const sortOptions: CvSortOption<Publication>[] = [
+    {
+      value: "date_desc",
+      label: "Más recientes primero",
+      compare: (a, b) => new Date(b.publicationDate || 0).getTime() - new Date(a.publicationDate || 0).getTime(),
+    },
+    {
+      value: "date_asc",
+      label: "Más antiguas primero",
+      compare: (a, b) => new Date(a.publicationDate || 0).getTime() - new Date(b.publicationDate || 0).getTime(),
+    },
+    {
+      value: "title_asc",
+      label: "Título (A-Z)",
+      compare: (a, b) => (a.title || "").localeCompare(b.title || ""),
+    },
+  ];
+
+  const filterFields: CvFilterField<Publication>[] = [
+    {
+      key: "type",
+      label: "Tipo de publicación",
+      options: buildFilterOptions(publications.map((p) => p.publicationTypeName)),
+      getValue: (p) => p.publicationTypeName,
+    },
+  ];
+
+  const list = useCvListState({
+    items: publications,
+    searchText: (p) => `${p.title ?? ""} ${p.journalName ?? ""} ${p.location ?? ""}`,
+    sortOptions,
+    defaultSort: "date_desc",
+    filterFields,
+  });
 
   return (
     <Card className="mt-4">
@@ -56,17 +95,42 @@ export function PublicationsTab({ publications, onEdit, onDelete, personIdCard }
             para agregar una.
           </div>
         ) : (
-          <div className="space-y-3">
-            {publications.map((publication) => (
+          <>
+            <CvListToolbar
+              search={list.search}
+              onSearchChange={list.setSearch}
+              searchPlaceholder="Buscar por título, revista o lugar..."
+              sortValue={list.sortValue}
+              onSortChange={list.setSortValue}
+              sortOptions={sortOptions}
+            />
+            <CvFilterBar
+              fields={list.filterFields}
+              values={list.filterValues}
+              onChange={list.setFilterValue}
+              onClear={list.clearFilters}
+            />
+
+            {list.totalCount === 0 ? (
+              <div className="text-center py-8 text-sm text-muted-foreground">
+                No se encontraron publicaciones con ese criterio.
+              </div>
+            ) : (
+              <div className="space-y-2">
+            {list.paginatedItems.map((publication) => (
               <Card
                 key={resolveId(publication)}
                 className="border-l-4 border-l-primary/60"
               >
-                <CardContent className="p-3 sm:p-4">
-                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                <CardContent className="p-3">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                    <div className="flex items-start gap-2 min-w-0 flex-1">
+                    <div className="flex items-center justify-center h-8 w-8 rounded-md bg-primary/10 shrink-0">
+                      <FileText className="h-4 w-4 text-primary" />
+                    </div>
                     <div className="space-y-1 min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold text-sm sm:text-base">
+                        <h3 className="font-semibold text-sm">
                           {publication.title || "Título no especificado"}
                         </h3>
                         {publication.publicationTypeName && (
@@ -76,18 +140,17 @@ export function PublicationsTab({ publications, onEdit, onDelete, personIdCard }
                         )}
                       </div>
 
-                      {publication.location && (
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <MapPin className="h-3 w-3 shrink-0" />
-                          <span>{publication.location}</span>
-                        </div>
-                      )}
-
-                      <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                         {publication.journalName && (
                           <div className="flex items-center gap-1">
                             <BookOpen className="h-3 w-3" />
                             <span>{publication.journalName}</span>
+                          </div>
+                        )}
+                        {publication.location && (
+                          <div className="flex items-center gap-1">
+                            <MapPin className="h-3 w-3 shrink-0" />
+                            <span>{publication.location}</span>
                           </div>
                         )}
                         {publication.publicationDate && (
@@ -101,7 +164,7 @@ export function PublicationsTab({ publications, onEdit, onDelete, personIdCard }
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-xs -ml-2"
+                        className="text-xs -ml-2 h-7"
                         onClick={() =>
                           setExpandedId(expandedId === resolveId(publication) ? null : resolveId(publication))
                         }
@@ -130,6 +193,7 @@ export function PublicationsTab({ publications, onEdit, onDelete, personIdCard }
                         />
                       )}
                     </div>
+                    </div>
 
                     <div className="flex items-center gap-2 shrink-0">
                       <ActionIconButton
@@ -152,7 +216,21 @@ export function PublicationsTab({ publications, onEdit, onDelete, personIdCard }
                 </CardContent>
               </Card>
             ))}
-          </div>
+              </div>
+            )}
+
+            <DataPagination
+              page={list.page}
+              totalPages={list.totalPages}
+              totalCount={list.totalCount}
+              pageSize={list.pageSize}
+              hasPreviousPage={list.hasPreviousPage}
+              hasNextPage={list.hasNextPage}
+              onPageChange={list.setPage}
+              onPageSizeChange={list.setPageSize}
+              pageSizeOptions={[6, 12, 24, 48]}
+            />
+          </>
         )}
       </CardContent>
     </Card>

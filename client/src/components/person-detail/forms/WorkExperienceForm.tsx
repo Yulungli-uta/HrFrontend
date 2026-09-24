@@ -433,7 +433,7 @@ export default function WorkExperienceForm({
                       if (id == null) return null;
                       return (
                         <SelectItem key={id} value={String(id)}>
-                          {t.description ?? t.code ?? `Tipo ${id}`}
+                          {t.name ?? t.description ?? `Tipo ${id}`}
                         </SelectItem>
                       );
                     })}
@@ -480,7 +480,7 @@ export default function WorkExperienceForm({
                       if (id == null) return null;
                       return (
                         <SelectItem key={id} value={String(id)}>
-                          {t.description ?? t.code ?? `Tipo ${id}`}
+                          {t.name ?? t.description ?? `Tipo ${id}`}
                         </SelectItem>
                       );
                     })}

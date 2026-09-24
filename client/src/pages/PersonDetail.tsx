@@ -16,6 +16,7 @@ import {
   VistaDetallesEmpleadosAPI,
   InstitucionesAPI,
 } from "@/lib/api";
+import { AcademicCvAPI, downloadCvBlob } from "@/lib/api/services/academicCv";
 
 import { PersonalInfoTab } from "@/components/person-detail/tabs/PersonalInfoTab";
 import { PublicationsTab } from "@/components/person-detail/tabs/PublicationsTab";
@@ -39,6 +40,7 @@ import {
   ArrowLeft,
   Edit,
   RefreshCw,
+  Download,
   User,
   FileText,
   Users,
@@ -123,6 +125,7 @@ export default function PersonDetail() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const { user, employeeDetails } = useAuth();
+  const [isExportingCv, setIsExportingCv] = useState(false);
 
   const hasPeoplePermission = user?.permissions?.some((p) => p === "/people") ?? false;
   const urlId = id ? Number(id) : null;
@@ -300,6 +303,31 @@ export default function PersonDetail() {
     toast({ title: "✅ Éxito", description: "Datos guardados correctamente" });
   };
 
+  const handleExportAcademicCv = async () => {
+    if (!person?.personId) return;
+    setIsExportingCv(true);
+    try {
+      const res = await AcademicCvAPI.downloadPdf(person.personId);
+      if (res.status !== "success") {
+        toast({
+          title: "⚠️ Error",
+          description: "No se pudo generar la hoja de vida académica.",
+          variant: "destructive",
+        });
+        return;
+      }
+      downloadCvBlob(res.data, `HojaDeVidaAcademica_${person.idCard}.pdf`);
+    } catch {
+      toast({
+        title: "⚠️ Error",
+        description: "No se pudo generar la hoja de vida académica.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExportingCv(false);
+    }
+  };
+
   // ── Errores y carga ──────────────────────────────────────────────────────────
 
   // Mientras el personId del contexto todavía no está disponible, mostrar spinner
@@ -413,7 +441,7 @@ export default function PersonDetail() {
             </div>
           </div>
 
-          <div className="flex gap-2 self-stretch sm:self-auto">
+          <div className="flex flex-wrap gap-2 self-stretch sm:self-auto">
             <Button
               variant="outline"
               size="sm"
@@ -423,6 +451,19 @@ export default function PersonDetail() {
               <RefreshCw className="mr-2 h-4 w-4" />
               <span className="hidden sm:inline">Actualizar</span>
               <span className="sm:hidden">Refrescar</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportAcademicCv}
+              disabled={isExportingCv}
+              className="flex-1 sm:flex-none"
+            >
+              <Download className="mr-2 h-4 w-4" />
+              <span className="hidden sm:inline">
+                {isExportingCv ? "Generando..." : "Exportar Hoja de Vida"}
+              </span>
+              <span className="sm:hidden">{isExportingCv ? "..." : "PDF"}</span>
             </Button>
             <Button
               onClick={() => setIsEditFormOpen(true)}

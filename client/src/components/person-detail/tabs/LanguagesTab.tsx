@@ -7,6 +7,10 @@ import { Languages as LanguagesIcon, Plus, Edit, Trash2, Calendar, FileText, Che
 import { Language } from "@/types/person";
 import { ReusableDocumentManager } from "@/components/ReusableDocumentManager";
 import { LANGUAGE_CERTIFICATION_DIRECTORY_CODE, LANGUAGE_CERTIFICATION_ENTITY_TYPE } from "@/features/constants";
+import { useCvListState, buildFilterOptions, type CvSortOption, type CvFilterField } from "@/hooks/personDetails/useCvListState";
+import { CvListToolbar } from "@/components/person-detail/CvListToolbar";
+import { CvFilterBar } from "@/components/person-detail/CvFilterBar";
+import { DataPagination } from "@/components/ui/DataPagination";
 
 interface LanguagesTabProps {
   languages: Language[];
@@ -27,11 +31,48 @@ export function LanguagesTab({ languages, onEdit, onDelete, refTypesMap = {}, pe
   };
 
   const resolveRefType = (id: number | string | null | undefined): string | null => {
-    if (id == null || id === "") return null;
+    if (id == null || id === "" || id === 0 || id === "0") return null;
     const n = Number(id);
     if (!isNaN(n) && n > 0) return refTypesMap[n] ?? null;
     return String(id);
   };
+
+  const sortOptions: CvSortOption<Language>[] = [
+    {
+      value: "issueDate_desc",
+      label: "Más recientes primero",
+      compare: (a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime(),
+    },
+    {
+      value: "issueDate_asc",
+      label: "Más antiguas primero",
+      compare: (a, b) => new Date(a.issueDate).getTime() - new Date(b.issueDate).getTime(),
+    },
+  ];
+
+  const filterFields: CvFilterField<Language>[] = [
+    {
+      key: "language",
+      label: "Idioma",
+      options: buildFilterOptions(languages.map((l) => resolveRefType(l.languageTypeId))),
+      getValue: (l) => resolveRefType(l.languageTypeId),
+    },
+    {
+      key: "level",
+      label: "Nivel",
+      options: buildFilterOptions(languages.map((l) => resolveRefType(l.levelTypeId))),
+      getValue: (l) => resolveRefType(l.levelTypeId),
+    },
+  ];
+
+  const list = useCvListState({
+    items: languages,
+    searchText: (l) =>
+      `${resolveRefType(l.languageTypeId) ?? ""} ${resolveRefType(l.levelTypeId) ?? ""} ${l.certifyingInstitution ?? ""}`,
+    sortOptions,
+    defaultSort: "issueDate_desc",
+    filterFields,
+  });
 
   return (
     <Card>
@@ -57,26 +98,50 @@ export function LanguagesTab({ languages, onEdit, onDelete, refTypesMap = {}, pe
             <p className="text-sm">Agrega la primera certificación haciendo clic en el botón "Nuevo Idioma"</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {[...languages]
-              .sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime())
-              .map((language) => {
+          <>
+            <CvListToolbar
+              search={list.search}
+              onSearchChange={list.setSearch}
+              searchPlaceholder="Buscar por idioma, nivel o institución..."
+              sortValue={list.sortValue}
+              onSortChange={list.setSortValue}
+              sortOptions={sortOptions}
+            />
+            <CvFilterBar
+              fields={list.filterFields}
+              values={list.filterValues}
+              onChange={list.setFilterValue}
+              onClear={list.clearFilters}
+            />
+
+            {list.totalCount === 0 ? (
+              <div className="text-center py-8 text-sm text-muted-foreground">
+                No se encontraron certificaciones de idioma con ese criterio.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            {list.paginatedItems.map((language) => {
                 const languageName = resolveRefType(language.languageTypeId) ?? "Idioma";
                 const levelName = resolveRefType(language.levelTypeId) ?? "";
                 const isExpanded = expandedId === language.languageId;
 
                 return (
-                  <Card key={language.languageId} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-4">
+                  <Card key={language.languageId} className="hover:shadow-md transition-shadow border-l-4 border-l-indigo-500">
+                    <CardContent className="p-3">
                       <div className="flex flex-col h-full">
-                        <div className="flex items-start justify-between mb-3 gap-2">
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-foreground text-base leading-tight mb-1">
-                              {languageName}
-                            </h4>
-                            <p className="text-muted-foreground text-sm truncate">
-                              {language.certifyingInstitution || "Institución no especificada"}
-                            </p>
+                        <div className="flex items-start justify-between mb-2 gap-2">
+                          <div className="flex items-start gap-2 min-w-0 flex-1">
+                            <div className="flex items-center justify-center h-8 w-8 rounded-md bg-indigo-500/10 shrink-0">
+                              <LanguagesIcon className="h-4 w-4 text-indigo-500" />
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="font-semibold text-foreground text-sm leading-tight mb-0.5">
+                                {languageName}
+                              </h4>
+                              <p className="text-muted-foreground text-xs truncate">
+                                {language.certifyingInstitution || "Institución no especificada"}
+                              </p>
+                            </div>
                           </div>
 
                           <div className="flex gap-1 shrink-0">
@@ -97,8 +162,8 @@ export function LanguagesTab({ languages, onEdit, onDelete, refTypesMap = {}, pe
                           </div>
                         </div>
 
-                        <div className="space-y-2 text-sm text-muted-foreground flex-1">
-                          <div className="flex flex-wrap gap-2">
+                        <div className="space-y-1.5 text-sm text-muted-foreground flex-1">
+                          <div className="flex flex-wrap gap-1.5">
                             {levelName && (
                               <Badge variant="secondary" className="text-xs">
                                 {levelName} · {language.referenceFramework ?? "CEFR"}
@@ -106,18 +171,15 @@ export function LanguagesTab({ languages, onEdit, onDelete, refTypesMap = {}, pe
                             )}
                           </div>
 
-                          <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                             <div className="flex items-center gap-1">
                               <Calendar className="h-3.5 w-3.5 text-muted-foreground/70 shrink-0" />
-                              <span>
-                                <strong>Emisión:</strong> {formatDate(language.issueDate)}
-                              </span>
+                              <span>Emisión: {formatDate(language.issueDate)}</span>
                             </div>
                             <div className="flex items-center gap-1">
                               <Calendar className="h-3.5 w-3.5 text-muted-foreground/70 shrink-0" />
                               <span>
-                                <strong>Expira:</strong>{" "}
-                                {language.expirationDate ? formatDate(language.expirationDate) : "No expira"}
+                                {language.expirationDate ? `Expira: ${formatDate(language.expirationDate)}` : "No expira"}
                               </span>
                             </div>
                           </div>
@@ -126,7 +188,7 @@ export function LanguagesTab({ languages, onEdit, onDelete, refTypesMap = {}, pe
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="mt-3 self-start text-xs"
+                          className="mt-2 self-start text-xs -ml-2 h-7"
                           onClick={() => setExpandedId(isExpanded ? null : language.languageId)}
                         >
                           <FileText className="h-3.5 w-3.5 mr-1" />
@@ -154,7 +216,21 @@ export function LanguagesTab({ languages, onEdit, onDelete, refTypesMap = {}, pe
                   </Card>
                 );
               })}
-          </div>
+              </div>
+            )}
+
+            <DataPagination
+              page={list.page}
+              totalPages={list.totalPages}
+              totalCount={list.totalCount}
+              pageSize={list.pageSize}
+              hasPreviousPage={list.hasPreviousPage}
+              hasNextPage={list.hasNextPage}
+              onPageChange={list.setPage}
+              onPageSizeChange={list.setPageSize}
+              pageSizeOptions={[6, 12, 24, 48]}
+            />
+          </>
         )}
       </CardContent>
     </Card>

@@ -7,6 +7,10 @@ import { Briefcase, Plus, Edit, Trash2, Calendar, MapPin, Globe, Building2, File
 import { WorkExperience } from "@/types/person";
 import { ReusableDocumentManager } from "@/components/ReusableDocumentManager";
 import { WORK_EXPERIENCE_CERTIFICATE_DIRECTORY_CODE, WORK_EXPERIENCE_CERTIFICATE_ENTITY_TYPE } from "@/features/constants";
+import { useCvListState, buildFilterOptions, type CvSortOption, type CvFilterField } from "@/hooks/personDetails/useCvListState";
+import { CvListToolbar } from "@/components/person-detail/CvListToolbar";
+import { CvFilterBar } from "@/components/person-detail/CvFilterBar";
+import { DataPagination } from "@/components/ui/DataPagination";
 
 interface WorkExperiencesTabProps {
   workExperiences: WorkExperience[];
@@ -58,6 +62,50 @@ export function WorkExperiencesTab({
     return map[Number(id)] ?? null;
   };
 
+  const sortOptions: CvSortOption<WorkExperience>[] = [
+    {
+      value: "startDate_desc",
+      label: "Más recientes primero",
+      compare: (a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime(),
+    },
+    {
+      value: "startDate_asc",
+      label: "Más antiguas primero",
+      compare: (a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime(),
+    },
+    {
+      value: "position_asc",
+      label: "Cargo (A-Z)",
+      compare: (a, b) => (a.position || "").localeCompare(b.position || ""),
+    },
+  ];
+
+  const filterFields: CvFilterField<WorkExperience>[] = [
+    {
+      key: "institutionType",
+      label: "Tipo de institución",
+      options: buildFilterOptions(workExperiences.map((e) => resolveName((e as any).institutionTypeId, refTypesMap))),
+      getValue: (e) => resolveName((e as any).institutionTypeId, refTypesMap),
+    },
+    {
+      key: "status",
+      label: "Estado",
+      options: [
+        { value: "current", label: "Actual" },
+        { value: "finished", label: "Finalizada" },
+      ],
+      getValue: (e) => (e.isCurrent ? "current" : "finished"),
+    },
+  ];
+
+  const list = useCvListState({
+    items: workExperiences,
+    searchText: (e) => `${e.position ?? ""} ${e.company ?? ""}`,
+    sortOptions,
+    defaultSort: "startDate_desc",
+    filterFields,
+  });
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -89,10 +137,29 @@ export function WorkExperiencesTab({
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {[...workExperiences]
-              .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
-              .map((experience, index) => {
+          <>
+            <CvListToolbar
+              search={list.search}
+              onSearchChange={list.setSearch}
+              searchPlaceholder="Buscar por cargo o empresa..."
+              sortValue={list.sortValue}
+              onSortChange={list.setSortValue}
+              sortOptions={sortOptions}
+            />
+            <CvFilterBar
+              fields={list.filterFields}
+              values={list.filterValues}
+              onChange={list.setFilterValue}
+              onClear={list.clearFilters}
+            />
+
+            {list.totalCount === 0 ? (
+              <div className="text-center py-8 text-sm text-muted-foreground">
+                No se encontraron experiencias laborales con ese criterio.
+              </div>
+            ) : (
+              <div className="space-y-2">
+            {list.paginatedItems.map((experience, index) => {
                 const experienceId =
                   (experience as any).workExpId ?? (experience as any).id ?? null;
 
@@ -109,19 +176,24 @@ export function WorkExperiencesTab({
                 return (
                   <Card
                     key={experienceId ?? `experience-${index}`}
-                    className="hover:shadow-md transition-shadow"
+                    className="hover:shadow-md transition-shadow border-l-4 border-l-uta-orange"
                   >
-                    <CardContent className="p-4">
-                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                        <div className="flex-1 space-y-3 min-w-0">
+                    <CardContent className="p-3">
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                        <div className="flex-1 space-y-1.5 min-w-0">
                           <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              <h4 className="font-semibold text-foreground text-lg">
-                                {experience.position}
-                              </h4>
-                              <p className="text-muted-foreground text-sm mt-1">
-                                {experience.company}
-                              </p>
+                            <div className="flex items-start gap-2 min-w-0">
+                              <div className="flex items-center justify-center h-8 w-8 rounded-md bg-uta-orange/10 shrink-0">
+                                <Briefcase className="h-4 w-4 text-uta-orange" />
+                              </div>
+                              <div className="min-w-0">
+                                <h4 className="font-semibold text-foreground text-sm">
+                                  {experience.position}
+                                </h4>
+                                <p className="text-muted-foreground text-xs mt-0.5">
+                                  {experience.company}
+                                </p>
+                              </div>
                             </div>
 
                             <div className="flex gap-2 shrink-0">
@@ -143,25 +215,10 @@ export function WorkExperiencesTab({
                             </div>
                           </div>
 
-                          {/* Badges de clasificación */}
-                          <div className="flex flex-wrap gap-2">
-                            {institutionTypeName && (
-                              <Badge variant="secondary" className="text-xs">
-                                <Building2 className="h-3 w-3 mr-1" />
-                                {institutionTypeName}
-                              </Badge>
-                            )}
-                            {experienceTypeName && (
-                              <Badge variant="outline" className="text-xs">
-                                {experienceTypeName}
-                              </Badge>
-                            )}
-                          </div>
-
-                          {/* Fechas y duración */}
-                          <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                            <div className="flex items-center gap-2">
-                              <Calendar className="h-4 w-4 text-muted-foreground/70 shrink-0" />
+                          {/* Badges + fechas + duración en una sola línea */}
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-1">
+                              <Calendar className="h-3.5 w-3.5 text-muted-foreground/70 shrink-0" />
                               <span>
                                 {formatDate(experience.startDate)} —{" "}
                                 {experience.isCurrent ? (
@@ -180,35 +237,52 @@ export function WorkExperiencesTab({
                                 experience.isCurrent
                               )}
                             </Badge>
+                            {institutionTypeName && (
+                              <Badge variant="secondary" className="text-xs">
+                                <Building2 className="h-3 w-3 mr-1" />
+                                {institutionTypeName}
+                              </Badge>
+                            )}
+                            {experienceTypeName && (
+                              <Badge variant="outline" className="text-xs">
+                                {experienceTypeName}
+                              </Badge>
+                            )}
                           </div>
 
-                          {/* Dirección */}
-                          {experience.institutionAddress && (
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <MapPin className="h-4 w-4 text-muted-foreground/70 shrink-0" />
-                              <span className="truncate">{experience.institutionAddress}</span>
-                            </div>
-                          )}
-
-                          {/* País */}
-                          {countryName && (
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <Globe className="h-4 w-4 text-muted-foreground/70 shrink-0" />
-                              <span>{countryName}</span>
+                          {/* Dirección + país */}
+                          {(experience.institutionAddress || countryName) && (
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                              {experience.institutionAddress && (
+                                <div className="flex items-center gap-1">
+                                  <MapPin className="h-3.5 w-3.5 text-muted-foreground/70 shrink-0" />
+                                  <span className="truncate">{experience.institutionAddress}</span>
+                                </div>
+                              )}
+                              {countryName && (
+                                <div className="flex items-center gap-1">
+                                  <Globe className="h-3.5 w-3.5 text-muted-foreground/70 shrink-0" />
+                                  <span>{countryName}</span>
+                                </div>
+                              )}
                             </div>
                           )}
 
                           {/* Razones */}
-                          {experience.entryReason && (
-                            <div className="text-sm">
-                              <p className="font-medium text-muted-foreground mb-0.5">Razón de entrada:</p>
-                              <p className="text-foreground line-clamp-2">{experience.entryReason}</p>
-                            </div>
-                          )}
-                          {experience.exitReason && (
-                            <div className="text-sm">
-                              <p className="font-medium text-muted-foreground mb-0.5">Razón de salida:</p>
-                              <p className="text-foreground line-clamp-2">{experience.exitReason}</p>
+                          {(experience.entryReason || experience.exitReason) && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                              {experience.entryReason && (
+                                <div>
+                                  <p className="font-medium text-muted-foreground">Razón de entrada:</p>
+                                  <p className="text-foreground line-clamp-2">{experience.entryReason}</p>
+                                </div>
+                              )}
+                              {experience.exitReason && (
+                                <div>
+                                  <p className="font-medium text-muted-foreground">Razón de salida:</p>
+                                  <p className="text-foreground line-clamp-2">{experience.exitReason}</p>
+                                </div>
+                              )}
                             </div>
                           )}
 
@@ -217,7 +291,7 @@ export function WorkExperiencesTab({
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="self-start text-xs"
+                                className="self-start text-xs -ml-2 h-7"
                                 onClick={() => setExpandedId(expandedId === experienceId ? null : experienceId)}
                               >
                                 <FileText className="h-3.5 w-3.5 mr-1" />
@@ -251,7 +325,21 @@ export function WorkExperiencesTab({
                   </Card>
                 );
               })}
-          </div>
+              </div>
+            )}
+
+            <DataPagination
+              page={list.page}
+              totalPages={list.totalPages}
+              totalCount={list.totalCount}
+              pageSize={list.pageSize}
+              hasPreviousPage={list.hasPreviousPage}
+              hasNextPage={list.hasNextPage}
+              onPageChange={list.setPage}
+              onPageSizeChange={list.setPageSize}
+              pageSizeOptions={[6, 12, 24, 48]}
+            />
+          </>
         )}
       </CardContent>
     </Card>

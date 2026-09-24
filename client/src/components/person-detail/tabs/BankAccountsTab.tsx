@@ -4,6 +4,10 @@ import { ActionIconButton } from "@/components/ui/action-icon-button";
 import { Badge } from "@/components/ui/badge";
 import { Landmark, Plus, Edit, Trash2 } from "lucide-react";
 import type { BankAccount } from "@/types/person";
+import { useCvListState, buildFilterOptions, type CvSortOption, type CvFilterField } from "@/hooks/personDetails/useCvListState";
+import { CvListToolbar } from "@/components/person-detail/CvListToolbar";
+import { CvFilterBar } from "@/components/person-detail/CvFilterBar";
+import { DataPagination } from "@/components/ui/DataPagination";
 
 interface BankAccountsTabProps {
   bankAccounts: BankAccount[];
@@ -24,6 +28,40 @@ export function BankAccountsTab({
   onDelete,
   refTypesMap = {},
 }: BankAccountsTabProps) {
+  const sortOptions: CvSortOption<BankAccount>[] = [
+    {
+      value: "institution_asc",
+      label: "Institución (A-Z)",
+      compare: (a, b) => (a.financialInstitution || "").localeCompare(b.financialInstitution || ""),
+    },
+    {
+      value: "type_asc",
+      label: "Tipo de cuenta",
+      compare: (a, b) =>
+        (refTypesMap[Number(a.accountTypeId)] || "").localeCompare(refTypesMap[Number(b.accountTypeId)] || ""),
+    },
+  ];
+
+  const filterFields: CvFilterField<BankAccount>[] = [
+    {
+      key: "type",
+      label: "Tipo de cuenta",
+      options: buildFilterOptions(bankAccounts.map((a) => refTypesMap[Number(a.accountTypeId)] ?? null)),
+      getValue: (a) => refTypesMap[Number(a.accountTypeId)] ?? null,
+    },
+  ];
+
+  // Nota: la búsqueda NO incluye accountNumber a propósito — el número se muestra
+  // enmascarado en pantalla y permitir buscarlo abriría un oráculo para confirmar
+  // dígitos ocultos por prueba y error.
+  const list = useCvListState({
+    items: bankAccounts,
+    searchText: (a) => `${a.financialInstitution ?? ""} ${refTypesMap[Number(a.accountTypeId)] ?? ""}`,
+    sortOptions,
+    defaultSort: "institution_asc",
+    filterFields,
+  });
+
   return (
     <Card className="shadow-sm">
       <CardHeader className="flex flex-row items-center justify-between gap-2">
@@ -49,17 +87,42 @@ export function BankAccountsTab({
             <p className="text-sm">Agrega una cuenta haciendo clic en &quot;Nueva cuenta&quot;.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {bankAccounts.map((account) => {
+          <>
+            <CvListToolbar
+              search={list.search}
+              onSearchChange={list.setSearch}
+              searchPlaceholder="Buscar por institución o tipo de cuenta..."
+              sortValue={list.sortValue}
+              onSortChange={list.setSortValue}
+              sortOptions={sortOptions}
+            />
+            <CvFilterBar
+              fields={list.filterFields}
+              values={list.filterValues}
+              onChange={list.setFilterValue}
+              onClear={list.clearFilters}
+            />
+
+            {list.totalCount === 0 ? (
+              <div className="text-center py-8 text-sm text-muted-foreground">
+                No se encontraron cuentas bancarias con ese criterio.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            {list.paginatedItems.map((account) => {
               const typeName = refTypesMap[Number(account.accountTypeId)] ?? null;
 
               return (
-                <Card key={account.accountId} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-4 flex flex-col gap-3">
+                <Card key={account.accountId} className="hover:shadow-md transition-shadow border-l-4 border-l-pink-500">
+                  <CardContent className="p-3 flex flex-col gap-1.5">
                     <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
+                      <div className="flex items-start gap-2 min-w-0">
+                        <div className="flex items-center justify-center h-8 w-8 rounded-md bg-pink-500/10 shrink-0">
+                          <Landmark className="h-4 w-4 text-pink-500" />
+                        </div>
+                        <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold text-sm sm:text-base">
+                          <span className="font-semibold text-sm">
                             {account.financialInstitution}
                           </span>
                           {typeName && (
@@ -67,6 +130,7 @@ export function BankAccountsTab({
                               {typeName}
                             </Badge>
                           )}
+                        </div>
                         </div>
                       </div>
 
@@ -88,14 +152,28 @@ export function BankAccountsTab({
                       </div>
                     </div>
 
-                    <p className="text-xs sm:text-sm text-muted-foreground font-mono">
+                    <p className="text-xs text-muted-foreground font-mono">
                       {maskAccountNumber(account.accountNumber)}
                     </p>
                   </CardContent>
                 </Card>
               );
             })}
-          </div>
+              </div>
+            )}
+
+            <DataPagination
+              page={list.page}
+              totalPages={list.totalPages}
+              totalCount={list.totalCount}
+              pageSize={list.pageSize}
+              hasPreviousPage={list.hasPreviousPage}
+              hasNextPage={list.hasNextPage}
+              onPageChange={list.setPage}
+              onPageSizeChange={list.setPageSize}
+              pageSizeOptions={[6, 12, 24, 48]}
+            />
+          </>
         )}
       </CardContent>
     </Card>

@@ -441,7 +441,7 @@ export function useGuardGroupMutations(onSuccess?: () => void) {
       // 2026-09-10: aviso no bloqueante de GROUP_OVERLAP para cada asignacion
       // exitosa que quedo con doble membresia activa.
       const overlaps = results
-        .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled' && r.value?.status === 'success' && r.value.data?.overlapWarning)
+        .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled' && Boolean(r.value?.status === 'success' && r.value.data?.overlapWarning))
         .map(r => `${r.value.data.employeeFullName}: ${r.value.data.overlapWarning}`);
       if (overlaps.length > 0) {
         toast({

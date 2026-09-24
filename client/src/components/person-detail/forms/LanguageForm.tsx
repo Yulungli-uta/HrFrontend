@@ -231,7 +231,7 @@ export default function LanguageForm({
                         if (id == null) return null;
                         return (
                           <SelectItem key={id} value={String(id)}>
-                            {t.description ?? t.code ?? `Idioma ${id}`}
+                            {t.name ?? t.description ?? `Idioma ${id}`}
                           </SelectItem>
                         );
                       })}
@@ -267,7 +267,7 @@ export default function LanguageForm({
                         if (id == null) return null;
                         return (
                           <SelectItem key={id} value={String(id)}>
-                            {t.description ?? t.code ?? `Nivel ${id}`}
+                            {t.name ?? t.description ?? `Nivel ${id}`}
                           </SelectItem>
                         );
                       })}

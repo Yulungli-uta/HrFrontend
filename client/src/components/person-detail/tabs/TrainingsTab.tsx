@@ -7,6 +7,10 @@ import { GraduationCap, Plus, Edit, Trash2, Calendar, Clock, Award, Monitor, Use
 import { Training } from "@/types/person";
 import { ReusableDocumentManager } from "@/components/ReusableDocumentManager";
 import { TRAINING_CERTIFICATE_DIRECTORY_CODE, TRAINING_CERTIFICATE_ENTITY_TYPE } from "@/features/constants";
+import { useCvListState, buildFilterOptions, type CvSortOption, type CvFilterField } from "@/hooks/personDetails/useCvListState";
+import { CvListToolbar } from "@/components/person-detail/CvListToolbar";
+import { CvFilterBar } from "@/components/person-detail/CvFilterBar";
+import { DataPagination } from "@/components/ui/DataPagination";
 
 interface TrainingsTabProps {
   trainings: Training[];
@@ -31,7 +35,7 @@ export function TrainingsTab({ trainings, onEdit, onDelete, refTypesMap = {}, pe
   };
 
   const resolveRefType = (id: number | string | null | undefined): string | null => {
-    if (id == null || id === "") return null;
+    if (id == null || id === "" || id === 0 || id === "0") return null;
     const n = Number(id);
     if (!isNaN(n) && n > 0) return refTypesMap[n] ?? null;
     return String(id);
@@ -49,6 +53,50 @@ export function TrainingsTab({ trainings, onEdit, onDelete, refTypesMap = {}, pe
     }
     return { label: resolved, variant: "default", icon: Users2 };
   };
+
+  const sortOptions: CvSortOption<Training>[] = [
+    {
+      value: "startDate_desc",
+      label: "Más recientes primero",
+      compare: (a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime(),
+    },
+    {
+      value: "startDate_asc",
+      label: "Más antiguas primero",
+      compare: (a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime(),
+    },
+    {
+      value: "title_asc",
+      label: "Título (A-Z)",
+      compare: (a, b) => (a.title || "").localeCompare(b.title || ""),
+    },
+  ];
+
+  const filterFields: CvFilterField<Training>[] = [
+    {
+      key: "certType",
+      label: "Tipo de certificado",
+      options: buildFilterOptions(trainings.map((t) => resolveRefType(t.certificateTypeId))),
+      getValue: (t) => resolveRefType(t.certificateTypeId),
+    },
+    {
+      key: "hasCertificate",
+      label: "Tiene certificado",
+      options: [
+        { value: "true", label: "Sí" },
+        { value: "false", label: "No" },
+      ],
+      getValue: (t) => (Boolean((t as any).hasCertificate) ? "true" : "false"),
+    },
+  ];
+
+  const list = useCvListState({
+    items: trainings,
+    searchText: (t) => `${t.title ?? ""} ${t.institution ?? ""}`,
+    sortOptions,
+    defaultSort: "startDate_desc",
+    filterFields,
+  });
 
   return (
     <Card>
@@ -80,27 +128,51 @@ export function TrainingsTab({ trainings, onEdit, onDelete, refTypesMap = {}, pe
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {[...trainings]
-              .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
-              .map((training) => {
+          <>
+            <CvListToolbar
+              search={list.search}
+              onSearchChange={list.setSearch}
+              searchPlaceholder="Buscar por título o institución..."
+              sortValue={list.sortValue}
+              onSortChange={list.setSortValue}
+              sortOptions={sortOptions}
+            />
+            <CvFilterBar
+              fields={list.filterFields}
+              values={list.filterValues}
+              onChange={list.setFilterValue}
+              onClear={list.clearFilters}
+            />
+
+            {list.totalCount === 0 ? (
+              <div className="text-center py-8 text-sm text-muted-foreground">
+                No se encontraron capacitaciones con ese criterio.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                {list.paginatedItems.map((training) => {
                 const trainingAny = training as any;
                 const modalityMeta = getModalityMeta(trainingAny.modality);
                 const hasCertificate = Boolean(trainingAny.hasCertificate);
                 const certTypeName = resolveRefType(training.certificateTypeId);
 
-                return (
-                  <Card key={training.trainingId} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-4">
+                  return (
+                    <Card key={training.trainingId} className="hover:shadow-md transition-shadow border-l-4 border-l-purple-500">
+                      <CardContent className="p-3">
                       <div className="flex flex-col h-full">
-                        <div className="flex items-start justify-between mb-3 gap-2">
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-foreground text-base leading-tight mb-1">
-                              {training.title}
-                            </h4>
-                            <p className="text-muted-foreground text-sm truncate">
-                              {training.institution}
-                            </p>
+                        <div className="flex items-start justify-between mb-2 gap-2">
+                          <div className="flex items-start gap-2 min-w-0 flex-1">
+                            <div className="flex items-center justify-center h-8 w-8 rounded-md bg-purple-500/10 shrink-0">
+                              <GraduationCap className="h-4 w-4 text-purple-500" />
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="font-semibold text-foreground text-sm leading-tight mb-0.5">
+                                {training.title}
+                              </h4>
+                              <p className="text-muted-foreground text-xs truncate">
+                                {training.institution}
+                              </p>
+                            </div>
                           </div>
 
                           <div className="flex gap-1 shrink-0">
@@ -121,8 +193,8 @@ export function TrainingsTab({ trainings, onEdit, onDelete, refTypesMap = {}, pe
                           </div>
                         </div>
 
-                        <div className="space-y-2 text-sm text-muted-foreground flex-1">
-                          <div className="flex flex-wrap gap-2">
+                        <div className="space-y-1.5 text-sm text-muted-foreground flex-1">
+                          <div className="flex flex-wrap gap-1.5">
                             {certTypeName && (
                               <Badge variant="secondary" className="text-xs">
                                 {certTypeName}
@@ -142,38 +214,29 @@ export function TrainingsTab({ trainings, onEdit, onDelete, refTypesMap = {}, pe
                             )}
                           </div>
 
-                          <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                             <div className="flex items-center gap-1">
                               <Calendar className="h-3.5 w-3.5 text-muted-foreground/70 shrink-0" />
                               <span>
-                                <strong>Inicio:</strong>{" "}
                                 {formatDate(training.startDate)}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-3.5 w-3.5 text-muted-foreground/70 shrink-0" />
-                              <span>
-                                <strong>Fin:</strong>{" "}
+                                {" — "}
                                 {training.endDate
                                   ? formatDate(training.endDate)
                                   : "No especificado"}
                               </span>
                             </div>
+                            {!!training.hours && (
+                              <div className="flex items-center gap-1">
+                                <Clock className="h-3.5 w-3.5 text-muted-foreground/70" />
+                                <span>{training.hours} horas</span>
+                              </div>
+                            )}
                           </div>
-
-                          {training.hours && (
-                            <div className="flex items-center gap-2 text-xs">
-                              <Clock className="h-3.5 w-3.5 text-muted-foreground/70" />
-                              <span>
-                                <strong>Duración:</strong> {training.hours} horas
-                              </span>
-                            </div>
-                          )}
 
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="self-start text-xs"
+                            className="self-start text-xs -ml-2 h-7"
                             onClick={() =>
                               setExpandedId(expandedId === training.trainingId ? null : training.trainingId)
                             }
@@ -205,9 +268,23 @@ export function TrainingsTab({ trainings, onEdit, onDelete, refTypesMap = {}, pe
                       </div>
                     </CardContent>
                   </Card>
-                );
-              })}
-          </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <DataPagination
+              page={list.page}
+              totalPages={list.totalPages}
+              totalCount={list.totalCount}
+              pageSize={list.pageSize}
+              hasPreviousPage={list.hasPreviousPage}
+              hasNextPage={list.hasNextPage}
+              onPageChange={list.setPage}
+              onPageSizeChange={list.setPageSize}
+              pageSizeOptions={[6, 12, 24, 48]}
+            />
+          </>
         )}
       </CardContent>
     </Card>

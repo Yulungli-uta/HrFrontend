@@ -7,6 +7,10 @@ import { BookOpen, Plus, Edit, Trash2, Calendar, User, Book, FileText, ChevronDo
 import { Book as BookType } from "@/types/person";
 import { ReusableDocumentManager } from "@/components/ReusableDocumentManager";
 import { BOOK_DOCUMENT_DIRECTORY_CODE, BOOK_DOCUMENT_ENTITY_TYPE } from "@/features/constants";
+import { useCvListState, buildFilterOptions, type CvSortOption, type CvFilterField } from "@/hooks/personDetails/useCvListState";
+import { CvListToolbar } from "@/components/person-detail/CvListToolbar";
+import { CvFilterBar } from "@/components/person-detail/CvFilterBar";
+import { DataPagination } from "@/components/ui/DataPagination";
 
 interface BooksTabProps {
   books: BookType[];
@@ -27,6 +31,50 @@ export function BooksTab({ books, onEdit, onDelete, countryMap = {}, personIdCar
       month: "long",
     });
   };
+
+  const sortOptions: CvSortOption<BookType>[] = [
+    {
+      value: "date_desc",
+      label: "Más recientes primero",
+      compare: (a, b) => new Date(b.publicationDate || 0).getTime() - new Date(a.publicationDate || 0).getTime(),
+    },
+    {
+      value: "date_asc",
+      label: "Más antiguas primero",
+      compare: (a, b) => new Date(a.publicationDate || 0).getTime() - new Date(b.publicationDate || 0).getTime(),
+    },
+    {
+      value: "title_asc",
+      label: "Título (A-Z)",
+      compare: (a, b) => (a.title || "").localeCompare(b.title || ""),
+    },
+  ];
+
+  const filterFields: CvFilterField<BookType>[] = [
+    {
+      key: "category",
+      label: "Categoría",
+      options: buildFilterOptions(books.map((b) => b.category)),
+      getValue: (b) => b.category,
+    },
+    {
+      key: "peerReviewed",
+      label: "Revisado por pares",
+      options: [
+        { value: "true", label: "Sí" },
+        { value: "false", label: "No" },
+      ],
+      getValue: (b) => (b.peerReviewed ? "true" : "false"),
+    },
+  ];
+
+  const list = useCvListState({
+    items: books,
+    searchText: (b) => `${b.title ?? ""} ${b.publisher ?? ""} ${b.coAuthors ?? ""}`,
+    sortOptions,
+    defaultSort: "date_desc",
+    filterFields,
+  });
 
   return (
     <Card>
@@ -58,17 +106,43 @@ export function BooksTab({ books, onEdit, onDelete, countryMap = {}, personIdCar
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {books.map((book) => (
-              <Card key={book.bookId} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-4">
-                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                    <div className="flex-1 space-y-3 min-w-0">
+          <>
+            <CvListToolbar
+              search={list.search}
+              onSearchChange={list.setSearch}
+              searchPlaceholder="Buscar por título, editorial o coautores..."
+              sortValue={list.sortValue}
+              onSortChange={list.setSortValue}
+              sortOptions={sortOptions}
+            />
+            <CvFilterBar
+              fields={list.filterFields}
+              values={list.filterValues}
+              onChange={list.setFilterValue}
+              onClear={list.clearFilters}
+            />
+
+            {list.totalCount === 0 ? (
+              <div className="text-center py-8 text-sm text-muted-foreground">
+                No se encontraron libros con ese criterio.
+              </div>
+            ) : (
+              <div className="space-y-2">
+            {list.paginatedItems.map((book) => (
+              <Card key={book.bookId} className="hover:shadow-md transition-shadow border-l-4 border-l-destructive">
+                <CardContent className="p-3">
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                    <div className="flex-1 space-y-1.5 min-w-0">
                       <div className="flex items-start justify-between gap-2">
-                        <h4 className="font-semibold text-foreground text-lg leading-tight">
-                          {book.title}
-                        </h4>
-                        <div className="flex gap-2 shrink-0">
+                        <div className="flex items-start gap-2 min-w-0">
+                          <div className="flex items-center justify-center h-8 w-8 rounded-md bg-destructive/10 shrink-0">
+                            <BookOpen className="h-4 w-4 text-destructive" />
+                          </div>
+                          <h4 className="font-semibold text-foreground text-sm leading-tight">
+                            {book.title}
+                          </h4>
+                        </div>
+                        <div className="flex gap-1 shrink-0">
                           <ActionIconButton
                             icon={Edit}
                             label="Editar libro"
@@ -86,71 +160,63 @@ export function BooksTab({ books, onEdit, onDelete, countryMap = {}, personIdCar
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-muted-foreground">
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                         {book.publisher && (
-                          <div className="flex items-center gap-2">
-                            <Book className="h-4 w-4 shrink-0 text-muted-foreground/70" />
-                            <span>
-                              <strong>Editorial:</strong> {book.publisher}
-                            </span>
+                          <div className="flex items-center gap-1">
+                            <Book className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
+                            <span>{book.publisher}</span>
                           </div>
                         )}
 
                         {book.publicationDate && (
-                          <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 shrink-0 text-muted-foreground/70" />
-                            <span>
-                              <strong>Publicación:</strong>{" "}
-                              {formatDate(book.publicationDate)}
-                            </span>
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
+                            <span>{formatDate(book.publicationDate)}</span>
                           </div>
                         )}
 
                         {book.isbn && (
-                          <div className="flex items-center gap-2">
-                            <BookOpen className="h-4 w-4 shrink-0 text-muted-foreground/70" />
-                            <span>
-                              <strong>ISBN:</strong> {book.isbn}
-                            </span>
+                          <div className="flex items-center gap-1">
+                            <BookOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
+                            <span>ISBN {book.isbn}</span>
                           </div>
                         )}
 
                         {(book as any).countryId && (
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1">
                             <span className="text-muted-foreground/70">🌍</span>
                             <span>
-                              <strong>País:</strong>{" "}
                               {countryMap[Number((book as any).countryId)] ??
                                 `País #${(book as any).countryId}`}
                             </span>
                           </div>
                         )}
-                      </div>
 
-                      <div className="flex flex-wrap gap-2">
-                        {book.peerReviewed && (
-                          <Badge variant="default" className="text-xs">
-                            Revisado por pares
-                          </Badge>
-                        )}
-                        {book.category && (
-                          <Badge variant="outline" className="text-xs">
-                            {book.category}
-                          </Badge>
+                        {book.coAuthors && (
+                          <div className="flex items-center gap-1">
+                            <User className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
+                            <span>{book.coAuthors}</span>
+                          </div>
                         )}
                       </div>
 
-                      {book.coAuthors && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <User className="h-4 w-4 shrink-0 text-muted-foreground/70" />
-                          <span>
-                            <strong>Coautores:</strong> {book.coAuthors}
-                          </span>
+                      {(book.peerReviewed || book.category) && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {book.peerReviewed && (
+                            <Badge variant="default" className="text-xs">
+                              Revisado por pares
+                            </Badge>
+                          )}
+                          {book.category && (
+                            <Badge variant="outline" className="text-xs">
+                              {book.category}
+                            </Badge>
+                          )}
                         </div>
                       )}
 
                       {book.description && (
-                        <p className="text-sm text-muted-foreground line-clamp-2">
+                        <p className="text-xs text-muted-foreground line-clamp-2">
                           {book.description}
                         </p>
                       )}
@@ -158,7 +224,7 @@ export function BooksTab({ books, onEdit, onDelete, countryMap = {}, personIdCar
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="self-start text-xs"
+                        className="self-start text-xs -ml-2 h-7"
                         onClick={() => setExpandedId(expandedId === book.bookId ? null : book.bookId)}
                       >
                         <FileText className="h-3.5 w-3.5 mr-1" />
@@ -189,7 +255,21 @@ export function BooksTab({ books, onEdit, onDelete, countryMap = {}, personIdCar
                 </CardContent>
               </Card>
             ))}
-          </div>
+              </div>
+            )}
+
+            <DataPagination
+              page={list.page}
+              totalPages={list.totalPages}
+              totalCount={list.totalCount}
+              pageSize={list.pageSize}
+              hasPreviousPage={list.hasPreviousPage}
+              hasNextPage={list.hasNextPage}
+              onPageChange={list.setPage}
+              onPageSizeChange={list.setPageSize}
+              pageSizeOptions={[6, 12, 24, 48]}
+            />
+          </>
         )}
       </CardContent>
     </Card>
