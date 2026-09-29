@@ -66,6 +66,7 @@ const MenuItemsPage = lazy(() => import("@/pages/admin/MenuItems"));
 const RoleMenuItemsPage = lazy(() => import("@/pages/admin/RoleMenuItems"));
 const RoleEditorPage = lazy(() => import("@/pages/admin/RoleEditor"));
 const AccessProfilesPage = lazy(() => import("@/pages/admin/AccessProfiles"));
+const AppParamsPage = lazy(() => import("@/pages/admin/AppParams"));
 const ChangePasswordPage = lazy(() => import("@/pages/profile/ChangePassword"));
 
 // Páginas de reportes
@@ -745,6 +746,14 @@ export const routes: RouteConfig[] = [
   {
     path: "/admin/access-profiles",
     component: AccessProfilesPage,
+    requiredRoles: ["Administrador", "R_DITIC"]
+  },
+  {
+    // auth.tbl_AppParams (RepositoryUta) — parámetros que se pueden cambiar en caliente sin
+    // redeploy (ej. Jwt:AccessTokenLifetimeMinutes). Mismo control de acceso que el backend
+    // (AppParamsController: [Authorize(Roles = "Administrador,R_DITIC")]).
+    path: "/admin/app-params",
+    component: AppParamsPage,
     requiredRoles: ["Administrador", "R_DITIC"]
   },
   {
