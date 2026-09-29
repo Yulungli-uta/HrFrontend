@@ -4,6 +4,12 @@ import App from "./App";
 import "./index.css";
 import "./uta-branding.css";
 import { logger } from "@/lib/logger";
+import { installSpanishZodErrorMap } from "@/lib/zodErrorMap";
+
+// Hallazgo informe UTA-DITIC-PS-027-2026, observación 32: validadores Zod "pelados"
+// (z.number().int().positive() sin segundo argumento) mostraban el mensaje por defecto en
+// inglés. Se instala una sola vez, antes de que se monte cualquier formulario.
+installSpanishZodErrorMap();
 
 // Global error handlers
 window.addEventListener('unhandledrejection', (event) => {
