@@ -1,0 +1,2028 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Manual · Gestión de Asistencia</title>
+    <style>
+      :root {
+        --ink: #14213d;
+        --muted: #596780;
+        --blue: #0759ad;
+        --sky: #eaf4ff;
+        --gold: #e9ad20;
+        --line: #dbe3ee;
+        --bg: #f3f7fb;
+        --ok: #147d64;
+        --warn: #9a6400;
+        --red: #b42318;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          16px/1.65 Inter,
+          Segoe UI,
+          Arial,
+          sans-serif;
+      }
+      .layout {
+        display: grid;
+        grid-template-columns: 290px minmax(0, 1fr);
+        min-height: 100vh;
+      }
+      .side {
+        position: sticky;
+        top: 0;
+        height: 100vh;
+        padding: 23px 18px;
+        background: #10233f;
+        color: white;
+        overflow: auto;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        margin-bottom: 18px;
+      }
+      .seal {
+        display: grid;
+        place-items: center;
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        background: var(--gold);
+        color: #10233f;
+        font-weight: 900;
+      }
+      .brand strong,
+      .brand small {
+        display: block;
+      }
+      .brand small {
+        color: #bcd0ea;
+        font-size: 12px;
+      }
+      .nav a {
+        display: block;
+        padding: 7px 9px;
+        border-radius: 8px;
+        color: #d8e6f5;
+        text-decoration: none;
+        font-size: 13px;
+      }
+      .nav a:hover {
+        background: #284566;
+      }
+      .note {
+        margin-top: 16px;
+        padding: 11px;
+        border: 1px solid #375474;
+        border-radius: 9px;
+        color: #cbd9ea;
+        font-size: 12px;
+      }
+      .hero {
+        padding: 62px clamp(24px, 6vw, 88px);
+        background: linear-gradient(135deg, #0759ad, #123761 68%, #162945);
+        color: white;
+      }
+      .eyebrow {
+        color: #ffd265;
+        text-transform: uppercase;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.15em;
+      }
+      .hero h1 {
+        font-size: clamp(36px, 6vw, 64px);
+        line-height: 1.05;
+        margin: 0.25em 0;
+      }
+      .hero p {
+        max-width: 780px;
+        color: #d8e8f8;
+        font-size: 19px;
+      }
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .chip {
+        padding: 5px 10px;
+        border: 1px solid #ffffff50;
+        border-radius: 99px;
+        background: #ffffff15;
+        font-size: 13px;
+      }
+      .content {
+        max-width: 1100px;
+        margin: auto;
+        padding: 42px 30px 90px;
+      }
+      .section {
+        margin-bottom: 58px;
+        scroll-margin-top: 20px;
+      }
+      .section h2 {
+        font-size: 30px;
+        line-height: 1.2;
+        margin: 0 0 10px;
+      }
+      .section h3 {
+        font-size: 20px;
+        margin: 25px 0 8px;
+      }
+      .lede {
+        font-size: 18px;
+        color: var(--muted);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+      }
+      .card {
+        padding: 18px;
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 15px;
+        box-shadow: 0 8px 24px #14213d0d;
+      }
+      .card h3 {
+        margin: 0 0 6px;
+        font-size: 18px;
+      }
+      .num {
+        display: grid;
+        place-items: center;
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        background: var(--sky);
+        color: var(--blue);
+        font-weight: 900;
+      }
+      .steps {
+        counter-reset: item;
+        list-style: none;
+        padding: 0;
+      }
+      .steps li {
+        position: relative;
+        padding: 2px 0 14px 53px;
+        margin-bottom: 13px;
+        border-bottom: 1px solid var(--line);
+      }
+      .steps li:before {
+        counter-increment: item;
+        content: counter(item);
+        position: absolute;
+        left: 0;
+        top: 0;
+        display: grid;
+        place-items: center;
+        width: 37px;
+        height: 37px;
+        border-radius: 11px;
+        background: var(--blue);
+        color: white;
+        font-weight: 800;
+      }
+      .callout {
+        margin: 18px 0;
+        padding: 15px 18px;
+        border-left: 5px solid var(--blue);
+        border-radius: 9px;
+        background: var(--sky);
+      }
+      .callout.warn {
+        border-color: var(--gold);
+        background: #fff8e7;
+      }
+      .callout.danger {
+        border-color: var(--red);
+        background: #fff1f0;
+      }
+      .callout.ok {
+        border-color: var(--ok);
+        background: #edfbf6;
+      }
+      .target {
+        display: inline-block;
+        padding: 1px 7px;
+        border: 2px solid var(--red);
+        border-radius: 5px;
+        background: #fff7f7;
+        color: #7a1712;
+        font-weight: 800;
+      }
+      .criteria {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        margin: 18px 0;
+      }
+      .criteria > div {
+        padding: 15px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: white;
+      }
+      .criteria h4 {
+        margin: 0 0 5px;
+        color: var(--blue);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border: 1px solid var(--line);
+      }
+      th,
+      td {
+        padding: 11px 13px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+      }
+      th {
+        background: #eef5fc;
+        font-size: 13px;
+      }
+      .placeholder {
+        padding: 18px;
+        border: 2px dashed #afc3d9;
+        border-radius: 13px;
+        background: #fff;
+        color: #48617c;
+      }
+      .shot {
+        margin: 22px 0;
+        border: 1px solid var(--line);
+        border-radius: 13px;
+        overflow: hidden;
+        background: #fff;
+        box-shadow: 0 8px 22px #14213d12;
+      }
+      .shot img {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+      .shot figcaption {
+        padding: 10px 14px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .footer {
+        padding: 25px;
+        background: #10233f;
+        color: #bfcfe2;
+        text-align: center;
+      }
+      @media (max-width: 900px) {
+        .layout {
+          display: block;
+        }
+        .side {
+          position: relative;
+          height: auto;
+        }
+        .content {
+          padding: 34px 18px;
+        }
+        .hero {
+          padding: 45px 22px;
+        }
+        .grid,
+        .criteria {
+          grid-template-columns: 1fr;
+        }
+      }
+      @media print {
+        * {
+          -webkit-print-color-adjust: exact !important;
+          color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        .layout {
+          display: block;
+        }
+        .side {
+          display: none;
+        }
+        .hero {
+          padding: 30px;
+          background: white;
+          color: #111;
+          border-bottom: 3px solid var(--blue);
+        }
+        .hero p,
+        .eyebrow {
+          color: #333;
+        }
+        .content {
+          max-width: none;
+          padding: 25px;
+        }
+        .card {
+          box-shadow: none;
+          break-inside: avoid;
+        }
+        .section {
+          break-inside: auto;
+        }
+        h2,
+        h3 {
+          break-after: avoid;
+        }
+        table,
+        .criteria > div,
+        .shot,
+        .callout,
+        .steps li {
+          break-inside: avoid;
+        }
+        .shot img {
+          max-height: 620px;
+          object-fit: contain;
+        }
+        a[href]:after {
+          content: "";
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="layout">
+      <aside class="side">
+        <div class="brand">
+          <div class="seal">UTA</div>
+          <div>
+            <strong>Gestión de Asistencia</strong
+            ><small>Manual de usuario</small>
+          </div>
+        </div>
+        <nav class="nav">
+          <a href="#inicio">1. Introducción</a
+          ><a href="#acceso">2. Navegación y roles</a
+          ><a href="#matriz">2.1 Matriz de responsabilidades</a
+          ><a href="#permisos">3. Permisos y vacaciones</a
+          ><a href="#tipos-permiso">3.1 Tipos de permiso</a
+          ><a href="#aprobaciones">4. Aprobaciones</a
+          ><a href="#medicos">5. Permisos médicos</a
+          ><a href="#justificaciones">6. Justificaciones</a
+          ><a href="#marcaciones">7. Marcaciones</a
+          ><a href="#extras">8. Horas extras</a
+          ><a href="#horarios">9. Horarios</a
+          ><a href="#asignacion">10. Asignación horaria</a
+          ><a href="#empleados">11. Empleados</a
+          ><a href="#saldo">12. Ajuste de saldo</a
+          ><a href="#masiva">13. Planificación masiva</a
+          ><a href="#cambio">14. Cambio de horario</a
+          ><a href="#filtros">15. Consultas y estados</a>
+        </nav>
+        <div class="note">
+          Las opciones que se muestran dependen del rol y de los permisos
+          asignados a la cuenta.
+        </div>
+      </aside>
+      <main>
+        <header class="hero">
+          <div class="eyebrow">
+            Universidad Técnica de Ambato · Sistema de RRHH
+          </div>
+          <h1>Manual de usuario<br />Gestión de asistencia</h1>
+          <p>
+            Guía consolidada para registrar, consultar, aprobar y planificar
+            novedades de asistencia, permisos, vacaciones y horarios.
+          </p>
+          <div class="chips">
+            <span class="chip">Colaborador</span
+            ><span class="chip">Aprobador</span
+            ><span class="chip">Talento Humano</span
+            ><span class="chip">Criterios de llenado</span>
+          </div>
+        </header>
+        <div class="content">
+          <section class="section" id="inicio">
+            <h2>1. Alcance y propósito</h2>
+            <p class="lede">
+              Este módulo administra las novedades que afectan la jornada
+              laboral: permisos, vacaciones, ausencias justificadas,
+              marcaciones, horas extras, horarios y saldos. Registre únicamente
+              datos reales, sustentables y correspondientes a su rol.
+            </p>
+            <div class="grid">
+              <div class="card">
+                <div class="num">1</div>
+                <h3>Colaborador</h3>
+                <p>
+                  Solicita permisos y vacaciones, consulta marcaciones, registra
+                  justificaciones y revisa sus saldos.
+                </p>
+              </div>
+              <div class="card">
+                <div class="num">2</div>
+                <h3>Aprobador</h3>
+                <p>
+                  Revisa solicitudes de su equipo, verifica soportes y aprueba o
+                  rechaza según las reglas institucionales.
+                </p>
+              </div>
+              <div class="card">
+                <div class="num">3</div>
+                <h3>Talento Humano</h3>
+                <p>
+                  Configura horarios, asignaciones, ajustes, planificaciones y
+                  controles administrativos.
+                </p>
+              </div>
+            </div>
+            <div class="callout warn">
+              <strong>Regla general:</strong> no use una solicitud para cubrir
+              otra necesidad. Cada opción tiene un fin específico y deja
+              trazabilidad.
+            </div>
+            <h3>Pantallas incluidas en este manual</h3>
+            <p>
+              Las siguientes pantallas integran Gestión de Asistencia. La
+              visualización de cada opción depende del rol otorgado a la cuenta.
+            </p>
+            <table>
+              <thead>
+                <tr>
+                  <th>Pantalla</th>
+                  <th>Funcionalidad principal</th>
+                  <th>Rol habitual</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Permisos y vacaciones</td>
+                  <td>Crear, consultar y seguir solicitudes personales.</td>
+                  <td>Colaborador</td>
+                </tr>
+                <tr>
+                  <td>Tipos de permiso</td>
+                  <td>Configurar las reglas aplicables a cada solicitud.</td>
+                  <td>Talento Humano</td>
+                </tr>
+                <tr>
+                  <td>Aprobación de permisos</td>
+                  <td>
+                    Revisar permisos, vacaciones y justificaciones de un equipo.
+                  </td>
+                  <td>Aprobador</td>
+                </tr>
+                <tr>
+                  <td>Permiso médico</td>
+                  <td>
+                    Revisar y resolver solicitudes médicas junto con sus
+                    documentos.
+                  </td>
+                  <td>Médico ocupacional (<code>R_Medico</code>)</td>
+                </tr>
+                <tr>
+                  <td>Justificaciones</td>
+                  <td>Regularizar una novedad puntual de marcación.</td>
+                  <td>Colaborador</td>
+                </tr>
+                <tr>
+                  <td>Picadas</td>
+                  <td>
+                    Consultar entradas, salidas y novedades de asistencia.
+                  </td>
+                  <td>Colaborador</td>
+                </tr>
+                <tr>
+                  <td>Horas extras</td>
+                  <td>Registrar o consultar trabajo adicional autorizado.</td>
+                  <td>Rol autorizado</td>
+                </tr>
+                <tr>
+                  <td>Horarios y asignación horaria</td>
+                  <td>Definir jornadas y asignarlas con vigencia.</td>
+                  <td>Talento Humano</td>
+                </tr>
+                <tr>
+                  <td>Empleados</td>
+                  <td>
+                    Verificar al colaborador antes de una operación
+                    administrativa.
+                  </td>
+                  <td>Talento Humano</td>
+                </tr>
+                <tr>
+                  <td>Ajuste de saldo</td>
+                  <td>Regularizar vacaciones con respaldo administrativo.</td>
+                  <td>Talento Humano</td>
+                </tr>
+                <tr>
+                  <td>Planificación masiva y cambio de horario</td>
+                  <td>
+                    Programar novedades futuras para uno o varios empleados.
+                  </td>
+                  <td>Talento Humano</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+          <section class="section" id="acceso">
+            <h2>2. Navegación y flujo general</h2>
+            <ol class="steps">
+              <li>
+                Inicie sesión y ubique el <b>menú lateral</b>. Busque el grupo
+                funcional relacionado con Talento Humano, Asistencia, Horarios o
+                Vacaciones.
+              </li>
+              <li>
+                Haga clic en la opción del módulo: por ejemplo
+                <span class="target">Permisos y Vacaciones</span>,
+                <span class="target">Marcaciones</span>,
+                <span class="target">Gestión de Horarios</span> o
+                <span class="target">Ajuste de Saldo de Vacaciones</span>.
+              </li>
+              <li>
+                En el listado use búsqueda, filtros y ordenamiento antes de
+                crear una solicitud; así evita duplicar registros.
+              </li>
+              <li>
+                Complete el formulario, adjunte respaldo si procede, guarde y
+                compruebe el estado resultante.
+              </li>
+              <li>
+                Cuando la novedad requiere aprobación, el aprobador recibe o
+                consulta la solicitud en su bandeja y decide según el soporte y
+                la normativa.
+              </li>
+            </ol>
+            <div class="callout">
+              <b>Cómo leer las capturas:</b> esta sección muestra el menú
+              lateral real con la opción seleccionada enmarcada en rojo. Las
+              capturas disponibles corresponden al rol de empleado; los módulos
+              administrativos requieren el rol de Talento Humano.
+            </div>
+          </section>
+          <section class="section" id="matriz">
+            <h2>2.1 Matriz de responsabilidades</h2>
+            <p class="lede">
+              Antes de entrar al detalle de cada pantalla, esta tabla resume
+              quién crea, quién aprueba y quién parametriza cada novedad. Es
+              una síntesis de las reglas explicadas en las secciones 3 a 14;
+              no reemplaza su lectura completa.
+            </p>
+            <table>
+              <thead>
+                <tr>
+                  <th>Novedad / proceso</th>
+                  <th>Quién crea o solicita</th>
+                  <th>Quién aprueba o decide</th>
+                  <th>Quién parametriza</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Permiso (no médico)</td>
+                  <td>Colaborador</td>
+                  <td>
+                    Jefe inmediato registrado en la ficha; RR. HH. solo si
+                    tiene el permiso elevado correspondiente
+                  </td>
+                  <td>Talento Humano (pantalla Tipos de Permisos)</td>
+                </tr>
+                <tr>
+                  <td>Permiso médico</td>
+                  <td>Colaborador</td>
+                  <td>
+                    Médico ocupacional (rol <code>R_Medico</code>)
+                    exclusivamente
+                  </td>
+                  <td>
+                    Talento Humano (marca “médico” al configurar el tipo)
+                  </td>
+                </tr>
+                <tr>
+                  <td>Vacación</td>
+                  <td>Colaborador</td>
+                  <td>
+                    Jefe inmediato registrado en la ficha; RR. HH. solo si
+                    tiene el permiso elevado correspondiente
+                  </td>
+                  <td>Talento Humano (reglas de saldo y período)</td>
+                </tr>
+                <tr>
+                  <td>Justificación de marcación</td>
+                  <td>
+                    Colaborador (requiere jefe inmediato definido en su
+                    ficha; si no existe, no puede enviarse)
+                  </td>
+                  <td>Jefe inmediato registrado en la ficha</td>
+                  <td>—</td>
+                </tr>
+                <tr>
+                  <td>Horas extra</td>
+                  <td>
+                    Jefe inmediato real, únicamente sobre sus subordinados;
+                    RR. HH./administración si tiene el permiso elevado
+                    correspondiente
+                  </td>
+                  <td>Según estado del registro tras el guardado</td>
+                  <td>Talento Humano</td>
+                </tr>
+                <tr>
+                  <td>Horarios (catálogo) y asignación horaria</td>
+                  <td>Talento Humano</td>
+                  <td>No aplica (configuración directa)</td>
+                  <td>Talento Humano</td>
+                </tr>
+                <tr>
+                  <td>Ajuste de saldo de vacaciones</td>
+                  <td>Talento Humano, con respaldo administrativo</td>
+                  <td>No aplica (acción administrativa directa)</td>
+                  <td>Talento Humano</td>
+                </tr>
+                <tr>
+                  <td>Planificación masiva de vacaciones</td>
+                  <td>Talento Humano</td>
+                  <td>No aplica (configuración directa)</td>
+                  <td>Talento Humano</td>
+                </tr>
+                <tr>
+                  <td>Planificación de cambio de horario</td>
+                  <td>Talento Humano</td>
+                  <td>No aplica (configuración directa)</td>
+                  <td>Talento Humano</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="callout warn">
+              <strong>Lectura de la tabla:</strong> “Quién aprueba” es el
+              responsable del flujo de decisión descrito en cada sección, no
+              quien ejecuta la pantalla. Los permisos elevados de RR. HH. no
+              sustituyen el flujo normal del jefe inmediato; se usan solo
+              cuando la cuenta cuenta con esa autorización explícita.
+            </div>
+          </section>
+          <section class="section" id="permisos">
+            <h2>3. Permisos y vacaciones</h2>
+            <p class="lede">
+              La pantalla <b>Permisos y Vacaciones</b> permite al colaborador
+              consultar sus solicitudes y crear una nueva novedad.
+            </p>
+            <figure class="shot">
+              <img
+                src="assets/manual-gestion-asistencia/01-permisos-vacaciones.png"
+                alt="Menú Permisos marcado en rojo y pantalla Permisos y Vacaciones"
+              />
+              <figcaption>
+                Figura 1. En el menú lateral, abra <b>Empleado → Permisos</b>.
+                El recuadro rojo identifica la opción de entrada.
+              </figcaption>
+            </figure>
+            <figure class="shot">
+              <img
+                src="assets/manual-gestion-asistencia/01b-nuevo-permiso-formulario.png"
+                alt="Formulario Nuevo permiso"
+              />
+              <figcaption>
+                Figura 2. Formulario <b>Nuevo permiso</b>. Revise el aviso de
+                anticipación, el saldo y las reglas visibles antes de llenar
+                tipo, modo, fecha y justificación.
+              </figcaption>
+            </figure>
+            <figure class="shot">
+              <img
+                src="assets/manual-gestion-asistencia/01c-nueva-vacacion-formulario.png"
+                alt="Formulario Nueva vacación con saldo disponible y días concedidos/tomados"
+              />
+              <figcaption>
+                Figura 2.1. Formulario <b>Nueva vacación</b>. El sistema
+                muestra en rojo cuando el saldo disponible es insuficiente
+                para el rango solicitado, antes de permitir el envío.
+              </figcaption>
+            </figure>
+            <table>
+              <thead>
+                <tr>
+                  <th>Campo</th>
+                  <th>Formulario</th>
+                  <th>Cómo llenarlo</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Tipo</td>
+                  <td>Nuevo permiso</td>
+                  <td>
+                    Seleccione el tipo configurado por Talento Humano que
+                    describe la causa real; sus reglas (anticipación, máximo,
+                    documentación) se muestran automáticamente al elegirlo.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Fecha/hora inicial y final</td>
+                  <td>Nuevo permiso</td>
+                  <td>
+                    Defina el rango exacto de la ausencia; el sistema calcula
+                    los minutos solicitados, no los digite manualmente.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Justificación</td>
+                  <td>Nuevo permiso</td>
+                  <td>Describa el motivo real de forma concreta y verificable.</td>
+                </tr>
+                <tr>
+                  <td>Soporte / adjunto</td>
+                  <td>Nuevo permiso</td>
+                  <td>
+                    Obligatorio solo si el tipo elegido lo exige (se indica en
+                    pantalla).
+                  </td>
+                </tr>
+                <tr>
+                  <td>Fecha Inicio / Fecha Fin</td>
+                  <td>Nueva vacación</td>
+                  <td>
+                    Seleccione el rango continuo a tomar; el recuadro
+                    "Solicitado (calculado)" se actualiza solo.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Días Concedidos / Días Tomados</td>
+                  <td>Nueva vacación</td>
+                  <td>
+                    Se calculan según el rango elegido y el saldo disponible;
+                    verifique que no exceda el saldo mostrado arriba antes de
+                    enviar.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="callout warn">
+              <strong>Criterio obligatorio de llenado:</strong> no elija el tipo
+              por conveniencia. Seleccione el que describe la causa real y lea
+              sus reglas en pantalla. Por ejemplo, en la evidencia el tipo
+              “Asuntos personales” exige al menos 48 horas de anticipación,
+              tiene máximo de 5 días, descuenta vacaciones y requiere una
+              justificación. El sistema calcula los minutos solicitados; no
+              intente compensar manualmente fechas u horas.
+            </div>
+            <ol class="steps">
+              <li>
+                Desde el menú abra
+                <span class="target">Permisos y Vacaciones</span>.
+              </li>
+              <li>
+                Seleccione la pestaña <b>Permisos</b> o <b>Vacaciones</b>, según
+                la necesidad.
+              </li>
+              <li>
+                Pulse Nuevo permiso o Nueva vacación, seleccione el tipo,
+                complete fechas/horas y el motivo. Adjunte el soporte si el tipo
+                lo exige.
+              </li>
+              <li>
+                Guarde y consulte el estado. No cree otra solicitud para el
+                mismo período mientras exista una pendiente o aprobada.
+              </li>
+            </ol>
+            <div class="criteria">
+              <div>
+                <h4>Permisos: llenar cuando</h4>
+                <p>
+                  Existe una ausencia parcial o total autorizable. Indique tipo
+                  correcto, fecha/hora inicial y final coherentes, motivo claro
+                  y respaldo cuando corresponde.
+                </p>
+              </div>
+              <div>
+                <h4>Vacaciones: llenar cuando</h4>
+                <p>
+                  Se utilizará saldo disponible. Seleccione fechas continuas o
+                  el período permitido; revise saldo y evite cruces con
+                  vacaciones o permisos vigentes.
+                </p>
+              </div>
+            </div>
+            <h3 id="tipos-permiso">3.1 Tipos de permiso</h3>
+            <p>
+              <b>Funcionalidad de la pantalla:</b> el catálogo
+              <b>Tipos de Permisos</b> define las reglas que el sistema aplicará
+              cuando un colaborador solicite un permiso. No es una pantalla para
+              registrar ausencias; es una configuración exclusiva de Talento
+              Humano.
+            </p>
+            <figure class="shot">
+              <img
+                src="assets/manual-gestion-asistencia/01c-tipos-permiso-menu.png"
+                alt="Menú Catálogo &gt; Tipos de Permiso marcado en rojo"
+              />
+              <figcaption>
+                Figura 3.1. Abra <b>Catálogo → Tipos de Permiso</b>. El
+                recuadro rojo identifica la opción de entrada; solo aparece
+                para cuentas con permisos administrativos.
+              </figcaption>
+            </figure>
+            <figure class="shot">
+              <img
+                src="assets/manual-gestion-asistencia/01d-tipos-permiso-filtros.png"
+                alt="Pantalla Gestión de Tipos de Permisos con el boton Nuevo Tipo y la barra de filtros enmarcados en rojo"
+              />
+              <figcaption>
+                Figura 3.2. Pantalla <b>Gestión de Tipos de Permisos</b>. Los
+                recuadros rojos señalan el botón <b>Nuevo Tipo</b> (crear) y la
+                barra de filtros (nombre, aprobación, vacaciones,
+                documentación, estado, régimen) que acota la lista antes de
+                crear o editar un tipo.
+              </figcaption>
+            </figure>
+            <figure class="shot">
+              <img
+                src="assets/manual-gestion-asistencia/01e-nuevo-tipo-permiso-formulario.png"
+                alt="Formulario Crear Nuevo Tipo de Permiso con nombre, regimen laboral y switches de reglas"
+              />
+              <figcaption>
+                Figura 3.3. Formulario <b>Crear Nuevo Tipo de Permiso</b>. Cada
+                campo y switch se explica en la tabla "Campo o regla" más
+                abajo.
+              </figcaption>
+            </figure>
+            <ol class="steps">
+              <li>
+                Abra <span class="target">Tipos de Permisos</span> desde el menú
+                administrativo y busque primero si el tipo ya existe.
+              </li>
+              <li>
+                Para crear o editar, complete el nombre y defina si requiere
+                aprobación, si descuenta vacaciones, si exige documentación y si
+                es un permiso médico.
+              </li>
+              <li>
+                Configure anticipación mínima, máximo de días por año, estado
+                activo y el régimen contractual cuando corresponda.
+              </li>
+              <li>
+                Guarde solo después de revisar el impacto: estas reglas
+                controlan el formulario que verá el colaborador y las
+                validaciones de la solicitud.
+              </li>
+            </ol>
+            <table>
+              <thead>
+                <tr>
+                  <th>Campo o regla</th>
+                  <th>Qué controla</th>
+                  <th>Criterio de uso</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Nombre / estado activo</td>
+                  <td>La opción disponible en el selector del formulario.</td>
+                  <td>
+                    Use un nombre institucional claro; inactívelo si deja de
+                    aplicar, no cree duplicados.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Requiere aprobación</td>
+                  <td>Envía la solicitud a la bandeja del responsable.</td>
+                  <td>
+                    Actívelo cuando la normativa exige autorización previa.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Descuenta vacaciones</td>
+                  <td>
+                    Consume saldo y muestra validaciones de disponibilidad.
+                  </td>
+                  <td>
+                    Solo para ausencias que legalmente se descuentan del saldo.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Requiere documentación / médico</td>
+                  <td>
+                    Solicita adjunto y dirige el tratamiento correspondiente.
+                  </td>
+                  <td>
+                    Defínalo según el respaldo institucional requerido; no
+                    marque médico para una ausencia no médica.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Anticipación y máximo anual</td>
+                  <td>Bloquea fechas fuera del plazo o excesos permitidos.</td>
+                  <td>
+                    Configure valores aprobados por Talento Humano; no use cero
+                    o valores altos para evadir controles.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="callout danger">
+              <strong>Control de configuración:</strong> modificar un tipo de
+              permiso puede cambiar reglas para muchos usuarios. Antes de
+              editar, revise el tipo, el régimen y el impacto; inactivar es
+              preferible a eliminar una configuración con historial.
+            </div>
+            <div class="callout danger">
+              <strong>No haga esto:</strong> no use vacaciones para justificar
+              una marcación ni cree permisos retroactivos sin el procedimiento
+              institucional correspondiente.
+            </div>
+          </section>
+          <section class="section" id="aprobaciones">
+            <h2>4. Aprobación de permisos, vacaciones y justificaciones</h2>
+            <p class="lede">
+              La bandeja de aprobación concentra solicitudes del personal bajo
+              responsabilidad del aprobador.
+            </p>
+            <div class="callout warn">
+              <strong>Responsable del flujo:</strong> la bandeja muestra las
+              solicitudes del equipo cuyo <b>jefe inmediato</b> es el usuario
+              autenticado. Para permisos no médicos, el jefe inmediato real
+              revisa y aprueba o rechaza; RR. HH./administración puede
+              intervenir únicamente por sus permisos elevados.
+            </div>
+            <figure class="shot">
+              <img
+                src="assets/manual-gestion-asistencia/02-aprobacion-permisos.png"
+                alt="Menú Aprobación Permisos marcado en rojo"
+              />
+              <figcaption>
+                Figura 2. Abra <b>Empleado → Aprobación Permisos</b>. El
+                recuadro rojo señala la opción exacta.
+              </figcaption>
+            </figure>
+            <figure class="shot">
+              <img
+                src="assets/manual-gestion-asistencia/02b-aprobacion-filtros.png"
+                alt="Pantalla Aprobaciones con el panel de filtros enmarcado en rojo"
+              />
+              <figcaption>
+                Figura 2.2. Pantalla <b>Aprobaciones</b>: pestañas Permisos /
+                Vacaciones / Justificaciones con su conteo, e indicadores por
+                estado (Pendiente, Aprobado, Rechazado). El recuadro rojo
+                señala el panel de filtros, que permite buscar por empleado,
+                tipo o motivo y acotar por año, estado y rango de fechas antes
+                de revisar una solicitud. Esta pantalla no tiene botón de
+                crear: las solicitudes las origina el colaborador.
+              </figcaption>
+            </figure>
+            <ol class="steps">
+              <li>Abra <span class="target">Aprobación de Permisos</span>.</li>
+              <li>
+                Seleccione la pestaña Permisos, Vacaciones o Justificaciones y
+                filtre por estado, período o colaborador.
+              </li>
+              <li>
+                Abra la solicitud, verifique fechas, tipo, motivo, saldo,
+                conflictos y documento adjunto.
+              </li>
+              <li>
+                Apruebe únicamente si cumple los criterios; rechace o devuelva
+                con una observación clara si tiene inconsistencias.
+              </li>
+            </ol>
+            <div class="callout">
+              Aprobar cambia el estado de la solicitud y puede afectar saldos,
+              planificación o cálculo de asistencia. No apruebe por una
+              comunicación verbal sin revisar el registro.
+            </div>
+          </section>
+          <section class="section" id="medicos">
+            <h2>5. Permisos médicos</h2>
+            <p class="lede">
+              Esta pantalla está orientada a la revisión administrativa de
+              permisos médicos pendientes e historial reciente.
+            </p>
+            <div class="callout warn">
+              <strong>Responsable exclusivo del flujo:</strong> la revisión,
+              aprobación o rechazo de permisos médicos corresponde a la doctora
+              o médico ocupacional con el rol <code>R_Medico</code>. Este flujo
+              no corresponde al jefe inmediato. La persona médica debe revisar
+              el certificado y demás adjuntos antes de emitir su decisión.
+            </div>
+            <figure class="shot">
+              <img
+                src="assets/manual-gestion-asistencia/03-permisos-medicos.png"
+                alt="Menú Permiso Médico marcado en rojo"
+              />
+              <figcaption>
+                Figura 3. Abra <b>Empleado → Permiso Médico</b>. El recuadro
+                rojo indica el acceso.
+              </figcaption>
+            </figure>
+            <ol class="steps">
+              <li>
+                Abra <span class="target">Aprobación de Permisos Médicos</span>.
+              </li>
+              <li>
+                Seleccione el registro pendiente y revise colaborador, período,
+                tipo de permiso y documentos adjuntos.
+              </li>
+              <li>
+                Compruebe que las fechas solicitadas coincidan con el
+                certificado presentado.
+              </li>
+              <li>
+                Apruebe o rechace; registre observación cuando sea necesaria
+                para la trazabilidad.
+              </li>
+            </ol>
+            <div class="criteria">
+              <div>
+                <h4>Información mínima</h4>
+                <p>
+                  Fechas certificadas, tipo de permiso médico, motivo
+                  institucional y respaldo legible.
+                </p>
+              </div>
+              <div>
+                <h4>Control</h4>
+                <p>
+                  No se deben aprobar períodos fuera de la certificación ni
+                  documentos incompletos o pertenecientes a otra persona.
+                </p>
+              </div>
+            </div>
+          </section>
+          <section class="section" id="justificaciones">
+            <h2>6. Justificaciones de marcaciones</h2>
+            <p class="lede">
+              Sirve para explicar una ausencia, atraso, salida anticipada o
+              novedad de una marcación específica.
+            </p>
+            <div class="callout warn">
+              <strong>Flujo de jefe inmediato:</strong> al enviar una
+              justificación, el sistema toma el jefe inmediato registrado en la
+              ficha del empleado y lo asigna como aprobador. Si la ficha no
+              tiene jefe inmediato, la justificación no puede enviarse. El
+              colaborador puede crear o editar una solicitud pendiente, pero
+              nunca aprobar o rechazar la propia.
+            </div>
+            <figure class="shot">
+              <img
+                src="assets/manual-gestion-asistencia/04-justificaciones.png"
+                alt="Menú Justificaciones marcado en rojo"
+              />
+              <figcaption>
+                Figura 4. Abra <b>Empleado → Justificaciones</b>. El recuadro
+                rojo identifica la opción correspondiente.
+              </figcaption>
+            </figure>
+            <figure class="shot">
+              <img
+                src="assets/manual-gestion-asistencia/04b-solicitar-justificacion-formulario.png"
+                alt="Formulario Solicitar Justificacion con tipo Dia, fecha inicio/fin, jefe inmediato y motivo"
+              />
+              <figcaption>
+                Figura 4.1. Formulario <b>Solicitar Justificación</b>. Al
+                elegir el tipo, el sistema muestra el jefe inmediato que
+                aprobará la solicitud (solo informativo, no editable).
+              </figcaption>
+            </figure>
+            <table>
+              <thead>
+                <tr>
+                  <th>Campo</th>
+                  <th>Cómo llenarlo</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Tipo de justificación</td>
+                  <td>
+                    Elija <b>Picada</b> (una marcación puntual), <b>Horas</b>
+                    (un rango de horas) o <b>Día</b> (jornada completa) según
+                    la novedad real. El formulario cambia sus campos según el
+                    tipo elegido.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Fecha inicio / Fecha fin</td>
+                  <td>
+                    Indique la fecha (o rango) exacto de la marcación o
+                    ausencia a justificar; no adelante fechas futuras.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Motivo detallado</td>
+                  <td>
+                    Explique la causa real y verificable de forma concreta;
+                    este texto es lo único que revisa el jefe inmediato para
+                    decidir.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <ol class="steps">
+              <li>Abra <span class="target">Justificaciones</span>.</li>
+              <li>
+                Busque la fecha o marcación afectada antes de crear una
+                justificación.
+              </li>
+              <li>
+                Seleccione la novedad correcta, describa el motivo de forma
+                concreta y adjunte respaldo cuando se requiera.
+              </li>
+              <li>
+                Guarde, envíe al flujo de aprobación y consulte el estado.
+              </li>
+            </ol>
+            <div class="callout warn">
+              <strong>Criterio:</strong> una justificación debe relacionarse con
+              una fecha y una novedad real. No se usa para registrar vacaciones,
+              permisos futuros ni cambios permanentes de horario.
+            </div>
+          </section>
+          <section class="section" id="marcaciones">
+            <h2>7. Marcaciones o picadas</h2>
+            <p class="lede">
+              Permite consultar entradas, salidas y marcaciones del día o de un
+              rango de fechas.
+            </p>
+            <figure class="shot">
+              <img
+                src="assets/manual-gestion-asistencia/05-marcaciones.png"
+                alt="Menú Picadas marcado en rojo"
+              />
+              <figcaption>
+                Figura 5. Abra <b>Empleado → Picadas</b> para consultar las
+                marcaciones.
+              </figcaption>
+            </figure>
+            <figure class="shot">
+              <img
+                src="assets/manual-gestion-asistencia/05b-marcaciones-filtro-rango.png"
+                alt="Ventana Consultar Marcaciones por Rango con Fecha de inicio y Fecha de fin"
+              />
+              <figcaption>
+                Figura 5.1. Pulse <b>Consultar por Fechas</b> para abrir el
+                filtro de rango. Defina fecha de inicio y fecha de fin y
+                pulse <b>Buscar Marcaciones</b>.
+              </figcaption>
+            </figure>
+            <ol class="steps">
+              <li>Abra <span class="target">Marcaciones</span>.</li>
+              <li>
+                Use Consultar por rango, seleccione empleado cuando el rol lo
+                permita, y defina fecha inicial y final.
+              </li>
+              <li>
+                Pulse Buscar Marcaciones y revise hora, tipo de picada, estado y
+                novedades asociadas.
+              </li>
+              <li>
+                Use el resultado como referencia para crear una justificación si
+                existe una novedad válida.
+              </li>
+            </ol>
+            <div class="criteria">
+              <div>
+                <h4>Consulta correcta</h4>
+                <p>
+                  Use un rango razonable y confirme que corresponde al empleado
+                  y período que está revisando.
+                </p>
+              </div>
+              <div>
+                <h4>Interpretación</h4>
+                <p>
+                  Una marcación registrada no equivale por sí sola a una
+                  aprobación; debe contrastarse con el horario, permisos y
+                  justificaciones.
+                </p>
+              </div>
+            </div>
+          </section>
+          <section class="section" id="extras">
+            <h2>8. Horas extras</h2>
+            <p class="lede">
+              Registra o consulta tiempo adicional autorizado fuera de la
+              jornada regular, conforme a las reglas institucionales.
+            </p>
+            <div class="callout warn">
+              <strong>Responsable de la planificación:</strong> la
+              <b>Nueva planificación</b> de horas extra corresponde al jefe
+              inmediato real y solo le permite seleccionar sus subordinados. El
+              empleado no planifica ni edita sus propias horas extras:
+              únicamente las consulta. RR. HH./administración puede gestionar el
+              proceso cuando cuenta con el permiso elevado correspondiente.
+            </div>
+            <figure class="shot">
+              <img
+                src="assets/manual-gestion-asistencia/06-horas-extras.png"
+                alt="Menú Horas Extra marcado en rojo"
+              />
+              <figcaption>
+                Figura 6. Abra <b>Empleado → Horas Extra</b>. El recuadro rojo
+                señala dónde ingresar.
+              </figcaption>
+            </figure>
+            <figure class="shot">
+              <img
+                src="assets/manual-gestion-asistencia/06b-nueva-planificacion-horas-extra-formulario.png"
+                alt="Formulario Nueva planificacion de horas extra con pestanas HE y Recuperacion"
+              />
+              <figcaption>
+                Figura 6.1. Formulario <b>Nueva planificación</b>, visible solo
+                para el jefe inmediato. Las pestañas <b>HE</b> y
+                <b>Recuperación</b> cambian los campos disponibles.
+              </figcaption>
+            </figure>
+            <table>
+              <thead>
+                <tr>
+                  <th>Campo</th>
+                  <th>Cómo llenarlo</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Título / Descripción</td>
+                  <td>
+                    Identifique la planificación de forma clara (ej. "HE
+                    Jornada Nocturna") y describa el detalle institucional.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Desde / Hasta</td>
+                  <td>Rango de fechas en que aplica la planificación.</td>
+                </tr>
+                <tr>
+                  <td>Hora inicio / Hora fin</td>
+                  <td>
+                    Franja horaria real del trabajo adicional; no debe
+                    coincidir con la jornada regular ni con una ausencia
+                    aprobada.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Tipo de HE / Factor</td>
+                  <td>
+                    Seleccione el tipo institucional correspondiente (ej.
+                    nocturna, suplementaria) y su factor de pago asociado.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Requiere aprobación</td>
+                  <td>
+                    Manténgalo activo salvo que la normativa exima
+                    explícitamente de autorización previa.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <ol class="steps">
+              <li>Abra <span class="target">Horas Extras</span>.</li>
+              <li>
+                Seleccione empleado, fecha, tipo o jornada disponible y complete
+                hora inicial/final o cantidad de horas según el formulario.
+              </li>
+              <li>
+                Describa el motivo institucional y adjunte autorización o
+                respaldo cuando sea requerido.
+              </li>
+              <li>Guarde y revise la aprobación o el estado del registro.</li>
+            </ol>
+            <div class="callout danger">
+              <strong>No haga esto:</strong> no duplique períodos, no incluya
+              horas que coincidan con una ausencia aprobada y no declare tiempo
+              distinto al efectivamente autorizado.
+            </div>
+          </section>
+          <section class="section" id="horarios">
+            <h2>9. Gestión de horarios</h2>
+            <p class="lede">
+              Administra el catálogo de horarios que posteriormente se asignan a
+              empleados.
+            </p>
+            <figure class="shot">
+              <img
+                src="assets/manual-gestion-asistencia/07-horarios.png"
+                alt="Menú Talento Humano &gt; Horarios marcado en rojo"
+              />
+              <figcaption>
+                Figura 9. Abra <b>Talento Humano → Horarios</b>. El recuadro
+                rojo identifica la opción; solo aparece para cuentas
+                administrativas.
+              </figcaption>
+            </figure>
+            <figure class="shot">
+              <img
+                src="assets/manual-gestion-asistencia/07b-horarios-filtros.png"
+                alt="Pantalla Gestión de Horarios con el boton Crear Horario y el buscador enmarcados en rojo"
+              />
+              <figcaption>
+                Figura 9.1. Pantalla <b>Gestión de Horarios</b>: indicadores
+                de total, fijos, rotativos, con almuerzo, activos e
+                inactivos. Los recuadros rojos señalan el botón
+                <b>Crear Horario</b> y el buscador, que filtra por
+                descripción, días o patrón de rotación.
+              </figcaption>
+            </figure>
+            <figure class="shot">
+              <img
+                src="assets/manual-gestion-asistencia/07c-crear-horario-formulario.png"
+                alt="Formulario Crear Nuevo Horario con plantillas rapidas, horas de entrada/salida y dias de trabajo"
+              />
+              <figcaption>
+                Figura 9.2. Formulario <b>Crear Nuevo Horario</b>. Las
+                "Plantillas Rápidas" (Administrativo, Docente Matutino,
+                Docente Vespertino, Nocturno) precargan horas típicas con un
+                clic; también puede definirlas manualmente.
+              </figcaption>
+            </figure>
+            <table>
+              <thead>
+                <tr>
+                  <th>Campo</th>
+                  <th>Cómo llenarlo</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Descripción del Horario</td>
+                  <td>
+                    Nombre institucional claro (ej. "Horario Administrativo
+                    Regular"); evite duplicar nombres ya existentes.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Hora de Entrada / Hora de Salida</td>
+                  <td>Jornada real de trabajo, en formato 24 horas.</td>
+                </tr>
+                <tr>
+                  <td>Horas Requeridas/Día</td>
+                  <td>
+                    Campo calculado automáticamente (salida − entrada −
+                    almuerzo); no se edita manualmente.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Días de Trabajo</td>
+                  <td>
+                    Seleccione el patrón (ej. Lunes a Viernes) que aplica a
+                    este horario.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Incluye Almuerzo</td>
+                  <td>
+                    Actívelo solo si la jornada realmente contempla receso de
+                    almuerzo; afecta el cálculo de horas requeridas.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <ol class="steps">
+              <li>Abra <span class="target">Gestión de Horarios</span>.</li>
+              <li>
+                Antes de crear, busque por nombre o código para evitar
+                duplicados.
+              </li>
+              <li>
+                Pulse Nuevo horario y configure nombre, horas de entrada/salida,
+                jornadas, tolerancias, descansos y demás campos que habilite el
+                formulario.
+              </li>
+              <li>
+                Guarde, valide que el horario esté activo y edite solo si no
+                genera conflicto con asignaciones vigentes.
+              </li>
+            </ol>
+            <div class="callout">
+              Cree un horario únicamente cuando represente una jornada
+              institucional válida. No use un horario temporal para corregir una
+              sola marcación.
+            </div>
+          </section>
+          <section class="section" id="asignacion">
+            <h2>10. Asignación horaria</h2>
+            <p class="lede">
+              Vincula un horario configurado con uno o varios empleados durante
+              una vigencia definida.
+            </p>
+            <figure class="shot">
+              <img
+                src="assets/manual-gestion-asistencia/08-asignacion-horaria.png"
+                alt="Menú Talento Humano &gt; Asignación Horaria marcado en rojo"
+              />
+              <figcaption>
+                Figura 10. Abra <b>Talento Humano → Asignación Horaria</b>. El
+                recuadro rojo identifica la opción; solo aparece para cuentas
+                administrativas.
+              </figcaption>
+            </figure>
+            <figure class="shot">
+              <img
+                src="assets/manual-gestion-asistencia/08b-asignacion-horaria-filtros.png"
+                alt="Pantalla Asignación Horaria con indicadores y el panel de filtros enmarcado en rojo"
+              />
+              <figcaption>
+                Figura 10.1. Pantalla <b>Asignación Horaria</b>: indicadores
+                de empleados totales, con horario, sin horario asignado y con
+                horario especial. El recuadro rojo señala el buscador (nombre,
+                email, cédula, horario o contrato) y los filtros de
+                departamento y estado de horario. Esta pantalla no tiene un
+                botón de crear único: la asignación se hace fila por fila con
+                el botón "Asignar" de cada empleado (ver Figura 10.2).
+              </figcaption>
+            </figure>
+            <figure class="shot">
+              <img
+                src="assets/manual-gestion-asistencia/08c-asignar-horario-formulario.png"
+                alt="Formulario Asignar Horario con tipo de horario, horario del catalogo y vigencia"
+              />
+              <figcaption>
+                Figura 10.2. Formulario <b>Asignar Horario</b>, abierto desde
+                el botón "Asignar" de un empleado sin horario. Datos del
+                empleado y fondo difuminados en esta captura por privacidad.
+              </figcaption>
+            </figure>
+            <table>
+              <thead>
+                <tr>
+                  <th>Campo</th>
+                  <th>Cómo llenarlo</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Tipo de horario</td>
+                  <td>
+                    <b>Horario del catálogo</b> para usar uno ya configurado
+                    en Gestión de Horarios, o <b>Horario especial</b> para
+                    casos de sustituto/maternidad/lactancia/otro.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Horario</td>
+                  <td>
+                    Seleccione el horario exacto del catálogo que corresponde
+                    a la jornada real del empleado.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Válido Desde / Válido Hasta</td>
+                  <td>
+                    Vigencia de la asignación. Deje "Válido Hasta" en
+                    31/12/9999 solo si el horario es permanente; use una fecha
+                    real para asignaciones temporales.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <ol class="steps">
+              <li>
+                Abra <span class="target">Gestión de Horarios</span> o
+                <span class="target">Asignación Horaria</span>, según la opción
+                visible en su menú.
+              </li>
+              <li>
+                Busque al empleado y revise sus asignaciones activas antes de
+                crear una nueva.
+              </li>
+              <li>
+                Seleccione horario, fecha de inicio, fecha de fin si aplica y
+                parámetros de vigencia.
+              </li>
+              <li>
+                Guarde y confirme que no exista superposición con otra
+                asignación en el mismo período.
+              </li>
+            </ol>
+            <div class="callout warn">
+              <strong>Criterio:</strong> una asignación define el marco esperado
+              para las marcaciones. No modifique una vigencia histórica solo
+              para ocultar un atraso; use el proceso de justificación si
+              corresponde.
+            </div>
+          </section>
+          <section class="section" id="empleados">
+            <h2>11. Empleados</h2>
+            <p class="lede">
+              Permite buscar y consultar información de colaboradores necesaria
+              para procesos de asistencia.
+            </p>
+            <figure class="shot">
+              <img
+                src="assets/manual-gestion-asistencia/09-empleados.png"
+                alt="Menú Talento Humano &gt; Empleados marcado en rojo"
+              />
+              <figcaption>
+                Figura 11. Abra <b>Talento Humano → Empleados</b>. El recuadro
+                rojo identifica la opción; solo aparece para cuentas
+                administrativas.
+              </figcaption>
+            </figure>
+            <figure class="shot">
+              <img
+                src="assets/manual-gestion-asistencia/09b-empleados-filtros.png"
+                alt="Pantalla Gestión de Empleados con el boton Agregar Empleado y los filtros enmarcados en rojo"
+              />
+              <figcaption>
+                Figura 11.1. Pantalla <b>Gestión de Empleados</b>: indicadores
+                de total, activos, inactivos y distribución por régimen
+                laboral (LOSEP, LOES, Código de Trabajo, sin régimen). Los
+                recuadros rojos señalan el botón <b>Agregar Empleado</b>
+                (crear) y el bloque de filtros: buscador (nombre, cédula,
+                email o dependencia), régimen, departamento y estado.
+              </figcaption>
+            </figure>
+            <figure class="shot">
+              <img
+                src="assets/manual-gestion-asistencia/09c-agregar-empleado-formulario.png"
+                alt="Formulario Agregar Nuevo Empleado con persona, email, tipo de contrato, departamento, cargo y jefe inmediato"
+              />
+              <figcaption>
+                Figura 11.2. Formulario <b>Agregar Nuevo Empleado</b>.
+              </figcaption>
+            </figure>
+            <table>
+              <thead>
+                <tr>
+                  <th>Campo</th>
+                  <th>Cómo llenarlo</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Persona</td>
+                  <td>
+                    Busque a la persona ya registrada en el sistema (cédula o
+                    nombre); no cree un registro de persona duplicado.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Email</td>
+                  <td>
+                    Correo institucional; se usa para notificaciones y puede
+                    vincularse al login.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Tipo de contrato</td>
+                  <td>
+                    Seleccione el régimen real (LOSEP, LOES, Código de
+                    Trabajo); determina qué reglas de permisos y vacaciones
+                    aplican.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Departamento / Cargo</td>
+                  <td>
+                    Busque el departamento y cargo reales del catálogo
+                    institucional.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Jefe Inmediato</td>
+                  <td>
+                    Defínalo desde el ingreso: de esto depende que
+                    justificaciones, permisos y horas extra tengan un
+                    aprobador válido.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Fecha de Contratación / Antigüedad</td>
+                  <td>
+                    Use la fecha real del contrato; la de antigüedad solo si
+                    difiere (ej. contrato indefinido previo).
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <ol class="steps">
+              <li>Abra <span class="target">Empleados</span>.</li>
+              <li>
+                Use búsqueda, filtros de estado, dependencia, cargo o régimen
+                cuando estén disponibles.
+              </li>
+              <li>
+                Abra el empleado correcto y verifique identificación, nombres,
+                estado laboral y datos de asignación antes de generar una acción
+                administrativa.
+              </li>
+            </ol>
+            <div class="callout">
+              No registre novedades para una persona con nombre similar sin
+              confirmar la identificación o el código de empleado.
+            </div>
+          </section>
+          <section class="section" id="saldo">
+            <h2>12. Ajuste de saldo de vacaciones</h2>
+            <p class="lede">
+              Permite regularizar el saldo de vacaciones o recuperación cuando
+              existe una causa autorizada y documentada.
+            </p>
+            <figure class="shot">
+              <img
+                src="assets/manual-gestion-asistencia/10-ajuste-saldo.png"
+                alt="Menú Talento Humano &gt; Ajuste Saldo Vacaciones marcado en rojo"
+              />
+              <figcaption>
+                Figura 12. Abra <b>Talento Humano → Ajuste Saldo Vacaciones</b>.
+                El recuadro rojo identifica la opción; solo aparece para
+                cuentas administrativas.
+              </figcaption>
+            </figure>
+            <figure class="shot">
+              <img
+                src="assets/manual-gestion-asistencia/10b-ajuste-saldo-filtros.png"
+                alt="Pantalla Ajuste de Saldo de Vacaciones con selector de empleado, régimen laboral y bolsa a ajustar"
+              />
+              <figcaption>
+                Figura 12.1. Pantalla <b>Ajuste de Saldo de Vacaciones</b>:
+                seleccione primero el empleado y su régimen laboral activo,
+                luego la bolsa a ajustar (Vacaciones) y el tipo de ajuste
+                antes de registrar cantidad y motivo. También admite carga
+                masiva desde Excel.
+              </figcaption>
+            </figure>
+            <table>
+              <thead>
+                <tr>
+                  <th>Campo</th>
+                  <th>Cómo llenarlo</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Empleado</td>
+                  <td>
+                    Busque y confirme la identidad exacta antes de continuar;
+                    un ajuste al empleado equivocado no es fácilmente
+                    reversible.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Régimen laboral</td>
+                  <td>
+                    Solo se listan los regímenes que el empleado realmente
+                    tiene activos; seleccione el que corresponde al ajuste.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Bolsa a ajustar</td>
+                  <td>
+                    Vacaciones u otra bolsa habilitada; no mezcle ajustes de
+                    distintas bolsas en un mismo registro.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Tipo de ajuste</td>
+                  <td>
+                    "Incrementar / Descontar" aplica un delta sobre el saldo
+                    actual; revise si existe otro modo (ej. "Establecer") antes
+                    de elegir, según lo que realmente necesite.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Cantidad (días/horas/minutos)</td>
+                  <td>
+                    Use signo positivo para incrementar y negativo para
+                    descontar en modo delta; no hay campo de segundos.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Motivo</td>
+                  <td>
+                    Obligatorio: describa la causa autorizada y adjunte el
+                    respaldo administrativo correspondiente.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <ol class="steps">
+              <li>
+                Abra <span class="target">Ajuste de Saldo de Vacaciones</span>.
+              </li>
+              <li>
+                Busque y valide al empleado; revise el saldo actual y su
+                historial antes de proponer un ajuste.
+              </li>
+              <li>
+                Seleccione tipo de saldo, modo de ajuste, cantidad/unidad y
+                motivo. Adjunte el respaldo administrativo cuando corresponda.
+              </li>
+              <li>
+                Guarde y compruebe el saldo resultante y la trazabilidad del
+                ajuste.
+              </li>
+            </ol>
+            <div class="callout danger">
+              <strong>Uso restringido:</strong> no use ajustes como sustituto de
+              una solicitud de vacaciones ni para corregir datos sin
+              autorización.
+            </div>
+          </section>
+          <section class="section" id="masiva">
+            <h2>13. Planificación masiva de vacaciones</h2>
+            <p class="lede">
+              Facilita planificar vacaciones para varios colaboradores en un
+              período organizacional.
+            </p>
+            <figure class="shot">
+              <img
+                src="assets/manual-gestion-asistencia/11-planificacion-vacaciones.png"
+                alt="Menú Talento Humano &gt; Planificación Masiva Vacaciones marcado en rojo"
+              />
+              <figcaption>
+                Figura 13. Abra
+                <b>Talento Humano → Planificación Masiva Vacaciones</b>. El
+                recuadro rojo identifica la opción; solo aparece para cuentas
+                administrativas.
+              </figcaption>
+            </figure>
+            <figure class="shot">
+              <img
+                src="assets/manual-gestion-asistencia/11b-planificacion-vacaciones-filtros.png"
+                alt="Pantalla Planificación Masiva de Vacaciones con el boton Nuevo Plan y los filtros enmarcados en rojo"
+              />
+              <figcaption>
+                Figura 13.1. Pantalla <b>Planificación Masiva de
+                Vacaciones</b>: lista los planes existentes con alcance,
+                período, personal incluido/excluido y estado. Los recuadros
+                rojos señalan el botón <b>Nuevo Plan</b> (crear) y el filtro
+                por descripción y rango de fechas.
+              </figcaption>
+            </figure>
+            <figure class="shot">
+              <img
+                src="assets/manual-gestion-asistencia/11c-nuevo-plan-masivo-formulario.png"
+                alt="Formulario Nueva Planificacion Masiva de Vacaciones con alcance, descripcion, fecha inicio/fin"
+              />
+              <figcaption>
+                Figura 13.2. Formulario <b>Nueva Planificación Masiva de
+                Vacaciones</b>. El aviso superior explica que el paso a "En
+                Ejecución" (con descuento automático de saldo) ocurre solo al
+                llegar la fecha de inicio, nunca manualmente.
+              </figcaption>
+            </figure>
+            <table>
+              <thead>
+                <tr>
+                  <th>Campo</th>
+                  <th>Cómo llenarlo</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Alcance</td>
+                  <td>
+                    Deje vacío para "Toda la institución", o elija un
+                    departamento específico; confirme que corresponde al
+                    grupo real antes de guardar.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Descripción</td>
+                  <td>
+                    Explique el motivo institucional del cierre (ej. "Cierre
+                    de fin de año").
+                  </td>
+                </tr>
+                <tr>
+                  <td>Fecha inicio</td>
+                  <td>
+                    Debe ser una fecha futura; a partir de ella el sistema
+                    ejecuta el descuento automático de saldo.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Fecha fin</td>
+                  <td>Cierre del período colectivo planificado.</td>
+                </tr>
+                <tr>
+                  <td>Planificar por horas</td>
+                  <td>
+                    Actívelo solo para un cierre de un día específico en una
+                    franja horaria puntual, no para un período de varios días.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="callout warn">
+              Las personas que trabajarán normalmente durante el cierre se
+              excluyen después, de forma individual, mientras el plan siga en
+              estado <b>Planificado</b>.
+            </div>
+            <ol class="steps">
+              <li>
+                Abra
+                <span class="target">Planificación Masiva de Vacaciones</span>.
+              </li>
+              <li>
+                Pulse Nueva planificación, defina período, nombre o referencia y
+                seleccione los empleados aplicables.
+              </li>
+              <li>
+                Revise los rangos de fechas, disponibilidad, saldo y conflictos
+                antes de guardar.
+              </li>
+              <li>
+                Use Editar planificación para corregirla mientras la regla de
+                estado lo permita; no aplique cambios masivos sin validación
+                previa.
+              </li>
+            </ol>
+            <div class="callout warn">
+              <strong>Antes de aplicar:</strong> confirme que los empleados
+              seleccionados pertenecen al grupo correcto y que la planificación
+              no deja áreas sin cobertura.
+            </div>
+          </section>
+          <section class="section" id="cambio">
+            <h2>14. Planificación de cambio de horario</h2>
+            <p class="lede">
+              Planifica cambios futuros de horario para uno o más empleados sin
+              alterar indebidamente las marcaciones históricas.
+            </p>
+            <figure class="shot">
+              <img
+                src="assets/manual-gestion-asistencia/12-cambio-horario.png"
+                alt="Menú Talento Humano &gt; Planificación Cambio Horaria marcado en rojo"
+              />
+              <figcaption>
+                Figura 14. Abra
+                <b>Talento Humano → Planificación Cambio Horaria</b>. El
+                recuadro rojo identifica la opción; solo aparece para cuentas
+                administrativas.
+              </figcaption>
+            </figure>
+            <figure class="shot">
+              <img
+                src="assets/manual-gestion-asistencia/12b-cambio-horario-filtros.png"
+                alt="Pantalla Planificación de cambios de horario con el boton Nueva planificacion y la bandeja de filtros enmarcados en rojo"
+              />
+              <figcaption>
+                Figura 14.1. Pantalla <b>Planificación de cambios de
+                horario</b>: indicadores de planes creados, aprobados y
+                ejecutados por la jefatura. Los recuadros rojos señalan el
+                botón <b>Nueva planificación</b> (crear) y la bandeja
+                filtrable por código, título, justificación u hora.
+              </figcaption>
+            </figure>
+            <figure class="shot">
+              <img
+                src="assets/manual-gestion-asistencia/12c-nueva-planificacion-cambio-horario-formulario.png"
+                alt="Formulario Planificacion de cambio de horario con datos generales, nuevo horario, fecha efectiva y resumen de colaboradores"
+              />
+              <figcaption>
+                Figura 14.2. Formulario <b>Nueva planificación</b>, visible
+                solo para el jefe inmediato sobre sus propios subordinados. El
+                panel "Resumen" muestra cuántos colaboradores quedarán
+                afectados antes de guardar.
+              </figcaption>
+            </figure>
+            <table>
+              <thead>
+                <tr>
+                  <th>Campo</th>
+                  <th>Cómo llenarlo</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Título</td>
+                  <td>
+                    Nombre claro de la planificación (ej. "Ajuste horario por
+                    necesidades institucionales").
+                  </td>
+                </tr>
+                <tr>
+                  <td>Justificación</td>
+                  <td>Describa la razón real del cambio de horario.</td>
+                </tr>
+                <tr>
+                  <td>Nuevo horario</td>
+                  <td>
+                    Seleccione el horario de destino ya configurado en el
+                    catálogo.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Fecha efectiva (Inicio) / Duración</td>
+                  <td>
+                    Defina desde cuándo aplica y si es permanente o tiene
+                    fecha de término; no aplique cambios retroactivos.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Colaboradores afectados</td>
+                  <td>
+                    Seleccione solo subordinados reales del jefe logueado;
+                    revise el horario actual junto al nuevo antes de guardar.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <ol class="steps">
+              <li>
+                Abra
+                <span class="target">Planificación de Cambio de Horario</span>.
+              </li>
+              <li>
+                Seleccione empleado o grupo, horario origen/destino, fecha de
+                vigencia y motivo.
+              </li>
+              <li>
+                Revise conflictos con permisos, vacaciones, asignaciones
+                vigentes y otros cambios planificados.
+              </li>
+              <li>
+                Guarde la planificación; modifique o cancele solo antes de que
+                se aplique, según las acciones habilitadas.
+              </li>
+            </ol>
+            <div class="callout">
+              Utilice este módulo para un cambio de jornada planificado. Para un
+              caso puntual, aplique la regla institucional correspondiente y no
+              cree una asignación permanente.
+            </div>
+          </section>
+          <section class="section" id="filtros">
+            <h2>15. Consultas, filtros y estados</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Herramienta</th>
+                  <th>Uso correcto</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Buscar</td>
+                  <td>
+                    Escriba identificación, nombre, código, título o referencia
+                    según el módulo. Limpie la búsqueda antes de concluir que no
+                    existe un registro.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Filtros</td>
+                  <td>
+                    Combine estado, período, empleado, tipo o dependencia para
+                    acotar resultados. Los filtros no modifican datos.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Orden y paginación</td>
+                  <td>
+                    Revise período y orden antes de tomar una decisión. Pase a
+                    la página siguiente si el resultado excede el listado
+                    visible.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Pendiente</td>
+                  <td>
+                    Solicitud creada que espera revisión o una acción posterior.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Aprobado / Aplicado</td>
+                  <td>
+                    Solicitud aceptada o planificación aplicada. Puede impactar
+                    saldo, jornada o asistencia.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Rechazado / Anulado</td>
+                  <td>
+                    No produce el efecto solicitado. Consulte observación o
+                    historial antes de crear otra solicitud.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="callout ok">
+              <strong>Comprobación final:</strong> antes de cerrar una
+              operación, confirme empleado, período, tipo, fechas/horas,
+              respaldo, estado y resultado en el listado.
+            </div>
+          </section>
+        </div>
+        <footer class="footer">
+          Universidad Técnica de Ambato · Sistema de Gestión de Talento Humano ·
+          Manual de Gestión de Asistencia
+        </footer>
+      </main>
+    </div>
+  </body>
+</html>

@@ -646,7 +646,6 @@ export default function PermissionsPage() {
             subtitle="Vacaciones"
             valueMinutes={timeBalance.vacationAvailableMin}
             workdayMinutes={workdayMinutes}
-            emphasize
           />
           <MetricCard
             title="Recuperación pendiente"

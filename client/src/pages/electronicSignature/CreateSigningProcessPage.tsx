@@ -272,8 +272,9 @@ export default function CreateSigningProcessPage() {
             <Badge variant="secondary">{signers.length}</Badge>
           </div>
           <CardDescription>
-            Cada persona agregada aquí recibirá una notificación para firmar el documento
-            {workflow === "SEQUENTIAL" ? ", respetando el orden de la lista." : "."}
+            {notifyOnCreate
+              ? `Cada persona agregada aquí recibirá una notificación para firmar el documento${workflow === "SEQUENTIAL" ? ", respetando el orden de la lista." : "."}`
+              : "Cada persona agregada aquí queda registrada como firmante. No se les notificará al crear el proceso."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

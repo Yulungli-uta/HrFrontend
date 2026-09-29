@@ -146,7 +146,7 @@ export default function LoginPage() {
           </div>
           <div>
             <CardTitle className="text-2xl font-bold text-primary">
-              WsUtaSystem
+              Universidad Técnica de Ambato
             </CardTitle>
             <CardDescription className="text-muted-foreground dark:text-muted-foreground">
               Sistema de Gestión de Talento Humano

@@ -14,6 +14,7 @@ import {
 import { ScheduleCombobox } from '@/components/ui/ScheduleCombobox';
 import { useRotationPatternsPaged, useRotationPatternMutations } from '@/hooks/guards/useGuards';
 import { DataPagination } from '@/components/ui/DataPagination';
+import { dayOrderLabel } from '@/lib/guardRotationPattern';
 import type {
   RotationPatternDto,
   CreateRotationPatternDto,
@@ -321,7 +322,7 @@ export default function RotationPatternsPage() {
                       return (
                         <div
                           key={i}
-                          title={d ? (d.isRestDay ? 'Descanso' : (d.scheduleDescription ?? 'Trabajo')) : `Día ${i + 1} — sin configurar`}
+                          title={d ? `${dayOrderLabel(i + 1)}: ${d.isRestDay ? 'Descanso' : (d.scheduleDescription ?? 'Trabajo')}` : `${dayOrderLabel(i + 1)} — sin configurar`}
                           className={`w-6 h-6 rounded text-xs flex items-center justify-center border
                             ${!d ? 'bg-muted border-muted text-muted-foreground' :
                               d.isRestDay ? 'bg-indigo-100 border-indigo-200 text-indigo-600' :
@@ -607,9 +608,11 @@ function DetailsTable({
               <TableRow key={row.id} className={row.isRestDay ? 'bg-indigo-50/60' : ''}>
                 <TableCell className="text-center font-bold text-sm py-1.5">
                   {i === 0 && (
-                    <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs
+                    <span
+                      title={`Día ${row.dayOrder} del ciclo`}
+                      className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-semibold
                       ${row.isRestDay ? 'bg-indigo-100 text-indigo-600' : 'bg-amber-100 text-amber-700'}`}>
-                      {row.dayOrder}
+                      {dayOrderLabel(row.dayOrder)}
                     </span>
                   )}
                 </TableCell>

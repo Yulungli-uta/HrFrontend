@@ -863,7 +863,6 @@ export default function ApprovalsPermissions() {
                 { key: "Approved", label: "Aprobado" },
                 { key: "InProgress", label: "En Proceso" },
                 { key: "Completed", label: "Completado" },
-                { key: "Canceled", label: "Cancelado" },
               ].map((s: any) => (
                 <div key={s.key} className="p-3 rounded-lg bg-background text-center">
                   <div className="text-xs md:text-sm text-muted-foreground">{s.label}</div>
