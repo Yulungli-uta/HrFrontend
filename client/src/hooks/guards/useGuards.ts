@@ -134,10 +134,19 @@ export function usePendingChangesPaged(page: number, pageSize: number) {
   });
 }
 
-export function useAllChangesPaged(page: number, pageSize: number, status?: string) {
+export function useAllChangesPaged(
+  page: number,
+  pageSize: number,
+  status?: string,
+  filters?: { employeeId?: number; groupId?: number; changeType?: string; fromDate?: string; toDate?: string; search?: string }
+) {
   return useQuery({
-    queryKey: [...GUARD_KEYS.pendingChanges, 'all', 'paged', page, pageSize, status ?? ''],
-    queryFn: () => GuardShiftChangesAPI.getAllPaged({ page, pageSize, status }),
+    queryKey: [
+      ...GUARD_KEYS.pendingChanges, 'all', 'paged', page, pageSize, status ?? '',
+      filters?.employeeId ?? '', filters?.groupId ?? '', filters?.changeType ?? '',
+      filters?.fromDate ?? '', filters?.toDate ?? '', filters?.search ?? '',
+    ],
+    queryFn: () => GuardShiftChangesAPI.getAllPaged({ page, pageSize, status, ...filters }),
     staleTime: 30_000,
   });
 }

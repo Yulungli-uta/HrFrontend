@@ -25,6 +25,7 @@ import { ShiftReplacementDialog } from '@/components/guards/ShiftReplacementDial
 import { ShiftReassignDialog } from '@/components/guards/ShiftReassignDialog';
 import { ManualShiftAssignDialog } from '@/components/guards/ManualShiftAssignDialog';
 import { GuardReadinessPanel } from '@/components/guards/GuardReadinessPanel';
+import { dayOrderLabel } from '@/lib/guardRotationPattern';
 import type {
   ScheduleBoardFilterDto, GeneratePreviewRequestDto,
   GeneratePreviewResponseDto,
@@ -278,8 +279,10 @@ function BoardCells({
     <>
       {cells.map(cell => {
         const isEmpty = cell.employees.length === 0;
-        // Badge de estado post-proceso solo cuando el job ya corrió
-        const postStatus = (cell.status === 'COMPLETED' || cell.status === 'ABSENT' || cell.status === 'CANCELLED')
+        // Badge de estado post-proceso solo cuando el job ya corrió — Ausente se excluye
+        // porque ya se muestra pegado al nombre ("Nombre - Ausente"), un badge aparte
+        // arriba quedaría duplicado.
+        const postStatus = (cell.status === 'COMPLETED' || cell.status === 'CANCELLED')
           ? cell.status : null;
         return (
           <td
@@ -309,6 +312,7 @@ function BoardCells({
                       {emp.isReplacement && <span className="font-bold mr-0.5" style={{ color: '#7c3aed' }}>R</span>}
                       {emp.isReassigned && <span className="font-bold mr-0.5" style={{ color: '#2563eb' }}>M</span>}
                       {displayGuardName(emp.fullName, emp.shortName, 16)}
+                      {cell.status === 'ABSENT' && ' - Ausente'}
                     </button>
                   );
                 })}
@@ -570,7 +574,9 @@ function PlanningDetailPanel({ planningId, onClose }: { planningId: number | nul
                       </span>
                     ))}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">Día del ciclo: {detail.cycleDay ?? '—'}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Día del ciclo: {detail.cycleDay != null ? `${dayOrderLabel(detail.cycleDay)} (${detail.cycleDay})` : '—'}
+                  </p>
                 </div>
               )}
 
@@ -588,7 +594,7 @@ function PlanningDetailPanel({ planningId, onClose }: { planningId: number | nul
                     {detail.validations.map((v, i) => (
                       <div key={i} className={`rounded p-1.5 text-xs border
                         ${v.severity === 'BLOCKING' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-yellow-50 border-yellow-200 text-yellow-700'}`}>
-                        <span className="font-medium">[{v.validationType}]</span> {v.message}
+                        <span className="font-medium">[{CONFLICT_TYPE_LABELS[v.validationType] ?? v.validationType}]</span> {v.message}
                       </div>
                     ))}
                   </div>
@@ -693,7 +699,7 @@ function GenerateDialog({
 }: {
   open: boolean;
   onClose: () => void;
-  groups: { groupId: number; name: string }[];
+  groups: { groupId: number; name: string; isActive: boolean }[];
   locations: { locationId: number; locationCode: string | null; locationName: string }[];
 }) {
   const today = todayStr();
@@ -805,7 +811,10 @@ function GenerateDialog({
                   onChange={e => setForm(f => ({ ...f, groupId: Number(e.target.value) || undefined }))}
                 >
                   <option value="">Seleccionar grupo…</option>
-                  {groups.map(g => <option key={g.groupId} value={g.groupId}>{g.name}</option>)}
+                  {/* Solo grupos activos: generar turnos para un grupo inactivo no tiene sentido
+                      (a diferencia del filtro "Por ubicación" más abajo, que sí debe poder
+                      mostrar grupos inactivos para revisar turnos históricos). */}
+                  {groups.filter(g => g.isActive).map(g => <option key={g.groupId} value={g.groupId}>{g.name}</option>)}
                 </select>
               </div>
             )}
@@ -932,7 +941,7 @@ function GenerateDialog({
                     </div>
                     {filtered.slice(0, 30).map((item, idx) => (
                       <div key={idx} className="text-red-700">
-                        <span className="font-medium">{item.workDate}</span> — {item.employeeFullName} [{item.groupName}]: [{item.conflictType}] {item.conflictMessage}
+                        <span className="font-medium">{item.workDate}</span> — {item.employeeFullName} [{item.groupName}]: [{CONFLICT_TYPE_LABELS[item.conflictType ?? ''] ?? item.conflictType}] {item.conflictMessage}
                       </div>
                     ))}
                     {filtered.length > 30 && (
@@ -1117,6 +1126,9 @@ const CONFLICT_TYPE_LABELS: Record<string, string> = {
   PERMISSION_CONFLICT: 'Permisos',
   VACATION_CONFLICT: 'Vacaciones',
   OVERLAP: 'Solapamiento',
+  SPECIAL_RULE_OVERRIDE: 'Regla especial',
+  INACTIVE_EMPLOYEE: 'Empleado inactivo',
+  REST_HOURS: 'Descanso insuficiente',
   OTHER: 'Otros',
 };
 
@@ -1183,11 +1195,17 @@ export default function GuardShiftPlanningPage() {
   const today = todayStr();
   const currentWeekStart = startOfWeek(today);
 
+  // Una semana ya pasada nunca queda con turnos en estado "Planificado" (el cruce de
+  // asistencia los mueve a Completado/Ausente) — filtrar por Planificado por defecto en
+  // una semana pasada mostraba el tablero vacío aunque sí hubiera datos. Semana actual o
+  // futura sigue arrancando en Planificado, que es lo operativamente relevante.
+  const defaultStatusForRange = (endDate: string) => (endDate < today ? undefined : 'PLANNED');
+
   const [boardFilter, setBoardFilter] = useState<ScheduleBoardFilterDto>({
     startDate: currentWeekStart,
     endDate: addDays(currentWeekStart, 6),
     viewMode: 'BY_LOCATION',
-    status: 'PLANNED',
+    status: defaultStatusForRange(addDays(currentWeekStart, 6)),
   });
 
   // Navegación semanal (domingo a sábado) — solo para "Por ubicación", que muestra siempre
@@ -1195,12 +1213,14 @@ export default function GuardShiftPlanningPage() {
   const goToWeek = (offsetWeeks: number) => {
     setBoardFilter(f => {
       const newStart = addDays(f.startDate, 7 * offsetWeeks);
-      return { ...f, startDate: newStart, endDate: addDays(newStart, 6) };
+      const newEnd = addDays(newStart, 6);
+      return { ...f, startDate: newStart, endDate: newEnd, status: defaultStatusForRange(newEnd) };
     });
   };
   const goToWeekOf = (dateStr: string) => {
     const weekStart = startOfWeek(dateStr);
-    setBoardFilter(f => ({ ...f, startDate: weekStart, endDate: addDays(weekStart, 6) }));
+    const weekEnd = addDays(weekStart, 6);
+    setBoardFilter(f => ({ ...f, startDate: weekStart, endDate: weekEnd, status: defaultStatusForRange(weekEnd) }));
   };
 
   // "Por guardia" usa su propio rango de fechas libre (independiente de la semana de "Por
@@ -1332,7 +1352,8 @@ export default function GuardShiftPlanningPage() {
               >
                 <option value="">Todos</option>
                 <option value="PLANNED">Planificado</option>
-                <option value="CONFIRMED">Confirmado</option>
+                <option value="COMPLETED">Completado</option>
+                <option value="ABSENT">Ausente</option>
                 <option value="REPLACED">Reemplazado</option>
                 <option value="CANCELLED">Cancelado</option>
               </select>
@@ -1414,7 +1435,15 @@ export default function GuardShiftPlanningPage() {
                     type="date" className="w-36 h-8 mt-1"
                     value={guardDateRange.endDate}
                     min={guardDateRange.startDate}
-                    onChange={e => setGuardDateRange(r => ({ ...r, endDate: e.target.value }))}
+                    onChange={e => {
+                      const newEnd = e.target.value;
+                      setGuardDateRange(r => ({ ...r, endDate: newEnd }));
+                      // "Por guardia" tiene su propio rango de fechas, independiente de la
+                      // navegación semanal de "Por ubicación" — sin esto, el filtro de Estado
+                      // se quedaba en "Planificado" al elegir un rango pasado aquí, y solo se
+                      // veían los turnos viejos si el usuario cambiaba el filtro a mano.
+                      setBoardFilter(f => ({ ...f, status: defaultStatusForRange(newEnd) }));
+                    }}
                   />
                 </div>
               </div>

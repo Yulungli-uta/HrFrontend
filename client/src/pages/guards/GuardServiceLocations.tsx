@@ -130,7 +130,7 @@ export default function GuardServiceLocationsPage() {
   const tree = resp?.status === 'success' ? resp.data : [];
   const filteredTree = filterLocationTree(tree, search, statusFilter);
 
-  const { data: detailResp } = useQuery({
+  const { data: detailResp, isFetching: detailLoading } = useQuery({
     queryKey: [...GUARD_KEYS.locationsTree, 'detail', editId],
     queryFn: () => GuardServiceLocationsAPI.getById(editId!),
     enabled: !!editId && mode === 'edit',
@@ -326,8 +326,11 @@ export default function GuardServiceLocationsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)} disabled={isSaving}>Cancelar</Button>
-            <Button onClick={handleSubmit} disabled={isSaving || !form.locationName.trim()}>
-              {isSaving ? 'Guardando…' : 'Guardar'}
+            <Button
+              onClick={handleSubmit}
+              disabled={isSaving || !form.locationName.trim() || (mode === 'edit' && detailLoading)}
+            >
+              {mode === 'edit' && detailLoading ? 'Cargando…' : isSaving ? 'Guardando…' : 'Guardar'}
             </Button>
           </DialogFooter>
         </DialogContent>

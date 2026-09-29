@@ -1,18 +1,25 @@
 import { useState } from 'react';
-import { RefreshCw, Check, X, AlertCircle } from 'lucide-react';
+import { RefreshCw, Check, X, AlertCircle, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { usePendingChangesPaged, useAllChangesPaged, useShiftChangeMutations } from '@/hooks/guards/useGuards';
+import { useQuery } from '@tanstack/react-query';
+import { useAllChangesPaged, useShiftChangeMutations } from '@/hooks/guards/useGuards';
+import { GuardRotationGroupsAPI } from '@/lib/api/services/guards';
 import { DataPagination } from '@/components/ui/DataPagination';
-import type { GuardShiftChangeDto } from '@/types/guards';
+import type { GuardShiftChangeDto, GuardRotationGroupDto } from '@/types/guards';
+
+function extractArray<T>(res: unknown): T[] {
+  if (Array.isArray(res)) return res as T[];
+  if (Array.isArray((res as { data?: unknown })?.data)) return (res as { data: T[] }).data;
+  return [];
+}
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -32,11 +39,17 @@ const STATUS_LABEL: Record<string, string> = {
 
 const CHANGE_TYPE_LABEL: Record<string, string> = {
   REPLACEMENT:     'Reemplazo',
+  REASSIGNMENT:    'Reasignación',
   SWAP:            'Intercambio',
   SCHEDULE_CHANGE: 'Cambio horario',
   COVERAGE:        'Cobertura adicional',
   EMERGENCY:       'Emergencia',
 };
+
+function formatDateTime(iso: string | null): string {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleString('es-EC', { dateStyle: 'short', timeStyle: 'short' });
+}
 
 // ─── Tabla de cambios ─────────────────────────────────────────────────────────
 
@@ -44,10 +57,11 @@ type ChangesTableProps = {
   changes: GuardShiftChangeDto[];
   onApprove: (c: GuardShiftChangeDto) => void;
   onReject:  (c: GuardShiftChangeDto) => void;
+  onRevert:  (c: GuardShiftChangeDto) => void;
   showActions: boolean;
 };
 
-function ChangesTable({ changes, onApprove, onReject, showActions }: ChangesTableProps) {
+function ChangesTable({ changes, onApprove, onReject, onRevert, showActions }: ChangesTableProps) {
   if (changes.length === 0) {
     return (
       <div className="flex items-center gap-2 py-8 text-muted-foreground">
@@ -65,130 +79,178 @@ function ChangesTable({ changes, onApprove, onReject, showActions }: ChangesTabl
           <TableHead>Guardia original</TableHead>
           <TableHead>Reemplazante</TableHead>
           <TableHead>Horario</TableHead>
+          <TableHead>Movimiento</TableHead>
           <TableHead>Tipo</TableHead>
           <TableHead className="text-center">Estado</TableHead>
-          <TableHead>Solicitado</TableHead>
+          <TableHead>Solicitado por</TableHead>
           {showActions && <TableHead className="text-right">Acciones</TableHead>}
         </TableRow>
       </TableHeader>
       <TableBody>
-        {changes.map(c => (
-          <TableRow key={c.shiftChangeId}>
-            <TableCell className="font-mono text-sm">{c.workDate}</TableCell>
-            <TableCell className="text-sm">{c.originalEmployeeFullName}</TableCell>
-            <TableCell className="text-sm">{c.replacementEmployeeFullName ?? '—'}</TableCell>
-            <TableCell className="text-sm">
-              {c.originalScheduleDescription}
-              {c.newScheduleDescription && c.newScheduleDescription !== c.originalScheduleDescription && (
-                <span className="text-muted-foreground"> → {c.newScheduleDescription}</span>
-              )}
-            </TableCell>
-            <TableCell className="text-xs">
-              {CHANGE_TYPE_LABEL[c.changeType] ?? c.changeType}
-            </TableCell>
-            <TableCell className="text-center">
-              <Badge variant={STATUS_BADGE[c.status] ?? 'outline'}>
-                {STATUS_LABEL[c.status] ?? c.status}
-              </Badge>
-            </TableCell>
-            <TableCell className="text-xs text-muted-foreground">
-              {c.requestedAt ? new Date(c.requestedAt).toLocaleDateString('es-EC') : '—'}
-            </TableCell>
-            {showActions && (
-              <TableCell className="text-right">
-                {c.status === 'PENDING' && (
-                  <div className="flex justify-end gap-1">
-                    <Button size="icon" variant="ghost" className="h-7 w-7 text-green-600"
-                      title="Aprobar" onClick={() => onApprove(c)}>
-                      <Check className="h-4 w-4" />
-                    </Button>
-                    <Button size="icon" variant="ghost" className="h-7 w-7 text-red-600"
-                      title="Rechazar" onClick={() => onReject(c)}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
+        {changes.map(c => {
+          const isReassignment = c.changeType === 'REASSIGNMENT';
+          const dateMoved = !!c.newWorkDate && c.newWorkDate !== c.workDate;
+          const canRevert = isReassignment && c.isActiveForAttendance;
+          return (
+            <TableRow key={c.shiftChangeId}>
+              <TableCell className="font-mono text-sm">{c.workDate}</TableCell>
+              <TableCell className="text-sm">{c.originalEmployeeFullName}</TableCell>
+              <TableCell className="text-sm">{c.replacementEmployeeFullName ?? '—'}</TableCell>
+              <TableCell className="text-sm">
+                {c.originalScheduleDescription}
+                {c.newScheduleDescription && c.newScheduleDescription !== c.originalScheduleDescription && (
+                  <span className="text-muted-foreground"> → {c.newScheduleDescription}</span>
                 )}
               </TableCell>
-            )}
-          </TableRow>
-        ))}
+              <TableCell className="text-xs">
+                {dateMoved ? (
+                  <span>{c.workDate} <span className="text-muted-foreground">→</span> {c.newWorkDate}</span>
+                ) : '—'}
+                {c.newLocationName && (
+                  <div className="text-muted-foreground">{c.newLocationName}</div>
+                )}
+              </TableCell>
+              <TableCell className="text-xs">
+                {CHANGE_TYPE_LABEL[c.changeType] ?? c.changeType}
+                {isReassignment && !c.isActiveForAttendance && (
+                  <div className="text-muted-foreground">(deshecha)</div>
+                )}
+              </TableCell>
+              <TableCell className="text-center">
+                <Badge variant={STATUS_BADGE[c.status] ?? 'outline'}>
+                  {STATUS_LABEL[c.status] ?? c.status}
+                </Badge>
+              </TableCell>
+              <TableCell className="text-xs text-muted-foreground">
+                <div>{c.requestedByName ?? (c.requestedBy ? `#${c.requestedBy}` : '—')}</div>
+                <div>{formatDateTime(c.requestedAt)}</div>
+              </TableCell>
+              {showActions && (
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-1">
+                    {c.status === 'PENDING' && (
+                      <>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-green-600"
+                          title="Aprobar" onClick={() => onApprove(c)}>
+                          <Check className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-red-600"
+                          title="Rechazar" onClick={() => onReject(c)}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
+                    {canRevert && (
+                      <Button size="icon" variant="ghost" className="h-7 w-7 text-orange-600"
+                        title="Deshacer reasignación" onClick={() => onRevert(c)}>
+                        <Undo2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </TableCell>
+              )}
+            </TableRow>
+          );
+        })}
       </TableBody>
     </Table>
   );
 }
 
-// ─── Tab: Pendientes ──────────────────────────────────────────────────────────
+// ─── Lista filtrable (sin tabs — Estado incluye "Pendiente" como opción más) ──
 
-function PendingTab({ onApprove, onReject }: { onApprove: (c: GuardShiftChangeDto) => void; onReject: (c: GuardShiftChangeDto) => void }) {
+type TabActions = {
+  onApprove: (c: GuardShiftChangeDto) => void;
+  onReject: (c: GuardShiftChangeDto) => void;
+  onRevert: (c: GuardShiftChangeDto) => void;
+};
+
+function ChangesList({ onApprove, onReject, onRevert }: TabActions) {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const { data: resp, isLoading, refetch } = usePendingChangesPaged(page, pageSize);
-  const pagedData = resp?.status === 'success' ? resp.data : null;
-  const changes = pagedData?.items ?? [];
-
-  return (
-    <div className="space-y-3">
-      <div className="flex justify-end">
-        <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
-          <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isLoading ? 'animate-spin' : ''}`} />
-          Actualizar
-        </Button>
-      </div>
-      {isLoading ? (
-        <p className="text-sm text-muted-foreground py-4">Cargando…</p>
-      ) : (
-        <>
-          <div className="rounded-lg border overflow-x-auto">
-            <ChangesTable changes={changes} onApprove={onApprove} onReject={onReject} showActions />
-          </div>
-          {(pagedData?.totalPages ?? 0) > 1 && (
-            <DataPagination
-              page={pagedData?.page ?? page}
-              totalPages={pagedData?.totalPages ?? 0}
-              totalCount={pagedData?.totalCount ?? 0}
-              pageSize={pagedData?.pageSize ?? pageSize}
-              hasPreviousPage={pagedData?.hasPreviousPage ?? false}
-              hasNextPage={pagedData?.hasNextPage ?? false}
-              onPageChange={setPage}
-              onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
-              disabled={isLoading}
-            />
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
-// ─── Tab: Todos ───────────────────────────────────────────────────────────────
-
-function AllTab({ onApprove, onReject }: { onApprove: (c: GuardShiftChangeDto) => void; onReject: (c: GuardShiftChangeDto) => void }) {
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-  // Por defecto "Todos": la reasignación (el flujo real que usa el módulo hoy) se
-  // auto-aprueba al crearse y nunca queda PENDING, así que filtrar por PENDING por
-  // defecto en una pestaña llamada "Todas las solicitudes" la mostraba vacía aunque
-  // sí existan cambios (2026-09-09, reporte real del usuario).
   const [statusFilter, setStatusFilter] = useState('');
-  const { data: resp, isLoading, refetch } = useAllChangesPaged(page, pageSize, statusFilter || undefined);
+  const [changeTypeFilter, setChangeTypeFilter] = useState('');
+  const [groupFilter, setGroupFilter] = useState<number | ''>('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [search, setSearch] = useState('');
+
+  const { data: groupsResp } = useQuery({
+    queryKey: ['guards', 'rotation-groups', 'all'],
+    queryFn: () => GuardRotationGroupsAPI.getAll(),
+    staleTime: 60_000,
+  });
+  const groups: GuardRotationGroupDto[] = extractArray(groupsResp);
+
+  const { data: resp, isLoading, refetch } = useAllChangesPaged(page, pageSize, statusFilter || undefined, {
+    changeType: changeTypeFilter || undefined,
+    groupId: groupFilter === '' ? undefined : groupFilter,
+    fromDate: fromDate || undefined,
+    toDate: toDate || undefined,
+    search: search || undefined,
+  });
   const pagedData = resp?.status === 'success' ? resp.data : null;
   const changes = pagedData?.items ?? [];
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2">
-          <Label className="text-sm shrink-0">Estado:</Label>
-          <select
-            className="h-8 border rounded-md px-2 text-sm bg-background"
-            value={statusFilter}
-            onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
-          >
-            <option value="">Todos</option>
-            <option value="PENDING">Pendiente</option>
-            <option value="APPROVED">Aprobado</option>
-            <option value="REJECTED">Rechazado</option>
-          </select>
+      <div className="flex items-end justify-between gap-3 flex-wrap">
+        <div className="flex items-end gap-3 flex-wrap">
+          <div>
+            <Label className="text-xs">Buscar</Label>
+            <Input
+              placeholder="Nombre o cédula…"
+              className="h-9 w-56"
+              value={search}
+              onChange={e => { setSearch(e.target.value); setPage(1); }}
+            />
+          </div>
+          <div>
+            <Label className="text-xs">Estado</Label>
+            <select
+              className="h-9 border rounded-md px-3 text-sm bg-background"
+              value={statusFilter}
+              onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
+            >
+              <option value="">Todos</option>
+              <option value="PENDING">Pendiente</option>
+              <option value="APPROVED">Aprobado</option>
+              <option value="REJECTED">Rechazado</option>
+            </select>
+          </div>
+          <div>
+            <Label className="text-xs">Grupo</Label>
+            <select
+              className="h-9 border rounded-md px-3 text-sm bg-background"
+              value={groupFilter}
+              onChange={e => { setGroupFilter(e.target.value ? Number(e.target.value) : ''); setPage(1); }}
+            >
+              <option value="">Todos</option>
+              {groups.map(g => (
+                <option key={g.groupId} value={g.groupId}>{g.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <Label className="text-xs">Tipo</Label>
+            <select
+              className="h-9 border rounded-md px-3 text-sm bg-background"
+              value={changeTypeFilter}
+              onChange={e => { setChangeTypeFilter(e.target.value); setPage(1); }}
+            >
+              <option value="">Todos</option>
+              <option value="REASSIGNMENT">Reasignación</option>
+              <option value="REPLACEMENT">Reemplazo</option>
+            </select>
+          </div>
+          <div>
+            <Label className="text-xs">Desde</Label>
+            <Input type="date" className="h-9" value={fromDate} onChange={e => { setFromDate(e.target.value); setPage(1); }} />
+          </div>
+          <div>
+            <Label className="text-xs">Hasta</Label>
+            <Input type="date" className="h-9" value={toDate} onChange={e => { setToDate(e.target.value); setPage(1); }} />
+          </div>
         </div>
         <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
           <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isLoading ? 'animate-spin' : ''}`} />
@@ -200,7 +262,7 @@ function AllTab({ onApprove, onReject }: { onApprove: (c: GuardShiftChangeDto) =
       ) : (
         <>
           <div className="rounded-lg border overflow-x-auto">
-            <ChangesTable changes={changes} onApprove={onApprove} onReject={onReject} showActions />
+            <ChangesTable changes={changes} onApprove={onApprove} onReject={onReject} onRevert={onRevert} showActions />
           </div>
           {(pagedData?.totalPages ?? 0) > 1 && (
             <DataPagination
@@ -224,14 +286,16 @@ function AllTab({ onApprove, onReject }: { onApprove: (c: GuardShiftChangeDto) =
 // ─── Página principal ─────────────────────────────────────────────────────────
 
 export default function GuardShiftChangesPage() {
-  const { approve, reject } = useShiftChangeMutations();
+  const { approve, reject, revertReassignment } = useShiftChangeMutations();
   const [actionDialog, setActionDialog] = useState<ActionDialog>(null);
   const [approvalNotes, setApprovalNotes] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
+  const [revertTarget, setRevertTarget] = useState<GuardShiftChangeDto | null>(null);
   const isSaving = approve.isPending || reject.isPending;
 
   const openApprove = (c: GuardShiftChangeDto) => { setActionDialog({ type: 'approve', change: c }); setApprovalNotes(''); };
   const openReject  = (c: GuardShiftChangeDto) => { setActionDialog({ type: 'reject',  change: c }); setRejectionReason(''); };
+  const openRevert  = (c: GuardShiftChangeDto) => setRevertTarget(c);
 
   const handleApprove = () => {
     if (!actionDialog) return;
@@ -249,6 +313,13 @@ export default function GuardShiftChangesPage() {
     );
   };
 
+  const handleRevert = () => {
+    if (!revertTarget) return;
+    revertReassignment.mutate(revertTarget.shiftChangeId, {
+      onSuccess: (r) => { if (r.status === 'success') setRevertTarget(null); },
+    });
+  };
+
   return (
     <div className="p-6 space-y-5">
       <div className="flex items-center gap-3">
@@ -259,20 +330,7 @@ export default function GuardShiftChangesPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="pending">
-        <TabsList>
-          <TabsTrigger value="pending">Pendientes de aprobación</TabsTrigger>
-          <TabsTrigger value="all">Todas las solicitudes</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="pending" className="mt-4">
-          <PendingTab onApprove={openApprove} onReject={openReject} />
-        </TabsContent>
-
-        <TabsContent value="all" className="mt-4">
-          <AllTab onApprove={openApprove} onReject={openReject} />
-        </TabsContent>
-      </Tabs>
+      <ChangesList onApprove={openApprove} onReject={openReject} onRevert={openRevert} />
 
       {/* Dialog aprobar */}
       <Dialog open={actionDialog?.type === 'approve'} onOpenChange={v => !v && setActionDialog(null)}>
@@ -356,6 +414,52 @@ export default function GuardShiftChangesPage() {
             <Button variant="outline" onClick={() => setActionDialog(null)} disabled={isSaving}>Cancelar</Button>
             <Button variant="destructive" onClick={handleReject} disabled={isSaving || !rejectionReason.trim()}>
               {isSaving ? 'Procesando…' : 'Rechazar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog deshacer reasignación */}
+      <Dialog open={!!revertTarget} onOpenChange={v => !v && setRevertTarget(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-orange-600">
+              <Undo2 className="h-5 w-5" />
+              Deshacer reasignación
+            </DialogTitle>
+            <DialogDescription>
+              Esto restaura el turno a la fecha, horario y ubicación originales, antes de esta reasignación.
+            </DialogDescription>
+          </DialogHeader>
+          {revertTarget && (
+            <div className="bg-muted rounded-md p-3 text-sm space-y-1.5">
+              <div><span className="text-muted-foreground">Guardia:</span> <strong>{revertTarget.originalEmployeeFullName}</strong></div>
+              <div>
+                <span className="text-muted-foreground">Fecha reasignada:</span>{' '}
+                {revertTarget.workDate}
+                {revertTarget.newWorkDate && revertTarget.newWorkDate !== revertTarget.workDate && (
+                  <> → <strong>{revertTarget.newWorkDate}</strong></>
+                )}
+              </div>
+              <div>
+                <span className="text-muted-foreground">Horario:</span> {revertTarget.originalScheduleDescription}
+                {revertTarget.newScheduleDescription && revertTarget.newScheduleDescription !== revertTarget.originalScheduleDescription && (
+                  <> → <strong>{revertTarget.newScheduleDescription}</strong></>
+                )}
+              </div>
+              {revertTarget.newLocationName && (
+                <div><span className="text-muted-foreground">Ubicación reasignada:</span> {revertTarget.newLocationName}</div>
+              )}
+              <div className="text-xs pt-0.5">
+                <span className="text-muted-foreground">Reasignado por:</span>{' '}
+                {revertTarget.requestedByName ?? '—'} el {formatDateTime(revertTarget.requestedAt)}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRevertTarget(null)} disabled={revertReassignment.isPending}>Cancelar</Button>
+            <Button onClick={handleRevert} disabled={revertReassignment.isPending} className="bg-orange-600 hover:bg-orange-700">
+              {revertReassignment.isPending ? 'Deshaciendo…' : 'Deshacer'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -860,7 +860,7 @@ function HierarchyView({
     current: {
       name: g.name, groupCode: g.groupCode ?? '', description: g.description ?? '',
       colorCode: g.colorCode ?? '', parentGroupId: g.parentGroupId ?? '',
-      groupLevelTypeId: '', isActive: g.isActive, isSpecial: g.isSpecial,
+      groupLevelTypeId: g.groupLevelTypeId ?? '', isActive: g.isActive, isSpecial: g.isSpecial,
     },
   });
 
@@ -870,7 +870,7 @@ function HierarchyView({
     current: {
       name: g.name, groupCode: g.groupCode ?? '', description: g.description ?? '',
       colorCode: g.colorCode ?? '', parentGroupId: '',
-      groupLevelTypeId: '', isActive: g.isActive, isSpecial: g.isSpecial,
+      groupLevelTypeId: g.groupLevelTypeId ?? '', isActive: g.isActive, isSpecial: g.isSpecial,
     },
   });
 
@@ -1168,7 +1168,7 @@ function AllGroupsView({
     current: {
       name: g.name, groupCode: g.groupCode ?? '', description: g.description ?? '',
       colorCode: g.colorCode ?? '', parentGroupId: g.parentGroupId ?? '',
-      groupLevelTypeId: '', isActive: g.isActive, isSpecial: g.isSpecial,
+      groupLevelTypeId: g.groupLevelTypeId ?? '', isActive: g.isActive, isSpecial: g.isSpecial,
     },
   });
 
@@ -1402,18 +1402,30 @@ function LocationGroupsView({
   const { data, isLoading } = useGroupsByLocation(location.locationKey);
   const groups: LocationGroupDetailDto[] = data?.status === 'success' ? (data.data ?? []) : [];
 
+  // LocationGroupDetailDto es un resumen (no trae color/padre/nivel) — para editar sin
+  // perder esos campos se cruza por groupId contra la lista completa de grupos, que ya
+  // se carga en otras vistas de esta misma pantalla (hallazgo real 2026-09-29: editar
+  // desde aquí borraba color/padre/nivel porque el formulario arrancaba con '' en vez
+  // del valor real).
+  const { data: allGroupsResp } = useGuardRotationGroups();
+  const allGroups: GuardRotationGroupDto[] = allGroupsResp?.status === 'success' ? (allGroupsResp.data ?? []) : [];
+
   const [employeePanelGroup, setEmployeePanelGroup] = useState<LocationGroupDetailDto | null>(null);
   const [patternDialogGroup, setPatternDialogGroup] = useState<LocationGroupDetailDto | null>(null);
   const [locationDialogGroup, setLocationDialogGroup] = useState<LocationGroupDetailDto | null>(null);
 
-  const openEdit = (g: LocationGroupDetailDto) => onOpenForm({
-    kind: 'edit',
-    groupId: g.groupId,
-    current: {
-      name: g.groupName, groupCode: g.groupCode ?? '', description: g.description ?? '',
-      colorCode: '', parentGroupId: '', groupLevelTypeId: '', isActive: g.isActive, isSpecial: g.isSpecial,
-    },
-  });
+  const openEdit = (g: LocationGroupDetailDto) => {
+    const full = allGroups.find(x => x.groupId === g.groupId);
+    onOpenForm({
+      kind: 'edit',
+      groupId: g.groupId,
+      current: {
+        name: g.groupName, groupCode: g.groupCode ?? '', description: g.description ?? '',
+        colorCode: full?.colorCode ?? '', parentGroupId: full?.parentGroupId ?? '',
+        groupLevelTypeId: full?.groupLevelTypeId ?? '', isActive: g.isActive, isSpecial: g.isSpecial,
+      },
+    });
+  };
 
   return (
     <div className="space-y-4">

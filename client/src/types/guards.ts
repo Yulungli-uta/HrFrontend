@@ -79,6 +79,7 @@ export interface GuardRotationGroupDto {
   employeeCount: number;
   parentGroupId: number | null;
   parentGroupName: string | null;
+  groupLevelTypeId: number | null;
   groupLevelTypeName: string | null;
   colorCode: string | null;
   subgroupCount: number;
@@ -94,6 +95,7 @@ export interface GuardRotationGroupWithSubgroupsDto {
   description: string | null;
   isActive: boolean;
   colorCode: string | null;
+  groupLevelTypeId: number | null;
   groupLevelTypeName: string | null;
   employeeCount: number;
   subgroupCount: number;

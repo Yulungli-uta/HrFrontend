@@ -379,9 +379,22 @@ export const GuardShiftChangesAPI = {
     return apiFetch<PagedResult<GuardShiftChangeDto>>(`${BASE}/guard-shift-changes/pending/paged?${qs}`);
   },
 
-  getAllPaged: (params: PagedRequest & { status?: string }): Promise<ApiResponse<PagedResult<GuardShiftChangeDto>>> => {
+  getAllPaged: (params: PagedRequest & {
+    status?: string;
+    employeeId?: number;
+    groupId?: number;
+    changeType?: string;
+    fromDate?: string;
+    toDate?: string;
+  }): Promise<ApiResponse<PagedResult<GuardShiftChangeDto>>> => {
     const qs = new URLSearchParams({ page: String(params.page), pageSize: String(params.pageSize) });
     if (params.status) qs.set('status', params.status);
+    if (params.employeeId) qs.set('employeeId', String(params.employeeId));
+    if (params.groupId) qs.set('groupId', String(params.groupId));
+    if (params.changeType) qs.set('changeType', params.changeType);
+    if (params.fromDate) qs.set('fromDate', params.fromDate);
+    if (params.toDate) qs.set('toDate', params.toDate);
+    if (params.search?.trim()) qs.set('search', params.search.trim());
     return apiFetch<PagedResult<GuardShiftChangeDto>>(`${BASE}/guard-shift-changes/all/paged?${qs}`);
   },
 
