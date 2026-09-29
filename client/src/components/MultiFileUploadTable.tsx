@@ -651,14 +651,6 @@ export const ReusableMultipleFileUpload: React.FC<ReusableMultipleFileUploadProp
             </div>
           )}
 
-          {/* Info ruta */}
-          {(relativePath || directoryCode) && (
-            <p className="text-xs text-muted-foreground break-words">
-              Se guardarán en <code>{relativePath || "/"}</code> dentro de{" "}
-              <code>{directoryCode}</code>.
-            </p>
-          )}
-
           {/* Errores */}
           {errorText && (
             <p className="text-sm text-destructive">{errorText}</p>

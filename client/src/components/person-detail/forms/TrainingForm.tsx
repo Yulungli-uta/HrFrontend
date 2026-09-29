@@ -85,7 +85,24 @@ const trainingFormSchema = z.object({
     })
     .int()
     .nonnegative()
+    .max(8760, "Las horas no pueden exceder 8760 (equivalente a un año continuo)")
     .optional(),
+}).superRefine((data, ctx) => {
+  // Hallazgo informe UTA-DITIC-PS-027-2026, observación 31.
+  if (new Date(data.startDate) > new Date()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["startDate"],
+      message: "La fecha de inicio no puede ser mayor a la fecha actual",
+    });
+  }
+  if (data.endDate && new Date(data.startDate) > new Date(data.endDate)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["startDate"],
+      message: "La fecha de inicio no puede ser mayor a la fecha de finalización",
+    });
+  }
 });
 
 export type TrainingFormData = z.infer<typeof trainingFormSchema>;
@@ -190,6 +207,7 @@ export default function TrainingForm({
   // =============================
   const form = useForm<TrainingFormData>({
     resolver: zodResolver(trainingFormSchema) as any,
+    mode: "onTouched",
     defaultValues: {
       title: training?.title ?? "",
       institution: training?.institution ?? "",
@@ -352,7 +370,7 @@ export default function TrainingForm({
               name="title"
               render={({ field }) => (
                 <FormItem className="md:col-span-2">
-                  <FormLabel>Título</FormLabel>
+                  <FormLabel required>Título</FormLabel>
                   <FormControl>
                     <Input {...field} placeholder="Nombre de la capacitación" />
                   </FormControl>
@@ -367,7 +385,7 @@ export default function TrainingForm({
               name="institution"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Institución</FormLabel>
+                  <FormLabel required>Institución</FormLabel>
                   <FormControl>
                     <Input {...field} placeholder="Institución que dicta" />
                   </FormControl>
@@ -424,7 +442,7 @@ export default function TrainingForm({
               name="eventTypeId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Tipo de evento</FormLabel>
+                  <FormLabel required>Tipo de evento</FormLabel>
                   <Select
                     disabled={loadingEventTypes || saving}
                     value={field.value ? String(field.value) : ""}
@@ -553,10 +571,11 @@ export default function TrainingForm({
               name="startDate"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Fecha de inicio</FormLabel>
+                  <FormLabel required>Fecha de inicio</FormLabel>
                   <FormControl>
                     <Input
                       type="date"
+                      max={new Date().toISOString().split("T")[0]}
                       value={field.value ?? ""}
                       onChange={(e) => field.onChange(e.target.value)}
                     />
@@ -594,6 +613,7 @@ export default function TrainingForm({
                     <Input
                       type="number"
                       min={0}
+                      max={8760}
                       value={field.value ?? ""}
                       onChange={(e) =>
                         field.onChange(

@@ -60,6 +60,9 @@ const educationLevelFormSchema = z.object({
     .optional()
     .refine((val) => !val || !Number.isNaN(Number(val)), {
       message: "Debe ser un número",
+    })
+    .refine((val) => !val || Number(val) >= 1, {
+      message: "El puntaje debe ser mayor o igual a 1",
     }),
   senescytRegistrationNumber: z.string().optional(),
   // Integración DINARDAP (2026-09-16)
@@ -71,6 +74,44 @@ const educationLevelFormSchema = z.object({
   // los 2, solo se llenan a mano.
   countryOfStudyId: z.string().optional(),
   unescoSubareaTypeId: z.number().int().positive().optional(),
+}).superRefine((data, ctx) => {
+  // Solo aplica cuando ambos campos tienen valor (son opcionales por ítem 3er/4to nivel).
+  // Hallazgo informe UTA-DITIC-PS-027-2026, observaciones 15/16.
+  if (data.senescytGraduationDate) {
+    if (new Date(data.senescytGraduationDate) > new Date()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["senescytGraduationDate"],
+        message: "La fecha de grado no puede ser mayor a la fecha actual",
+      });
+    }
+    if (
+      data.senescytRegistrationDate &&
+      new Date(data.senescytGraduationDate) > new Date(data.senescytRegistrationDate)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["senescytGraduationDate"],
+        message: "La fecha de grado no puede ser mayor a la fecha de registro SENESCYT",
+      });
+    }
+  }
+  if (data.startDate) {
+    if (data.senescytGraduationDate && new Date(data.startDate) > new Date(data.senescytGraduationDate)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["startDate"],
+        message: "La fecha de inicio no puede ser mayor a la fecha de grado",
+      });
+    }
+    if (data.endDate && new Date(data.startDate) > new Date(data.endDate)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["startDate"],
+        message: "La fecha de inicio no puede ser mayor a la fecha de finalización",
+      });
+    }
+  }
 });
 
 export type EducationLevelFormData = z.infer<typeof educationLevelFormSchema>;
@@ -173,6 +214,7 @@ export default function EducationLevelForm({
 
   const form = useForm<EducationLevelFormData>({
     resolver: zodResolver(educationLevelFormSchema),
+    mode: "onTouched",
     defaultValues: {
       educationLevelTypeId:
         educationLevel?.educationLevelTypeId != null
@@ -385,7 +427,7 @@ export default function EducationLevelForm({
             name="educationLevelTypeId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Nivel de formación</FormLabel>
+                <FormLabel required>Nivel de formación</FormLabel>
                 <Select
                   disabled={loadingLevelTypes || !!levelTypesError || saving}
                   value={field.value ? String(field.value) : ""}
@@ -469,7 +511,7 @@ export default function EducationLevelForm({
           name="title"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Título obtenido</FormLabel>
+              <FormLabel required>Título obtenido</FormLabel>
               <FormControl>
                 <Input {...field} placeholder="Ej: Ingeniero en Sistemas / Magíster en..." />
               </FormControl>
@@ -588,10 +630,14 @@ export default function EducationLevelForm({
               <FormItem>
                 <FormLabel>Fecha de grado (opcional)</FormLabel>
                 <FormControl>
-                  <Input {...field} type="date" disabled={saving || graduationDateLocked} />
+                  <Input
+                    {...field}
+                    type="date"
+                    max={new Date().toISOString().split("T")[0]}
+                    disabled={saving || graduationDateLocked}
+                  />
                 </FormControl>
-                {/* <FormDescription>Fecha en que se otorgó el título — distinta de la fecha de finalización de estudios.</FormDescription>
-                <FormMessage /> */}
+                <FormMessage />
               </FormItem>
             )}
           />

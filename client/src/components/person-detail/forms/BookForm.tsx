@@ -78,7 +78,13 @@ const bookFormSchema = z.object({
   areaTypeId: z.number().int().nonnegative().optional(),
 
   // lo manejamos como string en el form y luego lo convertimos a number
-  volumeCount: z.string().optional(),
+  volumeCount: z
+    .string()
+    .optional()
+    .refine((val) => !val || (Number(val) >= 1 && Number(val) <= 1000), {
+      // Hallazgo informe UTA-DITIC-PS-027-2026, observación 34.
+      message: "El número de volúmenes debe estar entre 1 y 1000",
+    }),
 
   participationTypeId: z
     .number({
@@ -178,6 +184,7 @@ export default function BookForm({
   // =============================
   const form = useForm<BookFormData>({
     resolver: zodResolver(bookFormSchema) as any,
+    mode: "onTouched",
     defaultValues: {
       title: book?.title ?? "",
       publisher: book?.publisher ?? "",
@@ -408,7 +415,7 @@ export default function BookForm({
             name="title"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Título del libro</FormLabel>
+                <FormLabel required>Título del libro</FormLabel>
                 <FormControl>
                   <Input {...field} data-testid="input-title" />
                 </FormControl>
@@ -456,7 +463,8 @@ export default function BookForm({
                     <Input
                       {...field}
                       type="number"
-                      min={0}
+                      min={1}
+                      max={1000}
                       step={1}
                       placeholder="Ej. 1"
                     />
@@ -500,7 +508,7 @@ export default function BookForm({
               name="countryId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>País</FormLabel>
+                  <FormLabel required>País</FormLabel>
                   <CountrySelect
                     value={field.value || null}
                     onChange={(v) => field.onChange(v ?? "")}
@@ -666,7 +674,7 @@ export default function BookForm({
               name="participationTypeId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Tipo de participación</FormLabel>
+                  <FormLabel required>Tipo de participación</FormLabel>
                   <Select
                     disabled={
                       loadingParticipationTypes ||
@@ -717,7 +725,7 @@ export default function BookForm({
               name="bookTypeId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Tipo de libro</FormLabel>
+                  <FormLabel required>Tipo de libro</FormLabel>
                   <Select
                     disabled={loadingBookTypes || !!bookTypesError || saving}
                     value={field.value ? String(field.value) : ""}

@@ -1,5 +1,5 @@
 // client/src/components/person-detail/forms/FamilyMemberForm.tsx
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -47,25 +47,69 @@ function findDocTypeIdByName(docTypes: RefType[], name: string): number | undefi
   return match ? getRefTypeId(match) : undefined;
 }
 
-const familyMemberFormSchema = z.object({
-  firstName: z.string().min(1, "El nombre es requerido"),
-  lastName: z.string().min(1, "El apellido es requerido"),
-  identificationTypeId: z.string().min(1, "El tipo de identificación es requerido"),
-  dependentId: z.string().min(1, "El número de identificación es requerido"),
-  birthDate: z.string().min(1, "La fecha de nacimiento es requerida"),
-  hasDisability: z.boolean().default(false),
-  disabilityType: z.string().optional(),
-  disabilityPercentage: z.coerce
-    .number()
-    .min(0, "El porcentaje no puede ser negativo")
-    .max(100, "El porcentaje no puede ser mayor a 100")
-    .optional()
-    .default(0),
-  isStudying: z.boolean().default(false),
-  educationInstitution: z.string().optional(),
-});
+// Schema como fábrica (no constante estática): la validación de fecha de nacimiento del
+// hijo/a (observación 23) depende de datos externos al propio formulario — el TypeId real de
+// "Hijo/a" en ref_Types (varía por ambiente, [[reftypes-resolve-by-name-not-id]]) y la fecha
+// de nacimiento del titular — así que el schema se arma en el componente vía useMemo.
+function buildFamilyMemberFormSchema(hijoRelationshipId: number | undefined, personBirthDate: string | null | undefined) {
+  return z.object({
+    firstName: z.string().min(1, "El nombre es requerido"),
+    lastName: z.string().min(1, "El apellido es requerido"),
+    identificationTypeId: z.string().min(1, "El tipo de identificación es requerido"),
+    dependentId: z.string().min(1, "El número de identificación es requerido"),
+    birthDate: z.string().min(1, "La fecha de nacimiento es requerida"),
+    hasDisability: z.boolean().default(false),
+    // Antes era texto libre (z.string()) y nunca calzaba con el campo numérico
+    // DisabilityTypeId que espera el backend — la discapacidad se perdía silenciosamente
+    // al guardar (hallazgo informe UTA-DITIC-PS-027-2026, observación 25).
+    disabilityTypeId: z.coerce.number().int().positive().optional(),
+    disabilityPercentage: z.coerce
+      .number()
+      .min(0, "El porcentaje no puede ser negativo")
+      .max(100, "El porcentaje no puede ser mayor a 100")
+      .optional()
+      .default(0),
+    isStudying: z.boolean().default(false),
+    educationInstitution: z.string().optional(),
+    // Hallazgo informe UTA-DITIC-PS-027-2026, observaciones 23/25: la relación (parentesco)
+    // se mostraba en el formulario pero nunca se guardaba. Reusa la misma categoría
+    // RELATIONSHIP de ref_Types que ya usa EmergencyContactForm (parentesco = relación).
+    relationshipTypeId: z
+      .number({
+        required_error: "La relación es requerida",
+        invalid_type_error: "La relación es requerida",
+      })
+      .int()
+      .positive(),
+  }).superRefine((data, ctx) => {
+    if (data.hasDisability && !data.disabilityPercentage) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["disabilityPercentage"],
+        message: "El porcentaje de discapacidad es requerido cuando se marca 'Tiene discapacidad'",
+      });
+    }
 
-type FamilyMemberFormData = z.infer<typeof familyMemberFormSchema>;
+    // Observación 23: la fecha de nacimiento de un/a hijo/a no puede ser anterior (ni igual)
+    // a la del padre/madre que lo está registrando. Solo aplica cuando la relación
+    // seleccionada es "Hijo/a" y se conoce la fecha de nacimiento del titular.
+    if (
+      hijoRelationshipId != null &&
+      data.relationshipTypeId === hijoRelationshipId &&
+      personBirthDate &&
+      data.birthDate &&
+      new Date(data.birthDate) <= new Date(personBirthDate)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["birthDate"],
+        message: "La fecha de nacimiento del hijo/a no puede ser anterior a la del padre/madre",
+      });
+    }
+  });
+}
+
+type FamilyMemberFormData = z.infer<ReturnType<typeof buildFamilyMemberFormSchema>>;
 
 const MAX_FILE_MB = 10;
 
@@ -77,6 +121,8 @@ interface FamilyMemberFormProps {
   isLoading?: boolean;
   onDirtyChange?: (isDirty: boolean) => void;
   closeAndRefresh?: () => void;
+  /** Fecha de nacimiento del titular — habilita la validación de la observación 23. */
+  personBirthDate?: string | null;
 }
 
 export default function FamilyMemberForm({
@@ -87,6 +133,7 @@ export default function FamilyMemberForm({
   isLoading = false,
   onDirtyChange,
   closeAndRefresh,
+  personBirthDate,
 }: FamilyMemberFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -102,8 +149,25 @@ export default function FamilyMemberForm({
   // real (Soltero/a, Casado/a...), corrompiendo silenciosamente el dato guardado.
   const { data: identTypesRaw } = useRefTypesByCategory(REF_TYPE_CATEGORIES.IDENTITY_TYPE);
   const identTypes: RefType[] = identTypesRaw.filter((t: any) => t.isActive);
+  const { data: disabilityTypesRaw, isLoading: loadingDisabilityTypes } = useRefTypesByCategory(REF_TYPE_CATEGORIES.DISABILITY_TYPE);
+  const disabilityTypes: RefType[] = disabilityTypesRaw.filter((t: any) => t.isActive);
+  const {
+    data: relationshipTypesRaw,
+    isLoading: loadingRelationshipTypes,
+    error: relationshipTypesError,
+  } = useRefTypesByCategory(REF_TYPE_CATEGORIES.RELATIONSHIP);
+  const relationshipTypes: RefType[] = relationshipTypesRaw.filter((t: any) => t.isActive);
+  const hijoRelationshipId = useMemo(() => {
+    const match = relationshipTypes.find((t: any) => String(t.name ?? "").trim().toLowerCase() === "hijo/a");
+    return match ? getRefTypeId(match) : undefined;
+  }, [relationshipTypes]);
+  const familyMemberFormSchema = useMemo(
+    () => buildFamilyMemberFormSchema(hijoRelationshipId, personBirthDate),
+    [hijoRelationshipId, personBirthDate]
+  );
   const form = useForm<FamilyMemberFormData>({
     resolver: zodResolver(familyMemberFormSchema) as any,
+    mode: "onTouched",
     defaultValues: {
       firstName: familyMember?.firstName || "",
       lastName: familyMember?.lastName || "",
@@ -113,12 +177,11 @@ export default function FamilyMemberForm({
         ? new Date(familyMember.birthDate).toISOString().split("T")[0]
         : "",
       hasDisability: familyMember?.hasDisability || false,
-      disabilityType: familyMember?.disabilityTypeId != null
-        ? String(familyMember.disabilityTypeId)
-        : "",
+      disabilityTypeId: familyMember?.disabilityTypeId ?? undefined,
       disabilityPercentage: familyMember?.disabilityPercentage || 0,
       isStudying: familyMember?.isStudying || false,
       educationInstitution: familyMember?.educationInstitution || "",
+      relationshipTypeId: familyMember?.relationshipTypeId ?? undefined,
     },
   });
 
@@ -156,7 +219,7 @@ export default function FamilyMemberForm({
 
   useEffect(() => {
     if (!hasDisability) {
-      form.setValue("disabilityType", "");
+      form.setValue("disabilityTypeId", undefined);
       form.setValue("disabilityPercentage", 0);
       setSelectedDisabilityFile(null);
     }
@@ -196,13 +259,32 @@ export default function FamilyMemberForm({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 ml-6">
           <FormField
             control={form.control as any}
-            name="disabilityType"
+            name="disabilityTypeId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Tipo de Discapacidad</FormLabel>
-                <FormControl>
-                  <Input {...field} disabled={formBlockedByDinardap} data-testid="input-disability-type" />
-                </FormControl>
+                <FormLabel required>Tipo de Discapacidad</FormLabel>
+                <Select
+                  disabled={formBlockedByDinardap || loadingDisabilityTypes}
+                  value={field.value ? String(field.value) : ""}
+                  onValueChange={(v) => field.onChange(Number(v))}
+                >
+                  <FormControl>
+                    <SelectTrigger data-testid="select-disability-type">
+                      <SelectValue placeholder={loadingDisabilityTypes ? "Cargando tipos..." : "Seleccionar tipo"} />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {disabilityTypes.map((t) => {
+                      const id = getRefTypeId(t);
+                      if (id == null) return null;
+                      return (
+                        <SelectItem key={id} value={String(id)}>
+                          {t.name ?? `Tipo ${id}`}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}
@@ -213,7 +295,7 @@ export default function FamilyMemberForm({
             name="disabilityPercentage"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Porcentaje de Discapacidad (%)</FormLabel>
+                <FormLabel required>Porcentaje de Discapacidad (%)</FormLabel>
                 <FormControl>
                   <div className="flex items-center space-x-2">
                     <Input
@@ -258,14 +340,16 @@ export default function FamilyMemberForm({
         formData.append("FirstName", data.firstName);
         formData.append("LastName", data.lastName);
         formData.append("BirthDate", data.birthDate);
-        if (data.hasDisability && data.disabilityType) {
-          const disabilityTypeId = Number(data.disabilityType);
-          if (!Number.isNaN(disabilityTypeId)) {
-            formData.append("DisabilityTypeId", String(disabilityTypeId));
-          }
+        if (data.hasDisability && data.disabilityTypeId) {
+          formData.append("DisabilityTypeId", String(data.disabilityTypeId));
           if (data.disabilityPercentage != null) {
             formData.append("DisabilityPercentage", String(data.disabilityPercentage));
           }
+        }
+        formData.append("RelationshipTypeId", String(data.relationshipTypeId));
+        formData.append("IsStudying", String(data.isStudying));
+        if (data.isStudying && data.educationInstitution) {
+          formData.append("EducationInstitution", data.educationInstitution);
         }
         formData.append("File", selectedFile);
         const birthCertTypeId = findDocTypeIdByName(docTypes, BIRTH_CERTIFICATE_DOC_TYPE_NAME);
@@ -458,6 +542,39 @@ export default function FamilyMemberForm({
                     max={new Date().toISOString().split("T")[0]}
                   />
                 </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control as any}
+            name="relationshipTypeId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel required>Relación</FormLabel>
+                <Select
+                  disabled={loadingRelationshipTypes || !!relationshipTypesError || formBlockedByDinardap}
+                  value={field.value ? String(field.value) : ""}
+                  onValueChange={(v) => field.onChange(Number(v))}
+                >
+                  <FormControl>
+                    <SelectTrigger data-testid="select-relationship">
+                      <SelectValue placeholder={loadingRelationshipTypes ? "Cargando relaciones..." : "Seleccionar relación"} />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {relationshipTypes.map((t) => {
+                      const id = getRefTypeId(t);
+                      if (id == null) return null;
+                      return (
+                        <SelectItem key={id} value={String(id)}>
+                          {(t as any).name ?? `Relación ${id}`}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}

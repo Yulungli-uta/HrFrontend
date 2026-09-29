@@ -41,7 +41,7 @@ import { useToast } from "@/hooks/use-toast";
 // Zod schema
 // =============================
 const publicationFormSchema = z.object({
-  title: z.string().min(1, "El título es requerido"),
+  title: z.string().min(1, "El título es requerido").max(300, "El título no puede exceder 300 caracteres"),
 
   journalName: z.string().optional(),
   journalNumber: z.string().optional(),
@@ -59,7 +59,13 @@ const publicationFormSchema = z.object({
     .positive(),
 
   isIndexed: z.boolean().optional().default(false),
-  journalTypeId: z.number().int().nonnegative().optional(),
+  // El backend exige un JournalTypeId real (int no-nulable, con FK contra ref_Types) — dejarlo
+  // vacío enviaba 0 y el UPDATE fallaba con un error crudo de violación de FK (hallazgo informe
+  // UTA-DITIC-PS-027-2026, observación 20). Se exige en el formulario para nunca enviar 0.
+  journalTypeId: z.number({
+    required_error: "El tipo de revista/medio es requerido",
+    invalid_type_error: "El tipo de revista/medio es requerido",
+  }).int().positive(),
 
   knowledgeAreaTypeId: z.number().int().nonnegative().optional(),
   subAreaTypeId: z.number().int().nonnegative().optional(),
@@ -69,7 +75,12 @@ const publicationFormSchema = z.object({
   eventName: z.string().optional(),
   eventEdition: z.string().optional(),
 
-  publicationDate: z.string().optional(),
+  publicationDate: z
+    .string()
+    .optional()
+    .refine((val) => !val || new Date(val) <= new Date(), {
+      message: "La fecha de publicación no puede ser mayor a la fecha actual",
+    }),
 
   utAffiliation: z.boolean().optional().default(true),
 });
@@ -220,6 +231,7 @@ export default function PublicationForm({
   // =============================
   const form = useForm<PublicationFormData>({
     resolver: zodResolver(publicationFormSchema) as any,
+    mode: "onTouched",
     defaultValues: {
       title: "",
       journalName: "",
@@ -342,7 +354,7 @@ export default function PublicationForm({
         if (data.location) formData.append("Location", data.location);
         formData.append("PublicationTypeId", String(data.publicationTypeId));
         formData.append("IsIndexed", String(data.isIndexed ?? false));
-        if (data.journalTypeId) formData.append("JournalTypeId", String(data.journalTypeId));
+        formData.append("JournalTypeId", String(data.journalTypeId));
         if (data.issn_Isbn) formData.append("Issn_Isbn", data.issn_Isbn);
         if (data.journalName) formData.append("JournalName", data.journalName);
         if (data.journalNumber) formData.append("JournalNumber", data.journalNumber);
@@ -401,7 +413,7 @@ export default function PublicationForm({
       publicationTypeId: data.publicationTypeId,
       isIndexed: data.isIndexed ?? false,
 
-      journalTypeId: toIntOrZero(data.journalTypeId),
+      journalTypeId: data.journalTypeId,
       issn_Isbn: data.issn_Isbn ?? "",
       journalName: data.journalName ?? "",
       journalNumber: data.journalNumber ?? "",
@@ -457,9 +469,9 @@ export default function PublicationForm({
               name="title"
               render={({ field }) => (
                 <FormItem className="md:col-span-2">
-                  <FormLabel>Título de la publicación</FormLabel>
+                  <FormLabel required>Título de la publicación</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="Ingrese título" />
+                    <Input {...field} maxLength={300} placeholder="Ingrese título" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -472,7 +484,7 @@ export default function PublicationForm({
               name="publicationTypeId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Tipo de publicación</FormLabel>
+                  <FormLabel required>Tipo de publicación</FormLabel>
                   <Select
                     disabled={loadingPublicationTypes || saving}
                     value={
@@ -592,7 +604,7 @@ export default function PublicationForm({
               name="journalTypeId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Tipo de revista / medio</FormLabel>
+                  <FormLabel required>Tipo de revista / medio</FormLabel>
                   <Select
                     disabled={loadingJournalTypes || saving}
                     value={
@@ -767,6 +779,7 @@ export default function PublicationForm({
                   <FormControl>
                     <Input
                       type="date"
+                      max={new Date().toISOString().split("T")[0]}
                       value={field.value ?? ""}
                       onChange={(e) => field.onChange(e.target.value)}
                     />

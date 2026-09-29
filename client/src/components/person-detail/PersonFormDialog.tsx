@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
 import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
 import type { CatastrophicIllness } from "@/types/person";
+import { trimDeep } from "@/lib/textNormalize";
 
 interface PersonFormDialogProps {
   open: boolean;
@@ -145,7 +146,9 @@ export function PersonFormDialog({
   }
 
   const saveMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (rawData: any) => {
+      // Hallazgo informe UTA-DITIC-PS-027-2026, observación 2.
+      const data = trimDeep(rawData);
       const personId =
         person?.personId ??
         person?.id ??

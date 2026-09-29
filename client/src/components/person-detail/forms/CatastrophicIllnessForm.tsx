@@ -122,6 +122,7 @@ export default function CatastrophicIllnessForm({
 
   const form = useForm<CatastrophicIllnessFormData>({
     resolver: zodResolver(catastrophicIllnessFormSchema),
+    mode: "onTouched",
     defaultValues: {
       illnessTypeId:
         catastrophicIllness?.illnessTypeId != null &&
@@ -240,7 +241,7 @@ export default function CatastrophicIllnessForm({
         data-testid="catastrophic-illness-form"
       >
         <p className="text-xs text-muted-foreground rounded-md bg-muted/40 px-3 py-2">
-          Información médica confidencial — solo tú y RRHH pueden ver estos datos.
+          Información médica confidencial — solo tú y el personal autorizado por RRHH pueden ver estos datos.
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -250,7 +251,7 @@ export default function CatastrophicIllnessForm({
             name="illnessTypeId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Tipo de enfermedad</FormLabel>
+                <FormLabel required>Tipo de enfermedad</FormLabel>
                 <Select
                   disabled={loadingIllnessTypes || !!illnessTypesError || saving}
                   value={field.value ? String(field.value) : ""}
@@ -295,7 +296,7 @@ export default function CatastrophicIllnessForm({
             name="certificateNumber"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>N.° de certificado médico</FormLabel>
+                <FormLabel required>N.° de certificado médico</FormLabel>
                 <FormControl>
                   <Input {...field} placeholder="N.° de certificado" />
                 </FormControl>
@@ -311,9 +312,9 @@ export default function CatastrophicIllnessForm({
           name="illness"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Diagnóstico / descripción</FormLabel>
+              <FormLabel required>Diagnóstico / descripción</FormLabel>
               <FormControl>
-                <Input {...field} placeholder="Ej: Insuficiencia renal crónica estadio 4" />
+                <Input {...field} placeholder="Ej: Insuficiencia renal crónica estado 4" />
               </FormControl>
               <FormMessage />
             </FormItem>

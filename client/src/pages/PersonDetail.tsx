@@ -707,6 +707,7 @@ export default function PersonDetail() {
           personId={personId}
           mutations={mutations}
           allData={safeData}
+          personBirthDate={person?.birthDate}
         />
 
         <ConfirmDeleteDialog

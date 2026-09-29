@@ -14,6 +14,7 @@ import EducationLevelForm from "@/components/person-detail/forms/EducationLevelF
 import AddressForm from "@/components/person-detail/forms/AddressForm";
 import BankAccountForm from "@/components/person-detail/forms/BankAccountForm";
 import { logger } from "@/lib/logger";
+import { trimDeep } from "@/lib/textNormalize";
 
 interface DynamicFormDialogProps {
   formState: { type: string | null; item: any | null };
@@ -23,6 +24,9 @@ interface DynamicFormDialogProps {
   mutations: any;
   /** Datos ya cargados de la persona (safeData), para validaciones que necesitan ver la lista completa. */
   allData?: Record<string, any[]>;
+  /** Fecha de nacimiento del titular (Person.birthDate) — hallazgo informe UTA-DITIC-PS-027-2026,
+   * observación 23: valida que un/a hijo/a no tenga fecha de nacimiento anterior a la del padre/madre. */
+  personBirthDate?: string | null;
 }
 
 // Mapeo de tipos de formulario a claves de mutaciones
@@ -99,6 +103,7 @@ export function DynamicFormDialog({
   personId,
   mutations,
   allData,
+  personBirthDate,
 }: DynamicFormDialogProps) {
   const { setIsFormDirty, handleOpenChange, confirmOpen, confirmExit, closeConfirm } =
     useUnsavedChangesGuard((open) => { if (!open) onClose(); });
@@ -152,7 +157,12 @@ export function DynamicFormDialog({
       training: "trainingId",
       language: "languageId",
       book: "bookId",
-      emergency: "emergencyContactId",
+      // Hallazgo en vivo 2026-09-28 (observación 26 del informe UTA-DITIC-PS-027-2026,
+      // "botón Actualizar no funciona" en Contactos): el campo real es contactId
+      // (EmergencyContactsDto.ContactId → camelCase), nunca emergencyContactId — getItemId
+      // devolvía undefined y el submit fallaba en silencio, sin toast de error, porque el
+      // throw ocurre antes de llegar a la mutación (donde vive el onError con el toast).
+      emergency: "contactId",
       catastrophicIllness: "illnessId",
       educationLevel: "educationId",
       address: "addressId",
@@ -172,7 +182,12 @@ export function DynamicFormDialog({
     return id;
   };
 
-  const handleSubmit = async (data: any) => {
+  const handleSubmit = async (rawData: any) => {
+    // Normaliza espacios en blanco (inicio/fin/múltiples) en todos los campos de texto antes
+    // de enviar — hallazgo informe UTA-DITIC-PS-027-2026, observación 2. No aplica a los
+    // formularios que arman su propio FormData (camino "crear con documento adjunto"), esos
+    // siguen su propio flujo fuera de este componente.
+    const data = trimDeep(rawData);
     // logger.debug("DynamicFormDialog", "[DynamicFormDialog] handleSubmit called", {
     //   type,
     //   isEditing,
@@ -222,7 +237,15 @@ export function DynamicFormDialog({
       logger.error("DynamicFormDialog", `[DynamicFormDialog] Error en formulario ${type}:`,
         error
       );
-      // El error ya se maneja en la mutación, no necesitamos hacer nada más aquí
+      // Hallazgo en vivo (2026-09-28, botones "Actualizar" de Experiencia Laboral y
+      // Contactos que "no hacían nada"): este catch tragaba el error sin relanzarlo, así que
+      // el `await onSubmit(payload)` de CADA formulario individual (WorkExperienceForm,
+      // EmergencyContactForm, etc.) nunca veía el rechazo — su propio try/catch, que existe
+      // justamente para NO ejecutar form.reset() cuando falla el guardado, corría igual que
+      // si hubiera tenido éxito. El toast de error sí aparecía (mutación → onError), pero el
+      // formulario se vaciaba solo, borrando lo que el usuario había escrito. Se relanza para
+      // que el try/catch de cada formulario funcione como está diseñado.
+      throw error;
     }
   };
 
@@ -238,7 +261,13 @@ export function DynamicFormDialog({
   // });
 
   const extraListProps: Record<string, any> =
-    type === "emergency" ? { existingContacts: allData?.emergencyContacts ?? [] } : {};
+    type === "emergency"
+      ? { existingContacts: allData?.emergencyContacts ?? [] }
+      : type === "address"
+      ? { existingAddresses: allData?.addresses ?? [] }
+      : type === "family"
+      ? { personBirthDate }
+      : {};
 
   const formProps = {
     personId,

@@ -1,5 +1,5 @@
 // client/src/components/person-detail/EmergencyContactForm.tsx
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -75,10 +75,12 @@ const emergencyContactFormSchema = z.object({
   phone: z
     .string()
     .min(1, "El teléfono es requerido")
+    .max(10, "El teléfono no puede exceder 10 dígitos")
     .regex(phoneRegex, "Solo se permiten números"),
 
   mobile: z
     .string()
+    .max(10, "El celular no puede exceder 10 dígitos")
     .optional()
     .refine(
       (val) => !val || phoneRegex.test(val),
@@ -145,11 +147,22 @@ export default function EmergencyContactForm({
 
   const identityTypes: RefType[] = identityTypesRaw.filter((t: any) => t.isActive);
 
+  // Hallazgo informe UTA-DITIC-PS-027-2026, observación 36 — mismo patrón que PersonForm.tsx.
+  const cedulaType = useMemo(
+    () =>
+      identityTypes.find(
+        (t: any) =>
+          t.name?.toUpperCase().includes("CÉDULA") || t.name?.toUpperCase().includes("CEDULA")
+      ),
+    [identityTypes]
+  );
+
   // =============================
   // useForm
   // =============================
   const form = useForm<EmergencyContactFormData>({
     resolver: zodResolver(emergencyContactFormSchema),
+    mode: "onTouched",
     defaultValues: {
       identification: (emergencyContact as any)?.identification ?? "",
       identificationTypeId:
@@ -286,7 +299,7 @@ export default function EmergencyContactForm({
             name="identificationTypeId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Tipo de Identificación</FormLabel>
+                <FormLabel required>Tipo de Identificación</FormLabel>
                 <Select
                   disabled={loadingIdentityTypes || !!identityTypesError || saving}
                   value={field.value ? String(field.value) : ""}
@@ -323,18 +336,25 @@ export default function EmergencyContactForm({
           <FormField
             control={form.control}
             name="identification"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Identificación</FormLabel>
-                <FormControl>
-                  <Input
-                    {...field}
-                    placeholder="Cédula / DNI / Pasaporte"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+            render={({ field }) => {
+              const isCedula = !!cedulaType && form.watch("identificationTypeId") === cedulaType.id;
+              return (
+                <FormItem>
+                  <FormLabel required>Identificación</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      placeholder="Cédula / DNI / Pasaporte"
+                      onChange={(e) => {
+                        const value = isCedula ? e.target.value.replace(/\D/g, "").slice(0, 10) : e.target.value;
+                        field.onChange(value);
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
           />
 
           {/* Nombres */}
@@ -343,7 +363,7 @@ export default function EmergencyContactForm({
             name="firstName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Nombres</FormLabel>
+                <FormLabel required>Nombres</FormLabel>
                 <FormControl>
                   <Input {...field} placeholder="Ej: María José" />
                 </FormControl>
@@ -358,7 +378,7 @@ export default function EmergencyContactForm({
             name="lastName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Apellidos</FormLabel>
+                <FormLabel required>Apellidos</FormLabel>
                 <FormControl>
                   <Input {...field} placeholder="Ej: Gómez Pérez" />
                 </FormControl>
@@ -373,7 +393,7 @@ export default function EmergencyContactForm({
             name="relationshipTypeId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Relación</FormLabel>
+                <FormLabel required>Relación</FormLabel>
                 <Select
                   disabled={
                     loadingRelationshipTypes ||
@@ -422,11 +442,16 @@ export default function EmergencyContactForm({
             name="phone"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Teléfono</FormLabel>
+                <FormLabel required>Teléfono</FormLabel>
                 <FormControl>
                   <Input
                     {...field}
+                    maxLength={10}
+                    inputMode="numeric"
                     placeholder="Solo números"
+                    // Hallazgo informe UTA-DITIC-PS-027-2026, observación 37: antes solo
+                    // validaba al enviar (regex en Zod); esto filtra mientras se escribe.
+                    onChange={(e) => field.onChange(e.target.value.replace(/\D/g, "").slice(0, 10))}
                   />
                 </FormControl>
                 <FormMessage />
@@ -444,7 +469,10 @@ export default function EmergencyContactForm({
                 <FormControl>
                   <Input
                     {...field}
+                    maxLength={10}
+                    inputMode="numeric"
                     placeholder="Celular (opcional)"
+                    onChange={(e) => field.onChange(e.target.value.replace(/\D/g, "").slice(0, 10))}
                   />
                 </FormControl>
                 <FormMessage />

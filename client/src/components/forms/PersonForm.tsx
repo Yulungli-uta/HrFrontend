@@ -67,6 +67,19 @@ interface Canton {
 
 // ---------------------- Esquema de validación ----------------------
 
+const MIN_AGE_YEARS = 17;
+
+function calculateAgeYears(birthDateIso: string): number {
+  const birth = new Date(birthDateIso);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const hasHadBirthdayThisYear =
+    today.getMonth() > birth.getMonth() ||
+    (today.getMonth() === birth.getMonth() && today.getDate() >= birth.getDate());
+  if (!hasHadBirthdayThisYear) age -= 1;
+  return age;
+}
+
 const personSchema = z.object({
   firstName: z
     .string()
@@ -106,7 +119,16 @@ const personSchema = z.object({
     .optional()
     .or(z.literal("")),
 
-  birthDate: z.string().optional().or(z.literal("")),
+  birthDate: z
+    .string()
+    .optional()
+    .or(z.literal(""))
+    .refine((val) => {
+      if (!val) return true;
+      const birth = new Date(val);
+      if (Number.isNaN(birth.getTime())) return true;
+      return birth <= new Date() && calculateAgeYears(val) >= MIN_AGE_YEARS;
+    }, `La fecha de nacimiento no puede ser futura y la persona debe tener al menos ${MIN_AGE_YEARS} años`),
   sex: z.number().optional(),
   gender: z.number().optional(),
   disability: z
@@ -162,6 +184,24 @@ const personSchema = z.object({
     .or(z.literal("")),
 
   hasDisability: z.boolean().default(false),
+}).superRefine((data, ctx) => {
+  if (!data.hasDisability) {
+    if (data.disabilityPercentage) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["disabilityPercentage"],
+        message: "No se puede registrar un porcentaje de discapacidad si la persona no tiene discapacidad",
+      });
+    }
+    return;
+  }
+  if (data.disabilityPercentage && data.disabilityPercentage > 0 && !data.conadisCard?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["conadisCard"],
+      message: "El carnet CONADIS es requerido cuando se registra un porcentaje de discapacidad",
+    });
+  }
 });
 
 type PersonFormData = z.input<typeof personSchema>;
@@ -777,25 +817,25 @@ export default function PersonForm({
         <TabsList className="mb-6 grid h-auto w-full grid-cols-4 rounded-2xl border border-border bg-muted/60 p-1 dark:border-slate-800 dark:bg-slate-900/80">
           <TabsTrigger
             value="basic"
-            className="rounded-xl text-xs text-muted-foreground transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm dark:data-[state=active]:bg-slate-950 dark:data-[state=active]:text-slate-100 sm:text-sm"
+            className="rounded-xl text-xs text-muted-foreground transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:font-semibold data-[state=active]:shadow-md dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground sm:text-sm"
           >
             Básico
           </TabsTrigger>
           <TabsTrigger
             value="personal"
-            className="rounded-xl text-xs text-muted-foreground transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm dark:data-[state=active]:bg-slate-950 dark:data-[state=active]:text-slate-100 sm:text-sm"
+            className="rounded-xl text-xs text-muted-foreground transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:font-semibold data-[state=active]:shadow-md dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground sm:text-sm"
           >
             Personal
           </TabsTrigger>
           <TabsTrigger
             value="family"
-            className="rounded-xl text-xs text-muted-foreground transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm dark:data-[state=active]:bg-slate-950 dark:data-[state=active]:text-slate-100 sm:text-sm"
+            className="rounded-xl text-xs text-muted-foreground transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:font-semibold data-[state=active]:shadow-md dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground sm:text-sm"
           >
             Familia
           </TabsTrigger>
           <TabsTrigger
             value="health"
-            className="rounded-xl text-xs text-muted-foreground transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm dark:data-[state=active]:bg-slate-950 dark:data-[state=active]:text-slate-100 sm:text-sm"
+            className="rounded-xl text-xs text-muted-foreground transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:font-semibold data-[state=active]:shadow-md dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground sm:text-sm"
           >
             Salud
           </TabsTrigger>
@@ -1019,6 +1059,7 @@ export default function PersonForm({
                   <Input
                     id="birthDate"
                     type="date"
+                    max={new Date().toISOString().split("T")[0]}
                     {...register("birthDate")}
                     disabled={fechaNacimientoLocked}
                     data-testid="input-birthDate"
@@ -1565,7 +1606,7 @@ export default function PersonForm({
                 variant="outline"
                 onClick={goPreviousTab}
                 className="w-full rounded-full sm:w-auto"
-                disabled={isLoading}
+                disabled={isLoading || TAB_ORDER.indexOf(activeTab as any) === 0}
               >
                 Anterior
               </Button>
@@ -1574,7 +1615,7 @@ export default function PersonForm({
                 variant="outline"
                 onClick={goNextTab}
                 className="w-full rounded-full sm:w-auto"
-                disabled={isLoading}
+                disabled={isLoading || TAB_ORDER.indexOf(activeTab as any) === TAB_ORDER.length - 1}
               >
                 Siguiente
               </Button>

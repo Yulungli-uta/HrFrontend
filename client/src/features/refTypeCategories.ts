@@ -22,6 +22,8 @@ export const REF_TYPE_CATEGORIES = {
   SEX_TYPE: "SEX_TYPE",
   IDENTITY_TYPE: "IDENTITY_TYPE",
   RELATIONSHIP: "RELATIONSHIP",
+  /** Bancos y cooperativas de Ecuador para Cuentas Bancarias, + "Otro" como fallback de texto libre - hallazgo informe UTA-DITIC-PS-027-2026, observación 42. */
+  BANK_INSTITUTION: "BANK_INSTITUTION",
   KNOWLEDGE_AREA: "KNOWLEDGE_AREA",
   ACADEMIC_CATEGORY: "ACADEMIC_CATEGORY",
   ACADEMIC_DEDICATION: "ACADEMIC_DEDICATION",

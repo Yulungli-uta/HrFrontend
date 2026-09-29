@@ -40,8 +40,12 @@ const addressFormSchema = z.object({
     .int()
     .positive(),
   countryId: z.string().min(1, "El país es requerido"),
-  provinceId: z.string().min(1, "La provincia es requerida"),
-  cantonId: z.string().min(1, "El cantón es requerido"),
+  // Provincia/cantón solo son obligatorios para países que sí tienen ese catálogo cargado
+  // (hoy, únicamente Ecuador) — la regla efectiva se aplica en el superRefine dinámico del
+  // componente, no aquí, para no hardcodear el país (hallazgo informe UTA-DITIC-PS-027-2026,
+  // observación 41).
+  provinceId: z.string().optional(),
+  cantonId: z.string().optional(),
   parish: z.string().optional(),
   neighborhood: z.string().optional(),
   mainStreet: z.string().min(1, "La calle principal es requerida"),
@@ -59,6 +63,8 @@ function getRefTypeId(t: any): number | undefined {
 interface AddressFormProps {
   personId: number;
   address?: Address | null;
+  /** Direcciones ya registradas de esta persona, para validar que no se repita una idéntica. */
+  existingAddresses?: Address[];
   onSubmit: (data: any) => Promise<void> | void;
   onCancel: () => void;
   isLoading?: boolean;
@@ -68,6 +74,7 @@ interface AddressFormProps {
 export default function AddressForm({
   personId,
   address,
+  existingAddresses = [],
   onSubmit,
   onCancel,
   isLoading = false,
@@ -93,8 +100,29 @@ export default function AddressForm({
   const allProvinces: any[] = provincesResp?.status === "success" ? provincesResp.data ?? [] : [];
   const allCantons: any[] = cantonsResp?.status === "success" ? cantonsResp.data ?? [] : [];
 
+  // Países que sí tienen provincias cargadas en el catálogo — hoy, solo Ecuador.
+  const countriesWithProvinces = useMemo(
+    () => new Set(allProvinces.map((p) => p.countryId)),
+    [allProvinces]
+  );
+
+  const resolvedSchema = useMemo(
+    () =>
+      addressFormSchema.superRefine((data, ctx) => {
+        if (!countriesWithProvinces.has(data.countryId)) return;
+        if (!data.provinceId) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["provinceId"], message: "La provincia es requerida" });
+        }
+        if (!data.cantonId) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["cantonId"], message: "El cantón es requerido" });
+        }
+      }),
+    [countriesWithProvinces]
+  );
+
   const form = useForm<AddressFormData>({
-    resolver: zodResolver(addressFormSchema),
+    resolver: zodResolver(resolvedSchema),
+    mode: "onTouched",
     defaultValues: {
       addressTypeId: address?.addressTypeId != null ? Number(address.addressTypeId) : 0,
       countryId: address?.countryId ?? "",
@@ -165,6 +193,24 @@ export default function AddressForm({
   }, [watchProvinceId, form]);
 
   const handleSubmit = async (data: AddressFormData) => {
+    // Hallazgo informe UTA-DITIC-PS-027-2026, observación 40.
+    const duplicate = existingAddresses.find(
+      (a) =>
+        a.addressId !== (address?.addressId ?? -1) &&
+        a.addressTypeId === data.addressTypeId &&
+        (a.countryId ?? "") === data.countryId &&
+        (a.provinceId ?? "") === (data.provinceId ?? "") &&
+        (a.cantonId ?? "") === (data.cantonId ?? "") &&
+        (a.mainStreet ?? "").trim().toLowerCase() === data.mainStreet.trim().toLowerCase()
+    );
+    if (duplicate) {
+      form.setError("mainStreet", {
+        type: "manual",
+        message: "Ya existe una dirección igual (mismo tipo, ubicación y calle principal).",
+      });
+      return;
+    }
+
     const payload = {
       addressId: address?.addressId ?? 0,
       personId,
@@ -196,7 +242,7 @@ export default function AddressForm({
           name="addressTypeId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Tipo de dirección</FormLabel>
+              <FormLabel required>Tipo de dirección</FormLabel>
               <Select
                 disabled={loadingAddressTypes || !!addressTypesError || isLoading}
                 value={field.value ? String(field.value) : ""}
@@ -230,7 +276,7 @@ export default function AddressForm({
             name="countryId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>País</FormLabel>
+                <FormLabel required>País</FormLabel>
                 <CountrySelect
                   value={field.value || null}
                   onChange={(v) => field.onChange(v ?? "")}
@@ -247,7 +293,7 @@ export default function AddressForm({
             name="provinceId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Provincia</FormLabel>
+                <FormLabel required={countriesWithProvinces.has(watchCountryId)}>Provincia</FormLabel>
                 <Select
                   disabled={isLoading || !watchCountryId}
                   value={field.value || ""}
@@ -276,7 +322,7 @@ export default function AddressForm({
             name="cantonId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Cantón</FormLabel>
+                <FormLabel required={countriesWithProvinces.has(watchCountryId)}>Cantón</FormLabel>
                 <Select
                   disabled={isLoading || !watchProvinceId}
                   value={field.value || ""}
@@ -335,7 +381,7 @@ export default function AddressForm({
           name="mainStreet"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Calle principal</FormLabel>
+              <FormLabel required>Calle principal</FormLabel>
               <FormControl>
                 <Input {...field} placeholder="Ej: Av. Cevallos" />
               </FormControl>

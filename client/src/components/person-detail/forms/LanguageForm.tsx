@@ -59,7 +59,14 @@ const languageFormSchema = z.object({
 
   issueDate: z.string().min(1, "La fecha de emisión es requerida"),
   expirationDate: z.string().optional(),
-});
+}).refine(
+  (data) => !data.expirationDate || new Date(data.issueDate) <= new Date(data.expirationDate),
+  {
+    // Hallazgo informe UTA-DITIC-PS-027-2026, observación 33.
+    message: "La fecha de emisión no puede ser mayor a la fecha de expiración",
+    path: ["issueDate"],
+  }
+);
 
 export type LanguageFormData = z.infer<typeof languageFormSchema>;
 
@@ -118,6 +125,7 @@ export default function LanguageForm({
 
   const form = useForm<LanguageFormData>({
     resolver: zodResolver(languageFormSchema) as any,
+    mode: "onTouched",
     defaultValues: {
       languageTypeId: language?.languageTypeId ? Number(language.languageTypeId) : 0,
       levelTypeId: language?.levelTypeId ? Number(language.levelTypeId) : 0,
@@ -214,7 +222,7 @@ export default function LanguageForm({
               name="languageTypeId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Idioma</FormLabel>
+                  <FormLabel required>Idioma</FormLabel>
                   <Select
                     disabled={loadingLanguages || saving}
                     value={field.value ? String(field.value) : ""}
@@ -250,7 +258,7 @@ export default function LanguageForm({
               name="levelTypeId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nivel (CEFR)</FormLabel>
+                  <FormLabel required>Nivel (CEFR)</FormLabel>
                   <Select
                     disabled={loadingLevels || saving}
                     value={field.value ? String(field.value) : ""}
@@ -320,7 +328,7 @@ export default function LanguageForm({
               name="issueDate"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Fecha de emisión</FormLabel>
+                  <FormLabel required>Fecha de emisión</FormLabel>
                   <FormControl>
                     <Input
                       type="date"

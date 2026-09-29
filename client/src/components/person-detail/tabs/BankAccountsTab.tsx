@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ActionIconButton } from "@/components/ui/action-icon-button";
 import { Badge } from "@/components/ui/badge";
-import { Landmark, Plus, Edit, Trash2 } from "lucide-react";
+import { Landmark, Plus, Edit, Trash2, Star } from "lucide-react";
 import type { BankAccount } from "@/types/person";
 import { useCvListState, buildFilterOptions, type CvSortOption, type CvFilterField } from "@/hooks/personDetails/useCvListState";
 import { CvListToolbar } from "@/components/person-detail/CvListToolbar";
@@ -113,7 +113,12 @@ export function BankAccountsTab({
               const typeName = refTypesMap[Number(account.accountTypeId)] ?? null;
 
               return (
-                <Card key={account.accountId} className="hover:shadow-md transition-shadow border-l-4 border-l-pink-500">
+                <Card
+                  key={account.accountId}
+                  className={`hover:shadow-md transition-shadow border-l-4 ${
+                    account.isPrimary ? "border-l-amber-500" : "border-l-pink-500"
+                  }`}
+                >
                   <CardContent className="p-3 flex flex-col gap-1.5">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-start gap-2 min-w-0">
@@ -128,6 +133,12 @@ export function BankAccountsTab({
                           {typeName && (
                             <Badge variant="secondary" className="text-xs">
                               {typeName}
+                            </Badge>
+                          )}
+                          {account.isPrimary && (
+                            <Badge variant="default" className="text-xs bg-amber-500 hover:bg-amber-500">
+                              <Star className="h-3 w-3 mr-1 fill-current" />
+                              Principal
                             </Badge>
                           )}
                         </div>

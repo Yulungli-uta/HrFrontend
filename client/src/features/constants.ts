@@ -43,6 +43,14 @@ export const HR_PARAMETER_DOMAINS: ParameterDomain[] = [
     label: 'Contratos',
     categories: [REF_TYPE_CATEGORIES.CONTRACT_STATUS, REF_TYPE_CATEGORIES.CERT_APPROVAL_TYPE],
   },
+  {
+    // BANK_ACCOUNT_TYPE no estaba en ningún dominio (no se podía administrar desde
+    // esta pantalla); se agrupa aquí junto con BANK_INSTITUTION, catálogo nuevo del
+    // hallazgo informe UTA-DITIC-PS-027-2026, observación 42.
+    key: 'financiero',
+    label: 'Datos Financieros',
+    categories: [REF_TYPE_CATEGORIES.BANK_ACCOUNT_TYPE, REF_TYPE_CATEGORIES.BANK_INSTITUTION],
+  },
 ];
 
 export const HR_PARAMETER_CATEGORIES = HR_PARAMETER_DOMAINS.flatMap(d => d.categories);

@@ -84,6 +84,7 @@ export interface FamilyMember {
   disabilityTypeId?: number;
   disabilityPercentage?: number;
   hasDisability?: boolean;
+  relationshipTypeId?: number;
   isStudying?: boolean;
   educationInstitution?: string;
   statusTypeId?: number | null;
@@ -215,6 +216,7 @@ export interface BankAccount {
   financialInstitution: string;
   accountTypeId: number;
   accountNumber: string;
+  isPrimary?: boolean;
   createdAt?: string;
 }
 

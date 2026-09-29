@@ -11,6 +11,7 @@ import React, {
 import { DocumentsAPI, handleApiError } from "@/lib/api";
 import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import type { StoredFileDto, DocumentUploadResultDto } from "@/types/documents";
+import { logger } from "@/lib/logger";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -661,21 +662,26 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
         return;
       }
 
-      const resp = await DocumentsAPI.download(it.fileGuid);
-      if (resp.status === "error") {
-        setErrorText(handleApiError(resp.error, "Error descargando."));
-        return;
-      }
+      try {
+        const resp = await DocumentsAPI.download(it.fileGuid);
+        if (resp.status === "error") {
+          setErrorText(handleApiError(resp.error, "Error descargando."));
+          return;
+        }
 
-      const blob = resp.data;
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = it.originalFileName || it.storedFileName;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
+        const blob = resp.data;
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = it.originalFileName || it.storedFileName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      } catch (error) {
+        logger.error("ReusableDocumentManager", "[download] ERROR", error);
+        setErrorText("No se pudo descargar el archivo. Intenta nuevamente.");
+      }
     };
 
     const openPreview = async (it: StoredFileDto) => {
@@ -690,17 +696,23 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
       setPreviewOpen(true);
       setPreviewLoading(true);
 
-      const resp = await DocumentsAPI.download(it.fileGuid);
-      if (resp.status === "error") {
-        setErrorText(handleApiError(resp.error, "Error cargando vista previa."));
-        setPreviewUrl(null);
-        setPreviewLoading(false);
-        return;
-      }
+      try {
+        const resp = await DocumentsAPI.download(it.fileGuid);
+        if (resp.status === "error") {
+          setErrorText(handleApiError(resp.error, "Error cargando vista previa."));
+          setPreviewUrl(null);
+          return;
+        }
 
-      const url = window.URL.createObjectURL(resp.data);
-      setPreviewUrl(url);
-      setPreviewLoading(false);
+        const url = window.URL.createObjectURL(resp.data);
+        setPreviewUrl(url);
+      } catch (error) {
+        logger.error("ReusableDocumentManager", "[openPreview] ERROR", error);
+        setErrorText("No se pudo cargar la vista previa. Intenta nuevamente.");
+        setPreviewUrl(null);
+      } finally {
+        setPreviewLoading(false);
+      }
     };
 
     useEffect(() => {

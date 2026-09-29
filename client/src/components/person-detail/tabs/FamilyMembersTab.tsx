@@ -166,6 +166,7 @@ export function FamilyMembersTab({
               const idTypeName = resolveRefType(member.identificationTypeId as any);
               const disabilityTypeName = resolveRefType(member.disabilityTypeId as any);
               const statusName = resolveRefType(member.statusTypeId) ?? "REGISTRADO";
+              const relationshipName = resolveRefType((member as any).relationshipTypeId);
 
               return (
                 <Card
@@ -187,6 +188,11 @@ export function FamilyMembersTab({
                             <Badge variant={STATUS_BADGE_VARIANT[statusName] ?? "outline"} className="text-xs">
                               {STATUS_LABEL[statusName] ?? statusName}
                             </Badge>
+                            {relationshipName && (
+                              <Badge variant="secondary" className="text-xs">
+                                {relationshipName}
+                              </Badge>
+                            )}
                           </div>
                           {statusName === "RECHAZADO" && member.rejectionReason && (
                             <p className="text-xs text-destructive mt-1">Motivo: {member.rejectionReason}</p>

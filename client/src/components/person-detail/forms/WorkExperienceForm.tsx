@@ -88,7 +88,11 @@ const workExperienceFormSchema = z
       message: "La fecha de finalización es requerida si no es el trabajo actual",
       path: ["endDate"],
     }
-  );
+  )
+  .refine((data) => !data.startDate || new Date(data.startDate) <= new Date(), {
+    message: "La fecha de inicio no puede ser mayor a la fecha actual",
+    path: ["startDate"],
+  });
 
 type WorkExperienceFormData = z.infer<typeof workExperienceFormSchema>;
 
@@ -162,6 +166,7 @@ export default function WorkExperienceForm({
   // =============================
   const form = useForm<WorkExperienceFormData>({
     resolver: zodResolver(workExperienceFormSchema) as any,
+    mode: "onTouched",
     defaultValues: {
       position: workExperience?.position ?? "",
       company: workExperience?.company ?? "",
@@ -254,9 +259,14 @@ export default function WorkExperienceForm({
       return;
     }
 
+    // Nunca se envía endDate: undefined — un objeto JS con esa clave presente pero en
+    // undefined sobrevivió como "" hasta el backend (hallazgo en vivo 2026-09-28, la causa
+    // real de la observación 26); se omite la clave por completo cuando no aplica, así no hay
+    // ambigüedad en ningún paso intermedio (trimDeep, JSON.stringify).
+    const { endDate: _omitEndDate, ...dataWithoutEndDate } = data;
     const payload: WorkExperienceFormData = {
-      ...data,
-      endDate: normalizedEndDate,
+      ...dataWithoutEndDate,
+      ...(normalizedEndDate ? { endDate: normalizedEndDate } : {}),
       // countryId ya es string, lo dejamos tal cual
       countryId: data.countryId,
       // estos sí como número
@@ -293,7 +303,7 @@ export default function WorkExperienceForm({
             name="position"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Cargo/Posición</FormLabel>
+                <FormLabel required>Cargo/Posición</FormLabel>
                 <FormControl>
                   <Input {...field} data-testid="input-position" />
                 </FormControl>
@@ -308,7 +318,7 @@ export default function WorkExperienceForm({
             name="company"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Empresa/Organización</FormLabel>
+                <FormLabel required>Empresa/Organización</FormLabel>
                 <FormControl>
                   <Input {...field} data-testid="input-company" />
                 </FormControl>
@@ -350,11 +360,12 @@ export default function WorkExperienceForm({
             name="startDate"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Fecha de inicio</FormLabel>
+                <FormLabel required>Fecha de inicio</FormLabel>
                 <FormControl>
                   <Input
                     {...field}
                     type="date"
+                    max={new Date().toISOString().split("T")[0]}
                     data-testid="input-start-date"
                   />
                 </FormControl>
@@ -390,7 +401,7 @@ export default function WorkExperienceForm({
             name="countryId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>País</FormLabel>
+                <FormLabel required>País</FormLabel>
                 <CountrySelect
                   value={field.value || null}
                   onChange={(v) => field.onChange(v ?? "")}
@@ -408,7 +419,7 @@ export default function WorkExperienceForm({
             name="institutionTypeId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Tipo de institución</FormLabel>
+                <FormLabel required>Tipo de institución</FormLabel>
                 <Select
                   disabled={loadingInstTypes || !!instTypesError || saving}
                   value={field.value ? String(field.value) : ""}
@@ -455,7 +466,7 @@ export default function WorkExperienceForm({
             name="experienceTypeId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Tipo de experiencia</FormLabel>
+                <FormLabel required>Tipo de experiencia</FormLabel>
                 <Select
                   disabled={loadingExpTypes || !!expTypesError || saving}
                   value={field.value ? String(field.value) : ""}
@@ -533,7 +544,7 @@ export default function WorkExperienceForm({
           name="entryReason"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Razón de entrada (requerido)</FormLabel>
+              <FormLabel required>Razón de entrada</FormLabel>
               <FormControl>
                 <Textarea
                   {...field}
