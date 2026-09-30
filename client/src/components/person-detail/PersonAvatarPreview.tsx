@@ -33,15 +33,17 @@ export function PersonAvatarPreview({ personId }: PersonAvatarPreviewProps) {
   const fileGuid = data?.status === "success" ? data.data?.[0]?.fileGuid : undefined;
 
   useEffect(() => {
-    let objectUrl: string | null = null;
     let cancelled = false;
 
     if (fileGuid) {
       DocumentsAPI.download(fileGuid).then((resp) => {
         if (cancelled) return;
         if (resp.status === "success") {
-          objectUrl = window.URL.createObjectURL(resp.data);
-          setImgUrl(objectUrl);
+          const reader = new FileReader();
+          reader.onload = () => {
+            if (!cancelled) setImgUrl(reader.result as string);
+          };
+          reader.readAsDataURL(resp.data);
         }
       });
     } else {
@@ -50,7 +52,6 @@ export function PersonAvatarPreview({ personId }: PersonAvatarPreviewProps) {
 
     return () => {
       cancelled = true;
-      if (objectUrl) window.URL.revokeObjectURL(objectUrl);
     };
   }, [fileGuid]);
 
