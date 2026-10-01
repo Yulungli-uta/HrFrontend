@@ -1063,8 +1063,16 @@ export default function PersonForm({
                     {...register("birthDate")}
                     disabled={fechaNacimientoLocked}
                     data-testid="input-birthDate"
-                    className={fieldClassName}
+                    className={`${fieldClassName} ${errors.birthDate
+                      ? "border-destructive focus-visible:ring-destructive/20"
+                      : ""
+                      }`}
                   />
+                  {errors.birthDate && (
+                    <p className="text-sm text-destructive">
+                      {errors.birthDate.message}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -1123,8 +1131,16 @@ export default function PersonForm({
                     {...register("address")}
                     placeholder="Dirección completa"
                     rows={3}
-                    className={fieldClassName}
+                    className={`${fieldClassName} ${errors.address
+                      ? "border-destructive focus-visible:ring-destructive/20"
+                      : ""
+                      }`}
                   />
+                  {errors.address && (
+                    <p className="text-sm text-destructive">
+                      {errors.address.message}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -1235,8 +1251,16 @@ export default function PersonForm({
                     placeholder="0"
                     min="0"
                     max="100"
-                    className={fieldClassName}
+                    className={`${fieldClassName} ${errors.yearsOfResidence
+                      ? "border-destructive focus-visible:ring-destructive/20"
+                      : ""
+                      }`}
                   />
+                  {errors.yearsOfResidence && (
+                    <p className="text-sm text-destructive">
+                      {errors.yearsOfResidence.message}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -1245,8 +1269,16 @@ export default function PersonForm({
                     id="militaryCard"
                     {...register("militaryCard")}
                     placeholder="Número de cartilla militar"
-                    className={fieldClassName}
+                    className={`${fieldClassName} ${errors.militaryCard
+                      ? "border-destructive focus-visible:ring-destructive/20"
+                      : ""
+                      }`}
                   />
+                  {errors.militaryCard && (
+                    <p className="text-sm text-destructive">
+                      {errors.militaryCard.message}
+                    </p>
+                  )}
                 </div>
               </div>
             </SectionCard>
@@ -1262,8 +1294,16 @@ export default function PersonForm({
                     {...register("motherName")}
                     placeholder="Nombre completo de la madre"
                     disabled={motherNameLocked}
-                    className={fieldClassName}
+                    className={`${fieldClassName} ${errors.motherName
+                      ? "border-destructive focus-visible:ring-destructive/20"
+                      : ""
+                      }`}
                   />
+                  {errors.motherName && (
+                    <p className="text-sm text-destructive">
+                      {errors.motherName.message}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -1273,8 +1313,16 @@ export default function PersonForm({
                     {...register("fatherName")}
                     placeholder="Nombre completo del padre"
                     disabled={fatherNameLocked}
-                    className={fieldClassName}
+                    className={`${fieldClassName} ${errors.fatherName
+                      ? "border-destructive focus-visible:ring-destructive/20"
+                      : ""
+                      }`}
                   />
+                  {errors.fatherName && (
+                    <p className="text-sm text-destructive">
+                      {errors.fatherName.message}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -1471,8 +1519,16 @@ export default function PersonForm({
                       {...register("conadisCard")}
                       placeholder="Número de carnet CONADIS"
                       disabled={!disabilityEnabled}
-                      className={fieldClassName}
+                      className={`${fieldClassName} ${errors.conadisCard
+                        ? "border-destructive focus-visible:ring-destructive/20"
+                        : ""
+                        }`}
                     />
+                    {errors.conadisCard && (
+                      <p className="text-sm text-destructive">
+                        {errors.conadisCard.message}
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-2">

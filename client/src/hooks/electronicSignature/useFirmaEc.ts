@@ -8,8 +8,15 @@ import type { FirmaEcCertificateType } from "@/types/electronic-signature";
 // celular con FirmaEC instalado no hacia nada, sin error visible). Por eso el flujo se
 // separa en dos pasos: "launch" prepara el enlace llamando al backend (async), y "openNow"
 // hace el redireccionamiento en si, para llamarse desde un onClick separado y directo.
+export type FirmaEcErrorInfo = { code: number; message: string };
+
 export function useFirmaEc() {
-  const [state, setState] = useState<"idle" | "launching" | "ready" | "unavailable" | "launched">("idle");
+  // "denied": el backend respondio con error (ej. 403 sin permiso) al pedir el launchUrl —
+  // distinto de "unavailable", que es el timeout real esperando el handoff a firmaec://.
+  // Mismo mensaje generico para ambos confundia errores de permisos con "no tienes FirmaEC
+  // instalado" (ver FirmaEcNotInstalledDialog).
+  const [state, setState] = useState<"idle" | "launching" | "ready" | "denied" | "unavailable" | "launched">("idle");
+  const [errorInfo, setErrorInfo] = useState<FirmaEcErrorInfo | null>(null);
   const timer = useRef<number>();
   const launchUrlRef = useRef<string | null>(null);
 
@@ -20,9 +27,11 @@ export function useFirmaEc() {
       certificateType?: FirmaEcCertificateType
     ) => {
       setState("launching");
+      setErrorInfo(null);
       const result = await SignatureProcessesAPI.startSigning(processId, position, certificateType);
       if (result.status === "error") {
-        setState("unavailable");
+        setErrorInfo({ code: result.error.code, message: result.error.message });
+        setState("denied");
         return;
       }
       launchUrlRef.current = result.data.launchUrl;
@@ -38,11 +47,12 @@ export function useFirmaEc() {
     timer.current = window.setTimeout(() => setState("unavailable"), Number(import.meta.env.VITE_FIRMAEC_DETECTION_TIMEOUT_MS || "120000"));
   }, []);
 
-  const reset = () => {
+  const reset = useCallback(() => {
     if (timer.current) clearTimeout(timer.current);
     launchUrlRef.current = null;
+    setErrorInfo(null);
     setState("idle");
-  };
+  }, []);
 
-  return { state, launch, openNow, reset };
+  return { state, errorInfo, launch, openNow, reset };
 }

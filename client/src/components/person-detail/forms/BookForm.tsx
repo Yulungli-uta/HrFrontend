@@ -56,9 +56,9 @@ type KnowledgeArea = {
 // Schema Zod
 // =============================
 const bookFormSchema = z.object({
-  title: z.string().min(1, "El título es requerido"),
-  publisher: z.string().optional(),
-  isbn: z.string().optional(),
+  title: z.string().min(1, "El título es requerido").max(300, "No puede exceder 300 caracteres"),
+  publisher: z.string().max(200, "No puede exceder 200 caracteres").optional(),
+  isbn: z.string().max(20, "No puede exceder 20 caracteres").optional(),
   publicationDate: z.string().optional(),
 
   peerReviewed: z.boolean().optional().default(false),
@@ -71,7 +71,7 @@ const bookFormSchema = z.object({
     })
     .min(1, "El país es requerido"),
 
-  city: z.string().optional(),
+  city: z.string().max(100, "No puede exceder 100 caracteres").optional(),
 
   knowledgeAreaTypeId: z.number().int().nonnegative().optional(),
   subAreaTypeId: z.number().int().nonnegative().optional(),
@@ -417,7 +417,7 @@ export default function BookForm({
               <FormItem>
                 <FormLabel required>Título del libro</FormLabel>
                 <FormControl>
-                  <Input {...field} data-testid="input-title" />
+                  <Input {...field} maxLength={300} data-testid="input-title" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -432,7 +432,7 @@ export default function BookForm({
                 <FormItem>
                   <FormLabel>Editorial</FormLabel>
                   <FormControl>
-                    <Input {...field} data-testid="input-publisher" />
+                    <Input {...field} maxLength={200} data-testid="input-publisher" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -446,7 +446,7 @@ export default function BookForm({
                 <FormItem>
                   <FormLabel>ISBN</FormLabel>
                   <FormControl>
-                    <Input {...field} data-testid="input-isbn" />
+                    <Input {...field} maxLength={20} data-testid="input-isbn" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -527,7 +527,7 @@ export default function BookForm({
                 <FormItem>
                   <FormLabel>Ciudad</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="Ciudad de publicación" />
+                    <Input {...field} maxLength={100} placeholder="Ciudad de publicación" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

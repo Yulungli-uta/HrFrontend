@@ -43,12 +43,12 @@ import { useToast } from "@/hooks/use-toast";
 const publicationFormSchema = z.object({
   title: z.string().min(1, "El título es requerido").max(300, "El título no puede exceder 300 caracteres"),
 
-  journalName: z.string().optional(),
-  journalNumber: z.string().optional(),
-  volume: z.string().optional(),
-  pages: z.string().optional(),
-  issn_Isbn: z.string().optional(),
-  location: z.string().optional(),
+  journalName: z.string().max(200, "No puede exceder 200 caracteres").optional(),
+  journalNumber: z.string().max(50, "No puede exceder 50 caracteres").optional(),
+  volume: z.string().max(50, "No puede exceder 50 caracteres").optional(),
+  pages: z.string().max(20, "No puede exceder 20 caracteres").optional(),
+  issn_Isbn: z.string().max(20, "No puede exceder 20 caracteres").optional(),
+  location: z.string().max(100, "No puede exceder 100 caracteres").optional(),
 
   publicationTypeId: z
     .number({
@@ -71,9 +71,9 @@ const publicationFormSchema = z.object({
   subAreaTypeId: z.number().int().nonnegative().optional(),
   areaTypeId: z.number().int().nonnegative().optional(),
 
-  organizedBy: z.string().optional(),
-  eventName: z.string().optional(),
-  eventEdition: z.string().optional(),
+  organizedBy: z.string().max(150, "No puede exceder 150 caracteres").optional(),
+  eventName: z.string().max(200, "No puede exceder 200 caracteres").optional(),
+  eventEdition: z.string().max(50, "No puede exceder 50 caracteres").optional(),
 
   publicationDate: z
     .string()
@@ -399,12 +399,14 @@ export default function PublicationForm({
       return;
     }
 
-    const toIntOrZero = (x: any) =>
-      x !== null && x !== undefined && !Number.isNaN(Number(x))
-        ? Number(x)
-        : 0;
+    // Las 3 áreas de conocimiento son opcionales: si el usuario no las selecciona hay que
+    // enviar null (el backend las acepta así, FK nullable), nunca 0 — un Id 0 no existe en
+    // HR.tbl_KnowledgeArea y la FK revienta con un error crudo de SQL (hallazgo real
+    // 2026-10-01, mismo patrón ya resuelto antes en BookForm/TrainingForm con normalizeId).
+    const normalizeId = (value: number | null | undefined) =>
+      value !== null && value !== undefined && value !== 0 ? value : undefined;
 
-    const payload = {
+    const payload: any = {
       publicationId: (publication as any)?.publicationId ?? 0,
       personId,
 
@@ -420,10 +422,6 @@ export default function PublicationForm({
       volume: data.volume ?? "",
       pages: data.pages ?? "",
 
-      knowledgeAreaTypeId: toIntOrZero(data.knowledgeAreaTypeId),
-      subAreaTypeId: toIntOrZero(data.subAreaTypeId),
-      areaTypeId: toIntOrZero(data.areaTypeId),
-
       organizedBy: data.organizedBy ?? "",
       eventName: data.eventName ?? "",
       eventEdition: data.eventEdition ?? "",
@@ -436,6 +434,15 @@ export default function PublicationForm({
       utAffiliation: data.utAffiliation ?? true,
       createdAt: (publication as any)?.createdAt ?? now.toISOString(),
     };
+
+    const knowledgeAreaTypeIdNorm = normalizeId(data.knowledgeAreaTypeId);
+    if (knowledgeAreaTypeIdNorm !== undefined) payload.knowledgeAreaTypeId = knowledgeAreaTypeIdNorm;
+
+    const subAreaTypeIdNorm = normalizeId(data.subAreaTypeId);
+    if (subAreaTypeIdNorm !== undefined) payload.subAreaTypeId = subAreaTypeIdNorm;
+
+    const areaTypeIdNorm = normalizeId(data.areaTypeId);
+    if (areaTypeIdNorm !== undefined) payload.areaTypeId = areaTypeIdNorm;
 
     try {
       await onSubmit(payload);
@@ -591,7 +598,7 @@ export default function PublicationForm({
                 <FormItem>
                   <FormLabel>Nombre revista / medio</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="Nombre de la revista" />
+                    <Input {...field} maxLength={200} placeholder="Nombre de la revista" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -656,7 +663,7 @@ export default function PublicationForm({
                 <FormItem>
                   <FormLabel>Número</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="Número" />
+                    <Input {...field} maxLength={50} placeholder="Número" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -670,7 +677,7 @@ export default function PublicationForm({
                 <FormItem>
                   <FormLabel>Volumen</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="Volumen" />
+                    <Input {...field} maxLength={50} placeholder="Volumen" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -684,7 +691,7 @@ export default function PublicationForm({
                 <FormItem>
                   <FormLabel>Páginas</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="Ej. 12-25" />
+                    <Input {...field} maxLength={20} placeholder="Ej. 12-25" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -698,7 +705,7 @@ export default function PublicationForm({
                 <FormItem>
                   <FormLabel>ISSN / ISBN</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="ISSN o ISBN" />
+                    <Input {...field} maxLength={20} placeholder="ISSN o ISBN" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -721,7 +728,7 @@ export default function PublicationForm({
                 <FormItem>
                   <FormLabel>Organizado por</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="Entidad organizadora" />
+                    <Input {...field} maxLength={150} placeholder="Entidad organizadora" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -735,7 +742,7 @@ export default function PublicationForm({
                 <FormItem>
                   <FormLabel>Nombre del evento</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="Nombre del evento" />
+                    <Input {...field} maxLength={200} placeholder="Nombre del evento" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -749,7 +756,7 @@ export default function PublicationForm({
                 <FormItem>
                   <FormLabel>Edición del evento</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="1ra, 2da, etc." />
+                    <Input {...field} maxLength={50} placeholder="1ra, 2da, etc." />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -763,7 +770,7 @@ export default function PublicationForm({
                 <FormItem>
                   <FormLabel>Ubicación</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="Ciudad, país" />
+                    <Input {...field} maxLength={100} placeholder="Ciudad, país" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

@@ -54,8 +54,8 @@ const languageFormSchema = z.object({
     .positive(),
 
   referenceFramework: z.string().optional(),
-  certifyingInstitution: z.string().optional(),
-  countryId: z.string().optional(),
+  certifyingInstitution: z.string().max(150, "No puede exceder 150 caracteres").optional(),
+  countryId: z.string().max(10, "No puede exceder 10 caracteres").optional(),
 
   issueDate: z.string().min(1, "La fecha de emisión es requerida"),
   expirationDate: z.string().optional(),
@@ -296,7 +296,7 @@ export default function LanguageForm({
                 <FormItem>
                   <FormLabel>Institución certificadora</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="Cambridge Assessment English" />
+                    <Input {...field} maxLength={150} placeholder="Cambridge Assessment English" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

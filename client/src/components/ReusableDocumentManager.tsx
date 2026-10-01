@@ -695,22 +695,40 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
       setPreviewItem(it);
       setPreviewOpen(true);
       setPreviewLoading(true);
+      setPreviewUrl(null);
 
       try {
         const resp = await DocumentsAPI.download(it.fileGuid);
         if (resp.status === "error") {
           setErrorText(handleApiError(resp.error, "Error cargando vista previa."));
-          setPreviewUrl(null);
+          setPreviewLoading(false);
           return;
         }
 
-        const url = window.URL.createObjectURL(resp.data);
-        setPreviewUrl(url);
+        const displayName = it.originalFileName || it.storedFileName;
+
+        if (isImageName(displayName)) {
+          // El CSP (img-src 'self' data: https:) no permite blob: en <img>; usamos
+          // data: URL vía FileReader (mismo fix ya aplicado en PersonAvatarPreview).
+          const reader = new FileReader();
+          reader.onload = () => {
+            setPreviewUrl(reader.result as string);
+            setPreviewLoading(false);
+          };
+          reader.onerror = () => {
+            setErrorText("No se pudo cargar la vista previa. Intenta nuevamente.");
+            setPreviewLoading(false);
+          };
+          reader.readAsDataURL(resp.data);
+        } else {
+          // PDF (<iframe>): no está sujeto a img-src, blob: sigue siendo válido aquí.
+          const url = window.URL.createObjectURL(resp.data);
+          setPreviewUrl(url);
+          setPreviewLoading(false);
+        }
       } catch (error) {
         logger.error("ReusableDocumentManager", "[openPreview] ERROR", error);
         setErrorText("No se pudo cargar la vista previa. Intenta nuevamente.");
-        setPreviewUrl(null);
-      } finally {
         setPreviewLoading(false);
       }
     };

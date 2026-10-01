@@ -50,8 +50,8 @@ const educationLevelFormSchema = z.object({
   // (queda en institutionNameOriginal en su lugar - ver EducationLevel.institutionId).
   institutionId: z.number().int().positive().optional(),
 
-  title: z.string().min(1, "El título obtenido es requerido"),
-  specialty: z.string().optional(),
+  title: z.string().min(1, "El título obtenido es requerido").max(500, "No puede exceder 500 caracteres"),
+  specialty: z.string().max(100, "No puede exceder 100 caracteres").optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   grade: z.string().optional(),
@@ -64,7 +64,7 @@ const educationLevelFormSchema = z.object({
     .refine((val) => !val || Number(val) >= 1, {
       message: "El puntaje debe ser mayor o igual a 1",
     }),
-  senescytRegistrationNumber: z.string().optional(),
+  senescytRegistrationNumber: z.string().max(50, "No puede exceder 50 caracteres").optional(),
   // Integración DINARDAP (2026-09-16)
   siiesGradoTypeId: z.number().int().positive().optional(),
   senescytGraduationDate: z.string().optional(),
@@ -513,7 +513,7 @@ export default function EducationLevelForm({
             <FormItem>
               <FormLabel required>Título obtenido</FormLabel>
               <FormControl>
-                <Input {...field} placeholder="Ej: Ingeniero en Sistemas / Magíster en..." />
+                <Input {...field} maxLength={500} placeholder="Ej: Ingeniero en Sistemas / Magíster en..." />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -529,7 +529,7 @@ export default function EducationLevelForm({
               <FormItem>
                 <FormLabel>Especialidad (opcional)</FormLabel>
                 <FormControl>
-                  <Input {...field} placeholder="Ej: Redes y Telecomunicaciones" />
+                  <Input {...field} maxLength={100} placeholder="Ej: Redes y Telecomunicaciones" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -544,7 +544,7 @@ export default function EducationLevelForm({
               <FormItem>
                 <FormLabel>N.° de registro SENESCYT (opcional)</FormLabel>
                 <FormControl>
-                  <Input {...field} placeholder="Ej: 1234-2020-1234567" />
+                  <Input {...field} maxLength={50} placeholder="Ej: 1234-2020-1234567" />
                 </FormControl>
                 {/* <FormDescription>
                   Requerido para justificar la escala salarial (RMU) en instituciones públicas.

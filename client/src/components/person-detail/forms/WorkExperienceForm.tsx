@@ -43,14 +43,14 @@ import { useToast } from "@/hooks/use-toast";
 // =============================
 const workExperienceFormSchema = z
   .object({
-    position: z.string().min(1, "El cargo es requerido"),
-    company: z.string().min(1, "La empresa es requerida"),
+    position: z.string().min(1, "El cargo es requerido").max(120, "No puede exceder 120 caracteres"),
+    company: z.string().min(1, "La empresa es requerida").max(150, "No puede exceder 150 caracteres"),
     startDate: z.string().min(1, "La fecha de inicio es requerida"),
     endDate: z.string().optional(),
     isCurrent: z.boolean().default(false),
-    institutionAddress: z.string().optional(),
-    entryReason: z.string().min(1, "La razón de entrada es requerida"),
-    exitReason: z.string().optional(),
+    institutionAddress: z.string().max(255, "No puede exceder 255 caracteres").optional(),
+    entryReason: z.string().min(1, "La razón de entrada es requerida").max(200, "No puede exceder 200 caracteres"),
+    exitReason: z.string().max(200, "No puede exceder 200 caracteres").optional(),
 
     // countryId es VARCHAR en la BD → lo manejamos como string
     countryId: z
@@ -305,7 +305,7 @@ export default function WorkExperienceForm({
               <FormItem>
                 <FormLabel required>Cargo/Posición</FormLabel>
                 <FormControl>
-                  <Input {...field} data-testid="input-position" />
+                  <Input {...field} maxLength={120} data-testid="input-position" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -320,7 +320,7 @@ export default function WorkExperienceForm({
               <FormItem>
                 <FormLabel required>Empresa/Organización</FormLabel>
                 <FormControl>
-                  <Input {...field} data-testid="input-company" />
+                  <Input {...field} maxLength={150} data-testid="input-company" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -515,7 +515,7 @@ export default function WorkExperienceForm({
               <FormItem className="md:col-span-2">
                 <FormLabel>Dirección de la Institución</FormLabel>
                 <FormControl>
-                  <Input {...field} data-testid="input-institution-address" />
+                  <Input {...field} maxLength={255} data-testid="input-institution-address" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -530,7 +530,7 @@ export default function WorkExperienceForm({
               <FormItem className="md:col-span-2">
                 <FormLabel>Razón de salida (opcional)</FormLabel>
                 <FormControl>
-                  <Input {...field} data-testid="input-exit-reason" />
+                  <Input {...field} maxLength={200} data-testid="input-exit-reason" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -549,6 +549,7 @@ export default function WorkExperienceForm({
                 <Textarea
                   {...field}
                   rows={4}
+                  maxLength={200}
                   data-testid="textarea-entry-reason"
                 />
               </FormControl>

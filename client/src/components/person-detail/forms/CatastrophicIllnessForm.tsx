@@ -52,22 +52,25 @@ const catastrophicIllnessFormSchema = z.object({
 
   illness: z
     .string()
-    .min(1, "El diagnóstico/descripción es requerido"),
+    .min(1, "El diagnóstico/descripción es requerido")
+    .max(150, "No puede exceder 150 caracteres"),
 
   // La BD permite nulo, pero sin certificado el registro no tiene sustento legal real
   // (mismo criterio ya usado en Contacto de Emergencia con el teléfono).
   certificateNumber: z
     .string()
-    .min(1, "El número de certificado médico es requerido"),
+    .min(1, "El número de certificado médico es requerido")
+    .max(50, "No puede exceder 50 caracteres"),
 
   iessNumber: z
     .string()
+    .max(50, "No puede exceder 50 caracteres")
     .optional()
     .refine((val) => !val || numericRegex.test(val), {
       message: "Solo se permiten números",
     }),
 
-  substituteName: z.string().optional(),
+  substituteName: z.string().max(100, "No puede exceder 100 caracteres").optional(),
 });
 
 export type CatastrophicIllnessFormData = z.infer<
@@ -240,10 +243,6 @@ export default function CatastrophicIllnessForm({
         className="space-y-4"
         data-testid="catastrophic-illness-form"
       >
-        <p className="text-xs text-muted-foreground rounded-md bg-muted/40 px-3 py-2">
-          Información médica confidencial — solo tú y el personal autorizado por RRHH pueden ver estos datos.
-        </p>
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Tipo de enfermedad */}
           <FormField
@@ -298,7 +297,7 @@ export default function CatastrophicIllnessForm({
               <FormItem>
                 <FormLabel required>N.° de certificado médico</FormLabel>
                 <FormControl>
-                  <Input {...field} placeholder="N.° de certificado" />
+                  <Input {...field} maxLength={50} placeholder="N.° de certificado" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -314,7 +313,7 @@ export default function CatastrophicIllnessForm({
             <FormItem>
               <FormLabel required>Diagnóstico / descripción</FormLabel>
               <FormControl>
-                <Input {...field} placeholder="Ej: Insuficiencia renal crónica estado 4" />
+                <Input {...field} maxLength={150} placeholder="Ej: Insuficiencia renal crónica estado 4" />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -330,7 +329,7 @@ export default function CatastrophicIllnessForm({
               <FormItem>
                 <FormLabel>N.° IESS (opcional)</FormLabel>
                 <FormControl>
-                  <Input {...field} placeholder="Solo números" />
+                  <Input {...field} maxLength={50} placeholder="Solo números" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -345,7 +344,7 @@ export default function CatastrophicIllnessForm({
               <FormItem>
                 <FormLabel>Nombre del sustituto (opcional)</FormLabel>
                 <FormControl>
-                  <Input {...field} placeholder="Persona designada para el relevo laboral" />
+                  <Input {...field} maxLength={100} placeholder="Persona designada para el relevo laboral" />
                 </FormControl>
                 <FormDescription>
                   Persona que la ley permite designar para cubrir sus funciones durante

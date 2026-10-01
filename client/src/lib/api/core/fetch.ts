@@ -7,6 +7,7 @@
 import { authService, tokenService } from '@/features/auth';
 import { API_CONFIG, resolveBaseUrl } from './config';
 import { apiLogger } from './logger';
+import { trimDeep } from '@/lib/textNormalize';
 
 // =============================================================================
 // Tipos públicos
@@ -90,6 +91,23 @@ function maskSensitive(obj: unknown): unknown {
     }
   }
   return clone;
+}
+
+/**
+ * Si el body es un string JSON (no FormData/Blob/etc.), normaliza espacios en blanco
+ * (inicio/fin/múltiples) en todos los valores string de forma recursiva, respetando
+ * contraseñas/tokens/secretos (ver trimDeep). Punto único a nivel de transporte HTTP —
+ * cubre todos los servicios/módulos del sistema sin repetir la lógica en cada formulario
+ * (hallazgo informe UTA-DITIC-PS-027-2026, observación 2). Si el string no es JSON válido,
+ * se envía sin tocar.
+ */
+function normalizeJsonBody(body: unknown): unknown {
+  if (typeof body !== 'string') return body;
+  try {
+    return JSON.stringify(trimDeep(JSON.parse(body)));
+  } catch {
+    return body;
+  }
 }
 
 function isJsonContentType(contentType: string): boolean {
@@ -353,21 +371,26 @@ export async function apiFetch<T = unknown>(
   const url = `${base}${path}`;
   const method = (init.method || 'GET').toUpperCase();
 
+  const normalizedBody = init.body instanceof FormData ? init.body : normalizeJsonBody(init.body);
+
   let bodyForLog: unknown = undefined;
   if (init.body instanceof FormData) {
     bodyForLog = init.body;
-  } else if (init.body != null) {
+  } else if (normalizedBody != null) {
     try {
       bodyForLog =
-        typeof init.body === 'string' ? JSON.parse(init.body as string) : init.body;
+        typeof normalizedBody === 'string' ? JSON.parse(normalizedBody as string) : normalizedBody;
     } catch {
-      bodyForLog = init.body;
+      bodyForLog = normalizedBody;
     }
     bodyForLog = maskSensitive(bodyForLog);
   }
 
   try {
     const { headers: _ignored, timeoutMs: _ignoredTimeout, ...initWithoutHeaders } = init;
+    if (!(init.body instanceof FormData)) {
+      initWithoutHeaders.body = normalizedBody as BodyInit | null | undefined;
+    }
 
     let accessToken = tokenService.getAccessToken();
     let headers = buildHeaders(init.headers, accessToken);

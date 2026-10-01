@@ -46,12 +46,12 @@ const addressFormSchema = z.object({
   // observación 41).
   provinceId: z.string().optional(),
   cantonId: z.string().optional(),
-  parish: z.string().optional(),
-  neighborhood: z.string().optional(),
-  mainStreet: z.string().min(1, "La calle principal es requerida"),
-  secondaryStreet: z.string().optional(),
-  houseNumber: z.string().optional(),
-  reference: z.string().optional(),
+  parish: z.string().max(100, "No puede exceder 100 caracteres").optional(),
+  neighborhood: z.string().max(100, "No puede exceder 100 caracteres").optional(),
+  mainStreet: z.string().min(1, "La calle principal es requerida").max(100, "No puede exceder 100 caracteres"),
+  secondaryStreet: z.string().max(100, "No puede exceder 100 caracteres").optional(),
+  houseNumber: z.string().max(20, "No puede exceder 20 caracteres").optional(),
+  reference: z.string().max(255, "No puede exceder 255 caracteres").optional(),
 });
 
 export type AddressFormData = z.infer<typeof addressFormSchema>;
@@ -355,7 +355,7 @@ export default function AddressForm({
               <FormItem>
                 <FormLabel>Parroquia (opcional)</FormLabel>
                 <FormControl>
-                  <Input {...field} placeholder="Ej: Huachi Loreto" />
+                  <Input {...field} maxLength={100} placeholder="Ej: Huachi Loreto" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -368,7 +368,7 @@ export default function AddressForm({
               <FormItem>
                 <FormLabel>Barrio / Sector (opcional)</FormLabel>
                 <FormControl>
-                  <Input {...field} placeholder="Ej: La Merced" />
+                  <Input {...field} maxLength={100} placeholder="Ej: La Merced" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -383,7 +383,7 @@ export default function AddressForm({
             <FormItem>
               <FormLabel required>Calle principal</FormLabel>
               <FormControl>
-                <Input {...field} placeholder="Ej: Av. Cevallos" />
+                <Input {...field} maxLength={100} placeholder="Ej: Av. Cevallos" />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -398,7 +398,7 @@ export default function AddressForm({
               <FormItem>
                 <FormLabel>Calle secundaria (opcional)</FormLabel>
                 <FormControl>
-                  <Input {...field} placeholder="Ej: Sucre" />
+                  <Input {...field} maxLength={100} placeholder="Ej: Sucre" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -411,7 +411,7 @@ export default function AddressForm({
               <FormItem>
                 <FormLabel>Número de casa (opcional)</FormLabel>
                 <FormControl>
-                  <Input {...field} placeholder="Ej: 12-34" />
+                  <Input {...field} maxLength={20} placeholder="Ej: 12-34" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -426,7 +426,7 @@ export default function AddressForm({
             <FormItem>
               <FormLabel>Referencia (opcional)</FormLabel>
               <FormControl>
-                <Input {...field} placeholder="Ej: Junto al parque central" />
+                <Input {...field} maxLength={255} placeholder="Ej: Junto al parque central" />
               </FormControl>
               <FormMessage />
             </FormItem>

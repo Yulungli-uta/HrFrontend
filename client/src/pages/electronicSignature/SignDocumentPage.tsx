@@ -1,5 +1,5 @@
 // src/pages/electronicSignature/SignDocumentPage.tsx
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRoute, Link } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Eye, Loader2, UploadCloud } from "lucide-react";
@@ -54,6 +54,16 @@ export default function SignDocumentPage() {
   const alreadySigned = mySigner?.status?.toUpperCase() === "SIGNED";
   const processInactive = !!progress && NOT_ACTIVE_STATUSES.has(progress.status.toUpperCase());
   const canSign = !!progress && !alreadySigned && !processInactive;
+
+  // Si el polling (cada 10s) ya confirmó que este firmante firmó, o que el proceso ya
+  // no está activo (p.ej. otro firmante lo rechazó), cancela cualquier estado/timeout
+  // pendiente del hook de FirmaEC — evita que el diálogo "No se detectó FirmaEC" (que
+  // solo depende del reloj interno del hook) aparezca sobre un proceso ya resuelto.
+  useEffect(() => {
+    if (f.state !== "idle" && (alreadySigned || processInactive)) {
+      f.reset();
+    }
+  }, [alreadySigned, processInactive, f.state, f.reset]);
 
   const fetchCurrentVersionBlob = async (): Promise<Blob | null> => {
     const docsRes = await SignatureProcessesAPI.documents(processId);
@@ -237,7 +247,12 @@ export default function SignDocumentPage() {
         onCancel={() => setPickerOpen(false)}
       />
 
-      <FirmaEcNotInstalledDialog open={f.state === "unavailable"} onRetry={openPositionPicker} onCancel={f.reset} />
+      <FirmaEcNotInstalledDialog
+        open={f.state === "unavailable" || f.state === "denied"}
+        error={f.state === "denied" ? f.errorInfo : null}
+        onRetry={openPositionPicker}
+        onCancel={f.reset}
+      />
     </main>
   );
 }

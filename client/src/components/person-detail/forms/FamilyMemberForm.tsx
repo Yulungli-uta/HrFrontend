@@ -32,7 +32,6 @@ import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { FAMILY_MEMBER_DOCUMENT_DIRECTORY_CODE, FAMILY_MEMBER_DOCUMENT_ENTITY_TYPE } from "@/features/constants";
 import { logger } from "@/lib/logger";
 import { useToast } from "@/hooks/use-toast";
-import { parseApiError } from "@/lib/error-handling";
 import { useDinardapLookup } from "@/hooks/useDinardapLookup";
 
 function getRefTypeId(t: any): number | undefined {
@@ -53,10 +52,10 @@ function findDocTypeIdByName(docTypes: RefType[], name: string): number | undefi
 // de nacimiento del titular — así que el schema se arma en el componente vía useMemo.
 function buildFamilyMemberFormSchema(hijoRelationshipId: number | undefined, personBirthDate: string | null | undefined) {
   return z.object({
-    firstName: z.string().min(1, "El nombre es requerido"),
-    lastName: z.string().min(1, "El apellido es requerido"),
+    firstName: z.string().min(1, "El nombre es requerido").max(100, "No puede exceder 100 caracteres"),
+    lastName: z.string().min(1, "El apellido es requerido").max(100, "No puede exceder 100 caracteres"),
     identificationTypeId: z.string().min(1, "El tipo de identificación es requerido"),
-    dependentId: z.string().min(1, "El número de identificación es requerido"),
+    dependentId: z.string().min(1, "El número de identificación es requerido").max(20, "No puede exceder 20 caracteres"),
     birthDate: z.string().min(1, "La fecha de nacimiento es requerida"),
     hasDisability: z.boolean().default(false),
     // Antes era texto libre (z.string()) y nunca calzaba con el campo numérico
@@ -70,7 +69,7 @@ function buildFamilyMemberFormSchema(hijoRelationshipId: number | undefined, per
       .optional()
       .default(0),
     isStudying: z.boolean().default(false),
-    educationInstitution: z.string().optional(),
+    educationInstitution: z.string().max(150, "No puede exceder 150 caracteres").optional(),
     // Hallazgo informe UTA-DITIC-PS-027-2026, observaciones 23/25: la relación (parentesco)
     // se mostraba en el formulario pero nunca se guardaba. Reusa la misma categoría
     // RELATIONSHIP de ref_Types que ya usa EmergencyContactForm (parentesco = relación).
@@ -367,9 +366,14 @@ export default function FamilyMemberForm({
 
         const res = await CargasFamiliaresAPI.createWithDocument(formData);
         if (res.status === "error") {
+          // Mostrar el mensaje real que ya devuelve el backend (traducido por el middleware
+          // de errores) — parseApiError esperaba un ApiError con campo "status", pero el real
+          // (fetch.ts) usa "code"; nunca coincidía y siempre caía al mensaje generico de
+          // "error interno del servidor", descartando el mensaje especifico real (hallazgo
+          // 2026-10-01, mismo patron que ya usan correctamente los otros 10 formularios).
           toast({
             title: "Error",
-            description: parseApiError(res.error).message,
+            description: res.error.message,
             variant: "destructive",
           });
           return;
@@ -453,6 +457,7 @@ export default function FamilyMemberForm({
                 <FormControl>
                   <Input
                     {...field}
+                    maxLength={20}
                     onChange={(e) => {
                       field.onChange(e);
                       dinardap.reset();
@@ -506,7 +511,7 @@ export default function FamilyMemberForm({
               <FormItem>
                 <FormLabel>Nombres</FormLabel>
                 <FormControl>
-                  <Input {...field} disabled={nombresLocked || formBlockedByDinardap} data-testid="input-first-name" />
+                  <Input {...field} maxLength={100} disabled={nombresLocked || formBlockedByDinardap} data-testid="input-first-name" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -520,7 +525,7 @@ export default function FamilyMemberForm({
               <FormItem>
                 <FormLabel>Apellidos</FormLabel>
                 <FormControl>
-                  <Input {...field} disabled={apellidosLocked || formBlockedByDinardap} data-testid="input-last-name" />
+                  <Input {...field} maxLength={100} disabled={apellidosLocked || formBlockedByDinardap} data-testid="input-last-name" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -614,7 +619,7 @@ export default function FamilyMemberForm({
                   <FormItem>
                     <FormLabel>Institución Educativa</FormLabel>
                     <FormControl>
-                      <Input {...field} disabled={formBlockedByDinardap} data-testid="input-education-institution" />
+                      <Input {...field} maxLength={150} disabled={formBlockedByDinardap} data-testid="input-education-institution" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

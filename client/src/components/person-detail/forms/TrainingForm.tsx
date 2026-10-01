@@ -41,10 +41,10 @@ import { useToast } from "@/hooks/use-toast";
 // Zod schema
 // =============================
 const trainingFormSchema = z.object({
-  title: z.string().min(1, "El título es requerido"),
-  institution: z.string().min(1, "La institución es requerida"),
+  title: z.string().min(1, "El título es requerido").max(200, "No puede exceder 200 caracteres"),
+  institution: z.string().min(1, "La institución es requerida").max(150, "No puede exceder 150 caracteres"),
 
-  location: z.string().optional(),
+  location: z.string().max(100, "No puede exceder 100 caracteres").optional(),
 
   eventTypeId: z
     .number({
@@ -74,7 +74,7 @@ const trainingFormSchema = z.object({
 
   knowledgeAreaTypeId: z.number().int().nonnegative().optional(),
 
-  certifiedBy: z.string().optional(),
+  certifiedBy: z.string().max(150, "No puede exceder 150 caracteres").optional(),
 
   startDate: z.string().min(1, "La fecha de inicio es requerida"),
   endDate: z.string().optional(),
@@ -372,7 +372,7 @@ export default function TrainingForm({
                 <FormItem className="md:col-span-2">
                   <FormLabel required>Título</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="Nombre de la capacitación" />
+                    <Input {...field} maxLength={200} placeholder="Nombre de la capacitación" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -387,7 +387,7 @@ export default function TrainingForm({
                 <FormItem>
                   <FormLabel required>Institución</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="Institución que dicta" />
+                    <Input {...field} maxLength={150} placeholder="Institución que dicta" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -402,7 +402,7 @@ export default function TrainingForm({
                 <FormItem>
                   <FormLabel>Ubicación</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="Ciudad, país" />
+                    <Input {...field} maxLength={100} placeholder="Ciudad, país" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -419,6 +419,7 @@ export default function TrainingForm({
                   <FormControl>
                     <Input
                       {...field}
+                      maxLength={150}
                       placeholder="Entidad que emite el certificado"
                     />
                   </FormControl>

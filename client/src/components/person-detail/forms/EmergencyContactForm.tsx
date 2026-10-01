@@ -44,7 +44,8 @@ const phoneRegex = /^[0-9]+$/;
 const emergencyContactFormSchema = z.object({
   identification: z
     .string()
-    .min(1, "La identificación es requerida"),
+    .min(1, "La identificación es requerida")
+    .max(20, "No puede exceder 20 caracteres"),
 
   identificationTypeId: z
     .number({
@@ -57,11 +58,13 @@ const emergencyContactFormSchema = z.object({
   firstName: z
     .string()
     .min(1, "El nombre es requerido")
+    .max(100, "No puede exceder 100 caracteres")
     .regex(nameRegex, "Solo se permiten letras"),
 
   lastName: z
     .string()
     .min(1, "El apellido es requerido")
+    .max(100, "No puede exceder 100 caracteres")
     .regex(nameRegex, "Solo se permiten letras"),
 
   relationshipTypeId: z
@@ -87,7 +90,7 @@ const emergencyContactFormSchema = z.object({
       { message: "Solo se permiten números" }
     ),
 
-  address: z.string().optional(),
+  address: z.string().max(255, "No puede exceder 255 caracteres").optional(),
 });
 
 export type EmergencyContactFormData = z.infer<
@@ -344,6 +347,7 @@ export default function EmergencyContactForm({
                   <FormControl>
                     <Input
                       {...field}
+                      maxLength={20}
                       placeholder="Cédula / DNI / Pasaporte"
                       onChange={(e) => {
                         const value = isCedula ? e.target.value.replace(/\D/g, "").slice(0, 10) : e.target.value;
@@ -365,7 +369,7 @@ export default function EmergencyContactForm({
               <FormItem>
                 <FormLabel required>Nombres</FormLabel>
                 <FormControl>
-                  <Input {...field} placeholder="Ej: María José" />
+                  <Input {...field} maxLength={100} placeholder="Ej: María José" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -380,7 +384,7 @@ export default function EmergencyContactForm({
               <FormItem>
                 <FormLabel required>Apellidos</FormLabel>
                 <FormControl>
-                  <Input {...field} placeholder="Ej: Gómez Pérez" />
+                  <Input {...field} maxLength={100} placeholder="Ej: Gómez Pérez" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -491,6 +495,7 @@ export default function EmergencyContactForm({
               <FormControl>
                 <Input
                   {...field}
+                  maxLength={255}
                   placeholder="Dirección de residencia"
                 />
               </FormControl>
