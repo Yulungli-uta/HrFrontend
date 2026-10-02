@@ -57,6 +57,8 @@ export interface Publication {
   pages?: string;
   issn_Isbn?: string;
   location?: string;
+  doi?: string;
+  link?: string;
   publicationTypeId?: number;
   journalTypeId?: number;
   isIndexed?: boolean;
@@ -309,6 +311,8 @@ export const normalizePublication = (data: any): Publication => ({
   pages: data.pages as string | undefined,
   issn_Isbn: data.issn_Isbn as string | undefined,
   location: data.location as string | undefined,
+  doi: data.doi as string | undefined,
+  link: data.link as string | undefined,
   publicationTypeId: data.publicationTypeId as number | undefined,
   journalTypeId: data.journalTypeId as number | undefined,
   isIndexed: data.isIndexed as boolean | undefined,

@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ActionIconButton } from "@/components/ui/action-icon-button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Plus, Edit, Trash2, Calendar, BookOpen, MapPin, ChevronDown, ChevronUp } from "lucide-react";
+import { FileText, Plus, Edit, Trash2, Calendar, BookOpen, MapPin, ChevronDown, ChevronUp, Link as LinkIcon } from "lucide-react";
 import { Publication } from "@/types/person";
 import { ReusableDocumentManager } from "@/components/ReusableDocumentManager";
 import { PUBLICATION_DOCUMENT_DIRECTORY_CODE, PUBLICATION_DOCUMENT_ENTITY_TYPE } from "@/features/constants";
@@ -158,6 +158,23 @@ export function PublicationsTab({ publications, onEdit, onDelete, personIdCard }
                             <Calendar className="h-3 w-3" />
                             <span>{formatDate(publication.publicationDate)}</span>
                           </div>
+                        )}
+                        {publication.doi && (
+                          <div className="flex items-center gap-1">
+                            <span>DOI: {publication.doi}</span>
+                          </div>
+                        )}
+                        {publication.link && (
+                          <a
+                            href={publication.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-primary hover:underline"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <LinkIcon className="h-3 w-3" />
+                            <span>Enlace</span>
+                          </a>
                         )}
                       </div>
 

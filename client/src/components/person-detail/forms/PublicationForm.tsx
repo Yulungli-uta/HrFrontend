@@ -49,6 +49,14 @@ const publicationFormSchema = z.object({
   pages: z.string().max(20, "No puede exceder 20 caracteres").optional(),
   issn_Isbn: z.string().max(20, "No puede exceder 20 caracteres").optional(),
   location: z.string().max(100, "No puede exceder 100 caracteres").optional(),
+  doi: z.string().max(255, "No puede exceder 255 caracteres").optional(),
+  link: z
+    .string()
+    .max(500, "No puede exceder 500 caracteres")
+    .optional()
+    .refine((val) => !val || /^https?:\/\/.+/i.test(val), {
+      message: "Debe ser una URL válida (http:// o https://)",
+    }),
 
   publicationTypeId: z
     .number({
@@ -240,6 +248,8 @@ export default function PublicationForm({
       pages: "",
       issn_Isbn: "",
       location: "",
+      doi: "",
+      link: "",
       publicationTypeId: undefined,
       isIndexed: false,
       journalTypeId: undefined,
@@ -302,6 +312,8 @@ export default function PublicationForm({
       pages: (publication as any)?.pages ?? "",
       issn_Isbn: publication.issn_Isbn ?? "",
       location: publication.location ?? "",
+      doi: (publication as any)?.doi ?? "",
+      link: (publication as any)?.link ?? "",
 
       publicationTypeId: getNumericId(
         publication,
@@ -360,6 +372,8 @@ export default function PublicationForm({
         if (data.journalNumber) formData.append("JournalNumber", data.journalNumber);
         if (data.volume) formData.append("Volume", data.volume);
         if (data.pages) formData.append("Pages", data.pages);
+        if (data.doi) formData.append("Doi", data.doi);
+        if (data.link) formData.append("Link", data.link);
         if (data.knowledgeAreaTypeId) formData.append("KnowledgeAreaTypeId", String(data.knowledgeAreaTypeId));
         if (data.subAreaTypeId) formData.append("SubAreaTypeId", String(data.subAreaTypeId));
         if (data.areaTypeId) formData.append("AreaTypeId", String(data.areaTypeId));
@@ -421,6 +435,8 @@ export default function PublicationForm({
       journalNumber: data.journalNumber ?? "",
       volume: data.volume ?? "",
       pages: data.pages ?? "",
+      doi: data.doi ?? "",
+      link: data.link ?? "",
 
       organizedBy: data.organizedBy ?? "",
       eventName: data.eventName ?? "",
@@ -706,6 +722,34 @@ export default function PublicationForm({
                   <FormLabel>ISSN / ISBN</FormLabel>
                   <FormControl>
                     <Input {...field} maxLength={20} placeholder="ISSN o ISBN" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control as any}
+              name="doi"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>DOI</FormLabel>
+                  <FormControl>
+                    <Input {...field} maxLength={255} placeholder="Ej. 10.1234/abcd.5678" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control as any}
+              name="link"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Enlace</FormLabel>
+                  <FormControl>
+                    <Input {...field} type="url" maxLength={500} placeholder="https://..." />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
