@@ -1,5 +1,5 @@
 // src/pages/guards/GuardLocationRotation.tsx
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { MapPin, Plus, Loader2, ChevronLeft, ChevronRight, Users, Building2, Trash2, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,10 +36,22 @@ function PeriodFormDialog({
 }) {
   const today = new Date().toISOString().slice(0, 10);
   const { createPeriod, updatePeriod } = useLocationRotationMutations(() => onClose());
-  const [form, setForm] = useState<PeriodForm>(() => editTarget
-    ? { name: editTarget.name, startDate: editTarget.startDate, endDate: editTarget.endDate, notes: editTarget.notes ?? '', isActive: editTarget.isActive }
-    : { name: '', startDate: today, endDate: today, notes: '', isActive: true }
-  );
+  const buildInitialForm = (target: GuardLocationRotationPeriodDto | null): PeriodForm => target
+    ? { name: target.name, startDate: target.startDate, endDate: target.endDate, notes: target.notes ?? '', isActive: target.isActive }
+    : { name: '', startDate: today, endDate: today, notes: '', isActive: true };
+  const [form, setForm] = useState<PeriodForm>(() => buildInitialForm(editTarget));
+
+  // Sin esto, el formulario solo se inicializaba la primera vez que este componente se
+  // monta (con editTarget=null, "nuevo periodo") y nunca se volvia a sincronizar al abrir
+  // "Editar" sobre un periodo real — siempre mostraba nombre vacio, fechas de hoy y
+  // Activo=true sin importar los datos reales del periodo (hallazgo real 2026-10-02: el
+  // usuario no podia activar un periodo porque "Guardar" quedaba deshabilitado con el
+  // nombre vacio). Mismo patron que ya usan correctamente otros dialogos del modulo
+  // (ver PlanFormDialog en GuardVacationPlans.tsx).
+  useEffect(() => {
+    if (open) setForm(buildInitialForm(editTarget));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, editTarget?.locationRotationPeriodId]);
 
   const f = <K extends keyof PeriodForm>(k: K, v: PeriodForm[K]) => setForm(p => ({ ...p, [k]: v }));
   const isSaving = createPeriod.isPending || updatePeriod.isPending;

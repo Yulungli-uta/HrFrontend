@@ -216,8 +216,10 @@ export default function AddressForm({
       personId,
       addressTypeId: data.addressTypeId,
       countryId: data.countryId,
-      provinceId: data.provinceId,
-      cantonId: data.cantonId,
+      // Hallazgo 2026-10-02: nunca enviar "" — ProvinceID/CantonID son NULL en BD para
+      // países sin catálogo propio (hoy, cualquiera que no sea Ecuador); "" violaba la FK.
+      provinceId: data.provinceId || null,
+      cantonId: data.cantonId || null,
       parish: data.parish || null,
       neighborhood: data.neighborhood || null,
       mainStreet: data.mainStreet,

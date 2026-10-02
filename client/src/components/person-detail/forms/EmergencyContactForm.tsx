@@ -38,10 +38,19 @@ const nameRegex = /^[A-Za-zÁÉÍÓÚÜáéíóúüÑñ\s]+$/;
 // Solo números
 const phoneRegex = /^[0-9]+$/;
 
+// Solo letras y numeros (sin espacios/simbolos) — para pasaporte u otro tipo distinto de
+// cedula, que puede combinar ambos.
+const alphanumericRegex = /^[A-Za-z0-9]+$/;
+
 // =============================
 // Schema Zod
 // =============================
-const emergencyContactFormSchema = z.object({
+// Fábrica (no constante estática): la regla "cédula = solo números, otro tipo = alfanumérico"
+// depende de qué TypeId real de ref_Types corresponde a "Cédula" en este ambiente (varía por
+// ambiente, ver [[reftypes-resolve-by-name-not-id]]) — se arma en el componente vía useMemo,
+// mismo patrón que buildFamilyMemberFormSchema en FamilyMemberForm.tsx.
+function buildEmergencyContactFormSchema(cedulaTypeId: number | undefined) {
+  return z.object({
   identification: z
     .string()
     .min(1, "La identificación es requerida")
@@ -91,10 +100,28 @@ const emergencyContactFormSchema = z.object({
     ),
 
   address: z.string().max(255, "No puede exceder 255 caracteres").optional(),
-});
+  }).superRefine((data, ctx) => {
+    const isCedula = cedulaTypeId != null && data.identificationTypeId === cedulaTypeId;
+    if (isCedula) {
+      if (!phoneRegex.test(data.identification)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["identification"],
+          message: "La identificación debe ser solo numérica cuando el tipo es Cédula",
+        });
+      }
+    } else if (!alphanumericRegex.test(data.identification)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["identification"],
+        message: "La identificación solo puede contener letras y números",
+      });
+    }
+  });
+}
 
 export type EmergencyContactFormData = z.infer<
-  typeof emergencyContactFormSchema
+  ReturnType<typeof buildEmergencyContactFormSchema>
 >;
 
 // =============================
@@ -158,6 +185,15 @@ export default function EmergencyContactForm({
           t.name?.toUpperCase().includes("CÉDULA") || t.name?.toUpperCase().includes("CEDULA")
       ),
     [identityTypes]
+  );
+
+  // =============================
+  // Schema dinámico (depende del TypeId real de Cédula en este ambiente)
+  // =============================
+  const cedulaTypeId = getRefTypeId(cedulaType);
+  const emergencyContactFormSchema = useMemo(
+    () => buildEmergencyContactFormSchema(cedulaTypeId),
+    [cedulaTypeId]
   );
 
   // =============================
@@ -340,7 +376,7 @@ export default function EmergencyContactForm({
             control={form.control}
             name="identification"
             render={({ field }) => {
-              const isCedula = !!cedulaType && form.watch("identificationTypeId") === cedulaType.id;
+              const isCedula = cedulaTypeId != null && form.watch("identificationTypeId") === cedulaTypeId;
               return (
                 <FormItem>
                   <FormLabel required>Identificación</FormLabel>
@@ -350,7 +386,9 @@ export default function EmergencyContactForm({
                       maxLength={20}
                       placeholder="Cédula / DNI / Pasaporte"
                       onChange={(e) => {
-                        const value = isCedula ? e.target.value.replace(/\D/g, "").slice(0, 10) : e.target.value;
+                        const value = isCedula
+                          ? e.target.value.replace(/\D/g, "").slice(0, 10)
+                          : e.target.value.replace(/[^A-Za-z0-9]/g, "");
                         field.onChange(value);
                       }}
                     />

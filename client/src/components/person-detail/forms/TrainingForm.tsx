@@ -77,7 +77,13 @@ const trainingFormSchema = z.object({
   certifiedBy: z.string().max(150, "No puede exceder 150 caracteres").optional(),
 
   startDate: z.string().min(1, "La fecha de inicio es requerida"),
-  endDate: z.string().optional(),
+  // Obligatoria: a diferencia de Experiencia Laboral (que sí permite "trabajo actual" sin
+  // fecha de fin), una capacitación siempre tiene fecha de finalización definida — el
+  // backend la exige como DateOnly no-nulable (HR.tbl_Trainings.EndDate NOT NULL). Antes el
+  // formulario la dejaba opcional y el guardado fallaba en el servidor con un 400 crudo
+  // ("The JSON value could not be converted to System.DateOnly") en vez de validar antes de
+  // enviar (hallazgo real 2026-10-02).
+  endDate: z.string().min(1, "La fecha de finalización es requerida"),
 
   hours: z
     .number({
@@ -85,7 +91,7 @@ const trainingFormSchema = z.object({
     })
     .int()
     .nonnegative()
-    .max(8760, "Las horas no pueden exceder 8760 (equivalente a un año continuo)")
+    .max(10000, "Las horas no pueden exceder 10000")
     .optional(),
 }).superRefine((data, ctx) => {
   // Hallazgo informe UTA-DITIC-PS-027-2026, observación 31.
@@ -591,7 +597,7 @@ export default function TrainingForm({
               name="endDate"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Fecha de finalización</FormLabel>
+                  <FormLabel required>Fecha de finalización</FormLabel>
                   <FormControl>
                     <Input
                       type="date"
@@ -614,7 +620,7 @@ export default function TrainingForm({
                     <Input
                       type="number"
                       min={0}
-                      max={8760}
+                      max={10000}
                       value={field.value ?? ""}
                       onChange={(e) =>
                         field.onChange(

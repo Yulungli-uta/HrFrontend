@@ -222,18 +222,24 @@ function EmployeeLocationSection({
   const displayValue = isPending ? pendingLocationId : (currentAssignment?.locationId ?? '');
 
   return (
-    <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+    // Antes la etiqueta y el select vivian en una sola fila "flex flex-wrap" — el select
+    // (flex-1) no respetaba el ancho angosto del dialogo (sm:max-w-md) y se desbordaba
+    // fuera del cuadro en vez de bajar a una linea nueva (hallazgo real 2026-10-02, con
+    // datos reales de ubicacion ya asignada). Apilado en columna es mas robusto aqui.
+    <div className="mt-1.5 flex flex-col gap-1 w-full min-w-0">
       {/* Badge de asignación actual con botón X para quitar */}
       {currentAssignment && !isPending && (
-        <span className="inline-flex items-center gap-1 text-[10px] bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-2 py-0.5 font-medium">
-          <MapPin className="h-2.5 w-2.5" />
-          {currentAssignment.locationCode ? `[${currentAssignment.locationCode}] ` : ''}
-          {currentAssignment.locationName}
-          {currentAssignment.periodName && (
-            <span className="text-blue-400 ml-0.5">· {currentAssignment.periodName}</span>
-          )}
+        <span className="inline-flex items-center gap-1 text-[10px] bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-2 py-0.5 font-medium max-w-full">
+          <MapPin className="h-2.5 w-2.5 shrink-0" />
+          <span className="truncate">
+            {currentAssignment.locationCode ? `[${currentAssignment.locationCode}] ` : ''}
+            {currentAssignment.locationName}
+            {currentAssignment.periodName && (
+              <span className="text-blue-400 ml-0.5">· {currentAssignment.periodName}</span>
+            )}
+          </span>
           <button
-            className="ml-0.5 text-blue-400 hover:text-red-500 transition-colors"
+            className="ml-0.5 shrink-0 text-blue-400 hover:text-red-500 transition-colors"
             title="Quitar asignación de ubicación"
             onClick={() => onMarkDelete(employeeId, currentAssignment.locationRotationAssignmentId)}
           >
@@ -242,39 +248,41 @@ function EmployeeLocationSection({
         </span>
       )}
       {/* Select para cambiar o asignar */}
-      <select
-        className={`h-7 border rounded-md px-2 text-xs bg-background flex-1 min-w-0 ${isPending ? 'border-primary ring-1 ring-primary/30' : ''}`}
-        value={displayValue}
-        onChange={e => onPendingChange(
-          employeeId,
-          e.target.value !== '' ? Number(e.target.value) : '',
-          currentAssignment?.locationRotationAssignmentId ?? null,
-        )}
-        disabled={!activePeriod}
-        title={!activePeriod ? 'Sin periodo activo' : undefined}
-      >
-        <option value="">
-          {currentAssignment ? '— Cambiar ubicación —' : 'Seleccionar sub-ubicación…'}
-        </option>
-        {Array.from(locationGroups.entries()).map(([parentLabel, items]) => (
-          <optgroup key={parentLabel} label={parentLabel}>
-            {items.map(l => (
-              <option key={l.locationId} value={l.locationId}>
-                {l.locationCode ? `[${l.locationCode}] ` : ''}{l.locationName} · Nivel {l.level}
-              </option>
-            ))}
-          </optgroup>
-        ))}
-      </select>
-      {isPending && (
-        <button
-          className="text-[10px] text-muted-foreground hover:text-foreground"
-          title="Cancelar cambio"
-          onClick={() => onCancelPending(employeeId)}
+      <div className="flex items-center gap-1.5 w-full min-w-0">
+        <select
+          className={`h-7 border rounded-md px-2 text-xs bg-background flex-1 min-w-0 ${isPending ? 'border-primary ring-1 ring-primary/30' : ''}`}
+          value={displayValue}
+          onChange={e => onPendingChange(
+            employeeId,
+            e.target.value !== '' ? Number(e.target.value) : '',
+            currentAssignment?.locationRotationAssignmentId ?? null,
+          )}
+          disabled={!activePeriod}
+          title={!activePeriod ? 'Sin periodo activo' : undefined}
         >
-          <X className="h-3 w-3" />
-        </button>
-      )}
+          <option value="">
+            {currentAssignment ? '— Cambiar ubicación —' : 'Seleccionar sub-ubicación…'}
+          </option>
+          {Array.from(locationGroups.entries()).map(([parentLabel, items]) => (
+            <optgroup key={parentLabel} label={parentLabel}>
+              {items.map(l => (
+                <option key={l.locationId} value={l.locationId}>
+                  {l.locationCode ? `[${l.locationCode}] ` : ''}{l.locationName} · Nivel {l.level}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+        {isPending && (
+          <button
+            className="shrink-0 text-[10px] text-muted-foreground hover:text-foreground"
+            title="Cancelar cambio"
+            onClick={() => onCancelPending(employeeId)}
+          >
+            <X className="h-3 w-3" />
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -447,7 +455,14 @@ function GroupEmployeesPanel({ group }: { group: LocationGroupDetailDto }) {
   };
 
   return (
-    <div className="space-y-4">
+    // min-w-0: este div es hijo directo del grid de DialogContent (ver ui/dialog.tsx,
+    // "grid w-full max-w-md ..."). Los items de un grid tienen min-width:auto por defecto
+    // — el contenedor no se encogia por debajo del ancho minimo de su contenido, forzando
+    // el dialogo entero a desbordarse horizontalmente (~69px) aunque ningun elemento interno
+    // mostrara overflow propio (hallazgo real 2026-10-02, confirmado forzando min-width:0
+    // en vivo: el desborde desaparecio por completo). Sin esto, cualquier fix de ancho mas
+    // adentro (badge, select, etc.) es inutil porque el grid nunca deja que se encojan.
+    <div className="space-y-4 min-w-0">
       <div>
         <p className="text-sm font-semibold">{group.groupName}</p>
         {group.groupCode && <p className="text-xs text-muted-foreground font-mono">{group.groupCode}</p>}
@@ -482,7 +497,12 @@ function GroupEmployeesPanel({ group }: { group: LocationGroupDetailDto }) {
           <p className="text-sm text-muted-foreground">Sin guardias para el filtro actual.</p>
         ) : (
           <>
-            <div className="max-h-[380px] overflow-y-auto space-y-2 pr-1">
+            {/* Alto relativo al viewport en vez de un pixel fijo (antes max-h-[380px]) — en
+                pantallas/ventanas mas chicas el ultimo guardia quedaba cortado a la mitad
+                contra el borde en vez de verse completo con scroll (hallazgo real 2026-10-02).
+                Reservamos espacio para el resto del dialogo (header, buscador, boton guardar,
+                seccion "agregar guardias") restando del 90vh que ya limita el DialogContent. */}
+            <div className="max-h-[40vh] overflow-y-auto space-y-2 pr-1">
               {filteredActive.map(e => (
                 <div key={e.groupEmployeeId} className="rounded-md border px-3 py-2">
                   <div className="flex items-center justify-between gap-2">
@@ -1108,7 +1128,12 @@ function HierarchyView({
       <DuplicateGroupDialog baseGroup={duplicateTarget} onClose={() => setDuplicateTarget(null)} />
 
       <Dialog open={!!empPanel} onOpenChange={v => { if (!v) setEmpPanel(null); }}>
-        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
+        {/* max-w-md sin prefijo "sm:" a proposito: el DialogContent base ya trae
+            "max-w-lg" (512px) sin prefijo, y Tailwind-merge no deduplica un override
+            "sm:max-w-md" contra un base sin prefijo (son "slots" distintos) — max-w-lg
+            terminaba ganando y el dialogo seguia midiendo ~512px pese al override
+            (hallazgo real 2026-10-02, confirmado con scrollWidth/clientWidth en vivo). */}
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><Users className="h-4 w-4" />Gestión de Guardias</DialogTitle>
           </DialogHeader>
@@ -1381,7 +1406,12 @@ function AllGroupsView({
       <GroupLocationAssignmentDialog open={!!locationPanel} group={locationPanel} onClose={() => setLocationPanel(null)} />
       <DuplicateGroupDialog baseGroup={duplicateTarget} onClose={() => setDuplicateTarget(null)} />
       <Dialog open={!!empPanel} onOpenChange={v => { if (!v) setEmpPanel(null); }}>
-        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
+        {/* max-w-md sin prefijo "sm:" a proposito: el DialogContent base ya trae
+            "max-w-lg" (512px) sin prefijo, y Tailwind-merge no deduplica un override
+            "sm:max-w-md" contra un base sin prefijo (son "slots" distintos) — max-w-lg
+            terminaba ganando y el dialogo seguia midiendo ~512px pese al override
+            (hallazgo real 2026-10-02, confirmado con scrollWidth/clientWidth en vivo). */}
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><Users className="h-4 w-4" />Gestion de Guardias</DialogTitle>
           </DialogHeader>
@@ -1566,7 +1596,12 @@ function LocationGroupsView({
       <GroupLocationAssignmentDialog open={!!locationDialogGroup} group={locationDialogGroup} onClose={() => setLocationDialogGroup(null)} />
 
       <Dialog open={!!employeePanelGroup} onOpenChange={v => { if (!v) setEmployeePanelGroup(null); }}>
-        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
+        {/* max-w-md sin prefijo "sm:" a proposito: el DialogContent base ya trae
+            "max-w-lg" (512px) sin prefijo, y Tailwind-merge no deduplica un override
+            "sm:max-w-md" contra un base sin prefijo (son "slots" distintos) — max-w-lg
+            terminaba ganando y el dialogo seguia midiendo ~512px pese al override
+            (hallazgo real 2026-10-02, confirmado con scrollWidth/clientWidth en vivo). */}
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><Users className="h-4 w-4" />Gestión de Guardias</DialogTitle>
           </DialogHeader>
