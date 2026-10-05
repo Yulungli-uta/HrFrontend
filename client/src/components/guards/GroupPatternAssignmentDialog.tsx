@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useRotationPatterns, useGroupPatterns, useGroupPatternMutations } from '@/hooks/guards/useGuards';
+import { nearestSundayOnOrBefore } from '@/lib/guardRotationPattern';
 import type { LocationGroupDetailDto, RotationPatternDto, RotationPatternDetailDto, GuardGroupRotationPatternDto } from '@/types/guards';
 
 const today = new Date().toISOString().slice(0, 10);
@@ -79,6 +80,18 @@ export function GroupPatternAssignmentDialog({ open, group, onClose }: Props) {
   const currentPatterns = currentResp?.status === 'success' ? currentResp.data : [];
   const activePattern = currentPatterns.find(p => p.isActive);
   const selectedPattern = patterns.find(p => String(p.patternId) === form.patternId) ?? null;
+  const requiresSundayAnchor = selectedPattern?.cycleDays === 7;
+
+  // El patrón se configura con "Día 1 = Domingo" (dayOrderLabel). Para que eso sea cierto, el
+  // inicio de ciclo de un patrón de 7 días tiene que caer siempre en domingo — se calcula solo,
+  // no se deja a criterio de quien asigna el patrón (ver nearestSundayOnOrBefore).
+  useEffect(() => {
+    if (!requiresSundayAnchor || !form.validFrom) return;
+    const sunday = nearestSundayOnOrBefore(form.validFrom);
+    if (sunday !== form.startCycleDate) {
+      setForm(f => ({ ...f, startCycleDate: sunday }));
+    }
+  }, [requiresSundayAnchor, form.validFrom, form.startCycleDate]);
 
   const handleStartEdit = (p: GuardGroupRotationPatternDto) => {
     setEditingId(p.groupPatternId);
@@ -240,9 +253,14 @@ export function GroupPatternAssignmentDialog({ open, group, onClose }: Props) {
               <Input
                 type="date" className="h-8 text-sm mt-1"
                 value={form.startCycleDate}
+                disabled={requiresSundayAnchor}
                 onChange={e => setForm(f => ({ ...f, startCycleDate: e.target.value }))}
               />
-              <p className="text-[10px] text-muted-foreground mt-0.5">Fecha desde la cual contar el ciclo</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {requiresSundayAnchor
+                  ? 'Calculado automáticamente en domingo, para respetar los días configurados en el patrón (Día 1 = Domingo)'
+                  : 'Fecha desde la cual contar el ciclo'}
+              </p>
             </div>
             <div>
               <Label className="text-xs">Válido desde *</Label>
