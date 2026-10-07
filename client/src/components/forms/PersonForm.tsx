@@ -206,6 +206,50 @@ const personSchema = z.object({
 
 type PersonFormData = z.input<typeof personSchema>;
 
+// 2026-10-07: mapa campo->pestaña para el aviso de "errores en otra pestaña". El formulario
+// tiene 4 pestañas y los errores de un campo fuera de la pestaña activa eran invisibles
+// (el input con el error ni siquiera está montado/visible) — el usuario corregía lo que veía
+// y el botón de Guardar seguía deshabilitado sin ninguna pista de por qué.
+const TAB_LABELS = {
+  basic: "Básico",
+  personal: "Personal",
+  family: "Familia",
+  health: "Salud",
+} as const;
+
+const FIELD_TAB_MAP: Record<string, { tab: keyof typeof TAB_LABELS; label: string }> = {
+  identType: { tab: "basic", label: "Tipo de Identificación" },
+  idCard: { tab: "basic", label: "Número de Identificación" },
+  firstName: { tab: "basic", label: "Nombres" },
+  lastName: { tab: "basic", label: "Apellidos" },
+  preferredDenomination: { tab: "basic", label: "Denominación Formal" },
+  email: { tab: "basic", label: "Correo" },
+  phone: { tab: "basic", label: "Teléfono" },
+
+  birthDate: { tab: "personal", label: "Fecha de Nacimiento" },
+  sex: { tab: "personal", label: "Sexo" },
+  gender: { tab: "personal", label: "Género" },
+  maritalStatusTypeId: { tab: "personal", label: "Estado Civil" },
+  address: { tab: "personal", label: "Dirección" },
+  countryId: { tab: "personal", label: "País" },
+  provinceId: { tab: "personal", label: "Provincia" },
+  cantonId: { tab: "personal", label: "Cantón" },
+  yearsOfResidence: { tab: "personal", label: "Años de Residencia" },
+  militaryCard: { tab: "personal", label: "Cartilla Militar" },
+
+  motherName: { tab: "family", label: "Nombre de la Madre" },
+  fatherName: { tab: "family", label: "Nombre del Padre" },
+  ethnicityTypeId: { tab: "family", label: "Etnia" },
+  indigenousNationalityTypeId: { tab: "family", label: "Nacionalidad Indígena" },
+
+  bloodTypeTypeId: { tab: "health", label: "Tipo de Sangre" },
+  disability: { tab: "health", label: "Discapacidad" },
+  disabilityPercentage: { tab: "health", label: "Porcentaje de Discapacidad" },
+  conadisCard: { tab: "health", label: "Carnet CONADIS" },
+  specialNeedsTypeId: { tab: "health", label: "Tipo de Necesidad Especial" },
+  hasDisability: { tab: "health", label: "¿Tiene discapacidad?" },
+};
+
 // ---------------------- Props ----------------------
 
 interface PersonFormProps {
@@ -525,12 +569,25 @@ export default function PersonForm({
     reset,
     setValue,
     watch,
+    trigger,
     formState: { errors, isSubmitting, isValid, isDirty: _formIsDirty },
   } = useForm<PersonFormData>({
     resolver: zodResolver(personSchema),
     mode: "onChange",
     defaultValues,
   });
+
+  // 2026-10-07: react-hook-form NO valida al montar — con resolver + mode "onChange",
+  // `isValid`/`errors` quedan vacíos/desactualizados hasta el primer evento de cambio del
+  // usuario. Al editar una persona con datos viejos ya inválidos (ej. fecha de nacimiento o
+  // carnet CONADIS cargados antes de que existiera esa regla), el botón de Guardar quedaba
+  // deshabilitado sin ningún error visible — nada disparaba la validación inicial. Se fuerza
+  // una validación completa apenas el formulario monta, para que errors/isValid reflejen el
+  // estado real de los datos cargados desde el primer render, no solo después de tocar algo.
+  useEffect(() => {
+    trigger();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Auto-relleno desde Registro Civil (DINARDAP) - solo aplica al crear (idCard ya está
   // deshabilitado al editar, ver más abajo). No se auto-mapean sexo/género/estado civil/
@@ -660,7 +717,11 @@ export default function PersonForm({
     setValue("identType", identType, { shouldValidate: true });
     setSelectedIdentType(identType);
 
-    if (cedulaType && identType !== cedulaType.id) {
+    // 2026-10-07: al editar, idCard permanece bloqueado (disabled={isEditing}) a propósito
+    // (no hay chequeo de duplicados en el backend para esta actualización) — vaciarlo aquí
+    // dejaba el campo requerido en blanco y sin forma de corregirlo, bloqueando el submit
+    // para siempre. Solo se limpia al crear una persona nueva.
+    if (!isEditing && cedulaType && identType !== cedulaType.id) {
       setValue("idCard", "", { shouldValidate: true });
     }
   };
@@ -775,6 +836,24 @@ export default function PersonForm({
 
   const hasIdentityTypes = identityTypes.length > 0;
 
+  // Agrupa los errores actuales por pestaña, sin importar cuál esté activa — así el aviso
+  // siempre refleja el estado real del formulario completo, no solo lo que se ve.
+  const tabErrors = useMemo(() => {
+    const grouped = new Map<keyof typeof TAB_LABELS, string[]>();
+    for (const fieldName of Object.keys(errors)) {
+      const meta = FIELD_TAB_MAP[fieldName];
+      if (!meta) continue;
+      const fields = grouped.get(meta.tab) ?? [];
+      fields.push(meta.label);
+      grouped.set(meta.tab, fields);
+    }
+    return Array.from(grouped.entries()).map(([tab, fields]) => ({
+      tab,
+      label: TAB_LABELS[tab],
+      fields,
+    }));
+  }, [errors]);
+
   const TAB_ORDER = ["basic", "personal", "family", "health"] as const;
 
   const goPreviousTab = () => {
@@ -810,6 +889,34 @@ export default function PersonForm({
         <Alert className="border-border bg-muted/50 dark:border-slate-800 dark:bg-slate-900/70">
           <Loader2 className="h-4 w-4 animate-spin" />
           <AlertDescription>Cargando tipos de referencia...</AlertDescription>
+        </Alert>
+      )}
+
+      {tabErrors.length > 0 && (
+        <Alert
+          variant="destructive"
+          className="border-destructive/40 bg-destructive/5 dark:bg-destructive/10"
+        >
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            <p className="mb-1 font-medium">
+              Hay errores de validación que impiden guardar:
+            </p>
+            <ul className="space-y-0.5">
+              {tabErrors.map(({ tab, label, fields }) => (
+                <li key={tab}>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab(tab)}
+                    className="font-medium underline underline-offset-2 hover:text-destructive"
+                  >
+                    {label}
+                  </button>
+                  : {fields.join(", ")}
+                </li>
+              ))}
+            </ul>
+          </AlertDescription>
         </Alert>
       )}
 

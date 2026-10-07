@@ -18,6 +18,8 @@ export interface Person {
    */
   identType?: number;
   idCard: string;
+  /** Nombre/título formal autoeditado (ej. "Dra. Sara Camacho Estrada, PhD."). */
+  preferredDenomination?: string | null;
   email: string;
   phone?: string | null;
   birthDate?: string | null;
@@ -25,6 +27,8 @@ export interface Person {
   gender?: string | number | null;
   maritalStatusTypeId?: number | null;
   ethnicityTypeId?: number | null;
+  /** Nacionalidad indígena (SIIES), solo aplica si ethnicityTypeId = Indígena. */
+  indigenousNationalityTypeId?: number | null;
   countryId?: number | string | null;
   provinceId?: number | string | null;
   cantonId?: number | string | null;
@@ -272,6 +276,7 @@ export const normalizePerson = (data: any): Person => ({
   lastName: (data.lastName as string) || '',
   identType: data.identType as number | undefined,
   idCard: (data.idCard as string) || '',
+  preferredDenomination: data.preferredDenomination as string | null,
   email: (data.email as string) || '',
   phone: data.phone as string | null,
   birthDate: data.birthDate as string | null,
@@ -283,6 +288,7 @@ export const normalizePerson = (data: any): Person => ({
     null,
   ethnicityTypeId:
     (data.ethnicityTypeId as number) ?? (data.ethnicityTypeID as number) ?? null,
+  indigenousNationalityTypeId: data.indigenousNationalityTypeId as number | null,
   countryId: (data.countryId as number | string) ?? null,
   provinceId: (data.provinceId as number | string) ?? null,
   cantonId: (data.cantonId as number | string) ?? null,
