@@ -41,6 +41,7 @@ import {
   ShieldCheck,
   Utensils,
   AlertTriangle,
+  Moon,
 } from "lucide-react";
 
 // ─── Tipos ─────────────────────────────────────────────────────────────────────
@@ -188,6 +189,16 @@ const REPORT_CARDS: ReportCard[] = [
     category: "Asistencia",
     badgeColor: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
     href: "/reports/attendance-novelties",
+    formats: ["PDF", "Excel"],
+  },
+  {
+    id: "night-hours-summary",
+    title: "Horas Nocturnas por Empleado",
+    description: "Total de horas nocturnas trabajadas por empleado en el período, según la ventana horaria nocturna parametrizada (19:00-06:00)",
+    icon: Moon,
+    category: "Asistencia",
+    badgeColor: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200",
+    href: "/reports/night-hours-summary",
     formats: ["PDF", "Excel"],
   },
 

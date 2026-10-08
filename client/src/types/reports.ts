@@ -25,6 +25,7 @@ export type ReportType =
   | 'family-subsidy-summary'
   | 'seniority-bonus-summary'
   | 'attendance-novelties'
+  | 'night-hours-summary'
   // Reportes v2 — Gestión RH
   | 'contracts'
   | 'active-contracts'
@@ -254,6 +255,17 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
     availableFormats: ['pdf', 'excel'],
     availableFilters: ['startDate', 'endDate', 'departmentId', 'laborRegimeId', 'employeeId', 'identification', 'orientation'],
   },
+  'night-hours-summary': {
+    type: 'night-hours-summary',
+    title: 'Horas Nocturnas por Empleado',
+    description: 'Total de horas nocturnas trabajadas por empleado en el período, según la ventana horaria nocturna parametrizada (19:00-06:00)',
+    icon: 'Moon',
+    availableFormats: ['pdf', 'excel'],
+    // No filtra por régimen por defecto (la jornada nocturna no es exclusiva de un
+    // tipo de contrato, a diferencia del subsidio de alimentación); queda como
+    // filtro opcional junto con dependencia, empleado y cédula.
+    availableFilters: ['startDate', 'endDate', 'departmentId', 'laborRegimeId', 'employeeId', 'identification', 'orientation'],
+  },
   'family-subsidy-summary': {
     type: 'family-subsidy-summary',
     title: 'Subsidio de Cargas Familiares',
@@ -405,26 +417,26 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
   'siies-funcionarios': {
     type: 'siies-funcionarios',
     title: 'SIIES - Funcionarios',
-    description: 'Matrices 5.7/5.8 del Instructivo CACES. Use el filtro "Tipo de identificación" para elegir Cédula o Pasaporte — cada exportación genera un único archivo, nunca mezclados. "Fecha Inicio"/"Fecha Fin" activan búsqueda histórica: trae a quien estuvo vigente (régimen, contrato o acción de personal) en algún momento del rango, esté o no activo hoy — si se dejan vacías, muestra la vigencia actual. Exporta CSV UTF-8 con separador ";".',
+    description: 'Matrices 5.7/5.8 del Instructivo CACES. Use el filtro "Tipo de identificación" para elegir Cédula o Pasaporte — cada exportación genera un único archivo, nunca mezclados. "Fecha Inicio"/"Fecha Fin" activan búsqueda histórica: trae a quien estuvo vigente (régimen, contrato o acción de personal) en algún momento del rango. Siempre incluye activos e inactivos — el reporte debe reflejar a todos los que laboraron en el período, sin importar su estado actual. Exporta CSV UTF-8 con separador ";".',
     icon: 'FileSpreadsheet',
     availableFormats: ['pdf', 'csv'],
-    availableFilters: ['startDate', 'endDate', 'identType', 'identification', 'includeInactive', 'verticalHeaders', 'repeatHeaderOnEveryPage'],
+    availableFilters: ['startDate', 'endDate', 'identType', 'identification', 'verticalHeaders', 'repeatHeaderOnEveryPage'],
   },
   'siies-profesores': {
     type: 'siies-profesores',
     title: 'SIIES - Profesores',
-    description: 'Matrices 5.2/5.3 (Contratos IES) y 5.4 (Distribución Horas) fusionadas. Use el filtro "Tipo de identificación" para elegir Cédula o Pasaporte — cada exportación genera un único archivo, nunca mezclados. El filtro "Período académico" controla la matriz 5.4 (vacío = período más reciente por profesor). "Fecha Inicio"/"Fecha Fin" activan búsqueda histórica: trae a quien trabajó en algún momento del rango (según distributivo de horas cargado), esté o no activo hoy — no se combina con "Período académico". Exporta CSV UTF-8 con separador ";".',
+    description: 'Matrices 5.2/5.3 (Contratos IES) y 5.4 (Distribución Horas) fusionadas. Use el filtro "Tipo de identificación" para elegir Cédula o Pasaporte — cada exportación genera un único archivo, nunca mezclados. El filtro "Período académico" controla la matriz 5.4 (vacío = período más reciente por profesor). "Fecha Inicio"/"Fecha Fin" activan búsqueda histórica: trae a quien trabajó en algún momento del rango (según distributivo de horas cargado) — no se combina con "Período académico". Siempre incluye activos e inactivos. Exporta CSV UTF-8 con separador ";".',
     icon: 'FileSpreadsheet',
     availableFormats: ['pdf', 'csv'],
-    availableFilters: ['startDate', 'endDate', 'identType', 'identification', 'periodCode', 'includeInactive', 'verticalHeaders', 'repeatHeaderOnEveryPage'],
+    availableFilters: ['startDate', 'endDate', 'identType', 'identification', 'periodCode', 'verticalHeaders', 'repeatHeaderOnEveryPage'],
   },
   'siies-formacion-profesional': {
     type: 'siies-formacion-profesional',
     title: 'SIIES - Formación Profesional',
-    description: 'Matriz 5.5 del Instructivo CACES (Formación Profesional Terminado). Una fila por título académico de cada docente. El filtro "Período académico" limita la lista a profesores con actividad en ese período (vacío = todos). "Fecha Inicio"/"Fecha Fin" activan búsqueda histórica equivalente por rango de fechas — no se combina con "Período académico". Exporta CSV UTF-8 con separador ";".',
+    description: 'Matriz 5.5 del Instructivo CACES (Formación Profesional Terminado). Una fila por título académico de cada docente, con nombres y dependencia. El filtro "Período académico" limita la lista a profesores con actividad en ese período (vacío = todos). "Fecha Inicio"/"Fecha Fin" activan búsqueda histórica equivalente por rango de fechas — no se combina con "Período académico". Siempre incluye activos e inactivos. Exporta CSV UTF-8 con separador ";".',
     icon: 'FileSpreadsheet',
     availableFormats: ['pdf', 'csv'],
-    availableFilters: ['startDate', 'endDate', 'identification', 'periodCode', 'includeInactive', 'verticalHeaders', 'repeatHeaderOnEveryPage'],
+    availableFilters: ['startDate', 'endDate', 'identification', 'periodCode', 'verticalHeaders', 'repeatHeaderOnEveryPage'],
   },
 };
 
