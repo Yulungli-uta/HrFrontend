@@ -142,6 +142,14 @@ type Props = {
    * edición normal, que siguen dejando el campo automático.
    */
   allowActionNumberEdit?: boolean;
+  /**
+   * Habilita reasignar el empleado principal y los Responsables del Documento, incluyendo
+   * personas/empleados inactivos hoy. Usado ÚNICAMENTE por las pantallas de corrección de
+   * datos históricos (PersonnelActionsCorrection.tsx, PersonnelActionsHistoricalEntry.tsx) —
+   * no afecta creación normal ni edición normal (PersonnelActions.tsx, PersonnelActionDetail.tsx),
+   * que siguen restringidas a empleados activos.
+   */
+  allowInactiveEmployees?: boolean;
 };
 
 function toDateInput(iso?: string | null): string {
@@ -243,6 +251,7 @@ export function PersonnelActionForm({
   onDirtyChange,
   maxDate,
   allowActionNumberEdit,
+  allowInactiveEmployees,
 }: Props) {
   const { toast } = useToast();
   const { jobs, actionTypes, isLoading } = usePersonnelActionLookups(true);
@@ -408,7 +417,7 @@ export function PersonnelActionForm({
 
     setResolvingEmployee(true);
     try {
-      const resp = await EmpleadosAPI.byPersonId(personId);
+      const resp = await EmpleadosAPI.byPersonId(personId, allowInactiveEmployees);
       const employees: any[] = resp.status === 'success' ? (resp.data ?? []) : [];
 
       if (employees.length === 0) {
@@ -668,12 +677,26 @@ export function PersonnelActionForm({
                 <FormItem className="sm:col-span-2">
                   <FormLabel>Persona / Empleado <span className="text-destructive">*</span></FormLabel>
                   <FormControl>
-                    {isEdit ? (
+                    {isEdit && !allowInactiveEmployees ? (
                       <Input
                         value={defaultValues?.employeeFullName ?? ''}
                         disabled
                         className="bg-muted"
                       />
+                    ) : isEdit ? (
+                      <div className="space-y-1.5">
+                        <p className="text-xs text-muted-foreground">
+                          Actual: {defaultValues?.employeeFullName} ({defaultValues?.employeeIdCard})
+                        </p>
+                        <PersonSearchCombobox
+                          value={selectedPersonId}
+                          onSelect={handlePersonSelect}
+                          disabled={isBusy || resolvingEmployee}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Busca y selecciona solo si necesitas corregir a qué persona pertenece esta acción — incluye personas inactivas hoy.
+                        </p>
+                      </div>
                     ) : (
                       <PersonSearchCombobox
                         value={selectedPersonId}
@@ -1188,6 +1211,7 @@ export function PersonnelActionForm({
                           onSelect={(id) => field.onChange(id)}
                           disabled={isBusy}
                           showAuthorityBadge
+                          includeInactive={allowInactiveEmployees}
                         />
                       </FormControl>
                       <FormMessage />

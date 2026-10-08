@@ -167,8 +167,12 @@ export const PersonasAPI = {
 export const EmpleadosAPI = {
   ...createApiService<any, any>('/api/v1/rh/employees'),
 
-  byPersonId: (personId: number): Promise<ApiResponse<any[]>> =>
-    apiFetch<any[]>(`/api/v1/rh/employees/person/${personId}`),
+  /** `includeInactive`: solo para pantallas de corrección de datos históricos (Acciones de
+   * Personal, Contratos) — permite resolver el empleado aunque hoy esté inactivo. */
+  byPersonId: (personId: number, includeInactive?: boolean): Promise<ApiResponse<any[]>> =>
+    apiFetch<any[]>(
+      `/api/v1/rh/employees/person/${personId}${includeInactive ? '?includeInactive=true' : ''}`
+    ),
 
   subordinatesByBossId: (bossId: number): Promise<ApiResponse<any[]>> =>
     apiFetch<any[]>(`/api/v1/rh/employees/boss/${bossId}/subordinates`),
@@ -235,9 +239,12 @@ export const VistaDetallesEmpleadosAPI = {
   ...createApiService<any, any>('/api/v1/rh/vw/EmployeeDetails'),
 
   /** Sobrescribe listPaged para soportar el filtro de horarios especiales
-   * (sustituto/maternidad/lactancia/otro), además de search/paginación. */
+   * (sustituto/maternidad/lactancia/otro), además de search/paginación.
+   * `includeInactive`: solo para pantallas de corrección de datos históricos (Acciones de
+   * Personal, Contratos) — también trae empleados inactivos. */
   listPaged: (params: PagedRequest & {
     onlySpecialSchedule?: boolean;
+    includeInactive?: boolean;
   }): Promise<ApiResponse<PagedResult<any>>> => {
     const qs = new URLSearchParams({
       page: String(params.page),
@@ -248,6 +255,7 @@ export const VistaDetallesEmpleadosAPI = {
       ...(params.onlySpecialSchedule !== undefined
         ? { onlySpecialSchedule: String(params.onlySpecialSchedule) }
         : {}),
+      ...(params.includeInactive ? { includeInactive: 'true' } : {}),
     });
     return apiFetch<PagedResult<any>>(`/api/v1/rh/vw/EmployeeDetails/paged?${qs.toString()}`);
   },

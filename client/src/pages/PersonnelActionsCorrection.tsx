@@ -64,6 +64,9 @@ const STATUS_OPTIONS = Object.keys(STATUS_BADGE);
 
 function buildUpdatePayload(data: CreatePersonnelActionRequest): UpdatePersonnelActionRequest {
   return {
+    // Solo CorrectAsync (backend) aplica este campo -- permite corregir a qué empleado
+    // pertenece la acción, incluso uno inactivo hoy.
+    employeeId: data.employeeId,
     actionNumber: data.actionNumber,
     actionDate: data.actionDate,
     effectiveDate: data.effectiveDate,
@@ -462,6 +465,7 @@ export default function PersonnelActionsCorrection() {
                     onCancel={() => setViewMode('summary')}
                     onDirtyChange={setIsFormDirty}
                     allowActionNumberEdit
+                    allowInactiveEmployees
                   />
                 )}
               </>

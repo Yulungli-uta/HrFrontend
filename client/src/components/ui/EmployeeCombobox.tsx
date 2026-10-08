@@ -38,6 +38,9 @@ type Props = {
    * los demás usos de este combobox.
    */
   showAuthorityBadge?: boolean;
+  /** Solo para pantallas de corrección de datos históricos (Acciones de Personal, Contratos):
+   * también permite buscar y seleccionar empleados inactivos hoy. */
+  includeInactive?: boolean;
 };
 
 /**
@@ -54,6 +57,7 @@ export function EmployeeCombobox({
   searchFn,
   searchKey = 'employee-details-search',
   showAuthorityBadge = false,
+  includeInactive = false,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -90,11 +94,11 @@ export function EmployeeCombobox({
   }, [resolvedData, value]);
 
   const { data, isFetching } = useQuery({
-    queryKey: [searchKey, debouncedSearch],
+    queryKey: [searchKey, debouncedSearch, includeInactive],
     queryFn: () =>
       searchFn
         ? searchFn(debouncedSearch)
-        : VistaDetallesEmpleadosAPI.listPaged({ page: 1, pageSize: 15, search: debouncedSearch }),
+        : VistaDetallesEmpleadosAPI.listPaged({ page: 1, pageSize: 15, search: debouncedSearch, includeInactive }),
     enabled: debouncedSearch.length >= 2,
     staleTime: 15_000,
   });

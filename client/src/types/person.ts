@@ -135,6 +135,8 @@ export interface Training {
   trainingDirectionTypeId?: number;
   modalityTypeId?: number;
   countryId?: string;
+  /** Pedagógica (true) o Específica (false) -- gobierna si knowledgeAreaTypeId aplica. */
+  isPedagogical?: boolean | null;
   createdAt?: string;
 }
 

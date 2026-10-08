@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { RefreshCw } from "lucide-react";
 import { ReusableFileUpload } from "@/components/ReusableFileUpload";
+import { CountrySelect } from "@/components/ui/CountrySelect";
 
 import type { Training } from "@/types/person";
 import {
@@ -73,6 +74,15 @@ const trainingFormSchema = z.object({
     .optional(),
 
   knowledgeAreaTypeId: z.number().int().nonnegative().optional(),
+
+  // 2026-10-08: Pedagógica/Específica -- gobierna si knowledgeAreaTypeId se muestra/guarda.
+  isPedagogical: z.boolean().optional(),
+
+  // 2026-10-08: existían en el modelo/BD (agregados para academic-promotion) pero el
+  // formulario nunca los exponía -- mismo hallazgo que isPedagogical.
+  trainingDirectionTypeId: z.number().int().positive().optional(),
+  modalityTypeId: z.number().int().positive().optional(),
+  countryId: z.string().optional(),
 
   certifiedBy: z.string().max(150, "No puede exceder 150 caracteres").optional(),
 
@@ -190,6 +200,13 @@ export default function TrainingForm({
 
   const approvalTypes: RefType[] = approvalTypesRaw.filter((t: any) => t.isActive);
 
+  // TRAINING_DIRECTION / TRAINING_MODALITY
+  const { data: directionTypesRaw } = useRefTypesByCategory(REF_TYPE_CATEGORIES.TRAINING_DIRECTION);
+  const directionTypes: RefType[] = directionTypesRaw.filter((t: any) => t.isActive);
+
+  const { data: modalityTypesRaw } = useRefTypesByCategory(REF_TYPE_CATEGORIES.TRAINING_MODALITY);
+  const modalityTypes: RefType[] = modalityTypesRaw.filter((t: any) => t.isActive);
+
   // =============================
   // ÁREAS DE CONOCIMIENTO (simple)
   // =============================
@@ -235,6 +252,16 @@ export default function TrainingForm({
         ? Number(training.knowledgeAreaTypeId)
         : undefined,
 
+      isPedagogical: training?.isPedagogical ?? undefined,
+
+      trainingDirectionTypeId: training?.trainingDirectionTypeId
+        ? Number(training.trainingDirectionTypeId)
+        : undefined,
+      modalityTypeId: training?.modalityTypeId
+        ? Number(training.modalityTypeId)
+        : undefined,
+      countryId: training?.countryId ?? undefined,
+
       certifiedBy: training?.certifiedBy ?? "",
 
       startDate: training?.startDate ?? "",
@@ -251,6 +278,15 @@ export default function TrainingForm({
     _onDirtyChangeRef.current?.(_isDirty);
   }, [_isDirty]);
 
+  // Pedagógica/Específica: al elegir Pedagógica, se limpia el área de conocimiento para no
+  // dejar guardado un valor oculto que el usuario ya no puede ver ni corregir.
+  const watchedIsPedagogical = form.watch("isPedagogical");
+  useEffect(() => {
+    if (watchedIsPedagogical === true) {
+      form.setValue("knowledgeAreaTypeId", undefined, { shouldValidate: true });
+    }
+  }, [watchedIsPedagogical]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // =============================
   // SUBMIT
   // =============================
@@ -265,6 +301,10 @@ export default function TrainingForm({
         formData.append("Title", data.title);
         formData.append("Institution", data.institution);
         if (data.knowledgeAreaTypeId) formData.append("KnowledgeAreaTypeId", String(data.knowledgeAreaTypeId));
+        if (data.isPedagogical !== undefined) formData.append("IsPedagogical", String(data.isPedagogical));
+        if (data.trainingDirectionTypeId) formData.append("TrainingDirectionTypeId", String(data.trainingDirectionTypeId));
+        if (data.modalityTypeId) formData.append("ModalityTypeId", String(data.modalityTypeId));
+        if (data.countryId) formData.append("CountryId", data.countryId);
         formData.append("EventTypeId", String(data.eventTypeId));
         if (data.certifiedBy) formData.append("CertifiedBy", data.certifiedBy);
         if (data.certificateTypeId) formData.append("CertificateTypeId", String(data.certificateTypeId));
@@ -323,9 +363,17 @@ export default function TrainingForm({
       createdAt: training?.createdAt ?? now.toISOString(),
     };
 
-    const knowledgeAreaTypeId = normalizeId(
-      data.knowledgeAreaTypeId as number | undefined
-    );
+    payload.isPedagogical = data.isPedagogical ?? null;
+    payload.trainingDirectionTypeId = normalizeId(data.trainingDirectionTypeId as number | undefined) ?? null;
+    payload.modalityTypeId = normalizeId(data.modalityTypeId as number | undefined) ?? null;
+    payload.countryId = data.countryId || null;
+
+    // Si es Pedagógica, nunca se envía área de conocimiento -- misma regla que ya aplica
+    // el backend (TrainingsService.NormalizePedagogy), reforzada aquí para que el payload
+    // sea consistente con lo que el usuario ve en pantalla.
+    const knowledgeAreaTypeId = data.isPedagogical === true
+      ? undefined
+      : normalizeId(data.knowledgeAreaTypeId as number | undefined);
     if (knowledgeAreaTypeId !== undefined) {
       payload.knowledgeAreaTypeId = knowledgeAreaTypeId;
     }
@@ -647,34 +695,154 @@ export default function TrainingForm({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               control={form.control as any}
-              name="knowledgeAreaTypeId"
+              name="isPedagogical"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Área de conocimiento</FormLabel>
+                  <FormLabel>Tipo de Formación</FormLabel>
                   <Select
                     disabled={saving}
-                    value={field.value ? String(field.value) : ""}
-                    onValueChange={(v) => field.onChange(Number(v))}
+                    value={field.value === undefined ? "" : String(field.value)}
+                    onValueChange={(v) => field.onChange(v === "true")}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Seleccione área" />
+                        <SelectValue placeholder="Seleccione tipo" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {knowledgeAreas.map((a) => (
-                        <SelectItem key={a.id} value={String(a.id)}>
-                          {a.code} - {a.name}
-                        </SelectItem>
-                      ))}
+                      <SelectItem value="true">Pedagógica</SelectItem>
+                      <SelectItem value="false">Específica</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
-                  {knowledgeAreasError && (
-                    <p className="text-xs text-destructive mt-1">
-                      No se pudieron cargar las áreas de conocimiento.
-                    </p>
-                  )}
+                </FormItem>
+              )}
+            />
+
+            {watchedIsPedagogical === false && (
+              <FormField
+                control={form.control as any}
+                name="knowledgeAreaTypeId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Área de conocimiento</FormLabel>
+                    <Select
+                      disabled={saving}
+                      value={field.value ? String(field.value) : ""}
+                      onValueChange={(v) => field.onChange(Number(v))}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccione área" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {knowledgeAreas.map((a) => (
+                          <SelectItem key={a.id} value={String(a.id)}>
+                            {a.code} - {a.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                    {knowledgeAreasError && (
+                      <p className="text-xs text-destructive mt-1">
+                        No se pudieron cargar las áreas de conocimiento.
+                      </p>
+                    )}
+                  </FormItem>
+                )}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* DIRECCIÓN, MODALIDAD Y PAÍS -- usados por el módulo de Ascenso de Categoría Académica */}
+        <div className="space-y-2">
+          <h3 className="text-base sm:text-lg font-semibold">
+            Dirección, Modalidad y País
+          </h3>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <FormField
+              control={form.control as any}
+              name="trainingDirectionTypeId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Dirección (opcional)</FormLabel>
+                  <Select
+                    disabled={saving}
+                    value={field.value ? String(field.value) : ""}
+                    onValueChange={(v) => field.onChange(v ? Number(v) : undefined)}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {directionTypes.map((t) => {
+                        const id = getRefTypeId(t);
+                        if (id == null) return null;
+                        return (
+                          <SelectItem key={id} value={String(id)}>
+                            {t.name}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control as any}
+              name="modalityTypeId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Modalidad (opcional)</FormLabel>
+                  <Select
+                    disabled={saving}
+                    value={field.value ? String(field.value) : ""}
+                    onValueChange={(v) => field.onChange(v ? Number(v) : undefined)}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {modalityTypes.map((t) => {
+                        const id = getRefTypeId(t);
+                        if (id == null) return null;
+                        return (
+                          <SelectItem key={id} value={String(id)}>
+                            {t.name}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control as any}
+              name="countryId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>País (opcional)</FormLabel>
+                  <CountrySelect
+                    value={field.value ?? null}
+                    onChange={field.onChange}
+                    disabled={saving}
+                    placeholder="Seleccionar país"
+                  />
+                  <FormMessage />
                 </FormItem>
               )}
             />

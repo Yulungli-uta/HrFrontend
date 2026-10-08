@@ -131,7 +131,13 @@ export interface UpdatePersonnelActionRequest
     extends Omit<
         CreatePersonnelActionRequest,
         'personId' | 'employeeId' | 'actionTypeId' | 'generateDocument' | 'documentOverrides'
-    > { }
+    > {
+    /**
+     * Solo lo aplica CorrectAsync (backend) -- el flujo normal de edición (BORRADOR/GENERADO)
+     * lo ignora. Permite reasignar el empleado de una acción histórica, incluso uno inactivo.
+     */
+    employeeId?: number | null;
+}
 
 /**
  * Corrección auditable en cualquier estado (incluido VIGENTE/FINALIZADO) — a diferencia de

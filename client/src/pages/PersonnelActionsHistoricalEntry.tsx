@@ -137,6 +137,7 @@ export default function PersonnelActionsHistoricalEntry() {
             onDirtyChange={setIsFormDirty}
             maxDate={maxDate}
             allowActionNumberEdit
+            allowInactiveEmployees
           />
         </CardContent>
       </Card>

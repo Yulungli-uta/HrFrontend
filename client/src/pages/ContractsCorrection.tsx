@@ -300,6 +300,7 @@ export default function ContractsCorrection() {
                         value={employeeId}
                         onSelect={setEmployeeId}
                         placeholder="Buscar por nombre o cédula…"
+                        includeInactive
                       />
                     </div>
                     {employeeId != null && (
