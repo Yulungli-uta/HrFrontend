@@ -64,6 +64,9 @@ const contractTypeSchema = z.object({
 
   /** SIIES RELACION_IES homologado — opcional, requerido solo para el reporte SIIES. */
   siiesRelacionIesTypeId: z.string().optional(),
+
+  /** Profesor Ocasional/Técnico Docente -- filtra HR.vw_SiiesFuncionarios/vw_SiiesProfesores. */
+  isDocenteOcasional: z.boolean(),
 });
 
 export type ContractTypeFormValues = z.infer<typeof contractTypeSchema>;
@@ -91,6 +94,7 @@ interface ContractTypeCreateDTO {
   defaultTemplateId?: number | null;
   delegationTemplateId?: number | null;
   siiesRelacionIesTypeId?: number | null;
+  isDocenteOcasional: boolean;
 }
 
 interface ContractTypeUpdateDTO {
@@ -106,6 +110,7 @@ interface ContractTypeUpdateDTO {
   defaultTemplateId?: number | null;
   delegationTemplateId?: number | null;
   siiesRelacionIesTypeId?: number | null;
+  isDocenteOcasional: boolean;
 }
 
 function ensureSuccess<T>(res: ApiResponse<T>, defaultMessage: string): T {
@@ -166,6 +171,7 @@ export function ContractTypeForm({
       siiesRelacionIesTypeId: (initialValues as any)?.siiesRelacionIesTypeId
         ? String((initialValues as any).siiesRelacionIesTypeId)
         : "",
+      isDocenteOcasional: (initialValues as any)?.isDocenteOcasional ?? false,
     },
   });
 
@@ -205,6 +211,7 @@ export function ContractTypeForm({
         siiesRelacionIesTypeId: values.siiesRelacionIesTypeId
           ? Number(values.siiesRelacionIesTypeId)
           : null,
+        isDocenteOcasional: values.isDocenteOcasional,
       };
 
       const res = await ContractTypeAPI.create(payload as any);
@@ -237,6 +244,7 @@ export function ContractTypeForm({
         siiesRelacionIesTypeId: values.siiesRelacionIesTypeId
           ? Number(values.siiesRelacionIesTypeId)
           : null,
+        isDocenteOcasional: values.isDocenteOcasional,
       };
 
       const res = await ContractTypeAPI.update(contractId, payload as any);
@@ -457,6 +465,25 @@ export function ContractTypeForm({
                     Sin este dato, los contratos de este tipo quedan sin RELACION_IES en el reporte.
                   </FormDescription>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="isDocenteOcasional"
+              render={({ field }) => (
+                <FormItem className="flex items-center justify-between py-1">
+                  <div className="space-y-0.5">
+                    <FormLabel className="text-sm">Docente Ocasional (SIIES)</FormLabel>
+                    <FormDescription className="text-xs">
+                      Clasifica este tipo como Profesor Ocasional/Técnico Docente: determina a cuáles
+                      contratos pertenece una persona para los reportes SIIES Funcionarios/Profesores.
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  </FormControl>
                 </FormItem>
               )}
             />

@@ -74,6 +74,7 @@ interface ContractType {
   requiresAdUserCreation?: boolean;
   requiresAdUserDisable?: boolean;
   requiresAdGroupAssignment?: boolean;
+  isDocenteOcasional?: boolean;
 }
 
 interface UIContractType {
@@ -96,6 +97,7 @@ interface UIContractType {
   requiresAdUserCreation?: boolean;
   requiresAdUserDisable?: boolean;
   requiresAdGroupAssignment?: boolean;
+  isDocenteOcasional?: boolean;
 }
 
 // --------------- PAGE -------------------
@@ -201,6 +203,7 @@ export default function ContractTypesPage() {
     requiresAdUserCreation: contract.requiresAdUserCreation ?? false,
     requiresAdUserDisable: contract.requiresAdUserDisable ?? false,
     requiresAdGroupAssignment: contract.requiresAdGroupAssignment ?? false,
+    isDocenteOcasional: contract.isDocenteOcasional ?? false,
   });
 
   // Vista actual (ya filtrada/paginada por el servidor).
@@ -377,6 +380,7 @@ export default function ContractTypesPage() {
                       requiresAdUserCreation: editingContract.requiresAdUserCreation ?? false,
                       requiresAdUserDisable: editingContract.requiresAdUserDisable ?? false,
                       requiresAdGroupAssignment: editingContract.requiresAdGroupAssignment ?? false,
+                      isDocenteOcasional: (editingContract as any).isDocenteOcasional ?? false,
                     }
                     : undefined
                 }
@@ -610,8 +614,8 @@ export default function ContractTypesPage() {
                   </div>
                 </div>
 
-                {/* AD flags */}
-                {(contractType.requiresAdUserCreation || contractType.requiresAdUserDisable || contractType.requiresAdGroupAssignment) && (
+                {/* AD flags + clasificación SIIES */}
+                {(contractType.requiresAdUserCreation || contractType.requiresAdUserDisable || contractType.requiresAdGroupAssignment || contractType.isDocenteOcasional) && (
                   <div className="flex flex-wrap gap-1">
                     {contractType.requiresAdUserCreation && (
                       <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200">Crea AD</Badge>
@@ -621,6 +625,9 @@ export default function ContractTypesPage() {
                     )}
                     {contractType.requiresAdGroupAssignment && (
                       <Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-200">Grupos AD</Badge>
+                    )}
+                    {contractType.isDocenteOcasional && (
+                      <Badge variant="outline" className="text-[10px] bg-purple-50 text-purple-700 border-purple-200">Docente Ocasional (SIIES)</Badge>
                     )}
                   </div>
                 )}
