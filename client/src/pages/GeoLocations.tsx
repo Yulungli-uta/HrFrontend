@@ -18,6 +18,9 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/componen
 import { cn } from "@/lib/utils";
 import { parseApiError } from "@/lib/error-handling";
 import { logger } from "@/lib/logger";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
+import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
+import { DB_FIELD_LIMITS } from "@/features/dbFieldLimits";
 
 interface Country { countryId: string; countryName: string; }
 interface Province { provinceId: string; countryId: string; provinceName: string; }
@@ -141,6 +144,14 @@ export default function GeoLocationsPage() {
     setForm({});
   };
 
+  const {
+    setIsFormDirty,
+    handleOpenChange: guardedDialogOpenChange,
+    confirmOpen: unsavedConfirmOpen,
+    confirmExit: confirmUnsavedExit,
+    closeConfirm: closeUnsavedConfirm,
+  } = useUnsavedChangesGuard((open) => { if (!open) closeDialog(); });
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -167,6 +178,7 @@ export default function GeoLocationsPage() {
         if (res.status !== "success") throw new Error(res.error?.message || "No se pudo guardar el cantón");
       }
       toast({ title: "Guardado", description: "Los cambios se guardaron correctamente." });
+      setIsFormDirty(false);
       closeDialog();
       await load();
     } catch (error) {
@@ -342,7 +354,7 @@ export default function GeoLocationsPage() {
       </Card>
 
       {/* Diálogo crear/editar */}
-      <Dialog open={dialogKind !== null} onOpenChange={(o) => !o && closeDialog()}>
+      <Dialog open={dialogKind !== null} onOpenChange={guardedDialogOpenChange}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
@@ -355,7 +367,14 @@ export default function GeoLocationsPage() {
             {dialogKind === "country" && (
               <div className="space-y-2">
                 <Label>Nombre *</Label>
-                <Input autoFocus value={form.countryName ?? ""} onChange={(e) => setForm({ ...form, countryName: e.target.value })} placeholder="Ej: ECUADOR" />
+                <Input
+                  autoFocus
+                  value={form.countryName ?? ""}
+                  onChange={(e) => { setForm({ ...form, countryName: e.target.value }); setIsFormDirty(true); }}
+                  placeholder="Ej: ECUADOR"
+                  maxLength={DB_FIELD_LIMITS.countries.countryName}
+                />
+                <p className="text-xs text-muted-foreground mt-1">Máximo {DB_FIELD_LIMITS.countries.countryName} caracteres.</p>
               </div>
             )}
 
@@ -363,7 +382,7 @@ export default function GeoLocationsPage() {
               <>
                 <div className="space-y-2">
                   <Label>País *</Label>
-                  <Select value={form.countryId ?? ""} onValueChange={(v) => setForm({ ...form, countryId: v })}>
+                  <Select value={form.countryId ?? ""} onValueChange={(v) => { setForm({ ...form, countryId: v }); setIsFormDirty(true); }}>
                     <SelectTrigger><SelectValue placeholder="Seleccionar país" /></SelectTrigger>
                     <SelectContent>
                       {countries.map((c) => <SelectItem key={c.countryId} value={c.countryId}>{c.countryName}</SelectItem>)}
@@ -372,7 +391,14 @@ export default function GeoLocationsPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Nombre *</Label>
-                  <Input autoFocus value={form.provinceName ?? ""} onChange={(e) => setForm({ ...form, provinceName: e.target.value })} placeholder="Ej: TUNGURAHUA" />
+                  <Input
+                    autoFocus
+                    value={form.provinceName ?? ""}
+                    onChange={(e) => { setForm({ ...form, provinceName: e.target.value }); setIsFormDirty(true); }}
+                    placeholder="Ej: TUNGURAHUA"
+                    maxLength={DB_FIELD_LIMITS.provinces.provinceName}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Máximo {DB_FIELD_LIMITS.provinces.provinceName} caracteres.</p>
                 </div>
               </>
             )}
@@ -381,7 +407,7 @@ export default function GeoLocationsPage() {
               <>
                 <div className="space-y-2">
                   <Label>Provincia *</Label>
-                  <Select value={form.provinceId ?? ""} onValueChange={(v) => setForm({ ...form, provinceId: v })}>
+                  <Select value={form.provinceId ?? ""} onValueChange={(v) => { setForm({ ...form, provinceId: v }); setIsFormDirty(true); }}>
                     <SelectTrigger><SelectValue placeholder="Seleccionar provincia" /></SelectTrigger>
                     <SelectContent>
                       {provinces.map((p) => <SelectItem key={p.provinceId} value={p.provinceId}>{p.provinceName}</SelectItem>)}
@@ -390,14 +416,21 @@ export default function GeoLocationsPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Nombre *</Label>
-                  <Input autoFocus value={form.cantonName ?? ""} onChange={(e) => setForm({ ...form, cantonName: e.target.value })} placeholder="Ej: AMBATO" />
+                  <Input
+                    autoFocus
+                    value={form.cantonName ?? ""}
+                    onChange={(e) => { setForm({ ...form, cantonName: e.target.value }); setIsFormDirty(true); }}
+                    placeholder="Ej: AMBATO"
+                    maxLength={DB_FIELD_LIMITS.cantons.cantonName}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Máximo {DB_FIELD_LIMITS.cantons.cantonName} caracteres.</p>
                 </div>
               </>
             )}
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={closeDialog}>Cancelar</Button>
+            <Button variant="outline" onClick={() => guardedDialogOpenChange(false)}>Cancelar</Button>
             <Button onClick={handleSave} disabled={saving}>
               {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
               {editingId ? "Actualizar" : "Crear"}
@@ -405,6 +438,11 @@ export default function GeoLocationsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <UnsavedChangesDialog
+        open={unsavedConfirmOpen}
+        onClose={closeUnsavedConfirm}
+        onConfirmExit={confirmUnsavedExit}
+      />
 
       {/* Confirmación de eliminación */}
       <Dialog open={deleteTarget !== null} onOpenChange={(o) => !o && setDeleteTarget(null)}>

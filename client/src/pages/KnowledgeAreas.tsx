@@ -14,6 +14,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { parseApiError } from "@/lib/error-handling";
 import { logger } from "@/lib/logger";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
+import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
+import { DB_FIELD_LIMITS } from "@/features/dbFieldLimits";
 
 interface KnowledgeAreaItem {
   id?: number;
@@ -81,6 +84,7 @@ export default function KnowledgeAreasPage() {
         : await AreaConocimientoAPI.create(payload);
       if (res.status !== "success") throw new Error(res.error?.message || "No se pudo guardar el área de conocimiento");
       toast({ title: "Éxito", description: editing ? "Área actualizada" : "Área creada" });
+      setIsFormDirty(false);
       closeDialog();
       await load();
     } catch (error) {
@@ -116,6 +120,14 @@ export default function KnowledgeAreasPage() {
     setForm(empty);
   };
 
+  const {
+    setIsFormDirty,
+    handleOpenChange: guardedDialogOpenChange,
+    confirmOpen: unsavedConfirmOpen,
+    confirmExit: confirmUnsavedExit,
+    closeConfirm: closeUnsavedConfirm,
+  } = useUnsavedChangesGuard((open) => (open ? setIsDialogOpen(true) : closeDialog()));
+
   if (isLoading) {
     return (
       <div className="container mx-auto p-6">
@@ -136,7 +148,7 @@ export default function KnowledgeAreasPage() {
           </p>
         </div>
 
-        <Dialog open={isDialogOpen} onOpenChange={(o) => (o ? setIsDialogOpen(true) : closeDialog())}>
+        <Dialog open={isDialogOpen} onOpenChange={guardedDialogOpenChange}>
           <DialogTrigger asChild>
             <Button className="bg-primary hover:bg-primary/90">
               <Plus className="mr-2 h-4 w-4" />
@@ -153,17 +165,29 @@ export default function KnowledgeAreasPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Código *</Label>
-                  <Input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="Ej: ING" />
+                  <Input
+                    value={form.code}
+                    onChange={(e) => { setForm({ ...form, code: e.target.value }); setIsFormDirty(true); }}
+                    placeholder="Ej: ING"
+                    maxLength={DB_FIELD_LIMITS.knowledgeArea.code}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Máximo {DB_FIELD_LIMITS.knowledgeArea.code} caracteres.</p>
                 </div>
                 <div className="space-y-2">
                   <Label>Nombre *</Label>
-                  <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ej: Ingeniería" />
+                  <Input
+                    value={form.name}
+                    onChange={(e) => { setForm({ ...form, name: e.target.value }); setIsFormDirty(true); }}
+                    placeholder="Ej: Ingeniería"
+                    maxLength={DB_FIELD_LIMITS.knowledgeArea.name}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Máximo {DB_FIELD_LIMITS.knowledgeArea.name} caracteres.</p>
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Label>Área padre (opcional)</Label>
-                <Select value={form.parentId ? String(form.parentId) : "none"} onValueChange={(v) => setForm({ ...form, parentId: v === "none" ? null : Number(v) })}>
+                <Select value={form.parentId ? String(form.parentId) : "none"} onValueChange={(v) => { setForm({ ...form, parentId: v === "none" ? null : Number(v) }); setIsFormDirty(true); }}>
                   <SelectTrigger><SelectValue placeholder="Sin padre (nivel 1)" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Sin padre (nivel 1)</SelectItem>
@@ -177,17 +201,22 @@ export default function KnowledgeAreasPage() {
               </div>
 
               <div className="flex items-center space-x-2">
-                <Switch checked={form.isActive} onCheckedChange={(checked) => setForm({ ...form, isActive: checked })} />
+                <Switch checked={form.isActive} onCheckedChange={(checked) => { setForm({ ...form, isActive: checked }); setIsFormDirty(true); }} />
                 <Label>Activa</Label>
               </div>
             </div>
 
             <DialogFooter>
-              <Button variant="outline" onClick={closeDialog}>Cancelar</Button>
+              <Button variant="outline" onClick={() => guardedDialogOpenChange(false)}>Cancelar</Button>
               <Button onClick={handleSave}>{editing ? "Actualizar" : "Crear"}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        <UnsavedChangesDialog
+          open={unsavedConfirmOpen}
+          onClose={closeUnsavedConfirm}
+          onConfirmExit={confirmUnsavedExit}
+        />
       </div>
 
       <Card>

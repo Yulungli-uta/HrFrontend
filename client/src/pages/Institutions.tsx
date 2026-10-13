@@ -15,6 +15,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { parseApiError } from "@/lib/error-handling";
 import { logger } from "@/lib/logger";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
+import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
+import { DB_FIELD_LIMITS } from "@/features/dbFieldLimits";
 
 interface Institution {
   institutionId?: number;
@@ -112,6 +115,7 @@ export default function InstitutionsPage() {
         : await InstitucionesAPI.create(payload);
       if (res.status !== "success") throw new Error(res.error?.message || "No se pudo guardar la institución");
       toast({ title: "Éxito", description: editing ? "Institución actualizada" : "Institución creada" });
+      setIsFormDirty(false);
       closeDialog();
       await load();
     } catch (error) {
@@ -147,6 +151,14 @@ export default function InstitutionsPage() {
     setForm(emptyInstitution);
   };
 
+  const {
+    setIsFormDirty,
+    handleOpenChange: guardedDialogOpenChange,
+    confirmOpen: unsavedConfirmOpen,
+    confirmExit: confirmUnsavedExit,
+    closeConfirm: closeUnsavedConfirm,
+  } = useUnsavedChangesGuard((open) => (open ? setIsDialogOpen(true) : closeDialog()));
+
   if (isLoading) {
     return (
       <div className="container mx-auto p-6">
@@ -167,7 +179,7 @@ export default function InstitutionsPage() {
           </p>
         </div>
 
-        <Dialog open={isDialogOpen} onOpenChange={(o) => (o ? setIsDialogOpen(true) : closeDialog())}>
+        <Dialog open={isDialogOpen} onOpenChange={guardedDialogOpenChange}>
           <DialogTrigger asChild>
             <Button className="bg-primary hover:bg-primary/90">
               <Plus className="mr-2 h-4 w-4" />
@@ -183,12 +195,18 @@ export default function InstitutionsPage() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Nombre *</Label>
-                <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ej: Universidad Técnica de Ambato" />
+                <Input
+                  value={form.name}
+                  onChange={(e) => { setForm({ ...form, name: e.target.value }); setIsFormDirty(true); }}
+                  placeholder="Ej: Universidad Técnica de Ambato"
+                  maxLength={DB_FIELD_LIMITS.institutions.name}
+                />
+                <p className="text-xs text-muted-foreground mt-1">Máximo {DB_FIELD_LIMITS.institutions.name} caracteres.</p>
               </div>
 
               <div className="space-y-2">
                 <Label>Tipo *</Label>
-                <Select value={form.institutionTypeId ? String(form.institutionTypeId) : ""} onValueChange={(v) => setForm({ ...form, institutionTypeId: Number(v) })}>
+                <Select value={form.institutionTypeId ? String(form.institutionTypeId) : ""} onValueChange={(v) => { setForm({ ...form, institutionTypeId: Number(v) }); setIsFormDirty(true); }}>
                   <SelectTrigger><SelectValue placeholder="Seleccionar tipo" /></SelectTrigger>
                   <SelectContent>
                     {institutionTypes.map((t) => (
@@ -201,7 +219,7 @@ export default function InstitutionsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>País *</Label>
-                  <Select value={form.countryId} onValueChange={(v) => setForm({ ...form, countryId: v, provinceId: "", cantonId: "" })}>
+                  <Select value={form.countryId} onValueChange={(v) => { setForm({ ...form, countryId: v, provinceId: "", cantonId: "" }); setIsFormDirty(true); }}>
                     <SelectTrigger><SelectValue placeholder="País" /></SelectTrigger>
                     <SelectContent>
                       {countries.map((c) => (
@@ -212,7 +230,7 @@ export default function InstitutionsPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Provincia *</Label>
-                  <Select value={form.provinceId} onValueChange={(v) => setForm({ ...form, provinceId: v, cantonId: "" })} disabled={!form.countryId}>
+                  <Select value={form.provinceId} onValueChange={(v) => { setForm({ ...form, provinceId: v, cantonId: "" }); setIsFormDirty(true); }} disabled={!form.countryId}>
                     <SelectTrigger><SelectValue placeholder="Provincia" /></SelectTrigger>
                     <SelectContent>
                       {provinces.map((p) => (
@@ -223,7 +241,7 @@ export default function InstitutionsPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Cantón *</Label>
-                  <Select value={form.cantonId} onValueChange={(v) => setForm({ ...form, cantonId: v })} disabled={!form.provinceId}>
+                  <Select value={form.cantonId} onValueChange={(v) => { setForm({ ...form, cantonId: v }); setIsFormDirty(true); }} disabled={!form.provinceId}>
                     <SelectTrigger><SelectValue placeholder="Cantón" /></SelectTrigger>
                     <SelectContent>
                       {cantons.map((c) => (
@@ -236,11 +254,16 @@ export default function InstitutionsPage() {
             </div>
 
             <DialogFooter>
-              <Button variant="outline" onClick={closeDialog}>Cancelar</Button>
+              <Button variant="outline" onClick={() => guardedDialogOpenChange(false)}>Cancelar</Button>
               <Button onClick={handleSave}>{editing ? "Actualizar" : "Crear"}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        <UnsavedChangesDialog
+          open={unsavedConfirmOpen}
+          onClose={closeUnsavedConfirm}
+          onConfirmExit={confirmUnsavedExit}
+        />
       </div>
 
       <Card>
