@@ -698,7 +698,9 @@ export default function CreatePlanningDialog({
                     onChange={(e) => setTitle(e.target.value)}
                     disabled={createMutation.isPending}
                     placeholder="Ej. HE Jornada Nocturna"
+                    maxLength={200}
                   />
+                  <p className="text-xs text-muted-foreground mt-1">Máximo 200 caracteres.</p>
                 </div>
 
                 <div className="space-y-2">
@@ -708,7 +710,9 @@ export default function CreatePlanningDialog({
                     onChange={(e) => setDescription(e.target.value)}
                     disabled={createMutation.isPending}
                     placeholder="Detalles"
+                    maxLength={500}
                   />
+                  <p className="text-xs text-muted-foreground mt-1">Máximo 500 caracteres.</p>
                 </div>
               </div>
 

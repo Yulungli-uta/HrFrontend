@@ -362,7 +362,9 @@ function CreateScheduleChangePlanDialog({
                       setForm((current) => ({ ...current, title: e.target.value }))
                     }
                     placeholder="Ej. Ajuste horario por necesidades institucionales"
+                    maxLength={200}
                   />
+                  <p className="text-xs text-muted-foreground mt-1">Máximo 200 caracteres.</p>
                 </div>
 
                 <div className="md:col-span-2 space-y-2">
@@ -375,7 +377,9 @@ function CreateScheduleChangePlanDialog({
                     }
                     placeholder="Describe la razón del cambio de horario"
                     className="min-h-[120px]"
+                    maxLength={1000}
                   />
+                  <p className="text-xs text-muted-foreground mt-1">Máximo 1000 caracteres.</p>
                 </div>
 
                 <div className="md:col-span-2 space-y-2">

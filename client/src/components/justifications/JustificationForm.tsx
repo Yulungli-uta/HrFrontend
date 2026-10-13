@@ -581,7 +581,8 @@ export default function JustificationForm({ onCreated, onCancel, onDirtyChange }
       {/* Motivo */}
       <div className="space-y-2">
         <Label>Motivo detallado <span className="text-destructive">*</span></Label>
-        <Textarea placeholder="Describa el motivo..." value={reason} onChange={(e) => setReason(e.target.value)} required rows={4} />
+        <Textarea placeholder="Describa el motivo..." value={reason} onChange={(e) => setReason(e.target.value)} required rows={4} maxLength={500} />
+        <p className="text-xs text-muted-foreground mt-1">Máximo 500 caracteres.</p>
       </div>
 
       <div className="flex items-center justify-end gap-2 pt-2">

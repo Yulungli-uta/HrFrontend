@@ -148,11 +148,9 @@ export function ContractRequestForm({
           disabled={disabled}
           maxLength={1000}
           onChange={(e) => onChange({ ...value, observation: e.target.value })}
-          placeholder="Observación (máx. 1000 caracteres)"
+          placeholder="Observación"
         />
-        <p className="text-xs text-muted-foreground mt-1 text-right">
-          {(value.observation ?? "").length}/1000
-        </p>
+        <p className="text-xs text-muted-foreground mt-1">Máximo 1000 caracteres.</p>
       </div>
     </div>
   );
