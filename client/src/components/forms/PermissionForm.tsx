@@ -220,6 +220,8 @@ interface PermissionFormProps {
   timeBalance?: TimeBalance | null;
   documents: DocumentsConfig;
   workMinutesPerDay: number;
+  /** Notifica al contenedor cada vez que el usuario modifica algún campo, para la guardia de "salir sin guardar". */
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 export default function PermissionForm({
@@ -229,6 +231,7 @@ export default function PermissionForm({
   timeBalance = null,
   documents,
   workMinutesPerDay: workMinutesPerDayProp,
+  onDirtyChange,
 }: PermissionFormProps) {
   const queryClient = useQueryClient();
   const { employeeDetails } = useAuth();
@@ -351,6 +354,17 @@ export default function PermissionForm({
   }, [employeeId, today]);
 
   const [formData, setFormData] = useState<PermissionFormData>(defaults);
+
+  // Guardia de "salir sin guardar": cualquier cambio en los datos del formulario (tras el
+  // montaje inicial) se notifica al contenedor (Permissions.tsx) vía onDirtyChange.
+  const didMountDirtyRef = useRef(false);
+  useEffect(() => {
+    if (!didMountDirtyRef.current) {
+      didMountDirtyRef.current = true;
+      return;
+    }
+    onDirtyChange?.(true);
+  }, [formData, mode, startTime, endTime]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (employeeId) {
@@ -845,7 +859,7 @@ export default function PermissionForm({
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <Label htmlFor="permissionType">Tipo de Permiso</Label>
+          <Label htmlFor="permissionType">Tipo de Permiso <span className="text-destructive">*</span></Label>
           <Select
             value={String(formData.permissionTypeId || "")}
             onValueChange={(v) => handleChange("permissionTypeId", parseInt(v, 10))}
@@ -883,7 +897,7 @@ export default function PermissionForm({
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <Label htmlFor="startDate">Fecha Inicio</Label>
+          <Label htmlFor="startDate">Fecha Inicio <span className="text-destructive">*</span></Label>
           <Input
             id="startDate"
             type="date"

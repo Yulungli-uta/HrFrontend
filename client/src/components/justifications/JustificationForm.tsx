@@ -1,5 +1,5 @@
 // src/components/forms/JustificationForm.tsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -77,11 +77,13 @@ function extractTypeId(typ: any): number {
 interface Props {
   onCreated?: () => void;
   onCancel?: () => void;
+  /** Notifica al contenedor cada vez que el usuario modifica algún campo, para la guardia de "salir sin guardar". */
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 /** ------------- Componente ------------- **/
 
-export default function JustificationForm({ onCreated, onCancel }: Props) {
+export default function JustificationForm({ onCreated, onCancel, onDirtyChange }: Props) {
   const { toast } = useToast();
   const { employeeDetails } = useAuth();
   const { bossId, bossName } = useMemo(() => getBossFromEmployeeDetails(employeeDetails), [employeeDetails]);
@@ -96,6 +98,17 @@ export default function JustificationForm({ onCreated, onCancel }: Props) {
   const [startDateOnly, setStartDateOnly] = useState<string>("");
   const [endDateOnly, setEndDateOnly] = useState<string>("");
   const [reason, setReason] = useState<string>("");
+
+  // Guardia de "salir sin guardar": cualquier cambio en los datos reales del formulario
+  // (tras el montaje inicial) se notifica al contenedor vía onDirtyChange.
+  const didMountDirtyRef = useRef(false);
+  useEffect(() => {
+    if (!didMountDirtyRef.current) {
+      didMountDirtyRef.current = true;
+      return;
+    }
+    onDirtyChange?.(true);
+  }, [selectedTypeId, selectedPunchTypeId, mode, startDateTime, endDateTime, dateOnly, startDateOnly, endDateOnly, reason]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Estados para los tipos
   const { data: justificationTypes, isLoading: loadingJustificationTypes } = useRefTypesByCategory(REF_TYPE_CATEGORIES.JUSTIFICATION);
@@ -404,7 +417,7 @@ export default function JustificationForm({ onCreated, onCancel }: Props) {
     <form onSubmit={onSubmit} className="space-y-4">
       {/* Tipo de justificación */}
       <div className="space-y-2">
-        <Label>Tipo de justificación *</Label>
+        <Label>Tipo de justificación <span className="text-destructive">*</span></Label>
         <Select value={selectedTypeId ? String(selectedTypeId) : ""} onValueChange={(v) => setSelectedTypeId(Number(v))} required>
           <SelectTrigger>
             <SelectValue placeholder="Seleccione el tipo" />
@@ -426,7 +439,7 @@ export default function JustificationForm({ onCreated, onCancel }: Props) {
       {/* Campo para tipo de picada (solo visible en modo PICADA) */}
       {mode === "PICADA" && (
         <div className="space-y-2">
-          <Label>Tipo de picada *</Label>
+          <Label>Tipo de picada <span className="text-destructive">*</span></Label>
           <Select value={selectedPunchTypeId ? String(selectedPunchTypeId) : ""} onValueChange={(v) => setSelectedPunchTypeId(Number(v))} required>
             <SelectTrigger>
               <SelectValue placeholder="Seleccione el tipo de picada" />
@@ -465,7 +478,7 @@ export default function JustificationForm({ onCreated, onCancel }: Props) {
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Fecha *</Label>
+              <Label>Fecha <span className="text-destructive">*</span></Label>
               <Input
                 type="date"
                 value={startDateTime ? startDateTime.slice(0, 10) : ""}
@@ -478,7 +491,7 @@ export default function JustificationForm({ onCreated, onCancel }: Props) {
               />
             </div>
             <div className="space-y-2">
-              <Label>Hora *</Label>
+              <Label>Hora <span className="text-destructive">*</span></Label>
               <Input
                 type="time"
                 value={startDateTime ? startDateTime.slice(11, 16) : ""}
@@ -531,11 +544,11 @@ export default function JustificationForm({ onCreated, onCancel }: Props) {
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Hora inicial *</Label>
+              <Label>Hora inicial <span className="text-destructive">*</span></Label>
               <Input type="datetime-local" max={new Date().toISOString().slice(0, 16)} value={startDateTime} onChange={(e) => setStartDateTime(e.target.value)} required />
             </div>
             <div className="space-y-2">
-              <Label>Hora final *</Label>
+              <Label>Hora final <span className="text-destructive">*</span></Label>
               <Input type="datetime-local" max={new Date().toISOString().slice(0, 16)} value={endDateTime} onChange={(e) => setEndDateTime(e.target.value)} required />
             </div>
           </div>
@@ -555,7 +568,7 @@ export default function JustificationForm({ onCreated, onCancel }: Props) {
       {mode === "DIAS" && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label>Fecha inicio *</Label>
+            <Label>Fecha inicio <span className="text-destructive">*</span></Label>
             <Input type="date" value={startDateOnly} onChange={(e) => setStartDateOnly(e.target.value)} required />
           </div>
           <div className="space-y-2">
@@ -567,7 +580,7 @@ export default function JustificationForm({ onCreated, onCancel }: Props) {
 
       {/* Motivo */}
       <div className="space-y-2">
-        <Label>Motivo detallado *</Label>
+        <Label>Motivo detallado <span className="text-destructive">*</span></Label>
         <Textarea placeholder="Describa el motivo..." value={reason} onChange={(e) => setReason(e.target.value)} required rows={4} />
       </div>
 

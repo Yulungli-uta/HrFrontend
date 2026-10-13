@@ -33,6 +33,8 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { PersonnelActionsAPI } from '@/lib/api/services/contracts';
 import { PersonnelActionForm } from '@/components/personnelActions/PersonnelActionForm';
+import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
+import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
 import type {
   PersonnelActionSummary,
   PersonnelActionQueryFilter,
@@ -66,6 +68,13 @@ export default function PersonnelActionsPage() {
   const queryClient = useQueryClient();
 
   const [createOpen, setCreateOpen] = useState(false);
+  const {
+    setIsFormDirty: setCreateFormDirty,
+    handleOpenChange: guardedCreateOpenChange,
+    confirmOpen: createConfirmOpen,
+    confirmExit: confirmCreateExit,
+    closeConfirm: closeCreateConfirm,
+  } = useUnsavedChangesGuard(setCreateOpen);
   const [filter, setFilter] = useState<PersonnelActionQueryFilter>({
     page: 1,
     pageSize: PAGE_SIZE,
@@ -99,6 +108,7 @@ export default function PersonnelActionsPage() {
       }
       queryClient.invalidateQueries({ queryKey: ['personnel-actions'] });
       toast({ title: 'Acción de personal creada.' });
+      setCreateFormDirty(false);
       setCreateOpen(false);
       navigate(`/personnel-actions/${actionId}`);
     },
@@ -384,7 +394,7 @@ export default function PersonnelActionsPage() {
       />
 
       {/* ── Dialog Crear ──────────────────────────────────── */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+      <Dialog open={createOpen} onOpenChange={guardedCreateOpenChange}>
         <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Nueva Acción de Personal</DialogTitle>
@@ -395,10 +405,17 @@ export default function PersonnelActionsPage() {
           <PersonnelActionForm
             isBusy={createMutation.isPending}
             onSubmit={(data) => createMutation.mutate(data)}
-            onCancel={() => setCreateOpen(false)}
+            onCancel={() => guardedCreateOpenChange(false)}
+            onDirtyChange={setCreateFormDirty}
           />
         </DialogContent>
       </Dialog>
+
+      <UnsavedChangesDialog
+        open={createConfirmOpen}
+        onClose={closeCreateConfirm}
+        onConfirmExit={confirmCreateExit}
+      />
     </div>
   );
 }

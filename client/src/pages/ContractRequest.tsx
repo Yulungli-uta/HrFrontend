@@ -50,6 +50,8 @@ import {
 } from "@/components/contractRequest/ContractRequestPersonSection";
 import { FinancialCertificationSection } from "@/components/contractRequest/FinancialCertificationSection";
 import { ContractDialog } from "@/components/contracts/ContractDialog";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
+import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
 
 const EDITABLE_STATUS = "PENDIENTE_CERT_FINANCIERA";
 const CORRECTION_STATUS = "PENDIENTE_CORRECCION";
@@ -146,6 +148,54 @@ export default function ContractRequestPage() {
     createDocsRef.current?.clearSelected();
   };
 
+  const {
+    setIsFormDirty: setCreateFormDirty,
+    handleOpenChange: guardedCreateOpenChange,
+    confirmOpen: createConfirmOpen,
+    confirmExit: confirmCreateExit,
+    closeConfirm: closeCreateConfirm,
+  } = useUnsavedChangesGuard((open) => {
+    setIsFormOpen(open);
+    if (!open) resetForm();
+  });
+
+  const didMountCreateFormRef = useRef(false);
+  useEffect(() => {
+    if (!didMountCreateFormRef.current) {
+      didMountCreateFormRef.current = true;
+      return;
+    }
+    if (!isFormOpen) return;
+    setCreateFormDirty(true);
+  }, [form, isFormOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const {
+    setIsFormDirty: setDetailFormDirty,
+    handleOpenChange: guardedDetailOpenChange,
+    confirmOpen: detailConfirmOpen,
+    confirmExit: confirmDetailExit,
+    closeConfirm: closeDetailConfirm,
+  } = useUnsavedChangesGuard((open) => {
+    setIsDetailOpen(open);
+    if (!open) {
+      setSelected(null);
+      setIsEditing(false);
+      setEditForm(null);
+    }
+  });
+
+  // Solo marca "sin guardar" mientras se está editando (el modo de solo lectura nunca
+  // tiene cambios que perder, así que cerrarlo no debe preguntar nada).
+  const didMountEditFormRef = useRef(false);
+  useEffect(() => {
+    if (!didMountEditFormRef.current) {
+      didMountEditFormRef.current = true;
+      return;
+    }
+    if (!isEditing) return;
+    setDetailFormDirty(true);
+  }, [editForm, isEditing]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const filtered = useMemo(() => {
     let list = [...contracts].sort((a, b) => {
       const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
@@ -233,6 +283,7 @@ export default function ContractRequestPage() {
   const cancelEditing = () => {
     setIsEditing(false);
     setEditForm(null);
+    setDetailFormDirty(false);
   };
 
   const handleCreate = async () => {
@@ -306,6 +357,7 @@ export default function ContractRequestPage() {
               description: `Falló la carga de documentos Y la reversión. La solicitud #${id} quedó registrada sin documentos. Elimínela manualmente.`,
               variant: "destructive",
             });
+            setCreateFormDirty(false);
             setIsFormOpen(false);
             resetForm();
             return;
@@ -350,6 +402,7 @@ export default function ContractRequestPage() {
               description: `Falló el registro de personas Y la reversión. La solicitud #${id} quedó registrada sin personas. Elimínela manualmente.`,
               variant: "destructive",
             });
+            setCreateFormDirty(false);
             setIsFormOpen(false);
             resetForm();
             return;
@@ -365,6 +418,7 @@ export default function ContractRequestPage() {
       }
 
       toast({ title: "✅ Solicitud creada", description: "Se guardó correctamente." });
+      setCreateFormDirty(false);
       setIsFormOpen(false);
       resetForm();
     } catch (e: unknown) {
@@ -406,6 +460,7 @@ export default function ContractRequestPage() {
       }
 
       toast({ title: "✅ Solicitud actualizada", description: "Se guardó correctamente." });
+      setDetailFormDirty(false);
       setIsEditing(false);
       setIsDetailOpen(false);
       setSelected(null);
@@ -525,10 +580,7 @@ export default function ContractRequestPage() {
 
         <Dialog
           open={isFormOpen}
-          onOpenChange={(open) => {
-            setIsFormOpen(open);
-            if (!open) resetForm();
-          }}
+          onOpenChange={guardedCreateOpenChange}
         >
           <DialogTrigger asChild>
             <Button className="bg-primary hover:bg-primary/90 w-full lg:w-auto">
@@ -772,14 +824,7 @@ export default function ContractRequestPage() {
       {/* Diálogo de detalle */}
       <Dialog
         open={isDetailOpen}
-        onOpenChange={(open) => {
-          setIsDetailOpen(open);
-          if (!open) {
-            setSelected(null);
-            setIsEditing(false);
-            setEditForm(null);
-          }
-        }}
+        onOpenChange={guardedDetailOpenChange}
       >
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -995,6 +1040,17 @@ export default function ContractRequestPage() {
         setMode={setContractMode}
         selected={null}
         initial={contractDialogInitial}
+      />
+
+      <UnsavedChangesDialog
+        open={createConfirmOpen}
+        onClose={closeCreateConfirm}
+        onConfirmExit={confirmCreateExit}
+      />
+      <UnsavedChangesDialog
+        open={detailConfirmOpen}
+        onClose={closeDetailConfirm}
+        onConfirmExit={confirmDetailExit}
       />
     </div>
   );

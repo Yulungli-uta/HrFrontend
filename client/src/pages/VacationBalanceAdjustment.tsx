@@ -203,7 +203,7 @@ function IndividualAdjustmentTab() {
           name="employeeId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Empleado</FormLabel>
+              <FormLabel>Empleado <span className="text-destructive">*</span></FormLabel>
               <FormControl>
                 <EmployeeCombobox value={field.value ?? null} onSelect={(id) => field.onChange(id ?? undefined)} />
               </FormControl>
@@ -217,7 +217,7 @@ function IndividualAdjustmentTab() {
           name="laborRegimeName"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Régimen laboral (solo los que el empleado realmente tiene activos)</FormLabel>
+              <FormLabel>Régimen laboral (solo los que el empleado realmente tiene activos) <span className="text-destructive">*</span></FormLabel>
               <Select value={field.value} onValueChange={field.onChange} disabled={!employeeId || loadingRegimes}>
                 <FormControl>
                   <SelectTrigger>

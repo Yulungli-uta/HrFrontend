@@ -35,6 +35,8 @@ import { useToast } from '@/hooks/use-toast';
 import { PersonasAPI } from '@/lib/api';
 import type { PersonDto } from '@/lib/api';
 import { useDinardapLookup } from '@/hooks/useDinardapLookup';
+import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
+import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
 
 const IDENT_TYPES = [
   { value: 1, label: 'Cédula' },
@@ -81,6 +83,18 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
       preferredDenomination: '',
     },
   });
+
+  const {
+    setIsFormDirty,
+    handleOpenChange: guardedOpenChange,
+    confirmOpen,
+    confirmExit,
+    closeConfirm,
+  } = useUnsavedChangesGuard(onOpenChange);
+
+  useEffect(() => {
+    setIsFormDirty(form.formState.isDirty);
+  }, [form.formState.isDirty, setIsFormDirty]);
 
   const dinardap = useDinardapLookup({
     onFound: (d) => {
@@ -170,7 +184,8 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
   const fechaNacimientoLocked = dinardap.status === 'found' && !!dinardap.data?.fechaNacimiento;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <>
+    <Dialog open={open} onOpenChange={guardedOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Registrar Nueva Persona</DialogTitle>
@@ -190,7 +205,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
                 name="firstName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nombres *</FormLabel>
+                    <FormLabel>Nombres <span className="text-destructive">*</span></FormLabel>
                     <FormControl>
                       <Input {...field} disabled={mutation.isPending || nombresLocked || dinardap.isChecking} />
                     </FormControl>
@@ -203,7 +218,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
                 name="lastName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Apellidos *</FormLabel>
+                    <FormLabel>Apellidos <span className="text-destructive">*</span></FormLabel>
                     <FormControl>
                       <Input {...field} disabled={mutation.isPending || apellidosLocked || dinardap.isChecking} />
                     </FormControl>
@@ -219,7 +234,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
                 name="identType"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Tipo de documento *</FormLabel>
+                    <FormLabel>Tipo de documento <span className="text-destructive">*</span></FormLabel>
                     <Select
                       value={String(field.value)}
                       onValueChange={(v) => {
@@ -252,7 +267,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
                 name="idCard"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>N° Documento *</FormLabel>
+                    <FormLabel>N° Documento <span className="text-destructive">*</span></FormLabel>
                     <FormControl>
                       <Input
                         {...field}
@@ -342,7 +357,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email *</FormLabel>
+                  <FormLabel>Email <span className="text-destructive">*</span></FormLabel>
                   <FormControl>
                     <Input type="email" {...field} disabled={mutation.isPending || dinardap.isChecking} />
                   </FormControl>
@@ -380,7 +395,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
                 name="birthDate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Fecha de Nacimiento *</FormLabel>
+                    <FormLabel>Fecha de Nacimiento <span className="text-destructive">*</span></FormLabel>
                     <FormControl>
                       <Input type="date" {...field} disabled={mutation.isPending || fechaNacimientoLocked || dinardap.isChecking} />
                     </FormControl>
@@ -407,7 +422,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => onOpenChange(false)}
+                onClick={() => guardedOpenChange(false)}
                 disabled={mutation.isPending}
               >
                 Cancelar
@@ -421,5 +436,8 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
         </Form>
       </DialogContent>
     </Dialog>
+
+    <UnsavedChangesDialog open={confirmOpen} onClose={closeConfirm} onConfirmExit={confirmExit} />
+    </>
   );
 }

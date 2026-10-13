@@ -341,7 +341,7 @@ export default function AssignScheduleForm({
 
           {/* Catálogo vs. horario especial individual */}
           <div className="space-y-2">
-            <Label>Tipo de horario *</Label>
+            <Label>Tipo de horario <span className="text-destructive">*</span></Label>
             <div className="flex gap-2">
               <Button type="button" size="sm" variant={mode === "catalog" ? "default" : "outline"}
                 onClick={() => setMode("catalog")} disabled={assignScheduleMutation.isPending}>
@@ -357,7 +357,7 @@ export default function AssignScheduleForm({
           {mode === "special" && (
             <div className="space-y-3 p-3 border rounded-lg">
               <div className="space-y-2">
-                <Label htmlFor="specialCaseType">Tipo de caso *</Label>
+                <Label htmlFor="specialCaseType">Tipo de caso <span className="text-destructive">*</span></Label>
                 <Select
                   value={specialData.caseTypeId}
                   onValueChange={(value) => setSpecialData(f => ({ ...f, caseTypeId: value }))}
@@ -375,13 +375,13 @@ export default function AssignScheduleForm({
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label htmlFor="specialEntryTime">Entrada *</Label>
+                  <Label htmlFor="specialEntryTime">Entrada <span className="text-destructive">*</span></Label>
                   <Input id="specialEntryTime" type="time" value={specialData.entryTime}
                     onChange={(e) => setSpecialData(f => ({ ...f, entryTime: e.target.value }))}
                     disabled={assignScheduleMutation.isPending} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="specialExitTime">Salida *</Label>
+                  <Label htmlFor="specialExitTime">Salida <span className="text-destructive">*</span></Label>
                   <Input id="specialExitTime" type="time" value={specialData.exitTime}
                     onChange={(e) => setSpecialData(f => ({ ...f, exitTime: e.target.value }))}
                     disabled={assignScheduleMutation.isPending} />
@@ -396,13 +396,13 @@ export default function AssignScheduleForm({
               {specialData.hasLunchBreak && (
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
-                    <Label htmlFor="specialLunchStart">Salida almuerzo *</Label>
+                    <Label htmlFor="specialLunchStart">Salida almuerzo <span className="text-destructive">*</span></Label>
                     <Input id="specialLunchStart" type="time" value={specialData.lunchStart}
                       onChange={(e) => setSpecialData(f => ({ ...f, lunchStart: e.target.value }))}
                       disabled={assignScheduleMutation.isPending} />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="specialLunchEnd">Regreso almuerzo *</Label>
+                    <Label htmlFor="specialLunchEnd">Regreso almuerzo <span className="text-destructive">*</span></Label>
                     <Input id="specialLunchEnd" type="time" value={specialData.lunchEnd}
                       onChange={(e) => setSpecialData(f => ({ ...f, lunchEnd: e.target.value }))}
                       disabled={assignScheduleMutation.isPending} />
@@ -483,7 +483,7 @@ export default function AssignScheduleForm({
           {/* Fechas */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="validFrom">Válido Desde *</Label>
+              <Label htmlFor="validFrom">Válido Desde <span className="text-destructive">*</span></Label>
               <Input
                 id="validFrom"
                 type="date"

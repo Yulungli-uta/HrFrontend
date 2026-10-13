@@ -216,7 +216,7 @@ function CreatePlanDialog({
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Fecha inicio</Label>
+                <Label className="text-xs text-muted-foreground">Fecha inicio <span className="text-destructive">*</span></Label>
                 <Input
                   type="date"
                   min={todayIsoTomorrow()}
@@ -225,7 +225,7 @@ function CreatePlanDialog({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Fecha fin</Label>
+                <Label className="text-xs text-muted-foreground">Fecha fin <span className="text-destructive">*</span></Label>
                 <Input
                   type="date"
                   min={startDate || todayIsoTomorrow()}
@@ -257,11 +257,11 @@ function CreatePlanDialog({
             {hourlyMode && (
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Hora inicio</Label>
+                  <Label className="text-xs text-muted-foreground">Hora inicio <span className="text-destructive">*</span></Label>
                   <Input type="time" value={startTime} onChange={(e) => { setStartTime(e.target.value); markDirty(); }} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Hora fin</Label>
+                  <Label className="text-xs text-muted-foreground">Hora fin <span className="text-destructive">*</span></Label>
                   <Input type="time" value={endTime} onChange={(e) => { setEndTime(e.target.value); markDirty(); }} />
                 </div>
               </div>

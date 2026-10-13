@@ -18,6 +18,8 @@ import { Plus, Search, Sun, Wallet, RotateCcw, X, Filter } from "lucide-react";
 
 import PermissionForm, { type DocumentsConfig } from "@/components/forms/PermissionForm";
 import VacationForm from "@/components/forms/VacationForm";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
+import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
 
 import {
   PermisosAPI,
@@ -291,6 +293,17 @@ export default function PermissionsPage() {
   const [editingPermission, setEditingPermission] = useState<any | null>(null);
   const [editingVacation, setEditingVacation] = useState<any | null>(null);
 
+  const {
+    setIsFormDirty: setPermissionFormDirty,
+    handleOpenChange: guardedPermissionOpenChange,
+    confirmOpen: permissionConfirmOpen,
+    confirmExit: confirmPermissionExit,
+    closeConfirm: closePermissionConfirm,
+  } = useUnsavedChangesGuard((open) => {
+    setIsPermissionFormOpen(open);
+    if (!open) setEditingPermission(null);
+  });
+
   const [search, setSearch] = useState("");
   const [yearFilter, setYearFilter] = useState<"CURRENT" | "ALL">("CURRENT");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
@@ -562,6 +575,7 @@ export default function PermissionsPage() {
   };
 
   const onPermissionSaved = (isEdit: boolean) => {
+    setPermissionFormDirty(false);
     setIsPermissionFormOpen(false);
     setEditingPermission(null);
     refetchPermissions();
@@ -1103,10 +1117,7 @@ export default function PermissionsPage() {
 
       <Dialog
         open={isPermissionFormOpen}
-        onOpenChange={(open) => {
-          setIsPermissionFormOpen(open);
-          if (!open) setEditingPermission(null);
-        }}
+        onOpenChange={guardedPermissionOpenChange}
       >
         <DialogContent
           className="max-h-[85vh] w-[95vw] max-w-3xl overflow-y-auto"
@@ -1129,13 +1140,17 @@ export default function PermissionsPage() {
             documents={documentsConfig}
             workMinutesPerDay={workdayMinutes}
             onSuccess={(edit) => onPermissionSaved(edit)}
-            onCancel={() => {
-              setIsPermissionFormOpen(false);
-              setEditingPermission(null);
-            }}
+            onCancel={() => guardedPermissionOpenChange(false)}
+            onDirtyChange={setPermissionFormDirty}
           />
         </DialogContent>
       </Dialog>
+
+      <UnsavedChangesDialog
+        open={permissionConfirmOpen}
+        onClose={closePermissionConfirm}
+        onConfirmExit={confirmPermissionExit}
+      />
 
       <Dialog
         open={isVacationFormOpen}

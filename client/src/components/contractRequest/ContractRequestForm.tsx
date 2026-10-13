@@ -37,7 +37,7 @@ export function ContractRequestForm({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
       <div>
-        <Label>Modalidad de trabajo *</Label>
+        <Label>Modalidad de trabajo <span className="text-destructive">*</span></Label>
         <Select
           value={value.workModalityId ? String(value.workModalityId) : ""}
           onValueChange={(v) => onChange({ ...value, workModalityId: v ? Number(v) : null })}
@@ -55,7 +55,7 @@ export function ContractRequestForm({
       </div>
 
       <div>
-        <Label>Departamento solicitante *</Label>
+        <Label>Departamento solicitante <span className="text-destructive">*</span></Label>
         <DepartmentSelect
           value={value.departmentId ?? null}
           onChange={(id) => onChange({ ...value, departmentId: id })}
@@ -65,7 +65,7 @@ export function ContractRequestForm({
       </div>
 
       <div>
-        <Label>Número de personas a contratar *</Label>
+        <Label>Número de personas a contratar <span className="text-destructive">*</span></Label>
         <Input
           type="number"
           min={1}
@@ -82,7 +82,7 @@ export function ContractRequestForm({
       </div>
 
       <div>
-        <Label>Número de horas *</Label>
+        <Label>Número de horas <span className="text-destructive">*</span></Label>
         <Input
           type="number"
           min={0.01}
@@ -100,7 +100,7 @@ export function ContractRequestForm({
 
       {!hideStatus && (
         <div>
-          <Label>Estado *</Label>
+          <Label>Estado <span className="text-destructive">*</span></Label>
           <Select
             value={value.status != null ? String(value.status) : ""}
             onValueChange={(v) => onChange({ ...value, status: v ? Number(v) : null })}
@@ -119,7 +119,7 @@ export function ContractRequestForm({
       )}
 
       <div>
-        <Label>Fecha inicio del período *</Label>
+        <Label>Fecha inicio del período <span className="text-destructive">*</span></Label>
         <Input
           type="date"
           value={value.startDate ?? ""}
@@ -129,7 +129,7 @@ export function ContractRequestForm({
       </div>
 
       <div>
-        <Label>Fecha fin del período *</Label>
+        <Label>Fecha fin del período <span className="text-destructive">*</span></Label>
         <Input
           type="date"
           value={value.endDate ?? ""}
@@ -146,9 +146,13 @@ export function ContractRequestForm({
         <Textarea
           value={value.observation ?? ""}
           disabled={disabled}
+          maxLength={1000}
           onChange={(e) => onChange({ ...value, observation: e.target.value })}
           placeholder="Observación (máx. 1000 caracteres)"
         />
+        <p className="text-xs text-muted-foreground mt-1 text-right">
+          {(value.observation ?? "").length}/1000
+        </p>
       </div>
     </div>
   );

@@ -1,5 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
+import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
 
 import {
   CalendarDays,
@@ -163,6 +165,26 @@ function CreateScheduleChangePlanDialog({
   const [form, setForm] = useState<PlanFormState>(EMPTY_FORM);
   const [tableFilter, setTableFilter] = useState("");
 
+  const {
+    setIsFormDirty,
+    handleOpenChange: guardedOpenChange,
+    confirmOpen,
+    confirmExit,
+    closeConfirm,
+  } = useUnsavedChangesGuard(onOpenChange);
+
+  // Omite el primer render (form todavia en su valor inicial) para no marcar "sin guardar"
+  // antes de que el usuario haya tocado algo.
+  const didMountFormRef = useRef(false);
+  useEffect(() => {
+    if (!didMountFormRef.current) {
+      didMountFormRef.current = true;
+      return;
+    }
+    if (!open) return;
+    setIsFormDirty(true);
+  }, [form, open, setIsFormDirty]);
+
   const { data: employeesResponse, isLoading: isLoadingEmployees } = useQuery({
     queryKey: ["vw-employee-details", "subordinates", bossId],
     queryFn: () => VistaDetallesEmpleadosAPI.byImmediateBoss(bossId),
@@ -290,6 +312,7 @@ function CreateScheduleChangePlanDialog({
 
       setForm(EMPTY_FORM);
       setTableFilter("");
+      setIsFormDirty(false);
       onOpenChange(false);
     },
     onError: (error: unknown) => {
@@ -302,7 +325,8 @@ function CreateScheduleChangePlanDialog({
   });
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <>
+    <Dialog open={open} onOpenChange={guardedOpenChange}>
       <DialogTrigger asChild>
         <Button className="bg-primary hover:bg-primary/90" disabled={!bossId}>
           <FilePlus2 className="mr-2 h-4 w-4" />
@@ -330,7 +354,7 @@ function CreateScheduleChangePlanDialog({
 
               <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2 space-y-2">
-                  <Label htmlFor="title">Título</Label>
+                  <Label htmlFor="title">Título <span className="text-destructive">*</span></Label>
                   <Input
                     id="title"
                     value={form.title}
@@ -342,7 +366,7 @@ function CreateScheduleChangePlanDialog({
                 </div>
 
                 <div className="md:col-span-2 space-y-2">
-                  <Label htmlFor="justification">Justificación</Label>
+                  <Label htmlFor="justification">Justificación <span className="text-destructive">*</span></Label>
                   <Textarea
                     id="justification"
                     value={form.justification}
@@ -355,7 +379,7 @@ function CreateScheduleChangePlanDialog({
                 </div>
 
                 <div className="md:col-span-2 space-y-2">
-                  <Label>Nuevo horario</Label>
+                  <Label>Nuevo horario <span className="text-destructive">*</span></Label>
                   <ActiveSchedulePicker
                     value={form.newScheduleID}
                     onChange={(value) =>
@@ -376,7 +400,7 @@ function CreateScheduleChangePlanDialog({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="effectiveDate">Fecha efectiva (Inicio)</Label>
+                  <Label htmlFor="effectiveDate">Fecha efectiva (Inicio) <span className="text-destructive">*</span></Label>
                   <Input
                     id="effectiveDate"
                     type="date"
@@ -408,7 +432,7 @@ function CreateScheduleChangePlanDialog({
 
                 {!form.isPermanent ? (
                   <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="temporalEndDate">Fecha fin</Label>
+                    <Label htmlFor="temporalEndDate">Fecha fin <span className="text-destructive">*</span></Label>
                     <Input
                       id="temporalEndDate"
                       type="date"
@@ -665,6 +689,8 @@ function CreateScheduleChangePlanDialog({
         </div>
       </DialogContent>
     </Dialog>
+    <UnsavedChangesDialog open={confirmOpen} onClose={closeConfirm} onConfirmExit={confirmExit} />
+    </>
   );
 }
 

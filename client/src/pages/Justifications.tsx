@@ -18,6 +18,8 @@ import { useAuth } from "@/features/auth";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import JustificationForm from "@/components/justifications/JustificationForm";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
+import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
 
 type Status = "PENDING" | "APPROVED" | "REJECTED" | "APPLIED";
 
@@ -97,6 +99,14 @@ export default function JustificationsPage() {
 
   const [openCreate, setOpenCreate] = useState(false);
   const [openDetail, setOpenDetail] = useState<Justif | null>(null);
+
+  const {
+    setIsFormDirty: setCreateFormDirty,
+    handleOpenChange: guardedCreateOpenChange,
+    confirmOpen: createConfirmOpen,
+    confirmExit: confirmCreateExit,
+    closeConfirm: closeCreateConfirm,
+  } = useUnsavedChangesGuard(setOpenCreate);
 
   const currentYear = new Date().getFullYear();
 
@@ -288,7 +298,7 @@ export default function JustificationsPage() {
       </Tabs>
 
       {/* Crear */}
-      <Dialog open={openCreate} onOpenChange={setOpenCreate}>
+      <Dialog open={openCreate} onOpenChange={guardedCreateOpenChange}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Solicitar Justificación</DialogTitle>
@@ -297,13 +307,21 @@ export default function JustificationsPage() {
 
           <JustificationForm
             onCreated={() => {
+              setCreateFormDirty(false);
               setOpenCreate(false);
               queryClient.invalidateQueries({ queryKey: ["justifications", empId] });
             }}
-            onCancel={() => setOpenCreate(false)}
+            onCancel={() => guardedCreateOpenChange(false)}
+            onDirtyChange={setCreateFormDirty}
           />
         </DialogContent>
       </Dialog>
+
+      <UnsavedChangesDialog
+        open={createConfirmOpen}
+        onClose={closeCreateConfirm}
+        onConfirmExit={confirmCreateExit}
+      />
 
       {/* Detalle */}
       <Dialog open={!!openDetail} onOpenChange={(v) => !v && setOpenDetail(null)}>

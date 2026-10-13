@@ -198,7 +198,7 @@ function DetailDialog({
 
         {canDecide && rejecting && (
           <div className="space-y-2">
-            <Label className="text-xs">Motivo del rechazo *</Label>
+            <Label className="text-xs">Motivo del rechazo <span className="text-destructive">*</span></Label>
             <Textarea
               rows={3}
               value={reason}

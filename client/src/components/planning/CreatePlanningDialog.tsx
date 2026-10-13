@@ -1,5 +1,7 @@
 // src/components/planning/CreatePlanningDialog.tsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
+import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
@@ -187,6 +189,26 @@ export default function CreatePlanningDialog({
   const [selectedEmployees, setSelectedEmployees] = useState<SelectedEmployee[]>([]);
   const [candidateEmployee, setCandidateEmployee] = useState<CandidateEmployee | null>(null);
   const [employeeSearch, setEmployeeSearch] = useState("");
+
+  const {
+    setIsFormDirty,
+    handleOpenChange: guardedOpenChange,
+    confirmOpen,
+    confirmExit,
+    closeConfirm,
+  } = useUnsavedChangesGuard(onOpenChange);
+
+  // Guardia de "salir sin guardar": cualquier cambio en los datos reales del formulario
+  // (tras el montaje inicial) marca el diálogo como "sucio".
+  const didMountDirtyRef = useRef(false);
+  useEffect(() => {
+    if (!didMountDirtyRef.current) {
+      didMountDirtyRef.current = true;
+      return;
+    }
+    if (!open) return;
+    setIsFormDirty(true);
+  }, [planTypeUI, title, description, startDate, endDate, startTime, endTime, overtimeType, factor, owedMinutes, requiresApproval, selectedEmployees, open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const ensureTime = (val: string) => (val?.length === 5 ? `${val}:00` : val);
 
@@ -607,6 +629,7 @@ export default function CreatePlanningDialog({
           description: "Se creó correctamente con sus empleados.",
         });
         queryClient.invalidateQueries({ queryKey: ["time-plannings"] });
+        setIsFormDirty(false);
         onOpenChange(false);
       } else {
         toast({
@@ -626,9 +649,10 @@ export default function CreatePlanningDialog({
   });
 
   return (
+    <>
     <Dialog
       open={open}
-      onOpenChange={(v) => !createMutation.isPending && onOpenChange(v)}
+      onOpenChange={(v) => !createMutation.isPending && guardedOpenChange(v)}
     >
       <DialogContent className="w-[95vw] max-w-4xl h-[90vh] overflow-hidden p-0">
         <div className="flex h-full min-h-0 flex-col">
@@ -668,7 +692,7 @@ export default function CreatePlanningDialog({
 
               <div className="space-y-3">
                 <div className="space-y-2">
-                  <Label>Título</Label>
+                  <Label>Título <span className="text-destructive">*</span></Label>
                   <Input
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
@@ -690,7 +714,7 @@ export default function CreatePlanningDialog({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label>Desde</Label>
+                  <Label>Desde <span className="text-destructive">*</span></Label>
                   <Input
                     type="date"
                     min={MIN_START_DATE}
@@ -702,7 +726,7 @@ export default function CreatePlanningDialog({
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Hasta</Label>
+                  <Label>Hasta <span className="text-destructive">*</span></Label>
                   <Input
                     type="date"
                     min={startDate || MIN_START_DATE}
@@ -998,5 +1022,8 @@ export default function CreatePlanningDialog({
         </div>
       </DialogContent>
     </Dialog>
+
+    <UnsavedChangesDialog open={confirmOpen} onClose={closeConfirm} onConfirmExit={confirmExit} />
+    </>
   );
 }

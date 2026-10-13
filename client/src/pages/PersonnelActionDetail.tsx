@@ -17,6 +17,8 @@ import { usePersonnelActionDetail } from '@/hooks/personnelActions/usePersonnelA
 import { usePersonnelActionLookups } from '@/hooks/personnelActions/usePersonnelActionLookups';
 import { PersonnelActionActions } from '@/components/personnelActions/PersonnelActionActions';
 import { PersonnelActionForm } from '@/components/personnelActions/PersonnelActionForm';
+import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
+import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
 import { DocumentPreviewPanel } from '@/components/personnelActions/DocumentPreviewPanel';
 import { StatusHistoryTimeline } from '@/components/personnelActions/StatusHistoryTimeline';
 import { ActionDocumentsPanel } from '@/components/personnelActions/ActionDocumentsPanel';
@@ -121,6 +123,13 @@ export default function PersonnelActionDetail() {
   const actionId = Number(id);
 
   const [editOpen, setEditOpen] = useState(false);
+  const {
+    setIsFormDirty: setEditFormDirty,
+    handleOpenChange: guardedEditOpenChange,
+    confirmOpen: editConfirmOpen,
+    confirmExit: confirmEditExit,
+    closeConfirm: closeEditConfirm,
+  } = useUnsavedChangesGuard(setEditOpen);
   const [historyOpen, setHistoryOpen] = useState(false);
 
   const {
@@ -185,7 +194,12 @@ export default function PersonnelActionDetail() {
   });
 
   const handleUpdate = (data: CreatePersonnelActionRequest) => {
-    updateAction(buildUpdatePayload(data), { onSuccess: () => setEditOpen(false) });
+    updateAction(buildUpdatePayload(data), {
+      onSuccess: () => {
+        setEditFormDirty(false);
+        setEditOpen(false);
+      },
+    });
   };
 
   if (isLoading) {
@@ -393,7 +407,7 @@ export default function PersonnelActionDetail() {
       )}
 
       {/* ── Dialog Editar ─────────────────────────────────── */}
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+      <Dialog open={editOpen} onOpenChange={guardedEditOpenChange}>
         <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar Acción de Personal</DialogTitle>
@@ -404,10 +418,17 @@ export default function PersonnelActionDetail() {
             isEdit
             isBusy={isBusy}
             onSubmit={handleUpdate}
-            onCancel={() => setEditOpen(false)}
+            onCancel={() => guardedEditOpenChange(false)}
+            onDirtyChange={setEditFormDirty}
           />
         </DialogContent>
       </Dialog>
+
+      <UnsavedChangesDialog
+        open={editConfirmOpen}
+        onClose={closeEditConfirm}
+        onConfirmExit={confirmEditExit}
+      />
 
       {/* ── Dialog Historial ──────────────────────────────── */}
       <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
