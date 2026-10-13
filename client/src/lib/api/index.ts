@@ -143,6 +143,7 @@ export type { FileUploadResponseDto, FileDeleteResponseDto } from './services/do
 
 // Feriados
 export { HolidaysAPI } from './services/holidays';
+export { SalaryHistoryAPI } from './services/salaryHistory';
 export { EmployeeLaborRegimesAPI } from './services/employeeLaborRegimes';
 export type { EmployeeLaborRegimeDto } from './services/employeeLaborRegimes';
 export type { HolidayResponseDTO } from './services/holidays';

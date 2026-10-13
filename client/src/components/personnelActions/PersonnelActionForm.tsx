@@ -35,7 +35,7 @@ import { Loader2, Save, FileText, Eye, Download, AlertCircle, CheckCircle2, Arro
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { usePersonnelActionLookups } from '@/hooks/personnelActions/usePersonnelActionLookups';
-import { EmpleadosAPI /*, DepartmentAuthoritiesAPI */ } from '@/lib/api';
+import { EmpleadosAPI, SalaryHistoryAPI /*, DepartmentAuthoritiesAPI */ } from '@/lib/api';
 import { useRefTypesByCategory } from '@/hooks/useRefTypes';
 import { REF_TYPE_CATEGORIES } from '@/features/refTypeCategories';
 import { PersonSearchCombobox } from './PersonSearchCombobox';
@@ -90,7 +90,7 @@ const schema = z.object({
   employeeId:   z.coerce.number().nonnegative(),
   actionTypeId: z.coerce.number().positive('Requerido'),
   actionNumber: z.string().optional(),
-  actionDate:   z.string().min(1, 'Requerido'),
+  actionDate:   z.string().min(1, 'La fecha de la acción es requerida'),
   effectiveDate: z.string().optional(),
   endDate:       z.string().optional(),
   originDepartmentId:   z.coerce.number().optional().nullable(),
@@ -384,17 +384,26 @@ export function PersonnelActionForm({
   const watchedEmployeeId       = form.watch('employeeId');
   const watchedActionDate       = form.watch('actionDate');
 
+  // RMU Origen: prioriza el historial salarial REAL del empleado (tbl_SalaryHistory) sobre el
+  // catálogo de cargos — antes se leía job.rmu (RMU del Grupo Ocupacional vía vw_Jobs_WithDegreeAndGroup),
+  // que queda null para ~35% de los cargos sin GroupID asignado. El backend ya resuelve el
+  // fallback por cargo (ReferenceSalary/Grupo) si el empleado no tiene historial aún.
   useEffect(() => {
-    if (!watchedOriginJobId || jobs.length === 0) return;
-    const job = jobs.find((j) => j.jobID === watchedOriginJobId);
-    form.setValue('previousRmu', job?.rmu ?? null);
-  }, [watchedOriginJobId, jobs.length]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!watchedEmployeeId) return;
+    SalaryHistoryAPI.getReferenceRmu({ employeeId: watchedEmployeeId, jobId: watchedOriginJobId ?? undefined })
+      .then((resp) => form.setValue('previousRmu', resp.status === 'success' ? resp.data.rmu : null))
+      .catch(() => form.setValue('previousRmu', null));
+  }, [watchedEmployeeId, watchedOriginJobId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // RMU Destino: solo sugiere un valor referencial por el cargo (mismo backend, sin employeeId
+  // porque es un cargo prospectivo) — el campo queda editable para que RRHH pueda ajustarlo
+  // a un valor más individual.
   useEffect(() => {
-    if (!watchedDestinationJobId || jobs.length === 0) return;
-    const job = jobs.find((j) => j.jobID === watchedDestinationJobId);
-    form.setValue('newRmu', job?.rmu ?? null);
-  }, [watchedDestinationJobId, jobs.length]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!watchedDestinationJobId) return;
+    SalaryHistoryAPI.getReferenceRmu({ jobId: watchedDestinationJobId })
+      .then((resp) => form.setValue('newRmu', resp.status === 'success' ? resp.data.rmu : null))
+      .catch(() => form.setValue('newRmu', null));
+  }, [watchedDestinationJobId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Aplica el empleado seleccionado al formulario y auto-rellena campos de origen
   const applyEmployee = (emp: any) => {
@@ -1118,11 +1127,9 @@ export function PersonnelActionForm({
                       <Input
                         type="number"
                         step="0.01"
+                        {...field}
                         value={field.value ?? ''}
-                        readOnly
-                        disabled
-                        className="bg-muted"
-                        placeholder="Auto"
+                        disabled={isBusy}
                       />
                     </FormControl>
                     <FormMessage />
