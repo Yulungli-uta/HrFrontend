@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -147,17 +147,6 @@ export default function VacationForm({
     status: "Planned",
   });
 
-  // Guardia de "salir sin guardar": cualquier cambio en los datos del formulario (tras el
-  // montaje inicial) se notifica al contenedor (Permissions.tsx) vía onDirtyChange.
-  const didMountDirtyRef = useRef(false);
-  useEffect(() => {
-    if (!didMountDirtyRef.current) {
-      didMountDirtyRef.current = true;
-      return;
-    }
-    onDirtyChange?.(true);
-  }, [formData]); // eslint-disable-line react-hooks/exhaustive-deps
-
   useEffect(() => {
     if (employeeId) setFormData((prev) => ({ ...prev, employeeId }));
   }, [employeeId]);
@@ -190,6 +179,7 @@ export default function VacationForm({
       next.daysTaken = days;
       return next;
     });
+    onDirtyChange?.(true);
   };
 
   // ===== ✅ Control duro de SALDO (tiempo real) =====

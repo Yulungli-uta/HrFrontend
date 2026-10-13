@@ -355,17 +355,6 @@ export default function PermissionForm({
 
   const [formData, setFormData] = useState<PermissionFormData>(defaults);
 
-  // Guardia de "salir sin guardar": cualquier cambio en los datos del formulario (tras el
-  // montaje inicial) se notifica al contenedor (Permissions.tsx) vía onDirtyChange.
-  const didMountDirtyRef = useRef(false);
-  useEffect(() => {
-    if (!didMountDirtyRef.current) {
-      didMountDirtyRef.current = true;
-      return;
-    }
-    onDirtyChange?.(true);
-  }, [formData, mode, startTime, endTime]); // eslint-disable-line react-hooks/exhaustive-deps
-
   useEffect(() => {
     if (employeeId) {
       setFormData((p) => {
@@ -547,6 +536,7 @@ export default function PermissionForm({
 
   const handleChange = (field: keyof PermissionFormData, value: any) => {
     setFormData((p) => ({ ...p, [field]: value }));
+    onDirtyChange?.(true);
   };
 
   const availableVacationMin = useMemo(
@@ -882,7 +872,7 @@ export default function PermissionForm({
 
         <div>
           <Label htmlFor="mode">Modo</Label>
-          <Select value={mode} onValueChange={(v: RangeMode) => setMode(v)}>
+          <Select value={mode} onValueChange={(v: RangeMode) => { setMode(v); onDirtyChange?.(true); }}>
             <SelectTrigger id="mode" aria-label="Modo del permiso">
               <SelectValue placeholder="Seleccionar modo" />
             </SelectTrigger>
@@ -943,7 +933,7 @@ export default function PermissionForm({
               id="startTime"
               type="time"
               value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
+              onChange={(e) => { setStartTime(e.target.value); onDirtyChange?.(true); }}
             />
           </div>
           <div>
@@ -952,7 +942,7 @@ export default function PermissionForm({
               id="endTime"
               type="time"
               value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
+              onChange={(e) => { setEndTime(e.target.value); onDirtyChange?.(true); }}
             />
           </div>
           <div>

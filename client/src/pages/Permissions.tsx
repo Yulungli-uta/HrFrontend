@@ -1133,8 +1133,6 @@ export default function PermissionsPage() {
       >
         <DialogContent
           className="max-h-[85vh] w-[95vw] max-w-3xl overflow-y-auto"
-          onPointerDownOutside={(e) => e.preventDefault()}
-          onInteractOutside={(e) => e.preventDefault()}
         >
           <DialogHeader>
             <DialogTitle>{editingPermission ? "Editar permiso" : "Nuevo permiso"}</DialogTitle>
@@ -1170,7 +1168,6 @@ export default function PermissionsPage() {
       >
         <DialogContent
           className="max-h-[85vh] w-[95vw] max-w-xl overflow-y-auto"
-          onInteractOutside={(e) => e.preventDefault()}
         >
           <DialogHeader>
             <DialogTitle>{editingVacation ? "Editar vacación" : "Nueva vacación"}</DialogTitle>
