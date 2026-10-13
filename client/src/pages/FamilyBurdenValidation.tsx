@@ -233,7 +233,9 @@ function DetailDialog({
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="Explique el motivo del rechazo…"
+              maxLength={500}
             />
+            <p className="text-xs text-muted-foreground mt-1">Máximo 500 caracteres.</p>
             <DialogFooter className="gap-2 sm:gap-2">
               <Button
                 variant="outline"

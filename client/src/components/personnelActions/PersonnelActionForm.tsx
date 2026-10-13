@@ -89,21 +89,21 @@ function base64ToBlob(base64: string): Blob {
 const schema = z.object({
   employeeId:   z.coerce.number().nonnegative(),
   actionTypeId: z.coerce.number().positive('Requerido'),
-  actionNumber: z.string().optional(),
+  actionNumber: z.string().max(50, 'No puede exceder 50 caracteres').optional(),
   actionDate:   z.string().min(1, 'La fecha de la acción es requerida'),
   effectiveDate: z.string().optional(),
   endDate:       z.string().optional(),
   originDepartmentId:   z.coerce.number().optional().nullable(),
   originJobId:          z.coerce.number().optional().nullable(),
-  originBudgetCode:     z.string().optional(),
+  originBudgetCode:     z.string().max(50, 'No puede exceder 50 caracteres').optional(),
   destinationDepartmentId: z.coerce.number().optional().nullable(),
   destinationJobId:        z.coerce.number().optional().nullable(),
-  destinationBudgetCode:   z.string().optional(),
+  destinationBudgetCode:   z.string().max(50, 'No puede exceder 50 caracteres').optional(),
   previousRmu: z.coerce.number().optional().nullable(),
   newRmu:      z.coerce.number().optional().nullable(),
-  legalBasis:   z.string().optional(),
-  reason:       z.string().optional(),
-  observations: z.string().optional(),
+  legalBasis:   z.string().max(500, 'No puede exceder 500 caracteres').optional(),
+  reason:       z.string().max(1000, 'No puede exceder 1000 caracteres').optional(),
+  observations: z.string().max(1000, 'No puede exceder 1000 caracteres').optional(),
   // Régimen laboral para nuevo ingreso
   employeeTypeId: z.coerce.number().optional().nullable(),
   // Clasificación de la acción
@@ -671,6 +671,7 @@ export function PersonnelActionForm({
                       disabled={!allowActionNumberEdit}
                       className={allowActionNumberEdit ? undefined : 'bg-muted'}
                       placeholder="Auto"
+                      maxLength={50}
                     />
                   </FormControl>
                   <FormMessage />
@@ -1034,7 +1035,7 @@ export function PersonnelActionForm({
                   <FormItem>
                     <FormLabel>Código Presupuestario</FormLabel>
                     <FormControl>
-                      <Input {...field} value={field.value ?? ''} disabled={isBusy} />
+                      <Input {...field} value={field.value ?? ''} disabled={isBusy} maxLength={50} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -1111,7 +1112,7 @@ export function PersonnelActionForm({
                   <FormItem>
                     <FormLabel>Código Presupuestario</FormLabel>
                     <FormControl>
-                      <Input {...field} value={field.value ?? ''} disabled={isBusy} />
+                      <Input {...field} value={field.value ?? ''} disabled={isBusy} maxLength={50} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -1148,7 +1149,7 @@ export function PersonnelActionForm({
                 <FormItem>
                   <FormLabel>Base Legal</FormLabel>
                   <FormControl>
-                    <Textarea {...field} value={field.value ?? ''} rows={2} disabled={isBusy} />
+                    <Textarea {...field} value={field.value ?? ''} rows={2} disabled={isBusy} maxLength={500} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -1161,7 +1162,7 @@ export function PersonnelActionForm({
                 <FormItem>
                   <FormLabel>Motivo</FormLabel>
                   <FormControl>
-                    <Textarea {...field} value={field.value ?? ''} rows={2} disabled={isBusy} />
+                    <Textarea {...field} value={field.value ?? ''} rows={2} disabled={isBusy} maxLength={1000} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -1174,7 +1175,7 @@ export function PersonnelActionForm({
                 <FormItem>
                   <FormLabel>Observaciones</FormLabel>
                   <FormControl>
-                    <Textarea {...field} value={field.value ?? ''} rows={3} disabled={isBusy} />
+                    <Textarea {...field} value={field.value ?? ''} rows={3} disabled={isBusy} maxLength={1000} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

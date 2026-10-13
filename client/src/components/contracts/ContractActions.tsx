@@ -277,7 +277,9 @@ export function ContractActions({
               value={cancelReason}
               onChange={e => setCancelReason(e.target.value)}
               placeholder="Indique el motivo…"
+              maxLength={250}
             />
+            <p className="text-xs text-muted-foreground mt-1">Máximo 250 caracteres.</p>
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={closeDialog}>Cancelar</AlertDialogCancel>
