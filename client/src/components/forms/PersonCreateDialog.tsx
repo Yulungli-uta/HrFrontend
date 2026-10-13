@@ -45,12 +45,12 @@ const IDENT_TYPES = [
 ];
 
 const schema = z.object({
-  firstName: z.string().min(1, 'Requerido'),
-  lastName:  z.string().min(1, 'Requerido'),
+  firstName: z.string().min(1, 'Requerido').max(100, 'Máximo 100 caracteres'),
+  lastName:  z.string().min(1, 'Requerido').max(100, 'Máximo 100 caracteres'),
   identType: z.coerce.number().positive('Requerido'),
-  idCard:    z.string().min(1, 'Requerido'),
-  email:     z.string().email('Email inválido'),
-  phone:     z.string().optional(),
+  idCard:    z.string().min(1, 'Requerido').max(20, 'Máximo 20 caracteres'),
+  email:     z.string().email('Email inválido').max(150, 'Máximo 150 caracteres'),
+  phone:     z.string().max(30, 'Máximo 30 caracteres').optional(),
   birthDate: z.string().min(1, 'Requerido'),
   preferredDenomination: z.string().max(200, 'Máximo 200 caracteres').optional(),
 });
@@ -207,7 +207,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
                   <FormItem>
                     <FormLabel>Nombres <span className="text-destructive">*</span></FormLabel>
                     <FormControl>
-                      <Input {...field} disabled={mutation.isPending || nombresLocked || dinardap.isChecking} />
+                      <Input {...field} maxLength={100} disabled={mutation.isPending || nombresLocked || dinardap.isChecking} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -220,7 +220,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
                   <FormItem>
                     <FormLabel>Apellidos <span className="text-destructive">*</span></FormLabel>
                     <FormControl>
-                      <Input {...field} disabled={mutation.isPending || apellidosLocked || dinardap.isChecking} />
+                      <Input {...field} maxLength={100} disabled={mutation.isPending || apellidosLocked || dinardap.isChecking} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -271,6 +271,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
                     <FormControl>
                       <Input
                         {...field}
+                        maxLength={20}
                         disabled={mutation.isPending}
                         onChange={(e) => {
                           field.onChange(e);
@@ -359,7 +360,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
                 <FormItem>
                   <FormLabel>Email <span className="text-destructive">*</span></FormLabel>
                   <FormControl>
-                    <Input type="email" {...field} disabled={mutation.isPending || dinardap.isChecking} />
+                    <Input type="email" {...field} maxLength={150} disabled={mutation.isPending || dinardap.isChecking} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -377,6 +378,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
                       {...field}
                       value={field.value ?? ''}
                       placeholder='Ej: "Dra. Sara Camacho Estrada, PhD."'
+                      maxLength={200}
                       disabled={mutation.isPending || dinardap.isChecking}
                     />
                   </FormControl>
@@ -410,7 +412,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
                   <FormItem>
                     <FormLabel>Teléfono</FormLabel>
                     <FormControl>
-                      <Input {...field} value={field.value ?? ''} disabled={mutation.isPending || dinardap.isChecking} />
+                      <Input {...field} value={field.value ?? ''} maxLength={30} disabled={mutation.isPending || dinardap.isChecking} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

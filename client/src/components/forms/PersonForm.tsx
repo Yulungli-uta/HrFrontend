@@ -1003,6 +1003,7 @@ export default function PersonForm({
                         : "Número de identificación"
                     }
                     disabled={isEditing}
+                    maxLength={20}
                     data-testid="input-idCard"
                     className={`${fieldClassName} ${errors.idCard
                       ? "border-destructive focus-visible:ring-destructive/20"
@@ -1057,6 +1058,7 @@ export default function PersonForm({
                     {...register("firstName")}
                     placeholder="Juan Carlos"
                     disabled={nombresLocked}
+                    maxLength={100}
                     data-testid="input-firstName"
                     className={`${fieldClassName} ${errors.firstName
                       ? "border-destructive focus-visible:ring-destructive/20"
@@ -1079,6 +1081,7 @@ export default function PersonForm({
                     {...register("lastName")}
                     placeholder="Pérez González"
                     disabled={apellidosLocked}
+                    maxLength={100}
                     data-testid="input-lastName"
                     className={`${fieldClassName} ${errors.lastName
                       ? "border-destructive focus-visible:ring-destructive/20"
@@ -1099,6 +1102,7 @@ export default function PersonForm({
                   id="preferredDenomination"
                   {...register("preferredDenomination")}
                   placeholder='Ej: "Dra. Sara Camacho Estrada, PhD."'
+                  maxLength={200}
                   className={fieldClassName}
                 />
                 <p className="text-xs text-muted-foreground">
@@ -1123,6 +1127,7 @@ export default function PersonForm({
                     type="email"
                     {...register("email")}
                     placeholder="usuario@universidad.edu.ec"
+                    maxLength={150}
                     data-testid="input-email"
                     className={`${fieldClassName} ${errors.email
                       ? "border-destructive focus-visible:ring-destructive/20"
@@ -1142,6 +1147,7 @@ export default function PersonForm({
                     id="phone"
                     {...register("phone")}
                     placeholder="+593 99 123 4567"
+                    maxLength={30}
                     data-testid="input-phone"
                     className={`${fieldClassName} ${errors.phone
                       ? "border-destructive focus-visible:ring-destructive/20"
@@ -1238,6 +1244,7 @@ export default function PersonForm({
                     {...register("address")}
                     placeholder="Dirección completa"
                     rows={3}
+                    maxLength={255}
                     className={`${fieldClassName} ${errors.address
                       ? "border-destructive focus-visible:ring-destructive/20"
                       : ""
@@ -1376,6 +1383,7 @@ export default function PersonForm({
                     id="militaryCard"
                     {...register("militaryCard")}
                     placeholder="Número de cartilla militar"
+                    maxLength={50}
                     className={`${fieldClassName} ${errors.militaryCard
                       ? "border-destructive focus-visible:ring-destructive/20"
                       : ""
@@ -1401,6 +1409,7 @@ export default function PersonForm({
                     {...register("motherName")}
                     placeholder="Nombre completo de la madre"
                     disabled={motherNameLocked}
+                    maxLength={100}
                     className={`${fieldClassName} ${errors.motherName
                       ? "border-destructive focus-visible:ring-destructive/20"
                       : ""
@@ -1420,6 +1429,7 @@ export default function PersonForm({
                     {...register("fatherName")}
                     placeholder="Nombre completo del padre"
                     disabled={fatherNameLocked}
+                    maxLength={100}
                     className={`${fieldClassName} ${errors.fatherName
                       ? "border-destructive focus-visible:ring-destructive/20"
                       : ""
@@ -1626,6 +1636,7 @@ export default function PersonForm({
                       {...register("conadisCard")}
                       placeholder="Número de carnet CONADIS"
                       disabled={!disabilityEnabled}
+                      maxLength={50}
                       className={`${fieldClassName} ${errors.conadisCard
                         ? "border-destructive focus-visible:ring-destructive/20"
                         : ""

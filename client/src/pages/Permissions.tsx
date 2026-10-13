@@ -304,6 +304,17 @@ export default function PermissionsPage() {
     if (!open) setEditingPermission(null);
   });
 
+  const {
+    setIsFormDirty: setVacationFormDirty,
+    handleOpenChange: guardedVacationOpenChange,
+    confirmOpen: vacationConfirmOpen,
+    confirmExit: confirmVacationExit,
+    closeConfirm: closeVacationConfirm,
+  } = useUnsavedChangesGuard((open) => {
+    setIsVacationFormOpen(open);
+    if (!open) setEditingVacation(null);
+  });
+
   const [search, setSearch] = useState("");
   const [yearFilter, setYearFilter] = useState<"CURRENT" | "ALL">("CURRENT");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
@@ -588,6 +599,7 @@ export default function PermissionsPage() {
   };
 
   const onVacationSaved = (isEdit: boolean) => {
+    setVacationFormDirty(false);
     setIsVacationFormOpen(false);
     setEditingVacation(null);
     refetchVacations();
@@ -1154,10 +1166,7 @@ export default function PermissionsPage() {
 
       <Dialog
         open={isVacationFormOpen}
-        onOpenChange={(open) => {
-          setIsVacationFormOpen(open);
-          if (!open) setEditingVacation(null);
-        }}
+        onOpenChange={guardedVacationOpenChange}
       >
         <DialogContent
           className="max-h-[85vh] w-[95vw] max-w-xl overflow-y-auto"
@@ -1176,13 +1185,17 @@ export default function PermissionsPage() {
             initialVacation={editingVacation}
             timeBalance={timeBalance}
             onSuccess={(edit) => onVacationSaved(edit)}
-            onCancel={() => {
-              setIsVacationFormOpen(false);
-              setEditingVacation(null);
-            }}
+            onCancel={() => guardedVacationOpenChange(false)}
+            onDirtyChange={setVacationFormDirty}
           />
         </DialogContent>
       </Dialog>
+
+      <UnsavedChangesDialog
+        open={vacationConfirmOpen}
+        onClose={closeVacationConfirm}
+        onConfirmExit={confirmVacationExit}
+      />
     </div>
   );
 }

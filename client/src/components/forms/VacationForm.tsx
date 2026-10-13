@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -77,6 +77,8 @@ interface VacationFormProps {
   onCancel: () => void;
   initialVacation?: any | null; // enable edit for Planned
   timeBalance?: any | null; // optional preloaded balance
+  /** Notifica al contenedor cada vez que el usuario modifica algún campo, para la guardia de "salir sin guardar". */
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 export default function VacationForm({
@@ -84,6 +86,7 @@ export default function VacationForm({
   onCancel,
   initialVacation = null,
   timeBalance = null,
+  onDirtyChange,
 }: VacationFormProps) {
   const queryClient = useQueryClient();
   const { employeeDetails } = useAuth();
@@ -143,6 +146,17 @@ export default function VacationForm({
     daysTaken: 1,
     status: "Planned",
   });
+
+  // Guardia de "salir sin guardar": cualquier cambio en los datos del formulario (tras el
+  // montaje inicial) se notifica al contenedor (Permissions.tsx) vía onDirtyChange.
+  const didMountDirtyRef = useRef(false);
+  useEffect(() => {
+    if (!didMountDirtyRef.current) {
+      didMountDirtyRef.current = true;
+      return;
+    }
+    onDirtyChange?.(true);
+  }, [formData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (employeeId) setFormData((prev) => ({ ...prev, employeeId }));
@@ -336,7 +350,7 @@ export default function VacationForm({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <Label>Fecha Inicio</Label>
+          <Label>Fecha Inicio <span className="text-destructive">*</span></Label>
           <Input
             type="date"
             min={today}
@@ -346,7 +360,7 @@ export default function VacationForm({
           />
         </div>
         <div>
-          <Label>Fecha Fin</Label>
+          <Label>Fecha Fin <span className="text-destructive">*</span></Label>
           <Input
             type="date"
             min={formData.startDate ?? today}
