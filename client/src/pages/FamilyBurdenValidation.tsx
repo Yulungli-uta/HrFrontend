@@ -1,5 +1,7 @@
 // src/pages/FamilyBurdenValidation.tsx
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
+import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -102,12 +104,39 @@ function DetailDialog({
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState('');
 
+  const {
+    setIsFormDirty,
+    handleOpenChange: guardedOpenChange,
+    confirmOpen,
+    confirmExit,
+    closeConfirm,
+  } = useUnsavedChangesGuard((open) => {
+    if (!open) {
+      setRejecting(false);
+      setReason('');
+      onClose();
+    }
+  });
+
+  // Solo marca "sin guardar" mientras se está escribiendo el motivo de rechazo — ver,
+  // aprobar o cancelar sin escribir nada no tiene nada que perder.
+  const didMountReasonRef = useRef(false);
+  useEffect(() => {
+    if (!didMountReasonRef.current) {
+      didMountReasonRef.current = true;
+      return;
+    }
+    if (!rejecting) return;
+    setIsFormDirty(reason.trim().length > 0);
+  }, [reason, rejecting]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (!item) return null;
   const age = calculateAge(item.birthDate);
   const canDecide = item.statusName === 'REGISTRADO';
 
   return (
-    <Dialog open={!!item} onOpenChange={(v) => { if (!v) { setRejecting(false); setReason(''); onClose(); } }}>
+    <>
+    <Dialog open={!!item} onOpenChange={guardedOpenChange}>
       <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -206,7 +235,11 @@ function DetailDialog({
               placeholder="Explique el motivo del rechazo…"
             />
             <DialogFooter className="gap-2 sm:gap-2">
-              <Button variant="outline" onClick={() => setRejecting(false)} disabled={isRejecting}>
+              <Button
+                variant="outline"
+                onClick={() => { setRejecting(false); setReason(''); setIsFormDirty(false); }}
+                disabled={isRejecting}
+              >
                 Cancelar
               </Button>
               <Button
@@ -222,6 +255,9 @@ function DetailDialog({
         )}
       </DialogContent>
     </Dialog>
+
+    <UnsavedChangesDialog open={confirmOpen} onClose={closeConfirm} onConfirmExit={confirmExit} />
+    </>
   );
 }
 
