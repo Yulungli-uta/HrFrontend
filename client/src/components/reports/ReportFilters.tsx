@@ -496,6 +496,51 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
             </div>
           )}
 
+          {/* Año (resumen mensual de horas extra: año actual y anteriores, sin rango de fechas) */}
+          {hasFilter("year") && (
+            <div className="space-y-2">
+              <Label htmlFor="year">Año</Label>
+              <Select
+                value={filter.year != null ? String(filter.year) : "all"}
+                onValueChange={(value) => setFilterValue("year", value === "all" ? undefined : Number(value))}
+              >
+                <SelectTrigger id="year">
+                  <SelectValue placeholder="Todos los años" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los años</SelectItem>
+                  {Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i).map((y) => (
+                    <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Mes (acompaña a Año en el resumen mensual de horas extra) */}
+          {hasFilter("month") && (
+            <div className="space-y-2">
+              <Label htmlFor="month">Mes</Label>
+              <Select
+                value={filter.month != null ? String(filter.month) : "all"}
+                onValueChange={(value) => setFilterValue("month", value === "all" ? undefined : Number(value))}
+              >
+                <SelectTrigger id="month">
+                  <SelectValue placeholder="Todos los meses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los meses</SelectItem>
+                  {[
+                    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+                    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+                  ].map((label, i) => (
+                    <SelectItem key={i + 1} value={String(i + 1)}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           {/* Fecha Inicio */}
           {hasFilter("startDate") && showDateRange && (
             <div className="space-y-2">

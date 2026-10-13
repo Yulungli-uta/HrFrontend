@@ -90,6 +90,8 @@ const FoodSubsidySummaryReportPage = lazy(() => import("@/pages/reports/FoodSubs
 const FoodSubsidyByScheduleReportPage = lazy(() => import("@/pages/reports/FoodSubsidyByScheduleReport"));
 const AttendanceNoveltiesReportPage = lazy(() => import("@/pages/reports/AttendanceNoveltiesReport"));
 const NightHoursSummaryReportPage = lazy(() => import("@/pages/reports/NightHoursSummaryReport"));
+const OvertimePlanDailyReportPage = lazy(() => import("@/pages/reports/OvertimePlanDailyReport"));
+const OvertimePlanMonthlyReportPage = lazy(() => import("@/pages/reports/OvertimePlanMonthlyReport"));
 
 // Reportes v2 — Gestión RH
 const ContractsReportPage = lazy(() => import("@/pages/reports/ContractsReport"));
@@ -547,6 +549,16 @@ export const routes: RouteConfig[] = [
     path: "/reports/night-hours-summary",
     component: NightHoursSummaryReportPage,
     requiredPath: "/reports/night-hours-summary"
+  },
+  {
+    path: "/reports/overtime-plan-daily",
+    component: OvertimePlanDailyReportPage,
+    requiredPath: "/reports/overtime-plan-daily"
+  },
+  {
+    path: "/reports/overtime-plan-monthly",
+    component: OvertimePlanMonthlyReportPage,
+    requiredPath: "/reports/overtime-plan-monthly"
   },
 
   // ----- REPORTES V2 — GESTIÓN RH -----

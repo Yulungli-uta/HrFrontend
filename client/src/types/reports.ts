@@ -26,6 +26,8 @@ export type ReportType =
   | 'seniority-bonus-summary'
   | 'attendance-novelties'
   | 'night-hours-summary'
+  | 'overtime-plan-daily'
+  | 'overtime-plan-monthly'
   // Reportes v2 — Gestión RH
   | 'contracts'
   | 'active-contracts'
@@ -105,6 +107,10 @@ export interface ReportFilter {
    * (Distribución de Horas). Vacío = usa el período más reciente disponible por profesor.
    */
   periodCode?: string;
+  /** Año calendario (ej. 2026) — usado por el resumen mensual de horas extra en vez de un rango de fechas. Vacío = todos los años. */
+  year?: number;
+  /** Mes calendario (1-12) — usado junto a `year` por el resumen mensual de horas extra. Vacío = todos los meses del año filtrado. */
+  month?: number;
   /** Rota 90° el texto de las cabeceras del PDF. Por defecto horizontal (false). */
   verticalHeaders?: boolean;
   /** Si es false, la cabecera del PDF aparece solo en la primera página. Por defecto true. */
@@ -265,6 +271,22 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
     // tipo de contrato, a diferencia del subsidio de alimentación); queda como
     // filtro opcional junto con dependencia, empleado y cédula.
     availableFilters: ['startDate', 'endDate', 'departmentId', 'laborRegimeId', 'employeeId', 'identification', 'orientation'],
+  },
+  'overtime-plan-daily': {
+    type: 'overtime-plan-daily',
+    title: 'Horas Extra Planificado vs. Ejecutado (Diario)',
+    description: 'Detalle día por día de los planes de horas extra: cuota planificada, horas ejecutadas, estado del plan y estado de aprobación/pago',
+    icon: 'CalendarClock',
+    availableFormats: ['pdf', 'excel'],
+    availableFilters: ['startDate', 'endDate', 'departmentId', 'employeeId', 'identification', 'orientation'],
+  },
+  'overtime-plan-monthly': {
+    type: 'overtime-plan-monthly',
+    title: 'Horas Extra Planificado vs. Ejecutado (Mensual)',
+    description: 'Resumen mensual por empleado: horas planificadas y ejecutadas sumadas de todos sus planes de horas extra en cada mes. Filtra por año y mes, no por rango de fechas',
+    icon: 'CalendarRange',
+    availableFormats: ['pdf', 'excel'],
+    availableFilters: ['year', 'month', 'departmentId', 'employeeId', 'identification', 'orientation'],
   },
   'family-subsidy-summary': {
     type: 'family-subsidy-summary',
