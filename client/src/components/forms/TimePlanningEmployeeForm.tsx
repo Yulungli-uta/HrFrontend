@@ -249,8 +249,8 @@ export default function TimePlanningEmployeeForm({
       "default" | "secondary" | "destructive" | "outline" | "success"
     > = {
       Asignado: "secondary",
-      "En Progreso": "default",
-      Completado: "success",
+      "En Proceso": "default",
+      Ejecutado: "success",
       Cancelado: "destructive",
       Ausente: "outline",
       Aprobado: "success",
@@ -686,7 +686,7 @@ export default function TimePlanningEmployeeForm({
                               <DropdownMenuContent align="end" className="w-52">
                                 <DropdownMenuItem
                                   onClick={() =>
-                                    handleUpdateStatus(employee.planEmployeeID!, "En Progreso")
+                                    handleUpdateStatus(employee.planEmployeeID!, "En Proceso")
                                   }
                                   className="text-xs"
                                 >
@@ -696,7 +696,7 @@ export default function TimePlanningEmployeeForm({
 
                                 <DropdownMenuItem
                                   onClick={() =>
-                                    handleUpdateStatus(employee.planEmployeeID!, "Completado")
+                                    handleUpdateStatus(employee.planEmployeeID!, "Ejecutado")
                                   }
                                   className="text-xs"
                                 >
