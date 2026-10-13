@@ -17,6 +17,9 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { parseApiError } from '@/lib/error-handling';
 import { logger } from "@/lib/logger";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
+import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
+import { DB_FIELD_LIMITS } from "@/features/dbFieldLimits";
 
 // -----------------------------------------------------------------------------
 // Tipos reales del backend (camelCase) y tipos de la UI (PascalCase)
@@ -286,6 +289,7 @@ export default function ReferenceTypesPage() {
         }
       }
 
+      setIsFormDirty(false);
       setIsDialogOpen(false);
       setEditingType(null);
       resetForm();
@@ -353,6 +357,7 @@ export default function ReferenceTypesPage() {
         });
       }
 
+      setIsFormDirty(false);
       setIsDialogOpen(false);
       resetBatchForm();
       await loadReferenceTypes();
@@ -442,14 +447,30 @@ export default function ReferenceTypesPage() {
     resetForm();
   };
 
+  // Guardia de "salir sin guardar": el clic afuera / Escape / X ahora pasan siempre por
+  // handleDialogClose (antes lo saltaban y dejaban editingType/newType con datos de la
+  // edición anterior filtrados a la siguiente apertura del diálogo).
+  const {
+    setIsFormDirty,
+    handleOpenChange: guardedDialogOpenChange,
+    confirmOpen: unsavedConfirmOpen,
+    confirmExit: confirmUnsavedExit,
+    closeConfirm: closeUnsavedConfirm,
+  } = useUnsavedChangesGuard((open) => {
+    if (!open) handleDialogClose();
+    else setIsDialogOpen(true);
+  });
+
   // Manejar inserción múltiple
   const addBatchRow = () => {
     setBatchTypes([...batchTypes, { Name: '', Description: '', IsActive: true, SortOrder: 0 }]);
+    setIsFormDirty(true);
   };
 
   const removeBatchRow = (index: number) => {
     if (batchTypes.length > 1) {
       setBatchTypes(batchTypes.filter((_, i) => i !== index));
+      setIsFormDirty(true);
     }
   };
 
@@ -457,6 +478,7 @@ export default function ReferenceTypesPage() {
     const updated = [...batchTypes];
     updated[index] = { ...updated[index], [field]: value };
     setBatchTypes(updated);
+    setIsFormDirty(true);
   };
 
   // Formatear fecha
@@ -501,7 +523,7 @@ export default function ReferenceTypesPage() {
           </p>
         </div>
 
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={guardedDialogOpenChange}>
           <DialogTrigger asChild>
             <Button className="bg-primary hover:bg-primary/90 w-full sm:w-auto">
               <Plus className="mr-2 h-4 w-4" />
@@ -527,7 +549,7 @@ export default function ReferenceTypesPage() {
                   type="button"
                   variant={batchMode ? "outline" : "default"}
                   className="flex-1"
-                  onClick={() => setBatchMode(false)}
+                  onClick={() => { setBatchMode(false); setIsFormDirty(true); }}
                 >
                   <Plus className="mr-2 h-4 w-4" />
                   Tipo Individual
@@ -536,7 +558,7 @@ export default function ReferenceTypesPage() {
                   type="button"
                   variant={batchMode ? "default" : "outline"}
                   className="flex-1"
-                  onClick={() => setBatchMode(true)}
+                  onClick={() => { setBatchMode(true); setIsFormDirty(true); }}
                 >
                   <List className="mr-2 h-4 w-4" />
                   Múltiples Tipos
@@ -558,6 +580,7 @@ export default function ReferenceTypesPage() {
                       setCategoryMode('select');
                       setNewType({ ...newType, Category: value === 'none' ? '' : value });
                     }
+                    setIsFormDirty(true);
                   }}
                 >
                   <SelectTrigger>
@@ -584,11 +607,15 @@ export default function ReferenceTypesPage() {
                 </Select>
 
                 {categoryMode === 'custom' && (
-                  <Input
-                    placeholder="Escriba una nueva categoría (se guardará tal cual)"
-                    value={newType.Category}
-                    onChange={(e) => setNewType({ ...newType, Category: e.target.value })}
-                  />
+                  <>
+                    <Input
+                      placeholder="Escriba una nueva categoría (se guardará tal cual)"
+                      value={newType.Category}
+                      onChange={(e) => { setNewType({ ...newType, Category: e.target.value }); setIsFormDirty(true); }}
+                      maxLength={DB_FIELD_LIMITS.refTypes.category}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Máximo {DB_FIELD_LIMITS.refTypes.category} caracteres.</p>
+                  </>
                 )}
               </div>
 
@@ -611,11 +638,13 @@ export default function ReferenceTypesPage() {
                             placeholder="Nombre del tipo *"
                             value={batchType.Name}
                             onChange={(e) => updateBatchRow(index, 'Name', e.target.value)}
+                            maxLength={DB_FIELD_LIMITS.refTypes.name}
                           />
                           <Input
                             placeholder="Descripción (opcional)"
                             value={batchType.Description || ''}
                             onChange={(e) => updateBatchRow(index, 'Description', e.target.value)}
+                            maxLength={DB_FIELD_LIMITS.refTypes.description}
                           />
                           <Input
                             type="number"
@@ -655,9 +684,11 @@ export default function ReferenceTypesPage() {
                     <Input
                       id="name"
                       value={newType.Name}
-                      onChange={(e) => setNewType({ ...newType, Name: e.target.value })}
+                      onChange={(e) => { setNewType({ ...newType, Name: e.target.value }); setIsFormDirty(true); }}
                       placeholder="Nombre del tipo"
+                      maxLength={DB_FIELD_LIMITS.refTypes.name}
                     />
+                    <p className="text-xs text-muted-foreground mt-1">Máximo {DB_FIELD_LIMITS.refTypes.name} caracteres.</p>
                   </div>
 
                   <div className="space-y-2">
@@ -665,10 +696,12 @@ export default function ReferenceTypesPage() {
                     <Textarea
                       id="description"
                       value={newType.Description || ''}
-                      onChange={(e) => setNewType({ ...newType, Description: e.target.value })}
+                      onChange={(e) => { setNewType({ ...newType, Description: e.target.value }); setIsFormDirty(true); }}
                       placeholder="Descripción del tipo de referencia..."
                       rows={3}
+                      maxLength={DB_FIELD_LIMITS.refTypes.description}
                     />
+                    <p className="text-xs text-muted-foreground mt-1">Máximo {DB_FIELD_LIMITS.refTypes.description} caracteres.</p>
                   </div>
 
                   <div className="space-y-2">
@@ -676,12 +709,13 @@ export default function ReferenceTypesPage() {
                     <Input
                       id="siiesLabel"
                       value={newType.SiiesLabel || ''}
-                      onChange={(e) => setNewType({ ...newType, SiiesLabel: e.target.value })}
+                      onChange={(e) => { setNewType({ ...newType, SiiesLabel: e.target.value }); setIsFormDirty(true); }}
                       placeholder="Ej: MASCULINO, INDIGENA, FISICA MOTORA..."
+                      maxLength={DB_FIELD_LIMITS.refTypes.siiesLabel}
                     />
                     <p className="text-xs text-muted-foreground">
                       Valor exacto exigido por el catálogo SIIES (CACES) cuando este tipo se usa en el
-                      reporte SIIES Funcionarios. Dejar vacío si no aplica.
+                      reporte SIIES Funcionarios. Dejar vacío si no aplica. Máximo {DB_FIELD_LIMITS.refTypes.siiesLabel} caracteres.
                     </p>
                   </div>
 
@@ -691,7 +725,7 @@ export default function ReferenceTypesPage() {
                       id="sortOrder"
                       type="number"
                       value={newType.SortOrder ?? 0}
-                      onChange={(e) => setNewType({ ...newType, SortOrder: Number(e.target.value) || 0 })}
+                      onChange={(e) => { setNewType({ ...newType, SortOrder: Number(e.target.value) || 0 }); setIsFormDirty(true); }}
                       placeholder="0"
                     />
                     <p className="text-xs text-muted-foreground">
@@ -704,7 +738,7 @@ export default function ReferenceTypesPage() {
                   <div className="flex items-center space-x-2">
                     <Switch
                       checked={newType.IsActive}
-                      onCheckedChange={(checked) => setNewType({ ...newType, IsActive: checked })}
+                      onCheckedChange={(checked) => { setNewType({ ...newType, IsActive: checked }); setIsFormDirty(true); }}
                     />
                     <Label htmlFor="isActive">Tipo activo</Label>
                   </div>
@@ -722,10 +756,10 @@ export default function ReferenceTypesPage() {
             </div>
 
             <DialogFooter className="flex-col sm:flex-row gap-2">
-              <Button variant="outline" onClick={handleDialogClose} className="w-full sm:w-auto">
+              <Button variant="outline" onClick={() => guardedDialogOpenChange(false)} className="w-full sm:w-auto">
                 Cancelar
               </Button>
-              <Button 
+              <Button
                 onClick={batchMode ? handleBatchSave : handleSaveType}
                 className="w-full sm:w-auto"
               >
@@ -743,6 +777,11 @@ export default function ReferenceTypesPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        <UnsavedChangesDialog
+          open={unsavedConfirmOpen}
+          onClose={closeUnsavedConfirm}
+          onConfirmExit={confirmUnsavedExit}
+        />
       </div>
 
       {/* Tarjetas de estadísticas */}
