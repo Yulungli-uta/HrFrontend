@@ -15,6 +15,7 @@ import {
   CantonesAPI,
   VistaDetallesEmpleadosAPI,
   InstitucionesAPI,
+  AreaConocimientoAPI,
 } from "@/lib/api";
 import { AcademicCvAPI, downloadCvBlob } from "@/lib/api/services/academicCv";
 
@@ -205,6 +206,14 @@ export default function PersonDetail() {
     refetchOnWindowFocus: false,
   });
 
+  // Misma queryKey que usa TrainingForm.tsx para el selector -- comparte caché.
+  const { data: knowledgeAreasResponse } = useQuery({
+    queryKey: ["knowledgeArea", "all"],
+    queryFn: () => AreaConocimientoAPI.list(),
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+
   // ── Mapas derivados ──────────────────────────────────────────────────────────
 
   /**
@@ -252,6 +261,19 @@ export default function PersonDetail() {
     }
     return {};
   }, [countriesResponse]);
+
+  /** Mismo formato "código - nombre" que usa el selector de TrainingForm.tsx */
+  const knowledgeAreaMap = useMemo(() => {
+    if (knowledgeAreasResponse?.status !== "success" || !Array.isArray(knowledgeAreasResponse.data)) {
+      return {} as Record<number, string>;
+    }
+    const map: Record<number, string> = {};
+    (knowledgeAreasResponse.data as any[]).forEach((a) => {
+      const id = Number(a?.id);
+      if (!Number.isNaN(id) && a?.name) map[id] = a.code ? `${a.code} - ${a.name}` : a.name;
+    });
+    return map;
+  }, [knowledgeAreasResponse]);
 
   const provinceMap = useMemo(() => {
     if (provincesResponse?.status === "success" && Array.isArray(provincesResponse.data)) {
@@ -600,6 +622,8 @@ export default function PersonDetail() {
                 )
               }
               refTypesMap={allRefTypesById}
+              knowledgeAreaMap={knowledgeAreaMap}
+              countryMap={countryMap}
               personIdCard={person!.idCard}
             />
           </TabsContent>

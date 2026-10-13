@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ActionIconButton } from "@/components/ui/action-icon-button";
 import { Badge } from "@/components/ui/badge";
-import { GraduationCap, Plus, Edit, Trash2, Calendar, Clock, Award, Monitor, Users2, FileText, ChevronDown, ChevronUp } from "lucide-react";
+import { GraduationCap, Plus, Edit, Trash2, Calendar, Clock, Award, Monitor, Users2, FileText, ChevronDown, ChevronUp, BookOpen, Compass } from "lucide-react";
 import { Training } from "@/types/person";
 import { ReusableDocumentManager } from "@/components/ReusableDocumentManager";
 import { TRAINING_CERTIFICATE_DIRECTORY_CODE, TRAINING_CERTIFICATE_ENTITY_TYPE } from "@/features/constants";
@@ -18,13 +18,17 @@ interface TrainingsTabProps {
   onDelete: (id: number) => void;
   /** Mapa id → nombre para resolver certificateTypeId y otros ref_types */
   refTypesMap?: Record<number, string>;
+  /** Mapa id → "código - nombre" de HR.tbl_KnowledgeArea, para knowledgeAreaTypeId */
+  knowledgeAreaMap?: Record<number, string>;
+  /** Mapa id → nombre de país, para countryId */
+  countryMap?: Record<number, string>;
   /** Identificación de la persona — agrupa su expediente completo en una sola carpeta. */
   personIdCard?: string;
 }
 
 type ModalityVariant = "default" | "secondary" | "outline";
 
-export function TrainingsTab({ trainings, onEdit, onDelete, refTypesMap = {}, personIdCard }: TrainingsTabProps) {
+export function TrainingsTab({ trainings, onEdit, onDelete, refTypesMap = {}, knowledgeAreaMap = {}, countryMap = {}, personIdCard }: TrainingsTabProps) {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const formatDate = (dateString: string) => {
     if (!dateString) return "No especificada";
@@ -152,9 +156,19 @@ export function TrainingsTab({ trainings, onEdit, onDelete, refTypesMap = {}, pe
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                 {list.paginatedItems.map((training) => {
                 const trainingAny = training as any;
-                const modalityMeta = getModalityMeta(trainingAny.modality);
+                // Bug real corregido 2026-10-12: leía trainingAny.modality, un campo que no
+                // existe ni en el tipo Training ni en el DTO del backend -- el badge nunca
+                // se mostraba. El campo real es modalityTypeId (ref_Types TRAINING_MODALITY).
+                const modalityMeta = getModalityMeta(training.modalityTypeId);
                 const hasCertificate = Boolean(trainingAny.hasCertificate);
                 const certTypeName = resolveRefType(training.certificateTypeId);
+                const directionName = resolveRefType(training.trainingDirectionTypeId);
+                const knowledgeAreaName = training.knowledgeAreaTypeId
+                  ? knowledgeAreaMap[Number(training.knowledgeAreaTypeId)] ?? null
+                  : null;
+                const countryName = training.countryId
+                  ? countryMap[Number(training.countryId)] ?? null
+                  : null;
 
                   return (
                     <Card key={training.trainingId} className="hover:shadow-md transition-shadow border-l-4 border-l-purple-500">
@@ -195,6 +209,24 @@ export function TrainingsTab({ trainings, onEdit, onDelete, refTypesMap = {}, pe
 
                         <div className="space-y-1.5 text-sm text-muted-foreground flex-1">
                           <div className="flex flex-wrap gap-1.5">
+                            {training.isPedagogical === true && (
+                              <Badge variant="outline" className="text-xs">
+                                <BookOpen className="h-3 w-3 mr-1" />
+                                Pedagógica
+                              </Badge>
+                            )}
+                            {training.isPedagogical === false && (
+                              <Badge variant="outline" className="text-xs">
+                                <BookOpen className="h-3 w-3 mr-1" />
+                                Específica{knowledgeAreaName ? `: ${knowledgeAreaName}` : ""}
+                              </Badge>
+                            )}
+                            {directionName && (
+                              <Badge variant="secondary" className="text-xs">
+                                <Compass className="h-3 w-3 mr-1" />
+                                {directionName}
+                              </Badge>
+                            )}
                             {certTypeName && (
                               <Badge variant="secondary" className="text-xs">
                                 {certTypeName}
@@ -229,6 +261,12 @@ export function TrainingsTab({ trainings, onEdit, onDelete, refTypesMap = {}, pe
                               <div className="flex items-center gap-1">
                                 <Clock className="h-3.5 w-3.5 text-muted-foreground/70" />
                                 <span>{training.hours} horas</span>
+                              </div>
+                            )}
+                            {countryName && (
+                              <div className="flex items-center gap-1">
+                                <span className="text-muted-foreground/70">🌍</span>
+                                <span>{countryName}</span>
                               </div>
                             )}
                           </div>

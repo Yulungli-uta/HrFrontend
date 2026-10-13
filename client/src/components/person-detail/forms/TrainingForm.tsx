@@ -757,10 +757,10 @@ export default function TrainingForm({
           </div>
         </div>
 
-        {/* DIRECCIÓN, MODALIDAD Y PAÍS -- usados por el módulo de Ascenso de Categoría Académica */}
+        {/* ROL, MODALIDAD Y PAÍS -- usados por el módulo de Ascenso de Categoría Académica */}
         <div className="space-y-2">
           <h3 className="text-base sm:text-lg font-semibold">
-            Dirección, Modalidad y País
+            Rol en la Capacitación, Modalidad y País
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -769,7 +769,11 @@ export default function TrainingForm({
               name="trainingDirectionTypeId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Dirección (opcional)</FormLabel>
+                  {/* 2026-10-12: antes "Dirección" -- traducción literal del inglés "Direction"
+                      (quién recibió vs quién dio la capacitación), confuso en español porque
+                      suena a domicilio o gerencia. No es TRAINING_DIRECTION como concepto, es
+                      el rol de la persona en esa capacitación. */}
+                  <FormLabel>Rol en la Capacitación (opcional)</FormLabel>
                   <Select
                     disabled={saving}
                     value={field.value ? String(field.value) : ""}
