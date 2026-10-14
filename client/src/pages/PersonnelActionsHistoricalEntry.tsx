@@ -54,7 +54,10 @@ export default function PersonnelActionsHistoricalEntry() {
     mutationFn: (data: CreatePersonnelActionRequest) => PersonnelActionsAPI.create(data),
     onSuccess: (res) => {
       if (res.status === 'error') {
-        toast({ title: '❌ Error', description: parseApiError(res.error).message, variant: 'destructive' });
+        // res.error ya trae el mensaje real del backend (ProblemDetails.detail, ver core/fetch.ts);
+        // el parseApiError de este archivo exige un campo "status" que ese objeto no tiene y
+        // devolvía siempre el mensaje genérico de 500.
+        toast({ title: '❌ Error', description: res.error.message, variant: 'destructive' });
         return;
       }
       toast({

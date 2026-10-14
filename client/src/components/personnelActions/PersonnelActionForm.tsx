@@ -1052,10 +1052,14 @@ export function PersonnelActionForm({
                         type="number"
                         step="0.01"
                         value={field.value ?? ''}
-                        readOnly
-                        disabled
-                        className="bg-muted"
-                        placeholder="Auto"
+                        onChange={(e) => field.onChange(e.target.value === '' ? null : Number(e.target.value))}
+                        // En modo histórico (maxDate) el RMU de origen se puede corregir a mano: el valor
+                        // autocalculado sale del historial actual y puede no coincidir con el de esa fecha.
+                        readOnly={!maxDate}
+                        disabled={!maxDate || isBusy}
+                        className={maxDate ? undefined : 'bg-muted'}
+                        placeholder={maxDate ? '0.00' : 'Auto'}
+                        min={0}
                       />
                     </FormControl>
                     <FormMessage />
