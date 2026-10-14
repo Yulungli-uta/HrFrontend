@@ -31,6 +31,7 @@ import { TimeBalanceAPI } from "@/lib/api";
 import type { PendingVacationSettlement } from "@/lib/api/services/attendance";
 import { useToast } from "@/hooks/use-toast";
 import { parseApiError } from "@/lib/error-handling";
+import { DB_FIELD_LIMITS } from "@/features/dbFieldLimits";
 
 /**
  * Página independiente del buzón de liquidaciones (antes vivía como pestaña dentro de
@@ -174,7 +175,12 @@ export default function LiquidacionesPage() {
           </AlertDialogHeader>
           <div className="py-2">
             <Label className="mb-1 block">Motivo (obligatorio)</Label>
-            <Textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ej. liquidación por término de contrato, verificado con RRHH." />
+            <Textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Ej. liquidación por término de contrato, verificado con RRHH."
+              maxLength={DB_FIELD_LIMITS.timeBalanceMovements.note}
+            />
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>

@@ -43,6 +43,8 @@ import { useToast } from "@/hooks/use-toast";
 import MenuItemForm from "@/components/forms/MenuItemForm";
 import { parseApiError } from '@/lib/error-handling';
 import { logger } from "@/lib/logger";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
+import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
 
 /** Normaliza cualquier payload común a arreglo de MenuItem */
 function coerceToMenuArray(payload: unknown): MenuItem[] {
@@ -231,6 +233,14 @@ export default function MenuItemsPage() {
     setEditingMenuItem(null);
   };
 
+  const {
+    setIsFormDirty,
+    handleOpenChange: guardedFormOpenChange,
+    confirmOpen: unsavedConfirmOpen,
+    confirmExit: confirmUnsavedExit,
+    closeConfirm: closeUnsavedConfirm,
+  } = useUnsavedChangesGuard((open) => (open ? setIsFormOpen(true) : handleCloseForm()));
+
   const handleDelete = (id: number) => {
     if (deletingRef.current) return;
     deletingRef.current = true;
@@ -343,7 +353,7 @@ export default function MenuItemsPage() {
         </div>
 
         {/* Modal Crear/Editar — Accesible */}
-        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+        <Dialog open={isFormOpen} onOpenChange={guardedFormOpenChange}>
           <DialogTrigger asChild>
             <Button
               className="bg-primary hover:bg-primary/90"
@@ -367,11 +377,17 @@ export default function MenuItemsPage() {
             <MenuItemForm
               key={editingMenuItem ? String(editingMenuItem.id) : "new"}
               menuItem={editingMenuItem}
-              onSuccess={handleCloseForm}
-              onCancel={handleCloseForm}
+              onSuccess={() => { setIsFormDirty(false); handleCloseForm(); }}
+              onCancel={() => guardedFormOpenChange(false)}
+              onDirtyChange={setIsFormDirty}
             />
           </DialogContent>
         </Dialog>
+        <UnsavedChangesDialog
+          open={unsavedConfirmOpen}
+          onClose={closeUnsavedConfirm}
+          onConfirmExit={confirmUnsavedExit}
+        />
       </div>
 
       {/* Barra de búsqueda */}

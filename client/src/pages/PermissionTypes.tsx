@@ -32,6 +32,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Switch } from "@/components/ui/switch";
 import { parseApiError } from '@/lib/error-handling';
 import { logger } from "@/lib/logger";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
+import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
+import { DB_FIELD_LIMITS } from "@/features/dbFieldLimits";
 
 // -----------------------------------------------------------------------------
 // Formato esperado por backend
@@ -252,6 +255,21 @@ export default function PermissionTypesPage() {
     resetForm();
   };
 
+  const {
+    setIsFormDirty,
+    handleOpenChange: guardedDialogOpenChange,
+    confirmOpen: unsavedConfirmOpen,
+    confirmExit: confirmUnsavedExit,
+    closeConfirm: closeUnsavedConfirm,
+  } = useUnsavedChangesGuard((open) => (open ? setIsDialogOpen(true) : handleDialogClose()));
+
+  // Edición real del usuario: marca el formulario como modificado (las precargas de
+  // handleEdit/resetForm llaman a setNewType directo y no ensucian la guardia).
+  const updateNewType = (next: PermissionTypeUI) => {
+    setNewType(next);
+    setIsFormDirty(true);
+  };
+
   const handleCreateNew = () => {
     setEditingType(null);
     resetForm();
@@ -296,6 +314,7 @@ export default function PermissionTypesPage() {
         }
       }
 
+      setIsFormDirty(false);
       handleDialogClose();
       await loadPermissionTypes();
     } catch (error: unknown) {
@@ -401,10 +420,7 @@ export default function PermissionTypesPage() {
 
       <Dialog
         open={isDialogOpen}
-        onOpenChange={(open) => {
-          if (!open) handleDialogClose();
-          else setIsDialogOpen(true);
-        }}
+        onOpenChange={guardedDialogOpenChange}
       >
         <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -425,8 +441,9 @@ export default function PermissionTypesPage() {
                 <Input
                   id="name"
                   value={newType.Name}
-                  onChange={(e) => setNewType({ ...newType, Name: e.target.value })}
+                  onChange={(e) => updateNewType({ ...newType, Name: e.target.value })}
                   placeholder="Nombre del tipo de permiso"
+                  maxLength={DB_FIELD_LIMITS.permissionTypes.name}
                 />
               </div>
 
@@ -435,7 +452,7 @@ export default function PermissionTypesPage() {
                 <Select
                   value={newType.ContractTypeId != null ? String(newType.ContractTypeId) : 'all'}
                   onValueChange={(v) =>
-                    setNewType({ ...newType, ContractTypeId: v === 'all' ? null : Number(v) })
+                    updateNewType({ ...newType, ContractTypeId: v === 'all' ? null : Number(v) })
                   }
                 >
                   <SelectTrigger id="contractTypeId">
@@ -465,7 +482,7 @@ export default function PermissionTypesPage() {
                   min="0"
                   value={newType.MaxDays ?? ''}
                   onChange={(e) =>
-                    setNewType({
+                    updateNewType({
                       ...newType,
                       MaxDays: e.target.value === ''
                         ? null
@@ -487,7 +504,7 @@ export default function PermissionTypesPage() {
                   min="0"
                   value={newType.LeadTimeHours ?? ''}
                   onChange={(e) =>
-                    setNewType({
+                    updateNewType({
                       ...newType,
                       LeadTimeHours: e.target.value === ''
                         ? null
@@ -506,7 +523,7 @@ export default function PermissionTypesPage() {
               <div className="flex items-start space-x-3 rounded-lg border p-3">
                 <Switch
                   checked={newType.RequiresApproval}
-                  onCheckedChange={(checked) => setNewType({ ...newType, RequiresApproval: checked })}
+                  onCheckedChange={(checked) => updateNewType({ ...newType, RequiresApproval: checked })}
                 />
                 <div>
                   <Label className="cursor-pointer">Requiere aprobación</Label>
@@ -517,7 +534,7 @@ export default function PermissionTypesPage() {
               <div className="flex items-start space-x-3 rounded-lg border p-3">
                 <Switch
                   checked={newType.DeductsFromVacation}
-                  onCheckedChange={(checked) => setNewType({ ...newType, DeductsFromVacation: checked })}
+                  onCheckedChange={(checked) => updateNewType({ ...newType, DeductsFromVacation: checked })}
                 />
                 <div>
                   <Label className="cursor-pointer">Descuenta vacaciones</Label>
@@ -528,7 +545,7 @@ export default function PermissionTypesPage() {
               <div className="flex items-start space-x-3 rounded-lg border p-3">
                 <Switch
                   checked={newType.RequiresDocumentation}
-                  onCheckedChange={(checked) => setNewType({ ...newType, RequiresDocumentation: checked })}
+                  onCheckedChange={(checked) => updateNewType({ ...newType, RequiresDocumentation: checked })}
                 />
                 <div>
                   <Label className="cursor-pointer">Requiere documentación</Label>
@@ -539,7 +556,7 @@ export default function PermissionTypesPage() {
               <div className="flex items-start space-x-3 rounded-lg border p-3">
                 <Switch
                   checked={newType.IsMedical}
-                  onCheckedChange={(checked) => setNewType({ ...newType, IsMedical: checked })}
+                  onCheckedChange={(checked) => updateNewType({ ...newType, IsMedical: checked })}
                 />
                 <div>
                   <Label className="cursor-pointer">Es médico</Label>
@@ -550,7 +567,7 @@ export default function PermissionTypesPage() {
               <div className="flex items-start space-x-3 rounded-lg border p-3 md:col-span-2">
                 <Switch
                   checked={newType.IsActive}
-                  onCheckedChange={(checked) => setNewType({ ...newType, IsActive: checked })}
+                  onCheckedChange={(checked) => updateNewType({ ...newType, IsActive: checked })}
                 />
                 <div>
                   <Label className="cursor-pointer">Activo</Label>
@@ -570,7 +587,7 @@ export default function PermissionTypesPage() {
           </div>
 
           <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
-            <Button variant="outline" onClick={handleDialogClose} className="w-full sm:w-auto">
+            <Button variant="outline" onClick={() => guardedDialogOpenChange(false)} className="w-full sm:w-auto">
               Cancelar
             </Button>
             <Button onClick={handleSaveType} className="w-full sm:w-auto">
@@ -579,6 +596,11 @@ export default function PermissionTypesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <UnsavedChangesDialog
+        open={unsavedConfirmOpen}
+        onClose={closeUnsavedConfirm}
+        onConfirmExit={confirmUnsavedExit}
+      />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <Card className="hover:shadow-md transition-shadow">

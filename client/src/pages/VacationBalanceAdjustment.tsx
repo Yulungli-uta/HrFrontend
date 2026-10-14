@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, RefreshCw, Upload } from "lucide-react";
+import { DB_FIELD_LIMITS } from "@/features/dbFieldLimits";
 
 import { EmployeeCombobox } from "@/components/ui/EmployeeCombobox";
 import { TimeBalanceAPI, EmployeeLaborRegimesAPI } from "@/lib/api";
@@ -82,7 +83,10 @@ const individualSchema = z.object({
   days: z.number().default(0),
   hours: z.number().default(0),
   minutes: z.number().default(0),
-  reason: z.string().min(5, "El motivo es obligatorio (mínimo 5 caracteres)"),
+  reason: z
+    .string()
+    .min(5, "El motivo es obligatorio (mínimo 5 caracteres)")
+    .max(DB_FIELD_LIMITS.timeBalanceMovements.note, `Máximo ${DB_FIELD_LIMITS.timeBalanceMovements.note} caracteres`),
   allowNegativeResult: z.boolean().default(false),
 });
 
@@ -365,7 +369,7 @@ function IndividualAdjustmentTab() {
             <FormItem>
               <FormLabel>Motivo (obligatorio)</FormLabel>
               <FormControl>
-                <Textarea {...field} placeholder="Ej. corrección de saldo por error histórico, verificado con RRHH." />
+                <Textarea {...field} placeholder="Ej. corrección de saldo por error histórico, verificado con RRHH." maxLength={DB_FIELD_LIMITS.timeBalanceMovements.note} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -565,13 +569,13 @@ function BulkAdjustmentTab() {
             </div>
             <div>
               <Label className="mb-1 block">Etiqueta del lote (BatchTag)</Label>
-              <Input value={batchTag} onChange={(e) => setBatchTag(e.target.value)} />
+              <Input value={batchTag} onChange={(e) => setBatchTag(e.target.value)} maxLength={DB_FIELD_LIMITS.timeBalanceMovements.sourceModuleBatchTagMax} />
             </div>
           </div>
 
           <div>
             <Label className="mb-1 block">Motivo (aplica a todas las filas)</Label>
-            <Textarea value={reason} onChange={(e) => setReason(e.target.value)} />
+            <Textarea value={reason} onChange={(e) => setReason(e.target.value)} maxLength={DB_FIELD_LIMITS.timeBalanceMovements.note} />
           </div>
 
           <div className="flex items-center gap-2">

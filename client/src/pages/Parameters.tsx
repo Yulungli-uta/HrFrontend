@@ -18,6 +18,9 @@ import { parseApiError } from "@/lib/error-handling";
 import { logger } from "@/lib/logger";
 import { usePaged } from "@/hooks/pagination/usePaged";
 import { DataPagination } from "@/components/ui/DataPagination";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
+import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
+import { DB_FIELD_LIMITS } from "@/features/dbFieldLimits";
 
 interface Parameter {
   parameterId?: number;
@@ -72,6 +75,7 @@ export default function ParametersPage() {
         : await ParametersAPI.create(form);
       if (res.status !== "success") throw new Error(res.error?.message || "No se pudo guardar el parámetro");
       toast({ title: "Éxito", description: editing ? "Parámetro actualizado" : "Parámetro creado" });
+      setIsFormDirty(false);
       closeDialog();
       await load();
     } catch (error) {
@@ -107,6 +111,19 @@ export default function ParametersPage() {
     setForm(empty);
   };
 
+  const {
+    setIsFormDirty,
+    handleOpenChange: guardedDialogOpenChange,
+    confirmOpen: unsavedConfirmOpen,
+    confirmExit: confirmUnsavedExit,
+    closeConfirm: closeUnsavedConfirm,
+  } = useUnsavedChangesGuard((open) => (open ? setIsDialogOpen(true) : closeDialog()));
+
+  const updateForm = (patch: Partial<Parameter>) => {
+    setForm((prev) => ({ ...prev, ...patch }));
+    setIsFormDirty(true);
+  };
+
   if (isLoading) {
     return (
       <div className="container mx-auto p-6">
@@ -127,7 +144,7 @@ export default function ParametersPage() {
           </p>
         </div>
 
-        <Dialog open={isDialogOpen} onOpenChange={(o) => (o ? setIsDialogOpen(true) : closeDialog())}>
+        <Dialog open={isDialogOpen} onOpenChange={guardedDialogOpenChange}>
           <DialogTrigger asChild>
             <Button className="bg-primary hover:bg-primary/90">
               <Plus className="mr-2 h-4 w-4" />
@@ -156,20 +173,21 @@ export default function ParametersPage() {
                 <Label>Nombre *</Label>
                 <Input
                   value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value.toUpperCase() })}
+                  onChange={(e) => updateForm({ name: e.target.value.toUpperCase() })}
                   placeholder="Ej: VACATION_MAX_ACCUMULATION_PERIODS"
                   disabled={!!editing}
+                  maxLength={DB_FIELD_LIMITS.parameters.name}
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Valor</Label>
-                  <Input value={form.pvalues ?? ""} onChange={(e) => setForm({ ...form, pvalues: e.target.value })} placeholder="Ej: 2" />
+                  <Input value={form.pvalues ?? ""} onChange={(e) => updateForm({ pvalues: e.target.value })} placeholder="Ej: 2" />
                 </div>
                 <div className="space-y-2">
                   <Label>Tipo de dato</Label>
-                  <Select value={form.dataType ?? "NUMERO"} onValueChange={(v) => setForm({ ...form, dataType: v })}>
+                  <Select value={form.dataType ?? "NUMERO"} onValueChange={(v) => updateForm({ dataType: v })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="NUMERO">Numérico</SelectItem>
@@ -184,24 +202,30 @@ export default function ParametersPage() {
                 <Label>Descripción</Label>
                 <Textarea
                   value={form.description ?? ""}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  onChange={(e) => updateForm({ description: e.target.value })}
                   placeholder="Para qué se usa este parámetro y en qué módulo..."
                   rows={3}
+                  maxLength={DB_FIELD_LIMITS.parameters.description}
                 />
               </div>
 
               <div className="flex items-center space-x-2">
-                <Switch checked={form.isActive} onCheckedChange={(checked) => setForm({ ...form, isActive: checked })} />
+                <Switch checked={form.isActive} onCheckedChange={(checked) => updateForm({ isActive: checked })} />
                 <Label>Activo (el backend solo lee parámetros activos)</Label>
               </div>
             </div>
 
             <DialogFooter>
-              <Button variant="outline" onClick={closeDialog}>Cancelar</Button>
+              <Button variant="outline" onClick={() => guardedDialogOpenChange(false)}>Cancelar</Button>
               <Button onClick={handleSave}>{editing ? "Actualizar" : "Crear"}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        <UnsavedChangesDialog
+          open={unsavedConfirmOpen}
+          onClose={closeUnsavedConfirm}
+          onConfirmExit={confirmUnsavedExit}
+        />
       </div>
 
       <Card>

@@ -31,6 +31,7 @@ import type { ApiResponse } from "@/lib/api";
 import type { MenuItem } from "@/features/auth";
 import { parseApiError } from '@/lib/error-handling';
 import { cn } from "@/lib/utils";
+import { DB_FIELD_LIMITS } from "@/features/dbFieldLimits";
 
 // ─── Mapa completo de iconos disponibles ──────────────────────────────────────
 
@@ -360,11 +361,14 @@ type Props = {
   menuItem: MenuItem | null;
   onSuccess: () => void;
   onCancel: () => void;
+  /** Se invoca con true cuando el usuario edita algún campo (nunca por precargas internas). */
+  onDirtyChange?: (isDirty: boolean) => void;
 };
 
-export default function MenuItemForm({ menuItem, onSuccess, onCancel }: Props) {
+export default function MenuItemForm({ menuItem, onSuccess, onCancel, onDirtyChange }: Props) {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const markDirty = () => onDirtyChange?.(true);
 
   const { data: parents = [], isLoading: loadingParents } = useQuery<
     ApiResponse<unknown>,
@@ -526,19 +530,19 @@ export default function MenuItemForm({ menuItem, onSuccess, onCancel }: Props) {
             {/* Nombre */}
             <div className="space-y-2">
               <Label htmlFor="name">Nombre *</Label>
-              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
+              <Input id="name" value={name} onChange={(e) => { setName(e.target.value); markDirty(); }} maxLength={DB_FIELD_LIMITS.menuItems.name} required />
             </div>
 
             {/* URL */}
             <div className="space-y-2">
               <Label htmlFor="url">URL</Label>
-              <Input id="url" value={url} onChange={(e) => setUrl(e.target.value)} />
+              <Input id="url" value={url} onChange={(e) => { setUrl(e.target.value); markDirty(); }} maxLength={DB_FIELD_LIMITS.menuItems.url} />
             </div>
 
             {/* Icono — selector visual */}
             <div className="space-y-2">
               <Label>Icono</Label>
-              <IconPickerField value={icon} onChange={setIcon} />
+              <IconPickerField value={icon} onChange={(v) => { setIcon(v); markDirty(); }} />
             </div>
 
             {/* Módulo */}
@@ -548,7 +552,8 @@ export default function MenuItemForm({ menuItem, onSuccess, onCancel }: Props) {
                 <div className="flex gap-2">
                   <Input
                     value={moduleName}
-                    onChange={(e) => setModuleName(e.target.value)}
+                    onChange={(e) => { setModuleName(e.target.value); markDirty(); }}
+                    maxLength={DB_FIELD_LIMITS.menuItems.moduleName}
                     placeholder="Nombre del módulo"
                     autoFocus
                   />
@@ -572,6 +577,7 @@ export default function MenuItemForm({ menuItem, onSuccess, onCancel }: Props) {
                     if (v === MODULE_CUSTOM) { setModuleMode("custom"); setModuleName(""); }
                     else if (v === MODULE_NONE) setModuleName("");
                     else setModuleName(v);
+                    markDirty();
                   }}
                   disabled={loadingParents}
                 >
@@ -594,7 +600,7 @@ export default function MenuItemForm({ menuItem, onSuccess, onCancel }: Props) {
               <Checkbox
                 id="isVisible"
                 checked={!!isVisible}
-                onCheckedChange={(v) => setIsVisible(Boolean(v))}
+                onCheckedChange={(v) => { setIsVisible(Boolean(v)); markDirty(); }}
               />
               <Label htmlFor="isVisible">Visible</Label>
             </div>
@@ -604,7 +610,7 @@ export default function MenuItemForm({ menuItem, onSuccess, onCancel }: Props) {
               <Label>Padre</Label>
               <ParentPicker
                 value={parentId}
-                onChange={setParentId}
+                onChange={(v) => { setParentId(v); markDirty(); }}
                 options={parentOptions}
                 loading={loadingParents}
               />

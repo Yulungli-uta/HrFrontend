@@ -14,6 +14,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
+import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
+import { DB_FIELD_LIMITS } from '@/features/dbFieldLimits';
 import { ResignationRetirementAPI } from '@/lib/api/services/resignationRetirement';
 import { parseApiError } from '@/lib/api/utils/error-handling';
 import type { ResignationRetirementDetail } from '@/types/resignation-retirement';
@@ -63,6 +66,17 @@ export function ReviewActionDialog({ open, onOpenChange, action, request, onSucc
   const [observation, setObservation] = useState('');
   const config = ACTION_CONFIG[action];
 
+  const {
+    setIsFormDirty,
+    handleOpenChange: guardedOpenChange,
+    confirmOpen: unsavedConfirmOpen,
+    confirmExit: confirmUnsavedExit,
+    closeConfirm: closeUnsavedConfirm,
+  } = useUnsavedChangesGuard((v) => {
+    if (!v) setObservation('');
+    onOpenChange(v);
+  });
+
   // Documento firmado obligatorio para aprobar (validado también en backend). La carga
   // se restringe a un solo archivo, así que basta con el más reciente de la lista.
   const signedDocument = request.supportingDocuments[0] ?? null;
@@ -102,6 +116,7 @@ export function ReviewActionDialog({ open, onOpenChange, action, request, onSucc
       queryClient.invalidateQueries({ queryKey: ['resignation-retirement-request', request.requestId] });
       toast({ title: `Solicitud ${config.confirmLabel.toLowerCase()}da correctamente` });
       setObservation('');
+      setIsFormDirty(false);
       onSuccess();
       onOpenChange(false);
     },
@@ -113,7 +128,7 @@ export function ReviewActionDialog({ open, onOpenChange, action, request, onSucc
   const canSubmit = (!config.requireObservation || observation.trim().length > 0) && !missingSignedDocument;
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!mutation.isPending) onOpenChange(v); }}>
+    <Dialog open={open} onOpenChange={(v) => { if (!mutation.isPending) guardedOpenChange(v); }}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{config.title}</DialogTitle>
@@ -134,15 +149,16 @@ export function ReviewActionDialog({ open, onOpenChange, action, request, onSucc
           <Textarea
             id="observation"
             value={observation}
-            onChange={(e) => setObservation(e.target.value)}
+            onChange={(e) => { setObservation(e.target.value); setIsFormDirty(e.target.value.trim().length > 0); }}
             rows={4}
+            maxLength={DB_FIELD_LIMITS.resignationRetirementStatusHistory.observation}
             placeholder={config.requireObservation ? 'Obligatorio…' : 'Opcional…'}
             disabled={mutation.isPending}
           />
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={mutation.isPending}>
+          <Button variant="outline" onClick={() => guardedOpenChange(false)} disabled={mutation.isPending}>
             Cancelar
           </Button>
           <Button
@@ -155,6 +171,11 @@ export function ReviewActionDialog({ open, onOpenChange, action, request, onSucc
           </Button>
         </DialogFooter>
       </DialogContent>
+      <UnsavedChangesDialog
+        open={unsavedConfirmOpen}
+        onClose={closeUnsavedConfirm}
+        onConfirmExit={confirmUnsavedExit}
+      />
     </Dialog>
   );
 }

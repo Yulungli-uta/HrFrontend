@@ -8,6 +8,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { PersonnelActionTypeAPI } from "@/lib/api/services/contracts";
 import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
+import { DB_FIELD_LIMITS } from "@/features/dbFieldLimits";
 import { TemplateSelect } from "@/components/shared/TemplateSelect";
 
 import { Button } from "@/components/ui/button";
@@ -41,11 +42,13 @@ const ACTION_CATEGORIES = [
   { value: "EXIT",        label: "Salida / Baja" },
 ] as const;
 
+const LIMITS = DB_FIELD_LIMITS.personnelActionType;
+
 const schema = z.object({
-  name: z.string().min(1, "El nombre es obligatorio"),
-  code: z.string().min(1, "El código es obligatorio"),
-  description: z.string().optional(),
-  numberingPrefix: z.string().min(1, "El prefijo de numeración es obligatorio"),
+  name: z.string().min(1, "El nombre es obligatorio").max(LIMITS.name, `Máximo ${LIMITS.name} caracteres`),
+  code: z.string().min(1, "El código es obligatorio").max(LIMITS.code, `Máximo ${LIMITS.code} caracteres`),
+  description: z.string().max(LIMITS.description, `Máximo ${LIMITS.description} caracteres`).optional(),
+  numberingPrefix: z.string().min(1, "El prefijo de numeración es obligatorio").max(LIMITS.numberingPrefix, `Máximo ${LIMITS.numberingPrefix} caracteres`),
   defaultTemplateId: z.number().nullable().optional(),
   actionCategory: z.string().optional(),
   isActive: z.boolean(),
@@ -190,7 +193,7 @@ export function PersonnelActionTypeForm({
                 <FormItem>
                   <FormLabel>Nombre del tipo de acción</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ej: CONTRATACIÓN" {...field} />
+                    <Input placeholder="Ej: CONTRATACIÓN" maxLength={LIMITS.name} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -205,7 +208,7 @@ export function PersonnelActionTypeForm({
                 <FormItem>
                   <FormLabel>Código</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ej: CONT" {...field} />
+                    <Input placeholder="Ej: CONT" maxLength={LIMITS.code} {...field} />
                   </FormControl>
                   <FormDescription>
                     Código corto que identifica el tipo de acción de personal.
@@ -255,7 +258,7 @@ export function PersonnelActionTypeForm({
                 <FormItem>
                   <FormLabel>Prefijo de numeración</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ej: AP-CONT" {...field} />
+                    <Input placeholder="Ej: AP-CONT" maxLength={LIMITS.numberingPrefix} {...field} />
                   </FormControl>
                   <FormDescription>
                     Prefijo usado para generar el número de documento (Ej: AP-CONT-2025-001).
@@ -299,6 +302,7 @@ export function PersonnelActionTypeForm({
                     <Textarea
                       rows={3}
                       placeholder="Descripción breve del tipo de acción de personal"
+                      maxLength={LIMITS.description}
                       {...field}
                     />
                   </FormControl>
