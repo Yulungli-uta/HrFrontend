@@ -619,12 +619,12 @@ export default function PermissionTypesPage() {
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="pb-3">
             <CardTitle className="text-base md:text-lg flex items-center">
-              <Shield className="mr-2 h-5 w-5 text-secondary-foreground" />
+              <Shield className="mr-2 h-5 w-5 text-amber-700 dark:text-warning" />
               Requieren Aprobación
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-secondary-foreground">{stats.approvalYes}</div>
+            <div className="text-2xl font-bold text-amber-700 dark:text-warning">{stats.approvalYes}</div>
             <p className="text-sm text-muted-foreground">necesitan autorización</p>
           </CardContent>
         </Card>
@@ -632,12 +632,12 @@ export default function PermissionTypesPage() {
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="pb-3">
             <CardTitle className="text-base md:text-lg flex items-center">
-              <Paperclip className="mr-2 h-5 w-5 text-slate-600" />
+              <Paperclip className="mr-2 h-5 w-5 text-muted-foreground" />
               Con Documentación
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-slate-700">{stats.docsYes}</div>
+            <div className="text-2xl font-bold text-foreground">{stats.docsYes}</div>
             <p className="text-sm text-muted-foreground">requieren adjuntos</p>
           </CardContent>
         </Card>
@@ -824,7 +824,7 @@ export default function PermissionTypesPage() {
 
                     <div className="mt-4 flex flex-wrap gap-2">
                       {type.RequiresApproval ? (
-                        <Badge variant="default" className="bg-secondary/15 text-secondary-foreground hover:bg-orange-200">
+                        <Badge variant="default" className="bg-warning/15 text-amber-800 dark:text-warning hover:bg-warning/25">
                           <CheckCircle className="h-3 w-3 mr-1" />
                           Aprobación
                         </Badge>
@@ -833,7 +833,7 @@ export default function PermissionTypesPage() {
                       )}
 
                       {type.DeductsFromVacation ? (
-                        <Badge variant="default" className="bg-accent text-accent-foreground hover:bg-purple-200">
+                        <Badge variant="default" className="bg-accent text-accent-foreground hover:bg-accent/80">
                           <CheckCircle className="h-3 w-3 mr-1" />
                           Vacaciones
                         </Badge>
@@ -929,7 +929,7 @@ export default function PermissionTypesPage() {
 
                         <TableCell>
                           {type.RequiresApproval ? (
-                            <Badge variant="default" className="bg-secondary/15 text-secondary-foreground hover:bg-orange-200">
+                            <Badge variant="default" className="bg-warning/15 text-amber-800 dark:text-warning hover:bg-warning/25">
                               <CheckCircle className="h-3 w-3 mr-1" />
                               Requerida
                             </Badge>
@@ -943,7 +943,7 @@ export default function PermissionTypesPage() {
 
                         <TableCell>
                           {type.DeductsFromVacation ? (
-                            <Badge variant="default" className="bg-accent text-accent-foreground hover:bg-purple-200">
+                            <Badge variant="default" className="bg-accent text-accent-foreground hover:bg-accent/80">
                               <CheckCircle className="h-3 w-3 mr-1" />
                               Sí
                             </Badge>

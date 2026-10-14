@@ -58,6 +58,7 @@ export default function PersonnelActionsHistoricalEntry() {
         // el parseApiError de este archivo exige un campo "status" que ese objeto no tiene y
         // devolvía siempre el mensaje genérico de 500.
         toast({ title: '❌ Error', description: res.error.message, variant: 'destructive' });
+        setConfirmOpen(false);
         return;
       }
       toast({
