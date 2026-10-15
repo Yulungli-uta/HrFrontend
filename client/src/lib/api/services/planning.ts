@@ -314,6 +314,22 @@ export interface TimePlanningOverviewEmployee {
   executedOvertimeMinutes: number;
 }
 
+export interface TimePlanningOverviewExecution {
+  executionId: number;
+  workDate: string;
+  startTime?: string | null;
+  endTime?: string | null;
+  totalMinutes: number;
+  regularMinutes: number;
+  overtimeMinutes: number;
+  nightMinutes: number;
+  holidayMinutes: number;
+  exceededMinutes: number;
+  verifiedByName?: string | null;
+  verifiedAt?: string | null;
+  comments?: string | null;
+}
+
 export interface TimePlanningPagedResult<T> {
   items: T[];
   page: number;
@@ -340,6 +356,10 @@ export const TimePlanningOverviewAPI = {
     });
     return apiFetch<TimePlanningPagedResult<TimePlanningOverviewItem>>(`${OVERVIEW_BASE}?${qs.toString()}`);
   },
+
+  /** GET /planning/overview/employees/{planEmployeeId}/executions — horas trabajadas de un empleado del plan. */
+  getEmployeeExecutions: (planEmployeeId: number): Promise<ApiResponse<TimePlanningOverviewExecution[]>> =>
+    apiFetch<TimePlanningOverviewExecution[]>(`${OVERVIEW_BASE}/employees/${planEmployeeId}/executions`),
 
   /** GET /planning/overview/{planId}/employees — empleados de un plan, paginados. */
   getPlanEmployees: (

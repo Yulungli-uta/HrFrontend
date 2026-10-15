@@ -108,6 +108,7 @@ export type {
   TimePlanningOverviewFilter,
   TimePlanningOverviewItem,
   TimePlanningOverviewEmployee,
+  TimePlanningOverviewExecution,
   TimePlanningPagedResult,
 } from './services/planning';
 

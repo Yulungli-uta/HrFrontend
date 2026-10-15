@@ -15,26 +15,10 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TimePlanningExecutionsAPI } from '@/lib/api';
-import type { TimePlanningOverviewEmployee } from '@/lib/api';
+import { TimePlanningOverviewAPI } from '@/lib/api';
+import type { TimePlanningOverviewEmployee, TimePlanningOverviewExecution } from '@/lib/api';
 import { formatDateOnly } from '@/lib/dateOnly';
 import { formatMinutes } from '@/components/planning/planningFormat';
-
-type Execution = {
-  executionID: number;
-  workDate: string;
-  startTime?: string | null;
-  endTime?: string | null;
-  totalMinutes: number;
-  regularMinutes: number;
-  overtimeMinutes: number;
-  nightMinutes: number;
-  holidayMinutes: number;
-  exceededMinutes: number;
-  verifiedByName?: string | null;
-  verifiedAt?: string | null;
-  comments?: string | null;
-};
 
 type Props = {
   employee: TimePlanningOverviewEmployee | null;
@@ -50,9 +34,9 @@ export default function OvertimePlanExecutionsDialog({ employee, onClose }: Prop
   const { data, isLoading, isError } = useQuery({
     queryKey: ['time-planning-executions', planEmployeeId],
     queryFn: async () => {
-      const resp = await TimePlanningExecutionsAPI.getByPlanEmployee(planEmployeeId);
+      const resp = await TimePlanningOverviewAPI.getEmployeeExecutions(planEmployeeId);
       if (resp.status !== 'success') throw new Error('No se pudieron cargar las ejecuciones.');
-      return (resp.data ?? []) as Execution[];
+      return (resp.data ?? []) as TimePlanningOverviewExecution[];
     },
     enabled: planEmployeeId > 0,
     staleTime: 30_000,
@@ -96,7 +80,7 @@ export default function OvertimePlanExecutionsDialog({ employee, onClose }: Prop
               </TableHeader>
               <TableBody>
                 {rows.map((r) => (
-                  <TableRow key={r.executionID}>
+                  <TableRow key={r.executionId}>
                     <TableCell>{formatDateOnly(r.workDate)}</TableCell>
                     <TableCell>{clock(r.startTime)}</TableCell>
                     <TableCell>{clock(r.endTime)}</TableCell>
