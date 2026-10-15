@@ -71,6 +71,8 @@ export const DB_FIELD_LIMITS = {
     actionNumber: 50,
     originBudgetCode: 50,
     destinationBudgetCode: 50,
+    originBudgetProgramCode: 60,
+    destinationBudgetProgramCode: 60,
     legalBasis: 500,
     reason: 1000,
     observations: 1000,

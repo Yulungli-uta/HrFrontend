@@ -30,6 +30,7 @@ import { ProvinciasAPI, CantonesAPI } from "@/lib/api";
 import type { ApiResponse } from "@/lib/api";
 import { CountrySelect } from "@/components/ui/CountrySelect";
 import { useDinardapLookup } from "@/hooks/useDinardapLookup";
+import { parseDateOnly } from "@/lib/dateOnly";
 
 // ---------------------- Tipos auxiliares ----------------------
 
@@ -70,7 +71,8 @@ interface Canton {
 const MIN_AGE_YEARS = 17;
 
 function calculateAgeYears(birthDateIso: string): number {
-  const birth = new Date(birthDateIso);
+  // "yyyy-MM-dd" como fecha LOCAL: con new Date() (UTC) el día se corre y la edad mínima falla un día.
+  const birth = parseDateOnly(birthDateIso) ?? new Date(birthDateIso);
   const today = new Date();
   let age = today.getFullYear() - birth.getFullYear();
   const hasHadBirthdayThisYear =

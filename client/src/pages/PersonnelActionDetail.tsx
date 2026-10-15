@@ -174,9 +174,13 @@ export default function PersonnelActionDetail() {
     originDepartmentId: data.originDepartmentId,
     originJobId: data.originJobId,
     originBudgetCode: data.originBudgetCode,
+    originBudgetProgramCode: data.originBudgetProgramCode,
+    originInstitutionalProcess: data.originInstitutionalProcess,
+    originManagementLevel: data.originManagementLevel,
     destinationDepartmentId: data.destinationDepartmentId,
     destinationJobId: data.destinationJobId,
     destinationBudgetCode: data.destinationBudgetCode,
+    destinationBudgetProgramCode: data.destinationBudgetProgramCode,
     previousRmu: data.previousRmu,
     newRmu: data.newRmu,
     legalBasis: data.legalBasis,
@@ -321,17 +325,29 @@ export default function PersonnelActionDetail() {
             <InfoRow label="Fecha Fin" value={action.endDate?.slice(0, 10)} />
             <Separator className="my-2" />
             <InfoRow
-              label="Proceso Institucional"
+              label="Proceso Institucional (origen)"
+              value={action.originInstitutionalProcessName}
+            />
+            <InfoRow
+              label="Proceso Institucional (propuesto)"
               value={institutionalProcessTypes.find(
                 t => (t.typeID ?? (t as any).typeId) === action.institutionalProcess
               )?.name}
             />
             <InfoRow
-              label="Nivel de Gestión"
+              label="Nivel de Gestión (origen)"
+              value={action.originManagementLevelName}
+            />
+            <InfoRow
+              label="Nivel de Gestión (propuesto)"
               value={managementLevelTypes.find(
                 t => (t.typeID ?? (t as any).typeId) === action.managementLevel
               )?.name}
             />
+            <InfoRow label="Partida del Puesto (origen)" value={action.originBudgetCode} />
+            <InfoRow label="Código Presupuestario (origen)" value={action.originBudgetProgramCode} />
+            <InfoRow label="Partida del Puesto (propuesta)" value={action.destinationBudgetCode} />
+            <InfoRow label="Código Presupuestario (propuesto)" value={action.destinationBudgetProgramCode} />
             <InfoRow
               label="Lugar de Trabajo (propuesto)"
               value={

@@ -140,6 +140,7 @@ export default function PersonnelActionsHistoricalEntry() {
             onCancel={() => guardedBack(false)}
             onDirtyChange={setIsFormDirty}
             maxDate={maxDate}
+            allowOriginRmuEdit
             allowActionNumberEdit
             allowInactiveEmployees
           />

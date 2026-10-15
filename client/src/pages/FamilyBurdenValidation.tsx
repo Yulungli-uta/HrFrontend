@@ -35,6 +35,7 @@ import { useToast } from '@/hooks/use-toast';
 import { parseApiError } from '@/lib/error-handling';
 import { usePaged } from '@/hooks/pagination/usePaged';
 import { DataPagination } from '@/components/ui/DataPagination';
+import { formatDateOnly, parseDateOnly } from '@/lib/dateOnly';
 
 interface FamilyBurdenValidationItem {
   burdenId: number;
@@ -72,11 +73,18 @@ const STATUS_LABEL: Record<string, string> = {
 function calculateAge(birthDate: string): number | null {
   if (!birthDate) return null;
   const today = new Date();
-  const birth = new Date(birthDate);
+  const birth = parseDateOnly(birthDate);
+  if (!birth) return null;
   let age = today.getFullYear() - birth.getFullYear();
   const m = today.getMonth() - birth.getMonth();
   if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
   return age;
+}
+
+// Fecha de nacimiento = DateOnly ("yyyy-MM-dd"): se lee como fecha local para no mostrar un día antes.
+function formatBirthDate(value?: string | null): string {
+  if (!value) return '—';
+  return formatDateOnly(value, 'es-EC', { year: 'numeric', month: 'short', day: 'numeric' }) || '—';
 }
 
 function formatDate(value?: string | null): string {
@@ -155,7 +163,7 @@ function DetailDialog({
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Fecha de nacimiento</p>
-            <p className="font-medium">{formatDate(item.birthDate)}{age !== null && ` (${age} años)`}</p>
+            <p className="font-medium">{formatBirthDate(item.birthDate)}{age !== null && ` (${age} años)`}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Discapacidad</p>
@@ -481,7 +489,7 @@ export default function FamilyBurdenValidationPage() {
                       </Badge>
                     </div>
                     <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
-                      <span>Nac.: {formatDate(item.birthDate)}</span>
+                      <span>Nac.: {formatBirthDate(item.birthDate)}</span>
                       {item.disabilityTypeName && <span className="text-destructive">Discapacidad</span>}
                     </div>
                   </button>
@@ -510,7 +518,7 @@ export default function FamilyBurdenValidationPage() {
                           <p className="text-xs text-muted-foreground">{item.employeeIdCard}</p>
                         </TableCell>
                         <TableCell className="text-sm">{item.firstName} {item.lastName}</TableCell>
-                        <TableCell className="text-xs font-mono">{formatDate(item.birthDate)}</TableCell>
+                        <TableCell className="text-xs font-mono">{formatBirthDate(item.birthDate)}</TableCell>
                         <TableCell className="text-xs">{item.disabilityTypeName ?? '—'}</TableCell>
                         <TableCell className="text-center">
                           <Badge variant={STATUS_BADGE_VARIANT[item.statusName] ?? 'outline'}>

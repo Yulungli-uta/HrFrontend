@@ -1,5 +1,6 @@
 // client/src/components/person-detail/PersonalInfoCard.tsx
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatDateOnly } from "@/lib/dateOnly";
 import { Badge } from "@/components/ui/badge";
 import { User } from "lucide-react";
 import { Person } from "@/types/person";
@@ -44,7 +45,7 @@ export function PersonalInfoCard({ person, onEdit }: PersonalInfoCardProps) {
           <div>
             <label className="text-sm font-medium text-muted-foreground">Fecha de Nacimiento</label>
             <p className="mt-1 text-foreground">
-              {new Date(person.birthDate).toLocaleDateString('es-EC', {
+              {formatDateOnly(person.birthDate, 'es-EC', {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric'

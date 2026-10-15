@@ -11,6 +11,7 @@ import { useCvListState, buildFilterOptions, type CvSortOption, type CvFilterFie
 import { CvListToolbar } from "@/components/person-detail/CvListToolbar";
 import { CvFilterBar } from "@/components/person-detail/CvFilterBar";
 import { DataPagination } from "@/components/ui/DataPagination";
+import { formatDateOnly, parseDateOnly } from "@/lib/dateOnly";
 
 interface FamilyMembersTabProps {
   familyMembers: FamilyMember[];
@@ -35,17 +36,15 @@ export function FamilyMembersTab({
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const formatDate = (dateString: string) => {
     if (!dateString) return "No especificada";
-    return new Date(dateString).toLocaleDateString("es-EC", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
+    // Fecha de nacimiento = DateOnly ("yyyy-MM-dd"): se lee como fecha local para no mostrar un día antes.
+    return formatDateOnly(dateString, "es-EC", { year: "numeric", month: "long", day: "numeric" });
   };
 
   const calculateAge = (birthDate: string): number | null => {
     if (!birthDate) return null;
     const today = new Date();
-    const birth = new Date(birthDate);
+    const birth = parseDateOnly(birthDate);
+    if (!birth) return null;
     let age = today.getFullYear() - birth.getFullYear();
     const m = today.getMonth() - birth.getMonth();
     if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;

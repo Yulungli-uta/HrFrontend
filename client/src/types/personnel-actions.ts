@@ -24,13 +24,24 @@ export interface PersonnelActionDetail extends PersonnelActionSummary {
     originDepartmentName?: string | null;
     originJobId?: number | null;
     originJobTitle?: string | null;
+    /** Partida del puesto (origen). */
     originBudgetCode?: string | null;
+    /** Código presupuestario completo (origen). */
+    originBudgetProgramCode?: string | null;
+    /** Proceso institucional y nivel de gestión de la situación de ORIGEN, guardados en la acción. */
+    originInstitutionalProcess?: number | null;
+    originInstitutionalProcessName?: string | null;
+    originManagementLevel?: number | null;
+    originManagementLevelName?: string | null;
 
     destinationDepartmentId?: number | null;
     destinationDepartmentName?: string | null;
     destinationJobId?: number | null;
     destinationJobTitle?: string | null;
+    /** Partida del puesto (propuesta). */
     destinationBudgetCode?: string | null;
+    /** Código presupuestario completo (propuesto). */
+    destinationBudgetProgramCode?: string | null;
 
     previousRmu?: number | null;
     newRmu?: number | null;
@@ -93,10 +104,15 @@ export interface CreatePersonnelActionRequest {
     originDepartmentId?: number | null;
     originJobId?: number | null;
     originBudgetCode?: string | null;
+    originBudgetProgramCode?: string | null;
+    /** 0 / "" borra el valor guardado; null lo conserva (el backend no lo toca). */
+    originInstitutionalProcess?: number | null;
+    originManagementLevel?: number | null;
 
     destinationDepartmentId?: number | null;
     destinationJobId?: number | null;
     destinationBudgetCode?: string | null;
+    destinationBudgetProgramCode?: string | null;
 
     previousRmu?: number | null;
     newRmu?: number | null;

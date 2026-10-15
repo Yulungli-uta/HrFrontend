@@ -48,6 +48,7 @@ import { useToast } from "@/hooks/use-toast";
 import { usePaged } from "@/hooks/pagination/usePaged";
 import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
 import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
+import { formatDateOnly } from '@/lib/dateOnly';
 
 export interface EmployeeView {
   employeeID: number;
@@ -191,10 +192,8 @@ function resolveSexName(
 function formatDate(value?: string | null) {
   if (!value) return "—";
 
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-
-  return date.toLocaleDateString();
+  // HireDate y BirthDate son DateOnly ("yyyy-MM-dd"): se leen como fecha local para no mostrar un día antes.
+  return formatDateOnly(value) || "—";
 }
 
 export default function EmployeesPage() {

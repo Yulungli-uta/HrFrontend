@@ -6,6 +6,7 @@ import { ActionIconButton } from "@/components/ui/action-icon-button";
 import { User, Edit, Mail, Phone, Calendar, MapPin, Heart, Users, ShieldAlert, Plus, Trash2, FileText, ChevronDown, ChevronUp } from "lucide-react";
 import { Person, CatastrophicIllness } from "@/types/person";
 import { ReusableDocumentManager } from "@/components/ReusableDocumentManager";
+import { formatDateOnly } from "@/lib/dateOnly";
 import {
   PERSON_PHOTO_DIRECTORY_CODE,
   PERSON_PHOTO_ENTITY_TYPE,
@@ -79,13 +80,9 @@ export function PersonalInfoTab({
   const [expandedIllnessId, setExpandedIllnessId] = useState<number | null>(null);
   const [photoExpanded, setPhotoExpanded] = useState(false);
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("es-EC", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
+  // Fecha de nacimiento = DateOnly ("yyyy-MM-dd"): se lee como fecha local para no mostrar un día antes.
+  const formatDate = (dateString: string) =>
+    formatDateOnly(dateString, "es-EC", { year: "numeric", month: "long", day: "numeric" });
 
   const sexMap = useMemo(
     () => buildRefMap(refTypesByCategory["SEX_TYPE"]),

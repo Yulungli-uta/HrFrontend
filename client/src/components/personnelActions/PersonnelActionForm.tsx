@@ -15,6 +15,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { DB_FIELD_LIMITS } from '@/features/dbFieldLimits';
 import {
   Select,
   SelectContent,
@@ -96,9 +97,13 @@ const schema = z.object({
   originDepartmentId:   z.coerce.number().optional().nullable(),
   originJobId:          z.coerce.number().optional().nullable(),
   originBudgetCode:     z.string().max(50, 'No puede exceder 50 caracteres').optional(),
+  originBudgetProgramCode: z.string().max(60, 'No puede exceder 60 caracteres').optional(),
+  originInstitutionalProcess: z.coerce.number().optional().nullable(),
+  originManagementLevel:      z.coerce.number().optional().nullable(),
   destinationDepartmentId: z.coerce.number().optional().nullable(),
   destinationJobId:        z.coerce.number().optional().nullable(),
   destinationBudgetCode:   z.string().max(50, 'No puede exceder 50 caracteres').optional(),
+  destinationBudgetProgramCode: z.string().max(60, 'No puede exceder 60 caracteres').optional(),
   previousRmu: z.coerce.number().optional().nullable(),
   newRmu:      z.coerce.number().optional().nullable(),
   legalBasis:   z.string().max(500, 'No puede exceder 500 caracteres').optional(),
@@ -150,6 +155,15 @@ type Props = {
    * que siguen restringidas a empleados activos.
    */
   allowInactiveEmployees?: boolean;
+  /**
+   * Habilita editar a mano el "RMU" de Posición Origen (normalmente autocalculado y de solo
+   * lectura). Usado ÚNICAMENTE por Corrección de Acción de Personal y por Ingresar Histórico:
+   * el valor autocalculado sale del último sueldo ACTUAL del empleado y no necesariamente
+   * coincide con el que regía en la fecha de la acción. En creación normal y edición normal
+   * el campo sigue automático y de solo lectura. En modo edición (isEdit) además se desactiva
+   * el autocompletado para no pisar el valor ya guardado.
+   */
+  allowOriginRmuEdit?: boolean;
 };
 
 function toDateInput(iso?: string | null): string {
@@ -252,6 +266,7 @@ export function PersonnelActionForm({
   maxDate,
   allowActionNumberEdit,
   allowInactiveEmployees,
+  allowOriginRmuEdit,
 }: Props) {
   const { toast } = useToast();
   const { jobs, actionTypes, isLoading } = usePersonnelActionLookups(true);
@@ -317,9 +332,13 @@ export function PersonnelActionForm({
       originDepartmentId:   defaultValues?.originDepartmentId ?? null,
       originJobId:          defaultValues?.originJobId ?? null,
       originBudgetCode:     defaultValues?.originBudgetCode ?? '',
+      originBudgetProgramCode: defaultValues?.originBudgetProgramCode ?? '',
+      originInstitutionalProcess: defaultValues?.originInstitutionalProcess ?? null,
+      originManagementLevel:      defaultValues?.originManagementLevel ?? null,
       destinationDepartmentId: defaultValues?.destinationDepartmentId ?? null,
       destinationJobId:        defaultValues?.destinationJobId ?? null,
       destinationBudgetCode:   defaultValues?.destinationBudgetCode ?? '',
+      destinationBudgetProgramCode: defaultValues?.destinationBudgetProgramCode ?? '',
       previousRmu: defaultValues?.previousRmu ?? null,
       newRmu:      defaultValues?.newRmu ?? null,
       legalBasis:   defaultValues?.legalBasis ?? '',
@@ -356,9 +375,13 @@ export function PersonnelActionForm({
       originDepartmentId:   defaultValues.originDepartmentId ?? null,
       originJobId:          defaultValues.originJobId ?? null,
       originBudgetCode:     defaultValues.originBudgetCode ?? '',
+      originBudgetProgramCode: defaultValues.originBudgetProgramCode ?? '',
+      originInstitutionalProcess: defaultValues.originInstitutionalProcess ?? null,
+      originManagementLevel:      defaultValues.originManagementLevel ?? null,
       destinationDepartmentId: defaultValues.destinationDepartmentId ?? null,
       destinationJobId:        defaultValues.destinationJobId ?? null,
       destinationBudgetCode:   defaultValues.destinationBudgetCode ?? '',
+      destinationBudgetProgramCode: defaultValues.destinationBudgetProgramCode ?? '',
       previousRmu: defaultValues.previousRmu ?? null,
       newRmu:      defaultValues.newRmu ?? null,
       legalBasis:   defaultValues.legalBasis ?? '',
@@ -390,9 +413,20 @@ export function PersonnelActionForm({
   // fallback por cargo (ReferenceSalary/Grupo) si el empleado no tiene historial aún.
   useEffect(() => {
     if (!watchedEmployeeId) return;
+    // Al corregir una acción existente, el RMU Origen ya guardado manda: recalcularlo aquí lo
+    // reemplazaría por el último sueldo actual del empleado (el reset de la carga inicial
+    // dispara este efecto) y la corrección lo grabaría sin que el usuario lo notara.
+    if (isEdit && allowOriginRmuEdit) return;
     SalaryHistoryAPI.getReferenceRmu({ employeeId: watchedEmployeeId, jobId: watchedOriginJobId ?? undefined })
-      .then((resp) => form.setValue('previousRmu', resp.status === 'success' ? resp.data.rmu : null))
-      .catch(() => form.setValue('previousRmu', null));
+      .then((resp) => {
+        // Si el usuario ya escribió un RMU a mano (Ingresar Histórico), no se lo pisa.
+        if (allowOriginRmuEdit && form.getFieldState('previousRmu').isDirty) return;
+        form.setValue('previousRmu', resp.status === 'success' ? resp.data.rmu : null);
+      })
+      .catch(() => {
+        if (allowOriginRmuEdit && form.getFieldState('previousRmu').isDirty) return;
+        form.setValue('previousRmu', null);
+      });
   }, [watchedEmployeeId, watchedOriginJobId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // RMU Destino: solo sugiere un valor referencial por el cargo (mismo backend, sin employeeId
@@ -423,6 +457,9 @@ export function PersonnelActionForm({
     form.setValue('originDepartmentId', null);
     form.setValue('originJobId', null);
     form.setValue('originBudgetCode', '');
+    form.setValue('originBudgetProgramCode', '');
+    form.setValue('originInstitutionalProcess', null);
+    form.setValue('originManagementLevel', null);
 
     setResolvingEmployee(true);
     try {
@@ -487,9 +524,15 @@ export function PersonnelActionForm({
     originDepartmentId:   values.originDepartmentId ?? null,
     originJobId:          values.originJobId ?? null,
     originBudgetCode:     values.originBudgetCode || null,
+    // Origen nuevo: 0 / '' = borrar lo guardado (el backend conserva lo guardado ante null y,
+    // en una acción nueva, completa proceso/nivel desde la acción previa del empleado).
+    originBudgetProgramCode:    values.originBudgetProgramCode ?? '',
+    originInstitutionalProcess: values.originInstitutionalProcess ?? 0,
+    originManagementLevel:      values.originManagementLevel ?? 0,
     destinationDepartmentId: values.destinationDepartmentId ?? null,
     destinationJobId:        values.destinationJobId ?? null,
     destinationBudgetCode:   values.destinationBudgetCode || null,
+    destinationBudgetProgramCode: values.destinationBudgetProgramCode ?? '',
     previousRmu: values.previousRmu ?? null,
     newRmu:      values.newRmu ?? null,
     legalBasis:   values.legalBasis   || null,
@@ -1033,7 +1076,7 @@ export function PersonnelActionForm({
                 name="originBudgetCode"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Código Presupuestario</FormLabel>
+                    <FormLabel>Partida del Puesto</FormLabel>
                     <FormControl>
                       <Input {...field} value={field.value ?? ''} disabled={isBusy} maxLength={50} />
                     </FormControl>
@@ -1041,6 +1084,90 @@ export function PersonnelActionForm({
                   </FormItem>
                 )}
               />
+              <FormField
+                control={form.control}
+                name="originBudgetProgramCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Código Presupuestario</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value ?? ''} disabled={isBusy} maxLength={DB_FIELD_LIMITS.personnelActions.originBudgetProgramCode} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              {/* Proceso institucional y nivel de gestión de la situación de ORIGEN: solo se
+                  editan al corregir o ingresar un histórico; en una acción nueva el backend los
+                  toma de la situación vigente del empleado. */}
+              {allowOriginRmuEdit && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="originInstitutionalProcess"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Proceso Institucional</FormLabel>
+                        <Select
+                          disabled={isBusy}
+                          value={field.value ? String(field.value) : 'none'}
+                          onValueChange={(v) => field.onChange(v === 'none' ? null : Number(v))}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="— Sin categoría —" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="none">— Sin categoría —</SelectItem>
+                            {institutionalProcessOptions.map((t) => {
+                              const id = String(t.typeID ?? (t as any).typeId);
+                              return (
+                                <SelectItem key={id} value={id}>
+                                  {t.name}
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="originManagementLevel"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nivel de Gestión</FormLabel>
+                        <Select
+                          disabled={isBusy}
+                          value={field.value ? String(field.value) : 'none'}
+                          onValueChange={(v) => field.onChange(v === 'none' ? null : Number(v))}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="— Sin categoría —" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="none">— Sin categoría —</SelectItem>
+                            {managementLevelOptions.map((t) => {
+                              const id = String(t.typeID ?? (t as any).typeId);
+                              return (
+                                <SelectItem key={id} value={id}>
+                                  {t.name}
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
               <FormField
                 control={form.control}
                 name="previousRmu"
@@ -1053,12 +1180,10 @@ export function PersonnelActionForm({
                         step="0.01"
                         value={field.value ?? ''}
                         onChange={(e) => field.onChange(e.target.value === '' ? null : Number(e.target.value))}
-                        // En modo histórico (maxDate) el RMU de origen se puede corregir a mano: el valor
-                        // autocalculado sale del historial actual y puede no coincidir con el de esa fecha.
-                        readOnly={!maxDate}
-                        disabled={!maxDate || isBusy}
-                        className={maxDate ? undefined : 'bg-muted'}
-                        placeholder={maxDate ? '0.00' : 'Auto'}
+                        readOnly={!allowOriginRmuEdit}
+                        disabled={!allowOriginRmuEdit || isBusy}
+                        className={allowOriginRmuEdit ? undefined : 'bg-muted'}
+                        placeholder={allowOriginRmuEdit ? '0.00' : 'Auto'}
                         min={0}
                       />
                     </FormControl>
@@ -1114,9 +1239,22 @@ export function PersonnelActionForm({
                 name="destinationBudgetCode"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Código Presupuestario</FormLabel>
+                    <FormLabel>Partida del Puesto</FormLabel>
                     <FormControl>
                       <Input {...field} value={field.value ?? ''} disabled={isBusy} maxLength={50} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="destinationBudgetProgramCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Código Presupuestario</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value ?? ''} disabled={isBusy} maxLength={DB_FIELD_LIMITS.personnelActions.destinationBudgetProgramCode} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

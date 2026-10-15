@@ -32,6 +32,7 @@ const AttendancePage = lazy(() => import("@/pages/Attendance"));
 const PayrollPage = lazy(() => import("@/pages/Payroll"));
 const SchedulesPage = lazy(() => import("@/pages/Schedules"));
 const OvertimePage = lazy(() => import("@/pages/Overtime"));
+const OvertimePlanningPage = lazy(() => import("@/pages/OvertimePlanning"));
 const ReportsPage = lazy(() => import("@/pages/Reports"));
 const JustificationPage = lazy(() => import("@/pages/Justifications"));
 const ContractTypePage = lazy(() => import("@/pages/ContractType"));
@@ -431,6 +432,11 @@ export const routes: RouteConfig[] = [
     path: "/overtime",
     component: OvertimePage,
     requiredPath: "/overtime"
+  },
+  {
+    path: "/overtime-planning",
+    component: OvertimePlanningPage,
+    requiredPath: "/overtime-planning"
   },
   {
     path: "/justifications",

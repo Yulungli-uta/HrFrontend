@@ -10,6 +10,7 @@ import { useState } from "react";
 import { NominaAPI, type ApiResponse } from "@/lib/api"; // Importamos desde lib/api
 import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
 import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
+import { formatDateOnly } from "@/lib/dateOnly";
 
 const statusLabels: Record<string, string> = {
   "Pending": "Pendiente",
@@ -164,7 +165,7 @@ export default function PayrollPage() {
                 <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                   <Calendar className="h-4 w-4" />
                   <span data-testid={`text-payment-date-${payroll.id}`}>
-                    Pagado: {new Date(payroll.paymentDate).toLocaleDateString()}
+                    Pagado: {formatDateOnly(payroll.paymentDate)}
                   </span>
                 </div>
               )}

@@ -17,6 +17,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { parseApiError } from '@/lib/error-handling';
 import { logger } from "@/lib/logger";
+import { formatDateOnly } from "@/lib/dateOnly";
 
 interface Holiday {
   holidayID?: number;
@@ -531,7 +532,7 @@ export default function HolidaysPage() {
                       <div className="flex flex-col">
                         <span className="font-medium">{formatDate(holiday.holidayDate)}</span>
                         <span className="text-sm text-muted-foreground">
-                          {new Date(holiday.holidayDate).toLocaleDateString()}
+                          {formatDateOnly(holiday.holidayDate)}
                         </span>
                       </div>
                     </TableCell>

@@ -96,6 +96,7 @@ export {
   TimePlanningsAPI,
   TimePlanningEmployeesAPI,
   TimePlanningExecutionsAPI,
+  TimePlanningOverviewAPI,
   ScheduleChangePlansAPI,
 } from './services/planning';
 export type {
@@ -104,6 +105,10 @@ export type {
   TimePlanningEmployeeUpdateDTO,
   TimePlanningExecutionCreateDTO,
   TimePlanningExecutionUpdateDTO,
+  TimePlanningOverviewFilter,
+  TimePlanningOverviewItem,
+  TimePlanningOverviewEmployee,
+  TimePlanningPagedResult,
 } from './services/planning';
 
 // Nomina

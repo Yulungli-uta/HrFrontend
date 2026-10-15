@@ -74,9 +74,13 @@ function buildUpdatePayload(data: CreatePersonnelActionRequest): UpdatePersonnel
     originDepartmentId: data.originDepartmentId,
     originJobId: data.originJobId,
     originBudgetCode: data.originBudgetCode,
+    originBudgetProgramCode: data.originBudgetProgramCode,
+    originInstitutionalProcess: data.originInstitutionalProcess,
+    originManagementLevel: data.originManagementLevel,
     destinationDepartmentId: data.destinationDepartmentId,
     destinationJobId: data.destinationJobId,
     destinationBudgetCode: data.destinationBudgetCode,
+    destinationBudgetProgramCode: data.destinationBudgetProgramCode,
     previousRmu: data.previousRmu,
     newRmu: data.newRmu,
     legalBasis: data.legalBasis,
@@ -466,6 +470,7 @@ export default function PersonnelActionsCorrection() {
                     onDirtyChange={setIsFormDirty}
                     allowActionNumberEdit
                     allowInactiveEmployees
+                    allowOriginRmuEdit
                   />
                 )}
               </>

@@ -261,3 +261,98 @@ export const ScheduleChangePlansAPI = {
     }
   },
 };
+// =============================================================================
+// Consulta de planificaciones para Recursos Humanos (solo lectura, paginada)
+// =============================================================================
+
+export interface TimePlanningOverviewFilter {
+  page?: number;
+  pageSize?: number;
+  /** 'Overtime' | 'Recovery' | '' (todos). */
+  planType?: string;
+  startDate?: string;
+  endDate?: string;
+  planStatusTypeId?: number;
+  employeeStatusTypeId?: number;
+  departmentId?: number;
+  search?: string;
+}
+
+export interface TimePlanningOverviewItem {
+  planId: number;
+  planType: string;
+  title: string;
+  description?: string | null;
+  startDate: string;
+  endDate: string;
+  startTime: string;
+  endTime: string;
+  overtimeType?: string | null;
+  factor?: number | null;
+  planStatusTypeId: number;
+  planStatusName: string;
+  createdByName: string;
+  createdAt?: string | null;
+  totalEmployees: number;
+  totalAssignedHours: number;
+  totalActualHours: number;
+}
+
+export interface TimePlanningOverviewEmployee {
+  planEmployeeId: number;
+  planId: number;
+  employeeId: number;
+  employeeName: string;
+  idCard: string;
+  departmentName: string;
+  assignedHours?: number | null;
+  actualHours?: number | null;
+  employeeStatusTypeId: number;
+  employeeStatusName: string;
+  isEligible: boolean;
+  executionCount: number;
+  executedOvertimeMinutes: number;
+}
+
+export interface TimePlanningPagedResult<T> {
+  items: T[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+  hasPreviousPage: boolean;
+  hasNextPage: boolean;
+}
+
+const OVERVIEW_BASE = '/api/v1/rh/planning/overview';
+
+export const TimePlanningOverviewAPI = {
+  /** GET /planning/overview — planificaciones paginadas con totales de empleados y horas. */
+  getPlans: (
+    filter: TimePlanningOverviewFilter
+  ): Promise<ApiResponse<TimePlanningPagedResult<TimePlanningOverviewItem>>> => {
+    const qs = new URLSearchParams();
+    Object.entries(filter).forEach(([key, value]) => {
+      // planType vacío significa "todos" (el backend usa 'Overtime' si el parámetro no viaja).
+      if (value === undefined || value === null) return;
+      if (value === '' && key !== 'planType') return;
+      qs.set(key, String(value));
+    });
+    return apiFetch<TimePlanningPagedResult<TimePlanningOverviewItem>>(`${OVERVIEW_BASE}?${qs.toString()}`);
+  },
+
+  /** GET /planning/overview/{planId}/employees — empleados de un plan, paginados. */
+  getPlanEmployees: (
+    planId: number,
+    params: { page?: number; pageSize?: number; employeeStatusTypeId?: number; search?: string }
+  ): Promise<ApiResponse<TimePlanningPagedResult<TimePlanningOverviewEmployee>>> => {
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value === undefined || value === null || value === '') return;
+      qs.set(key, String(value));
+    });
+    return apiFetch<TimePlanningPagedResult<TimePlanningOverviewEmployee>>(
+      `${OVERVIEW_BASE}/${planId}/employees?${qs.toString()}`
+    );
+  },
+};
