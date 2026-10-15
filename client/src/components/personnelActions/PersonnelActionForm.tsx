@@ -434,9 +434,19 @@ export function PersonnelActionForm({
   // a un valor más individual.
   useEffect(() => {
     if (!watchedDestinationJobId) return;
+    // En Corrección el RMU Nuevo es el valor del documento ya guardado: sustituirlo por la referencia del cargo
+    // (al abrir la acción o al cambiar el cargo) lo reemplazaba sin que el usuario lo notara y la corrección
+    // volvía a grabar ese valor. En Histórico solo se sugiere mientras el usuario no haya escrito el suyo.
+    if (allowOriginRmuEdit && (isEdit || form.getFieldState('newRmu').isDirty)) return;
     SalaryHistoryAPI.getReferenceRmu({ jobId: watchedDestinationJobId })
-      .then((resp) => form.setValue('newRmu', resp.status === 'success' ? resp.data.rmu : null))
-      .catch(() => form.setValue('newRmu', null));
+      .then((resp) => {
+        if (allowOriginRmuEdit && form.getFieldState('newRmu').isDirty) return;
+        form.setValue('newRmu', resp.status === 'success' ? resp.data.rmu : null);
+      })
+      .catch(() => {
+        if (allowOriginRmuEdit && form.getFieldState('newRmu').isDirty) return;
+        form.setValue('newRmu', null);
+      });
   }, [watchedDestinationJobId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Aplica el empleado seleccionado al formulario y auto-rellena campos de origen
