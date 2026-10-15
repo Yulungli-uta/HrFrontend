@@ -324,10 +324,22 @@ export default function PersonnelActionDetail() {
             <InfoRow label="Fecha Vigencia" value={action.effectiveDate?.slice(0, 10)} />
             <InfoRow label="Fecha Fin" value={action.endDate?.slice(0, 10)} />
             <Separator className="my-2" />
+            <p className="text-xs font-semibold text-muted-foreground">Situación origen</p>
             <InfoRow
               label="Proceso Institucional (origen)"
               value={action.originInstitutionalProcessName}
             />
+            <InfoRow
+              label="Nivel de Gestión (origen)"
+              value={action.originManagementLevelName}
+            />
+            <InfoRow label="Partida del Puesto (origen)" value={action.originBudgetCode} />
+            <InfoRow label="Código Presupuestario (origen)" value={action.originBudgetProgramCode} />
+            {action.previousWorkplaceName && (
+              <InfoRow label="Lugar de Trabajo (actual)" value={action.previousWorkplaceName} />
+            )}
+            <Separator className="my-2" />
+            <p className="text-xs font-semibold text-muted-foreground">Situación propuesta</p>
             <InfoRow
               label="Proceso Institucional (propuesto)"
               value={institutionalProcessTypes.find(
@@ -335,17 +347,11 @@ export default function PersonnelActionDetail() {
               )?.name}
             />
             <InfoRow
-              label="Nivel de Gestión (origen)"
-              value={action.originManagementLevelName}
-            />
-            <InfoRow
               label="Nivel de Gestión (propuesto)"
               value={managementLevelTypes.find(
                 t => (t.typeID ?? (t as any).typeId) === action.managementLevel
               )?.name}
             />
-            <InfoRow label="Partida del Puesto (origen)" value={action.originBudgetCode} />
-            <InfoRow label="Código Presupuestario (origen)" value={action.originBudgetProgramCode} />
             <InfoRow label="Partida del Puesto (propuesta)" value={action.destinationBudgetCode} />
             <InfoRow label="Código Presupuestario (propuesto)" value={action.destinationBudgetProgramCode} />
             <InfoRow
@@ -356,9 +362,7 @@ export default function PersonnelActionDetail() {
                 )?.name ?? action.workplaceName
               }
             />
-            {action.previousWorkplaceName && (
-              <InfoRow label="Lugar de Trabajo (actual)" value={action.previousWorkplaceName} />
-            )}
+            <Separator className="my-2" />
             <InfoRow
               label="Decl. Juramentada"
               value={action.swornDeclaration != null ? (action.swornDeclaration ? 'Sí' : 'No') : undefined}

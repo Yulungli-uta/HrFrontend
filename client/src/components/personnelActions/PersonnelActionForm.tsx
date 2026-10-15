@@ -909,6 +909,262 @@ export function PersonnelActionForm({
             <legend className="text-sm font-semibold px-1">Clasificación de la Acción</legend>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
+              {/* Declaración Juramentada */}
+              <FormField
+                control={form.control}
+                name="swornDeclaration"
+                render={({ field }) => (
+                  <FormItem className="sm:col-span-2 flex items-center gap-3 pt-1">
+                    <FormControl>
+                      <Checkbox
+                        id="sworn-declaration"
+                        checked={field.value ?? false}
+                        disabled={isBusy}
+                        onCheckedChange={(v) => field.onChange(!!v)}
+                      />
+                    </FormControl>
+                    <FormLabel htmlFor="sworn-declaration" className="cursor-pointer select-none font-normal">
+                      Incluye Declaración Juramentada
+                    </FormLabel>
+                  </FormItem>
+                )}
+              />
+            </div>
+          </fieldset>
+          </>}
+
+          {/* ══════════════════════════════════════════
+              PASO 2: Posición y Sustento
+          ══════════════════════════════════════════ */}
+          {(isEdit || wizardStep === 2) && <>
+
+          {/* ── Posición Origen ── */}
+          {!actionRequiresUserCreation && <fieldset className="border rounded-lg p-4 space-y-4">
+            <legend className="text-sm font-semibold px-1">Posición Origen</legend>
+            <div className="grid grid-cols-1 grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="originDepartmentId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Departamento</FormLabel>
+                    <FormControl>
+                      <DepartmentSelect
+                        value={field.value ?? null}
+                        onChange={(id) => field.onChange(id)}
+                        disabled={isLoading || isBusy}
+                        placeholder="Ninguno"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="originJobId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cargo</FormLabel>
+                    <FormControl>
+                      <JobSelect
+                        value={field.value ?? null}
+                        onChange={(id) => field.onChange(id)}
+                        disabled={isLoading || isBusy}
+                        placeholder="Ninguno"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="originBudgetCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Partida del Puesto</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value ?? ''} disabled={isBusy} maxLength={50} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="originBudgetProgramCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Código Presupuestario</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value ?? ''} disabled={isBusy} maxLength={DB_FIELD_LIMITS.personnelActions.originBudgetProgramCode} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              {/* Proceso institucional y nivel de gestión de la situación de ORIGEN: solo se editan al
+                  corregir o ingresar un histórico; en una acción nueva el backend los toma de la
+                  situación vigente del empleado (se muestran deshabilitados). */}
+              <FormField
+                control={form.control}
+                name="originInstitutionalProcess"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Proceso Institucional</FormLabel>
+                    <Select
+                      disabled={!allowOriginRmuEdit || isBusy}
+                      value={field.value ? String(field.value) : 'none'}
+                      onValueChange={(v) => field.onChange(v === 'none' ? null : Number(v))}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="— Sin categoría —" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">{allowOriginRmuEdit ? '— Sin categoría —' : 'Auto (situación vigente)'}</SelectItem>
+                        {institutionalProcessOptions.map((t) => {
+                          const id = String(t.typeID ?? (t as any).typeId);
+                          return (
+                            <SelectItem key={id} value={id}>
+                              {t.name}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="originManagementLevel"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nivel de Gestión</FormLabel>
+                    <Select
+                      disabled={!allowOriginRmuEdit || isBusy}
+                      value={field.value ? String(field.value) : 'none'}
+                      onValueChange={(v) => field.onChange(v === 'none' ? null : Number(v))}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="— Sin categoría —" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">{allowOriginRmuEdit ? '— Sin categoría —' : 'Auto (situación vigente)'}</SelectItem>
+                        {managementLevelOptions.map((t) => {
+                          const id = String(t.typeID ?? (t as any).typeId);
+                          return (
+                            <SelectItem key={id} value={id}>
+                              {t.name}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="previousRmu"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>RMU</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={field.value ?? ''}
+                        onChange={(e) => field.onChange(e.target.value === '' ? null : Number(e.target.value))}
+                        readOnly={!allowOriginRmuEdit}
+                        disabled={!allowOriginRmuEdit || isBusy}
+                        className={allowOriginRmuEdit ? undefined : 'bg-muted'}
+                        placeholder={allowOriginRmuEdit ? '0.00' : 'Auto'}
+                        min={0}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </fieldset>}
+
+          {/* ── Posición Destino ── */}
+          <fieldset className="border rounded-lg p-4 space-y-4">
+            <legend className="text-sm font-semibold px-1">Posición Destino</legend>
+            <div className="grid grid-cols-1 grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="destinationDepartmentId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Departamento</FormLabel>
+                    <FormControl>
+                      <DepartmentSelect
+                        value={field.value ?? null}
+                        onChange={(id) => field.onChange(id)}
+                        disabled={isLoading || isBusy}
+                        placeholder="Ninguno"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="destinationJobId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cargo</FormLabel>
+                    <FormControl>
+                      <JobSelect
+                        value={field.value ?? null}
+                        onChange={(id) => field.onChange(id)}
+                        disabled={isLoading || isBusy}
+                        placeholder="Ninguno"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="destinationBudgetCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Partida del Puesto</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value ?? ''} disabled={isBusy} maxLength={50} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="destinationBudgetProgramCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Código Presupuestario</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value ?? ''} disabled={isBusy} maxLength={DB_FIELD_LIMITS.personnelActions.destinationBudgetProgramCode} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              {/* Clasificación de la situación PROPUESTA (destino). Se imprime en el documento como
+                  PROPOSED_INSTITUTIONAL_PROCESS / PROPOSED_MANAGEMENT_LEVEL. */}
               {/* Proceso Institucional */}
               <FormField
                 control={form.control}
@@ -1012,264 +1268,6 @@ export function PersonnelActionForm({
                 )}
               />
 
-              {/* Declaración Juramentada */}
-              <FormField
-                control={form.control}
-                name="swornDeclaration"
-                render={({ field }) => (
-                  <FormItem className="sm:col-span-2 flex items-center gap-3 pt-1">
-                    <FormControl>
-                      <Checkbox
-                        id="sworn-declaration"
-                        checked={field.value ?? false}
-                        disabled={isBusy}
-                        onCheckedChange={(v) => field.onChange(!!v)}
-                      />
-                    </FormControl>
-                    <FormLabel htmlFor="sworn-declaration" className="cursor-pointer select-none font-normal">
-                      Incluye Declaración Juramentada
-                    </FormLabel>
-                  </FormItem>
-                )}
-              />
-            </div>
-          </fieldset>
-          </>}
-
-          {/* ══════════════════════════════════════════
-              PASO 2: Posición y Sustento
-          ══════════════════════════════════════════ */}
-          {(isEdit || wizardStep === 2) && <>
-
-          {/* ── Posición Origen ── */}
-          {!actionRequiresUserCreation && <fieldset className="border rounded-lg p-4 space-y-4">
-            <legend className="text-sm font-semibold px-1">Posición Origen</legend>
-            <div className="grid grid-cols-1 grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="originDepartmentId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Departamento</FormLabel>
-                    <FormControl>
-                      <DepartmentSelect
-                        value={field.value ?? null}
-                        onChange={(id) => field.onChange(id)}
-                        disabled={isLoading || isBusy}
-                        placeholder="Ninguno"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="originJobId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Cargo</FormLabel>
-                    <FormControl>
-                      <JobSelect
-                        value={field.value ?? null}
-                        onChange={(id) => field.onChange(id)}
-                        disabled={isLoading || isBusy}
-                        placeholder="Ninguno"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="originBudgetCode"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Partida del Puesto</FormLabel>
-                    <FormControl>
-                      <Input {...field} value={field.value ?? ''} disabled={isBusy} maxLength={50} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="originBudgetProgramCode"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Código Presupuestario</FormLabel>
-                    <FormControl>
-                      <Input {...field} value={field.value ?? ''} disabled={isBusy} maxLength={DB_FIELD_LIMITS.personnelActions.originBudgetProgramCode} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              {/* Proceso institucional y nivel de gestión de la situación de ORIGEN: solo se
-                  editan al corregir o ingresar un histórico; en una acción nueva el backend los
-                  toma de la situación vigente del empleado. */}
-              {allowOriginRmuEdit && (
-                <>
-                  <FormField
-                    control={form.control}
-                    name="originInstitutionalProcess"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Proceso Institucional</FormLabel>
-                        <Select
-                          disabled={isBusy}
-                          value={field.value ? String(field.value) : 'none'}
-                          onValueChange={(v) => field.onChange(v === 'none' ? null : Number(v))}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="— Sin categoría —" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="none">— Sin categoría —</SelectItem>
-                            {institutionalProcessOptions.map((t) => {
-                              const id = String(t.typeID ?? (t as any).typeId);
-                              return (
-                                <SelectItem key={id} value={id}>
-                                  {t.name}
-                                </SelectItem>
-                              );
-                            })}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="originManagementLevel"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nivel de Gestión</FormLabel>
-                        <Select
-                          disabled={isBusy}
-                          value={field.value ? String(field.value) : 'none'}
-                          onValueChange={(v) => field.onChange(v === 'none' ? null : Number(v))}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="— Sin categoría —" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="none">— Sin categoría —</SelectItem>
-                            {managementLevelOptions.map((t) => {
-                              const id = String(t.typeID ?? (t as any).typeId);
-                              return (
-                                <SelectItem key={id} value={id}>
-                                  {t.name}
-                                </SelectItem>
-                              );
-                            })}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </>
-              )}
-              <FormField
-                control={form.control}
-                name="previousRmu"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>RMU</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={field.value ?? ''}
-                        onChange={(e) => field.onChange(e.target.value === '' ? null : Number(e.target.value))}
-                        readOnly={!allowOriginRmuEdit}
-                        disabled={!allowOriginRmuEdit || isBusy}
-                        className={allowOriginRmuEdit ? undefined : 'bg-muted'}
-                        placeholder={allowOriginRmuEdit ? '0.00' : 'Auto'}
-                        min={0}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </fieldset>}
-
-          {/* ── Posición Destino ── */}
-          <fieldset className="border rounded-lg p-4 space-y-4">
-            <legend className="text-sm font-semibold px-1">Posición Destino</legend>
-            <div className="grid grid-cols-1 grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="destinationDepartmentId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Departamento</FormLabel>
-                    <FormControl>
-                      <DepartmentSelect
-                        value={field.value ?? null}
-                        onChange={(id) => field.onChange(id)}
-                        disabled={isLoading || isBusy}
-                        placeholder="Ninguno"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="destinationJobId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Cargo</FormLabel>
-                    <FormControl>
-                      <JobSelect
-                        value={field.value ?? null}
-                        onChange={(id) => field.onChange(id)}
-                        disabled={isLoading || isBusy}
-                        placeholder="Ninguno"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="destinationBudgetCode"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Partida del Puesto</FormLabel>
-                    <FormControl>
-                      <Input {...field} value={field.value ?? ''} disabled={isBusy} maxLength={50} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="destinationBudgetProgramCode"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Código Presupuestario</FormLabel>
-                    <FormControl>
-                      <Input {...field} value={field.value ?? ''} disabled={isBusy} maxLength={DB_FIELD_LIMITS.personnelActions.destinationBudgetProgramCode} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
               <FormField
                 control={form.control}
                 name="newRmu"
