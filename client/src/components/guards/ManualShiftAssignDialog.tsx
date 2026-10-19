@@ -406,7 +406,7 @@ export function ManualShiftAssignDialog({ open, onClose, preselectedDate }: Prop
               </li>
               <li className="flex items-start gap-1.5">
                 <span className="shrink-0 font-bold">3.</span>
-                <span>Al cierre del día el job cruza con las picadas: <strong>COMPLETED</strong> si asistió, <strong>ABSENT</strong> si no hubo registro.</span>
+                <span>Al cierre del día el job cruza con las picadas: <strong>COMPLETED</strong> si asistió, <strong>COVERED_BY_LEAVE</strong> si el turno coincide con vacación, permiso o licencia médica, <strong>ABSENT</strong> si no hubo registro.</span>
               </li>
             </ol>
           </div>

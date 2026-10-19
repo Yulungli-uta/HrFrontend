@@ -41,6 +41,7 @@ const CELL_COLORS: Record<string, string> = {
   UNCOVERED: 'bg-red-100 text-red-700 border-red-200',
   COMPLETED: 'bg-emerald-100 text-emerald-800 border-emerald-200',
   ABSENT:    'bg-orange-100 text-orange-700 border-orange-200',
+  COVERED_BY_LEAVE: 'bg-sky-100 text-sky-800 border-sky-200',
 };
 
 // Fallback palette cuando un grupo no tiene colorCode definido
@@ -119,6 +120,7 @@ const STATUS_BADGE_VARIANT: Record<string, 'default' | 'secondary' | 'destructiv
   UNCOVERED: 'destructive',
   COMPLETED: 'default',
   ABSENT:    'destructive',
+  COVERED_BY_LEAVE: 'secondary',
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -129,6 +131,7 @@ const STATUS_LABEL: Record<string, string> = {
   UNCOVERED: 'Sin cobertura',
   COMPLETED: 'Completado',
   ABSENT:    'Ausente',
+  COVERED_BY_LEAVE: 'Cubierto por novedad',
 };
 
 const SCHEDULE_LABEL: Record<string, string> = {
@@ -1354,6 +1357,7 @@ export default function GuardShiftPlanningPage() {
                 <option value="PLANNED">Planificado</option>
                 <option value="COMPLETED">Completado</option>
                 <option value="ABSENT">Ausente</option>
+                <option value="COVERED_BY_LEAVE">Cubierto por novedad</option>
                 <option value="REPLACED">Reemplazado</option>
                 <option value="CANCELLED">Cancelado</option>
               </select>
