@@ -9,9 +9,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useTheme } from "@/components/ThemeProvider";
+import { useUserPreferences } from "@/features/preferences";
 
 export function ThemeToggle() {
-  const { theme, setTheme } = useTheme();
+  const { theme } = useTheme();
+  // El cambio rápido también se guarda como preferencia del usuario (una sola fuente, sin configuraciones contradictorias).
+  const { setTheme } = useUserPreferences();
 
   return (
     <DropdownMenu>

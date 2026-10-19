@@ -133,6 +133,8 @@ const HrResignationRetirementRequestsPage = lazy(() => import("@/pages/HrResigna
 // Autoservicio del Empleado — reutiliza /perfil, /permissions y /vacations existentes;
 // aquí solo lo que no existía: dashboard, certificados, solicitudes internas, historial.
 const EmployeeSelfServicePage = lazy(() => import("@/pages/EmployeeSelfServicePage"));
+const HomeEntry = lazy(() => import("@/pages/HomeEntry"));
+const PreferencesPage = lazy(() => import("@/pages/Preferences"));
 const MyCertificatesPage = lazy(() => import("@/pages/MyCertificatesPage"));
 const MyInternalRequestsPage = lazy(() => import("@/pages/MyInternalRequestsPage"));
 const MyDocumentsPage = lazy(() => import("@/pages/MyDocumentsPage"));
@@ -232,7 +234,7 @@ export const routes: RouteConfig[] = [
   // (antes en /) se movió a /dashboard como destino explícito para RRHH/admin.
   {
     path: "/",
-    component: EmployeeSelfServicePage
+    component: HomeEntry
   },
   {
     path: "/dashboard",
@@ -247,6 +249,10 @@ export const routes: RouteConfig[] = [
   {
     path: "/perfil",
     component: PersonDetail
+  },
+  {
+    path: "/preferencias",
+    component: PreferencesPage
   },
   {
     path: "/profile/change-password",

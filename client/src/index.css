@@ -266,7 +266,7 @@
   }
 
   .alert-warning {
-    @apply bg-warning/10 border border-warning/30 text-warning rounded-lg p-4;
+    @apply bg-warning-subtle border border-warning text-warning rounded-lg p-4;
   }
 
   /* ── Skeleton / Loading ── */
@@ -448,4 +448,61 @@ html.dark input[type="time"],
 html.dark input[type="datetime-local"],
 html.dark input[type="month"] {
   color-scheme: dark;
+}
+
+
+/* =============================================================================
+ * PREFERENCIAS DE USUARIO (ver features/preferences y pages/Preferences.tsx)
+ * Los atributos data-* los pone applyVisualPreferences / el script de index.html.
+ * Con valores por defecto (normal / standard) no cambia nada respecto a antes.
+ * ============================================================================= */
+
+/* Escala de texto: todo lo definido en rem (Tailwind y el sidebar) se escala junto. */
+html[data-font-scale="small"]  { font-size: 87.5%; }
+html[data-font-scale="large"]  { font-size: 112.5%; }
+html[data-font-scale="xlarge"] { font-size: 125%; }
+
+/* Densidad compacta: menos relleno en filas de tabla, tarjetas y menú. */
+html[data-density="compact"] .table-cell-base { padding-top: 0.375rem; padding-bottom: 0.375rem; }
+html[data-density="compact"] .card-header-base { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+html[data-density="compact"] .sidebar-item,
+html[data-density="compact"] .sidebar-group-header { padding-top: 0.25rem; padding-bottom: 0.25rem; }
+
+/* Contraste alto: textos secundarios y bordes más marcados. */
+html[data-contrast="high"] {
+  --muted-foreground: hsl(215 25% 22%);
+  --border: hsl(215 20% 45%);
+  --input: hsl(215 20% 45%);
+  --sidebar-border: hsl(215 20% 45%);
+}
+html.dark[data-contrast="high"] {
+  --muted-foreground: hsl(210 25% 88%);
+  --border: hsl(210 15% 62%);
+  --input: hsl(210 15% 62%);
+  --sidebar-border: hsl(210 15% 62%);
+}
+html[data-contrast="high"] :focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* Reducir animaciones: por preferencia del usuario o del sistema operativo.
+   Los indicadores de carga (animate-spin) se conservan para no ocultar que algo está cargando. */
+html[data-motion="reduce"] *:not(.animate-spin),
+html[data-motion="reduce"] *:not(.animate-spin)::before,
+html[data-motion="reduce"] *:not(.animate-spin)::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  *:not(.animate-spin),
+  *:not(.animate-spin)::before,
+  *:not(.animate-spin)::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

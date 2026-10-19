@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/features/auth";
+import { UserPreferencesProvider } from "@/features/preferences";
 import { ErrorBoundary, FallbackProps } from "react-error-boundary";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { BrowserCompatibilityDialog } from "@/components/BrowserCompatibilityDialog";
@@ -38,11 +39,13 @@ export default function App() {
       <ErrorBoundary FallbackComponent={ErrorFallback}>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            <TooltipProvider>
-              <BrowserCompatibilityDialog />
-              <AppRouter />
-              <Toaster />
-            </TooltipProvider>
+            <UserPreferencesProvider>
+              <TooltipProvider>
+                <BrowserCompatibilityDialog />
+                <AppRouter />
+                <Toaster />
+              </TooltipProvider>
+            </UserPreferencesProvider>
           </AuthProvider>
         </QueryClientProvider>
       </ErrorBoundary>

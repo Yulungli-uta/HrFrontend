@@ -11,11 +11,14 @@ type ThemeProviderProps = {
 type ThemeProviderState = {
   theme: Theme
   setTheme: (theme: Theme) => void
+  /** Vista previa temporal (no se guarda). `null` la quita y vuelve al tema guardado. */
+  previewTheme: (theme: Theme | null) => void
 }
 
 const initialState: ThemeProviderState = {
   theme: "system",
   setTheme: () => null,
+  previewTheme: () => null,
 }
 
 const ThemeProviderContext = createContext<ThemeProviderState>(initialState)
@@ -29,24 +32,37 @@ export function ThemeProvider({
   const [theme, setTheme] = useState<Theme>(
     () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
   )
+  const [preview, setPreview] = useState<Theme | null>(null)
+
+  const effectiveTheme = preview ?? theme
 
   useEffect(() => {
     const root = window.document.documentElement
 
-    root.classList.remove("light", "dark")
+    const apply = () => {
+      root.classList.remove("light", "dark")
 
-    if (theme === "system") {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
-        .matches
-        ? "dark"
-        : "light"
+      if (effectiveTheme === "system") {
+        const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
+          .matches
+          ? "dark"
+          : "light"
 
-      root.classList.add(systemTheme)
-      return
+        root.classList.add(systemTheme)
+        return
+      }
+
+      root.classList.add(effectiveTheme)
     }
 
-    root.classList.add(theme)
-  }, [theme])
+    apply()
+
+    // En modo "sistema" sigue los cambios del sistema operativo sin recargar la página.
+    if (effectiveTheme !== "system") return
+    const media = window.matchMedia("(prefers-color-scheme: dark)")
+    media.addEventListener("change", apply)
+    return () => media.removeEventListener("change", apply)
+  }, [effectiveTheme])
 
   const value = {
     theme,
@@ -54,6 +70,7 @@ export function ThemeProvider({
       localStorage.setItem(storageKey, theme)
       setTheme(theme)
     },
+    previewTheme: setPreview,
   }
 
   return (

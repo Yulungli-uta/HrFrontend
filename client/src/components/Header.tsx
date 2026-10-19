@@ -2,7 +2,7 @@
 // Diseño UX profesional con soporte completo dark/light mode.
 // Principio: NUNCA usar colores hardcodeados. Usar siempre variables semánticas del tema.
 import { Button } from "@/components/ui/button";
-import { LogOut, User, Menu, UserCog, KeyRound, ShieldCheck, ChevronDown } from "lucide-react";
+import { LogOut, User, Menu, UserCog, KeyRound, ShieldCheck, ChevronDown, SlidersHorizontal } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +19,8 @@ interface HeaderProps {
   onLogout: () => void;
   onToggleSidebar?: () => void;
   sidebarCollapsed?: boolean;
+  /** true en pantallas pequeñas: el menú es un panel superpuesto (abrir/cerrar en vez de expandir/colapsar). */
+  mobileMenu?: boolean;
   currentUserId?: number | null;
   currentUserName?: string | null;
 }
@@ -27,6 +29,7 @@ export default function Header({
   onLogout,
   onToggleSidebar,
   sidebarCollapsed,
+  mobileMenu,
   currentUserId,
   currentUserName
 }: HeaderProps) {
@@ -68,8 +71,11 @@ export default function Header({
               className="h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-accent
                          transition-all duration-200 rounded-lg"
               data-testid="sidebar-toggle-button"
-              aria-label={sidebarCollapsed ? "Expandir menú" : "Colapsar menú"}
-              title={sidebarCollapsed ? "Expandir menú" : "Colapsar menú"}
+              aria-label={mobileMenu ? (sidebarCollapsed ? "Abrir menú" : "Cerrar menú") : (sidebarCollapsed ? "Expandir menú" : "Colapsar menú")}
+              title={mobileMenu ? (sidebarCollapsed ? "Abrir menú" : "Cerrar menú") : (sidebarCollapsed ? "Expandir menú" : "Colapsar menú")}
+              aria-expanded={!sidebarCollapsed}
+              aria-controls={mobileMenu ? undefined : "app-sidebar"}
+              aria-haspopup={mobileMenu ? "dialog" : undefined}
             >
               <Menu className="h-5 w-5" />
             </Button>
@@ -99,7 +105,7 @@ export default function Header({
                 {/* Avatar con iniciales */}
                 <div
                   className="w-7 h-7 rounded-full bg-primary flex items-center justify-center
-                              text-primary-foreground text-[10px] font-bold shrink-0 select-none"
+                              text-primary-foreground text-[0.625rem] font-bold shrink-0 select-none"
                 >
                   {initials || <User className="h-3.5 w-3.5" />}
                 </div>
@@ -122,7 +128,7 @@ export default function Header({
               {/* Info del usuario */}
               <div className="px-3 py-2 border-b border-border mb-1">
                 <p className="text-xs font-semibold text-foreground truncate">{displayName}</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Cuenta activa</p>
+                <p className="text-[0.625rem] text-muted-foreground mt-0.5">Cuenta activa</p>
               </div>
 
               <DropdownMenuItem
@@ -157,6 +163,18 @@ export default function Header({
               >
                 <ShieldCheck className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <span>Validar firmas electrónicas</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={() => navigate("/preferencias")}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm
+                           text-foreground cursor-pointer
+                           hover:bg-accent hover:text-accent-foreground
+                           transition-colors duration-150"
+                data-testid="preferences-menu-item"
+              >
+                <SlidersHorizontal className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span>Mis preferencias</span>
               </DropdownMenuItem>
 
               <DropdownMenuSeparator className="bg-border my-1" />

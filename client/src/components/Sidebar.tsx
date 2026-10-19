@@ -34,7 +34,16 @@ interface NavNode {
 }
 interface NavGroup { id: number; title: string; icon: React.ComponentType<any>; initiallyOpen?: boolean; items: NavNode[]; }
 interface NormalizedMenuItem { id: number; parentId: number | null; name: string; url: string | null; icon: string; order: number; }
-interface SidebarProps { collapsed: boolean; onToggle: () => void; onLogout?: () => void; }
+interface SidebarProps {
+  collapsed: boolean;
+  onToggle: () => void;
+  onLogout?: () => void;
+  /** 'drawer' = dentro del panel superpuesto de pantallas pequeñas (ancho completo, sin colapsar). */
+  variant?: 'desktop' | 'drawer';
+  /** Se invoca al elegir una opción de navegación (el drawer lo usa para cerrarse). */
+  onNavigate?: () => void;
+  id?: string;
+}
 interface SidebarFooterProps { collapsed: boolean; userName?: string; userType?: string; onLogout: () => void; }
 
 /* ─── Mapa de íconos ─────────────────────────────────────────────────────── */
@@ -129,7 +138,7 @@ const SidebarFooter: React.FC<SidebarFooterProps> = ({ collapsed, userName, user
           <span className="text-xs font-semibold text-sidebar-foreground truncate leading-tight">
             {userName || "Usuario"}
           </span>
-          <span className="text-[10px] text-sidebar-foreground/60 truncate leading-tight">
+          <span className="text-[0.625rem] text-sidebar-foreground/60 truncate leading-tight">
             {userType === "AzureAD" ? "Cuenta institucional" : "Usuario local"}
           </span>
         </div>
@@ -150,8 +159,8 @@ const SidebarFooter: React.FC<SidebarFooterProps> = ({ collapsed, userName, user
 );
 
 /* ─── Subcomponente: Cabecera del sidebar ───────────────────────────────── */
-interface SidebarHeaderProps { collapsed: boolean; onToggle: () => void; }
-const SidebarHeader: React.FC<SidebarHeaderProps> = ({ collapsed, onToggle }) => (
+interface SidebarHeaderProps { collapsed: boolean; onToggle: () => void; hideToggle?: boolean; }
+const SidebarHeader: React.FC<SidebarHeaderProps> = ({ collapsed, onToggle, hideToggle }) => (
   <div className="shrink-0 border-b border-sidebar-border px-3 py-3">
     <div className="flex items-center justify-between gap-2">
       <div className="flex items-center gap-2 min-w-0 overflow-hidden">
@@ -164,13 +173,13 @@ const SidebarHeader: React.FC<SidebarHeaderProps> = ({ collapsed, onToggle }) =>
             <span className="text-xs font-bold text-sidebar-primary leading-tight truncate">
               de Ambato
             </span>
-            <span className="text-[10px] text-sidebar-foreground/50 leading-tight truncate mt-0.5">
+            <span className="text-[0.625rem] text-sidebar-foreground/50 leading-tight truncate mt-0.5">
               Sistema de RRHH
             </span>
           </div>
         )}
       </div>
-      <button
+      {!hideToggle && <button
         onClick={onToggle}
         title={collapsed ? "Expandir menú" : "Colapsar menú"}
         aria-label={collapsed ? "Expandir menú" : "Colapsar menú"}
@@ -179,7 +188,7 @@ const SidebarHeader: React.FC<SidebarHeaderProps> = ({ collapsed, onToggle }) =>
                    transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-      </button>
+      </button>}
     </div>
   </div>
 );
@@ -192,10 +201,11 @@ interface NavNodeItemProps {
   openNodes: Record<string, boolean>;
   onToggle: (key: string) => void;
   isActivePath: (path: string) => boolean;
+  onNavigate?: () => void;
 }
 
 const NavNodeItem: React.FC<NavNodeItemProps> = ({
-  node, depth, collapsed, openNodes, onToggle, isActivePath,
+  node, depth, collapsed, openNodes, onToggle, isActivePath, onNavigate,
 }) => {
   const isLeaf = !node.children || node.children.length === 0;
   const Icon = node.icon;
@@ -207,6 +217,7 @@ const NavNodeItem: React.FC<NavNodeItemProps> = ({
         <TooltipTrigger asChild>
           <Link
             href={node.path}
+            onClick={onNavigate}
             className={`sidebar-item group relative ${active ? "sidebar-item-active font-semibold" : ""}`}
             aria-current={active ? "page" : undefined}
           >
@@ -215,7 +226,7 @@ const NavNodeItem: React.FC<NavNodeItemProps> = ({
                                w-0.5 h-4 rounded-full bg-sidebar-primary-foreground" />
             )}
             <Icon className="h-3.5 w-3.5 shrink-0" />
-            {!collapsed && <span className="truncate text-[11px]">{node.label}</span>}
+            {!collapsed && <span className="min-w-0 break-words text-[0.6875rem] leading-snug">{node.label}</span>}
           </Link>
         </TooltipTrigger>
         <TooltipContent side="right">{node.label}</TooltipContent>
@@ -237,7 +248,7 @@ const NavNodeItem: React.FC<NavNodeItemProps> = ({
           >
             <span className="flex items-center gap-2 min-w-0">
               <Icon className="h-3.5 w-3.5 shrink-0" />
-              {!collapsed && <span className="truncate text-[11px]">{node.label}</span>}
+              {!collapsed && <span className="min-w-0 break-words text-left text-[0.6875rem] leading-snug">{node.label}</span>}
             </span>
             {!collapsed && (
               <span
@@ -262,6 +273,7 @@ const NavNodeItem: React.FC<NavNodeItemProps> = ({
               openNodes={openNodes}
               onToggle={onToggle}
               isActivePath={isActivePath}
+              onNavigate={onNavigate}
             />
           ))}
         </div>
@@ -271,7 +283,7 @@ const NavNodeItem: React.FC<NavNodeItemProps> = ({
 };
 
 /* ─── Componente principal ───────────────────────────────────────────────── */
-const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onLogout }) => {
+const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onLogout, variant = 'desktop', onNavigate, id }) => {
   const [location] = useLocation();
   const [navGroups, setNavGroups]   = useState<NavGroup[]>([]);
   const [openNodes, setOpenNodes]   = useState<Record<string, boolean>>({});
@@ -389,14 +401,17 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onLogout }) => {
   const handleLogout = () => { if (onLogout) onLogout(); };
   const currentUserName = user?.displayName || user?.email || "Usuario";
 
-  const asideClass = `${collapsed ? "w-16" : "w-60"} h-screen flex flex-col
+  const isDrawer = variant === 'drawer';
+  const asideClass = isDrawer
+    ? "w-full h-full flex flex-col sidebar-base"
+    : `${collapsed ? "w-16" : "w-60"} h-screen flex flex-col
     sidebar-base shadow-lg transition-all duration-300 ease-in-out shrink-0`;
 
   /* ── Estado: cargando ── */
   if (isLoading || (isAuthenticated && user && typeof (user as any).menuItems === "undefined")) {
     return (
-      <aside className={asideClass}>
-        <SidebarHeader collapsed={collapsed} onToggle={onToggle} />
+      <aside id={id} className={asideClass}>
+        <SidebarHeader collapsed={collapsed} onToggle={onToggle} hideToggle={isDrawer} />
         <div className="flex-1 flex items-center justify-center">
           <Loader2 className="h-5 w-5 animate-spin text-sidebar-primary" />
           {!collapsed && (
@@ -412,8 +427,8 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onLogout }) => {
   /* ── Estado: sin menús asignados ── */
   if (isAuthenticated && navGroups.length === 0) {
     return (
-      <aside className={asideClass}>
-        <SidebarHeader collapsed={collapsed} onToggle={onToggle} />
+      <aside id={id} className={asideClass}>
+        <SidebarHeader collapsed={collapsed} onToggle={onToggle} hideToggle={isDrawer} />
         <div className="flex-1 flex flex-col items-center justify-center px-4 text-center gap-2">
           <div className="w-10 h-10 rounded-full bg-sidebar-accent flex items-center justify-center">
             <Folder className="h-5 w-5 text-sidebar-accent-foreground" />
@@ -421,7 +436,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onLogout }) => {
           {!collapsed && (
             <>
               <p className="text-xs font-semibold text-sidebar-foreground">Sin opciones de menú</p>
-              <p className="text-[10px] text-sidebar-foreground/50 leading-relaxed">
+              <p className="text-[0.625rem] text-sidebar-foreground/50 leading-relaxed">
                 Contacta al administrador para asignar tus permisos.
               </p>
             </>
@@ -439,10 +454,10 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onLogout }) => {
 
   /* ── Render principal ── */
   return (
-    <aside className={asideClass}>
+    <aside id={id} className={asideClass}>
 
       {/* ── Cabecera ── */}
-      <SidebarHeader collapsed={collapsed} onToggle={onToggle} />
+      <SidebarHeader collapsed={collapsed} onToggle={onToggle} hideToggle={isDrawer} />
 
       {/* ── Búsqueda (solo expandido) ── */}
       {!collapsed && (
@@ -494,10 +509,10 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onLogout }) => {
                 aria-expanded={isOpen}
                 className={`sidebar-group-header w-full mb-0.5 ${isOpen ? "sidebar-group-header-open" : ""}`}
               >
-                <span className="flex items-center gap-2 min-w-0">
+                <span className="flex items-center gap-2 min-w-0 text-left">
                   <GroupIcon className="h-4 w-4 shrink-0" />
                   {!collapsed && (
-                    <span className="truncate text-[11px] font-semibold uppercase tracking-wide">
+                    <span className="min-w-0 break-words text-left text-[0.6875rem] font-semibold uppercase leading-snug tracking-wide">
                       {group.title}
                     </span>
                   )}
@@ -524,6 +539,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onLogout }) => {
                       openNodes={openNodes}
                       onToggle={toggleNode}
                       isActivePath={isActivePath}
+                      onNavigate={onNavigate}
                     />
                   ))}
                 </div>
@@ -536,7 +552,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onLogout }) => {
         {!collapsed && searchTerm.trim() && filteredNavGroups.length === 0 && (
           <div className="flex flex-col items-center py-6 gap-2 text-center px-2">
             <Search className="h-5 w-5 text-sidebar-foreground/30" />
-            <p className="text-[10px] text-sidebar-foreground/50 leading-relaxed">
+            <p className="text-[0.625rem] text-sidebar-foreground/50 leading-relaxed">
               Sin resultados para <strong>"{searchTerm.trim()}"</strong>
             </p>
           </div>

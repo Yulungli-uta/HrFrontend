@@ -65,6 +65,7 @@ export type { AttendanceCalculationRequestDto as CvAttendanceRequestDto } from '
 
 // Planificación masiva de vacaciones
 export * from './services/massVacationPlans';
+export * from './services/userPreferences';
 
 // Asistencia
 export { 

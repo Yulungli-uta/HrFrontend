@@ -4,6 +4,7 @@ import { useAuth } from "@/features/auth";
 import { Loader2 } from "lucide-react";
 import ExternalSignPage from "@/pages/electronicSignature/ExternalSignPage";
 import AzureLoginRelay from "@/pages/AzureLoginRelay";
+import RedirectToLogin from "@/components/auth/RedirectToLogin";
 
 // Componentes del layout y autorizaciones
 import Layout from "@/components/Layout";
@@ -71,7 +72,7 @@ export default function AppRouter() {
         <Switch>
           <Route path="/login" component={LoginPage} />
           <Route path="*">
-            {() => <Redirect to="/login" />}
+            {() => <RedirectToLogin />}
           </Route>
         </Switch>
       </Suspense>
