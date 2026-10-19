@@ -212,12 +212,12 @@ function ProcessTree({
                           {rules.length > 0 && (
                             <div className="flex items-center gap-2 mt-0.5">
                               {mandatoryCount > 0 && (
-                                <span className="text-[10px] text-destructive dark:text-destructive/80">
+                                <span className="text-[0.625rem] text-destructive dark:text-destructive/80">
                                   {mandatoryCount} oblig.
                                 </span>
                               )}
                               {optionalCount > 0 && (
-                                <span className="text-[10px] text-muted-foreground">
+                                <span className="text-[0.625rem] text-muted-foreground">
                                   {optionalCount} opc.
                                 </span>
                               )}
@@ -319,7 +319,7 @@ function ProcessRulesOverview({
               <span className="flex-1 min-w-0 truncate">{rule.docTypeName}</span>
               <Badge
                 variant="outline"
-                className={`text-[10px] px-1.5 py-0 h-4 shrink-0 ${
+                className={`text-[0.625rem] px-1.5 py-0 h-4 shrink-0 ${
                   rule.isMandatory
                     ? "border-destructive/40 text-destructive dark:border-destructive/60 dark:text-destructive/80"
                     : "text-muted-foreground"

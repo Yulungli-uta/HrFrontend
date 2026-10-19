@@ -591,11 +591,11 @@ function RulesSection({
                   </p>
                   <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                     {rule.isMandatory ? (
-                      <Badge variant="default" className="text-[10px] h-5">
+                      <Badge variant="default" className="text-[0.625rem] h-5">
                         Obligatorio
                       </Badge>
                     ) : (
-                      <Badge variant="outline" className="text-[10px] h-5">
+                      <Badge variant="outline" className="text-[0.625rem] h-5">
                         Opcional
                       </Badge>
                     )}

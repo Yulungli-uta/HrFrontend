@@ -225,15 +225,15 @@ function MetricCard(props: {
       <div className="mt-3 grid grid-cols-3 gap-2">
         <div className="rounded-xl bg-background/60 p-3 text-center">
           <div className={`font-bold leading-none ${emphasize ? "text-5xl" : "text-4xl"}`}>{s.d}</div>
-          <div className="mt-1 text-[11px] text-muted-foreground">días</div>
+          <div className="mt-1 text-[0.6875rem] text-muted-foreground">días</div>
         </div>
         <div className="rounded-xl bg-background/60 p-3 text-center">
           <div className={`font-bold leading-none ${emphasize ? "text-5xl" : "text-4xl"}`}>{s.h}</div>
-          <div className="mt-1 text-[11px] text-muted-foreground">horas</div>
+          <div className="mt-1 text-[0.6875rem] text-muted-foreground">horas</div>
         </div>
         <div className="rounded-xl bg-background/60 p-3 text-center">
           <div className={`font-bold leading-none ${emphasize ? "text-5xl" : "text-4xl"}`}>{s.m}</div>
-          <div className="mt-1 text-[11px] text-muted-foreground">min</div>
+          <div className="mt-1 text-[0.6875rem] text-muted-foreground">min</div>
         </div>
       </div>
 

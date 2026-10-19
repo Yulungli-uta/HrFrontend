@@ -192,7 +192,7 @@ export default function InstanceHistory() {
             </div>
             <div>
               <p className="text-lg font-bold" data-testid="stat-total-movements">{stats.total}</p>
-              <p className="text-[11px] text-muted-foreground">Movimientos</p>
+              <p className="text-[0.6875rem] text-muted-foreground">Movimientos</p>
             </div>
           </CardContent>
         </Card>
@@ -203,7 +203,7 @@ export default function InstanceHistory() {
             </div>
             <div>
               <p className="text-lg font-bold" data-testid="stat-advances">{stats.advances}</p>
-              <p className="text-[11px] text-muted-foreground">Avances</p>
+              <p className="text-[0.6875rem] text-muted-foreground">Avances</p>
             </div>
           </CardContent>
         </Card>
@@ -214,7 +214,7 @@ export default function InstanceHistory() {
             </div>
             <div>
               <p className="text-lg font-bold" data-testid="stat-returns">{stats.returns}</p>
-              <p className="text-[11px] text-muted-foreground">Retornos</p>
+              <p className="text-[0.6875rem] text-muted-foreground">Retornos</p>
             </div>
           </CardContent>
         </Card>
@@ -225,7 +225,7 @@ export default function InstanceHistory() {
             </div>
             <div>
               <p className="text-lg font-bold" data-testid="stat-users">{stats.uniqueUsers}</p>
-              <p className="text-[11px] text-muted-foreground">Participantes</p>
+              <p className="text-[0.6875rem] text-muted-foreground">Participantes</p>
             </div>
           </CardContent>
         </Card>
@@ -238,7 +238,7 @@ export default function InstanceHistory() {
               <Filter className="h-4 w-4 text-primary" />
               Filtros
               {activeFilterCount > 0 && (
-                <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
+                <Badge variant="secondary" className="text-[0.625rem] h-5 px-1.5">
                   {activeFilterCount}
                 </Badge>
               )}

@@ -300,7 +300,7 @@ function StatsCards({ stats, isLoading }: { stats: FamilyBurdenStats | null; isL
               <p className="text-lg sm:text-2xl font-bold leading-tight">
                 {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : c.value ?? 0}
               </p>
-              <p className="text-[11px] sm:text-xs text-muted-foreground truncate">{c.label}</p>
+              <p className="text-[0.6875rem] sm:text-xs text-muted-foreground truncate">{c.label}</p>
             </div>
           </CardContent>
         </Card>

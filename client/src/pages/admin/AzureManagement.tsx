@@ -1083,7 +1083,7 @@ export default function AzureManagement() {
                     <div className="text-muted-foreground">{e.at}</div>
                     <div className="font-medium">{e.action}</div>
                     {typeof e.detail !== "undefined" ? (
-                      <pre className="mt-1 text-[11px] whitespace-pre-wrap break-words text-foreground">
+                      <pre className="mt-1 text-[0.6875rem] whitespace-pre-wrap break-words text-foreground">
                         {JSON.stringify(e.detail, null, 2)}
                       </pre>
                     ) : null}
@@ -1097,7 +1097,7 @@ export default function AzureManagement() {
                     <Shield className="h-4 w-4" />
                     Raw payload
                   </summary>
-                  <pre className="mt-2 text-[11px] whitespace-pre-wrap break-words text-foreground border rounded-md p-2 max-h-[240px] overflow-auto">
+                  <pre className="mt-2 text-[0.6875rem] whitespace-pre-wrap break-words text-foreground border rounded-md p-2 max-h-[240px] overflow-auto">
                     {JSON.stringify(rawPayload, null, 2)}
                   </pre>
                 </details>

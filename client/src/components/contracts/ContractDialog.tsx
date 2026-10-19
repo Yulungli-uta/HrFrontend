@@ -1764,7 +1764,7 @@ export function ContractDialog(props: {
                               {(isView || form.laborRegimeID) ? (
                                 <div className="flex items-center gap-1 h-9 px-3 rounded-md border border-input bg-background text-sm">
                                   {laborRegimeName
-                                    ? <><span className="font-medium flex-1">{laborRegimeName}</span><span className="text-[10px] text-muted-foreground shrink-0">(auto)</span></>
+                                    ? <><span className="font-medium flex-1">{laborRegimeName}</span><span className="text-[0.625rem] text-muted-foreground shrink-0">(auto)</span></>
                                     : <span className="italic text-muted-foreground">No especificado</span>}
                                 </div>
                               ) : (
@@ -1789,7 +1789,7 @@ export function ContractDialog(props: {
                               <Label className="text-xs text-muted-foreground">Modalidad</Label>
                               <div className="flex items-center gap-1 h-9 px-3 rounded-md border border-input bg-background text-sm">
                                 {workModalityName
-                                  ? <><span className="font-medium flex-1">{workModalityName}</span><span className="text-[10px] text-muted-foreground shrink-0">(auto)</span></>
+                                  ? <><span className="font-medium flex-1">{workModalityName}</span><span className="text-[0.625rem] text-muted-foreground shrink-0">(auto)</span></>
                                   : <span className="italic text-muted-foreground">No especificada</span>}
                               </div>
                             </div>
@@ -1799,7 +1799,7 @@ export function ContractDialog(props: {
                               <Label className="text-xs text-muted-foreground">Horas contratadas</Label>
                               <div className="flex items-center gap-1 h-9 px-3 rounded-md border border-input bg-background text-sm">
                                 {form.contractedHours != null && form.contractedHours > 0
-                                  ? <><span className="font-medium flex-1">{form.contractedHours}h</span><span className="text-[10px] text-muted-foreground shrink-0">(auto)</span></>
+                                  ? <><span className="font-medium flex-1">{form.contractedHours}h</span><span className="text-[0.625rem] text-muted-foreground shrink-0">(auto)</span></>
                                   : <span className="italic text-muted-foreground">No especificadas</span>}
                               </div>
                             </div>
@@ -2225,7 +2225,7 @@ export function ContractDialog(props: {
                               <span className="font-medium flex-1">{laborRegimeName}</span>
                               <button
                                 type="button"
-                                className="text-[10px] text-muted-foreground underline shrink-0 hover:text-foreground"
+                                className="text-[0.625rem] text-muted-foreground underline shrink-0 hover:text-foreground"
                                 onClick={() => setForm((f) => ({ ...f, laborRegimeID: null, contractTypeID: 0, jobID: null }))}
                               >
                                 cambiar
@@ -2256,7 +2256,7 @@ export function ContractDialog(props: {
                               <span className="font-medium flex-1">{workModalityName}</span>
                               <button
                                 type="button"
-                                className="text-[10px] text-muted-foreground underline shrink-0 hover:text-foreground"
+                                className="text-[0.625rem] text-muted-foreground underline shrink-0 hover:text-foreground"
                                 onClick={() => setForm((f) => ({ ...f, workModalityID: null }))}
                               >
                                 cambiar
@@ -2284,7 +2284,7 @@ export function ContractDialog(props: {
                           <Label className="text-xs text-muted-foreground">Horas contratadas</Label>
                           <div className="flex items-center gap-1 h-9 px-3 rounded-md border border-input bg-background text-sm">
                             {form.contractedHours != null && form.contractedHours > 0
-                              ? <><span className="font-medium flex-1">{form.contractedHours}h</span><span className="text-[10px] text-muted-foreground shrink-0">(auto)</span></>
+                              ? <><span className="font-medium flex-1">{form.contractedHours}h</span><span className="text-[0.625rem] text-muted-foreground shrink-0">(auto)</span></>
                               : <span className="italic text-muted-foreground">No especificadas</span>}
                           </div>
                         </div>

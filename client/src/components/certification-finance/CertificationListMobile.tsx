@@ -51,7 +51,7 @@ export function CertificationListMobile(props: {
                 <Calendar className="h-3 w-3" />
                 {formatECDate(c.certBudgetDate)}
                 {c.daysUntilExpiry && c.daysUntilExpiry < 30 && (
-                  <Badge variant="outline" className="bg-warning/10 text-warning border-warning/30 text-[10px]">
+                  <Badge variant="outline" className="bg-warning/10 text-warning border-warning/30 text-[0.625rem]">
                     {c.daysUntilExpiry}d
                   </Badge>
                 )}

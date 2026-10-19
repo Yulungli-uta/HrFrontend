@@ -523,7 +523,7 @@ export default function TimePlanningEmployeeForm({
                         </CommandGroup>
 
                         <div className="border-t p-2 flex items-center justify-between gap-2">
-                          <div className="text-[11px] text-muted-foreground">
+                          <div className="text-[0.6875rem] text-muted-foreground">
                             Página {employeeCombobox.page} de {employeeCombobox.totalPages} ·{" "}
                             {employeeCombobox.totalCount} resultado(s)
                           </div>

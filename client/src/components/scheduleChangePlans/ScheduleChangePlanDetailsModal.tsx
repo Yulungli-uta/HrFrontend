@@ -168,20 +168,20 @@ export function ScheduleChangePlanDetailsModal({
                             <div className="grid grid-cols-2 gap-2 text-sm">
                               <div>
                                 <p className="text-xs text-muted-foreground mb-1 font-semibold uppercase tracking-wider">Anterior</p>
-                                <Badge variant="outline" className="text-[10px] sm:text-xs bg-destructive/10 text-destructive border-destructive/30">
+                                <Badge variant="outline" className="text-[0.625rem] sm:text-xs bg-destructive/10 text-destructive border-destructive/30">
                                   {getScheduleLabel(detail.previousScheduleID, schedulesMap)}
                                 </Badge>
                                 {previousScheduleStr !== "—" && (
-                                  <p className="text-[10px] text-muted-foreground mt-1 ml-1">{previousScheduleStr}</p>
+                                  <p className="text-[0.625rem] text-muted-foreground mt-1 ml-1">{previousScheduleStr}</p>
                                 )}
                               </div>
                               <div>
                                 <p className="text-xs text-muted-foreground mb-1 font-semibold uppercase tracking-wider">Nuevo</p>
-                                <Badge className="text-[10px] sm:text-xs bg-success/10 text-success border-success/30">
+                                <Badge className="text-[0.625rem] sm:text-xs bg-success/10 text-success border-success/30">
                                   {getScheduleLabel(plan.newScheduleID, schedulesMap)}
                                 </Badge>
                                 {newScheduleStr !== "—" && (
-                                  <p className="text-[10px] text-muted-foreground mt-1 ml-1">{newScheduleStr}</p>
+                                  <p className="text-[0.625rem] text-muted-foreground mt-1 ml-1">{newScheduleStr}</p>
                                 )}
                               </div>
                             </div>

@@ -112,7 +112,7 @@ export function DocumentThumbnail({ documentId, fileExtension, title, onClick, c
 
           <div className="flex flex-col items-center pb-1">
             <Icon className={`h-4 w-4 ${iconColor}`} />
-            <span className={`text-[8px] font-bold uppercase leading-none mt-0.5 ${iconColor}`}>
+            <span className={`text-[0.5rem] font-bold uppercase leading-none mt-0.5 ${iconColor}`}>
               {label}
             </span>
           </div>

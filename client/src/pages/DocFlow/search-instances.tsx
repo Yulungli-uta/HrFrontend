@@ -203,7 +203,7 @@ function ProcessSelector({
                 <span className={`text-sm flex-1 min-w-0 truncate ${hasChildren ? "font-semibold" : "font-medium"}`}>
                   {process.processName}
                 </span>
-                <Badge variant="secondary" className="text-[10px] shrink-0 h-5 px-1.5">
+                <Badge variant="secondary" className="text-[0.625rem] shrink-0 h-5 px-1.5">
                   {instanceCount}
                 </Badge>
               </button>
@@ -238,7 +238,7 @@ function ProcessSelector({
                           <FileStack className="h-2.5 w-2.5 text-muted-foreground" />
                         </div>
                         <span className="text-sm font-medium flex-1 min-w-0 truncate">{child.processName}</span>
-                        <Badge variant="secondary" className="text-[10px] shrink-0 h-5 px-1.5">
+                        <Badge variant="secondary" className="text-[0.625rem] shrink-0 h-5 px-1.5">
                           {childCount}
                         </Badge>
                       </button>
@@ -390,7 +390,7 @@ export default function SearchInstances() {
                 <FolderTree className="h-4 w-4 text-primary" />
                 Procesos
                 {selectedProcessIds.size > 0 && (
-                  <Badge variant="default" className="text-[10px] h-5 px-1.5">
+                  <Badge variant="default" className="text-[0.625rem] h-5 px-1.5">
                     {selectedProcessIds.size}
                   </Badge>
                 )}

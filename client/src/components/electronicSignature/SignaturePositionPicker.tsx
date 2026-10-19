@@ -248,7 +248,7 @@ export function SignaturePositionPicker({ open, documentBlob, onConfirm, onCance
                     )}
                   >
                     <img src={src} alt={`Página ${i + 1}`} className="block" />
-                    <span className="block bg-muted py-0.5 text-center text-[10px] text-muted-foreground">{i + 1}</span>
+                    <span className="block bg-muted py-0.5 text-center text-[0.625rem] text-muted-foreground">{i + 1}</span>
                   </button>
                 ))}
               </div>

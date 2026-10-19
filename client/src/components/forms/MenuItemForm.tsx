@@ -145,7 +145,7 @@ function IconPickerField({
                 )}
               >
                 <Icon className="h-5 w-5 shrink-0" />
-                <span className="truncate w-full text-center leading-tight text-[10px]">
+                <span className="truncate w-full text-center leading-tight text-[0.625rem]">
                   {name}
                 </span>
               </button>
@@ -281,7 +281,7 @@ function ParentPicker({
         >
           <span className="flex items-center gap-2 min-w-0">
             {selected && (
-              <Badge variant="outline" className="shrink-0 text-[10px] py-0 px-1.5">
+              <Badge variant="outline" className="shrink-0 text-[0.625rem] py-0 px-1.5">
                 {LEVEL_LABEL[selected.level] ?? `Nivel ${selected.level}`}
               </Badge>
             )}
@@ -321,7 +321,7 @@ function ParentPicker({
                   <span style={{ paddingLeft: `${opt.level * 14}px` }} className="flex items-center gap-2 min-w-0">
                     <Badge
                       variant={opt.level === 0 ? "default" : "outline"}
-                      className="shrink-0 text-[10px] py-0 px-1.5"
+                      className="shrink-0 text-[0.625rem] py-0 px-1.5"
                     >
                       {LEVEL_LABEL[opt.level] ?? `Nivel ${opt.level}`}
                     </Badge>
@@ -330,7 +330,7 @@ function ParentPicker({
                 </div>
                 {/* ruta completa como subtexto, solo si tiene padre */}
                 {opt.level > 0 && (
-                  <p className="pl-8 text-[11px] text-muted-foreground truncate w-full">
+                  <p className="pl-8 text-[0.6875rem] text-muted-foreground truncate w-full">
                     {opt.fullPath}
                   </p>
                 )}
@@ -618,7 +618,7 @@ export default function MenuItemForm({ menuItem, onSuccess, onCancel, onDirtyCha
               {parentId !== PARENT_NONE && (() => {
                 const sel = parentOptions.find((o) => String(o.id) === parentId);
                 return sel ? (
-                  <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                  <p className="text-[0.6875rem] text-muted-foreground flex items-center gap-1">
                     <span className="opacity-60">Ruta:</span>
                     <span className="font-medium">{sel.fullPath}</span>
                   </p>

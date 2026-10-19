@@ -749,14 +749,14 @@ function getFieldErrorMessage(field: EditableField): string | null {
                           <span className="text-sm font-medium truncate">{field.name}</span>
                           <Badge
                             variant="outline"
-                            className="text-[10px] px-1.5 py-0 h-4 shrink-0"
+                            className="text-[0.625rem] px-1.5 py-0 h-4 shrink-0"
                           >
                             {getFieldTypeLabel(field.type)}
                           </Badge>
                           {field.required && (
                             <Badge
                               variant="outline"
-                              className="text-[10px] px-1.5 py-0 h-4 shrink-0 border-destructive/40 text-destructive dark:border-destructive/60 dark:text-destructive/80"
+                              className="text-[0.625rem] px-1.5 py-0 h-4 shrink-0 border-destructive/40 text-destructive dark:border-destructive/60 dark:text-destructive/80"
                             >
                               Obligatorio
                             </Badge>

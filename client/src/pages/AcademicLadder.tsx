@@ -190,7 +190,7 @@ export default function AcademicLadderPage() {
                       {ladder.name}
                     </Badge>
                     {ladder.minYearsService && (
-                      <span className="text-[10px] text-muted-foreground mt-0.5">
+                      <span className="text-[0.625rem] text-muted-foreground mt-0.5">
                         {ladder.minYearsService} años mín.
                       </span>
                     )}

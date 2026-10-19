@@ -249,7 +249,7 @@ function DocumentsTab({ instanceId, processId, service, permissions }: { instanc
               <CheckCircle2 className="h-4 w-4 text-primary" />
               Documentos del Expediente
               {hasMultipleGroups && (
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 text-muted-foreground">
+                <Badge variant="outline" className="text-[0.625rem] px-1.5 py-0 h-4 text-muted-foreground">
                   {groupedCompletion.length} subprocesos
                 </Badge>
               )}
@@ -323,7 +323,7 @@ function DocumentsTab({ instanceId, processId, service, permissions }: { instanc
                           {group.processName}
                         </span>
                         {group.isCurrentProcess && (
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-primary/40 text-primary">
+                          <Badge variant="outline" className="text-[0.625rem] px-1.5 py-0 h-4 border-primary/40 text-primary">
                             Actual
                           </Badge>
                         )}
@@ -380,7 +380,7 @@ function DocumentsTab({ instanceId, processId, service, permissions }: { instanc
                                     {rule.docTypeName}
                                   </span>
                                   {rule.isMandatory ? (
-                                    <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-4 font-semibold ${
+                                    <Badge variant="outline" className={`text-[0.625rem] px-1.5 py-0 h-4 font-semibold ${
                                       isComplete
                                         ? "border-success/40 text-success dark:border-success/60 dark:text-success/80"
                                         : "border-destructive/40 text-destructive dark:border-destructive/60 dark:text-destructive/80"
@@ -388,12 +388,12 @@ function DocumentsTab({ instanceId, processId, service, permissions }: { instanc
                                       Obligatorio
                                     </Badge>
                                   ) : (
-                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 text-muted-foreground">
+                                    <Badge variant="outline" className="text-[0.625rem] px-1.5 py-0 h-4 text-muted-foreground">
                                       Opcional
                                     </Badge>
                                   )}
                                   {!group.isCurrentProcess && isComplete && (
-                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-blue-300 text-primary dark:border-blue-700 dark:text-primary/70">
+                                    <Badge variant="outline" className="text-[0.625rem] px-1.5 py-0 h-4 border-blue-300 text-primary dark:border-blue-700 dark:text-primary/70">
                                       Otro subproceso
                                     </Badge>
                                   )}
@@ -449,20 +449,20 @@ function DocumentsTab({ instanceId, processId, service, permissions }: { instanc
                                     <div className="flex-1 min-w-0 pt-1">
                                       <div className="flex items-center gap-1.5">
                                         <span className="text-xs font-medium truncate">{doc.title}</span>
-                                        <Badge variant="outline" className="text-[10px] px-1 py-0 h-3.5 text-muted-foreground shrink-0">
+                                        <Badge variant="outline" className="text-[0.625rem] px-1 py-0 h-3.5 text-muted-foreground shrink-0">
                                           v{doc.currentVersion}
                                         </Badge>
                                         <VisibilityBadge visibility={doc.visibility} deptName={doc.uploaderDeptName} />
                                       </div>
                                       <div className="flex items-center gap-2 flex-wrap mt-0.5">
-                                        <p className="text-[11px] text-muted-foreground">{formatDate(doc.createdAt)}</p>
+                                        <p className="text-[0.6875rem] text-muted-foreground">{formatDate(doc.createdAt)}</p>
                                         {latestExt && (
-                                          <Badge variant="secondary" className="text-[9px] px-1 py-0 h-3.5 uppercase">
+                                          <Badge variant="secondary" className="text-[0.5625rem] px-1 py-0 h-3.5 uppercase">
                                             {latestExt.replace(/^\./, "")}
                                           </Badge>
                                         )}
                                         {doc.visibility === "PRIVATE_TO_UPLOADER_DEPT" && doc.uploaderDeptName && (
-                                          <span className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0 rounded bg-amber-100/80 text-warning dark:bg-amber-900/30 dark:text-amber-400" data-testid={`text-dept-doc-${doc.documentId}`}>
+                                          <span className="inline-flex items-center gap-1 text-[0.6875rem] px-1.5 py-0 rounded bg-amber-100/80 text-warning dark:bg-amber-900/30 dark:text-amber-400" data-testid={`text-dept-doc-${doc.documentId}`}>
                                             <Building2 className="h-2.5 w-2.5" />
                                             Solo {doc.uploaderDeptName}
                                           </span>
@@ -750,7 +750,7 @@ function MandatoryBlockingAlert({ instance, service }: { instance: WorkflowInsta
               <AlertCircle className="h-3.5 w-3.5 text-destructive dark:text-destructive/80 shrink-0" />
               <span className="text-destructive dark:text-red-300 font-medium">{rule.docTypeName}</span>
               {group && !group.isCurrentProcess && (
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-destructive/40 text-destructive dark:border-destructive/60 dark:text-destructive/80">
+                <Badge variant="outline" className="text-[0.625rem] px-1.5 py-0 h-4 border-destructive/40 text-destructive dark:border-destructive/60 dark:text-destructive/80">
                   {group.processName}
                 </Badge>
               )}

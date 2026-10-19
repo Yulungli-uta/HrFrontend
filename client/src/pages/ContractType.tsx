@@ -618,16 +618,16 @@ export default function ContractTypesPage() {
                 {(contractType.requiresAdUserCreation || contractType.requiresAdUserDisable || contractType.requiresAdGroupAssignment || contractType.isDocenteOcasional) && (
                   <div className="flex flex-wrap gap-1">
                     {contractType.requiresAdUserCreation && (
-                      <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200">Crea AD</Badge>
+                      <Badge variant="outline" className="text-[0.625rem] bg-blue-50 text-blue-700 border-blue-200">Crea AD</Badge>
                     )}
                     {contractType.requiresAdUserDisable && (
-                      <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200">Deshabilita AD</Badge>
+                      <Badge variant="outline" className="text-[0.625rem] bg-amber-50 text-amber-700 border-amber-200">Deshabilita AD</Badge>
                     )}
                     {contractType.requiresAdGroupAssignment && (
-                      <Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-200">Grupos AD</Badge>
+                      <Badge variant="outline" className="text-[0.625rem] bg-green-50 text-green-700 border-green-200">Grupos AD</Badge>
                     )}
                     {contractType.isDocenteOcasional && (
-                      <Badge variant="outline" className="text-[10px] bg-purple-50 text-purple-700 border-purple-200">Docente Ocasional (SIIES)</Badge>
+                      <Badge variant="outline" className="text-[0.625rem] bg-purple-50 text-purple-700 border-purple-200">Docente Ocasional (SIIES)</Badge>
                     )}
                   </div>
                 )}

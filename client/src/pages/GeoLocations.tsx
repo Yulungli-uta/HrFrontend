@@ -469,7 +469,7 @@ function StatPill({ icon: Icon, label, value }: { icon: any; label: string; valu
       <Icon className="h-4 w-4 text-primary" />
       <div className="leading-none">
         <div className="text-sm font-bold text-foreground">{value}</div>
-        <div className="text-[11px] text-muted-foreground">{label}</div>
+        <div className="text-[0.6875rem] text-muted-foreground">{label}</div>
       </div>
     </div>
   );
@@ -502,7 +502,7 @@ function GeoColumn({
         <div className="flex items-center gap-2 min-w-0">
           <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
           <span className="font-semibold text-sm truncate">{title}</span>
-          <Badge variant="secondary" className="text-[10px] px-1.5 shrink-0">{count}</Badge>
+          <Badge variant="secondary" className="text-[0.625rem] px-1.5 shrink-0">{count}</Badge>
         </div>
         <Button
           size="icon"
@@ -562,7 +562,7 @@ function GeoRow({
     >
       <div className="min-w-0">
         <div className="text-sm font-medium truncate">{label}</div>
-        {sublabel && <div className="text-[11px] text-muted-foreground">{sublabel}</div>}
+        {sublabel && <div className="text-[0.6875rem] text-muted-foreground">{sublabel}</div>}
       </div>
       <div className="flex items-center gap-0.5 shrink-0">
         <button

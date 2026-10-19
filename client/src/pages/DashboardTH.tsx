@@ -879,7 +879,7 @@ export default function DashboardTH() {
                           </UITooltipTrigger>
                           <UITooltipContent side="top" className="max-w-[280px]">
                             <p className="font-semibold text-xs text-foreground">{d.name}</p>
-                            <p className="text-[11px] text-muted-foreground mt-0.5">{d.empleados} {d.empleados === 1 ? "empleado" : "empleados"}</p>
+                            <p className="text-[0.6875rem] text-muted-foreground mt-0.5">{d.empleados} {d.empleados === 1 ? "empleado" : "empleados"}</p>
                           </UITooltipContent>
                         </UITooltip>
                       ))}
