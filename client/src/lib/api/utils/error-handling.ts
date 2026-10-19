@@ -49,6 +49,20 @@ export function handleApiError(
 }
 
 /**
+ * Mensaje EXACTO que devolvió el servidor para un ApiError de `core/fetch.ts` ({ code, message }), sin agregar los
+ * detalles. Devuelve null si el error no tiene ese formato. Necesario porque `parseApiError` de
+ * `@/lib/error-handling.tsx` solo reconoce `{ status }` y reemplaza el mensaje real por uno genérico de "error
+ * interno" (p. ej. el rechazo "Solo puedes registrar tu picada dentro del campus" nunca llegaba al usuario).
+ */
+export function getServerErrorMessage(error: unknown): string | null {
+  const e = error as Record<string, unknown> | null;
+  if (e && typeof e.code === 'number' && typeof e.message === 'string' && e.message.trim()) {
+    return e.message;
+  }
+  return null;
+}
+
+/**
  * Extrae un mensaje de error desde cualquier origen:
  * - ApiError del cliente refactorizado ({ code, message, details })
  * - Error nativo de JavaScript

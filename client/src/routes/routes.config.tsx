@@ -135,6 +135,7 @@ const HrResignationRetirementRequestsPage = lazy(() => import("@/pages/HrResigna
 const EmployeeSelfServicePage = lazy(() => import("@/pages/EmployeeSelfServicePage"));
 const HomeEntry = lazy(() => import("@/pages/HomeEntry"));
 const PreferencesPage = lazy(() => import("@/pages/Preferences"));
+const PunchControlPage = lazy(() => import("@/pages/PunchControl"));
 const MyCertificatesPage = lazy(() => import("@/pages/MyCertificatesPage"));
 const MyInternalRequestsPage = lazy(() => import("@/pages/MyInternalRequestsPage"));
 const MyDocumentsPage = lazy(() => import("@/pages/MyDocumentsPage"));
@@ -253,6 +254,14 @@ export const routes: RouteConfig[] = [
   {
     path: "/preferencias",
     component: PreferencesPage
+  },
+  // Control de picadas por red: requiredRoles evita que quien tiene "/attendance" (Picadas) herede el acceso
+  // por prefijo de ruta; el backend exige PUNCH_POLICY.* en modo estricto de todas formas.
+  {
+    path: "/attendance/punch-control",
+    component: PunchControlPage,
+    requiredPath: "/attendance/punch-control",
+    requiredRoles: ["Administrador", "Supervisor", "Desarrollador", "R_DITIC", "R_RH", "R_RH_ESPECIALISTA", "R_RH_ANALISTA"]
   },
   {
     path: "/profile/change-password",

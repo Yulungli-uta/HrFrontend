@@ -33,6 +33,11 @@ export const ACTION_PERMISSIONS = {
   ATTENDANCE_UPDATE: "ATTENDANCE.UPDATE",
   ATTENDANCE_DELETE: "ATTENDANCE.DELETE",
 
+  // ── Control de picadas por red (redes del campus y picada externa) ──────
+  PUNCH_POLICY_READ: "PUNCH_POLICY.READ",
+  PUNCH_POLICY_MANAGE: "PUNCH_POLICY.MANAGE",
+  PUNCH_NETWORK_MANAGE: "PUNCH_NETWORK.MANAGE",
+
   // ── Auditoría ───────────────────────────────────────────────────────────
   AUDIT_READ: "AUDIT.READ",
   AUDIT_CREATE: "AUDIT.CREATE",

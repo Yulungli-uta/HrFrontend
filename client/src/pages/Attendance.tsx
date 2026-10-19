@@ -16,6 +16,7 @@ import { MarcacionesAPI, MarcacionesEspecializadasAPI, handleApiError, TimeAPI }
 import { useAuth } from "@/features/auth";
 import { PunchTable } from "@/components/forms/PunchTable";
 import { parseApiError } from "@/lib/error-handling";
+import { getServerErrorMessage } from "@/lib/api/utils/error-handling";
 import { logger } from "@/lib/logger";
 
 // =========================
@@ -452,7 +453,10 @@ export default function AttendancePage() {
       }
 
       const apiErr = parseApiError(error);
-      let errorMessage = apiErr.message;
+      // El mensaje del servidor (p. ej. "solo puedes picar dentro del campus") tiene prioridad sobre el genérico.
+      let errorMessage = getServerErrorMessage(error) ?? apiErr.message;
+      const errorCode = (error as { code?: number } | null)?.code;
+      const forbidden = errorCode === 403 || errorCode === 409;
 
       if (apiErr.status === 400 && apiErr.details && apiErr.details.length > 0) {
         const messages = apiErr.details.map((d) => (d.field ? `${d.field}: ${d.message}` : d.message));
@@ -460,7 +464,7 @@ export default function AttendancePage() {
       }
 
       toast({
-        title: "Error al registrar marcación",
+        title: forbidden ? "Marcación no permitida" : "Error al registrar marcación",
         description: errorMessage,
         variant: "destructive",
       });
@@ -705,9 +709,9 @@ export default function AttendancePage() {
             <Timer className="h-5 w-5" />
             Registrar Marcación
           </CardTitle>
-          <CardDescription>
+          {/* <CardDescription>
             Haga clic para registrar su {nextPunchType === "In" ? "entrada" : "salida"} con hora del servidor.
-          </CardDescription>
+          </CardDescription> */}
         </CardHeader>
 
         <CardContent>
