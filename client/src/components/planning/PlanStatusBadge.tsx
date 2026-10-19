@@ -5,6 +5,7 @@ type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline' | 'succe
 // Estados de PLAN_STATUS (plan) y EMPLOYEE_PLAN_STATUS (empleado dentro del plan), por nombre:
 // el TypeID es IDENTITY y varía entre ambientes.
 const VARIANT_BY_NAME: Record<string, BadgeVariant> = {
+  Planificado: 'outline',
   Borrador: 'secondary',
   Pendiente: 'outline',
   Aprobado: 'success',

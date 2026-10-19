@@ -256,7 +256,7 @@ export default function OvertimePage() {
                   </div>
                 </SelectItem>
 
-                {planStatuses.map((s) => (
+                {planStatuses.filter((s) => s.isActive !== false).map((s) => (
                   <SelectItem key={s.typeId} value={String(s.typeId)}>
                     {s.name}
                   </SelectItem>

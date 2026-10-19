@@ -190,7 +190,7 @@ export default function OvertimePlanning() {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value={ALL}>Todos</SelectItem>
-                  {planStatuses.map((s) => (
+                  {planStatuses.filter((s) => s.isActive !== false).map((s) => (
                     <SelectItem key={typeIdOf(s)} value={String(typeIdOf(s))}>{s.name}</SelectItem>
                   ))}
                 </SelectContent>

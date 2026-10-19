@@ -268,12 +268,16 @@ export default function CreatePlanningDialog({
     [durationMinutes]
   );
 
-  const borradorTypeId = useMemo(() => {
-    const item = planStatuses.find((s) => s.name?.toLowerCase() === "borrador");
+  // Estado inicial del plan: "Planificado" (antes "Borrador"; se aceptan ambos nombres durante la transición).
+  const plannedTypeId = useMemo(() => {
+    const names = ["planificado", "borrador"];
+    const item = names
+      .map((n) => planStatuses.find((s) => s.name?.toLowerCase() === n))
+      .find(Boolean);
     return item?.typeId ?? null;
   }, [planStatuses]);
 
-  const isPlanStatusesReady = borradorTypeId !== null;
+  const isPlanStatusesReady = plannedTypeId !== null;
 
   const { data: employeePlanStatusesRaw } = useRefTypesByCategory(REF_TYPE_CATEGORIES.EMPLOYEE_PLAN_STATUS, { enabled: open });
   const employeePlanStatuses = employeePlanStatusesRaw as unknown as RefStatus[];
@@ -598,7 +602,7 @@ export default function CreatePlanningDialog({
         endDate,
         startTime: ensureTime(startTime),
         endTime: ensureTime(endTime),
-        planStatusTypeID: borradorTypeId!,
+        planStatusTypeID: plannedTypeId!,
         createdBy: bossId,
         requiresApproval,
         employees: selectedEmployees.map((emp) => ({
@@ -659,8 +663,9 @@ export default function CreatePlanningDialog({
           <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
             <DialogTitle>Nueva planificación</DialogTitle>
             <DialogDescription>
-              Se crea en estado <strong>Borrador</strong> junto con los empleados
-              asignados.
+              Se crea en estado <strong>Planificado</strong> junto con los empleados
+              asignados. Un empleado no puede estar en dos planificaciones (horas
+              extra o recuperación) al mismo día y hora.
             </DialogDescription>
           </DialogHeader>
 
