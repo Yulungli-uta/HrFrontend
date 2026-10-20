@@ -193,6 +193,10 @@ export default function UserRolesPage() {
         sortDirection: "desc",
       }),
     refetchOnWindowFocus: true,
+    // Mantiene la lista anterior mientras llega la búsqueda nueva: sin esto, cada cambio de
+    // queryKey ponía isLoading en true, la página se reemplazaba por el skeleton y el input
+    // de búsqueda se desmontaba (se perdía el foco al pausar de escribir).
+    placeholderData: (prev) => prev,
   });
 
   const {
