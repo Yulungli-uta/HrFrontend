@@ -1,5 +1,5 @@
 // client/src/components/person-detail/SenescytSyncDialog.tsx
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
@@ -55,9 +55,10 @@ export function SenescytSyncDialog({ open, onOpenChange, personId }: SenescytSyn
     }
   };
 
-  const handleOpenChange = (v: boolean) => {
-    onOpenChange(v);
-    if (v) {
+  // Radix no dispara onOpenChange cuando el padre cambia `open`, así que la consulta se
+  // lanza al detectar la apertura (no desde el manejador de Radix).
+  useEffect(() => {
+    if (open) {
       setPreview(null);
       setResultMessage(null);
       setErrorMessage(null);
@@ -65,6 +66,12 @@ export function SenescytSyncDialog({ open, onOpenChange, personId }: SenescytSyn
     } else {
       setStep("idle");
     }
+    // loadPreview solo depende de personId; se re-ejecuta al abrir o al cambiar de persona.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, personId]);
+
+  const handleOpenChange = (v: boolean) => {
+    onOpenChange(v);
   };
 
   const handleConfirm = async () => {
@@ -94,7 +101,7 @@ export function SenescytSyncDialog({ open, onOpenChange, personId }: SenescytSyn
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="max-h-[90vh] grid-rows-[auto_minmax(0,1fr)_auto] sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Sincronizar con SENESCYT</DialogTitle>
           <DialogDescription>
@@ -103,6 +110,7 @@ export function SenescytSyncDialog({ open, onOpenChange, personId }: SenescytSyn
           </DialogDescription>
         </DialogHeader>
 
+        <div className="min-w-0 overflow-y-auto pr-1">
         {step === "loading" && (
           <div className="flex flex-col items-center gap-3 py-8 text-muted-foreground">
             <Loader2 className="h-6 w-6 animate-spin" />
@@ -113,7 +121,7 @@ export function SenescytSyncDialog({ open, onOpenChange, personId }: SenescytSyn
         {step === "error" && (
           <div className="flex flex-col items-center gap-3 py-6 text-center">
             <AlertTriangle className="h-8 w-8 text-destructive" />
-            <p className="text-sm text-muted-foreground">{errorMessage}</p>
+            <p className="text-sm text-muted-foreground break-words">{errorMessage}</p>
           </div>
         )}
 
@@ -135,13 +143,13 @@ export function SenescytSyncDialog({ open, onOpenChange, personId }: SenescytSyn
             </div>
 
             {preview.items.length > 0 && (
-              <div className="max-h-64 overflow-y-auto space-y-2 rounded-lg border p-2">
+              <div className="space-y-2 rounded-lg border p-2">
                 {preview.items.map((item, i) => (
                   <div key={i} className="flex items-start justify-between gap-2 rounded-md border p-2 text-sm">
                     <div className="min-w-0">
-                      <p className="font-medium truncate">{item.nombreTitulo}</p>
+                      <p className="font-medium break-words">{item.nombreTitulo}</p>
                       {item.institucion && (
-                        <p className="text-xs text-muted-foreground truncate">{item.institucion}</p>
+                        <p className="text-xs text-muted-foreground break-words">{item.institucion}</p>
                       )}
                       {item.requiereRevision && (
                         <p className="text-xs text-amber-600 mt-1">⚠ {item.motivoRevision}</p>
@@ -178,6 +186,8 @@ export function SenescytSyncDialog({ open, onOpenChange, personId }: SenescytSyn
             <p className="text-sm">{resultMessage}</p>
           </div>
         )}
+
+        </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => handleOpenChange(false)}>
