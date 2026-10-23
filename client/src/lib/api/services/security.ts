@@ -356,6 +356,32 @@ export const UserRolesAPI = {
   list: (page: number = 1, pageSize: number = 20): Promise<ApiResponse<PagedResult<UserRole>>> =>
     apiFetch<PagedResult<UserRole>>(`/api/user-roles${serializeQuery({ page, pageSize })}`, { method: 'GET' }),
 
+  /**
+   * Trae TODAS las asignaciones recorriendo las páginas. El backend limita pageSize a 200,
+   * así que pedir 10000 devolvía solo las primeras 200 y el resto de usuarios aparecía sin rol.
+   */
+  listAll: async (): Promise<ApiResponse<PagedResult<UserRole>>> => {
+    const pageSize = 200;
+    const first = await UserRolesAPI.list(1, pageSize);
+    if (first.status !== 'success' || !first.data) return first;
+
+    const items = [...first.data.items];
+    let page = 1;
+    let hasNext = first.data.hasNextPage;
+    while (hasNext) {
+      page += 1;
+      const next = await UserRolesAPI.list(page, pageSize);
+      if (next.status !== 'success' || !next.data) return next;
+      items.push(...next.data.items);
+      hasNext = next.data.hasNextPage;
+    }
+
+    return {
+      ...first,
+      data: { ...first.data, items, page: 1, pageSize: items.length, totalPages: 1, hasNextPage: false },
+    };
+  },
+
   // Swagger: POST /api/user-roles
   assign: (data: CreateUserRoleDto): Promise<ApiResponse<UserRole>> =>
     apiFetch<UserRole>('/api/user-roles', {

@@ -215,7 +215,7 @@ export default function UserRolesPage() {
     refetch: refetchUserRoles,
   } = useQuery<ApiResponse<PagedResult<UserRole>>>({
     queryKey: ["user-roles"],
-    queryFn: () => UserRolesAPI.list(1, 10000),
+    queryFn: () => UserRolesAPI.listAll(),
   });
 
   const deleteMutation = useMutation({
