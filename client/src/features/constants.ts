@@ -125,3 +125,8 @@ export const CATASTROPHIC_ILLNESS_CERTIFICATE_ENTITY_TYPE = "CATASTROPHIC_ILLNES
 
 export const PERSON_PHOTO_DIRECTORY_CODE = HOJA_DE_VIDA_DIRECTORY_CODE;
 export const PERSON_PHOTO_ENTITY_TYPE = "PERSON";
+
+// Proyectos de investigación: directorio PROPIO (no es parte del expediente de una persona), RelativePath
+// vacío; el vínculo archivo-proyecto lo da HR.TBL_StoredFile (EntityType + EntityId).
+export const RESEARCH_PROJECT_DIRECTORY_CODE = "HR_RESEARCH_PROJECTS";
+export const RESEARCH_PROJECT_ENTITY_TYPE = "RESEARCH_PROJECT";

@@ -53,6 +53,7 @@ import {
   Award,
   MapPin,
   Landmark,
+  FlaskConical,
 } from "lucide-react";
 
 type FormType =
@@ -120,6 +121,21 @@ function buildNameMap(items: any[], idKeys: string[], nameKeys: string[]) {
   });
   return map;
 }
+
+const PERSON_TABS: readonly PersonTab[] = [
+  { value: "personal", icon: User, label: "Personal" },
+  { value: "education", icon: Award, label: "Formación" },
+  { value: "publications", icon: FileText, label: "Publicaciones" },
+  { value: "family", icon: Users, label: "Familia" },
+  { value: "experience", icon: Briefcase, label: "Experiencia" },
+  { value: "trainings", icon: GraduationCap, label: "Capacitaciones" },
+  { value: "languages", icon: LanguagesIcon, label: "Idiomas" },
+  { value: "books", icon: BookOpen, label: "Libros" },
+  { value: "emergency", icon: Phone, label: "Contactos" },
+  { value: "addresses", icon: MapPin, label: "Direcciones" },
+  { value: "bankAccounts", icon: Landmark, label: "Cuentas" },
+  { value: "research", icon: FlaskConical, label: "Investigación" },
+];
 
 export default function PersonDetail() {
   const { id } = useParams();

@@ -136,6 +136,7 @@ const HrResignationRetirementRequestsPage = lazy(() => import("@/pages/HrResigna
 const EmployeeSelfServicePage = lazy(() => import("@/pages/EmployeeSelfServicePage"));
 const HomeEntry = lazy(() => import("@/pages/HomeEntry"));
 const PreferencesPage = lazy(() => import("@/pages/Preferences"));
+const ResearchProjectsPage = lazy(() => import("@/pages/ResearchProjects"));
 const PunchControlPage = lazy(() => import("@/pages/PunchControl"));
 const MyCertificatesPage = lazy(() => import("@/pages/MyCertificatesPage"));
 const MyInternalRequestsPage = lazy(() => import("@/pages/MyInternalRequestsPage"));
@@ -453,6 +454,13 @@ export const routes: RouteConfig[] = [
     path: "/overtime-planning",
     component: OvertimePlanningPage,
     requiredPath: "/overtime-planning"
+  },
+  // Proyectos de investigación: menú propio (R_PROYECTOS y Administrador); el backend exige RESEARCH_PROJECTS.* en modo estricto.
+  {
+    path: "/research-projects",
+    component: ResearchProjectsPage,
+    requiredPath: "/research-projects",
+    requiredRoles: ["Administrador", "R_PROYECTOS"]
   },
   {
     path: "/justifications",

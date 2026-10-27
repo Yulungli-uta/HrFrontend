@@ -27,6 +27,8 @@ export const REF_TYPE_CATEGORIES = {
   KNOWLEDGE_AREA: "KNOWLEDGE_AREA",
   ACADEMIC_CATEGORY: "ACADEMIC_CATEGORY",
   ACADEMIC_DEDICATION: "ACADEMIC_DEDICATION",
+  /** Rol en un proyecto de investigación (Name = código estable, Description = texto) - módulo Proyectos de Investigación 2026-10-20. */
+  RESEARCH_PROJECT_ROLE: "RESEARCH_PROJECT_ROLE",
   ACADEMIC_LEVEL: "ACADEMIC_LEVEL",
   /** Grado dentro de Cuarto Nivel (Doctor/Maestría/Especialista/Diplomado) - integración DINARDAP 2026-09-16. */
   SIIES_GRADO: "SIIES_GRADO",
