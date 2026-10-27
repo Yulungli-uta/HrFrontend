@@ -44,8 +44,14 @@ export function DepartmentSelect({
     staleTime: 60_000,
   });
 
-  const allDepts: VwDepartmentWithType[] =
-    data?.status === 'success' ? (data.data ?? []) : [];
+  // Orden alfabético (la API los entrega sin ordenar); memoizado para no reordenar en cada render.
+  const allDepts = useMemo<VwDepartmentWithType[]>(
+    () =>
+      data?.status === 'success'
+        ? [...(data.data ?? [])].sort((a, b) => a.departmentName.localeCompare(b.departmentName, 'es'))
+        : [],
+    [data],
+  );
 
   const filtered = useMemo(() => {
     const term = search.toLowerCase().trim();
@@ -91,6 +97,7 @@ export function DepartmentSelect({
           variant="outline"
           role="combobox"
           disabled={disabled}
+          title={displayLabel ?? undefined}
           className={cn('w-full justify-between font-normal', className)}
         >
           <span className={cn('truncate text-left flex-1', !displayLabel && 'text-muted-foreground')}>
@@ -100,7 +107,13 @@ export function DepartmentSelect({
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start" side="bottom">
+      {/* Mínimo el ancho del botón; crece hasta 32rem (90 % de la pantalla en móvil) para que los nombres largos
+          se lean completos en lugar de cortarse. */}
+      <PopoverContent
+        className="w-max min-w-[--radix-popover-trigger-width] max-w-[min(32rem,90vw)] p-0"
+        align="start"
+        side="bottom"
+      >
         <Command shouldFilter={false}>
           <CommandInput
             placeholder="Buscar departamento…"
@@ -134,6 +147,7 @@ export function DepartmentSelect({
                     key={d.departmentID}
                     value={String(d.departmentID)}
                     onSelect={() => handleSelect(d)}
+                    title={d.departmentName}
                     className="cursor-pointer"
                   >
                     <Check
@@ -143,14 +157,14 @@ export function DepartmentSelect({
                       )}
                     />
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-3 w-3 shrink-0 text-muted-foreground" />
-                        <p className="font-medium truncate">{d.departmentName}</p>
+                      <div className="flex items-start gap-2">
+                        <Building2 className="mt-1 h-3 w-3 shrink-0 text-muted-foreground" />
+                        <p className="font-medium break-words">{d.departmentName}</p>
                         {d.code && (
                           <span className="text-xs text-muted-foreground shrink-0">({d.code})</span>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground truncate">
+                      <p className="text-xs text-muted-foreground break-words">
                         {d.departmentTypeName ?? 'Sin tipo'}
                         {' · '}
                         {d.departmentScopeName ?? 'Sin ámbito'}
