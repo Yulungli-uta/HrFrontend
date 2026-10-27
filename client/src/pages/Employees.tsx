@@ -417,6 +417,7 @@ const employeeStats = useMemo(() => {
 
             <EmployeeForm
               key={editSeed ? `edit-${editSeed.employeeID}` : "create"}
+              embedded
               viewSeed={editSeed ? { ...editSeed, sex: editSeed.sex != null ? String(editSeed.sex) : undefined } : undefined}
               onDirtyChange={setIsFormDirty}
               onSuccess={() => {

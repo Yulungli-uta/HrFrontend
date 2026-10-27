@@ -64,6 +64,7 @@ import { useRefTypes } from "@/hooks/useRefTypes";
 import { cn } from "@/lib/utils";
 import { DepartmentSelect } from "@/components/departments/DepartmentSelect";
 import { logger } from "@/lib/logger";
+import { todayEcuador } from "@/lib/clock";
 
 type EmployeeViewSeed = {
   employeeID: number;
@@ -109,6 +110,8 @@ interface EmployeeFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
   onDirtyChange?: (isDirty: boolean) => void;
+  /** Dentro de un diálogo: sin cabecera ni marco propio, porque el diálogo ya trae su título. */
+  embedded?: boolean;
 }
 
 type EmployeeFormData = {
@@ -220,6 +223,7 @@ export default function EmployeeForm({
   onSuccess,
   onCancel,
   onDirtyChange,
+  embedded = false,
 }: EmployeeFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -319,6 +323,9 @@ export default function EmployeeForm({
   const [employeeIdForUpdate, setEmployeeIdForUpdate] = useState<number | null>(
     employee?.id ?? null
   );
+  // Al editar, el tipo lo mantiene el sistema a partir del régimen laboral principal
+  // (HR.tbl_EmployeeLaborRegime); solo se elige a mano al crear un empleado nuevo.
+  const isEditing = !!(employeeIdForUpdate || isEditingFromEmployee);
 
   const form = useForm<EmployeeFormData>({
     defaultValues: {
@@ -682,7 +689,7 @@ export default function EmployeeForm({
       return;
     }
 
-    if (!data.contractTypeId || data.contractTypeId <= 0) {
+    if (!isEditing && (!data.contractTypeId || data.contractTypeId <= 0)) {
       toast({
         title: "Seleccione el tipo de contrato",
         variant: "destructive",
@@ -717,26 +724,43 @@ export default function EmployeeForm({
 
   const currentPersonId = form.watch("personId");
   const currentBossId = form.watch("immediateBossId");
+  const currentContractTypeId = form.watch("contractTypeId");
+  const currentSeniorityDate = form.watch("seniorityDate");
+  // Régimen Código de Trabajo se resuelve por nombre: los TypeId varían entre ambientes
+  const isCodigoTrabajo = useMemo(() => {
+    const selected = contractOptions.find((t) => t.typeId === currentContractTypeId);
+    const name = (selected?.name ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+    return name.includes("codigo") && name.includes("trabajo");
+  }, [contractOptions, currentContractTypeId]);
+  // La antigüedad solo aplica a Código de Trabajo; se mantiene visible si ya tiene un valor cargado
+  const showSeniorityDate = isCodigoTrabajo || !!currentSeniorityDate;
 
   return (
-    <Card className="w-full max-w-full sm:max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <UserCog className="h-5 w-5" />
-          <span>
+    <Card
+      className={cn(
+        "w-full max-w-full mx-auto",
+        embedded ? "border-0 shadow-none bg-transparent" : "sm:max-w-2xl"
+      )}
+    >
+      {!embedded && (
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <UserCog className="h-5 w-5" />
+            <span>
+              {employeeIdForUpdate || isEditingFromEmployee
+                ? "Editar Empleado"
+                : "Agregar Nuevo Empleado"}
+            </span>
+          </CardTitle>
+          <CardDescription>
             {employeeIdForUpdate || isEditingFromEmployee
-              ? "Editar Empleado"
-              : "Agregar Nuevo Empleado"}
-          </span>
-        </CardTitle>
-        <CardDescription>
-          {employeeIdForUpdate || isEditingFromEmployee
-            ? "Modifique la información del empleado"
-            : "Complete los datos del nuevo empleado"}
-        </CardDescription>
-      </CardHeader>
+              ? "Modifique la información del empleado"
+              : "Complete los datos del nuevo empleado"}
+          </CardDescription>
+        </CardHeader>
+      )}
 
-      <CardContent>
+      <CardContent className={embedded ? "p-0" : undefined}>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -838,12 +862,11 @@ export default function EmployeeForm({
                   </FormItem>
                 )}
               />
-
               <FormField
                 control={form.control}
                 name="email"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="flex flex-col">
                     <FormLabel>Email *</FormLabel>
                     <FormControl>
                       <div className="relative">
@@ -862,15 +885,16 @@ export default function EmployeeForm({
                   </FormItem>
                 )}
               />
-
               <FormField
                 control={form.control}
                 name="contractTypeId"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tipo de contrato *</FormLabel>
+                  <FormItem className="flex flex-col">
+                    <FormLabel>
+                      {isEditing ? "Régimen" : "Régimen *"}
+                    </FormLabel>
                     <Select
-                      disabled={disabling}
+                      disabled={disabling || isEditing}
                       onValueChange={(value) =>
                         field.onChange(
                           value === "empty" ? undefined : parseInt(value, 10)
@@ -884,7 +908,7 @@ export default function EmployeeForm({
                             placeholder={
                               loadingRefTypes
                                 ? "Cargando tipos..."
-                                : "Seleccione tipo de contrato"
+                                : "Seleccione Régimen"
                             }
                           />
                         </SelectTrigger>
@@ -905,7 +929,6 @@ export default function EmployeeForm({
                   </FormItem>
                 )}
               />
-
               <FormField
                 control={form.control}
                 name="departmentId"
@@ -924,7 +947,6 @@ export default function EmployeeForm({
                   </FormItem>
                 )}
               />
-
               <FormField
                 control={form.control}
                 name="jobId"
@@ -1038,99 +1060,6 @@ export default function EmployeeForm({
                   );
                 }}
               />
-
-              {/* SIIES: Tipo/Categoría Docente LOSEP(LOES) — solo aplica cuando el cargo del
-                  empleado corresponde a Docente LOES; en el resto de casos debe quedar sin
-                  seleccionar (el reporte SIIES exporta "NO APLICA" automáticamente). */}
-              <FormField
-                control={form.control}
-                name="tipoDocenteLoesTypeId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tipo Docente LOSEP(LOES) — SIIES</FormLabel>
-                    <Select
-                      value={field.value ? String(field.value) : ""}
-                      onValueChange={(v) => field.onChange(v ? Number(v) : null)}
-                      disabled={disabling}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="No aplica" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {tipoDocenteLoesOptions.map((t) => (
-                          <SelectItem key={t.typeId} value={String(t.typeId)}>
-                            {t.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="categoriaDocenteLoesTypeId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Categoría Docente LOSEP(LOES) — SIIES</FormLabel>
-                    <Select
-                      value={field.value ? String(field.value) : ""}
-                      onValueChange={(v) => field.onChange(v ? Number(v) : null)}
-                      disabled={disabling}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="No aplica" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {categoriaDocenteLoesOptions.map((t) => (
-                          <SelectItem key={t.typeId} value={String(t.typeId)}>
-                            {t.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Partida presupuestaria (ref_Types BUDGET_UNIT) — de dónde sale el sueldo
-                  del empleado; distinta del Departamento (unidad organizacional). */}
-              <FormField
-                control={form.control}
-                name="budgetUnitTypeId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Partida Presupuestaria</FormLabel>
-                    <Select
-                      value={field.value ? String(field.value) : ""}
-                      onValueChange={(v) => field.onChange(v ? Number(v) : null)}
-                      disabled={disabling}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sin especificar" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {budgetUnitOptions.map((t) => (
-                          <SelectItem key={t.typeId} value={String(t.typeId)}>
-                            {t.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
               <FormField
                 control={form.control}
                 name="immediateBossId"
@@ -1254,18 +1183,17 @@ export default function EmployeeForm({
                   </FormItem>
                 )}
               />
-
               <FormField
                 control={form.control}
                 name="hireDate"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="flex flex-col">
                     <FormLabel>Fecha de Contratación *</FormLabel>
                     <FormControl>
                       <Input
                         type="date"
                         data-testid="input-hireDate"
-                        max={new Date().toISOString().slice(0, 10)}
+                        max={todayEcuador()}
                         disabled={disabling}
                         {...field}
                         value={field.value ?? ""}
@@ -1276,28 +1204,114 @@ export default function EmployeeForm({
                   </FormItem>
                 )}
               />
-
+              {showSeniorityDate && (
+                <FormField
+                  control={form.control}
+                  name="seniorityDate"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Fecha de Antigüedad</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="date"
+                          data-testid="input-seniorityDate"
+                          max={todayEcuador()}
+                          disabled={disabling}
+                          {...field}
+                          value={field.value ?? ""}
+                          onChange={(e) => field.onChange(e.target.value || null)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+              {/* SIIES: Tipo/Categoría Docente LOSEP(LOES) — solo aplica cuando el cargo del
+                  empleado corresponde a Docente LOES; en el resto de casos debe quedar sin
+                  seleccionar (el reporte SIIES exporta "NO APLICA" automáticamente). */}
               <FormField
                 control={form.control}
-                name="seniorityDate"
+                name="tipoDocenteLoesTypeId"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Fecha de Antigüedad</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="date"
-                        data-testid="input-seniorityDate"
-                        max={new Date().toISOString().slice(0, 10)}
-                        disabled={disabling}
-                        {...field}
-                        value={field.value ?? ""}
-                        onChange={(e) => field.onChange(e.target.value || null)}
-                      />
-                    </FormControl>
-                    <p className="text-xs text-muted-foreground">
-                      Opcional. Solo si difiere de la fecha de contratación (ej. fecha de contrato
-                      indefinido). Si se deja vacío, se usa la fecha de contratación.
-                    </p>
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Tipo Docente LOSEP(LOES) — SIIES</FormLabel>
+                    <Select
+                      value={field.value ? String(field.value) : ""}
+                      onValueChange={(v) => field.onChange(v ? Number(v) : null)}
+                      disabled={disabling}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="No aplica" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {tipoDocenteLoesOptions.map((t) => (
+                          <SelectItem key={t.typeId} value={String(t.typeId)}>
+                            {t.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="categoriaDocenteLoesTypeId"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Categoría Docente LOSEP(LOES) — SIIES</FormLabel>
+                    <Select
+                      value={field.value ? String(field.value) : ""}
+                      onValueChange={(v) => field.onChange(v ? Number(v) : null)}
+                      disabled={disabling}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="No aplica" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {categoriaDocenteLoesOptions.map((t) => (
+                          <SelectItem key={t.typeId} value={String(t.typeId)}>
+                            {t.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              {/* Partida presupuestaria (ref_Types BUDGET_UNIT) — de dónde sale el sueldo
+                  del empleado; distinta del Departamento (unidad organizacional). */}
+              <FormField
+                control={form.control}
+                name="budgetUnitTypeId"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col md:col-span-2">
+                    <FormLabel>Partida Presupuestaria</FormLabel>
+                    <Select
+                      value={field.value ? String(field.value) : ""}
+                      onValueChange={(v) => field.onChange(v ? Number(v) : null)}
+                      disabled={disabling}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sin especificar" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {budgetUnitOptions.map((t) => (
+                          <SelectItem key={t.typeId} value={String(t.typeId)}>
+                            {t.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
