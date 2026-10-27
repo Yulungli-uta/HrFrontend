@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/features/auth";
 
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { usePersonData, usePersonMutations } from "@/hooks/personDetails/usePersonData";
 import { useRefTypes } from "@/hooks/useRefTypes";
@@ -28,6 +28,8 @@ import { LanguagesTab } from "@/components/person-detail/tabs/LanguagesTab";
 import { BooksTab } from "@/components/person-detail/tabs/BooksTab";
 import { EmergencyContactsTab } from "@/components/person-detail/tabs/EmergencyContactsTab";
 import { EducationLevelsTab } from "@/components/person-detail/tabs/EducationLevelsTab";
+import { ResearchProjectsTab } from "@/components/person-detail/tabs/ResearchProjectsTab";
+import { PersonTabsNav, type PersonTab } from "@/components/person-detail/PersonTabsNav";
 import { AddressesTab } from "@/components/person-detail/tabs/AddressesTab";
 import { BankAccountsTab } from "@/components/person-detail/tabs/BankAccountsTab";
 
@@ -515,34 +517,25 @@ export default function PersonDetail() {
 
         <StatsDashboard data={safeData} />
 
-        {/* ── Tabs — todos visibles, scroll horizontal en mobile ── */}
+        {/* ── Tabs — todas visibles en varias filas (escritorio); en móvil, una fila con flechas ── */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
-          <div className="overflow-x-auto pb-0.5">
-            <TabsList className="inline-flex h-auto p-1 bg-muted rounded-lg gap-0.5 min-w-max w-full sm:w-auto">
-              {([
-                { value: "personal",     icon: User,          label: "Personal"       },
-                { value: "education",    icon: Award,         label: "Formación"      },
-                { value: "publications", icon: FileText,      label: "Publicaciones"  },
-                { value: "family",       icon: Users,         label: "Familia"        },
-                { value: "experience",   icon: Briefcase,     label: "Experiencia"    },
-                { value: "trainings",    icon: GraduationCap, label: "Capacitaciones" },
-                { value: "languages",    icon: LanguagesIcon, label: "Idiomas"        },
-                { value: "books",        icon: BookOpen,      label: "Libros"         },
-                { value: "emergency",    icon: Phone,         label: "Contactos"      },
-                { value: "addresses",    icon: MapPin,        label: "Direcciones"    },
-                { value: "bankAccounts", icon: Landmark,      label: "Cuentas"        },
-              ] as const).map(({ value, icon: Icon, label }) => (
-                <TabsTrigger
-                  key={value}
-                  value={value}
-                  className="shrink-0 text-xs sm:text-sm px-2 sm:px-3 py-2 data-[state=active]:bg-card flex items-center gap-1"
-                >
-                  <Icon className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
-                  <span className="hidden xs:inline sm:inline">{label}</span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </div>
+          <PersonTabsNav
+            personId={person!.personId}
+            active={activeTab}
+            tabs={PERSON_TABS}
+            counts={{
+              education: safeData.educationLevels.length,
+              publications: safeData.publications.length,
+              family: safeData.familyMembers.length,
+              experience: safeData.workExperiences.length,
+              trainings: safeData.trainings.length,
+              languages: safeData.languages.length,
+              books: safeData.books.length,
+              emergency: safeData.emergencyContacts.length,
+              addresses: safeData.addresses.length,
+              bankAccounts: safeData.bankAccounts.length,
+            }}
+          />
 
           <TabsContent value="personal" className="space-y-4">
             <PersonalInfoTab
@@ -718,6 +711,10 @@ export default function PersonDetail() {
               }
               refTypesMap={allRefTypesById}
             />
+          </TabsContent>
+
+          <TabsContent value="research" className="space-y-4">
+            <ResearchProjectsTab personId={person!.personId} />
           </TabsContent>
         </Tabs>
 
