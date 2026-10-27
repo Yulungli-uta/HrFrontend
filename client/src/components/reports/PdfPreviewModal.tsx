@@ -1,7 +1,8 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { X, Download, ZoomIn, ZoomOut } from 'lucide-react';
+import { X, Download, ZoomIn, ZoomOut, MoveHorizontal } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { PdfScrollViewer } from '@/components/reports/PdfScrollViewer';
 import { logger } from "@/lib/logger";
 
 interface PdfPreviewModalProps {
@@ -12,57 +13,54 @@ interface PdfPreviewModalProps {
   onDownload?: () => void;
 }
 
+const MIN_ZOOM = 10;
+const MAX_ZOOM = 300;
+const ZOOM_STEP = 10;
+
 function normalizeBase64(input: string): string {
   const noPrefix = input.replace(/^data:application\/pdf;base64,/i, '');
   return noPrefix.replace(/\s+/g, '');
 }
 
-function base64ToBlob(base64: string, mime = 'application/pdf'): Blob {
-  const cleaned = normalizeBase64(base64);
-  const bytes = atob(cleaned);
+function base64ToBytes(base64: string): Uint8Array {
+  const bytes = atob(normalizeBase64(base64));
   const arr = new Uint8Array(bytes.length);
   for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
-  return new Blob([arr], { type: mime });
+  return arr;
 }
 
 export function PdfPreviewModal({ isOpen, onClose, base64Data, reportName, onDownload }: PdfPreviewModalProps) {
   const [zoom, setZoom] = useState(100);
+  const [fitRequest, setFitRequest] = useState(0);
 
   useEffect(() => {
     if (isOpen) setZoom(100);
   }, [isOpen]);
 
-  const objectUrl = useMemo(() => {
+  const bytes = useMemo(() => {
     if (!isOpen || !base64Data) return null;
     try {
-      const blob = base64ToBlob(base64Data, 'application/pdf');
-      return URL.createObjectURL(blob);
+      return base64ToBytes(base64Data);
     } catch (e) {
-      logger.error("PdfPreviewModal", '[PdfPreviewModal] Error convirtiendo base64 a Blob:', e);
+      logger.error("PdfPreviewModal", '[PdfPreviewModal] Error decodificando el PDF en base64:', e);
       return null;
     }
   }, [isOpen, base64Data]);
 
-  useEffect(() => {
-    return () => {
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [objectUrl]);
-
   if (!isOpen) return null;
 
-  const handleZoomIn = () => setZoom(prev => Math.min(prev + 10, 200));
-  const handleZoomOut = () => setZoom(prev => Math.max(prev - 10, 50));
+  const handleZoomIn = () => setZoom(prev => Math.min(prev + ZOOM_STEP, MAX_ZOOM));
+  const handleZoomOut = () => setZoom(prev => Math.max(prev - ZOOM_STEP, MIN_ZOOM));
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent className="max-w-6xl h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            <span>Vista Previa - {reportName}</span>
+          <DialogTitle className="flex items-center justify-between gap-2 pr-6">
+            <span className="truncate">Vista Previa - {reportName}</span>
 
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handleZoomOut} disabled={zoom <= 50}>
+              <Button variant="outline" size="sm" onClick={handleZoomOut} disabled={zoom <= MIN_ZOOM} aria-label="Alejar">
                 <ZoomOut className="h-4 w-4" />
               </Button>
 
@@ -70,36 +68,26 @@ export function PdfPreviewModal({ isOpen, onClose, base64Data, reportName, onDow
                 {zoom}%
               </span>
 
-              <Button variant="outline" size="sm" onClick={handleZoomIn} disabled={zoom >= 200}>
+              <Button variant="outline" size="sm" onClick={handleZoomIn} disabled={zoom >= MAX_ZOOM} aria-label="Acercar">
                 <ZoomIn className="h-4 w-4" />
+              </Button>
+
+              <Button variant="outline" size="sm" onClick={() => setFitRequest(n => n + 1)}>
+                <MoveHorizontal className="mr-1 h-4 w-4" />
+                Ajustar al ancho
               </Button>
             </div>
           </DialogTitle>
           <DialogDescription>Previsualización del reporte en PDF antes de descargarlo.</DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-auto bg-muted rounded-md">
-          <div className="p-4 flex justify-center">
-            <div style={{ width: `${zoom}%`, transition: 'width 0.2s ease' }} className="bg-card rounded shadow-lg">
-              {objectUrl ? (
-                <iframe
-                  src={objectUrl}
-                  className="w-full"
-                  title="PDF Preview"
-                  style={{ border: 'none', height: '70vh' }}
-                />
-              ) : (
-                <div className="p-6 text-sm text-muted-foreground">
-                  No se pudo generar la vista previa. Revisa consola y confirma que base64Data llega correcto.
-                </div>
-              )}
-            </div>
-          </div>
+        <div className="flex-1 min-h-0">
+          <PdfScrollViewer data={bytes} zoom={zoom} fitRequest={fitRequest} onZoomChange={setZoom} />
         </div>
 
         <DialogFooter className="flex justify-between items-center">
           <p className="text-sm text-muted-foreground">
-            Use los controles de zoom para ajustar la visualización
+            Arrastre el documento, use las barras o los botones ◀ ▶ para desplazarse; el 100 % es el tamaño real de la hoja.
           </p>
 
           <div className="flex gap-2">
