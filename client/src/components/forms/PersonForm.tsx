@@ -31,6 +31,7 @@ import type { ApiResponse } from "@/lib/api";
 import { CountrySelect } from "@/components/ui/CountrySelect";
 import { useDinardapLookup } from "@/hooks/useDinardapLookup";
 import { parseDateOnly } from "@/lib/dateOnly";
+import { toDateOnlyString, todayEcuador } from "@/lib/clock";
 
 // ---------------------- Tipos auxiliares ----------------------
 
@@ -512,7 +513,7 @@ export default function PersonForm({
       email: person.email ?? "",
       phone: person.phone || "",
       birthDate: person.birthDate
-        ? new Date(person.birthDate).toISOString().split("T")[0]
+        ? toDateOnlyString(person.birthDate)
         : "",
       sex: person.sex || undefined,
       gender: person.gender || undefined,
@@ -1174,7 +1175,7 @@ export default function PersonForm({
                   <Input
                     id="birthDate"
                     type="date"
-                    max={new Date().toISOString().split("T")[0]}
+                    max={todayEcuador()}
                     {...register("birthDate")}
                     disabled={fechaNacimientoLocked}
                     data-testid="input-birthDate"

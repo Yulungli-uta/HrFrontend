@@ -45,6 +45,7 @@ import {
   NivelesEducacionAPI,
 } from "@/lib/api";
 import { PersonnelActionsAPI } from "@/lib/api/services/contracts";
+import { formatDate } from "@/lib/clock";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -55,7 +56,7 @@ const safeArray = (x: any): any[] =>
   : [];
 
 const fmtDate = (s?: string | null) =>
-  s ? new Date(s).toLocaleDateString("es-EC", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
+  s ? formatDate(s, "es-EC", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
 
 const COLORS = [
   "#818cf8", "#34d399", "#fbbf24", "#f87171",
@@ -609,7 +610,7 @@ export default function DashboardTH() {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Dashboard Talento Humano</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {new Date().toLocaleDateString("es-EC", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
+            {formatDate(new Date(), "es-EC", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading || isFetching}>

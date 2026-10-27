@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { validateCertificate } from "@/lib/api";
+import { formatDate as clockFormatDate } from "@/lib/clock";
 
 interface CertificateValidationResult {
   subject: string;
@@ -21,8 +22,7 @@ interface CertificateValidationResult {
 }
 
 const formatDate = (iso: string) => {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString("es-EC", { dateStyle: "long" });
+  return clockFormatDate(iso, "es-EC", { dateStyle: "long" }) || iso;
 };
 
 export default function ValidateCertificatePage() {

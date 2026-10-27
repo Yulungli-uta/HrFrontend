@@ -52,6 +52,7 @@ import { FinancialCertificationSection } from "@/components/contractRequest/Fina
 import { ContractDialog } from "@/components/contracts/ContractDialog";
 import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
 import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
+import { formatDateTime } from "@/lib/clock";
 
 const EDITABLE_STATUS = "PENDIENTE_CERT_FINANCIERA";
 const CORRECTION_STATUS = "PENDIENTE_CORRECCION";
@@ -776,7 +777,7 @@ export default function ContractRequestPage() {
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <Calendar className="h-3 w-3 text-muted-foreground" />
-                          {c.createdAt ? new Date(c.createdAt).toLocaleString() : "—"}
+                          {c.createdAt ? formatDateTime(c.createdAt) : "—"}
                         </div>
                       </TableCell>
                       <TableCell>

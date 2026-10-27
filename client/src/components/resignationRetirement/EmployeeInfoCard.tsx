@@ -3,11 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { User, Briefcase, FileText } from 'lucide-react';
 import type { EmployeeConsolidatedInfo } from '@/types/resignation-retirement';
+import { formatDate as clockFormatDate } from "@/lib/clock";
 
 function formatDate(dateStr?: string | null): string {
   if (!dateStr) return '—';
   try {
-    return new Date(dateStr).toLocaleDateString('es-EC', { day: '2-digit', month: 'short', year: 'numeric' });
+    return clockFormatDate(dateStr, 'es-EC', { day: '2-digit', month: 'short', year: 'numeric' });
   } catch {
     return dateStr;
   }

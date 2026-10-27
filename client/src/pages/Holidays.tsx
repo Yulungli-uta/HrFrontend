@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { parseApiError } from '@/lib/error-handling';
 import { logger } from "@/lib/logger";
 import { formatDateOnly } from "@/lib/dateOnly";
+import { formatDate as clockFormatDate, todayEcuador } from "@/lib/clock";
 
 interface Holiday {
   holidayID?: number;
@@ -43,7 +44,7 @@ export default function HolidaysPage() {
   // Estado para nuevo feriado
   const [newHoliday, setNewHoliday] = useState<Holiday>({
     name: '',
-    holidayDate: new Date().toISOString().split('T')[0],
+    holidayDate: todayEcuador(),
     isActive: true,
     description: ''
   });
@@ -200,7 +201,7 @@ export default function HolidaysPage() {
       setEditingHoliday(null);
       setNewHoliday({
         name: '',
-        holidayDate: new Date().toISOString().split('T')[0],
+        holidayDate: todayEcuador(),
         isActive: true,
         description: ''
       });
@@ -261,7 +262,7 @@ export default function HolidaysPage() {
     setEditingHoliday(null);
     setNewHoliday({
       name: '',
-      holidayDate: new Date().toISOString().split('T')[0],
+      holidayDate: todayEcuador(),
       isActive: true,
       description: ''
     });
@@ -270,7 +271,7 @@ export default function HolidaysPage() {
   // Formatear fecha
   const formatDate = (dateString: string) => {
     try {
-      return new Date(dateString).toLocaleDateString('es-ES', {
+      return clockFormatDate(dateString, 'es-ES', {
         weekday: 'long',
         year: 'numeric',
         month: 'long',

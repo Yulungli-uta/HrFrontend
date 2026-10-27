@@ -23,6 +23,7 @@ import { exportToCSV, ExportColumn } from "@/lib/docflow/export-utils";
 import { Link } from "wouter";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { WorkflowMovement } from "@/types/docflow/docflow.types";
+import { todayEcuador } from "@/lib/clock";
 
 export default function Audit() {
   const service = useDocflowService();
@@ -69,7 +70,7 @@ export default function Audit() {
       },
     ];
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayEcuador();
     exportToCSV(returnMovements as (WorkflowMovement & Record<string, unknown>)[], columns, `auditoria-retornos-${today}`);
   };
 

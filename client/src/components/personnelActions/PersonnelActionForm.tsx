@@ -49,6 +49,7 @@ import type {
   CreatePersonnelActionRequest,
   PersonnelActionDetail,
 } from '@/types/personnel-actions';
+import { todayEcuador } from "@/lib/clock";
 
 function formatDateDisplay(isoDate: string): string {
   const d = isoDate.slice(0, 10);
@@ -172,7 +173,7 @@ function toDateInput(iso?: string | null): string {
 }
 
 function today(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayEcuador();
 }
 
 function getNumberId(item: any, keys: string[]): number | null {

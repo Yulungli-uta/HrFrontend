@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { RolesAPI, UserRolesAPI } from "@/lib/api";
 import type { ApiResponse, PagedResult } from "@/lib/api";
 import type { Role, CreateUserRoleDto } from "@/features/auth";
+import { todayEcuador } from "@/lib/clock";
 
 interface AssignRoleFormProps {
   userId: string;
@@ -168,7 +169,7 @@ export default function AssignRoleForm({
             id="expiresAt"
             type="date"
             {...register("expiresAt")}
-            min={new Date().toISOString().split("T")[0]}
+            min={todayEcuador()}
           />
           <p className="text-sm text-muted-foreground">Si no se especifica, el rol no expirará.</p>
         </div>

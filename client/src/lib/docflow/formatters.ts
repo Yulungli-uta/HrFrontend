@@ -1,3 +1,4 @@
+import { formatDate as clockFormatDate, formatDateTime as clockFormatDateTime } from "@/lib/clock";
 export function formatFileSize(bytes: number | null): string {
   if (!bytes) return "0 B";
   const sizes = ["B", "KB", "MB", "GB"];
@@ -6,7 +7,7 @@ export function formatFileSize(bytes: number | null): string {
 }
 
 export function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("es-ES", {
+  return clockFormatDate(dateStr, "es-ES", {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -14,7 +15,7 @@ export function formatDate(dateStr: string): string {
 }
 
 export function formatDateTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleString("es-ES", {
+  return clockFormatDateTime(dateStr, "es-ES", {
     year: "numeric",
     month: "short",
     day: "numeric",

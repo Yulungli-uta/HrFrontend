@@ -38,6 +38,7 @@ import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { BOOK_DOCUMENT_DIRECTORY_CODE, BOOK_DOCUMENT_ENTITY_TYPE } from "@/features/constants";
 import { logger } from "@/lib/logger";
 import { useToast } from "@/hooks/use-toast";
+import { todayEcuador } from "@/lib/clock";
 
 function getRefTypeId(t: any): number | undefined {
   return t?.typeID ?? t?.typeId ?? t?.id;
@@ -291,7 +292,7 @@ export default function BookForm({
         formData.append("ParticipationTypeId", String(data.participationTypeId));
         formData.append(
           "PublicationDate",
-          data.publicationDate && data.publicationDate !== "" ? data.publicationDate : now.toISOString().slice(0, 10)
+          data.publicationDate && data.publicationDate !== "" ? data.publicationDate : todayEcuador()
         );
         formData.append("UTAffiliation", String(data.utAffiliation ?? true));
         formData.append("UTASponsorship", String(data.utaSponsorship ?? false));
@@ -350,7 +351,7 @@ export default function BookForm({
       publicationDate:
         data.publicationDate && data.publicationDate !== ""
           ? data.publicationDate
-          : now.toISOString().slice(0, 10),
+          : todayEcuador(),
 
       utAffiliation: data.utAffiliation ?? true,
       utaSponsorship: data.utaSponsorship ?? false,

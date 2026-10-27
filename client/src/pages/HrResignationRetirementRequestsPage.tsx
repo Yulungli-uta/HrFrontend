@@ -36,6 +36,7 @@ import type {
   ResignationRetirementStatus,
   ResignationRetirementSummary,
 } from '@/types/resignation-retirement';
+import { formatDate as clockFormatDate } from "@/lib/clock";
 
 /**
  * Diálogo para que RRHH genere una renuncia/jubilación EN NOMBRE de un empleado que no
@@ -159,7 +160,7 @@ function GenerateOnBehalfDialog({
 function formatDate(dateStr?: string | null): string {
   if (!dateStr) return '—';
   try {
-    return new Date(dateStr).toLocaleDateString('es-EC', { day: '2-digit', month: 'short', year: 'numeric' });
+    return clockFormatDate(dateStr, 'es-EC', { day: '2-digit', month: 'short', year: 'numeric' });
   } catch {
     return dateStr;
   }

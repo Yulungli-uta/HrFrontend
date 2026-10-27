@@ -6,14 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ArrowLeft, History } from 'lucide-react';
 import { ContractDialog } from '@/components/contracts/ContractDialog';
+import { addDays, todayEcuador } from "@/lib/clock";
 
 type DialogMode = 'create' | 'view' | 'edit';
 
 /** Ayer (YYYY-MM-DD) — un contrato histórico ya concluyó, nunca empieza/termina hoy ni futuro. */
 function yesterday(): string {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
-  return d.toISOString().slice(0, 10);
+  return addDays(todayEcuador(), -1);
 }
 
 export default function ContractsHistoricalEntry() {

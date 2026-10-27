@@ -29,6 +29,7 @@ import AssignAccessScopeForm from "@/components/forms/AssignAccessScopeForm";
 import { DepartmentSelect } from "@/components/departments/DepartmentSelect";
 import { Skeleton } from "@/components/ui/skeleton";
 import { parseApiError } from "@/lib/error-handling";
+import { formatDate, formatDateTime } from "@/lib/clock";
 
 function moduleLabel(name?: string | null) {
   if (name === "CONTRACTS") return "Contratos";
@@ -223,7 +224,7 @@ export default function UserAccessScopesPage() {
                       <td className="p-3">{scopeLabel(s.scopeTypeName)}</td>
                       <td className="p-3">{s.departmentName ?? <span className="text-muted-foreground">—</span>}</td>
                       <td className="p-3 text-muted-foreground">
-                        {s.expiresAt ? new Date(s.expiresAt).toLocaleDateString() : "Sin expiración"}
+                        {s.expiresAt ? formatDate(s.expiresAt) : "Sin expiración"}
                       </td>
                       <td className="p-3 text-right">
                         <div className="flex items-center justify-end gap-1">
@@ -319,7 +320,7 @@ export default function UserAccessScopesPage() {
                       {h.changeType === "Assigned" ? "Asignado" : h.changeType === "Removed" ? "Removido" : "Modificado"}
                     </Badge>
                     <span className="text-xs text-muted-foreground">
-                      {new Date(h.changeDateTime).toLocaleString()}
+                      {formatDateTime(h.changeDateTime)}
                     </span>
                   </div>
                   <p className="text-sm mt-2">
@@ -359,7 +360,7 @@ function ScopeCard({
           {scope.departmentName && ` · ${scope.departmentName}`}
         </p>
         <p className="text-xs text-muted-foreground">
-          {scope.expiresAt ? `Expira: ${new Date(scope.expiresAt).toLocaleDateString()}` : "Sin expiración"}
+          {scope.expiresAt ? `Expira: ${formatDate(scope.expiresAt)}` : "Sin expiración"}
         </p>
         <div className="flex justify-end gap-2 pt-1">
           <Button variant="outline" size="sm" onClick={onHistory} className="h-8 px-2">

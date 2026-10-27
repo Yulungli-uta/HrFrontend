@@ -21,6 +21,7 @@ import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import type { VwDepartmentWithType } from "@/lib/api/services/views";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { DepartmentSelect } from "@/components/departments/DepartmentSelect";
+import { todayEcuador } from "@/lib/clock";
 
 interface AssignAccessScopeFormProps {
   onSuccess: () => void;
@@ -270,7 +271,7 @@ export default function AssignAccessScopeForm({ onSuccess, onCancel }: AssignAcc
           type="date"
           value={expiresAt}
           onChange={(e) => setExpiresAt(e.target.value)}
-          min={new Date().toISOString().split("T")[0]}
+          min={todayEcuador()}
         />
         <p className="text-sm text-muted-foreground">Si no se especifica, el acceso no expirará.</p>
       </div>

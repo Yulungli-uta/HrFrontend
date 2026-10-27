@@ -51,6 +51,7 @@ import {
   type PasswordResetResult,
   type CompletePendingResult,
 } from '@/lib/api';
+import { formatDate as clockFormatDate } from "@/lib/clock";
 
 // =============================================================================
 // Helpers de estado
@@ -106,7 +107,7 @@ function hasAdAccount(statusId: number): boolean {
 
 function formatDate(iso?: string | null): string {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('es-EC', {
+  return clockFormatDate(iso, 'es-EC', {
     day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
   });
 }

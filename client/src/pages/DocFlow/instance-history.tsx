@@ -35,6 +35,7 @@ import { useDocflowService } from "@/services/docflow/docflow-service-context";
 import { formatDate, formatDateTime, formatExpedienteCode } from "@/lib/docflow/formatters";
 import { exportToCSV, type ExportColumn } from "@/lib/docflow/export-utils";
 import type { WorkflowMovement } from "@/types/docflow/docflow.types";
+import { todayEcuador } from "@/lib/clock";
 
 const ALL_TYPES = "__ALL__";
 
@@ -134,7 +135,7 @@ export default function InstanceHistory() {
   const handleExport = () => {
     const data = filtered.map((m) => ({ ...m } as unknown as Record<string, unknown>));
     const code = formatExpedienteCode(instanceId!).replace(/\s+/g, "_");
-    exportToCSV(data, exportColumns, `historial_${code}_${new Date().toISOString().slice(0, 10)}`);
+    exportToCSV(data, exportColumns, `historial_${code}_${todayEcuador()}`);
   };
 
   if (!instance) {

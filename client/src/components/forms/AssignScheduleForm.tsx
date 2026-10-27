@@ -20,6 +20,7 @@ import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import type { Employee, Schedule, EmployeeSchedule } from "@/types/schedule";
 import { parseApiError } from "@/lib/error-handling";
 import { logger } from "@/lib/logger";
+import { addDays, todayEcuador } from "@/lib/clock";
 
 interface AssignScheduleFormProps {
   open: boolean;
@@ -39,12 +40,8 @@ const fmtTime = (s?: string) => {
 };
 
 // Función para calcular fechas
-const getToday = () => new Date().toISOString().split('T')[0];
-const getTomorrow = () => {
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  return tomorrow.toISOString().split('T')[0];
-};
+const getToday = () => todayEcuador();
+const getTomorrow = () => addDays(todayEcuador(), 1);
 const getMaxDate = () => "9999-12-31";
 
 export default function AssignScheduleForm({

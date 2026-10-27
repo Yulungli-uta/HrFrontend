@@ -29,9 +29,10 @@ import { PunchPolicyAPI } from "@/lib/api/services/punchPolicy";
 import { unwrapApiResponse } from "@/lib/api/utils/error-handling";
 import type { PunchPolicyItem, PunchPolicySave } from "@/types/punchPolicy";
 import { PUNCH_POLICIES_KEY } from "./punchQueries";
+import { formatDate } from "@/lib/clock";
 
 const toDateInput = (value?: string | null) => (value ? value.slice(0, 10) : "");
-const fmt = (value?: string | null) => (value ? new Date(value).toLocaleDateString("es-EC") : null);
+const fmt = (value?: string | null) => (value ? formatDate(value, "es-EC") : null);
 
 function statusOf(p: PunchPolicyItem): { label: string; tone: StatusTone } {
   if (!p.allowExternalPunch) return { label: "Desactivada", tone: "muted" };

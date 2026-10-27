@@ -42,6 +42,7 @@ import type { ProcessHierarchy, WorkflowInstance } from "@/types/docflow/docflow
 import { formatDate, formatExpedienteCode } from "@/lib/docflow/formatters";
 import { exportToCSV, type ExportColumn } from "@/lib/docflow/export-utils";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { todayEcuador } from "@/lib/clock";
 
 const ALL_STATUS = "__ALL__";
 const STATUSES = ["Borrador", "Pendiente", "En Revision", "Aprobado", "Retornado", "Finalizado"];
@@ -350,7 +351,7 @@ export default function SearchInstances() {
 
   const handleExport = () => {
     const data = filtered.map((i) => ({ ...i } as unknown as Record<string, unknown>));
-    const timestamp = new Date().toISOString().slice(0, 10);
+    const timestamp = todayEcuador();
     exportToCSV(data, exportColumns, `busqueda_expedientes_${timestamp}`);
   };
 

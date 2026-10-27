@@ -12,9 +12,9 @@ import { PunchPolicyAPI } from "@/lib/api/services/punchPolicy";
 import { unwrapApiResponse } from "@/lib/api/utils/error-handling";
 import type { PunchLogResult } from "@/types/punchPolicy";
 import { PUNCH_LOG_KEY } from "./punchQueries";
+import { addDays, formatDateTime, todayEcuador } from "@/lib/clock";
 
 const ALL = "__all__";
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 const RESULTS: Record<PunchLogResult, { label: string; tone: StatusTone }> = {
   EXTERNAL_ALLOWED: { label: "Autorizada", tone: "success" },
@@ -24,8 +24,8 @@ const RESULTS: Record<PunchLogResult, { label: string; tone: StatusTone }> = {
 
 export default function PunchAccessLogTab() {
   const queryClient = useQueryClient();
-  const [from, setFrom] = useState(iso(new Date(Date.now() - 7 * 86_400_000)));
-  const [to, setTo] = useState(iso(new Date()));
+  const [from, setFrom] = useState(addDays(todayEcuador(), -7));
+  const [to, setTo] = useState(todayEcuador());
   const [result, setResult] = useState<string>(ALL);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -120,7 +120,7 @@ export default function PunchAccessLogTab() {
                   const r = RESULTS[l.result] ?? { label: l.result, tone: "muted" as StatusTone };
                   return (
                     <TableRow key={l.logId}>
-                      <TableCell className="whitespace-nowrap text-sm">{new Date(l.attemptedAt).toLocaleString("es-EC")}</TableCell>
+                      <TableCell className="whitespace-nowrap text-sm">{formatDateTime(l.attemptedAt, "es-EC")}</TableCell>
                       <TableCell className="font-medium">{l.employeeName || `Empleado ${l.employeeId}`}</TableCell>
                       <TableCell className="font-mono text-sm">{l.ipAddress ?? "—"}</TableCell>
                       <TableCell>

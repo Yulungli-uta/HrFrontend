@@ -1,6 +1,7 @@
 // src/components/resignationRetirement/RequestHistoryTimeline.tsx
 import { CheckCircle2, Clock, XCircle, Undo2 } from 'lucide-react';
 import type { ResignationRetirementStatusHistoryEntry } from '@/types/resignation-retirement';
+import { formatDateTime } from "@/lib/clock";
 
 const ACTION_ICON: Record<string, React.ReactNode> = {
   APPROVED: <CheckCircle2 className="h-4 w-4 text-green-600" />,
@@ -14,7 +15,7 @@ function ActionIcon({ action }: { action: string }) {
 }
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' });
+  return formatDateTime(iso, 'es-EC', { dateStyle: 'medium', timeStyle: 'short' });
 }
 
 const ACTION_LABEL: Record<string, string> = {

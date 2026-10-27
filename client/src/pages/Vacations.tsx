@@ -5,6 +5,7 @@ import type { Vacation } from "@/shared/schema";
 import { VacacionesAPI } from "@/lib/api";
 import { usePaged } from "@/hooks/pagination/usePaged";
 import { DataPagination } from "@/components/ui/DataPagination";
+import { formatDate } from "@/lib/clock";
 
 const statusLabels: Record<string, string> = {
   "Planned": "Planificadas",
@@ -115,12 +116,12 @@ export default function VacationsPage() {
 
                   <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                     <CalendarDays className="h-4 w-4" />
-                    <span>Desde: {new Date(vacation.startDate as string).toLocaleDateString()}</span>
+                    <span>Desde: {formatDate(vacation.startDate as string)}</span>
                   </div>
 
                   <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                     <CalendarDays className="h-4 w-4" />
-                    <span>Hasta: {new Date(vacation.endDate as string).toLocaleDateString()}</span>
+                    <span>Hasta: {formatDate(vacation.endDate as string)}</span>
                   </div>
 
                   <div className="bg-background p-3 rounded-lg">

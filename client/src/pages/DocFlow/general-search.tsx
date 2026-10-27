@@ -38,6 +38,7 @@ import { useDocflowService } from "@/services/docflow/docflow-service-context";
 import { formatDate, formatDateTime, formatExpedienteCode } from "@/lib/docflow/formatters";
 import { exportToCSV, type ExportColumn } from "@/lib/docflow/export-utils";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { todayEcuador } from "@/lib/clock";
 
 const ALL_STATUS = "__ALL__";
 const STATUSES = ["Borrador", "Pendiente", "En Revision", "Aprobado", "Retornado", "Finalizado"];
@@ -150,7 +151,7 @@ export default function GeneralSearch() {
 
   const handleExport = () => {
     const data = results.map((i) => ({ ...i } as unknown as Record<string, unknown>));
-    exportToCSV(data, exportColumns, `busqueda_general_${new Date().toISOString().slice(0, 10)}`);
+    exportToCSV(data, exportColumns, `busqueda_general_${todayEcuador()}`);
   };
 
   return (

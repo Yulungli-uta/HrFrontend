@@ -7,14 +7,14 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { getParticipantStatusMeta, getProcessStatusMeta } from "@/features/electronicSignature/signatureStatus";
 import type { SigningProgress as Model } from "@/types/electronic-signature";
+import { formatDateTime } from "@/lib/clock";
 
 const initials = (name: string) =>
   name.trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("") || "?";
 
 const formatDate = (iso?: string | null) => {
   if (!iso) return null;
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? null : d.toLocaleString("es-EC", { dateStyle: "medium", timeStyle: "short" });
+  return formatDateTime(iso, "es-EC", { dateStyle: "medium", timeStyle: "short" }) || null;
 };
 
 export function SigningProgress({ value }: { value: Model }) {

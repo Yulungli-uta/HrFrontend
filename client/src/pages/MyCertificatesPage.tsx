@@ -19,6 +19,7 @@ import { EmployeeCertificatesAPI } from '@/lib/api/services/employeeSelfService'
 import { parseApiError } from '@/lib/api/utils/error-handling';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { CertificateDetailDialog } from '@/components/selfService/CertificateDetailDialog';
+import { formatDate as clockFormatDate } from "@/lib/clock";
 
 const STATUS_LABEL: Record<string, string> = {
   PENDIENTE: 'Pendiente',
@@ -37,7 +38,7 @@ function statusTone(status: string): 'success' | 'warning' | 'destructive' | 'mu
 function formatDate(dateStr?: string | null): string {
   if (!dateStr) return '—';
   try {
-    return new Date(dateStr).toLocaleDateString('es-EC', { day: '2-digit', month: 'short', year: 'numeric' });
+    return clockFormatDate(dateStr, 'es-EC', { day: '2-digit', month: 'short', year: 'numeric' });
   } catch {
     return dateStr;
   }

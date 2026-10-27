@@ -18,6 +18,7 @@ import { PunchTable } from "@/components/forms/PunchTable";
 import { parseApiError } from "@/lib/error-handling";
 import { getServerErrorMessage } from "@/lib/api/utils/error-handling";
 import { logger } from "@/lib/logger";
+import { todayEcuador } from "@/lib/clock";
 
 // =========================
 // Utilidades y constantes
@@ -136,7 +137,7 @@ function RangeQueryModal({ employeeId }: { employeeId: number }) {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              max={endDate || new Date().toISOString().split("T")[0]}
+              max={endDate || todayEcuador()}
             />
           </div>
 
@@ -148,7 +149,7 @@ function RangeQueryModal({ employeeId }: { employeeId: number }) {
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
               min={startDate}
-              max={new Date().toISOString().split("T")[0]}
+              max={todayEcuador()}
             />
           </div>
         </div>

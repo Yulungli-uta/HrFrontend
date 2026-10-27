@@ -37,6 +37,7 @@ import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { TRAINING_CERTIFICATE_DIRECTORY_CODE, TRAINING_CERTIFICATE_ENTITY_TYPE } from "@/features/constants";
 import { logger } from "@/lib/logger";
 import { useToast } from "@/hooks/use-toast";
+import { todayEcuador } from "@/lib/clock";
 
 // =============================
 // Zod schema
@@ -630,7 +631,7 @@ export default function TrainingForm({
                   <FormControl>
                     <Input
                       type="date"
-                      max={new Date().toISOString().split("T")[0]}
+                      max={todayEcuador()}
                       value={field.value ?? ""}
                       onChange={(e) => field.onChange(e.target.value)}
                     />

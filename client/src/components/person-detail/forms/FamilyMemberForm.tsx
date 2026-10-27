@@ -33,6 +33,7 @@ import { FAMILY_MEMBER_DOCUMENT_DIRECTORY_CODE, FAMILY_MEMBER_DOCUMENT_ENTITY_TY
 import { logger } from "@/lib/logger";
 import { useToast } from "@/hooks/use-toast";
 import { useDinardapLookup } from "@/hooks/useDinardapLookup";
+import { toDateOnlyString, todayEcuador } from "@/lib/clock";
 
 function getRefTypeId(t: any): number | undefined {
   return t?.typeID ?? t?.typeId ?? t?.id;
@@ -173,7 +174,7 @@ export default function FamilyMemberForm({
       identificationTypeId: familyMember?.identificationTypeId?.toString() || "",
       dependentId: familyMember?.dependentId || "",
       birthDate: familyMember?.birthDate
-        ? new Date(familyMember.birthDate).toISOString().split("T")[0]
+        ? toDateOnlyString(familyMember.birthDate)
         : "",
       hasDisability: familyMember?.hasDisability || false,
       disabilityTypeId: familyMember?.disabilityTypeId ?? undefined,
@@ -544,7 +545,7 @@ export default function FamilyMemberForm({
                     type="date"
                     disabled={fechaNacimientoLocked || formBlockedByDinardap}
                     data-testid="input-birth-date"
-                    max={new Date().toISOString().split("T")[0]}
+                    max={todayEcuador()}
                   />
                 </FormControl>
                 <FormMessage />

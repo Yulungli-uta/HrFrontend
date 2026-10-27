@@ -19,6 +19,7 @@ import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import type { EmployeeLaborRegimeCreateDto } from "@/lib/api/services/employeeLaborRegimes";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { DepartmentSelect } from "@/components/departments/DepartmentSelect";
+import { todayEcuador } from "@/lib/clock";
 
 interface EmployeeLaborRegimeFormProps {
   employeeId: number;
@@ -69,7 +70,7 @@ export function EmployeeLaborRegimeForm({
       isIndefinite: false,
       documentType: "MIGRATION",
       documentNumber: "",
-      effectiveFrom: new Date().toISOString().split("T")[0],
+      effectiveFrom: todayEcuador(),
       ingresoPorConcurso: "unset",
     },
   });

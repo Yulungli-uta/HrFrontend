@@ -7,11 +7,12 @@ import { useToast } from '@/hooks/use-toast';
 import { EmployeeCertificatesAPI } from '@/lib/api/services/employeeSelfService';
 import { parseApiError } from '@/lib/api/utils/error-handling';
 import { StatusBadge } from '@/components/shared/StatusBadge';
+import { formatDate as clockFormatDate } from "@/lib/clock";
 
 function formatDate(dateStr?: string | null): string {
   if (!dateStr) return '—';
   try {
-    return new Date(dateStr).toLocaleDateString('es-EC', { day: '2-digit', month: 'short', year: 'numeric' });
+    return clockFormatDate(dateStr, 'es-EC', { day: '2-digit', month: 'short', year: 'numeric' });
   } catch {
     return dateStr;
   }

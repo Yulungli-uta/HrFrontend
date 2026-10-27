@@ -30,6 +30,7 @@ import {
   CONTRACT_ENTITY_TYPE,
 } from '@/features/constants';
 import type { ContractStatusHistoryEntry } from '@/types/contractDetail';
+import { formatDateTime } from "@/lib/clock";
 
 const STATUS_BADGE: Record<string, string> = {
   BORRADOR: 'bg-secondary text-secondary-foreground',
@@ -85,7 +86,7 @@ function HistoryEntry({ entry }: { entry: ContractStatusHistoryEntry }) {
       <div className="space-y-0.5">
         <p className="text-sm font-semibold leading-tight">{label}</p>
         <p className="text-xs text-muted-foreground">
-          {new Date(entry.changedAt).toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' })}
+          {formatDateTime(entry.changedAt, 'es-EC', { dateStyle: 'medium', timeStyle: 'short' })}
         </p>
         {entry.comment && (
           <p className="text-xs text-muted-foreground italic">"{entry.comment}"</p>

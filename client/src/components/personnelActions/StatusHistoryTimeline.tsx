@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { CheckCircle2, Clock, XCircle, Loader2 } from 'lucide-react';
 import { PersonnelActionsAPI } from '@/lib/api/services/contracts';
 import type { PersonnelActionStatusHistory } from '@/types/personnel-actions';
+import { formatDateTime } from "@/lib/clock";
 
 const STATUS_ICON: Record<string, React.ReactNode> = {
   FINALIZADO: <CheckCircle2 className="h-4 w-4 text-green-600" />,
@@ -14,7 +15,7 @@ function StatusIcon({ status }: { status: string }) {
 }
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleString('es-EC', {
+  return formatDateTime(iso, 'es-EC', {
     dateStyle: 'medium',
     timeStyle: 'short',
   });

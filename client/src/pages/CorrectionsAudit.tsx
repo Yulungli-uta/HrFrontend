@@ -24,6 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { ChevronDown, ChevronRight, Loader2, ShieldAlert } from 'lucide-react';
 import { AuditAPI } from '@/lib/api';
 import { parseCorrectionDetails, type AuditLogEntry } from '@/types/audit';
+import { formatDateTime } from "@/lib/clock";
 
 const MODULE_OPTIONS: { label: string; tableName: string | null }[] = [
   { label: 'Todos los módulos', tableName: null },
@@ -50,7 +51,7 @@ function CorrectionRow({ entry }: { entry: AuditLogEntry }) {
         </TableCell>
         <TableCell>#{entry.recordId}</TableCell>
         <TableCell>{entry.userName}</TableCell>
-        <TableCell>{new Date(entry.dateTime).toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' })}</TableCell>
+        <TableCell>{formatDateTime(entry.dateTime, 'es-EC', { dateStyle: 'medium', timeStyle: 'short' })}</TableCell>
         <TableCell className="max-w-xs truncate">{details?.reason ?? '—'}</TableCell>
         <TableCell className="text-right text-muted-foreground">
           {details?.changes.length ?? 0} campo(s)

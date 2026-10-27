@@ -19,6 +19,7 @@ import {
   type TemplateVersionSummaryDto,
   type DocumentTemplateStatus,
 } from '@/lib/api/services/documentTemplates';
+import { formatDate } from "@/lib/clock";
 
 const STATUS_COLORS: Record<DocumentTemplateStatus, string> = {
   Draft:     'bg-yellow-100 text-yellow-700',
@@ -172,7 +173,7 @@ export function VersionHistoryDrawer({
                       </div>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {v.createdAt
-                          ? new Date(v.createdAt).toLocaleDateString('es-EC', {
+                          ? formatDate(v.createdAt, 'es-EC', {
                               day: '2-digit', month: 'short', year: 'numeric',
                             })
                           : '—'}

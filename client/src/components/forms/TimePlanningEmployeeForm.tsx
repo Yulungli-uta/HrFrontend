@@ -67,6 +67,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { usePagedCombobox } from "@/hooks/usePagedCombobox";
+import { formatDate, formatTime } from "@/lib/clock";
 
 interface TimePlanningEmployee {
   planEmployeeID?: number;
@@ -1017,12 +1018,12 @@ function ExecutionDialog({
                     rows.map((r) => (
                       <TableRow key={r.executionID}>
                         <TableCell className="text-sm">
-                          {new Date(`${r.workDate}T00:00:00`).toLocaleDateString()}
+                          {formatDate(`${r.workDate}T00:00:00`)}
                         </TableCell>
 
                         <TableCell className="text-sm">
                           {r.startTime
-                            ? new Date(r.startTime).toLocaleTimeString(undefined, {
+                            ? formatTime(r.startTime, undefined, {
                                 hour: "2-digit",
                                 minute: "2-digit",
                               })
@@ -1034,7 +1035,7 @@ function ExecutionDialog({
                             type="time"
                             defaultValue={
                               r.endTime
-                                ? new Date(r.endTime).toLocaleTimeString("en-GB", {
+                                ? formatTime(r.endTime, "en-GB", {
                                     hour: "2-digit",
                                     minute: "2-digit",
                                     hour12: false,

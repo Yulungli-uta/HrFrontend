@@ -90,6 +90,7 @@ import {
 import { DepartmentAuthorityForm } from "@/components/forms/DepartmentAuthorityForm";
 import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
 import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
+import { formatDate as clockFormatDate } from "@/lib/clock";
 
 // =============================================================================
 // Helpers
@@ -98,7 +99,7 @@ import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
 function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return "—";
   try {
-    return new Date(dateStr).toLocaleDateString("es-EC", {
+    return clockFormatDate(dateStr, "es-EC", {
       day:   "2-digit",
       month: "short",
       year:  "numeric",

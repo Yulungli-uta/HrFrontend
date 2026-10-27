@@ -13,6 +13,7 @@ import { useRefTypesByCategory } from '@/hooks/useRefTypes';
 import { useReport } from '@/hooks/useReport';
 import { getAttendanceNoveltiesSummary } from '@/lib/api/services/reports';
 import type { ReportFilter } from '@/types/reports';
+import { firstDayOfCurrentMonthEcuador, todayEcuador } from "@/lib/clock";
 
 const NOVELTY_TYPES: Array<{ value: string; label: string }> = [
   { value: 'UNJUSTIFIED_ABSENCE', label: 'Ausencia injustificada' },
@@ -25,11 +26,10 @@ const NOVELTY_TYPES: Array<{ value: string; label: string }> = [
 ];
 
 function firstDayOfMonth(): string {
-  const d = new Date();
-  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
+  return firstDayOfCurrentMonthEcuador();
 }
 function todayStr(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayEcuador();
 }
 
 export default function AttendanceNoveltiesReport() {

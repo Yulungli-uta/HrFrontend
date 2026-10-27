@@ -24,6 +24,7 @@ import { useCvListState, buildFilterOptions, type CvSortOption, type CvFilterFie
 import { CvListToolbar } from "@/components/person-detail/CvListToolbar";
 import { CvFilterBar } from "@/components/person-detail/CvFilterBar";
 import { DataPagination } from "@/components/ui/DataPagination";
+import { formatDate as clockFormatDate } from "@/lib/clock";
 
 interface EducationLevelsTabProps {
   educationLevels: EducationLevel[];
@@ -53,7 +54,7 @@ export function EducationLevelsTab({
 
   const formatDate = (dateString?: string | null) => {
     if (!dateString) return null;
-    return new Date(dateString).toLocaleDateString("es-EC", { year: "numeric", month: "long" });
+    return clockFormatDate(dateString, "es-EC", { year: "numeric", month: "long" });
   };
 
   const resolveName = (id: number | undefined | null, map: Record<number, string>): string | null => {

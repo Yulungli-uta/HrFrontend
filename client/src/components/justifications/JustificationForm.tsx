@@ -13,6 +13,7 @@ import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { getBossFromEmployeeDetails } from "@/components/employees/AuthBoss";
 import { parseApiError } from '@/lib/error-handling';
 import { logger } from "@/lib/logger";
+import { nowEcuadorLocalInput } from "@/lib/clock";
 
 /** ------------- Helpers de fecha/hora (LOCAL, sin convertir a UTC) ------------- **/
 
@@ -545,11 +546,11 @@ export default function JustificationForm({ onCreated, onCancel, onDirtyChange }
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Hora inicial <span className="text-destructive">*</span></Label>
-              <Input type="datetime-local" max={new Date().toISOString().slice(0, 16)} value={startDateTime} onChange={(e) => setStartDateTime(e.target.value)} required />
+              <Input type="datetime-local" max={nowEcuadorLocalInput()} value={startDateTime} onChange={(e) => setStartDateTime(e.target.value)} required />
             </div>
             <div className="space-y-2">
               <Label>Hora final <span className="text-destructive">*</span></Label>
-              <Input type="datetime-local" max={new Date().toISOString().slice(0, 16)} value={endDateTime} onChange={(e) => setEndDateTime(e.target.value)} required />
+              <Input type="datetime-local" max={nowEcuadorLocalInput()} value={endDateTime} onChange={(e) => setEndDateTime(e.target.value)} required />
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

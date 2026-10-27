@@ -45,6 +45,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
 import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
 import { parseApiError } from "@/lib/error-handling";
+import { formatDateTime } from "@/lib/clock";
 
 interface AppParamRow {
   nemonic: string;
@@ -287,7 +288,7 @@ export default function AppParamsPage() {
                         {p.description || "-"}
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
-                        {p.lastModified ? new Date(p.lastModified).toLocaleString() : "-"}
+                        {p.lastModified ? formatDateTime(p.lastModified) : "-"}
                         {p.modifiedBy && <div className="text-muted-foreground/70">{p.modifiedBy}</div>}
                       </TableCell>
                       <TableCell className="text-right">

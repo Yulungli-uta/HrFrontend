@@ -44,6 +44,7 @@ import RoleForm from "@/components/forms/RoleForm";
 import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
 import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
 import { parseApiError } from "@/lib/error-handling";
+import { formatDate } from "@/lib/clock";
 
 export default function RolesPage() {
   const [, setLocation] = useLocation();
@@ -261,7 +262,7 @@ export default function RolesPage() {
                     </TableCell>
                     <TableCell>
                       {role.createdAt
-                        ? new Date(role.createdAt as any).toLocaleDateString()
+                        ? formatDate(role.createdAt as any)
                         : "-"}
                     </TableCell>
                     <TableCell className="text-right">

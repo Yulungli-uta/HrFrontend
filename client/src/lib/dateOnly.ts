@@ -5,6 +5,8 @@
 // medianoche UTC y, en zonas al oeste de UTC (Ecuador es UTC-5), `toLocaleDateString` lo muestra
 // un día antes (1974-01-27 -> "26 de enero de 1974").
 
+import { todayEcuador } from "./clock";
+
 const DATE_ONLY = /^(\d{4})-(\d{2})-(\d{2})/;
 
 /**
@@ -33,4 +35,12 @@ export function formatDateOnly(
 ): string {
   const date = parseDateOnly(value);
   return date ? date.toLocaleDateString(locale, options) : "";
+}
+
+/**
+ * Fecha de HOY como "yyyy-MM-dd" (para `max` de inputs de fecha y reglas "no posterior a hoy").
+ * Usa el día de Ecuador (estándar "Fecha y hora UTA", ver `clock.ts`); no `toISOString()`, que da el día UTC.
+ */
+export function todayDateOnly(now: Date = new Date()): string {
+  return todayEcuador(now);
 }

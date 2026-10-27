@@ -1,3 +1,4 @@
+import { formatDate } from "@/lib/clock";
 export interface ExportColumn<T = Record<string, unknown>> {
   key: string;
   label: string;
@@ -13,9 +14,7 @@ export function formatValueForExport(value: unknown, type: ExportValueType = "st
     case "number":
       return String(Number(value));
     case "date": {
-      const d = new Date(String(value));
-      if (isNaN(d.getTime())) return String(value);
-      return d.toLocaleDateString("es-ES", { year: "numeric", month: "2-digit", day: "2-digit" });
+      return formatDate(String(value), "es-ES", { year: "numeric", month: "2-digit", day: "2-digit" }) || String(value);
     }
     case "datetime": {
       const dt = new Date(String(value));

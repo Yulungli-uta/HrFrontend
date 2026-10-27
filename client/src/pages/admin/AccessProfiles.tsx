@@ -44,6 +44,7 @@ import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
 import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
 import { AuditHistoryDialog } from "@/components/shared/AuditHistoryDialog";
 import { parseApiError } from "@/lib/error-handling";
+import { formatDate } from "@/lib/clock";
 
 function normalizePagedItems<T>(resp: any): T[] {
   if (!resp) return [];
@@ -647,7 +648,7 @@ export default function AccessProfilesPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() : "-"}
+                      {profile.createdAt ? formatDate(profile.createdAt) : "-"}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">

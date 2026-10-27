@@ -40,6 +40,7 @@ import { ALL_STATUS_FILTER } from "@/lib/docflow/constants";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { DirectorySelect } from "@/components/docflow/directory-select";
 import { exportToCSV, type ExportColumn } from "@/lib/docflow/export-utils";
+import { todayEcuador } from "@/lib/clock";
 
 type SortField = "date" | "status" | "process";
 
@@ -181,7 +182,7 @@ export default function InstancesList() {
 
   const handleExport = () => {
     const data = filtered.map((i) => ({ ...i } as unknown as Record<string, unknown>));
-    const timestamp = new Date().toISOString().slice(0, 10);
+    const timestamp = todayEcuador();
     exportToCSV(data, instanceExportColumns, `expedientes_${timestamp}`);
   };
 

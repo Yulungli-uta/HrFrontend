@@ -11,6 +11,7 @@ import { useCvListState, buildFilterOptions, type CvSortOption, type CvFilterFie
 import { CvListToolbar } from "@/components/person-detail/CvListToolbar";
 import { CvFilterBar } from "@/components/person-detail/CvFilterBar";
 import { DataPagination } from "@/components/ui/DataPagination";
+import { formatDate as clockFormatDate } from "@/lib/clock";
 
 interface WorkExperiencesTabProps {
   workExperiences: WorkExperience[];
@@ -35,7 +36,7 @@ export function WorkExperiencesTab({
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const formatDate = (dateString: string) => {
     if (!dateString) return "No especificada";
-    return new Date(dateString).toLocaleDateString("es-EC", {
+    return clockFormatDate(dateString, "es-EC", {
       year: "numeric",
       month: "short",
     });

@@ -86,6 +86,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { formatDate, todayEcuador } from "@/lib/clock";
 
 /* =========================
    Helpers
@@ -1067,7 +1068,7 @@ function CardView({
                             </TableCell>
                             <TableCell className="text-sm">
                               {ur.assignedAt
-                                ? new Date(ur.assignedAt).toLocaleDateString()
+                                ? formatDate(ur.assignedAt)
                                 : "-"}
                             </TableCell>
                             <TableCell className="text-right flex items-center gap-2 justify-end">
@@ -1183,7 +1184,7 @@ function TableView({
                   </TableCell>
                   <TableCell>
                     {user.lastLogin ? (
-                      new Date(user.lastLogin).toLocaleDateString()
+                      formatDate(user.lastLogin)
                     ) : (
                       <span className="text-muted-foreground/70">Nunca</span>
                     )}
@@ -1360,7 +1361,7 @@ function EditUserRoleForm({
             type="date"
             value={expiresAt}
             onChange={(e) => setExpiresAt(e.target.value)}
-            min={new Date().toISOString().split("T")[0]}
+            min={todayEcuador()}
           />
           <p className="text-sm text-muted-foreground">
             Si no se especifica, el rol no expirará.

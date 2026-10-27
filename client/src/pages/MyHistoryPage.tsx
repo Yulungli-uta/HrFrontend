@@ -7,6 +7,7 @@ import { EmployeeSelfServiceAPI } from '@/lib/api/services/employeeSelfService';
 import { parseApiError } from '@/lib/api/utils/error-handling';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import type { EmployeeSelfServiceHistoryEntry } from '@/types/employee-self-service';
+import { formatDateTime } from "@/lib/clock";
 
 const SOURCE_ICON: Record<EmployeeSelfServiceHistoryEntry['source'], React.ReactNode> = {
   PERMISSION: <CalendarDays className="h-4 w-4" />,
@@ -34,7 +35,7 @@ function statusTone(status: string): 'success' | 'warning' | 'destructive' | 'pr
 
 function formatDate(dateStr: string): string {
   try {
-    return new Date(dateStr).toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' });
+    return formatDateTime(dateStr, 'es-EC', { dateStyle: 'medium', timeStyle: 'short' });
   } catch {
     return dateStr;
   }

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { validateSignedDocument } from "@/lib/api";
+import { formatDateTime } from "@/lib/clock";
 
 interface ValidatedSigner {
   fullName: string;
@@ -35,8 +36,7 @@ const initials = (name: string) =>
 
 const formatDate = (iso?: string | null) => {
   if (!iso) return null;
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? null : d.toLocaleString("es-EC", { dateStyle: "medium", timeStyle: "short" });
+  return formatDateTime(iso, "es-EC", { dateStyle: "medium", timeStyle: "short" }) || null;
 };
 
 export default function ValidateDocumentPage() {

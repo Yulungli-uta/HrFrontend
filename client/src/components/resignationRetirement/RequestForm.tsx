@@ -26,6 +26,7 @@ import type {
   ResignationRetirementDetail,
   ResignationRetirementRequestType,
 } from '@/types/resignation-retirement';
+import { todayEcuador } from "@/lib/clock";
 
 type Props = {
   /** Presente = editar una solicitud existente propia; ausente = crear una nueva. */
@@ -35,7 +36,7 @@ type Props = {
   onDirtyChange?: (dirty: boolean) => void;
 };
 
-const todayIso = () => new Date().toISOString().split('T')[0];
+const todayIso = () => todayEcuador();
 
 const DIR_CODE = RESIGNATION_RETIREMENT_DIRECTORY_CODE;
 const ENTITY_TYPE = RESIGNATION_RETIREMENT_ENTITY_TYPE;

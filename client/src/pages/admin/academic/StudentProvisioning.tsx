@@ -24,6 +24,7 @@ import {
   StudentProvisioningStatus,
   type StudentProvisioningDto,
 } from '@/lib/api/services/academic/studentProvisioning';
+import { formatDate as clockFormatDate } from "@/lib/clock";
 
 // =============================================================================
 // Helpers
@@ -55,7 +56,7 @@ function statusBadge(statusId: number): { variant: BadgeVariant; className: stri
 
 function formatDate(iso?: string | null): string {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('es-EC', {
+  return clockFormatDate(iso, 'es-EC', {
     day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
   });
 }

@@ -36,6 +36,7 @@ import { parseApiError } from '@/lib/error-handling';
 import { usePaged } from '@/hooks/pagination/usePaged';
 import { DataPagination } from '@/components/ui/DataPagination';
 import { formatDateOnly, parseDateOnly } from '@/lib/dateOnly';
+import { formatDate as clockFormatDate } from "@/lib/clock";
 
 interface FamilyBurdenValidationItem {
   burdenId: number;
@@ -89,7 +90,7 @@ function formatBirthDate(value?: string | null): string {
 
 function formatDate(value?: string | null): string {
   if (!value) return '—';
-  return new Date(value).toLocaleDateString('es-EC', { year: 'numeric', month: 'short', day: 'numeric' });
+  return clockFormatDate(value, 'es-EC', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 // ─── Diálogo de detalle + documentos + acciones ────────────────────────────

@@ -11,6 +11,7 @@ import { useCvListState, buildFilterOptions, type CvSortOption, type CvFilterFie
 import { CvListToolbar } from "@/components/person-detail/CvListToolbar";
 import { CvFilterBar } from "@/components/person-detail/CvFilterBar";
 import { DataPagination } from "@/components/ui/DataPagination";
+import { formatDate as clockFormatDate } from "@/lib/clock";
 
 interface LanguagesTabProps {
   languages: Language[];
@@ -27,7 +28,7 @@ export function LanguagesTab({ languages, onEdit, onDelete, refTypesMap = {}, pe
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return "No especificada";
-    return new Date(dateString).toLocaleDateString("es-EC", { year: "numeric", month: "long", day: "2-digit" });
+    return clockFormatDate(dateString, "es-EC", { year: "numeric", month: "long", day: "2-digit" });
   };
 
   const resolveRefType = (id: number | string | null | undefined): string | null => {

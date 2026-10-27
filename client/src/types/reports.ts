@@ -1,3 +1,4 @@
+import { todayEcuador } from "@/lib/clock";
 /**
  * Tipos TypeScript para el Sistema de Reportes
  * Universidad Técnica de Ambato
@@ -534,7 +535,7 @@ export interface UseReportState {
  * Obtiene el nombre de archivo para un reporte
  */
 export function getReportFileName(type: ReportType, format: ReportFormat): string {
-  const date = new Date().toISOString().split('T')[0];
+  const date = todayEcuador();
   const ext = format === 'excel' ? 'xlsx' : format;
   return `reporte-${type}-${date}.${ext}`;
 }

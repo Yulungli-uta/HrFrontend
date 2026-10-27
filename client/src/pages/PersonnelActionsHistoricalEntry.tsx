@@ -24,12 +24,11 @@ import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import { useToast } from '@/hooks/use-toast';
 import { parseApiError } from '@/lib/error-handling';
 import type { CreatePersonnelActionRequest } from '@/types/personnel-actions';
+import { addDays, todayEcuador } from "@/lib/clock";
 
 /** Ayer (YYYY-MM-DD) — un registro histórico ya concluyó, nunca es hoy ni futuro. */
 function yesterday(): string {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
-  return d.toISOString().slice(0, 10);
+  return addDays(todayEcuador(), -1);
 }
 
 export default function PersonnelActionsHistoricalEntry() {

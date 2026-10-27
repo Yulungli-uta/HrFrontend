@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { Employee, Person, Contract } from "@/shared/schema";
 import { DollarSign, Save, X, Calculator, Users } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { currentMonthEcuador } from "@/lib/clock";
 
 interface PayrollFormProps {
   onSuccess?: () => void;
@@ -30,7 +31,7 @@ export default function PayrollForm({ onSuccess, onCancel, onDirtyChange }: Payr
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedEmployees, setSelectedEmployees] = useState<number[]>([]);
-  const [currentPeriod, setCurrentPeriod] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
+  const [currentPeriod, setCurrentPeriod] = useState(currentMonthEcuador()); // YYYY-MM
 
   const { data: employees } = useQuery<Employee[]>({
     queryKey: ['/api/employees'],

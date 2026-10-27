@@ -16,6 +16,7 @@ import type { Contract, Employee } from "@/shared/schema";
 import { FileText, Save, X, Calendar, DollarSign } from "lucide-react";
 import { ContratosAPI, EmpleadosAPI, PersonasAPI, type ApiResponse } from "@/lib/api";
 import type { PersonDto } from "@/lib/api/services/people";
+import { addMonths, addYears, formatDate, toDateOnlyString } from "@/lib/clock";
 
 interface ContractFormProps {
   contract?: Contract;
@@ -116,27 +117,18 @@ export default function ContractForm({ contract, onSuccess, onCancel }: Contract
   const calculateEndDate = (type: string, start: string) => {
     if (!start) return "";
 
-    const startDateObj = new Date(start);
-    let endDateObj: Date;
+    const startDateOnly = toDateOnlyString(start);
 
     switch (type) {
       case "Ocasional":
-        endDateObj = new Date(startDateObj);
-        endDateObj.setFullYear(endDateObj.getFullYear() + 2);
-        break;
+        return addYears(startDateOnly, 2);
       case "Contrato":
-        endDateObj = new Date(startDateObj);
-        endDateObj.setFullYear(endDateObj.getFullYear() + 1);
-        break;
+        return addYears(startDateOnly, 1);
       case "Servicios":
-        endDateObj = new Date(startDateObj);
-        endDateObj.setMonth(endDateObj.getMonth() + 6);
-        break;
+        return addMonths(startDateOnly, 6);
       default:
         return "";
     }
-
-    return endDateObj.toISOString().split("T")[0];
   };
 
   return (
@@ -320,9 +312,9 @@ export default function ContractForm({ contract, onSuccess, onCancel }: Contract
                 </div>
                 <div className="text-sm text-primary space-y-1">
                   <p>Duración: {contractType}</p>
-                  <p>Inicio: {new Date(startDate).toLocaleDateString()}</p>
+                  <p>Inicio: {formatDate(startDate)}</p>
                   {form.watch("endDate") && (
-                    <p>Fin: {new Date(form.watch("endDate")!).toLocaleDateString()}</p>
+                    <p>Fin: {formatDate(form.watch("endDate")!)}</p>
                   )}
                 </div>
               </div>

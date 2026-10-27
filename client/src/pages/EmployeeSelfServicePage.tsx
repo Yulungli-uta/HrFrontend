@@ -11,11 +11,12 @@ import {
 import { EmployeeSelfServiceAPI } from '@/lib/api/services/employeeSelfService';
 import { parseApiError } from '@/lib/api/utils/error-handling';
 import { StatusBadge } from '@/components/shared/StatusBadge';
+import { formatDate as clockFormatDate, formatDateTime as clockFormatDateTime } from "@/lib/clock";
 
 function formatDate(dateStr?: string | null): string {
   if (!dateStr) return '—';
   try {
-    return new Date(dateStr).toLocaleDateString('es-EC', { day: '2-digit', month: 'short', year: 'numeric' });
+    return clockFormatDate(dateStr, 'es-EC', { day: '2-digit', month: 'short', year: 'numeric' });
   } catch {
     return dateStr;
   }
@@ -23,7 +24,7 @@ function formatDate(dateStr?: string | null): string {
 
 function formatDateTime(dateStr: string): string {
   try {
-    return new Date(dateStr).toLocaleString('es-EC', { dateStyle: 'short', timeStyle: 'short' });
+    return clockFormatDateTime(dateStr, 'es-EC', { dateStyle: 'short', timeStyle: 'short' });
   } catch {
     return dateStr;
   }

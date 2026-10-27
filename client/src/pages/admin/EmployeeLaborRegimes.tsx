@@ -22,11 +22,12 @@ import { EmployeeLaborRegimeForm } from "@/components/forms/EmployeeLaborRegimeF
 import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
 import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
 import { parseApiError } from "@/lib/error-handling";
+import { formatDate as clockFormatDate, todayEcuador } from "@/lib/clock";
 
 function formatDate(dateStr?: string | null): string {
   if (!dateStr) return "—";
   try {
-    return new Date(dateStr).toLocaleDateString("es-EC", { day: "2-digit", month: "short", year: "numeric" });
+    return clockFormatDate(dateStr, "es-EC", { day: "2-digit", month: "short", year: "numeric" });
   } catch {
     return dateStr;
   }
@@ -40,7 +41,7 @@ export default function EmployeeLaborRegimesPage() {
   const [employeeLabel, setEmployeeLabel] = useState<string>("");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [closeTarget, setCloseTarget] = useState<EmployeeLaborRegimeDto | null>(null);
-  const [closeDate, setCloseDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [closeDate, setCloseDate] = useState(() => todayEcuador());
 
   const { setIsFormDirty, handleOpenChange, close: closeForm, confirmOpen, confirmExit, closeConfirm } =
     useUnsavedChangesGuard(setIsFormOpen);

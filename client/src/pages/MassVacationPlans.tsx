@@ -33,10 +33,11 @@ import { parseApiError } from '@/lib/error-handling';
 import { usePaged } from '@/hooks/pagination/usePaged';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
+import { addDays, formatDate as clockFormatDate, todayEcuador } from "@/lib/clock";
 
 function formatDate(value?: string | null): string {
   if (!value) return '—';
-  return new Date(value).toLocaleDateString('es-EC', { year: 'numeric', month: 'short', day: 'numeric' });
+  return clockFormatDate(value, 'es-EC', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 function formatTime(value?: string | null): string {
@@ -58,9 +59,7 @@ function statusBadgeVariant(status: MassVacationPlanStatus): 'default' | 'second
 }
 
 function todayIsoTomorrow(): string {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  return d.toISOString().slice(0, 10);
+  return addDays(todayEcuador(), 1);
 }
 
 // ─── Diálogo: crear/editar plan ─────────────────────────────────────────────

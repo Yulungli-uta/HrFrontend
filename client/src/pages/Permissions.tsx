@@ -41,6 +41,7 @@ import {
   PERMISSION_ENTITY_TYPE,
 } from "@/features/constants";
 import { logger } from "@/lib/logger";
+import { formatDate } from "@/lib/clock";
 
 // Turn on logs by setting VITE_DEBUG_AUTH=true in .env
 const DEBUG = import.meta.env.VITE_DEBUG_AUTH === "true";
@@ -90,7 +91,7 @@ const vacStatusColors: Record<string, string> = {
 const fmtDate = (d?: string) => {
   if (!d) return "-";
   try {
-    return new Date(d).toLocaleDateString();
+    return formatDate(d);
   } catch {
     return d;
   }

@@ -36,6 +36,7 @@ import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { PUBLICATION_DOCUMENT_DIRECTORY_CODE, PUBLICATION_DOCUMENT_ENTITY_TYPE } from "@/features/constants";
 import { logger } from "@/lib/logger";
 import { useToast } from "@/hooks/use-toast";
+import { todayEcuador } from "@/lib/clock";
 
 // =============================
 // Zod schema
@@ -383,7 +384,7 @@ export default function PublicationForm({
         if (data.eventEdition) formData.append("EventEdition", data.eventEdition);
         formData.append(
           "PublicationDate",
-          data.publicationDate && data.publicationDate !== "" ? data.publicationDate : now.toISOString().slice(0, 10)
+          data.publicationDate && data.publicationDate !== "" ? data.publicationDate : todayEcuador()
         );
         formData.append("UTAffiliation", String(data.utAffiliation ?? true));
         formData.append("File", selectedFile);
@@ -445,7 +446,7 @@ export default function PublicationForm({
       publicationDate:
         data.publicationDate && data.publicationDate !== ""
           ? data.publicationDate
-          : now.toISOString().slice(0, 10),
+          : todayEcuador(),
 
       utAffiliation: data.utAffiliation ?? true,
       createdAt: (publication as any)?.createdAt ?? now.toISOString(),
@@ -830,7 +831,7 @@ export default function PublicationForm({
                   <FormControl>
                     <Input
                       type="date"
-                      max={new Date().toISOString().split("T")[0]}
+                      max={todayEcuador()}
                       value={field.value ?? ""}
                       onChange={(e) => field.onChange(e.target.value)}
                     />

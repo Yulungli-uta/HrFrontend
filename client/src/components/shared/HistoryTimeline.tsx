@@ -1,5 +1,6 @@
 // src/components/shared/HistoryTimeline.tsx
 import { CheckCircle2, Clock, XCircle, Undo2 } from 'lucide-react';
+import { formatDateTime } from "@/lib/clock";
 
 export type HistoryTimelineEntry = {
   id: number;
@@ -24,7 +25,7 @@ function ActionIcon({ action }: { action: string }) {
 }
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' });
+  return formatDateTime(iso, 'es-EC', { dateStyle: 'medium', timeStyle: 'short' });
 }
 
 const ACTION_LABEL: Record<string, string> = {

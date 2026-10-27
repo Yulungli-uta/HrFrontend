@@ -36,6 +36,7 @@ import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { EDUCATION_CERTIFICATE_DIRECTORY_CODE, EDUCATION_CERTIFICATE_ENTITY_TYPE } from "@/features/constants";
 import { logger } from "@/lib/logger";
 import { useToast } from "@/hooks/use-toast";
+import { todayEcuador } from "@/lib/clock";
 
 const educationLevelFormSchema = z.object({
   educationLevelTypeId: z
@@ -633,7 +634,7 @@ export default function EducationLevelForm({
                   <Input
                     {...field}
                     type="date"
-                    max={new Date().toISOString().split("T")[0]}
+                    max={todayEcuador()}
                     disabled={saving || graduationDateLocked}
                   />
                 </FormControl>

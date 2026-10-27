@@ -22,6 +22,7 @@ import {
   TimeAPI,
 } from "@/lib/api";
 import { logger } from "@/lib/logger";
+import { formatDateTime } from "@/lib/clock";
 
 interface AttendanceFormProps {
   onSuccess?: () => void;
@@ -314,7 +315,7 @@ export default function AttendanceForm({ onSuccess, onCancel }: AttendanceFormPr
             <div className="bg-background p-4 rounded-lg">
               <p className="text-sm text-muted-foreground mb-2">Usuario: Admin Usuario</p>
               <p className="text-xs text-muted-foreground">
-                {currentTime.toLocaleString("es-EC", {
+                {formatDateTime(currentTime, "es-EC", {
                   weekday: "long",
                   year: "numeric",
                   month: "long",
@@ -340,7 +341,7 @@ export default function AttendanceForm({ onSuccess, onCancel }: AttendanceFormPr
               {lastPunch && (
                 <div className="mt-3 p-2 bg-primary/10 rounded-md">
                   <p className="text-xs text-primary">
-                    Última marcación: {new Date(lastPunch.punchTime).toLocaleString("es-EC")} (
+                    Última marcación: {formatDateTime(lastPunch.punchTime, "es-EC")} (
                     {lastPunch.punchType === "In" ? "Entrada" : "Salida"})
                   </p>
                   <p className="text-xs text-primary">Hace {timeSinceLastPunch} minutos</p>
@@ -430,7 +431,7 @@ export default function AttendanceForm({ onSuccess, onCancel }: AttendanceFormPr
                   <div className="flex items-center p-2 border rounded-md bg-background">
                     <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
                     <span className="text-sm">
-                      {currentTime.toLocaleString("es-EC", {
+                      {formatDateTime(currentTime, "es-EC", {
                         year: "numeric",
                         month: "2-digit",
                         day: "2-digit",

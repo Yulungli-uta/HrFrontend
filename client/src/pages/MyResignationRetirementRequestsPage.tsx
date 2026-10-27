@@ -19,11 +19,12 @@ import { RequestStatusBadge } from '@/components/resignationRetirement/RequestSt
 import { RequestForm } from '@/components/resignationRetirement/RequestForm';
 import { MyRequestDetailDialog } from '@/components/resignationRetirement/MyRequestDetailDialog';
 import type { ResignationRetirementSummary } from '@/types/resignation-retirement';
+import { formatDate as clockFormatDate } from "@/lib/clock";
 
 function formatDate(dateStr?: string | null): string {
   if (!dateStr) return '—';
   try {
-    return new Date(dateStr).toLocaleDateString('es-EC', { day: '2-digit', month: 'short', year: 'numeric' });
+    return clockFormatDate(dateStr, 'es-EC', { day: '2-digit', month: 'short', year: 'numeric' });
   } catch {
     return dateStr;
   }

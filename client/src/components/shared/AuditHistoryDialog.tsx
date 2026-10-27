@@ -11,6 +11,7 @@ import { History, ArrowRight, ArrowLeft } from "lucide-react";
 import { AuditLogAPI } from "@/lib/api";
 import type { ApiResponse } from "@/lib/api";
 import type { AuditLogEntry } from "@/lib/api/services/security";
+import { formatDateTime } from "@/lib/clock";
 
 interface AuditHistoryDialogProps {
   open: boolean;
@@ -84,7 +85,7 @@ export function AuditHistoryDialog({ open, onOpenChange, title, module, entityId
                       {meta.label}
                     </Badge>
                     <span className="text-xs text-muted-foreground">
-                      {new Date(entry.timestamp).toLocaleString()}
+                      {formatDateTime(entry.timestamp)}
                     </span>
                   </div>
                   {(entry.newValues || entry.oldValues) && (

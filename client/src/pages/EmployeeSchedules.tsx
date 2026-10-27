@@ -54,6 +54,7 @@ import type {
   EmployeeSchedule,
   Employee,
 } from "@/types/schedule";
+import { todayEcuador } from "@/lib/clock";
 
 /* -------------------- Helpers -------------------- */
 const statusChip = {
@@ -327,7 +328,7 @@ export default function EmployeeSchedules() {
 
   const schedulesByEmployee = useMemo(() => {
     const map: Record<number, EmployeeSchedule> = {};
-    const today = new Date().toISOString().split("T")[0];
+    const today = todayEcuador();
 
     employees.forEach((e) => {
       const es = createEmployeeScheduleFromView(e);
@@ -361,7 +362,7 @@ export default function EmployeeSchedules() {
       employee.scheduleID || normalizeText(scheduleLabel)
     );
 
-    const today = new Date().toISOString().split("T")[0];
+    const today = todayEcuador();
 
     const isActiveSchedule = employeeSchedule
       ? (!employeeSchedule.validTo || today <= employeeSchedule.validTo) &&
