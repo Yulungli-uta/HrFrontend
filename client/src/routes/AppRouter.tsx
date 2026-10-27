@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 import ExternalSignPage from "@/pages/electronicSignature/ExternalSignPage";
 import AzureLoginRelay from "@/pages/AzureLoginRelay";
 import RedirectToLogin from "@/components/auth/RedirectToLogin";
+import SessionRecoveryPage from "@/components/auth/SessionRecoveryPage";
 
 // Componentes del layout y autorizaciones
 import Layout from "@/components/Layout";
@@ -43,7 +44,7 @@ function InitialLoadingScreen() {
 }
 
 export default function AppRouter() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   // Pagina publica de firmante externo: autorizacion por token en la URL, no por
   // sesion. Debe resolverse ANTES del gate de auth de mas abajo (que redirige todo
   // lo no autenticado a /login), sin pasar por Layout/ProtectedRoute.
@@ -77,6 +78,12 @@ export default function AppRouter() {
         </Switch>
       </Suspense>
     );
+  }
+
+  // Sesión que no se pudo preparar y cuyo cierre automático ya se aplicó hace poco (freno anti-ciclo):
+  // sin permisos ni menú la app no es usable, así que se muestra el código en lugar de un menú que no carga
+  if (user?.permissionsLoaded === false && user.recoveryCode) {
+    return <SessionRecoveryPage code={user.recoveryCode} />;
   }
 
   // Autenticado → app completa dentro de Layout

@@ -14,10 +14,13 @@ import { AZURE_LOGIN_BROADCAST_CHANNEL } from "@/features/auth/constants/session
 
 export default function AzureLoginRelay() {
   useEffect(() => {
-    const deliveryCode = new URLSearchParams(window.location.search).get("deliveryCode");
-    if (deliveryCode) {
+    const params = new URLSearchParams(window.location.search);
+    const deliveryCode = params.get("deliveryCode");
+    const loginFailed = params.get("loginFailed") === "1";
+    if (deliveryCode || loginFailed) {
       const channel = new BroadcastChannel(AZURE_LOGIN_BROADCAST_CHANNEL);
-      channel.postMessage({ type: "AZURE_LOGIN_DELIVERY", deliveryCode });
+      // loginFailed: el usuario pulsó "Atrás"/canceló en Microsoft; la pestaña que espera debe dejar de esperar
+      channel.postMessage(loginFailed ? { type: "AZURE_LOGIN_FAILED" } : { type: "AZURE_LOGIN_DELIVERY", deliveryCode });
       channel.close();
     }
     window.close();

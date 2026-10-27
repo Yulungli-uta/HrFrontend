@@ -17,9 +17,10 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import UserAccessActivityTab, { type AccessUserSelection } from "@/components/admin/UserAccessActivityTab";
 import {
   Shield, RefreshCw, LogOut, Users, Key, Power, Wifi, WifiOff,
-  AlertTriangle, Copy, Check, Loader2,
+  AlertTriangle, Copy, Check, Loader2, History,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { parseApiError } from "@/lib/error-handling";
@@ -29,12 +30,13 @@ import {
   type ActiveApiClientDto,
   type RotateSecretResultDto,
 } from "@/lib/api";
+import { formatDateTime } from "@/lib/clock";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function fmtDate(iso?: string | null) {
   if (!iso) return <span className="italic text-muted-foreground">—</span>;
-  return new Date(iso).toLocaleString("es-EC", {
+  return formatDateTime(iso, "es-EC", {
     day: "2-digit", month: "2-digit", year: "numeric",
     hour: "2-digit", minute: "2-digit",
   });
@@ -73,6 +75,8 @@ export default function ActiveSessionsPage() {
     return [];
   })();
 
+  const [activeTab, setActiveTab] = useState("users");
+  const [accessUser, setAccessUser] = useState<AccessUserSelection | null>(null);
   const [revokeSessionId, setRevokeSessionId] = useState<string | null>(null);
   const [revokeAllUserId, setRevokeAllUserId] = useState<{ userId: string; email: string } | null>(null);
 
@@ -170,7 +174,7 @@ export default function ActiveSessionsPage() {
         </Button>
       </div>
 
-      <Tabs defaultValue="users">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="mb-4">
           <TabsTrigger value="users" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
@@ -182,7 +186,16 @@ export default function ActiveSessionsPage() {
             Clientes API
             {clients.length > 0 && <Badge variant="secondary" className="ml-1">{clients.length}</Badge>}
           </TabsTrigger>
+          <TabsTrigger value="access" className="flex items-center gap-2">
+            <History className="h-4 w-4" />
+            Actividad de acceso
+          </TabsTrigger>
         </TabsList>
+
+        {/* ── Tab actividad de acceso por usuario ────────────────────────── */}
+        <TabsContent value="access">
+          <UserAccessActivityTab selectedUser={accessUser} onSelectUser={setAccessUser} />
+        </TabsContent>
 
         {/* ── Tab sesiones de usuario ────────────────────────────────────── */}
         <TabsContent value="users">
@@ -205,7 +218,7 @@ export default function ActiveSessionsPage() {
                       <TableHead>Tipo</TableHead>
                       <TableHead>IP</TableHead>
                       <TableHead>Navegador</TableHead>
-                      <TableHead>Login</TableHead>
+                      <TableHead title="Fecha de la sesión actual: inicio de sesión o última renovación">Sesión desde</TableHead>
                       <TableHead>Expira</TableHead>
                       <TableHead>WS</TableHead>
                       <TableHead className="text-right">Acciones</TableHead>
@@ -233,6 +246,13 @@ export default function ActiveSessionsPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
+                            <Button
+                              variant="outline" size="sm"
+                              title="Ver la actividad de acceso de este usuario"
+                              onClick={() => { setAccessUser({ id: s.userId, email: s.email }); setActiveTab("access"); }}
+                            >
+                              <History className="h-4 w-4" />
+                            </Button>
                             <Button
                               variant="outline" size="sm"
                               title="Revocar esta sesión"

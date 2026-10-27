@@ -47,6 +47,9 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
 
   const userId = isAuthenticated && user?.id ? String(user.id) : null;
   const queryKey = useMemo(() => ["userPreferences", userId] as const, [userId]);
+  // No se piden las preferencias mientras la sesión sigue incompleta (login en curso o recuperación de sesión):
+  // si en ese momento se cierra la sesión, la petición salía con un token ya revocado y fallaba con 401.
+  const sessionReady = (user?.permissions?.length ?? 0) > 0 || user?.permissionsLoaded === true;
 
   // Bandera de "primer aterrizaje de la sesión" para la página de inicio configurable:
   // 'pending' si la sesión empieza en "/" o "/login"; 'done' si arranca en un enlace directo.
@@ -67,7 +70,7 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
   const query = useQuery<UserPreferencesResponse>({
     queryKey,
     queryFn: fetchPreferences,
-    enabled: !!userId,
+    enabled: !!userId && sessionReady,
     // Con caché local se usa como dato inicial pero se revalida siempre contra el servidor.
     initialData: cached ? { schemaVersion: 1, preferences: cached } : undefined,
     initialDataUpdatedAt: 0,

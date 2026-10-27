@@ -6,6 +6,7 @@
 import { UserSession } from "@/features/auth";
 import { tokenService, authService } from "@/features/auth";
 import { CacheService } from "./cacheService";
+import { PermissionLoadError } from "./permissionLoadError";
 import { logger } from "@/lib/logger";
 
 const PERMISSION_CONFIG = {
@@ -145,7 +146,9 @@ export class PermissionService {
 
   /**
    * 🔥 Carga TODOS los permisos en una sola llamada:
-   * roles, permissions (urls) y menuItems
+   * roles, permissions (urls) y menuItems.
+   * Lanza <see cref="PermissionLoadError"/> si no se pudo cargar: nunca devuelve una lista
+   * vacía por un fallo (solo si el servidor respondió bien y el usuario no tiene menús).
    */
   static async fetchAllPermissions(userId: string): Promise<{
     roles: string[];
@@ -155,37 +158,62 @@ export class PermissionService {
     const accessToken = await this.ensureValidToken();
     if (!accessToken) {
       logger.auth.warn("[PERMISSIONS] No se puede cargar /api/menu/user: token inválido");
-      return { roles: [], permissions: [], menuItems: [] };
+      throw new PermissionLoadError("TOKEN");
     }
 
-    // 🔒 Cache por usuario + sesión para no reventar al recargar
+    // 🔒 Cache por usuario + sesión: solo se usa como respaldo si el servidor falla
     const cache = new CacheService(userId);
+    const cached = cache.get<{ roles: string[]; permissions: string[]; menuItems: any[] }>("all-permissions");
 
-    return cache.tryGetOrSet<{
-      roles: string[];
-      permissions: string[];
-      menuItems: any[];
-    }>("all-permissions", async () => {
+    try {
+      const fresh = await this.requestPermissions(accessToken);
+      cache.set("all-permissions", fresh);
+      return fresh;
+    } catch (err) {
+      logger.auth.warn("[PERMISSIONS] Falló la carga de permisos:", err);
+      if (cached && Array.isArray(cached.menuItems) && cached.menuItems.length > 0) {
+        return cached;
+      }
+      throw err instanceof PermissionLoadError ? err : new PermissionLoadError("NETWORK");
+    }
+  }
+
+  private static async requestPermissions(accessToken: string): Promise<{
+    roles: string[];
+    permissions: string[];
+    menuItems: any[];
+  }> {
+    {
       const url = `${this.getApiBaseUrl()}/api/menu/user`;
 
       logger.auth.debug("[PERMISSIONS] Fetching menu from:", url);
 
-      const res = await fetch(url, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
+      let res: Response;
+      try {
+        res = await fetch(url, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+      } catch {
+        throw new PermissionLoadError("NETWORK");
+      }
       if (!res.ok) {
-        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        throw new PermissionLoadError(`HTTP_${res.status}`);
       }
 
-      const json = await res.json();
+      let json: any;
+      try {
+        json = await res.json();
+      } catch {
+        throw new PermissionLoadError("BAD_RESPONSE");
+      }
 
       if (!json?.success || !json.data) {
         logger.auth.warn("[PERMISSIONS] Respuesta inválida de /api/menu/user");
-        return { roles: [], permissions: [], menuItems: [] };
+        throw new PermissionLoadError("BAD_RESPONSE");
       }
 
       let menuItems: any[] = [];
@@ -236,7 +264,7 @@ export class PermissionService {
       // userInfo.permissions = permissions
       // userInfo.menuItems = menuItems (con parentId para Sidebar)
       return { roles, permissions, menuItems };
-    });
+    }
   }
 
   /**

@@ -50,6 +50,7 @@ import {
   Search,
   Power,
   KeyRound,
+  LockOpen,
   Eye,
   EyeOff,
   Loader2,
@@ -60,10 +61,12 @@ import { AuthUsersAPI, LocalCredentialsAPI } from "@/lib/api";
 import { DataPagination } from "@/components/ui/DataPagination";
 import type { User } from "@/features/auth";
 import { useToast } from "@/hooks/use-toast";
+import { unwrapApiData } from "@/features/auth/services/userAccessTimeline";
 import UserForm from "@/components/forms/UserForm";
 import { parseApiError } from "@/lib/error-handling";
 import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
 import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
+import { formatDateTime } from "@/lib/clock";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -214,6 +217,33 @@ export default function UsersPage() {
   });
 
   // ── Mutation: activar / inactivar ───────────────────────────────────────────
+
+  // Una cuenta Local bloqueada por intentos fallidos no se levanta sola: este botón la desbloquea
+  const unlockMutation = useMutation({
+    mutationFn: (userId: string) => LocalCredentialsAPI.unlock(userId),
+    onSuccess: (result) => {
+      if (result.status === "error") {
+        toast({
+          title: "No se pudo desbloquear",
+          description: result.error?.message ?? "No se pudo desbloquear la cuenta",
+          variant: "destructive",
+        });
+        return;
+      }
+      const wasLocked = unwrapApiData<{ wasLocked: boolean }>(result)?.wasLocked ?? false;
+      toast({
+        title: wasLocked ? "Cuenta desbloqueada" : "La cuenta no estaba bloqueada",
+        description: wasLocked ? "El usuario ya puede intentar iniciar sesión." : undefined,
+      });
+    },
+    onError: (err: unknown) => {
+      toast({
+        title: "No se pudo desbloquear",
+        description: parseApiError(err).message,
+        variant: "destructive",
+      });
+    },
+  });
 
   const toggleActiveMutation = useMutation({
     mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
@@ -488,7 +518,7 @@ export default function UsersPage() {
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
                       {user.lastLogin
-                        ? new Date(user.lastLogin as any).toLocaleString("es-EC", {
+                        ? formatDateTime(user.lastLogin as any, "es-EC", {
                             day: "2-digit", month: "2-digit", year: "numeric",
                             hour: "2-digit", minute: "2-digit",
                           })
@@ -517,6 +547,16 @@ export default function UsersPage() {
                             })
                           }
                         />
+
+                        {/* Desbloquear cuenta — solo usuarios Local (el bloqueo por intentos no se levanta solo) */}
+                        {user.userType === "Local" && (
+                          <ActionIconButton
+                            icon={LockOpen}
+                            label="Desbloquear cuenta"
+                            tone="muted"
+                            onClick={() => unlockMutation.mutate(String(user.id))}
+                          />
+                        )}
 
                         {/* Restablecer contraseña — solo usuarios Local */}
                         {user.userType === "Local" && (

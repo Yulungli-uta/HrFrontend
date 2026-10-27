@@ -39,7 +39,17 @@ import {
   useNotificationWebSocket,
   WebSocketMessage,
 } from "@/hooks/useNotificationWebSocket";
-import { PermissionService, CacheService } from "@/services/permissions";
+import { PermissionService, CacheService, PermissionLoadError } from "@/services/permissions";
+import type { PermissionLoadReason } from "@/services/permissions";
+import {
+  SESSION_RESET_REASON,
+  buildRecoveryCode,
+  canForceRelogin,
+  clearReloginNotice,
+  markForcedRelogin,
+  saveReturnTo,
+  setReloginNotice,
+} from "../services/sessionRecovery";
 import { parseApiError } from "@/lib/error-handling";
 import { registerForceLogoutCallback } from "@/lib/api/core/fetch";
 import { queryClient } from "@/lib/queryClient";
@@ -56,6 +66,12 @@ const logAuth = (...args: unknown[]) => logger.auth.debug(String(args[0] ?? ""),
 const ACTIVITY_WRITE_THROTTLE_MS = 15_000;
 
 const APP_CLIENT_ID = import.meta.env.VITE_APP_CLIENT_ID;
+
+/** Espera máxima de la confirmación de Microsoft; el usuario además puede cancelar en cualquier momento. */
+const AZURE_LOGIN_TIMEOUT_MS = 2 * 60 * 1000;
+
+const AZURE_LOGIN_NOT_COMPLETED_MESSAGE =
+  "No se completó el inicio de sesión con Microsoft. Si pulsaste «Atrás» o cancelaste, puedes intentarlo de nuevo.";
 
 // ─── Tipos públicos ────────────────────────────────────────────────────────────
 
@@ -77,6 +93,9 @@ export interface EmployeeDetails {
   personId?: number;
 }
 
+/** Fase del login con Office 365: esperando la ventana de Microsoft, completando la sesión, o ninguno en curso. */
+export type AzureLoginPhase = "idle" | "waiting" | "completing";
+
 export interface AuthContextType {
   isAuthenticated: boolean;
   user: UserSession | null;
@@ -85,9 +104,36 @@ export interface AuthContextType {
   isWebSocketConnected: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   loginWithOffice365: () => Promise<void>;
+  /** Fase del login con Office 365 en curso (la pantalla de login se mantiene visible mientras tanto). */
+  azureLoginPhase: AzureLoginPhase;
+  /** Cancela la espera de Office 365: cierra la ventana emergente y permite intentar de nuevo. */
+  cancelOffice365Login: () => void;
   logout: () => void;
   refreshAuth: () => Promise<void>;
 }
+
+// ─── Carga de permisos con reintento ───────────────────────────────────────────
+
+const PERMISSION_RETRY_DELAY_MS = 1000;
+
+/** Un reintento silencioso: cubre cortes de red breves antes de pedirle algo al usuario. */
+async function loadPermissionsWithRetry(userId: string) {
+  try {
+    return await PermissionService.fetchAllPermissions(userId);
+  } catch (firstError) {
+    logger.auth.warn("[AUTH] Primer intento de cargar permisos falló, reintentando", firstError);
+    await new Promise((resolve) => setTimeout(resolve, PERMISSION_RETRY_DELAY_MS));
+    return PermissionService.fetchAllPermissions(userId);
+  }
+}
+
+/**
+ * Una sesión guardada sin permisos ni menús (y sin la marca de "cargado") es una sesión
+ * incompleta: hay que volver a cargarla. Una sesión con datos se respeta aunque no tenga la marca.
+ */
+const needsPermissionReload = (session: UserSession): boolean =>
+  session.permissionsLoaded !== true &&
+  (!session.permissions?.length || !(session as { menuItems?: unknown[] }).menuItems?.length);
 
 // ─── Contexto ──────────────────────────────────────────────────────────────────
 
@@ -127,6 +173,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [employeeDetails, setEmployeeDetails] =
     useState<EmployeeDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // La espera del login con Office 365 NO usa isLoading: ese estado reemplaza toda la pantalla por una
+  // carga genérica y el usuario no sabe si debe hacer algo en la ventana de Microsoft.
+  const [azureLoginPhase, setAzureLoginPhase] = useState<AzureLoginPhase>("idle");
 
   // Última actividad como ref (NO state): los eventos de actividad disparan en cada
   // mousemove/scroll y un setState aquí re-renderizaría toda la app continuamente.
@@ -145,6 +194,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const fetchEmployeeDetailsRef = useRef<(email: string) => Promise<void>>(
     async () => { }
   );
+
+  // Motivo del próximo logout (flujo de recuperación). logout() sigue sin parámetros porque
+  // varios componentes lo usan directo como manejador de eventos.
+  const logoutReasonRef = useRef<string | null>(null);
 
   const processedLoginEventsRef = useRef<Set<string>>(new Set());
   const isProcessingLoginRef = useRef(false);
@@ -223,6 +276,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   );
   fetchEmployeeDetailsRef.current = fetchEmployeeDetails;
 
+  // ─── Recuperación cuando no se pueden cargar los permisos ─────────────────
+
+  const recoverFromPermissionFailure = useCallback(
+    (userInfo: UserSession, reason: PermissionLoadReason) => {
+      const code = buildRecoveryCode(reason);
+
+      if (canForceRelogin()) {
+        // Primera vez: se cierra la sesión (el servidor registra el motivo) y se pide volver a entrar.
+        markForcedRelogin();
+        saveReturnTo(`${window.location.pathname}${window.location.search}`);
+        setReloginNotice({ code });
+        logoutReasonRef.current = SESSION_RESET_REASON;
+        logoutRef.current();
+        return;
+      }
+
+      // Freno anti-ciclo: ya se cerró la sesión hace poco. Se deja al usuario dentro, sin guardar
+      // nada en el navegador, y ProtectedRoute muestra el código para avisar a DITIC.
+      logger.auth.error("[AUTH] Freno anti-ciclo: no se vuelve a cerrar la sesión automáticamente", code);
+      setUser({ ...userInfo, permissionsLoaded: false, recoveryCode: code });
+    },
+    []
+  );
+
   // ─── Aplicar estado de login ──────────────────────────────────────────────
 
   const doLoginState = useCallback(
@@ -248,7 +325,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         logAuth("Cargando permisos desde /api/menu/user...", {
           userId: userInfo.id,
         });
-        const perms = await PermissionService.fetchAllPermissions(userInfo.id);
+        const perms = await loadPermissionsWithRetry(userInfo.id);
         const mergedUser: UserSession = {
           ...userInfo,
           roles:
@@ -263,24 +340,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             (perms.menuItems && perms.menuItems.length > 0
               ? perms.menuItems
               : (userInfo as any).menuItems) ?? [],
+          permissionsLoaded: true,
         };
         setUser(mergedUser);
         tokenService.setUserSession(mergedUser);
+        clearReloginNotice();
         logAuth("Permisos cargados", {
           roles: mergedUser.roles,
           permissions: mergedUser.permissions?.length ?? 0,
           menuItems: mergedUser.menuItems?.length ?? 0,
         });
       } catch (err) {
-        logger.auth.error("[AUTH] Error loading permissions/menu:", err);
-        const safeUser: UserSession = {
-          ...userInfo,
-          roles: userInfo.roles ?? [],
-          permissions: userInfo.permissions ?? [],
-          menuItems: (userInfo as any).menuItems ?? [],
-        };
-        setUser(safeUser);
-        tokenService.setUserSession(safeUser);
+        const reason: PermissionLoadReason =
+          err instanceof PermissionLoadError ? err.reason : "NETWORK";
+        logger.auth.error("[AUTH] No se pudieron cargar los permisos/menú:", reason, err);
+        recoverFromPermissionFailure(userInfo, reason);
+        return;
       }
 
       // Detalles del empleado en background (no bloquea el login)
@@ -294,7 +369,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         });
       }
     },
-    [toast]
+    [toast, recoverFromPermissionFailure]
   );
   doLoginStateRef.current = doLoginState;
 
@@ -304,9 +379,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Revocación en servidor best-effort ANTES de limpiar los tokens locales
     // (se necesita el refresh token). No bloquea el logout local: si el servidor
     // no responde, la sesión local se limpia igual.
+    const logoutReason = logoutReasonRef.current;
+    logoutReasonRef.current = null;
     const refreshToken = tokenService.getRefreshToken();
     if (refreshToken) {
-      authService.logout(refreshToken).catch((err) => {
+      authService.logout(refreshToken, logoutReason ?? undefined).catch((err) => {
         logger.auth.error("Error revocando sesión en servidor durante logout", err);
       });
     }
@@ -343,10 +420,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       /* ignore */
     }
 
-    toast({
-      title: "Sesión cerrada",
-      description: "Has cerrado sesión correctamente",
-    });
+    if (!logoutReason) {
+      toast({
+        title: "Sesión cerrada",
+        description: "Has cerrado sesión correctamente",
+      });
+    }
 
     // No navegar manualmente aquí: AppRouter ya redirige incondicionalmente a
     // /login en cuanto isAuthenticated pasa a false (ver App Router, gate superior).
@@ -396,7 +475,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } else {
         const userSession = tokenService.getUserSession();
         if (userSession) {
-          if (!userSession.permissions || !(userSession as any).menuItems) {
+          if (needsPermissionReload(userSession)) {
             logAuth("REFRESH AUTH / sin permisos, recargando...");
             await doLoginState(userSession, false);
           } else {
@@ -478,23 +557,48 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // azureLoginSettledRef evita doble toast si, por ejemplo, el timeout y la detección de
   // ventana cerrada disparan casi al mismo tiempo).
   const finishAzureLoginAttempt = useCallback(
-    (success: boolean, errorMessage?: string) => {
+    (success: boolean, errorMessage?: string, options?: { neutral?: boolean }) => {
       if (azureLoginSettledRef.current) return;
       azureLoginSettledRef.current = true;
       clearAzureLoginWatchers();
       setIsLoading(false);
+      setAzureLoginPhase("idle");
       if (!success) {
+        // neutral: el usuario canceló o pulsó "Atrás" en Microsoft; no es un error y no merece un aviso rojo
         toast({
-          title: "No se completó el inicio de sesión",
+          title: options?.neutral ? "Inicio de sesión no completado" : "No se completó el inicio de sesión",
           description:
             errorMessage ??
             "El inicio de sesión con Office 365 no se completó. Intenta de nuevo.",
-          variant: "destructive",
+          variant: options?.neutral ? "default" : "destructive",
         });
       }
     },
     [toast, clearAzureLoginWatchers]
   );
+
+  // Cancelación voluntaria del usuario durante la espera: sin toast de error, solo vuelve al login.
+  const cancelOffice365Login = useCallback(() => {
+    if (azureLoginSettledRef.current) return;
+    azureLoginSettledRef.current = true;
+    const popup = azurePopupRef.current;
+    clearAzureLoginWatchers();
+    try {
+      popup?.close();
+    } catch {
+      /* la ventana puede estar aislada por COOP: no se puede cerrar desde aquí */
+    }
+    azureCodeVerifierRef.current = null;
+    setAzureLoginPhase("idle");
+  }, [clearAzureLoginWatchers]);
+
+  // ─── WebSocket: LoginFailed → Microsoft no completó el login (Atrás/cancelar) ──────────────
+
+  useEffect(() => {
+    if (!lastMessage || lastMessage.eventType !== "LoginFailed") return;
+    logAuth("WS LOGIN FAILED EVENT");
+    finishAzureLoginAttempt(false, AZURE_LOGIN_NOT_COMPLETED_MESSAGE, { neutral: true });
+  }, [lastMessage, finishAzureLoginAttempt]);
 
   // ─── WebSocket: LoginNotification → completar login AzureAD ──────────────
 
@@ -515,6 +619,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     processedLoginEventsRef.current.add(eventKey);
     if (isProcessingLoginRef.current) return;
     isProcessingLoginRef.current = true;
+    if (!azureLoginSettledRef.current) setAzureLoginPhase("completing");
 
     (async () => {
       try {
@@ -604,6 +709,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const handleAzureDeliveryMessage = (event: MessageEvent) => {
       const payload = event.data;
+      if (payload?.type === "AZURE_LOGIN_FAILED") {
+        finishAzureLoginAttempt(false, AZURE_LOGIN_NOT_COMPLETED_MESSAGE, { neutral: true });
+        return;
+      }
       if (!payload || payload.type !== "AZURE_LOGIN_DELIVERY") return;
 
       logAuth("BROADCASTCHANNEL LOGIN EVENT", { payload });
@@ -613,6 +722,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       processedLoginEventsRef.current.add(eventKey);
       if (isProcessingLoginRef.current) return;
       isProcessingLoginRef.current = true;
+      if (!azureLoginSettledRef.current) setAzureLoginPhase("completing");
 
       (async () => {
         try {
@@ -718,7 +828,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         } else {
           const userSession = tokenService.getUserSession();
           if (userSession) {
-            if (!userSession.permissions || !(userSession as any).menuItems) {
+            if (needsPermissionReload(userSession)) {
               logAuth("CHECK AUTH / sin permisos, recargando...");
               await doLoginStateRef.current(userSession, false);
             } else {
@@ -890,7 +1000,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const tokens = await authService.loginLocal({ email, password });
       const userInfo = await authService.getCurrentUser(tokens.accessToken);
       tokenService.setTokens(tokens);
-      tokenService.setUserSession(userInfo);
+      // La sesión se guarda recién en doLoginState, cuando los permisos ya se cargaron: guardarla antes dejaba
+      // una sesión incompleta en el navegador si esa carga fallaba.
       await doLoginState(userInfo, true);
       logAuth("LOGIN LOCAL OK");
       return true;
@@ -911,7 +1022,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const loginWithOffice365 = async (): Promise<void> => {
     try {
-      setIsLoading(true);
+      setAzureLoginPhase("waiting");
       logAuth("Iniciando login Office 365...");
 
       // PKCE (RFC 7636): el codeVerifier se genera aquí y queda SOLO en memoria de esta
@@ -927,7 +1038,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const popup = window.open(url, "office365login", "width=600,height=700,left=200,top=100");
 
       if (!popup) {
-        setIsLoading(false);
+        setAzureLoginPhase("idle");
         azureCodeVerifierRef.current = null;
         toast({
           title: "No se pudo abrir la ventana de inicio de sesión",
@@ -944,7 +1055,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       azurePopupRef.current = popup;
       azureLoginSettledRef.current = false;
 
-      // B: si no llega ningún resultado (WS caído, deliveryCode perdido, etc.) en 3
+      // B: si no llega ningún resultado (WS caído, deliveryCode perdido, etc.) en 2
       // minutos, se avisa en vez de dejar la pantalla de login esperando en silencio.
       azureLoginTimeoutRef.current = setTimeout(() => {
         finishAzureLoginAttempt(
@@ -956,7 +1067,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         } catch {
           /* ignore */
         }
-      }, 3 * 60 * 1000);
+      }, AZURE_LOGIN_TIMEOUT_MS);
 
       // C: detecta que el usuario volvió a esta pestaña (típicamente porque cerró el popup,
       // manualmente o solo tras la página de error/éxito del callback) sin leer NINGUNA
@@ -981,7 +1092,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       window.addEventListener("focus", onFocus);
     } catch (error: unknown) {
       logger.auth.error("[AUTH] Error en Office 365 login:", error);
-      setIsLoading(false);
+      setAzureLoginPhase("idle");
       azureLoginSettledRef.current = true;
       azureCodeVerifierRef.current = null;
       toast({
@@ -1004,6 +1115,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         isWebSocketConnected: isConnected,
         login,
         loginWithOffice365,
+        azureLoginPhase,
+        cancelOffice365Login,
         logout,
         refreshAuth,
       }}

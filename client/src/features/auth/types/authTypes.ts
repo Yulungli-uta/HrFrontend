@@ -45,6 +45,10 @@ export interface UserSession {
   azureObjectId?: string;
   /** URLs de menús asignados — NO confundir con actionPermissions (son cosas distintas). */
   permissions?: string[];
+  /** true cuando los menús/permisos se cargaron bien del servidor (aunque la lista sea vacía). */
+  permissionsLoaded?: boolean;
+  /** Código para avisar a DITIC cuando no se pudo cargar la sesión (solo en memoria, no se guarda). */
+  recoveryCode?: string;
   lastLogin?: string;
   /** Lista de roles del usuario */
   roles?: string[];

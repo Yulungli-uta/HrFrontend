@@ -1231,6 +1231,13 @@ export const LocalCredentialsAPI = {
 
   remove: (id: string) =>
     apiFetch<unknown>(`/api/local-credentials/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+
+  /** Desbloquea una cuenta Local (reinicia intentos fallidos y levanta el bloqueo). Queda auditado. */
+  unlock: (id: string): Promise<ApiResponse<{ unlocked: boolean; wasLocked: boolean }>> =>
+    apiFetch<{ unlocked: boolean; wasLocked: boolean }>(
+      `/api/local-credentials/${encodeURIComponent(id)}/unlock`,
+      { method: 'POST' }
+    ),
 } as const;
 
 export const LoginHistoryAPI = {
@@ -1610,4 +1617,66 @@ export const SessionManagementAPI = {
 
   rotateSecret: (applicationId: string): Promise<ApiResponse<RotateSecretResultDto>> =>
     apiFetch<RotateSecretResultDto>(`/api/session-management/api-clients/${encodeURIComponent(applicationId)}/rotate-secret`, { method: 'POST' }),
+} as const;
+
+/* =============================================================================
+ * Actividad de acceso por usuario (RepositoryUta: /api/user-access)
+ * Solo Administrador y R_DITIC. Une inicios de sesión, renovaciones, cierres y anomalías.
+ * ========================================================================== */
+
+export type UserAccessEventType =
+  | 'LOGIN'
+  | 'LOGIN_FAILED'
+  | 'SESSION_RENEWED'
+  | 'LOGOUT'
+  | 'SESSION_EXPIRED'
+  | 'SESSION_REVOKED'
+  | 'SECURITY'
+  | 'ACTIVITY'
+  | 'PUNCH';
+
+export interface UserAccessEvent {
+  timestamp: string;
+  type: UserAccessEventType;
+  title: string;
+  detail?: string | null;
+  ipAddress?: string | null;
+  device?: string | null;
+  sessionId?: string | null;
+}
+
+export interface UserAccessSummary {
+  userId: string;
+  email: string;
+  displayName?: string | null;
+  userType: string;
+  isActive: boolean;
+  hrEmployeeId?: number | null;
+  roles: string[];
+  lastMicrosoftLogin?: string | null;
+  lastAppAccess?: string | null;
+  validSessions: number;
+  /** Cuenta Local bloqueada por intentos fallidos (o manualmente). */
+  accountLocked: boolean;
+  lockedUntil?: string | null;
+}
+
+export interface UserAccessTimeline {
+  summary: UserAccessSummary;
+  items: UserAccessEvent[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+}
+
+export const UserAccessAPI = {
+  timeline: (
+    userId: string,
+    params: { from?: string; to?: string; page?: number; pageSize?: number } = {}
+  ): Promise<ApiResponse<UserAccessTimeline>> =>
+    apiFetch<UserAccessTimeline>(
+      `/api/user-access/${encodeURIComponent(userId)}/timeline${serializeQuery(params)}`,
+      { method: 'GET' }
+    ),
 } as const;

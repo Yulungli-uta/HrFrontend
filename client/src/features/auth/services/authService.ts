@@ -153,12 +153,12 @@ export const authService = {
    * de 7 días no quede activa tras cerrar sesión. Nunca lanza: si el servidor
    * no responde, el logout local (limpieza de tokens) procede igual.
    */
-  async logout(refreshToken: string): Promise<void> {
+  async logout(refreshToken: string, reason?: string): Promise<void> {
     logger.auth.debug("logout (revocación en servidor) initiated");
 
     const res = await authFetch("/api/auth/logout", {
       method: "POST",
-      body: JSON.stringify({ refreshToken }),
+      body: JSON.stringify(reason ? { refreshToken, reason } : { refreshToken }),
     });
 
     if (res.status === "error") {

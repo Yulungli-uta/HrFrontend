@@ -9,7 +9,7 @@
 
 // ─── Context y hook oficial ────────────────────────────────────────────────────
 export { AuthProvider, useAuth } from "./context/AuthContext";
-export type { EmployeeDetails, AuthContextType } from "./context/AuthContext";
+export type { EmployeeDetails, AuthContextType, AzureLoginPhase } from "./context/AuthContext";
 
 // ─── Servicios ─────────────────────────────────────────────────────────────────
 export { authService } from "./services/authService";

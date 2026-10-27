@@ -24,6 +24,9 @@ import { useAuth } from '@/features/auth';
 import { Loader2 } from 'lucide-react';
 import { parseApiError } from '@/lib/error-handling';
 import { logger } from "@/lib/logger";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import Office365WaitNotice from "@/components/auth/Office365WaitNotice";
+import { consumeReturnTo, readReloginNotice, RELOGIN_NOTICE_EVENT, type ReloginNotice } from "@/features/auth/services/sessionRecovery";
 
 const DEBUG = import.meta.env.VITE_DEBUG_AUTH === "true";
 
@@ -31,7 +34,15 @@ export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [localLoading, setLocalLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("local");
+  const [activeTab, setActiveTab] = useState("office365");
+  // Aviso de "sesión renovada": el cierre automático lo deja guardado y puede ocurrir con esta pantalla
+  // ya montada, por eso además de leerlo al montar se escucha el evento. Se borra al iniciar sesión bien.
+  const [reloginNotice, setReloginNoticeState] = useState<ReloginNotice | null>(() => readReloginNotice());
+  useEffect(() => {
+    const refresh = () => setReloginNoticeState(readReloginNotice());
+    window.addEventListener(RELOGIN_NOTICE_EVENT, refresh);
+    return () => window.removeEventListener(RELOGIN_NOTICE_EVENT, refresh);
+  }, []);
 
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -39,18 +50,21 @@ export default function LoginPage() {
   const {
     login,
     loginWithOffice365,
+    azureLoginPhase,
+    cancelOffice365Login,
     isLoading: authLoading,
     isAuthenticated,
     isWebSocketConnected
   } = useAuth();
 
-  const loading = localLoading || authLoading;
+  const azurePending = azureLoginPhase !== "idle";
+  const loading = localLoading || authLoading || azurePending;
 
   // ✅ Si ya está autenticado, redirigir
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
       DEBUG && logger.debug("Login", "✅ Usuario autenticado, redirigiendo a /");
-      setLocation("/");
+      setLocation(consumeReturnTo() ?? "/");
     }
   }, [isAuthenticated, authLoading, setLocation]);
 
@@ -155,6 +169,17 @@ export default function LoginPage() {
         </CardHeader>
 
         <CardContent>
+          {reloginNotice && (
+            <Alert className="mb-4">
+              <AlertTitle>Tu sesión necesita renovarse</AlertTitle>
+              <AlertDescription>
+                Por seguridad cerramos tu sesión para actualizar tu acceso. Vuelve a iniciar sesión para
+                continuar donde estabas. Si el problema se repite, avisa a DITIC con el código{" "}
+                <span className="font-mono font-semibold">{reloginNotice.code}</span>.
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Estado WebSocket */}
           {/* <div
             className={`mb-4 text-sm text-center ${isWebSocketConnected ? "text-success" : "text-warning"
@@ -222,33 +247,37 @@ export default function LoginPage() {
                 <p className="text-sm text-muted-foreground dark:text-muted-foreground text-center">
                   Autentíquese usando su cuenta institucional de Office 365
                 </p>
-                <Button
-                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
-                  onClick={handleOffice365Login}
-                  disabled={loading}
-                >
-                  <svg
-                    className="w-5 h-5 mr-2"
-                    viewBox="0 0 23 23"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
+                {azureLoginPhase !== "idle" ? (
+                  <Office365WaitNotice phase={azureLoginPhase} onCancel={cancelOffice365Login} />
+                ) : (
+                  <Button
+                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+                    onClick={handleOffice365Login}
+                    disabled={loading}
                   >
-                    <path d="M11.6666 9.16667H21.6666V12.5H11.6666V9.16667Z" fill="white" />
-                    <path d="M11.6666 14.1667H21.6666V17.5H11.6666V14.1667Z" fill="white" />
-                    <path d="M1.66663 9.16667H9.16663V12.5H1.66663V9.16667Z" fill="white" />
-                    <path d="M1.66663 14.1667H9.16663V17.5H1.66663V14.1667Z" fill="white" />
-                    <path d="M11.6666 4.16667H21.6666V7.5H11.6666V4.16667Z" fill="white" />
-                    <path d="M1.66663 4.16667H9.16663V7.5H1.66663V4.16667Z" fill="white" />
-                  </svg>
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Conectando con Office 365...
-                    </>
-                  ) : (
-                    "Iniciar sesión con Office 365"
-                  )}
-                </Button>
+                    <svg
+                      className="w-5 h-5 mr-2"
+                      viewBox="0 0 23 23"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path d="M11.6666 9.16667H21.6666V12.5H11.6666V9.16667Z" fill="white" />
+                      <path d="M11.6666 14.1667H21.6666V17.5H11.6666V14.1667Z" fill="white" />
+                      <path d="M1.66663 9.16667H9.16663V12.5H1.66663V9.16667Z" fill="white" />
+                      <path d="M1.66663 14.1667H9.16663V17.5H1.66663V14.1667Z" fill="white" />
+                      <path d="M11.6666 4.16667H21.6666V7.5H11.6666V4.16667Z" fill="white" />
+                      <path d="M1.66663 4.16667H9.16663V7.5H1.66663V4.16667Z" fill="white" />
+                    </svg>
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Conectando con Office 365...
+                      </>
+                    ) : (
+                      "Iniciar sesión con Office 365"
+                    )}
+                  </Button>
+                )}
               </div>
             </TabsContent>
           </Tabs>

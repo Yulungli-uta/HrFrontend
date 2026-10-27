@@ -18,6 +18,7 @@ import { Redirect } from 'wouter';
 import { Shield, Lock, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { logger } from "@/lib/logger";
+import SessionRecoveryPage from './SessionRecoveryPage';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -116,6 +117,10 @@ export function ProtectedRoute({
     // Validar que el usuario tenga permisos cargados
     if (!user?.permissions || user.permissions.length === 0) {
       // logger.warn("ProtectedRoute", '⚠️ Usuario sin permisos cargados, denegando acceso (lista vacía)');
+      // Sesión que no se pudo preparar (freno anti-ciclo): no es falta de permisos reales
+      if (user.permissionsLoaded === false && user.recoveryCode) {
+        return <SessionRecoveryPage code={user.recoveryCode} />;
+      }
       if (showUnauthorized) {
         return <UnauthorizedPage reason="route" requiredPath={requiredPath} noPermissions />;
       }

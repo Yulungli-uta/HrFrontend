@@ -108,6 +108,7 @@ export function resolveBaseUrl(path: string): string {
     '/api/access-profiles',
     '/api/access-profile-roles',
     '/api/user-access-profiles',
+    '/api/user-access/',
     '/api/role-change-history',
     '/api/security-tokens',
     '/api/sessions',
