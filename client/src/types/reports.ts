@@ -102,6 +102,8 @@ export interface ReportFilter {
   identification?: string;
   /** Búsqueda parcial por cédula o nombre completo (contiene, no exacta). Usado por el resumen de atrasos y novedades de asistencia. */
   searchText?: string;
+  /** Reporte detallado de picadas: true = solo jornadas con atraso, false = solo sin atraso, ausente = todas. */
+  hasLateness?: boolean;
   /** Filtra la pantalla de novedades de asistencia por un solo tipo (ej. "LATE_ARRIVAL"). Vacío = todos. */
   noveltyType?: string;
   /**

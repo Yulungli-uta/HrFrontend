@@ -1,48 +1,43 @@
 // client/src/pages/reports/PunchDetailReport.tsx
-import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Fingerprint, Search, FileText, FileSpreadsheet } from 'lucide-react';
+import { useState } from 'react';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { Fingerprint, Loader2, Search, FileText, FileSpreadsheet } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DataPagination } from '@/components/ui/DataPagination';
+import { DepartmentSelect } from '@/components/departments';
 import { REF_TYPE_CATEGORIES } from '@/features/refTypeCategories';
 import { useRefTypesByCategory } from '@/hooks/useRefTypes';
-import { useDepartments } from '@/hooks/departments';
 import { useReport } from '@/hooks/useReport';
 import { getPunchDetailSummary } from '@/lib/api/services/reports';
+import { firstDayOfCurrentMonthEcuador, formatDate, todayEcuador } from '@/lib/clock';
 import { parseApiError } from '@/lib/error-handling';
 import type { ReportFilter } from '@/types/reports';
 
 const MAX_RANGE_DAYS = 31;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** Fecha local en formato yyyy-MM-dd (toISOString la desplazaría por la zona horaria). */
-function toLocalDateStr(d: Date): string {
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${d.getFullYear()}-${mm}-${dd}`;
-}
-
+/** Días entre dos fechas yyyy-MM-dd, ambas incluidas. Se calcula en UTC para no depender de la zona del navegador. */
 function daysBetweenInclusive(start: string, end: string): number {
-  const s = new Date(`${start}T00:00:00`).getTime();
-  const e = new Date(`${end}T00:00:00`).getTime();
+  const s = Date.parse(`${start}T00:00:00Z`);
+  const e = Date.parse(`${end}T00:00:00Z`);
   return Math.round((e - s) / DAY_MS) + 1;
 }
 
 const hhmm = (t: string | null | undefined) => (t ? t.slice(0, 5) : '—');
 const punchTime = (t: string | null | undefined) => (t ? t.slice(11, 19) : '—');
-const formatDate = (d: string) => d.slice(0, 10).split('-').reverse().join('/');
+const dayLabel = (d: string) => formatDate(d.slice(0, 10), 'es-EC', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
 export default function PunchDetailReport() {
-  const today = new Date();
-  const [startDate, setStartDate] = useState(toLocalDateStr(new Date(today.getFullYear(), today.getMonth(), 1)));
-  const [endDate, setEndDate] = useState(toLocalDateStr(today));
-  const [departmentId, setDepartmentId] = useState<number | ''>('');
+  const [startDate, setStartDate] = useState(firstDayOfCurrentMonthEcuador());
+  const [endDate, setEndDate] = useState(todayEcuador());
+  const [departmentId, setDepartmentId] = useState<number | null>(null);
   const [laborRegimeId, setLaborRegimeId] = useState<number | ''>('');
   const [searchText, setSearchText] = useState('');
+  const [lateness, setLateness] = useState<'' | 'yes' | 'no'>('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
@@ -50,11 +45,6 @@ export default function PunchDetailReport() {
 
   const { data: laborRegimesData } = useRefTypesByCategory(REF_TYPE_CATEGORIES.CONTRACT_TYPE);
   const laborRegimes: Array<{ typeId?: number; typeID?: number; id?: number; name: string }> = laborRegimesData;
-  const { departments } = useDepartments();
-  const sortedDepartments = useMemo(
-    () => [...departments].sort((a, b) => a.name.localeCompare(b.name)),
-    [departments],
-  );
 
   const rangeDays = startDate && endDate ? daysBetweenInclusive(startDate, endDate) : 0;
   const rangeError =
@@ -66,25 +56,40 @@ export default function PunchDetailReport() {
   const filter: ReportFilter = {
     startDate,
     endDate,
-    departmentId: departmentId === '' ? undefined : Number(departmentId),
+    departmentId: departmentId ?? undefined,
     laborRegimeId: laborRegimeId === '' ? undefined : Number(laborRegimeId),
     searchText: searchText.trim() || undefined,
+    hasLateness: lateness === '' ? undefined : lateness === 'yes',
   };
 
-  const { data: summaryResp, isLoading, isFetching, error } = useQuery({
+  // keepPreviousData: al cambiar de página se sigue mostrando la anterior (con spinner encima) en vez de
+  // vaciar la tabla, que hacía creer que no había más registros.
+  const { data: summaryResp, isFetching, error } = useQuery({
     queryKey: ['punch-detail-summary', filter, page, pageSize],
     queryFn: () => getPunchDetailSummary(filter, page, pageSize),
     enabled: !rangeError,
+    placeholderData: keepPreviousData,
   });
   const result = summaryResp?.status === 'success' ? summaryResp.data : null;
   const rows = result?.items ?? [];
-  const loading = !rangeError && (isLoading || isFetching);
+  const loading = !rangeError && isFetching;
   const loadError = error ? parseApiError(error).message : '';
 
   const { download, isDownloading } = useReport();
 
   return (
-    <div className="p-6 space-y-5">
+    <div className="relative p-6 space-y-5">
+      {/* Bloquea el contenido de la página (no el menú de navegación) mientras llega la consulta: la capa
+          intercepta los clics y no se puede cambiar de página ni de filtro hasta que termine. El spinner es
+          sticky para quedar a la vista aunque la tabla sea alta y el usuario haya hecho scroll. */}
+      {loading && (
+        <div role="status" aria-live="polite" className="absolute inset-0 z-30 bg-background/70 backdrop-blur-sm">
+          <div className="sticky top-[40vh] flex flex-col items-center gap-4">
+            <Loader2 className="h-14 w-14 animate-spin text-primary" aria-hidden="true" />
+            <p className="text-base font-medium text-foreground">Cargando jornadas…</p>
+          </div>
+        </div>
+      )}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Fingerprint className="h-6 w-6 text-primary" />
@@ -111,7 +116,7 @@ export default function PunchDetailReport() {
           <CardTitle className="text-base">Filtros</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
             <div>
               <Label className="text-xs">Desde *</Label>
               <Input
@@ -128,16 +133,13 @@ export default function PunchDetailReport() {
             </div>
             <div>
               <Label className="text-xs">Dependencia</Label>
-              <select
-                className="w-full h-9 border rounded-md px-3 text-sm bg-background mt-1"
-                value={departmentId}
-                onChange={e => updateFilter(() => setDepartmentId(e.target.value === '' ? '' : Number(e.target.value)))}
-              >
-                <option value="">Todas</option>
-                {sortedDepartments.map(d => (
-                  <option key={d.departmentId} value={d.departmentId}>{d.name}</option>
-                ))}
-              </select>
+              <div className="mt-1">
+                <DepartmentSelect
+                  value={departmentId}
+                  onChange={id => updateFilter(() => setDepartmentId(id))}
+                  placeholder="Todas las dependencias"
+                />
+              </div>
             </div>
             <div>
               <Label className="text-xs">Régimen laboral</Label>
@@ -151,6 +153,18 @@ export default function PunchDetailReport() {
                   const id = r.typeId ?? r.typeID ?? r.id;
                   return <option key={id} value={id}>{r.name}</option>;
                 })}
+              </select>
+            </div>
+            <div>
+              <Label className="text-xs">Atraso</Label>
+              <select
+                className="w-full h-9 border rounded-md px-3 text-sm bg-background mt-1"
+                value={lateness}
+                onChange={e => updateFilter(() => setLateness(e.target.value as '' | 'yes' | 'no'))}
+              >
+                <option value="">Todos</option>
+                <option value="yes">Con atraso</option>
+                <option value="no">Sin atraso</option>
               </select>
             </div>
             <div>
@@ -185,7 +199,7 @@ export default function PunchDetailReport() {
             <p className="text-sm text-muted-foreground">No hay jornadas con estos filtros.</p>
           ) : !rangeError && (
             <>
-              <div className="rounded-md border overflow-x-auto">
+              <div className="rounded-md border overflow-x-auto" aria-busy={loading}>
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -207,7 +221,7 @@ export default function PunchDetailReport() {
                       <TableRow key={`${r.employeeId}-${r.workDate}-${r.journeyNumber}-${i}`}>
                         <TableCell className="font-mono text-xs">{r.idCard}</TableCell>
                         <TableCell className="font-medium">{r.fullName}</TableCell>
-                        <TableCell className="text-center whitespace-nowrap">{formatDate(r.workDate)}</TableCell>
+                        <TableCell className="text-center whitespace-nowrap">{dayLabel(r.workDate)}</TableCell>
                         <TableCell className="text-center whitespace-nowrap">
                           {r.scheduledEntryTime && r.scheduledExitTime
                             ? `${hhmm(r.scheduledEntryTime)} - ${hhmm(r.scheduledExitTime)}`
