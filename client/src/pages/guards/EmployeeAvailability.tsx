@@ -21,6 +21,7 @@ import type {
   EmployeeAvailabilityFilterDto,
   CreateManualAvailabilityBlockDto,
 } from '@/types/guards';
+import { addDays, formatDateTime, todayEcuador } from "@/lib/clock";
 
 const SOURCE_LABEL: Record<string, string> = {
   PERMISSION:   'Permiso',
@@ -28,14 +29,12 @@ const SOURCE_LABEL: Record<string, string> = {
   MANUAL_BLOCK: 'Bloqueo manual',
   SUSPENSION:   'Suspensión',
   TRAINING:     'Capacitación',
-  MEDICAL:      'Médico',
-  MANUAL:       'Manual',
+  MEDICAL:       'Médico',
+  MEDICAL_LEAVE: 'Licencia médica',
+  MANUAL:        'Manual',
 };
 
-function todayStr() { return new Date().toISOString().split('T')[0]; }
-function addDays(d: string, n: number) {
-  const dt = new Date(d); dt.setDate(dt.getDate() + n); return dt.toISOString().split('T')[0];
-}
+function todayStr() { return todayEcuador(); }
 
 export default function EmployeeAvailabilityPage() {
   const today = todayStr();
@@ -229,10 +228,10 @@ export default function EmployeeAvailabilityPage() {
                       <Badge variant="outline">{SOURCE_LABEL[b.sourceType] ?? b.sourceType}</Badge>
                     </TableCell>
                     <TableCell className="text-sm font-mono">
-                      {new Date(b.startDateTime).toLocaleString('es-EC', { dateStyle: 'short', timeStyle: 'short' })}
+                      {formatDateTime(b.startDateTime, 'es-EC', { dateStyle: 'short', timeStyle: 'short' })}
                     </TableCell>
                     <TableCell className="text-sm font-mono">
-                      {new Date(b.endDateTime).toLocaleString('es-EC', { dateStyle: 'short', timeStyle: 'short' })}
+                      {formatDateTime(b.endDateTime, 'es-EC', { dateStyle: 'short', timeStyle: 'short' })}
                     </TableCell>
                     <TableCell>
                       <Badge variant={b.status === 'ACTIVE' ? 'default' : 'secondary'}>

@@ -1,5 +1,10 @@
 //src/pages/guards/GuardRotationGroups.tsx
 import { useState, useMemo } from 'react';
+import { todayEcuador } from "@/lib/clock";
+
+function normalizeText(value: string): string {
+  return value.trim().replace(/\s+/g, ' ');
+}
 import {
   Users, Plus, MapPin, Shield, ChevronRight, ChevronLeft,
   Loader2, UserMinus, X, Building2, RotateCw, ChevronDown, ChevronUp,
@@ -45,7 +50,7 @@ import type {
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
-const today = new Date().toISOString().slice(0, 10);
+const today = todayEcuador();
 
 const SEQ_COLORS: Record<string, string> = {
   L: 'bg-slate-100 text-slate-600',
@@ -53,6 +58,17 @@ const SEQ_COLORS: Record<string, string> = {
   T: 'bg-orange-100 text-orange-700',
   N: 'bg-indigo-100 text-indigo-700',
 };
+
+const GROUP_LEVEL_LABEL: Record<string, string> = {
+  GENERAL: 'General',
+  SUBGROUP: 'Subgrupo',
+  ROTATION: 'Rotación',
+};
+
+function levelLabel(name?: string | null): string {
+  if (!name) return '';
+  return GROUP_LEVEL_LABEL[name] ?? name;
+}
 
 function PatternChips({ sequence }: { sequence: string | null }) {
   if (!sequence) return <span className="text-xs text-muted-foreground">—</span>;
@@ -117,7 +133,7 @@ function GroupActivePattern({
   if (variant === 'badge') {
     return (
       <span
-        className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium bg-primary/10 text-primary cursor-pointer hover:bg-primary/20 transition-colors"
+        className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[0.6875rem] font-medium bg-primary/10 text-primary cursor-pointer hover:bg-primary/20 transition-colors"
         title={`Desde ${active.validFrom} · Inicio ciclo: ${active.startCycleDate}`}
         onClick={onAssign}
       >
@@ -129,7 +145,7 @@ function GroupActivePattern({
   return (
     <div className="space-y-0.5">
       <p className="text-xs font-medium text-foreground leading-tight">{active.patternName}</p>
-      <p className="text-[10px] text-muted-foreground">
+      <p className="text-[0.625rem] text-muted-foreground">
         Desde {active.validFrom} · Ciclo: {active.startCycleDate}
       </p>
     </div>
@@ -202,14 +218,14 @@ function EmployeeLocationSection({
   if (pendingDelete && currentAssignment) {
     return (
       <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
-        <span className="inline-flex items-center gap-1 text-[10px] bg-red-50 text-red-600 border border-red-200 rounded-full px-2 py-0.5 font-medium line-through">
+        <span className="inline-flex items-center gap-1 text-[0.625rem] bg-red-50 text-red-600 border border-red-200 rounded-full px-2 py-0.5 font-medium line-through">
           <MapPin className="h-2.5 w-2.5" />
           {currentAssignment.locationCode ? `[${currentAssignment.locationCode}] ` : ''}
           {currentAssignment.locationName}
         </span>
-        <span className="text-[10px] text-red-500 font-medium">se quitará</span>
+        <span className="text-[0.625rem] text-red-500 font-medium">se quitará</span>
         <button
-          className="text-[10px] text-muted-foreground hover:text-foreground underline"
+          className="text-[0.625rem] text-muted-foreground hover:text-foreground underline"
           onClick={() => onCancelPending(employeeId)}
         >
           deshacer
@@ -229,7 +245,7 @@ function EmployeeLocationSection({
     <div className="mt-1.5 flex flex-col gap-1 w-full min-w-0">
       {/* Badge de asignación actual con botón X para quitar */}
       {currentAssignment && !isPending && (
-        <span className="inline-flex items-center gap-1 text-[10px] bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-2 py-0.5 font-medium max-w-full">
+        <span className="inline-flex items-center gap-1 text-[0.625rem] bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-2 py-0.5 font-medium max-w-full">
           <MapPin className="h-2.5 w-2.5 shrink-0" />
           <span className="truncate">
             {currentAssignment.locationCode ? `[${currentAssignment.locationCode}] ` : ''}
@@ -275,7 +291,7 @@ function EmployeeLocationSection({
         </select>
         {isPending && (
           <button
-            className="shrink-0 text-[10px] text-muted-foreground hover:text-foreground"
+            className="shrink-0 text-[0.625rem] text-muted-foreground hover:text-foreground"
             title="Cancelar cambio"
             onClick={() => onCancelPending(employeeId)}
           >
@@ -653,9 +669,9 @@ function GroupFormDialog({
 
     if (mode?.kind === 'create') {
       const dto: CreateGuardRotationGroupDto = {
-        name: form.name.trim(),
-        groupCode: form.groupCode || undefined,
-        description: form.description || undefined,
+        name: normalizeText(form.name),
+        groupCode: normalizeText(form.groupCode) || undefined,
+        description: normalizeText(form.description) || undefined,
         colorCode: form.colorCode || undefined,
         parentGroupId: form.parentGroupId !== '' ? Number(form.parentGroupId) : undefined,
         groupLevelTypeId: form.groupLevelTypeId !== '' ? Number(form.groupLevelTypeId) : undefined,
@@ -665,9 +681,9 @@ function GroupFormDialog({
       create.mutate(dto, { onSuccess: (res) => { if (res.status === 'error') onColorConflict(res.error.message); } });
     } else if (mode?.kind === 'edit') {
       const dto: UpdateGuardRotationGroupDto = {
-        name: form.name.trim(),
-        groupCode: form.groupCode || undefined,
-        description: form.description || undefined,
+        name: normalizeText(form.name),
+        groupCode: normalizeText(form.groupCode) || undefined,
+        description: normalizeText(form.description) || undefined,
         isActive: form.isActive,
         colorCode: form.colorCode || undefined,
         parentGroupId: form.parentGroupId !== '' ? Number(form.parentGroupId) : undefined,
@@ -945,7 +961,7 @@ function HierarchyView({
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   <span className="font-semibold truncate">{g.name}</span>
                   {g.groupCode && <span className="text-xs font-mono text-muted-foreground">{g.groupCode}</span>}
-                  {g.groupLevelTypeName && <Badge variant="outline" className="text-xs">{g.groupLevelTypeName}</Badge>}
+                  {g.groupLevelTypeName && <Badge variant="outline" className="text-xs">{levelLabel(g.groupLevelTypeName)}</Badge>}
                   {!g.isActive && <Badge variant="secondary" className="text-xs">Inactivo</Badge>}
                 </div>
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -1236,7 +1252,7 @@ function AllGroupsView({
           <SelectTrigger><SelectValue placeholder="Nivel" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos los niveles</SelectItem>
-            {levels.map(level => <SelectItem key={level} value={level}>{level}</SelectItem>)}
+            {levels.map(level => <SelectItem key={level} value={level}>{levelLabel(level)}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={specialFilter} onValueChange={v => setSpecialFilter(v as typeof specialFilter)}>
@@ -1283,7 +1299,7 @@ function AllGroupsView({
                     </Badge>
                   </div>
                   <div className="flex flex-wrap gap-1">
-                    {g.groupLevelTypeName && <Badge variant="outline" className="text-xs">{g.groupLevelTypeName}</Badge>}
+                    {g.groupLevelTypeName && <Badge variant="outline" className="text-xs">{levelLabel(g.groupLevelTypeName)}</Badge>}
                     {g.isSpecial && <Badge variant="secondary" className="text-xs">Especial</Badge>}
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-xs">
@@ -1354,7 +1370,7 @@ function AllGroupsView({
                           <p className="font-medium text-sm truncate">{g.name}</p>
                           <p className="text-xs text-muted-foreground font-mono">{g.groupCode ?? '-'}</p>
                         </div>
-                        {g.groupLevelTypeName && <Badge variant="outline" className="text-xs">{g.groupLevelTypeName}</Badge>}
+                        {g.groupLevelTypeName && <Badge variant="outline" className="text-xs">{levelLabel(g.groupLevelTypeName)}</Badge>}
                         {g.isSpecial && <Badge variant="secondary" className="text-xs">Especial</Badge>}
                       </div>
                     </TableCell>

@@ -87,8 +87,8 @@ const BASE = '/api/v1/rh';
 // =============================================================================
 
 export const GuardServiceLocationsAPI = {
-  getTree: (): Promise<ApiResponse<GuardServiceLocationTreeDto[]>> =>
-    apiFetch<GuardServiceLocationTreeDto[]>(`${BASE}/guard-service-locations/tree`),
+  getTree: (includeInactive = false): Promise<ApiResponse<GuardServiceLocationTreeDto[]>> =>
+    apiFetch<GuardServiceLocationTreeDto[]>(`${BASE}/guard-service-locations/tree?includeInactive=${includeInactive}`),
 
   getAssignable: (): Promise<ApiResponse<GuardServiceLocationDto[]>> =>
     apiFetch<GuardServiceLocationDto[]>(`${BASE}/guard-service-locations/assignable`),

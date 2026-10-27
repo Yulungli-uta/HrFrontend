@@ -15,6 +15,8 @@ import { ScheduleCombobox } from '@/components/ui/ScheduleCombobox';
 import { useRotationPatternsPaged, useRotationPatternMutations } from '@/hooks/guards/useGuards';
 import { DataPagination } from '@/components/ui/DataPagination';
 import { dayOrderLabel } from '@/lib/guardRotationPattern';
+import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
+import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
 import type {
   RotationPatternDto,
   CreateRotationPatternDto,
@@ -38,6 +40,10 @@ type DetailRow = {
 
 let detailRowSeq = 0;
 function newRowId() { return `row-${++detailRowSeq}`; }
+
+function normalizeText(value: string): string {
+  return value.trim().replace(/\s+/g, ' ');
+}
 
 function buildDefaultDetails(cycleDays: number): DetailRow[] {
   return Array.from({ length: cycleDays }, (_, i) => ({
@@ -69,7 +75,7 @@ function StepDot({ n, label, active, done }: { n: number; label: string; active:
         ${done ? 'bg-green-500 border-green-500 text-white' : active ? 'bg-primary border-primary text-primary-foreground' : 'bg-background border-muted-foreground/30 text-muted-foreground'}`}>
         {done ? '✓' : n}
       </div>
-      <span className={`text-[10px] text-center leading-tight ${active ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
+      <span className={`text-[0.625rem] text-center leading-tight ${active ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
         {label}
       </span>
     </div>
@@ -130,11 +136,15 @@ export default function RotationPatternsPage() {
   });
   const [detailsRows, setDetailsRows] = useState<DetailRow[]>([]);
 
+  const { setIsFormDirty, handleOpenChange, close, confirmOpen, confirmExit, closeConfirm } =
+    useUnsavedChangesGuard(setOpen);
+
   const openCreate = () => {
     setHeaderForm({ name: '', cycleDays: 7, patternTypeId: 1, patternCode: '', description: '', isActive: true });
     setDetailsRows([]);
     setMode('create-header');
     setSelected(null);
+    setIsFormDirty(false);
     setOpen(true);
   };
 
@@ -149,6 +159,7 @@ export default function RotationPatternsPage() {
     });
     setSelected(p);
     setMode('edit-header');
+    setIsFormDirty(false);
     setOpen(true);
   };
 
@@ -178,6 +189,7 @@ export default function RotationPatternsPage() {
     rows.sort((a, b) => a.dayOrder - b.dayOrder);
     setDetailsRows(rows);
     setMode('edit-details');
+    setIsFormDirty(false);
     setOpen(true);
   };
 
@@ -190,16 +202,16 @@ export default function RotationPatternsPage() {
   const handleCreate = () => {
     if (!headerForm.name?.trim()) return;
     const dto: CreateRotationPatternDto = {
-      name: headerForm.name,
-      patternCode: headerForm.patternCode || undefined,
-      description: headerForm.description || undefined,
+      name: normalizeText(headerForm.name),
+      patternCode: normalizeText(headerForm.patternCode) || undefined,
+      description: normalizeText(headerForm.description) || undefined,
       cycleDays: headerForm.cycleDays,
       patternTypeId: headerForm.patternTypeId,
       details: detailsRows.map(r => ({
         dayOrder: r.dayOrder,
         scheduleId: r.isRestDay ? undefined : (r.scheduleId ?? undefined),
         isRestDay: r.isRestDay,
-        notes: r.notes || undefined,
+        notes: normalizeText(r.notes) || undefined,
       })),
     };
     create.mutate(dto, {
@@ -210,9 +222,9 @@ export default function RotationPatternsPage() {
   const handleUpdateHeader = () => {
     if (!selected || !headerForm.name?.trim()) return;
     const dto: UpdateRotationPatternDto = {
-      name: headerForm.name,
-      patternCode: headerForm.patternCode || undefined,
-      description: headerForm.description || undefined,
+      name: normalizeText(headerForm.name),
+      patternCode: normalizeText(headerForm.patternCode) || undefined,
+      description: normalizeText(headerForm.description) || undefined,
       isActive: headerForm.isActive,
     };
     update.mutate({ id: selected.patternId, dto }, {
@@ -227,7 +239,7 @@ export default function RotationPatternsPage() {
         dayOrder: r.dayOrder,
         scheduleId: r.isRestDay ? undefined : (r.scheduleId ?? undefined),
         isRestDay: r.isRestDay,
-        notes: r.notes || undefined,
+        notes: normalizeText(r.notes) || undefined,
       })),
     };
     setDetails.mutate({ id: selected.patternId, dto }, {
@@ -374,7 +386,7 @@ export default function RotationPatternsPage() {
       )}
 
       {/* ── Dialog ── */}
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>{dialogTitle()}</DialogTitle>
@@ -393,7 +405,7 @@ export default function RotationPatternsPage() {
                   <Label>Nombre del patrón *</Label>
                   <Input
                     value={headerForm.name}
-                    onChange={e => setHeaderForm(f => ({ ...f, name: e.target.value }))}
+                    onChange={e => { setHeaderForm(f => ({ ...f, name: e.target.value })); setIsFormDirty(true); }}
                     placeholder="Ej: Rotación 4×4, Turno semanal, etc."
                     className="mt-1"
                   />
@@ -402,7 +414,7 @@ export default function RotationPatternsPage() {
                   <Label>Código interno</Label>
                   <Input
                     value={headerForm.patternCode}
-                    onChange={e => setHeaderForm(f => ({ ...f, patternCode: e.target.value }))}
+                    onChange={e => { setHeaderForm(f => ({ ...f, patternCode: e.target.value })); setIsFormDirty(true); }}
                     placeholder="Ej: ROT_4X4 (opcional, para reportes)"
                     className="font-mono text-sm mt-1"
                   />
@@ -413,7 +425,7 @@ export default function RotationPatternsPage() {
                     type="number" min={1} max={365} step={1}
                     value={headerForm.cycleDays}
                     onKeyDown={e => { if (e.key === '.' || e.key === ',') e.preventDefault(); }}
-                    onChange={e => setHeaderForm(f => ({ ...f, cycleDays: parseInt(e.target.value, 10) || 1 }))}
+                    onChange={e => { setHeaderForm(f => ({ ...f, cycleDays: parseInt(e.target.value, 10) || 1 })); setIsFormDirty(true); }}
                     className="mt-1"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
@@ -425,14 +437,14 @@ export default function RotationPatternsPage() {
                   <Label>Descripción</Label>
                   <Input
                     value={headerForm.description}
-                    onChange={e => setHeaderForm(f => ({ ...f, description: e.target.value }))}
+                    onChange={e => { setHeaderForm(f => ({ ...f, description: e.target.value })); setIsFormDirty(true); }}
                     placeholder="Descripción opcional"
                     className="mt-1"
                   />
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+                <Button variant="outline" onClick={close}>Cancelar</Button>
                 <Button
                   onClick={handleAdvanceToDetails}
                   disabled={!headerForm.name?.trim() || headerForm.cycleDays < 1}
@@ -454,13 +466,13 @@ export default function RotationPatternsPage() {
               <DaySummary rows={detailsRows} />
               <DetailsTable
                 rows={detailsRows}
-                onChange={setDetailsRows}
+                onChange={rows => { setDetailsRows(rows); setIsFormDirty(true); }}
               />
               <DialogFooter>
                 <Button variant="ghost" onClick={() => setMode('create-header')} disabled={isSaving}>
                   <ChevronLeft className="h-4 w-4 mr-1" /> Atrás
                 </Button>
-                <Button variant="outline" onClick={() => setOpen(false)} disabled={isSaving}>Cancelar</Button>
+                <Button variant="outline" onClick={close} disabled={isSaving}>Cancelar</Button>
                 <Button onClick={handleCreate} disabled={isSaving}>
                   {isSaving ? 'Guardando…' : 'Crear patrón'}
                 </Button>
@@ -480,7 +492,7 @@ export default function RotationPatternsPage() {
                   <Label>Nombre *</Label>
                   <Input
                     value={headerForm.name}
-                    onChange={e => setHeaderForm(f => ({ ...f, name: e.target.value }))}
+                    onChange={e => { setHeaderForm(f => ({ ...f, name: e.target.value })); setIsFormDirty(true); }}
                     className="mt-1"
                   />
                 </div>
@@ -488,7 +500,7 @@ export default function RotationPatternsPage() {
                   <Label>Código interno</Label>
                   <Input
                     value={headerForm.patternCode}
-                    onChange={e => setHeaderForm(f => ({ ...f, patternCode: e.target.value }))}
+                    onChange={e => { setHeaderForm(f => ({ ...f, patternCode: e.target.value })); setIsFormDirty(true); }}
                     className="font-mono text-sm mt-1"
                     placeholder="Ej: ROT_4X4"
                   />
@@ -497,7 +509,7 @@ export default function RotationPatternsPage() {
                   <Label>Descripción</Label>
                   <Input
                     value={headerForm.description}
-                    onChange={e => setHeaderForm(f => ({ ...f, description: e.target.value }))}
+                    onChange={e => { setHeaderForm(f => ({ ...f, description: e.target.value })); setIsFormDirty(true); }}
                     className="mt-1"
                     placeholder="Descripción opcional"
                   />
@@ -512,12 +524,12 @@ export default function RotationPatternsPage() {
                   </div>
                   <Switch
                     checked={headerForm.isActive}
-                    onCheckedChange={v => setHeaderForm(f => ({ ...f, isActive: v }))}
+                    onCheckedChange={v => { setHeaderForm(f => ({ ...f, isActive: v })); setIsFormDirty(true); }}
                   />
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setOpen(false)} disabled={isSaving}>Cancelar</Button>
+                <Button variant="outline" onClick={close} disabled={isSaving}>Cancelar</Button>
                 <Button onClick={handleUpdateHeader} disabled={isSaving || !headerForm.name?.trim()}>
                   {isSaving ? 'Guardando…' : 'Guardar cambios'}
                 </Button>
@@ -535,10 +547,10 @@ export default function RotationPatternsPage() {
               <DaySummary rows={detailsRows} />
               <DetailsTable
                 rows={detailsRows}
-                onChange={setDetailsRows}
+                onChange={rows => { setDetailsRows(rows); setIsFormDirty(true); }}
               />
               <DialogFooter>
-                <Button variant="outline" onClick={() => setOpen(false)} disabled={isSaving}>Cancelar</Button>
+                <Button variant="outline" onClick={close} disabled={isSaving}>Cancelar</Button>
                 <Button onClick={handleSaveDetails} disabled={isSaving}>
                   {isSaving ? 'Guardando…' : 'Guardar días'}
                 </Button>
@@ -547,6 +559,7 @@ export default function RotationPatternsPage() {
           )}
         </DialogContent>
       </Dialog>
+      <UnsavedChangesDialog open={confirmOpen} onClose={closeConfirm} onConfirmExit={confirmExit} />
     </div>
   );
 }
@@ -610,7 +623,7 @@ function DetailsTable({
                   {i === 0 && (
                     <span
                       title={`Día ${row.dayOrder} del ciclo`}
-                      className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-semibold
+                      className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-[0.625rem] font-semibold
                       ${row.isRestDay ? 'bg-indigo-100 text-indigo-600' : 'bg-amber-100 text-amber-700'}`}>
                       {dayOrderLabel(row.dayOrder)}
                     </span>
@@ -624,7 +637,7 @@ function DetailsTable({
                   ) : (
                     <div className="flex items-center gap-1">
                       {dayRows.length > 1 && (
-                        <span className="text-[10px] text-muted-foreground w-14 shrink-0">Turno {i + 1}</span>
+                        <span className="text-[0.625rem] text-muted-foreground w-14 shrink-0">Turno {i + 1}</span>
                       )}
                       <ScheduleCombobox
                         value={row.scheduleId}

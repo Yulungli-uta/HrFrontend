@@ -17,6 +17,7 @@ import type {
   CreateGuardEmployeeSpecialRuleDto,
   UpdateGuardEmployeeSpecialRuleDto,
 } from '@/types/guards';
+import { todayEcuador } from "@/lib/clock";
 
 // ─── Rule form dialog ──────────────────────────────────────────────────────────
 
@@ -69,7 +70,7 @@ function RuleFormDialog({
   onClose: () => void;
   editTarget: GuardEmployeeSpecialRuleDto | null;
 }) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayEcuador();
   const { data: locData } = useGuardLocationsAssignable();
   const locations = locData?.status === 'success' ? locData.data : [];
   const { create, update } = useSpecialRulesMutations(() => onClose());

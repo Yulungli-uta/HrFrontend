@@ -30,6 +30,7 @@ import type {
   ScheduleBoardFilterDto, GeneratePreviewRequestDto,
   GeneratePreviewResponseDto,
 } from '@/types/guards';
+import { addDays, formatDate, sundayOnOrBefore, todayEcuador } from "@/lib/clock";
 
 // ─── Constantes de colores y etiquetas ───────────────────────────────────────
 
@@ -150,33 +151,26 @@ function displayGuardName(fullName: string, shortName: string, maxChars: number)
   return fullName.length <= maxChars ? fullName : (shortName || fullName);
 }
 
-function todayStr() { return new Date().toISOString().split('T')[0]; }
-function addDays(d: string, n: number) {
-  const dt = new Date(d); dt.setDate(dt.getDate() + n); return dt.toISOString().split('T')[0];
-}
+function todayStr() { return todayEcuador(); }
 // Domingo de la semana que contiene `d` (0 = domingo en JS Date#getDay).
 function startOfWeek(d: string) {
-  const dt = new Date(d + 'T00:00:00');
-  dt.setDate(dt.getDate() - dt.getDay());
-  return dt.toISOString().split('T')[0];
+  return sundayOnOrBefore(d);
 }
 function fmtWeekLabel(startDate: string, endDate: string) {
-  const start = new Date(startDate + 'T00:00:00');
-  const end = new Date(endDate + 'T00:00:00');
   const opts: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'short' };
-  const startLabel = start.toLocaleDateString('es-EC', opts);
-  const endLabel = end.toLocaleDateString('es-EC', { ...opts, year: 'numeric' });
+  const startLabel = formatDate(startDate, 'es-EC', opts);
+  const endLabel = formatDate(endDate, 'es-EC', { ...opts, year: 'numeric' });
   return `${startLabel} – ${endLabel}`;
 }
 function fmtDate(d: string) {
-  return new Date(d + 'T00:00:00').toLocaleDateString('es-EC', { day: '2-digit', month: 'short' });
+  return formatDate(d + 'T00:00:00', 'es-EC', { day: '2-digit', month: 'short' });
 }
 function fmtDayName(d: string) {
-  const name = new Date(d + 'T00:00:00').toLocaleDateString('es-EC', { weekday: 'short' });
+  const name = formatDate(d + 'T00:00:00', 'es-EC', { weekday: 'short' });
   return name.charAt(0).toUpperCase() + name.slice(1).replace('.', '');
 }
 function fmtDateFull(d: string) {
-  return new Date(d + 'T00:00:00').toLocaleDateString('es-EC', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' });
+  return formatDate(d + 'T00:00:00', 'es-EC', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' });
 }
 
 // ─── Utilidades de jerarquía de ubicaciones ──────────────────────────────────
@@ -293,12 +287,12 @@ function BoardCells({
             className={`border px-1 py-1 align-top min-w-[90px] max-w-[130px] ${isEmpty ? 'bg-red-50 dark:bg-transparent' : ''}`}
           >
             {isEmpty ? (
-              <span className="text-red-500 dark:text-red-400 font-medium text-[10px]">Sin cobertura</span>
+              <span className="text-red-500 dark:text-red-400 font-medium text-[0.625rem]">Sin cobertura</span>
             ) : (
               <div className="flex flex-col gap-0.5">
                 {/* Badge de estado post-proceso */}
                 {postStatus && (
-                  <span className={`self-start px-1 py-0 rounded text-[9px] font-bold border mb-0.5 ${CELL_COLORS[postStatus] ?? ''}`}>
+                  <span className={`self-start px-1 py-0 rounded text-[0.5625rem] font-bold border mb-0.5 ${CELL_COLORS[postStatus] ?? ''}`}>
                     {STATUS_LABEL[postStatus] ?? postStatus}
                   </span>
                 )}
@@ -308,7 +302,7 @@ function BoardCells({
                     <button
                       key={emp.planningId}
                       onClick={() => onCellClick(emp.planningId)}
-                      className={`w-full text-left px-1.5 py-0.5 rounded border text-[10px] font-medium truncate transition-opacity hover:opacity-75 ${emp.isReplacement ? 'ring-1 ring-purple-400' : emp.isReassigned ? 'ring-1 ring-blue-400' : ''}`}
+                      className={`w-full text-left px-1.5 py-0.5 rounded border text-[0.625rem] font-medium truncate transition-opacity hover:opacity-75 ${emp.isReplacement ? 'ring-1 ring-purple-400' : emp.isReassigned ? 'ring-1 ring-blue-400' : ''}`}
                       style={meta ? hexToGroupStyle(meta.hex) : { backgroundColor: '#f3f4f6', color: '#374151', borderColor: '#d1d5db' }}
                       title={`${emp.fullName}${emp.groupName ? ` — ${emp.groupName}` : ''} · ${STATUS_LABEL[cell.status] ?? cell.status}`}
                     >
@@ -410,14 +404,14 @@ function ShiftBoard({
           {[...groupMeta.entries()].map(([groupId, { name, hex }]) => (
             <span
               key={groupId}
-              className="flex items-center gap-1 px-2 py-0.5 rounded-full border font-medium text-[11px]"
+              className="flex items-center gap-1 px-2 py-0.5 rounded-full border font-medium text-[0.6875rem]"
               style={hexToGroupStyle(hex)}
             >
               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: hex }} />
               {name}
             </span>
           ))}
-          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full border text-purple-700 bg-purple-50 border-purple-300 font-medium text-[11px]">
+          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full border text-purple-700 bg-purple-50 border-purple-300 font-medium text-[0.6875rem]">
             <span className="w-2 h-2 rounded-full bg-purple-500" />R Reemplazo
           </span>
         </div>
@@ -478,7 +472,7 @@ function ShiftBoard({
                             colSpan={board.dates.length + 1}
                             className="px-3 py-1.5 bg-muted/20 dark:bg-muted/10 border-l-[3px] border-l-primary/40"
                           >
-                            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-foreground/80">
+                            <div className="flex items-center gap-1.5 text-[0.6875rem] font-semibold text-foreground/80">
                               <Building2 className="h-3 w-3 shrink-0" />
                               {group.parentCode ? `[${group.parentCode}] ` : ''}{group.parentName}
                             </div>
@@ -491,7 +485,7 @@ function ShiftBoard({
                         <tr key={child.rowKey} className="hover:bg-muted/20">
                           <td className="border px-3 py-2 sticky left-0 bg-background z-10 font-medium">
                             <div className="flex items-center gap-1 pl-3">
-                              <span className="text-muted-foreground/60 text-[11px] shrink-0 select-none">↳</span>
+                              <span className="text-muted-foreground/60 text-[0.6875rem] shrink-0 select-none">↳</span>
                               <MapPin className="h-3 w-3 text-muted-foreground shrink-0" />
                               <span className="truncate max-w-[110px]">
                                 {child.locationCode ? `[${child.locationCode}] ` : ''}{child.locationName}
@@ -686,7 +680,7 @@ function PlanningDetailPanel({ planningId, onClose }: { planningId: number | nul
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-[10px] text-muted-foreground uppercase font-semibold">{label}</p>
+      <p className="text-[0.625rem] text-muted-foreground uppercase font-semibold">{label}</p>
       <p className="text-xs">{value}</p>
     </div>
   );
@@ -850,7 +844,7 @@ function GenerateDialog({
                   onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
                 />
                 {isStartDateInvalid && form.startDate && (
-                  <p className="text-[10px] text-destructive mt-1">La fecha no puede ser anterior a hoy.</p>
+                  <p className="text-[0.625rem] text-destructive mt-1">La fecha no puede ser anterior a hoy.</p>
                 )}
               </div>
               <div>
@@ -862,7 +856,7 @@ function GenerateDialog({
                   onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))}
                 />
                 {isEndDateInvalid && form.endDate && (
-                  <p className="text-[10px] text-destructive mt-1">No puede ser anterior a la fecha de inicio.</p>
+                  <p className="text-[0.625rem] text-destructive mt-1">No puede ser anterior a la fecha de inicio.</p>
                 )}
               </div>
             </div>
@@ -917,7 +911,7 @@ function GenerateDialog({
                       <button
                         key={type}
                         onClick={() => setConflictTypeFilter(prev => prev === type ? null : type)}
-                        className={`text-[10px] px-2 py-1 rounded-full border transition-colors ${
+                        className={`text-[0.625rem] px-2 py-1 rounded-full border transition-colors ${
                           conflictTypeFilter === type
                             ? 'bg-red-600 text-white border-red-600'
                             : 'bg-background text-muted-foreground border-border hover:border-red-300'
@@ -935,7 +929,7 @@ function GenerateDialog({
                       </p>
                       {hasActiveFilter && (
                         <button
-                          className="text-[10px] text-primary hover:underline"
+                          className="text-[0.625rem] text-primary hover:underline"
                           onClick={() => { setConflictGroupFilter(null); setConflictTypeFilter(null); }}
                         >
                           Ver todos ✕
@@ -1381,7 +1375,7 @@ export default function GuardShiftPlanningPage() {
             <AlertTriangle className="h-3.5 w-3.5 mr-1.5" />
             Conflictos
             {conflicts.length > 0 && (
-              <Badge variant="destructive" className="ml-1.5 text-[10px] px-1">{conflicts.length}</Badge>
+              <Badge variant="destructive" className="ml-1.5 text-[0.625rem] px-1">{conflicts.length}</Badge>
             )}
           </TabsTrigger>
         </TabsList>
@@ -1506,10 +1500,10 @@ export default function GuardShiftPlanningPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-1 flex-wrap">
-                            {item.hasPermissionConflict && <Badge variant="destructive" className="text-[10px] px-1">Permiso</Badge>}
-                            {item.hasVacationConflict && <Badge variant="destructive" className="text-[10px] px-1">Vacación</Badge>}
-                            {item.hasValidationWarning && <Badge variant="outline" className="text-[10px] px-1 border-yellow-400 text-yellow-700">Alerta</Badge>}
-                            {item.hasReplacement && <Badge variant="secondary" className="text-[10px] px-1">Reemplazo</Badge>}
+                            {item.hasPermissionConflict && <Badge variant="destructive" className="text-[0.625rem] px-1">Permiso</Badge>}
+                            {item.hasVacationConflict && <Badge variant="destructive" className="text-[0.625rem] px-1">Vacación</Badge>}
+                            {item.hasValidationWarning && <Badge variant="outline" className="text-[0.625rem] px-1 border-yellow-400 text-yellow-700">Alerta</Badge>}
+                            {item.hasReplacement && <Badge variant="secondary" className="text-[0.625rem] px-1">Reemplazo</Badge>}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -1566,7 +1560,7 @@ function ShiftChip({ code }: { code: string | null | undefined }) {
   return (
     <span
       title={chip.title}
-      className={`inline-flex items-center justify-center w-5 h-5 rounded text-[11px] font-bold border ${chip.cls}`}
+      className={`inline-flex items-center justify-center w-5 h-5 rounded text-[0.6875rem] font-bold border ${chip.cls}`}
     >
       {chip.label}
     </span>
@@ -1596,16 +1590,16 @@ function GuardCronograma({
   return (
     <div>
       {/* Leyenda */}
-      <div className="flex items-center gap-3 px-3 py-2 border-b text-[11px] text-muted-foreground">
+      <div className="flex items-center gap-3 px-3 py-2 border-b text-[0.6875rem] text-muted-foreground">
         <span className="font-semibold text-foreground/70">Leyenda:</span>
         {Object.entries(GUARD_SHIFT_CHIP).map(([, chip]) => (
           <span key={chip.title} className="flex items-center gap-1">
-            <span className={`inline-flex items-center justify-center w-4 h-4 rounded text-[10px] font-bold border ${chip.cls}`}>{chip.label}</span>
+            <span className={`inline-flex items-center justify-center w-4 h-4 rounded text-[0.625rem] font-bold border ${chip.cls}`}>{chip.label}</span>
             {chip.title}
           </span>
         ))}
         <span className="flex items-center gap-1">
-          <span className={`inline-flex items-center justify-center w-4 h-4 rounded text-[10px] font-bold border ${GUARD_LIBRE_CHIP.cls}`}>{GUARD_LIBRE_CHIP.label}</span>
+          <span className={`inline-flex items-center justify-center w-4 h-4 rounded text-[0.625rem] font-bold border ${GUARD_LIBRE_CHIP.cls}`}>{GUARD_LIBRE_CHIP.label}</span>
           Libre / sin turno
         </span>
       </div>

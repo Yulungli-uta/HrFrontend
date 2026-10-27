@@ -222,7 +222,7 @@ export function ShiftReassignDialog({ open, detail, onClose }: Props) {
             <div className="flex items-center justify-between gap-3 rounded-md border p-2">
               <div>
                 <Label className="text-xs">Repetir semanalmente</Label>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-[0.6875rem] text-muted-foreground">
                   Aplica la misma reasignación cada semana, buscando el turno equivalente del guardia.
                 </p>
               </div>

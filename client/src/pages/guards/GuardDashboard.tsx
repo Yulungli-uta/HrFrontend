@@ -122,7 +122,7 @@ export default function GuardDashboardPage() {
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="text-xs text-muted-foreground">{s.locationName}</span>
                       {(s.hasPermissionConflict || s.hasVacationConflict) && (
-                        <Badge variant="destructive" className="text-[10px] px-1 py-0">Conflicto</Badge>
+                        <Badge variant="destructive" className="text-[0.625rem] px-1 py-0">Conflicto</Badge>
                       )}
                     </div>
                   </li>
@@ -197,7 +197,7 @@ export default function GuardDashboardPage() {
                   <span>{icon}</span>
                   <div className="text-left">
                     <p className="text-xs font-semibold">{label}</p>
-                    <p className="text-[10px] text-muted-foreground">Paso {step}</p>
+                    <p className="text-[0.625rem] text-muted-foreground">Paso {step}</p>
                   </div>
                 </Button>
               </Link>

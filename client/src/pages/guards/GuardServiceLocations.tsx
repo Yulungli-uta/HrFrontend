@@ -13,6 +13,12 @@ import type { GuardServiceLocationTreeDto, CreateGuardServiceLocationDto, Update
 import { useQuery } from '@tanstack/react-query';
 import { GUARD_KEYS } from '@/hooks/guards/useGuards';
 import { GuardServiceLocationsAPI } from '@/lib/api/services/guards';
+import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
+import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
+
+function normalizeText(value: string): string {
+  return value.trim().replace(/\s+/g, ' ');
+}
 
 type DialogMode = 'create' | 'edit';
 
@@ -117,7 +123,8 @@ function LocationTreeNode({
 }
 
 export default function GuardServiceLocationsPage() {
-  const { data: resp, isLoading, refetch } = useGuardLocationsTree();
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('active');
+  const { data: resp, isLoading, refetch } = useGuardLocationsTree(statusFilter !== 'active');
   const { create, update } = useGuardLocationMutations();
 
   const [open, setOpen] = useState(false);
@@ -125,7 +132,9 @@ export default function GuardServiceLocationsPage() {
   const [editId, setEditId] = useState<number | null>(null);
   const [form, setForm] = useState<LocationFormState>(DEFAULT_FORM);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('active');
+
+  const { setIsFormDirty, handleOpenChange, close, confirmOpen, confirmExit, closeConfirm } =
+    useUnsavedChangesGuard(setOpen);
 
   const tree = resp?.status === 'success' ? resp.data : [];
   const filteredTree = filterLocationTree(tree, search, statusFilter);
@@ -156,6 +165,7 @@ export default function GuardServiceLocationsPage() {
     setForm(DEFAULT_FORM);
     setMode('create');
     setEditId(null);
+    setIsFormDirty(false);
     setOpen(true);
   };
 
@@ -171,6 +181,7 @@ export default function GuardServiceLocationsPage() {
     });
     setMode('edit');
     setEditId(node.locationId);
+    setIsFormDirty(false);
     setOpen(true);
   };
 
@@ -178,26 +189,26 @@ export default function GuardServiceLocationsPage() {
     if (!form.locationName.trim()) return;
     if (mode === 'create') {
       const dto: CreateGuardServiceLocationDto = {
-        locationName: form.locationName,
-        locationCode: form.locationCode || undefined,
-        description: form.description || undefined,
+        locationName: normalizeText(form.locationName),
+        locationCode: normalizeText(form.locationCode) || undefined,
+        description: normalizeText(form.description) || undefined,
         locationTypeId: form.locationTypeId,
         requiresCoverage: form.requiresCoverage,
         isAssignable: form.isAssignable,
         parentLocationId: form.parentLocationId,
       };
-      create.mutate(dto, { onSuccess: (r) => { if (r.status === 'success') setOpen(false); } });
+      create.mutate(dto, { onSuccess: (r) => { if (r.status === 'success') close(); } });
     } else if (editId) {
       const dto: UpdateGuardServiceLocationDto = {
-        locationName: form.locationName,
-        locationCode: form.locationCode || undefined,
-        description: form.description || undefined,
+        locationName: normalizeText(form.locationName),
+        locationCode: normalizeText(form.locationCode) || undefined,
+        description: normalizeText(form.description) || undefined,
         locationTypeId: form.locationTypeId,
         requiresCoverage: form.requiresCoverage,
         isAssignable: form.isAssignable,
         isActive: form.isActive,
       };
-      update.mutate({ id: editId, dto }, { onSuccess: (r) => { if (r.status === 'success') setOpen(false); } });
+      update.mutate({ id: editId, dto }, { onSuccess: (r) => { if (r.status === 'success') close(); } });
     }
   };
 
@@ -265,7 +276,7 @@ export default function GuardServiceLocationsPage() {
       </Card>
 
       {/* Dialog crear/editar */}
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{mode === 'create' ? 'Nueva ubicación' : 'Editar ubicación'}</DialogTitle>
@@ -280,7 +291,7 @@ export default function GuardServiceLocationsPage() {
               <Label>Nombre *</Label>
               <Input
                 value={form.locationName}
-                onChange={e => setForm(f => ({ ...f, locationName: e.target.value }))}
+                onChange={e => { setForm(f => ({ ...f, locationName: e.target.value })); setIsFormDirty(true); }}
                 placeholder="Ej: Puerta principal"
               />
             </div>
@@ -288,7 +299,7 @@ export default function GuardServiceLocationsPage() {
               <Label>Código</Label>
               <Input
                 value={form.locationCode}
-                onChange={e => setForm(f => ({ ...f, locationCode: e.target.value }))}
+                onChange={e => { setForm(f => ({ ...f, locationCode: e.target.value })); setIsFormDirty(true); }}
                 placeholder="Ej: GATE-001"
               />
             </div>
@@ -296,7 +307,7 @@ export default function GuardServiceLocationsPage() {
               <Label>Descripción</Label>
               <Input
                 value={form.description}
-                onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                onChange={e => { setForm(f => ({ ...f, description: e.target.value })); setIsFormDirty(true); }}
                 placeholder="Descripción opcional"
               />
             </div>
@@ -304,14 +315,14 @@ export default function GuardServiceLocationsPage() {
               <Label>Requiere cobertura</Label>
               <Switch
                 checked={form.requiresCoverage}
-                onCheckedChange={v => setForm(f => ({ ...f, requiresCoverage: v }))}
+                onCheckedChange={v => { setForm(f => ({ ...f, requiresCoverage: v })); setIsFormDirty(true); }}
               />
             </div>
             <div className="flex items-center justify-between">
               <Label>Asignable a guardias</Label>
               <Switch
                 checked={form.isAssignable}
-                onCheckedChange={v => setForm(f => ({ ...f, isAssignable: v }))}
+                onCheckedChange={v => { setForm(f => ({ ...f, isAssignable: v })); setIsFormDirty(true); }}
               />
             </div>
             {mode === 'edit' && (
@@ -319,13 +330,13 @@ export default function GuardServiceLocationsPage() {
                 <Label>Activo</Label>
                 <Switch
                   checked={form.isActive}
-                  onCheckedChange={v => setForm(f => ({ ...f, isActive: v }))}
+                  onCheckedChange={v => { setForm(f => ({ ...f, isActive: v })); setIsFormDirty(true); }}
                 />
               </div>
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)} disabled={isSaving}>Cancelar</Button>
+            <Button variant="outline" onClick={close} disabled={isSaving}>Cancelar</Button>
             <Button
               onClick={handleSubmit}
               disabled={isSaving || !form.locationName.trim() || (mode === 'edit' && detailLoading)}
@@ -335,6 +346,7 @@ export default function GuardServiceLocationsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <UnsavedChangesDialog open={confirmOpen} onClose={closeConfirm} onConfirmExit={confirmExit} />
     </div>
   );
 }

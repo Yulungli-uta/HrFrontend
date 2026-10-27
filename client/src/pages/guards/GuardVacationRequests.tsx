@@ -19,6 +19,7 @@ import type {
   CreateChangeDatesRequestDto,
   CreateAccumulateRequestDto,
 } from '@/types/guards';
+import { formatDate, todayEcuador } from "@/lib/clock";
 
 // ─── Constantes ────────────────────────────────────────────────────────────────
 
@@ -57,7 +58,7 @@ function ChangeDatesDialog({
   onClose: () => void;
 }) {
   const { createChangeDates } = useVacationRequestMutations(() => onClose());
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayEcuador();
 
   const init = {
     requestedStartDate: plan?.plannedStartDate ?? today,
@@ -242,7 +243,7 @@ export default function GuardVacationRequestsPage() {
         <Tabs defaultValue="plans">
           <TabsList>
             <TabsTrigger value="plans">Mis vacaciones aprobadas</TabsTrigger>
-            <TabsTrigger value="requests">Mis solicitudes</TabsTrigger>
+            <TabsTrigger value="requests">Mis solicitudes de cambio</TabsTrigger>
           </TabsList>
 
           {/* Planes APROBADOS — desde aquí puede hacer solicitudes */}
@@ -334,18 +335,18 @@ export default function GuardVacationRequestsPage() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-xs font-mono">
-                          {new Date(r.requestedAt).toLocaleDateString()}
+                          {formatDate(r.requestedAt)}
                         </TableCell>
                         <TableCell className="text-xs font-mono">
                           {r.submittedToDirectionAt
-                            ? new Date(r.submittedToDirectionAt).toLocaleDateString()
+                            ? formatDate(r.submittedToDirectionAt)
                             : <span className="text-muted-foreground">—</span>}
                         </TableCell>
                         <TableCell className="text-xs">
                           {r.directionApprovedAt
-                            ? <span className="font-mono">{new Date(r.directionApprovedAt).toLocaleDateString()}</span>
+                            ? <span className="font-mono">{formatDate(r.directionApprovedAt)}</span>
                             : r.rejectedAt
-                              ? <span className="font-mono text-destructive">{new Date(r.rejectedAt).toLocaleDateString()}</span>
+                              ? <span className="font-mono text-destructive">{formatDate(r.rejectedAt)}</span>
                               : <span className="text-muted-foreground">—</span>}
                         </TableCell>
                       </TableRow>

@@ -172,6 +172,7 @@ export interface GuardGroupRotationPatternDto {
   validFrom: string;
   validTo: string | null;
   isActive: boolean;
+  patternIsActive: boolean;
   notes: string | null;
 }
 

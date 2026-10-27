@@ -13,6 +13,7 @@ import {
 } from '@/hooks/guards/useGuards';
 import { LocationHierarchySelect } from '@/components/guards/LocationHierarchySelect';
 import type { LocationGroupDetailDto, GuardLocationRotationAssignmentDto } from '@/types/guards';
+import { todayEcuador } from "@/lib/clock";
 
 type Props = {
   open: boolean;
@@ -28,7 +29,7 @@ export function GroupLocationAssignmentDialog({ open, group, onClose }: Props) {
   const { data: periodsResp } = useLocationRotationPeriods();
   const periods = periodsResp?.status === 'success' ? periodsResp.data : [];
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayEcuador();
   const activePeriod = periods.find(p => p.isActive && p.startDate <= today && p.endDate >= today) ?? null;
 
   const { data: assignmentsResp, isLoading: loadingAssignments } = useLocationRotationAssignments(activePeriod?.locationRotationPeriodId ?? null);

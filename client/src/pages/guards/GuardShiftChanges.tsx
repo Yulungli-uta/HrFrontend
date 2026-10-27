@@ -14,6 +14,7 @@ import { useAllChangesPaged, useShiftChangeMutations } from '@/hooks/guards/useG
 import { GuardRotationGroupsAPI } from '@/lib/api/services/guards';
 import { DataPagination } from '@/components/ui/DataPagination';
 import type { GuardShiftChangeDto, GuardRotationGroupDto } from '@/types/guards';
+import { formatDateTime as clockFormatDateTime } from "@/lib/clock";
 
 function extractArray<T>(res: unknown): T[] {
   if (Array.isArray(res)) return res as T[];
@@ -48,7 +49,7 @@ const CHANGE_TYPE_LABEL: Record<string, string> = {
 
 function formatDateTime(iso: string | null): string {
   if (!iso) return '—';
-  return new Date(iso).toLocaleString('es-EC', { dateStyle: 'short', timeStyle: 'short' });
+  return clockFormatDateTime(iso, 'es-EC', { dateStyle: 'short', timeStyle: 'short' });
 }
 
 // ─── Tabla de cambios ─────────────────────────────────────────────────────────
@@ -112,14 +113,15 @@ function ChangesTable({ changes, onApprove, onReject, onRevert, showActions }: C
               </TableCell>
               <TableCell className="text-xs">
                 {CHANGE_TYPE_LABEL[c.changeType] ?? c.changeType}
-                {isReassignment && !c.isActiveForAttendance && (
-                  <div className="text-muted-foreground">(deshecha)</div>
-                )}
               </TableCell>
               <TableCell className="text-center">
-                <Badge variant={STATUS_BADGE[c.status] ?? 'outline'}>
-                  {STATUS_LABEL[c.status] ?? c.status}
-                </Badge>
+                {isReassignment && !c.isActiveForAttendance ? (
+                  <Badge variant="outline">Revertida</Badge>
+                ) : (
+                  <Badge variant={STATUS_BADGE[c.status] ?? 'outline'}>
+                    {STATUS_LABEL[c.status] ?? c.status}
+                  </Badge>
+                )}
               </TableCell>
               <TableCell className="text-xs text-muted-foreground">
                 <div>{c.requestedByName ?? (c.requestedBy ? `#${c.requestedBy}` : '—')}</div>
@@ -361,7 +363,7 @@ export default function GuardShiftChangesPage() {
                   <div><span className="text-muted-foreground">Motivo:</span> {actionDialog.change.reason}</div>
                 )}
                 <div className="text-xs text-muted-foreground pt-0.5">
-                  Solicitado: {new Date(actionDialog.change.requestedAt).toLocaleString('es-EC', { dateStyle: 'short', timeStyle: 'short' })}
+                  Solicitado: {formatDateTime(actionDialog.change.requestedAt)}
                 </div>
               </div>
               <div>

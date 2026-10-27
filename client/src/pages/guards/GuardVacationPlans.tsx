@@ -28,6 +28,7 @@ import type {
   RejectGuardVacationRequestDto,
 } from '@/types/guards';
 import type { UsePagedResult } from '@/hooks/pagination/usePaged';
+import { formatDate, todayEcuador } from "@/lib/clock";
 
 // ─── Buscador por cédula/nombre (server-side, vía usePaged.setSearch) ─────────
 
@@ -104,7 +105,7 @@ const TYPE_LABEL: Record<string, string> = {
 // ─── Nuevo plan / editar plan dialog ───────────────────────────────────────────
 
 function PlanFormDialog({ open, onClose, plan }: { open: boolean; onClose: () => void; plan?: GuardVacationPlanDto | null }) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayEcuador();
   const currentYear = new Date().getFullYear();
   const isEditing = !!plan;
   const { create, update } = useVacationPlanMutations(() => onClose());
@@ -453,7 +454,7 @@ export default function GuardVacationPlansPage() {
                           {r.requestedStartDate ? `${r.requestedStartDate} → ${r.requestedEndDate}` : r.targetYear ? `Año ${r.targetYear}` : '—'}
                         </TableCell>
                         <TableCell className="text-xs max-w-[140px] truncate">{r.reason}</TableCell>
-                        <TableCell className="text-xs font-mono">{new Date(r.requestedAt).toLocaleDateString()}</TableCell>
+                        <TableCell className="text-xs font-mono">{formatDate(r.requestedAt)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
                             <Button size="sm" variant="outline" onClick={() => setSubmitRequest(r)}>
@@ -513,12 +514,12 @@ export default function GuardVacationPlansPage() {
                         </TableCell>
                         <TableCell className="text-xs font-mono">
                           {p.submittedToDirectionAt
-                            ? new Date(p.submittedToDirectionAt).toLocaleDateString()
+                            ? formatDate(p.submittedToDirectionAt)
                             : <span className="text-muted-foreground">—</span>}
                         </TableCell>
                         <TableCell className="text-xs font-mono">
                           {p.directionApprovedAt
-                            ? new Date(p.directionApprovedAt).toLocaleDateString()
+                            ? formatDate(p.directionApprovedAt)
                             : <span className="text-muted-foreground">—</span>}
                         </TableCell>
                       </TableRow>

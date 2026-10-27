@@ -17,6 +17,7 @@ import { GuardShiftPlanningAPI, GuardServiceLocationsAPI, GuardRotationGroupsAPI
 import { useRefTypesByCategory } from '@/hooks/useRefTypes';
 import { REF_TYPE_CATEGORIES } from '@/features/refTypeCategories';
 import type { GuardShiftCalendarItemDto, GuardServiceLocationDto, GuardRotationGroupDto } from '@/types/guards';
+import { todayEcuador } from "@/lib/clock";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -27,7 +28,7 @@ function extractArray<T>(res: any): T[] {
 }
 
 function today() {
-  return new Date().toISOString().split('T')[0];
+  return todayEcuador();
 }
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -210,6 +211,8 @@ export function ManualShiftAssignDialog({ open, onClose, preselectedDate }: Prop
                 value={employeeId}
                 onSelect={v => { setEmployeeId(v); setOverrideConflict(false); }}
                 placeholder="Buscar guardia…"
+                searchFn={(term) => GuardRotationGroupsAPI.getActiveGroupEmployees(term)}
+                searchKey="guard-active-group-employees-search"
               />
             </div>
           </div>
@@ -231,7 +234,7 @@ export function ManualShiftAssignDialog({ open, onClose, preselectedDate }: Prop
             <div className="flex items-center justify-between gap-3 rounded-md border p-2">
               <div>
                 <Label className="text-xs">Repetir semanalmente</Label>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-[0.6875rem] text-muted-foreground">
                   Crea el mismo turno cada semana a partir de la fecha de arriba.
                 </p>
               </div>
@@ -395,7 +398,7 @@ export function ManualShiftAssignDialog({ open, onClose, preselectedDate }: Prop
               <Info className="h-3.5 w-3.5 shrink-0" />
               Ciclo de vida del turno asignado
             </p>
-            <ol className="text-[11px] text-blue-700 dark:text-blue-400 space-y-1 pl-1">
+            <ol className="text-[0.6875rem] text-blue-700 dark:text-blue-400 space-y-1 pl-1">
               <li className="flex items-start gap-1.5">
                 <span className="shrink-0 font-bold">1.</span>
                 <span>Se crea en estado <strong>PLANNED</strong> — el guardia tiene turno asignado.</span>

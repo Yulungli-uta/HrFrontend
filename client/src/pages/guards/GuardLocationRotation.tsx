@@ -22,6 +22,7 @@ import type {
   CreateGuardLocationRotationAssignmentDto,
   GuardLocationCoverageResponseDto, GuardLocationCoveragePersonDto,
 } from '@/types/guards';
+import { todayEcuador } from "@/lib/clock";
 
 // ─── Period form dialog ────────────────────────────────────────────────────────
 
@@ -34,7 +35,7 @@ function PeriodFormDialog({
   onClose: () => void;
   editTarget: GuardLocationRotationPeriodDto | null;
 }) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayEcuador();
   const { createPeriod, updatePeriod } = useLocationRotationMutations(() => onClose());
   const buildInitialForm = (target: GuardLocationRotationPeriodDto | null): PeriodForm => target
     ? { name: target.name, startDate: target.startDate, endDate: target.endDate, notes: target.notes ?? '', isActive: target.isActive }

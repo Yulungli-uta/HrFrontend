@@ -23,6 +23,7 @@ import type {
   ApproveGuardVacationRequestDto,
   RejectGuardVacationRequestDto,
 } from '@/types/guards';
+import { formatDate } from "@/lib/clock";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -310,7 +311,7 @@ export default function GuardVacationApprovalsPage() {
                       <TableCell className="text-xs">{p.submittedByName ?? '—'}</TableCell>
                       <TableCell className="text-xs">
                         {p.directionApprovedAt
-                          ? <span>{p.directionApproverName ?? '—'} · {new Date(p.directionApprovedAt).toLocaleDateString()}</span>
+                          ? <span>{p.directionApproverName ?? '—'} · {formatDate(p.directionApprovedAt)}</span>
                           : <span className="text-muted-foreground">—</span>}
                       </TableCell>
                       <TableCell className="text-right">
@@ -416,9 +417,9 @@ export default function GuardVacationApprovalsPage() {
                       <TableCell className="text-xs">{r.submittedByName ?? '—'}</TableCell>
                       <TableCell className="text-xs">
                         {r.directionApprovedAt
-                          ? <span>{new Date(r.directionApprovedAt).toLocaleDateString()}</span>
+                          ? <span>{formatDate(r.directionApprovedAt)}</span>
                           : r.rejectedAt
-                            ? <span className="text-destructive">{new Date(r.rejectedAt).toLocaleDateString()}</span>
+                            ? <span className="text-destructive">{formatDate(r.rejectedAt)}</span>
                             : <span className="text-muted-foreground">—</span>}
                       </TableCell>
                       <TableCell className="text-right">

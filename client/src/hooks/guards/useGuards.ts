@@ -217,10 +217,10 @@ export function useGuardDashboard() {
   });
 }
 
-export function useGuardLocationsTree() {
+export function useGuardLocationsTree(includeInactive = false) {
   return useQuery({
-    queryKey: GUARD_KEYS.locationsTree,
-    queryFn: () => GuardServiceLocationsAPI.getTree(),
+    queryKey: includeInactive ? [...GUARD_KEYS.locationsTree, 'all'] : GUARD_KEYS.locationsTree,
+    queryFn: () => GuardServiceLocationsAPI.getTree(includeInactive),
     staleTime: 120_000,
   });
 }

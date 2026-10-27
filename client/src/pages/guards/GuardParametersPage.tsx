@@ -40,7 +40,19 @@ interface FormState {
 
 const EMPTY_FORM: FormState = { category: '', name: '', description: '', isActive: true };
 
+const CATEGORY_LABEL_ES: Record<string, string> = {
+  GUARD_BLOCK_SOURCE:      'Origen de bloqueo',
+  GUARD_BLOCK_TYPE:        'Tipo de bloqueo',
+  GUARD_SHIFT_TYPE:        'Tipo de turno',
+  GUARD_GROUP_LEVEL_TYPE:  'Nivel de grupo',
+  GUARD_GROUP_STATUS:      'Estado de grupo',
+  GUARD_SPECIAL_RULE_TYPE: 'Tipo de regla especial',
+  GUARD_COVERAGE_TYPE:     'Tipo de cobertura',
+  GUARD_VALIDATION_TYPE:   'Tipo de validación',
+};
+
 const prettyCategory = (cat: string) =>
+  CATEGORY_LABEL_ES[cat] ??
   cat.replace(/_/g, ' ').toLowerCase().replace(/^\w|\s\w/g, m => m.toUpperCase());
 
 export default function GuardParametersPage() {
@@ -70,12 +82,21 @@ export default function GuardParametersPage() {
       }));
   })();
 
+  // apiFetch nunca rechaza la promesa en un error HTTP (devuelve {status:'error'} resuelto, no
+  // throw) -- a diferencia de los demás hooks de Guardias (ver useGuardLocationMutations), estas
+  // 3 mutaciones no revisaban "res.status" en onSuccess, así que un error real del backend se
+  // mostraba como "Creado/Actualizado/Eliminado" sin haber pasado nada (hallazgo real QA
+  // UTA-DITIC-PS-030-2026, obs. 43-44, 2026-10-06).
   const createMutation = useMutation({
     mutationFn: (payload: object) => TiposReferenciaAPI.create(payload),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: REF_TYPES_QUERY_KEY });
-      toast({ title: 'Creado', description: 'Tipo creado correctamente.' });
-      closeForm();
+    onSuccess: (res: { status: string; error?: { message: string } }) => {
+      if (res.status === 'success') {
+        qc.invalidateQueries({ queryKey: REF_TYPES_QUERY_KEY });
+        toast({ title: 'Creado', description: 'Tipo creado correctamente.' });
+        closeForm();
+      } else {
+        toast({ title: 'Error al crear', description: res.error?.message ?? 'Error desconocido', variant: 'destructive' });
+      }
     },
     onError: (err: unknown) => {
       toast({ title: 'Error', description: parseApiError(err).message, variant: 'destructive' });
@@ -85,10 +106,14 @@ export default function GuardParametersPage() {
   const updateMutation = useMutation({
     mutationFn: ({ id, payload }: { id: number; payload: object }) =>
       TiposReferenciaAPI.update(id, payload),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: REF_TYPES_QUERY_KEY });
-      toast({ title: 'Actualizado', description: 'Tipo actualizado.' });
-      closeForm();
+    onSuccess: (res: { status: string; error?: { message: string } }) => {
+      if (res.status === 'success') {
+        qc.invalidateQueries({ queryKey: REF_TYPES_QUERY_KEY });
+        toast({ title: 'Actualizado', description: 'Tipo actualizado.' });
+        closeForm();
+      } else {
+        toast({ title: 'Error al actualizar', description: res.error?.message ?? 'Error desconocido', variant: 'destructive' });
+      }
     },
     onError: (err: unknown) => {
       toast({ title: 'Error', description: parseApiError(err).message, variant: 'destructive' });
@@ -97,10 +122,14 @@ export default function GuardParametersPage() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => TiposReferenciaAPI.remove(id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: REF_TYPES_QUERY_KEY });
-      toast({ title: 'Eliminado', description: 'Tipo eliminado.' });
-      setDeleteItem(null);
+    onSuccess: (res: { status: string; error?: { message: string } }) => {
+      if (res.status === 'success') {
+        qc.invalidateQueries({ queryKey: REF_TYPES_QUERY_KEY });
+        toast({ title: 'Eliminado', description: 'Tipo eliminado.' });
+        setDeleteItem(null);
+      } else {
+        toast({ title: 'Error al eliminar', description: res.error?.message ?? 'Error desconocido', variant: 'destructive' });
+      }
     },
     onError: (err: unknown) => {
       toast({ title: 'Error', description: parseApiError(err).message, variant: 'destructive' });

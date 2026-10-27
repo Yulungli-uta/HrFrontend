@@ -10,7 +10,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { EmployeeCombobox } from '@/components/ui/EmployeeCombobox';
 import { ScheduleCombobox } from '@/components/ui/ScheduleCombobox';
 import { useShiftChangeMutations } from '@/hooks/guards/useGuards';
-import { GuardShiftPlanningAPI } from '@/lib/api/services/guards';
+import { GuardShiftPlanningAPI, GuardRotationGroupsAPI } from '@/lib/api/services/guards';
 import type { GuardShiftPlanningDetailDto, GuardShiftCalendarItemDto } from '@/types/guards';
 
 // Tipos que requieren seleccionar un horario para el reemplazante
@@ -173,6 +173,8 @@ export function ShiftReplacementDialog({ open, detail, onClose }: Props) {
                   setOverrideConflict(false);
                 }}
                 placeholder="Buscar empleado reemplazante…"
+                searchFn={(term) => GuardRotationGroupsAPI.getActiveGroupEmployees(term)}
+                searchKey="guard-active-group-employees-search"
               />
             </div>
           </div>
@@ -230,7 +232,7 @@ export function ShiftReplacementDialog({ open, detail, onClose }: Props) {
               <Label className="text-xs">
                 Turno asignado al reemplazante *
               </Label>
-              <p className="text-[11px] text-muted-foreground mb-1">
+              <p className="text-[0.6875rem] text-muted-foreground mb-1">
                 El reemplazante trabajará en este turno en lugar del original.
               </p>
               <ScheduleCombobox

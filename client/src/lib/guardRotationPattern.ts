@@ -1,3 +1,4 @@
+import { sundayOnOrBefore } from "@/lib/clock";
 // client/src/lib/guardRotationPattern.ts
 
 /**
@@ -21,7 +22,5 @@ export function dayOrderLabel(dayOrder: number): string {
  * "AMARILLO OCTUBRE 2026" con ancla en lunes).
  */
 export function nearestSundayOnOrBefore(dateStr: string): string {
-  const date = new Date(`${dateStr}T00:00:00`);
-  date.setDate(date.getDate() - date.getDay());
-  return date.toISOString().slice(0, 10);
+  return sundayOnOrBefore(dateStr);
 }

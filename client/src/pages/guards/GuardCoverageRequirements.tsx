@@ -21,6 +21,7 @@ import type {
   CreateCoverageRequirementDto,
   UpdateCoverageRequirementDto,
 } from '@/types/guards';
+import { todayEcuador } from "@/lib/clock";
 
 const DAY_NAMES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
@@ -45,7 +46,7 @@ export default function GuardCoverageRequirementsPage() {
     scheduleLabel: '',
     dayOfWeek: 1,
     requiredGuards: 1,
-    validFrom: new Date().toISOString().split('T')[0],
+    validFrom: todayEcuador(),
     validTo: '',
     isActive: true,
     notes: '',
@@ -55,7 +56,7 @@ export default function GuardCoverageRequirementsPage() {
     setForm({
       locationId: 0, scheduleId: null, scheduleLabel: '',
       dayOfWeek: 1, requiredGuards: 1,
-      validFrom: new Date().toISOString().split('T')[0],
+      validFrom: todayEcuador(),
       validTo: '', isActive: true, notes: '',
     });
     setMode('create');
@@ -263,7 +264,7 @@ export default function GuardCoverageRequirementsPage() {
               </div>
               <div>
                 <Label>Válido hasta</Label>
-                <Input type="date" value={form.validTo} onChange={e => setForm(f => ({ ...f, validTo: e.target.value }))} />
+                <Input type="date" min={form.validFrom} value={form.validTo} onChange={e => setForm(f => ({ ...f, validTo: e.target.value }))} />
               </div>
             </div>
             {mode === 'edit' && (
