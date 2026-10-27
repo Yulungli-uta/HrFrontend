@@ -137,6 +137,10 @@ export interface Training {
   countryId?: string;
   /** Pedagógica (true) o Específica (false) -- gobierna si knowledgeAreaTypeId aplica. */
   isPedagogical?: boolean | null;
+  /** Origen del registro: Manual, DEaDV (sincronizado) o Importado (carga masiva histórica). */
+  source?: "Manual" | "DEaDV" | "Importado";
+  /** true si el certificado de DEaDV se puede abrir (la URL real nunca llega al navegador). */
+  hasDeadvCertificate?: boolean;
   createdAt?: string;
 }
 

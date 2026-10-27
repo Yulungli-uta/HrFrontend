@@ -16,6 +16,7 @@ import { apiFetch } from '../core/fetch';
 import type { ApiResponse } from '../core/fetch';
 import { fetchMultipart } from './documents';
 import { API_CONFIG } from '../core/config';
+import { tokenService } from '@/features/auth';
 
 const createCrudService = createApiService;
 // =============================================================================
@@ -90,8 +91,78 @@ export const NivelesEducativosAPI = {
 // API de Capacitaciones
 // =============================================================================
 
+/** Un certificado de la previsualización de sincronización con DEaDV. */
+export interface DeadvSyncPreviewItem {
+  code: string;
+  title: string;
+  area: string | null;
+  isPedagogical: boolean;
+  startDate: string;
+  endDate: string;
+  hours: number;
+  modality: string | null;
+  /** "Nuevo" | "Vinculable" (completa un registro histórico) | "YaSincronizado". */
+  status: string;
+}
+
+export interface DeadvSyncPreview {
+  personId: number;
+  /** false cuando DEaDV no respondió: no es lo mismo que "no tiene certificados". */
+  serviceAvailable: boolean;
+  totalFound: number;
+  totalNew: number;
+  totalLinkable: number;
+  totalAlreadySynced: number;
+  items: DeadvSyncPreviewItem[];
+}
+
+export interface DeadvSyncResult {
+  personId: number;
+  created: number;
+  linked: number;
+  skipped: number;
+}
+
 export const CapacitacionesAPI = {
   ...createApiService<any, any>('/api/v1/rh/cv/trainings'),
+
+  /** Previsualiza la sincronización con DEaDV - no persiste nada todavía. */
+  previewDeadvSync: (personId: number): Promise<ApiResponse<DeadvSyncPreview>> =>
+    apiFetch<DeadvSyncPreview>(`/api/v1/rh/cv/trainings/person/${personId}/deadv-sync/preview`),
+
+  /** Confirma la sincronización: crea los faltantes y completa los registros históricos vinculables. */
+  confirmDeadvSync: (personId: number): Promise<ApiResponse<DeadvSyncResult>> =>
+    apiFetch<DeadvSyncResult>(`/api/v1/rh/cv/trainings/person/${personId}/deadv-sync/confirm`, {
+      method: 'POST',
+    }),
+
+  /**
+   * PDF del certificado como Blob. DEaDV no permite incrustar su PDF desde el navegador, así que
+   * lo descarga el backend (la URL original nunca llega al cliente).
+   */
+  getCertificate: async (trainingId: number): Promise<ApiResponse<Blob>> => {
+    const token = tokenService.getAccessToken();
+    try {
+      const resp = await fetch(`${API_CONFIG.RH_BASE_URL}/api/v1/rh/cv/trainings/${trainingId}/certificate`, {
+        method: 'GET',
+        headers: { Accept: 'application/pdf', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        credentials: API_CONFIG.CREDENTIALS,
+      });
+      if (!resp.ok) {
+        let message = `No se pudo obtener el certificado (HTTP ${resp.status}).`;
+        try {
+          const body = await resp.json();
+          if (body?.message) message = String(body.message);
+        } catch {
+          // cuerpo no JSON: se conserva el mensaje genérico
+        }
+        return { status: 'error', error: { code: resp.status, message } };
+      }
+      return { status: 'success', data: await resp.blob() };
+    } catch (e: unknown) {
+      return { status: 'error', error: { code: 0, message: (e as Error)?.message || 'Error de conexión' } };
+    }
+  },
 
   getByPersonId: (personId: number): Promise<ApiResponse<any>> =>
     apiFetch<any>(`/api/v1/rh/cv/trainings/person/${personId}`),

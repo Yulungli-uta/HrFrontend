@@ -625,6 +625,7 @@ export default function PersonDetail() {
               knowledgeAreaMap={knowledgeAreaMap}
               countryMap={countryMap}
               personIdCard={person!.idCard}
+              personId={person!.personId}
             />
           </TabsContent>
 

@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ActionIconButton } from "@/components/ui/action-icon-button";
 import { Badge } from "@/components/ui/badge";
-import { GraduationCap, Plus, Edit, Trash2, Calendar, Clock, Award, Monitor, Users2, FileText, ChevronDown, ChevronUp, BookOpen, Compass } from "lucide-react";
+import { GraduationCap, Plus, Edit, Trash2, Calendar, Clock, Award, Monitor, Users2, FileText, ChevronDown, ChevronUp, BookOpen, Compass, RefreshCw, ShieldCheck, Eye } from "lucide-react";
 import { Training } from "@/types/person";
 import { ReusableDocumentManager } from "@/components/ReusableDocumentManager";
 import { TRAINING_CERTIFICATE_DIRECTORY_CODE, TRAINING_CERTIFICATE_ENTITY_TYPE } from "@/features/constants";
@@ -11,6 +11,9 @@ import { useCvListState, buildFilterOptions, type CvSortOption, type CvFilterFie
 import { CvListToolbar } from "@/components/person-detail/CvListToolbar";
 import { CvFilterBar } from "@/components/person-detail/CvFilterBar";
 import { DataPagination } from "@/components/ui/DataPagination";
+import { formatDate as clockFormatDate } from "@/lib/clock";
+import { DeadvSyncDialog } from "@/components/person-detail/DeadvSyncDialog";
+import { TrainingCertificateModal } from "@/components/person-detail/TrainingCertificateModal";
 
 interface TrainingsTabProps {
   trainings: Training[];
@@ -24,15 +27,19 @@ interface TrainingsTabProps {
   countryMap?: Record<number, string>;
   /** Identificación de la persona — agrupa su expediente completo en una sola carpeta. */
   personIdCard?: string;
+  /** Persona dueña de las capacitaciones; habilita la sincronización con DEaDV. */
+  personId?: number;
 }
 
 type ModalityVariant = "default" | "secondary" | "outline";
 
-export function TrainingsTab({ trainings, onEdit, onDelete, refTypesMap = {}, knowledgeAreaMap = {}, countryMap = {}, personIdCard }: TrainingsTabProps) {
+export function TrainingsTab({ trainings, onEdit, onDelete, refTypesMap = {}, knowledgeAreaMap = {}, countryMap = {}, personIdCard, personId }: TrainingsTabProps) {
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [syncDialogOpen, setSyncDialogOpen] = useState(false);
+  const [certificateOf, setCertificateOf] = useState<Training | null>(null);
   const formatDate = (dateString: string) => {
     if (!dateString) return "No especificada";
-    return new Date(dateString).toLocaleDateString("es-EC", {
+    return clockFormatDate(dateString, "es-EC", {
       year: "numeric",
       month: "long",
     });
@@ -92,6 +99,16 @@ export function TrainingsTab({ trainings, onEdit, onDelete, refTypesMap = {}, kn
       ],
       getValue: (t) => (Boolean((t as any).hasCertificate) ? "true" : "false"),
     },
+    {
+      key: "source",
+      label: "Origen",
+      options: [
+        { value: "DEaDV", label: "Sincronizado con DEaDV" },
+        { value: "Importado", label: "Importado (carga masiva)" },
+        { value: "Manual", label: "Ingresado manualmente" },
+      ],
+      getValue: (t) => t.source ?? "Manual",
+    },
   ];
 
   const list = useCvListState({
@@ -112,15 +129,33 @@ export function TrainingsTab({ trainings, onEdit, onDelete, refTypesMap = {}, kn
             {trainings.length}
           </Badge>
         </CardTitle>
-        <Button
-          size="sm"
-          className="bg-primary hover:bg-primary/90"
-          onClick={() => onEdit("training", null)}
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Nueva Capacitación
-        </Button>
+        <div className="flex gap-2">
+          {personId != null && (
+            <Button size="sm" variant="outline" onClick={() => setSyncDialogOpen(true)}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Sincronizar con DEaDV
+            </Button>
+          )}
+          <Button
+            size="sm"
+            className="bg-primary hover:bg-primary/90"
+            onClick={() => onEdit("training", null)}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Nueva Capacitación
+          </Button>
+        </div>
       </CardHeader>
+
+      {personId != null && (
+        <DeadvSyncDialog open={syncDialogOpen} onOpenChange={setSyncDialogOpen} personId={personId} />
+      )}
+      <TrainingCertificateModal
+        open={certificateOf != null}
+        onClose={() => setCertificateOf(null)}
+        trainingId={certificateOf?.trainingId ?? null}
+        title={certificateOf?.title ?? ""}
+      />
 
       <CardContent>
         {trainings.length === 0 ? (
@@ -244,6 +279,17 @@ export function TrainingsTab({ trainings, onEdit, onDelete, refTypesMap = {}, kn
                                 Certificado
                               </Badge>
                             )}
+                            {training.source === "DEaDV" && (
+                              <Badge className="text-xs bg-emerald-100 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-400">
+                                <ShieldCheck className="mr-1 h-3 w-3" />
+                                Sincronizado con DEaDV
+                              </Badge>
+                            )}
+                            {training.source === "Importado" && (
+                              <Badge variant="outline" className="text-xs">
+                                Importado
+                              </Badge>
+                            )}
                           </div>
 
                           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
@@ -270,6 +316,18 @@ export function TrainingsTab({ trainings, onEdit, onDelete, refTypesMap = {}, kn
                               </div>
                             )}
                           </div>
+
+                          {training.hasDeadvCertificate && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="self-start text-xs h-7"
+                              onClick={() => setCertificateOf(training)}
+                            >
+                              <Eye className="h-3.5 w-3.5 mr-1" />
+                              Ver certificado
+                            </Button>
+                          )}
 
                           <Button
                             variant="ghost"
