@@ -174,6 +174,19 @@ export function getLatenessSummary(
   });
 }
 
+/** Detalle de los días con atraso de un empleado (horario asignado, almuerzo y picadas). Exige employeeId y fechas. */
+export function getLatenessDetail(
+  filter: ReportFilter,
+  page: number,
+  pageSize: number
+): Promise<ApiResponse<PagedResult<PunchDetailRow>>> {
+  const qs = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+  return apiFetch<PagedResult<PunchDetailRow>>(`/api/v1/rh/reports/lateness-detail?${qs}`, {
+    method: 'POST',
+    body: JSON.stringify(filter),
+  });
+}
+
 // ─── Novedades de asistencia (JSON en pantalla, no genera archivo) ────────────
 
 export interface AttendanceNoveltyRow {
@@ -197,6 +210,41 @@ export function getAttendanceNoveltiesSummary(
 ): Promise<ApiResponse<PagedResult<AttendanceNoveltyRow>>> {
   const qs = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
   return apiFetch<PagedResult<AttendanceNoveltyRow>>(`/api/v1/rh/reports/attendance-novelties-summary?${qs}`, {
+    method: 'POST',
+    body: JSON.stringify(filter),
+  });
+}
+
+// ─── Reporte detallado de picadas (JSON en pantalla) ─────────────────────────
+
+export interface PunchDetailRow {
+  employeeId: number;
+  idCard: string;
+  fullName: string;
+  departmentName: string | null;
+  workDate: string;
+  journeyNumber: number;
+  scheduledEntryTime: string | null;
+  scheduledExitTime: string | null;
+  hasLunch: boolean;
+  scheduledLunchStart: string | null;
+  scheduledLunchEnd: string | null;
+  entryPunch: string | null;
+  lunchOutPunch: string | null;
+  lunchInPunch: string | null;
+  exitPunch: string | null;
+  punchCount: number;
+  lateMinutes: number;
+  hasLateness: boolean;
+}
+
+export function getPunchDetailSummary(
+  filter: ReportFilter,
+  page: number,
+  pageSize: number
+): Promise<ApiResponse<PagedResult<PunchDetailRow>>> {
+  const qs = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+  return apiFetch<PagedResult<PunchDetailRow>>(`/api/v1/rh/reports/punch-detail-summary?${qs}`, {
     method: 'POST',
     body: JSON.stringify(filter),
   });

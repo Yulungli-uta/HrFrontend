@@ -41,6 +41,7 @@ import {
   ShieldCheck,
   Utensils,
   AlertTriangle,
+  Fingerprint,
   Moon,
 } from "lucide-react";
 
@@ -189,6 +190,16 @@ const REPORT_CARDS: ReportCard[] = [
     category: "Asistencia",
     badgeColor: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
     href: "/reports/attendance-novelties",
+    formats: ["PDF", "Excel"],
+  },
+  {
+    id: "punch-detail",
+    title: "Reporte detallado de picadas",
+    description: "Por persona y día: horario programado, si tiene almuerzo, las cuatro picadas, minutos de atraso y si tuvo atraso. Incluye días sin picadas; rango máximo de 31 días",
+    icon: Fingerprint,
+    category: "Asistencia",
+    badgeColor: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
+    href: "/reports/punch-detail",
     formats: ["PDF", "Excel"],
   },
   {

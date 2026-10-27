@@ -90,6 +90,7 @@ const AttendanceCrossReportPage = lazy(() => import("@/pages/reports/AttendanceC
 const FoodSubsidySummaryReportPage = lazy(() => import("@/pages/reports/FoodSubsidySummaryReport"));
 const FoodSubsidyByScheduleReportPage = lazy(() => import("@/pages/reports/FoodSubsidyByScheduleReport"));
 const AttendanceNoveltiesReportPage = lazy(() => import("@/pages/reports/AttendanceNoveltiesReport"));
+const PunchDetailReportPage = lazy(() => import("@/pages/reports/PunchDetailReport"));
 const NightHoursSummaryReportPage = lazy(() => import("@/pages/reports/NightHoursSummaryReport"));
 const OvertimePlanDailyReportPage = lazy(() => import("@/pages/reports/OvertimePlanDailyReport"));
 const OvertimePlanMonthlyReportPage = lazy(() => import("@/pages/reports/OvertimePlanMonthlyReport"));
@@ -565,6 +566,11 @@ export const routes: RouteConfig[] = [
     path: "/reports/attendance-novelties",
     component: AttendanceNoveltiesReportPage,
     requiredPath: "/reports/attendance-novelties"
+  },
+  {
+    path: "/reports/punch-detail",
+    component: PunchDetailReportPage,
+    requiredPath: "/reports/punch-detail"
   },
   {
     path: "/reports/night-hours-summary",

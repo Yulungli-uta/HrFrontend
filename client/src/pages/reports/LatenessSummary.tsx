@@ -1,7 +1,8 @@
 // client/src/pages/reports/LatenessSummary.tsx
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AlarmClockOff, Search } from 'lucide-react';
+import { AlarmClockOff, Eye, Search } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -10,15 +11,22 @@ import { DataPagination } from '@/components/ui/DataPagination';
 import { DepartmentSelect } from '@/components/departments';
 import { REF_TYPE_CATEGORIES } from '@/features/refTypeCategories';
 import { useRefTypesByCategory } from '@/hooks/useRefTypes';
-import { getLatenessSummary } from '@/lib/api/services/reports';
+import { getLatenessSummary, type LatenessSummaryRow } from '@/lib/api/services/reports';
 import type { ReportFilter } from '@/types/reports';
+import LatenessDetailDialog from './LatenessDetailDialog';
 
+/** Fecha local yyyy-MM-dd (toISOString la pasaría a UTC y después de las 19:00 daría el día siguiente). */
+function toLocalDateStr(d: Date): string {
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
 function firstDayOfMonth(): string {
   const d = new Date();
-  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
+  return toLocalDateStr(new Date(d.getFullYear(), d.getMonth(), 1));
 }
 function todayStr(): string {
-  return new Date().toISOString().slice(0, 10);
+  return toLocalDateStr(new Date());
 }
 
 export default function LatenessSummaryPage() {
@@ -29,6 +37,7 @@ export default function LatenessSummaryPage() {
   const [searchText, setSearchText] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [detailEmployee, setDetailEmployee] = useState<LatenessSummaryRow | null>(null);
 
   // Cualquier cambio de filtro invalida la página actual — evita quedar "varado" en una
   // página que ya no existe para el nuevo resultado filtrado.
@@ -141,6 +150,7 @@ export default function LatenessSummaryPage() {
                       <TableHead>Régimen</TableHead>
                       <TableHead className="text-center">Días con atraso</TableHead>
                       <TableHead className="text-center">Minutos totales</TableHead>
+                      <TableHead className="text-center">Detalle</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -152,6 +162,11 @@ export default function LatenessSummaryPage() {
                         <TableCell>{r.contractType ?? '—'}</TableCell>
                         <TableCell className="text-center font-semibold">{r.lateDaysCount}</TableCell>
                         <TableCell className="text-center">{r.totalMinutesLate}</TableCell>
+                        <TableCell className="text-center">
+                          <Button variant="ghost" size="sm" onClick={() => setDetailEmployee(r)}>
+                            <Eye className="h-4 w-4 mr-1" /> Ver detalle
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -174,6 +189,13 @@ export default function LatenessSummaryPage() {
           )}
         </CardContent>
       </Card>
+
+      <LatenessDetailDialog
+        employee={detailEmployee}
+        startDate={startDate}
+        endDate={endDate}
+        onClose={() => setDetailEmployee(null)}
+      />
     </div>
   );
 }

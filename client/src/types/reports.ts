@@ -26,6 +26,7 @@ export type ReportType =
   | 'family-subsidy-summary'
   | 'seniority-bonus-summary'
   | 'attendance-novelties'
+  | 'punch-detail'
   | 'night-hours-summary'
   | 'overtime-plan-daily'
   | 'overtime-plan-monthly'
