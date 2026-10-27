@@ -475,10 +475,11 @@ export function ContractTypeForm({
               render={({ field }) => (
                 <FormItem className="flex items-center justify-between py-1">
                   <div className="space-y-0.5">
-                    <FormLabel className="text-sm">Docente Ocasional (SIIES)</FormLabel>
+                    <FormLabel className="text-sm">Profesor Ocasional (SIIES)</FormLabel>
                     <FormDescription className="text-xs">
-                      Clasifica este tipo como Profesor Ocasional/Técnico Docente: determina a cuáles
-                      contratos pertenece una persona para los reportes SIIES Funcionarios/Profesores.
+                      Marcado: este tipo es de Profesor Ocasional y ubica a la persona en los reportes SIIES de
+                      Profesores y Formación Profesional. Sin marcar (incluye Técnico Docente y Técnico de
+                      Laboratorio): la persona va en el reporte SIIES de Funcionarios.
                     </FormDescription>
                   </div>
                   <FormControl>

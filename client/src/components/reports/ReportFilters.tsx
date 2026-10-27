@@ -212,6 +212,10 @@ interface ReportFiltersProps {
 export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }: ReportFiltersProps) {
   const reportConfig = REPORT_CONFIGS[reportType];
   const availableFilters = reportConfig.availableFilters;
+  // SIIES Funcionarios y Profesores admiten "Todos" (cédula y pasaporte en un archivo, para revisión).
+  // Ambos lo usan por defecto; para cargar en SIIES se elige CEDULA o PASAPORTE (SIIES exige cargar cada tipo por separado).
+  const allowAllIdentTypes = reportType === 'siies-funcionarios' || reportType === 'siies-profesores';
+  const defaultIdentType: NonNullable<ReportFilter['identType']> = allowAllIdentTypes ? 'TODOS' : 'CEDULA';
 
   // evita problemas si en configs hay aliases (employeeID vs employeeId, etc.)
   const available = React.useMemo(() => new Set((availableFilters as unknown as string[]) ?? []), [availableFilters]);
@@ -659,9 +663,9 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
             <div className="space-y-2">
               <Label htmlFor="identType">Tipo de Identificación</Label>
               <Select
-                value={filter.identType ?? "CEDULA"}
+                value={filter.identType ?? defaultIdentType}
                 onValueChange={(value) =>
-                  setFilterValue("identType", value as "CEDULA" | "PASAPORTE")
+                  setFilterValue("identType", value as "CEDULA" | "PASAPORTE" | "TODOS")
                 }
               >
                 <SelectTrigger id="identType">
@@ -670,11 +674,14 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
                 <SelectContent>
                   <SelectItem value="CEDULA">Cédula </SelectItem>
                   <SelectItem value="PASAPORTE">Pasaporte </SelectItem>
+                  {allowAllIdentTypes && <SelectItem value="TODOS">Todos</SelectItem>}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">
-                Cada exportación genera un solo archivo; nunca se mezclan cédula y pasaporte.
-              </p>
+              {/* <p className="text-xs text-muted-foreground">
+                {(filter.identType ?? defaultIdentType) === "TODOS"
+                  ? "El archivo mezcla cédula y pasaporte: sirve para revisión. Para cargar en SIIES genere cada tipo por separado."
+                  : "Cada exportación genera un solo archivo con el tipo elegido."}
+              </p> */}
             </div>
           )}
 
@@ -689,9 +696,9 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
                 onChange={(e) => setFilterValue("identification", e.target.value)}
                 placeholder="Cédula o pasaporte de una sola persona"
               />
-              <p className="text-xs text-muted-foreground">
+              {/* <p className="text-xs text-muted-foreground">
                 Déjelo vacío para incluir a todos los registros.
-              </p>
+              </p> */}
             </div>
           )}
 
@@ -706,10 +713,10 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
                 onChange={(e) => setFilterValue("periodCode", e.target.value)}
                 placeholder="Ej: 48"
               />
-              <p className="text-xs text-muted-foreground">
+              {/* <p className="text-xs text-muted-foreground">
                 Controla las horas de la matriz 5.4. Vacío = usa el período más reciente
                 disponible por cada profesor.
-              </p>
+              </p> */}
             </div>
           )}
 

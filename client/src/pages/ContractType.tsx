@@ -627,7 +627,7 @@ export default function ContractTypesPage() {
                       <Badge variant="outline" className="text-[0.625rem] bg-green-50 text-green-700 border-green-200">Grupos AD</Badge>
                     )}
                     {contractType.isDocenteOcasional && (
-                      <Badge variant="outline" className="text-[0.625rem] bg-purple-50 text-purple-700 border-purple-200">Docente Ocasional (SIIES)</Badge>
+                      <Badge variant="outline" className="text-[0.625rem] bg-purple-50 text-purple-700 border-purple-200">Profesor Ocasional (SIIES)</Badge>
                     )}
                   </div>
                 )}
