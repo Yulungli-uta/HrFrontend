@@ -29,6 +29,8 @@ export const REF_TYPE_CATEGORIES = {
   ACADEMIC_DEDICATION: "ACADEMIC_DEDICATION",
   /** Rol en un proyecto de investigación (Name = código estable, Description = texto) - módulo Proyectos de Investigación 2026-10-20. */
   RESEARCH_PROJECT_ROLE: "RESEARCH_PROJECT_ROLE",
+  /** Proveedor de publicaciones científicas (Name = código estable: SCOPUS, ORCID, WOS, MANUAL, MIGRACION; Description = texto; Metadata = configuración JSON) - sincronización de publicaciones 2026-10-30. */
+  SCIENTIFIC_PROVIDER: "SCIENTIFIC_PROVIDER",
   ACADEMIC_LEVEL: "ACADEMIC_LEVEL",
   /** Grado dentro de Cuarto Nivel (Doctor/Maestría/Especialista/Diplomado) - integración DINARDAP 2026-09-16. */
   SIIES_GRADO: "SIIES_GRADO",

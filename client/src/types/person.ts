@@ -77,6 +77,21 @@ export interface Publication {
   notes?: string;
   publicationTypeName?: string;
   journalTypeName?: string;
+  /** Origen del registro (ref_Types SCIENTIFIC_PROVIDER): MANUAL, MIGRACION o un proveedor como SCOPUS. */
+  sourceProviderTypeId?: number;
+  externalId?: string | null;
+  /** SIN_REVISION, APROBADA (congelada) o RECHAZADA. */
+  approvalStatus?: "SIN_REVISION" | "APROBADA" | "RECHAZADA";
+  approvedAt?: string | null;
+  approvedBy?: number | null;
+  reviewNotes?: string | null;
+  lastSyncedAt?: string | null;
+  /** Aprobada o rechazada: no se modifica ni se elimina. Lo decide el servidor. */
+  isLocked?: boolean;
+  /** El origen exige revisión de la Dirección de Investigación (lo sincronizado de un proveedor). */
+  requiresApproval?: boolean;
+  /** Cuenta en el CV en PDF y en la promoción docente. */
+  countsForCv?: boolean;
 }
 
 export interface FamilyMember {
@@ -337,4 +352,15 @@ export const normalizePublication = (data: any): Publication => ({
   publicationDate: data.publicationDate as string | undefined,
   utAffiliation: data.utAffiliation as boolean | undefined,
   notes: data.notes as string | undefined,
+  // Estado de revisión (sincronización de publicaciones): lo decide el servidor y la pantalla solo lo muestra.
+  sourceProviderTypeId: data.sourceProviderTypeId as number | undefined,
+  externalId: data.externalId as string | null | undefined,
+  approvalStatus: data.approvalStatus as Publication['approvalStatus'],
+  approvedAt: data.approvedAt as string | null | undefined,
+  approvedBy: data.approvedBy as number | null | undefined,
+  reviewNotes: data.reviewNotes as string | null | undefined,
+  lastSyncedAt: data.lastSyncedAt as string | null | undefined,
+  isLocked: data.isLocked as boolean | undefined,
+  requiresApproval: data.requiresApproval as boolean | undefined,
+  countsForCv: data.countsForCv as boolean | undefined,
 });

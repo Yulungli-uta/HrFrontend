@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ActionIconButton } from "@/components/ui/action-icon-button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Plus, Edit, Trash2, Calendar, BookOpen, MapPin, ChevronDown, ChevronUp, Link as LinkIcon } from "lucide-react";
+import { FileText, Plus, RefreshCw, Edit, Trash2, Calendar, BookOpen, MapPin, ChevronDown, ChevronUp, Link as LinkIcon } from "lucide-react";
 import { Publication } from "@/types/person";
 import { ReusableDocumentManager } from "@/components/ReusableDocumentManager";
 import { PUBLICATION_DOCUMENT_DIRECTORY_CODE, PUBLICATION_DOCUMENT_ENTITY_TYPE } from "@/features/constants";
@@ -12,6 +12,11 @@ import { CvListToolbar } from "@/components/person-detail/CvListToolbar";
 import { CvFilterBar } from "@/components/person-detail/CvFilterBar";
 import { DataPagination } from "@/components/ui/DataPagination";
 import { formatDate as clockFormatDate } from "@/lib/clock";
+import { PublicationStatusBadge } from "@/components/person-detail/PublicationStatusBadge";
+import { OrcidRequiredGate } from "@/components/person-detail/publication-sync/OrcidRequiredGate";
+import { ResearcherOrcidLine } from "@/components/person-detail/publication-sync/ResearcherOrcidLine";
+import { PublicationSyncDialog } from "@/components/person-detail/publication-sync/PublicationSyncDialog";
+import { isPendingReview, isPublicationLocked, lockedMessage, publicationCounts } from "@/features/publications/publicationStatus";
 
 interface PublicationsTabProps {
   publications: Publication[];
@@ -19,10 +24,24 @@ interface PublicationsTabProps {
   onDelete: (id: number) => void;
   /** Identificación de la persona — agrupa su expediente completo en una sola carpeta. */
   personIdCard?: string;
+  /** Persona dueña de la Hoja de Vida; habilita "Sincronizar publicaciones". */
+  personId?: number;
+  /** Perfil propio: la persona es quien registra su ORCID (aviso en la pestaña). */
+  isOwnProfile?: boolean;
+  /** Lleva a la pestaña Personal, donde se edita el perfil de investigador. */
+  onGoToPersonal?: () => void;
 }
 
-export function PublicationsTab({ publications, onEdit, onDelete, personIdCard }: PublicationsTabProps) {
+export function PublicationsTab({ publications: allPublications, onEdit, onDelete, personIdCard, personId, isOwnProfile = false, onGoToPersonal }: PublicationsTabProps) {
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [syncOpen, setSyncOpen] = useState(false);
+  const [showRejected, setShowRejected] = useState(false);
+  // Solo se ocultan las rechazadas; las "en revisión" se ven (con su insignia) aunque todavía no cuenten en el contador.
+  const isRejected = (p: Publication) => p.approvalStatus === "RECHAZADA";
+  const rejectedCount = allPublications.filter(isRejected).length;
+  const publications = showRejected ? allPublications : allPublications.filter((p) => !isRejected(p));
+  const countedTotal = allPublications.filter((p) => publicationCounts(p)).length;
+  const reviewCount = allPublications.filter((p) => isPendingReview(p)).length;
   const formatDate = (dateString: string) => {
     if (!dateString) return "No especificada";
     return clockFormatDate(dateString, "es-EC", {
@@ -78,17 +97,38 @@ export function PublicationsTab({ publications, onEdit, onDelete, personIdCard }
           <CardTitle className="text-lg sm:text-xl">
             Publicaciones
             <Badge variant="outline" className="ml-2">
-              {publications.length}
+              {countedTotal}
             </Badge>
+            {reviewCount > 0 && (
+              <Badge variant="outline" className="ml-1 text-xs font-normal">
+                {reviewCount} en revisión
+              </Badge>
+            )}
           </CardTitle>
         </div>
-        <Button size="sm" onClick={() => onEdit("publication", null)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nueva publicación
-        </Button>
+        <div className="flex items-center gap-2">
+          {personId ? (
+            <Button size="sm" variant="outline" onClick={() => setSyncOpen(true)}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Sincronizar publicaciones
+            </Button>
+          ) : null}
+          <Button size="sm" onClick={() => onEdit("publication", null)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nueva publicación
+          </Button>
+        </div>
       </CardHeader>
 
       <CardContent>
+        {personId ? <OrcidRequiredGate personId={personId} isOwnProfile={isOwnProfile} /> : null}
+        {personId ? <ResearcherOrcidLine personId={personId} onGoToPersonal={onGoToPersonal} /> : null}
+        {rejectedCount > 0 && (
+          <label className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
+            <input type="checkbox" checked={showRejected} onChange={(e) => setShowRejected(e.target.checked)} />
+            Mostrar {rejectedCount} rechazada(s)
+          </label>
+        )}
         {publications.length === 0 ? (
           <div className="text-center text-sm text-muted-foreground py-8">
             No hay publicaciones registradas. Usa el botón
@@ -139,6 +179,7 @@ export function PublicationsTab({ publications, onEdit, onDelete, personIdCard }
                             {publication.publicationTypeName}
                           </Badge>
                         )}
+                        <PublicationStatusBadge publication={publication} />
                       </div>
 
                       <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
@@ -216,17 +257,18 @@ export function PublicationsTab({ publications, onEdit, onDelete, personIdCard }
                     <div className="flex items-center gap-2 shrink-0">
                       <ActionIconButton
                         icon={Edit}
-                        label="Editar publicación"
+                        label={isPublicationLocked(publication) ? lockedMessage(publication.approvalStatus) : "Editar publicación"}
                         tone="primary"
                         onClick={() => onEdit("publication", publication)}
+                        disabled={isPublicationLocked(publication)}
                         touch
                       />
                       <ActionIconButton
                         icon={Trash2}
-                        label="Eliminar publicación"
+                        label={isPublicationLocked(publication) ? lockedMessage(publication.approvalStatus) : "Eliminar publicación"}
                         tone="destructive"
                         onClick={() => onDelete(resolveId(publication))}
-                        disabled={resolveId(publication) === 0}
+                        disabled={resolveId(publication) === 0 || isPublicationLocked(publication)}
                         touch
                       />
                     </div>
@@ -251,6 +293,7 @@ export function PublicationsTab({ publications, onEdit, onDelete, personIdCard }
           </>
         )}
       </CardContent>
+      {personId ? <PublicationSyncDialog open={syncOpen} onOpenChange={setSyncOpen} personId={personId} /> : null}
     </Card>
   );
 }

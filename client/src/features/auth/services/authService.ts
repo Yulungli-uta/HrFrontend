@@ -4,6 +4,7 @@ import { TokenPair, UserSession, LoginRequest } from "../types/authTypes";
 import { tokenService } from "./tokenService";
 import { getBrowserId, getDeviceInfo } from "@/utils/browserId";
 import { logger } from "@/lib/logger";
+import { AzureExchangeError, failureCodeFromHttpStatus } from "./azureLoginMessages";
 
 const AUTH_API_BASE_URL =
   import.meta.env.VITE_AUTH_API_BASE_URL || "http://localhost:5010";
@@ -226,7 +227,10 @@ export const authService = {
 
     if (res.status === "error") {
       logger.auth.error("getAzureAuthUrl failed", res.error.code);
-      throw new Error(res.error.message ?? "Error al obtener URL de Azure");
+      throw new AzureExchangeError(
+        failureCodeFromHttpStatus(Number(res.error.code)),
+        res.error.message ?? "Error al obtener URL de Azure"
+      );
     }
 
     if (res.data?.success && res.data?.data) {
@@ -288,7 +292,10 @@ export const authService = {
 
     if (res.status === "error") {
       logger.auth.error("exchangeAzureDeliveryCode failed", res.error.code);
-      throw new Error(res.error.message ?? "Código de entrega inválido o expirado");
+      throw new AzureExchangeError(
+        failureCodeFromHttpStatus(Number(res.error.code)),
+        res.error.message ?? "Código de entrega inválido o expirado"
+      );
     }
 
     if (res.data?.success && res.data?.data) {
@@ -297,5 +304,30 @@ export const authService = {
     }
 
     throw new Error("Estructura de respuesta inválida");
+  },
+
+  /** -----------------------------------------
+   * RECLAMO DEL LOGIN PENDIENTE (login Office 365)
+   * -------------------------------------- */
+  /**
+   * Si el aviso de entrega no llegó a esta pestaña (celular en segundo plano, conexión en tiempo real
+   * caída), pregunta al servidor por el deliveryCode de ESTE intento con el browserId y el codeChallenge.
+   * El código solo se canjea con el codeVerifier que únicamente esta pestaña conoce. Nunca lanza:
+   * un servidor que aún no tiene el endpoint (404), el límite de uso o la red caída equivalen a "nada pendiente".
+   */
+  async claimAzureDelivery(codeChallenge: string): Promise<string | null> {
+    const res = await authFetch<{ data?: { deliveryCode?: string | null }; success: boolean }>(
+      "/api/auth/azure/claim",
+      {
+        method: "POST",
+        body: JSON.stringify({ browserId: getBrowserId(), codeChallenge }),
+      }
+    );
+
+    if (res.status === "error") {
+      logger.auth.debug("claimAzureDelivery sin resultado", res.error.code);
+      return null;
+    }
+    return res.data?.data?.deliveryCode ?? null;
   },
 };

@@ -73,6 +73,16 @@ const REPORT_CARDS: ReportCard[] = [
     formats: ["PDF", "Excel"],
   },
   {
+    id: "teacher-roster",
+    title: "Personal Docente",
+    description: "Docentes titulares (categoría, nivel, dedicación y documento de la acción de personal) o no titulares (dedicación y contrato); el RMU se incluye solo con permiso sobre el historial de sueldos",
+    icon: BadgeCheck,
+    category: "Personal",
+    badgeColor: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+    href: "/reports/teacher-roster",
+    formats: ["PDF", "Excel"],
+  },
+  {
     id: "attendance",
     title: "Reporte de Asistencia",
     description: "Registros de entrada/salida y horas trabajadas",

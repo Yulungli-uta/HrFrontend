@@ -28,6 +28,7 @@ export type ReportType =
   | 'attendance-novelties'
   | 'punch-detail'
   | 'night-hours-summary'
+  | 'teacher-roster'
   | 'overtime-plan-daily'
   | 'overtime-plan-monthly'
   // Reportes v2 — Gestión RH
@@ -85,12 +86,22 @@ export interface ReportFilter {
   actionTypeId?: number;
   isActive?: boolean;
   includeInactive?: boolean;
+  /** Excluye a los cargos de horario rotativo (guardias y supervisor, parámetro GUARD_JOB_NAMES). Hoy: Horas Nocturnas. */
+  excludeGuards?: boolean;
   /** Filtra por estado (contratos, acciones, permisos, solicitudes, certificaciones). */
   status?: string;
   /** ID de la ubicación de servicio de guardias (tbl_GuardServiceLocations). */
   locationId?: number;
   /** ID del grupo de rotación de guardias (tbl_GuardRotationGroups). */
   groupId?: number;
+  /** Reporte de personal docente: TITULAR (por defecto) o NO_TITULAR (contrato ocasional). */
+  teacherKind?: 'TITULAR' | 'NO_TITULAR';
+  /** TypeId de la categoría académica (ref_Types ACADEMIC_CATEGORY). Usado por el reporte de docentes titulares. */
+  categoryTypeId?: number;
+  /** TypeId del nivel académico (ref_Types ACADEMIC_LEVEL). Usado por el reporte de docentes titulares. */
+  levelTypeId?: number;
+  /** TypeId de la dedicación (ref_Types ACADEMIC_DEDICATION). Usado por el reporte de docentes titulares. */
+  dedicationTypeId?: number;
   orientation?: PageOrientation;
   /**
    * Tipo de identificación para los reportes SIIES — segrega la matriz de CEDULA de la de PASAPORTE.
@@ -132,6 +143,10 @@ export interface ReportConfig {
   icon: string;
   availableFormats: ReportFormat[];
   availableFilters: (keyof ReportFilter)[];
+  /** Valores con los que arranca el panel de filtros (ej. solo activos). Opcional: sin él arranca vacío. */
+  defaultFilter?: Partial<ReportFilter>;
+  /** Arranca con Fecha Inicio/Fin = mes en curso de Ecuador (hasta hoy), en vez de vacías. */
+  defaultToCurrentMonth?: boolean;
   /** Opciones estáticas de estado (se usa cuando los valores no están en ref_Types). */
   statusOptions?: { value: string; label: string }[];
   /**
@@ -165,7 +180,8 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
     description: 'Registros de entrada/salida y horas trabajadas',
     icon: 'Clock',
     availableFormats: ['pdf', 'excel'],
-    availableFilters: ['startDate', 'endDate', 'employeeId', 'departmentId', 'laborRegimeId']
+    availableFilters: ['startDate', 'endDate', 'employeeId', 'departmentId', 'laborRegimeId'],
+    defaultToCurrentMonth: true,
   },
   departments: {
     type: 'departments',
@@ -219,7 +235,8 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
     description: 'Detalle de atrasos, tardanzas y salidas anticipadas por empleado en el período',
     icon: 'AlarmClock',
     availableFormats: ['pdf', 'excel'],
-    availableFilters: ['startDate', 'endDate', 'employeeId', 'departmentId', 'laborRegimeId', 'orientation']
+    availableFilters: ['startDate', 'endDate', 'employeeId', 'departmentId', 'laborRegimeId', 'orientation'],
+    defaultToCurrentMonth: true,
   },
   overtime: {
     type: 'overtime',
@@ -227,7 +244,8 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
     description: 'Horas extras ordinarias, nocturnas, feriado y fuera de horario por empleado',
     icon: 'Timer',
     availableFormats: ['pdf', 'excel'],
-    availableFilters: ['startDate', 'endDate', 'employeeId', 'departmentId', 'laborRegimeId', 'orientation']
+    availableFilters: ['startDate', 'endDate', 'employeeId', 'departmentId', 'laborRegimeId', 'orientation'],
+    defaultToCurrentMonth: true,
   },
   'attendance-cross': {
     type: 'attendance-cross',
@@ -236,6 +254,7 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
     icon: 'LayoutGrid',
     availableFormats: ['pdf', 'excel'],
     availableFilters: ['startDate', 'endDate', 'employeeId', 'departmentId', 'laborRegimeId', 'orientation'],
+    defaultToCurrentMonth: true,
     // Reporte con muchas columnas/filas: puede superar el timeout default de 30s.
     timeoutMs: 120_000,
   },
@@ -247,7 +266,7 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
     availableFormats: ['pdf', 'excel'],
     // No filtra por régimen por defecto (el subsidio ya solo aplica a Código de Trabajo);
     // se deja como filtro opcional junto con dependencia, empleado y cédula.
-    availableFilters: ['startDate', 'endDate', 'departmentId', 'laborRegimeId', 'employeeId', 'identification', 'orientation'],
+    availableFilters: ['startDate', 'endDate', 'departmentId', 'laborRegimeId', 'employeeId', 'orientation'],
   },
   'food-subsidy-by-schedule': {
     type: 'food-subsidy-by-schedule',
@@ -255,7 +274,7 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
     description: 'Detalle por jornada trabajada de cada empleado que calificó para el subsidio de alimentación en el período, con fecha y horario, ordenado por nombre',
     icon: 'Clock',
     availableFormats: ['pdf', 'excel'],
-    availableFilters: ['startDate', 'endDate', 'departmentId', 'laborRegimeId', 'employeeId', 'identification', 'orientation'],
+    availableFilters: ['startDate', 'endDate', 'departmentId', 'laborRegimeId', 'employeeId', 'orientation'],
   },
   'attendance-novelties': {
     type: 'attendance-novelties',
@@ -263,7 +282,7 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
     description: 'Ausencias injustificadas, atrasos, salidas anticipadas, ajustes manuales, horas fuera de horario, recuperaciones y reemplazos de guardia, con observación estándar por caso',
     icon: 'AlertTriangle',
     availableFormats: ['pdf', 'excel'],
-    availableFilters: ['startDate', 'endDate', 'departmentId', 'laborRegimeId', 'employeeId', 'identification', 'orientation'],
+    availableFilters: ['startDate', 'endDate', 'departmentId', 'laborRegimeId', 'employeeId', 'orientation'],
   },
   'punch-detail': {
     type: 'punch-detail',
@@ -271,7 +290,7 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
     description: 'Por persona y día: horario programado, si tiene almuerzo, las cuatro picadas (entrada, salida a almuerzo, regreso y salida), minutos de atraso y si tuvo atraso. Incluye días sin picadas; rango máximo de 31 días',
     icon: 'Fingerprint',
     availableFormats: ['pdf', 'excel'],
-    availableFilters: ['startDate', 'endDate', 'departmentId', 'laborRegimeId', 'employeeId', 'identification', 'orientation'],
+    availableFilters: ['startDate', 'endDate', 'departmentId', 'laborRegimeId', 'employeeId', 'orientation'],
   },
   'night-hours-summary': {
     type: 'night-hours-summary',
@@ -282,7 +301,19 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
     // No filtra por régimen por defecto (la jornada nocturna no es exclusiva de un
     // tipo de contrato, a diferencia del subsidio de alimentación); queda como
     // filtro opcional junto con dependencia, empleado y cédula.
-    availableFilters: ['startDate', 'endDate', 'departmentId', 'laborRegimeId', 'employeeId', 'identification', 'orientation'],
+    availableFilters: ['startDate', 'endDate', 'departmentId', 'laborRegimeId', 'employeeId', 'excludeGuards', 'orientation'],
+    // Los guardias y su supervisor tienen horario rotativo: la noche es parte normal de su jornada y taparía al resto.
+    defaultFilter: { excludeGuards: true },
+  },
+  'teacher-roster': {
+    type: 'teacher-roster',
+    title: 'Personal Docente',
+    description: 'Docentes titulares (categoría, nivel, dedicación y número de documento de la acción de personal) o no titulares (dedicación, tipo y número de contrato, vigencia). Elige el tipo de docente; filtra por dependencia, dedicación y estado (en no titulares: contrato vigente o vencido). El RMU se incluye solo para quienes tienen permiso sobre el historial de sueldos',
+    icon: 'BadgeCheck',
+    availableFormats: ['pdf', 'excel'],
+    availableFilters: ['teacherKind', 'departmentId', 'categoryTypeId', 'levelTypeId', 'dedicationTypeId', 'isActive', 'orientation'],
+    // Igual que la página: por defecto titulares y solo activos (Todos/Inactivos se eligen en el filtro Estado).
+    defaultFilter: { teacherKind: 'TITULAR', isActive: true },
   },
   'overtime-plan-daily': {
     type: 'overtime-plan-daily',
@@ -290,7 +321,7 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
     description: 'Detalle día por día de los planes de horas extra: cuota planificada, horas ejecutadas, estado del plan y estado de aprobación/pago',
     icon: 'CalendarClock',
     availableFormats: ['pdf', 'excel'],
-    availableFilters: ['startDate', 'endDate', 'departmentId', 'employeeId', 'identification', 'orientation'],
+    availableFilters: ['startDate', 'endDate', 'departmentId', 'employeeId', 'orientation'],
   },
   'overtime-plan-monthly': {
     type: 'overtime-plan-monthly',
@@ -298,7 +329,7 @@ export const REPORT_CONFIGS: Record<ReportType, ReportConfig> = {
     description: 'Resumen mensual por empleado: horas planificadas y ejecutadas sumadas de todos sus planes de horas extra en cada mes. Filtra por año y mes, no por rango de fechas',
     icon: 'CalendarRange',
     availableFormats: ['pdf', 'excel'],
-    availableFilters: ['year', 'month', 'departmentId', 'employeeId', 'identification', 'orientation'],
+    availableFilters: ['year', 'month', 'departmentId', 'employeeId', 'orientation'],
   },
   'family-subsidy-summary': {
     type: 'family-subsidy-summary',

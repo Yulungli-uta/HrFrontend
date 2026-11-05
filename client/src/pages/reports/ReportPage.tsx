@@ -15,14 +15,21 @@ import { PdfPreviewModal } from '@/components/reports/PdfPreviewModal';
 import { useReport } from '@/hooks/useReport';
 import type { ReportType, ReportFilter } from '@/types/reports';
 import { REPORT_CONFIGS } from '@/types/reports';
+import { currentMonthRange, getDateRangeIssue } from '@/lib/reportDateRange';
 
 interface ReportPageProps {
   reportType: ReportType;
 }
 
 export function ReportPage({ reportType }: ReportPageProps) {
-  const [filter, setFilter] = useState<ReportFilter>({});
   const reportConfig = REPORT_CONFIGS[reportType];
+  // Se calcula una sola vez al abrir: el mes en curso no debe cambiar mientras el usuario edita los filtros.
+  const [initialFilter] = useState<ReportFilter>(() => ({
+    ...(reportConfig.defaultToCurrentMonth ? currentMonthRange() : {}),
+    ...reportConfig.defaultFilter,
+  }));
+  const [filter, setFilter] = useState<ReportFilter>(initialFilter);
+  const dateIssue = getDateRangeIssue(filter.startDate, filter.endDate);
 
   // ✅ ÚNICA instancia compartida
   const {
@@ -67,7 +74,7 @@ export function ReportPage({ reportType }: ReportPageProps) {
       </div>
 
       {/* Filtros */}
-      <ReportFilters reportType={reportType} onFilterChange={setFilter} />
+      <ReportFilters reportType={reportType} onFilterChange={setFilter} initialFilter={initialFilter} />
 
       {/* Acciones */}
       <ReportActions
@@ -77,6 +84,7 @@ export function ReportPage({ reportType }: ReportPageProps) {
         onDownloadCsv={reportConfig.availableFormats.includes('csv') ? handleDownloadCsv : undefined}
         isPreviewing={isPreviewing}
         isDownloading={isDownloading}
+        disabled={!!dateIssue.error}
         description={reportConfig.description}
       />
 

@@ -26,10 +26,18 @@ interface Parameter {
   parameterId?: number;
   name: string;
   pvalues: string;
+  /** Credencial: el servidor nunca devuelve su valor; vacío al guardar = conservar el actual. */
+  isSecret?: boolean;
+  hasValue?: boolean;
   description: string;
   dataType: string;
   isActive: boolean;
 }
+
+/** Valores largos (p. ej. plantillas HTML de correo) se editan en un área de texto grande en vez de una línea. */
+const LONG_VALUE_THRESHOLD = 80;
+const isLongValue = (p: Parameter) =>
+  !p.isSecret && ((p.pvalues ?? "").length > LONG_VALUE_THRESHOLD || (p.pvalues ?? "").includes("\n"));
 
 const empty: Parameter = { name: "", pvalues: "", description: "", dataType: "NUMERO", isActive: true };
 
@@ -151,7 +159,7 @@ export default function ParametersPage() {
               Nuevo Parámetro
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg">
+          <DialogContent className={isLongValue(form) ? "max-w-3xl" : "max-w-lg"}>
             <DialogHeader>
               <DialogTitle>{editing ? "Editar Parámetro" : "Nuevo Parámetro"}</DialogTitle>
               <DialogDescription>
@@ -181,9 +189,28 @@ export default function ParametersPage() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
+                <div className={isLongValue(form) ? "space-y-2 sm:col-span-2" : "space-y-2"}>
                   <Label>Valor</Label>
-                  <Input value={form.pvalues ?? ""} onChange={(e) => updateForm({ pvalues: e.target.value })} placeholder="Ej: 2" />
+                  {isLongValue(form) ? (
+                    <Textarea
+                      className="min-h-48 max-h-[50vh] resize-y font-mono text-xs leading-relaxed"
+                      rows={12}
+                      spellCheck={false}
+                      value={form.pvalues ?? ""}
+                      onChange={(e) => updateForm({ pvalues: e.target.value })}
+                    />
+                  ) : (
+                    <Input
+                      type={form.isSecret ? "password" : "text"}
+                      autoComplete="off"
+                      value={form.pvalues ?? ""}
+                      onChange={(e) => updateForm({ pvalues: e.target.value })}
+                      placeholder={form.isSecret ? (form.hasValue ? "Configurado — escriba para reemplazar" : "Sin configurar") : "Ej: 2"}
+                    />
+                  )}
+                  {form.isSecret && (
+                    <p className="text-xs text-muted-foreground">Credencial: déjelo vacío para conservar el valor actual.</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>Tipo de dato</Label>
@@ -271,7 +298,9 @@ export default function ParametersPage() {
                 {filtered.map((p) => (
                   <TableRow key={p.parameterId}>
                     <TableCell className="font-mono text-sm font-medium">{p.name}</TableCell>
-                    <TableCell className="font-mono">{p.pvalues || "—"}</TableCell>
+                    <TableCell className="max-w-[14rem] truncate font-mono" title={p.isSecret ? undefined : p.pvalues || undefined}>
+                      {p.isSecret ? (p.hasValue ? "••••••••" : "Sin configurar") : p.pvalues || "—"}
+                    </TableCell>
                     <TableCell><Badge variant="outline">{p.dataType || "—"}</Badge></TableCell>
                     <TableCell className="max-w-xs truncate text-muted-foreground">{p.description || "Sin descripción"}</TableCell>
                     <TableCell>

@@ -52,6 +52,7 @@ const ParametersPage = lazy(() => import("@/pages/Parameters"));
 const GeoLocationsPage = lazy(() => import("@/pages/GeoLocations"));
 const TramiteRequirementsPage = lazy(() => import("@/pages/TramiteRequirements"));
 const AcademicLadderPage = lazy(() => import("@/pages/AcademicLadder"));
+const TeacherRosterPage = lazy(() => import("@/pages/TeacherRoster"));
 const HolidaysPage = lazy(() => import("@/pages/Holidays"));
 const FilesUploadPage = lazy(() => import("@/pages/FilesUploadPage"));
 const DepartmentAuthoritiesPage = lazy(() => import("@/pages/DepartmentAuthorities"));
@@ -92,6 +93,7 @@ const FoodSubsidyByScheduleReportPage = lazy(() => import("@/pages/reports/FoodS
 const AttendanceNoveltiesReportPage = lazy(() => import("@/pages/reports/AttendanceNoveltiesReport"));
 const PunchDetailReportPage = lazy(() => import("@/pages/reports/PunchDetailReport"));
 const NightHoursSummaryReportPage = lazy(() => import("@/pages/reports/NightHoursSummaryReport"));
+const TeacherRosterReportPage = lazy(() => import("@/pages/reports/TeacherRosterReport"));
 const OvertimePlanDailyReportPage = lazy(() => import("@/pages/reports/OvertimePlanDailyReport"));
 const OvertimePlanMonthlyReportPage = lazy(() => import("@/pages/reports/OvertimePlanMonthlyReport"));
 
@@ -137,6 +139,7 @@ const EmployeeSelfServicePage = lazy(() => import("@/pages/EmployeeSelfServicePa
 const HomeEntry = lazy(() => import("@/pages/HomeEntry"));
 const PreferencesPage = lazy(() => import("@/pages/Preferences"));
 const ResearchProjectsPage = lazy(() => import("@/pages/ResearchProjects"));
+const PublicationReviewPage = lazy(() => import("@/pages/PublicationReview"));
 const PunchControlPage = lazy(() => import("@/pages/PunchControl"));
 const MyCertificatesPage = lazy(() => import("@/pages/MyCertificatesPage"));
 const MyInternalRequestsPage = lazy(() => import("@/pages/MyInternalRequestsPage"));
@@ -462,6 +465,13 @@ export const routes: RouteConfig[] = [
     requiredPath: "/research-projects",
     requiredRoles: ["Administrador", "R_PROYECTOS"]
   },
+  // Revisión de publicaciones sincronizadas (Dirección de Investigación); el backend exige PUBLICATIONS.APPROVE.
+  {
+    path: "/publication-review",
+    component: PublicationReviewPage,
+    requiredPath: "/publication-review",
+    requiredRoles: ["Administrador", "R_PROYECTOS"]
+  },
   {
     path: "/justifications",
     component: JustificationPage,
@@ -584,6 +594,11 @@ export const routes: RouteConfig[] = [
     path: "/reports/night-hours-summary",
     component: NightHoursSummaryReportPage,
     requiredPath: "/reports/night-hours-summary"
+  },
+  {
+    path: "/reports/teacher-roster",
+    component: TeacherRosterReportPage,
+    requiredPath: "/reports/teacher-roster"
   },
   {
     path: "/reports/overtime-plan-daily",
@@ -745,6 +760,11 @@ export const routes: RouteConfig[] = [
     path: "/academic-ladder",
     component: AcademicLadderPage,
     requiredPath: "/academic-ladder"
+  },
+  {
+    path: "/teacher-roster",
+    component: TeacherRosterPage,
+    requiredPath: "/teacher-roster"
   },
   {
     path: "/FilesUploadPage",

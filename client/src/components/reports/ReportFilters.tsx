@@ -16,6 +16,7 @@ import { Filter, Check, ChevronsUpDown } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -32,10 +33,13 @@ import { cn } from "@/lib/utils";
 import type { ReportFilter, ReportType } from "@/types/reports";
 import { REPORT_CONFIGS } from "@/types/reports";
 
-import { ContractTypeAPI, VistaEmpleadosAPI } from "@/lib/api";
+import { ContractTypeAPI } from "@/lib/api";
+import { EmployeeCombobox } from "@/components/ui/EmployeeCombobox";
+import { getDateRangeIssue } from "@/lib/reportDateRange";
 import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import { PersonnelActionTypeAPI } from "@/lib/api/services/contracts";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
+import { categoryLabel, dedicationLabel, levelLabel } from "@/lib/academicLabels";
 import { GuardServiceLocationsAPI, GuardRotationGroupsAPI } from "@/lib/api/services/guards";
 import { DepartmentSelect } from "@/components/departments";
 import { ReportFormatOptions } from "@/components/reports/ReportFormatOptions";
@@ -50,8 +54,7 @@ type LoadState<T> = {
   error?: string;
 };
 
-type EmployeeView  = { employeeID: number; fullName: string };
-type RefType       = { typeId: number; name: string; category?: string };
+type RefType      = { typeId: number; name: string; category?: string };
 type ContractKind      = { contractTypeId?: number; contractTypeID?: number; id?: number; name: string };
 type ActionTypeOption  = { personnelActionTypeId: number; name: string; code: string };
 type GuardLocation    = { locationId: number; locationName: string; locationCode?: string };
@@ -75,17 +78,6 @@ function extractArray<T = any>(res: any): T[] {
   if (Array.isArray(res?.data)) return res.data;
   if (Array.isArray(res?.results)) return res.results;
   return [];
-}
-
-function mapEmployeeOptions(raw: any[]): Option[] {
-  return raw
-    .map((e) => {
-      const id = toNum(e.employeeID ?? e.employeeId ?? e.id);
-      const fullName = toStr(e.fullName) ?? toStr(`${e.lastName ?? ""} ${e.firstName ?? ""}`.trim());
-      if (id == null || !fullName) return null;
-      return { value: String(id), label: fullName };
-    })
-    .filter(Boolean) as Option[];
 }
 
 function mapContractTypeOptions(raw: any[]): Option[] {
@@ -222,6 +214,7 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
   const hasFilter = React.useCallback((...keys: string[]) => keys.some((k) => available.has(k)), [available]);
 
   const [filter, setFilter] = React.useState<ReportFilter>(initialFilter);
+  const dateIssue = getDateRangeIssue(filter.startDate, filter.endDate);
 
   // [2026-09-21] SIIES Profesores/Formación Profesional son los únicos reportes que ofrecen
   // "Período académico" Y "Fecha Inicio/Fin" a la vez — sin este selector, ambos aparecían
@@ -247,7 +240,6 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
   // estados de catálogos
   const [guardLocations, setGuardLocations] = React.useState<LoadState<GuardLocation>>({ loading: false, items: [] });
   const [guardGroups, setGuardGroups] = React.useState<LoadState<GuardGroup>>({ loading: false, items: [] });
-  const [employees, setEmployees] = React.useState<LoadState<EmployeeView>>({ loading: false, items: [] });
   const [contractKinds, setContractKinds] = React.useState<LoadState<ContractKind>>({ loading: false, items: [] });
   const [actionTypes, setActionTypes] = React.useState<LoadState<ActionTypeOption>>({ loading: false, items: [] });
 
@@ -288,6 +280,31 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
       error: departmentTypesQ.isError ? "No se pudieron cargar tipos de dependencia" : undefined,
     }),
     [departmentTypesQ.data, departmentTypesQ.isLoading, departmentTypesQ.isError]
+  );
+
+  // Catálogos académicos: solo se cargan si el reporte declara el filtro (reporte de docentes titulares).
+  const academicCategoriesQ = useRefTypesByCategory(REF_TYPE_CATEGORIES.ACADEMIC_CATEGORY, {
+    enabled: hasFilter("categoryTypeId"),
+  });
+  const academicLevelsQ = useRefTypesByCategory(REF_TYPE_CATEGORIES.ACADEMIC_LEVEL, {
+    enabled: hasFilter("levelTypeId"),
+  });
+  const academicDedicationsQ = useRefTypesByCategory(REF_TYPE_CATEGORIES.ACADEMIC_DEDICATION, {
+    enabled: hasFilter("dedicationTypeId"),
+  });
+  const academicOptions = (items: any[] | undefined, label: (n: string) => string): Option[] =>
+    (items ?? []).map((t: any) => ({ value: String(t.typeId ?? t.typeID), label: label(t.name) }));
+  const categoryOptions = React.useMemo<Option[]>(
+    () => academicOptions(academicCategoriesQ.data as any[], categoryLabel),
+    [academicCategoriesQ.data]
+  );
+  const levelOptions = React.useMemo<Option[]>(
+    () => academicOptions(academicLevelsQ.data as any[], levelLabel),
+    [academicLevelsQ.data]
+  );
+  const dedicationOptions = React.useMemo<Option[]>(
+    () => academicOptions(academicDedicationsQ.data as any[], dedicationLabel),
+    [academicDedicationsQ.data]
   );
 
   const departmentScopesQ = useRefTypesByCategory(REF_TYPE_CATEGORIES.DEPARTMENT_SCOPE, {
@@ -359,21 +376,6 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
       }
     };
 
-    const loadEmployees = async () => {
-      if (!hasFilter("employeeId", "employeeID", "createdByEmployeeId")) return;
-      setEmployees({ loading: true, items: [] });
-      try {
-        // En tu app, la vista completa devuelve employeeID y fullName (ver EmployeesPage.tsx)
-        const res = await VistaEmpleadosAPI.list();
-        const arr = extractArray(res);
-        if (!alive) return;
-        setEmployees({ loading: false, items: arr as any[] });
-      } catch {
-        if (!alive) return;
-        setEmployees({ loading: false, items: [], error: "No se pudieron cargar empleados" });
-      }
-    };
-
     const loadGuardLocations = async () => {
       if (!hasFilter("locationId")) return;
       setGuardLocations({ loading: true, items: [] });
@@ -402,7 +404,6 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
       }
     };
 
-    void loadEmployees();
     void loadContractKinds();
     void loadActionTypes();
     void loadGuardLocations();
@@ -414,11 +415,6 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
   }, [reportType, hasFilter]);
 
   // opciones ya normalizadas (label visible / value código)
-  const employeeOptions = React.useMemo<Option[]>(
-    () => mapEmployeeOptions(employees.items as any[]),
-    [employees.items]
-  );
-
   const contractTypeOptions = React.useMemo<Option[]>(
     () => mapContractTypeOptions(contractTypes.items as any[]),
     [contractTypes.items]
@@ -553,6 +549,8 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
                 id="startDate"
                 type="date"
                 value={filter.startDate || ""}
+                max={filter.endDate || undefined}
+                aria-invalid={!!dateIssue.error}
                 onChange={(e) => setFilterValue("startDate", e.target.value)}
               />
             </div>
@@ -566,9 +564,24 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
                 id="endDate"
                 type="date"
                 value={filter.endDate || ""}
+                min={filter.startDate || undefined}
+                aria-invalid={!!dateIssue.error}
                 onChange={(e) => setFilterValue("endDate", e.target.value)}
               />
             </div>
+          )}
+
+          {/* Control del rango: el error bloquea las acciones; el aviso de rango largo solo informa */}
+          {hasFilter("startDate", "endDate") && showDateRange && (dateIssue.error || dateIssue.warning) && (
+            <p
+              role={dateIssue.error ? "alert" : "status"}
+              className={cn(
+                "text-sm md:col-span-2 lg:col-span-3",
+                dateIssue.error ? "text-destructive" : "text-amber-700 dark:text-amber-400"
+              )}
+            >
+              {dateIssue.error ?? dateIssue.warning}
+            </p>
           )}
 
           {/* Departamento (buscable, muestra nombre/código/tipo/ámbito) */}
@@ -587,16 +600,13 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
           {hasFilter("employeeId", "employeeID") && (
             <div className="space-y-2">
               <Label>Empleado</Label>
-              <SearchableCombobox
-                value={filter.employeeId != null ? String(filter.employeeId) : "all"}
-                onChange={(v) => setFilterValue("employeeId", v === "all" ? undefined : Number(v))}
-                options={employeeOptions}
+              {/* includeInactive: los reportes son históricos y deben encontrar también a quien ya no está activo */}
+              <EmployeeCombobox
+                value={filter.employeeId ?? null}
+                onSelect={(id) => setFilterValue("employeeId", id ?? undefined)}
                 placeholder="Todos los empleados"
-                searchPlaceholder="Buscar empleado..."
-                emptyText={employees.loading ? "Cargando..." : "Sin resultados"}
-                disabled={employees.loading}
+                includeInactive
               />
-              {employees.error && <p className="text-xs text-destructive">{employees.error}</p>}
             </div>
           )}
 
@@ -632,6 +642,25 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
                 disabled={contractTypes.loading}
               />
               {contractTypes.error && <p className="text-xs text-destructive">{contractTypes.error}</p>}
+            </div>
+          )}
+
+          {/* Tipo de docente (reporte de personal docente): titulares o no titulares (contrato ocasional) */}
+          {hasFilter("teacherKind") && (
+            <div className="space-y-2">
+              <Label htmlFor="teacherKind">Tipo de docente</Label>
+              <Select
+                value={filter.teacherKind ?? "TITULAR"}
+                onValueChange={(value) => setFilterValue("teacherKind", value as "TITULAR" | "NO_TITULAR")}
+              >
+                <SelectTrigger id="teacherKind">
+                  <SelectValue placeholder="Tipo de docente" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="TITULAR">Titulares</SelectItem>
+                  <SelectItem value="NO_TITULAR">No titulares</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           )}
 
@@ -720,6 +749,20 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
             </div>
           )}
 
+          {/* Excluir guardias y supervisor (cargos de horario rotativo, parámetro GUARD_JOB_NAMES) */}
+          {hasFilter("excludeGuards") && (
+            <div className="flex items-center gap-2 self-end pb-2">
+              <Checkbox
+                id="excludeGuards"
+                checked={filter.excludeGuards === true}
+                onCheckedChange={(checked) => setFilterValue("excludeGuards", checked === true)}
+              />
+              <Label htmlFor="excludeGuards" className="cursor-pointer">
+                Excluir guardias y supervisor
+              </Label>
+            </div>
+          )}
+
           {/* Incluir Inactivos (select simple) */}
           {hasFilter("includeInactive") && (
             <div className="space-y-2">
@@ -773,6 +816,50 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
             </div>
           )}
 
+          {/* Categoría / Nivel / Dedicación académica (reporte de docentes titulares) */}
+          {hasFilter("categoryTypeId") && filter.teacherKind !== "NO_TITULAR" && (
+            <div className="space-y-2">
+              <Label>Categoría</Label>
+              <SearchableCombobox
+                value={filter.categoryTypeId != null ? String(filter.categoryTypeId) : "all"}
+                onChange={(v) => setFilterValue("categoryTypeId", v === "all" ? undefined : Number(v))}
+                options={categoryOptions}
+                placeholder="Todas las categorías"
+                searchPlaceholder="Buscar categoría..."
+                emptyText={academicCategoriesQ.isLoading ? "Cargando..." : "Sin resultados"}
+                disabled={academicCategoriesQ.isLoading}
+              />
+            </div>
+          )}
+          {hasFilter("levelTypeId") && filter.teacherKind !== "NO_TITULAR" && (
+            <div className="space-y-2">
+              <Label>Nivel</Label>
+              <SearchableCombobox
+                value={filter.levelTypeId != null ? String(filter.levelTypeId) : "all"}
+                onChange={(v) => setFilterValue("levelTypeId", v === "all" ? undefined : Number(v))}
+                options={levelOptions}
+                placeholder="Todos los niveles"
+                searchPlaceholder="Buscar nivel..."
+                emptyText={academicLevelsQ.isLoading ? "Cargando..." : "Sin resultados"}
+                disabled={academicLevelsQ.isLoading}
+              />
+            </div>
+          )}
+          {hasFilter("dedicationTypeId") && (
+            <div className="space-y-2">
+              <Label>Dedicación</Label>
+              <SearchableCombobox
+                value={filter.dedicationTypeId != null ? String(filter.dedicationTypeId) : "all"}
+                onChange={(v) => setFilterValue("dedicationTypeId", v === "all" ? undefined : Number(v))}
+                options={dedicationOptions}
+                placeholder="Todas las dedicaciones"
+                searchPlaceholder="Buscar dedicación..."
+                emptyText={academicDedicationsQ.isLoading ? "Cargando..." : "Sin resultados"}
+                disabled={academicDedicationsQ.isLoading}
+              />
+            </div>
+          )}
+
           {/* Tipo de Dependencia (ref_Types DEPARTMENT_TYPE) */}
           {hasFilter("departmentTypeId") && (
             <div className="space-y-2">
@@ -811,16 +898,12 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
           {hasFilter("createdByEmployeeId") && (
             <div className="space-y-2">
               <Label>Creado Por</Label>
-              <SearchableCombobox
-                value={filter.createdByEmployeeId != null ? String(filter.createdByEmployeeId) : "all"}
-                onChange={(v) => setFilterValue("createdByEmployeeId", v === "all" ? undefined : Number(v))}
-                options={employeeOptions}
+              <EmployeeCombobox
+                value={filter.createdByEmployeeId ?? null}
+                onSelect={(id) => setFilterValue("createdByEmployeeId", id ?? undefined)}
                 placeholder="Todos"
-                searchPlaceholder="Buscar empleado..."
-                emptyText={employees.loading ? "Cargando..." : "Sin resultados"}
-                disabled={employees.loading}
+                includeInactive
               />
-              {employees.error && <p className="text-xs text-destructive">{employees.error}</p>}
             </div>
           )}
 

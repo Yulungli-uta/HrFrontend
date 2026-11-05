@@ -535,13 +535,25 @@ export default function PermissionsPage() {
   const getRegisteredAt = (r: any) =>
     new Date(r?.createdAt ?? r?.CreatedAt ?? r?.startDate ?? r?.StartDate ?? 0).getTime();
 
+  const getStartTime = (r: any) => {
+    const t = new Date(r?.startDate ?? r?.StartDate ?? 0).getTime();
+    return Number.isFinite(t) ? t : 0;
+  };
+
+  // Más reciente primero por la fecha del permiso/vacación. Los registros cargados en bloque
+  // comparten fecha de registro, así que ésta solo desempata (y luego el ID, para un orden estable).
+  const compareByDateDesc = (a: any, b: any) =>
+    getStartTime(b) - getStartTime(a)
+    || getRegisteredAt(b) - getRegisteredAt(a)
+    || Number(getPermissionId(b) ?? b?.vacationId ?? b?.id ?? 0) - Number(getPermissionId(a) ?? a?.vacationId ?? a?.id ?? 0);
+
   const sortedPermissions = useMemo(
-    () => [...filteredPermissions].sort((a, b) => getRegisteredAt(b) - getRegisteredAt(a)),
+    () => [...filteredPermissions].sort(compareByDateDesc),
     [filteredPermissions]
   );
 
   const sortedVacations = useMemo(
-    () => [...filteredVacations].sort((a, b) => getRegisteredAt(b) - getRegisteredAt(a)),
+    () => [...filteredVacations].sort(compareByDateDesc),
     [filteredVacations]
   );
 

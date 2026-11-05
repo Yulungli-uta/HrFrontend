@@ -20,6 +20,7 @@ import {
 import { AcademicCvAPI, downloadCvBlob } from "@/lib/api/services/academicCv";
 
 import { PersonalInfoTab } from "@/components/person-detail/tabs/PersonalInfoTab";
+import { publicationCounts } from "@/features/publications/publicationStatus";
 import { PublicationsTab } from "@/components/person-detail/tabs/PublicationsTab";
 import { FamilyMembersTab } from "@/components/person-detail/tabs/FamilyMembersTab";
 import { WorkExperiencesTab } from "@/components/person-detail/tabs/WorkExperiencesTab";
@@ -515,7 +516,7 @@ export default function PersonDetail() {
           </div>
         </div>
 
-        <StatsDashboard data={safeData} />
+        <StatsDashboard data={{ ...safeData, publications: safeData.publications.filter((p) => publicationCounts(p)) }} />
 
         {/* ── Tabs — todas visibles en varias filas (escritorio); en móvil, una fila con flechas ── */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
@@ -525,7 +526,7 @@ export default function PersonDetail() {
             tabs={PERSON_TABS}
             counts={{
               education: safeData.educationLevels.length,
-              publications: safeData.publications.length,
+              publications: safeData.publications.filter((p) => publicationCounts(p)).length,
               family: safeData.familyMembers.length,
               experience: safeData.workExperiences.length,
               trainings: safeData.trainings.length,
@@ -549,6 +550,7 @@ export default function PersonDetail() {
               catastrophicIllnesses={safeData.catastrophicIllnesses}
               onAddCatastrophicIllness={() => openForm("catastrophicIllness", null)}
               onEditCatastrophicIllness={(item) => openForm("catastrophicIllness", item)}
+              syncedPublicationsCount={safeData.publications.filter((p) => p.requiresApproval).length}
               onDeleteCatastrophicIllness={(id) =>
                 confirmDelete(
                   "¿Está seguro de que desea eliminar este registro de enfermedad catastrófica?",
@@ -586,6 +588,9 @@ export default function PersonDetail() {
                 )
               }
               personIdCard={person!.idCard}
+              personId={person!.personId}
+              isOwnProfile={isOwnProfileMode}
+              onGoToPersonal={() => setActiveTab("personal")}
             />
           </TabsContent>
 

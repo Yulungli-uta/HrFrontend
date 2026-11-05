@@ -19,6 +19,8 @@ interface ReportActionsProps {
   onDownloadCsv?: () => void | Promise<void>;
   isPreviewing?: boolean;
   isDownloading?: boolean;
+  /** Bloquea todas las acciones (ej. filtros con un error que el usuario debe corregir). */
+  disabled?: boolean;
   description?: string;
 }
 
@@ -29,9 +31,10 @@ export function ReportActions({
   onDownloadCsv,
   isPreviewing = false,
   isDownloading = false,
+  disabled = false,
   description,
 }: ReportActionsProps) {
-  const isLoading = isPreviewing || isDownloading;
+  const isLoading = isPreviewing || isDownloading || disabled;
 
   return (
     <Card>

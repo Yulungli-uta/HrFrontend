@@ -55,6 +55,16 @@ import { registerForceLogoutCallback } from "@/lib/api/core/fetch";
 import { queryClient } from "@/lib/queryClient";
 import { logger } from "@/lib/logger";
 import { generateCodeVerifier, computeCodeChallenge } from "../services/pkce";
+import {
+  AzureExchangeError,
+  describeAzureLoginFailure,
+  newAttemptReference,
+  toAzureLoginFailureCode,
+  type AzureLoginFailureCode,
+  type AzureLoginFailureInfo,
+} from "../services/azureLoginMessages";
+import { clearAzureAttempt, loadAzureAttempt, saveAzureAttempt } from "../services/azureLoginAttempt";
+import { openAzureLoginChannel } from "../services/azureLoginChannel";
 
 const logAuth = (...args: unknown[]) => logger.auth.debug(String(args[0] ?? ""), ...args.slice(1));
 
@@ -70,8 +80,25 @@ const APP_CLIENT_ID = import.meta.env.VITE_APP_CLIENT_ID;
 /** Espera máxima de la confirmación de Microsoft; el usuario además puede cancelar en cualquier momento. */
 const AZURE_LOGIN_TIMEOUT_MS = 2 * 60 * 1000;
 
-const AZURE_LOGIN_NOT_COMPLETED_MESSAGE =
-  "No se completó el inicio de sesión con Microsoft. Si pulsaste «Atrás» o cancelaste, puedes intentarlo de nuevo.";
+/**
+ * Momentos (desde que se abre el popup) en que la pestaña reclama su login pendiente al servidor por si el
+ * aviso de entrega se perdió. Escalonados para no saturar el límite de uso del endpoint.
+ */
+const AZURE_CLAIM_DELAYS_MS = [4_000, 10_000, 25_000, 45_000, 70_000, 100_000];
+
+/** Margen tras volver a la pestaña antes de dar por perdido el aviso (el usuario puede seguir verificando). */
+const AZURE_RETURN_GRACE_MS = 12_000;
+
+/** Una entrega del resultado del login: por SignalR, por BroadcastChannel o por reclamo al servidor. */
+interface AzureDelivery {
+  /** Identifica la entrega para no procesarla dos veces (el mismo código puede llegar por dos canales). */
+  key: string;
+  source: "websocket" | "broadcast" | "claim";
+  deliveryCode?: string;
+  pair?: { accessToken: string; refreshToken: string };
+  /** Datos de usuario que trae el aviso de SignalR; sin ellos se consulta /api/auth/me. */
+  wsData?: Record<string, unknown>;
+}
 
 // ─── Tipos públicos ────────────────────────────────────────────────────────────
 
@@ -184,7 +211,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  const { isConnected, lastMessage } = useNotificationWebSocket(APP_CLIENT_ID);
+  // Los avisos de login se consumen por onMessage (uno por uno); lastMessage solo conserva el último.
+  const wsMessageHandlerRef = useRef<(msg: WebSocketMessage) => void>(() => { });
+  const wsConnectedHandlerRef = useRef<() => void>(() => { });
+  const { isConnected, lastMessage, ensureConnected } = useNotificationWebSocket(APP_CLIENT_ID, {
+    onMessage: (msg) => wsMessageHandlerRef.current(msg),
+    onConnected: () => wsConnectedHandlerRef.current(),
+  });
+  const ensureConnectedRef = useRef(ensureConnected);
+  ensureConnectedRef.current = ensureConnected;
+  const isAuthenticatedRef = useRef(false);
+  isAuthenticatedRef.current = isAuthenticated;
 
   // Refs para evitar closures obsoletos en callbacks asíncronos
   const logoutRef = useRef<() => void>(() => { });
@@ -202,10 +239,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const processedLoginEventsRef = useRef<Set<string>>(new Set());
   const isProcessingLoginRef = useRef(false);
 
-  // PKCE (login Office 365): el codeVerifier vive SOLO en memoria de esta pestaña,
-  // nunca en localStorage/sessionStorage. Se genera al abrir el popup y se consume
-  // al recibir el deliveryCode por WebSocket (ver loginWithOffice365 y el efecto WS).
+  // PKCE (login Office 365): el codeVerifier se genera al abrir el popup y se consume al canjear el
+  // deliveryCode. Vive en memoria y, mientras dura el intento, en sessionStorage de ESTA pestaña
+  // (azureLoginAttempt.ts) para poder reclamar el login si el navegador la recarga.
   const azureCodeVerifierRef = useRef<string | null>(null);
+  // Referencia corta del intento en curso (para citarla a soporte) y entregas encoladas mientras otra se canjea.
+  const azureAttemptRef = useRef<{ reference: string } | null>(null);
+  const azureQueuedDeliveriesRef = useRef<AzureDelivery[]>([]);
+  const azureClaimInFlightRef = useRef(false);
+  const azureClaimTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const azureFocusGraceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const azureReturnHandlerRef = useRef<(() => void) | null>(null);
+  const failAzureLoginRef = useRef<(code: AzureLoginFailureCode, reference?: string) => void>(
+    () => { }
+  );
+  const tryClaimAzureDeliveryRef = useRef<(reason: string) => Promise<boolean>>(
+    async () => false
+  );
+  const processAzureDeliveryRef = useRef<(delivery: AzureDelivery) => Promise<void>>(
+    async () => { }
+  );
 
   // Seguimiento del intento de login Office 365 en curso: antes el loading se apagaba
   // apenas se abría el popup (no reflejaba la espera real de la MFA), y si el popup
@@ -217,12 +270,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // NO se puede sondear popup.closed: una vez que el popup navega a un origen con
   // Cross-Origin-Opener-Policy estricto (login.microsoftonline.com lo tiene), el navegador
   // bloquea leer esa propiedad desde la ventana que lo abrió — y el aislamiento queda
-  // permanente para esa ventana aunque después vuelva a nuestro propio dominio (confirmado:
-  // "Cross-Origin-Opener-Policy policy would block the window.closed call" en consola).
-  // En su lugar, se usa que ESTA pestaña recupere el foco como señal de que el usuario
-  // volvió (típicamente porque cerró el popup) — no toca ninguna propiedad de la ventana
-  // emergente, solo escucha el evento "focus" de la propia ventana.
-  const azureFocusHandlerRef = useRef<(() => void) | null>(null);
+  // permanente para esa ventana aunque después vuelva a nuestro propio dominio. En su lugar
+  // se usa que ESTA pestaña recupere el foco (focus / visibilitychange) como señal de que el
+  // usuario volvió; ver armAzureLoginWatchers.
   const azureLoginSettledRef = useRef(true); // true = no hay login de Azure en curso
 
   // ─── Persistencia de detalles del empleado ────────────────────────────────
@@ -397,6 +447,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Limpiar estado de deduplicación para que el próximo login Azure funcione
     processedLoginEventsRef.current.clear();
     isProcessingLoginRef.current = false;
+    azureQueuedDeliveriesRef.current = [];
+    clearAzureAttempt();
 
     try {
       CacheService.clearAll();
@@ -535,16 +587,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setTimeout(() => logoutRef.current(), 300);
   }, [lastMessage, toast]);
 
-  // ─── Login Office 365: seguimiento de la ventana emergente ────────────────
+  // ─── Login Office 365: seguimiento del intento, entrega y reclamo ─────────
+  //
+  // El resultado del login llega a esta pestaña por UN aviso "de empuje" (SignalR en .NET,
+  // BroadcastChannel desde /auth/azure/relay en Python). Si ese aviso no llega (celular que manda la
+  // pestaña a segundo plano, conexión en tiempo real caída, pestaña recargada), el servidor ya autenticó
+  // pero nadie entra. Por eso, además del aviso, la pestaña RECLAMA su login pendiente al volver al
+  // primer plano, al reconectarse y por tiempo (POST /azure/claim): el código reclamado solo se canjea
+  // con el codeVerifier que únicamente esta pestaña conoce (PKCE).
 
   const clearAzureLoginWatchers = useCallback(() => {
     if (azureLoginTimeoutRef.current) {
       clearTimeout(azureLoginTimeoutRef.current);
       azureLoginTimeoutRef.current = null;
     }
-    if (azureFocusHandlerRef.current) {
-      window.removeEventListener("focus", azureFocusHandlerRef.current);
-      azureFocusHandlerRef.current = null;
+    azureClaimTimersRef.current.forEach((timer) => clearTimeout(timer));
+    azureClaimTimersRef.current = [];
+    if (azureFocusGraceRef.current) {
+      clearTimeout(azureFocusGraceRef.current);
+      azureFocusGraceRef.current = null;
+    }
+    if (azureReturnHandlerRef.current) {
+      window.removeEventListener("focus", azureReturnHandlerRef.current);
+      document.removeEventListener("visibilitychange", azureReturnHandlerRef.current);
+      azureReturnHandlerRef.current = null;
     }
     azurePopupRef.current = null;
   }, []);
@@ -554,30 +620,49 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => clearAzureLoginWatchers, [clearAzureLoginWatchers]);
 
   // Cierra el intento de login Office 365 actual: éxito o fracaso. Idempotente (el guard
-  // azureLoginSettledRef evita doble toast si, por ejemplo, el timeout y la detección de
-  // ventana cerrada disparan casi al mismo tiempo).
+  // azureLoginSettledRef evita doble aviso si, por ejemplo, el tiempo máximo y el regreso de foco
+  // disparan casi al mismo tiempo).
   const finishAzureLoginAttempt = useCallback(
-    (success: boolean, errorMessage?: string, options?: { neutral?: boolean }) => {
+    (success: boolean, failure?: AzureLoginFailureInfo) => {
       if (azureLoginSettledRef.current) return;
       azureLoginSettledRef.current = true;
       clearAzureLoginWatchers();
       setIsLoading(false);
       setAzureLoginPhase("idle");
-      if (!success) {
-        // neutral: el usuario canceló o pulsó "Atrás" en Microsoft; no es un error y no merece un aviso rojo
-        toast({
-          title: options?.neutral ? "Inicio de sesión no completado" : "No se completó el inicio de sesión",
-          description:
-            errorMessage ??
-            "El inicio de sesión con Office 365 no se completó. Intenta de nuevo.",
-          variant: options?.neutral ? "default" : "destructive",
-        });
+      if (success) {
+        clearAzureAttempt();
+        return;
       }
+
+      const info =
+        failure ?? describeAzureLoginFailure("UNKNOWN", azureAttemptRef.current?.reference);
+      // Si el aviso solo se retrasó (no llegó a tiempo), el intento guardado permite reclamarlo al
+      // reconectar o recargar; en cualquier otro fallo el intento ya no sirve.
+      if (info.code !== "NOT_DELIVERED" && info.code !== "TIMEOUT") {
+        azureCodeVerifierRef.current = null;
+        clearAzureAttempt();
+      }
+      toast({
+        title: info.title,
+        description: info.description,
+        variant: info.neutral ? "default" : "destructive",
+      });
     },
     [toast, clearAzureLoginWatchers]
   );
 
-  // Cancelación voluntaria del usuario durante la espera: sin toast de error, solo vuelve al login.
+  const failAzureLogin = useCallback(
+    (code: AzureLoginFailureCode, reference?: string) => {
+      finishAzureLoginAttempt(
+        false,
+        describeAzureLoginFailure(code, reference ?? azureAttemptRef.current?.reference)
+      );
+    },
+    [finishAzureLoginAttempt]
+  );
+  failAzureLoginRef.current = failAzureLogin;
+
+  // Cancelación voluntaria del usuario durante la espera: sin aviso de error, solo vuelve al login.
   const cancelOffice365Login = useCallback(() => {
     if (azureLoginSettledRef.current) return;
     azureLoginSettledRef.current = true;
@@ -589,208 +674,267 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       /* la ventana puede estar aislada por COOP: no se puede cerrar desde aquí */
     }
     azureCodeVerifierRef.current = null;
+    azureQueuedDeliveriesRef.current = [];
+    clearAzureAttempt();
     setAzureLoginPhase("idle");
   }, [clearAzureLoginWatchers]);
 
-  // ─── WebSocket: LoginFailed → Microsoft no completó el login (Atrás/cancelar) ──────────────
+  // ─── Reclamo del login pendiente ──────────────────────────────────────────
 
-  useEffect(() => {
-    if (!lastMessage || lastMessage.eventType !== "LoginFailed") return;
-    logAuth("WS LOGIN FAILED EVENT");
-    finishAzureLoginAttempt(false, AZURE_LOGIN_NOT_COMPLETED_MESSAGE, { neutral: true });
-  }, [lastMessage, finishAzureLoginAttempt]);
+  /** Pregunta al servidor si hay un login pendiente de ESTA pestaña. true = encontró uno y lo está procesando. */
+  const tryClaimAzureDelivery = useCallback(async (reason: string): Promise<boolean> => {
+    if (azureClaimInFlightRef.current || isAuthenticatedRef.current) return false;
+    const verifier = azureCodeVerifierRef.current ?? loadAzureAttempt()?.codeVerifier ?? null;
+    if (!verifier) return false;
 
-  // ─── WebSocket: LoginNotification → completar login AzureAD ──────────────
+    azureClaimInFlightRef.current = true;
+    try {
+      const challenge = await computeCodeChallenge(verifier);
+      const deliveryCode = await authService.claimAzureDelivery(challenge);
+      if (!deliveryCode) return false;
 
-  useEffect(() => {
-    if (!lastMessage || lastMessage.eventType !== "Login") return;
-    logAuth("WS LOGIN EVENT", { msg: lastMessage });
+      const key = `code:${deliveryCode}`;
+      if (processedLoginEventsRef.current.has(key)) return false;
 
-    const eventKey =
-      (lastMessage as any).eventId ||
-      (lastMessage as any).id ||
-      JSON.stringify({
-        t: lastMessage.eventType,
-        u: (lastMessage as any)?.data?.email,
-        ts: (lastMessage as any)?.timestamp ?? Date.now(),
-      });
+      logAuth("CLAIM: login pendiente recuperado", { reason });
+      void processAzureDeliveryRef.current({ key, source: "claim", deliveryCode });
+      return true;
+    } catch (e) {
+      logger.auth.error("Error reclamando el login pendiente:", e);
+      return false;
+    } finally {
+      azureClaimInFlightRef.current = false;
+    }
+  }, []);
+  tryClaimAzureDeliveryRef.current = tryClaimAzureDelivery;
 
-    if (processedLoginEventsRef.current.has(eventKey)) return;
-    processedLoginEventsRef.current.add(eventKey);
-    if (isProcessingLoginRef.current) return;
-    isProcessingLoginRef.current = true;
-    if (!azureLoginSettledRef.current) setAzureLoginPhase("completing");
+  // ─── Procesar una entrega (WebSocket, BroadcastChannel o reclamo) ─────────
 
-    (async () => {
-      try {
-        const { data, pair: legacyPair, deliveryCode } = lastMessage as WebSocketMessage;
-
-        // PKCE (RFC 7636): si el servidor tiene SecureTokenDelivery activo, el mensaje
-        // trae deliveryCode en vez del par de tokens real. Se canjea aquí usando el
-        // codeVerifier que nunca salió de esta pestaña.
-        let pair = legacyPair;
-        if (deliveryCode) {
-          const verifier = azureCodeVerifierRef.current;
-          if (!verifier) {
-            logger.auth.error(
-              "WS Login trajo deliveryCode pero no hay codeVerifier en memoria (pestaña recargada durante el login); se aborta"
-            );
-            finishAzureLoginAttempt(
-              false,
-              "Se perdió el estado del inicio de sesión (¿recargaste la página?). Intenta de nuevo."
-            );
-            return;
-          }
-          try {
-            pair = await authService.exchangeAzureDeliveryCode(deliveryCode, verifier);
-          } finally {
-            // Un solo uso también del lado cliente: no reintentar con el mismo verifier
-            azureCodeVerifierRef.current = null;
-          }
-        }
-
-        if (!pair) {
-          finishAzureLoginAttempt(
-            false,
-            "No se pudo completar el inicio de sesión (el enlace expiró o ya se usó). Intenta de nuevo."
-          );
-          return;
-        }
-        tokenService.setTokens(pair);
-        const adGroups = tokenService.extractAdGroups(pair.accessToken);
-        if (adGroups.length > 0) {
-          logger.auth.debug("Grupos AD recibidos vía WS notification:", adGroups.length);
-        } else {
-          logAuth("[AUTH-AD] No hay grupos AD en el JWT de notificación WS");
-        }
-        const wsUser: UserSession = {
-          id: (data as any).userId,
-          email: (data as any).email,
-          personnelEmail: (data as any).personnelEmail,
-          username: (data as any).username ?? (data as any).email ?? "",
-          fullName: (data as any).fullName ?? (data as any).displayName ?? "",
-          displayName: (data as any).displayName,
-          userType: "AzureAD",
-          roles: (data as any).roles ?? [],
-          adGroups,
-        };
-        await doLoginStateRef.current(wsUser, true);
-        finishAzureLoginAttempt(true);
-        setTimeout(() => setLocation("/"), 300);
-        logAuth("LOGIN VIA WEBSOCKET COMPLETADO");
-      } catch (e) {
-        logger.auth.error("WS login handling error:", e);
-        finishAzureLoginAttempt(
-          false,
-          "Ocurrió un error al completar el inicio de sesión. Intenta de nuevo."
-        );
-      } finally {
-        isProcessingLoginRef.current = false;
-      }
-    })();
-  }, [lastMessage, setLocation, finishAzureLoginAttempt]);
-
-  // ─── BroadcastChannel: LoginNotification (backend Python) → completar login AzureAD ──
-  // Aditivo al efecto de WebSocket de arriba, NO lo reemplaza: mientras el backend
-  // activo sea el .NET, este listener queda inerte — el popup de .NET solo se
-  // cierra a sí mismo (setTimeout(() => window.close())) y nunca publica en este
-  // canal (verificado en AuthController.cs, acción AzureCallback). Cuando el
-  // backend activo es el nuevo RepositoryUta en Python, su callback
-  // (routers/auth.py::azure_callback) redirige el popup a /auth/azure/relay
-  // (mismo origen que esta pestaña), que publica el deliveryCode en este
-  // BroadcastChannel — reemplaza a window.opener.postMessage porque
-  // login.microsoftonline.com envía Cross-Origin-Opener-Policy: same-origin, que
-  // corta window.opener de forma permanente en cuanto el popup navega ahí.
-  // BroadcastChannel no depende de esa relación, solo de compartir origen.
-  // Los dos mecanismos (WS y este) nunca compiten por el mismo intento de login:
-  // cada uno solo lo dispara el backend que efectivamente respondió el popup.
-  useEffect(() => {
-    const channel = new BroadcastChannel(AZURE_LOGIN_BROADCAST_CHANNEL);
-
-    const handleAzureDeliveryMessage = (event: MessageEvent) => {
-      const payload = event.data;
-      if (payload?.type === "AZURE_LOGIN_FAILED") {
-        finishAzureLoginAttempt(false, AZURE_LOGIN_NOT_COMPLETED_MESSAGE, { neutral: true });
+  const processAzureDelivery = useCallback(
+    async (delivery: AzureDelivery): Promise<void> => {
+      if (processedLoginEventsRef.current.has(delivery.key)) return;
+      if (isProcessingLoginRef.current) {
+        // Hay otro canje en curso: se encola en vez de descartar (lo descartado nunca se reintenta).
+        azureQueuedDeliveriesRef.current.push(delivery);
         return;
       }
-      if (!payload || payload.type !== "AZURE_LOGIN_DELIVERY") return;
 
-      logAuth("BROADCASTCHANNEL LOGIN EVENT", { payload });
-
-      const eventKey = `bc:${payload.deliveryCode ?? payload.pair?.accessToken ?? Date.now()}`;
-      if (processedLoginEventsRef.current.has(eventKey)) return;
-      processedLoginEventsRef.current.add(eventKey);
-      if (isProcessingLoginRef.current) return;
+      processedLoginEventsRef.current.add(delivery.key);
       isProcessingLoginRef.current = true;
       if (!azureLoginSettledRef.current) setAzureLoginPhase("completing");
+      logAuth("AZURE DELIVERY", { source: delivery.source });
 
-      (async () => {
-        try {
-          let pair = payload.pair as
-            | { accessToken: string; refreshToken: string }
-            | undefined;
+      let succeeded = false;
+      let tokensStored = false;
+      try {
+        let pair = delivery.pair;
 
-          // PKCE (RFC 7636): mismo canje que el flujo WS — el codeVerifier nunca
-          // salió de esta pestaña.
-          if (payload.deliveryCode) {
-            const verifier = azureCodeVerifierRef.current;
-            if (!verifier) {
-              logger.auth.error(
-                "BroadcastChannel trajo deliveryCode pero no hay codeVerifier en memoria (pestaña recargada durante el login); se aborta"
-              );
-              finishAzureLoginAttempt(
-                false,
-                "Se perdió el estado del inicio de sesión (¿recargaste la página?). Intenta de nuevo."
-              );
-              return;
-            }
-            try {
-              pair = await authService.exchangeAzureDeliveryCode(
-                payload.deliveryCode,
-                verifier
-              );
-            } finally {
-              azureCodeVerifierRef.current = null;
-            }
-          }
-
-          if (!pair) {
-            finishAzureLoginAttempt(
-              false,
-              "No se pudo completar el inicio de sesión (el enlace expiró o ya se usó). Intenta de nuevo."
-            );
-            return;
-          }
-
-          tokenService.setTokens(pair);
-          // A diferencia del flujo WS (que arma el UserSession directo desde el
-          // payload del mensaje), aquí no viene un campo "data" — se resuelve el
-          // usuario igual que en el login local/refreshAuth, vía /api/auth/me.
-          // getCurrentUser ya incluye los grupos AD extraídos del JWT (ver
-          // authService.ts), así que no se pierde nada respecto al flujo WS.
-          const userInfo = await authService.getCurrentUser(pair.accessToken);
-          await doLoginStateRef.current(userInfo, true);
-          finishAzureLoginAttempt(true);
-          setTimeout(() => setLocation("/"), 300);
-          logAuth("LOGIN VIA BROADCASTCHANNEL COMPLETADO");
-        } catch (e) {
-          logger.auth.error("BroadcastChannel login handling error:", e);
-          finishAzureLoginAttempt(
-            false,
-            "Ocurrió un error al completar el inicio de sesión. Intenta de nuevo."
-          );
-        } finally {
-          isProcessingLoginRef.current = false;
+        // PKCE (RFC 7636): el servidor entrega un deliveryCode en vez del par de tokens real. Se canjea
+        // con el codeVerifier que nunca salió de esta pestaña (en memoria o, si la pestaña se recargó
+        // durante el login, el guardado en sessionStorage).
+        if (delivery.deliveryCode) {
+          const verifier =
+            azureCodeVerifierRef.current ?? loadAzureAttempt()?.codeVerifier ?? null;
+          if (!verifier) throw new AzureExchangeError("LOST_STATE");
+          pair = await authService.exchangeAzureDeliveryCode(delivery.deliveryCode, verifier);
         }
-      })();
+        if (!pair) throw new AzureExchangeError("EXCHANGE_INVALID");
+
+        tokenService.setTokens(pair);
+        tokensStored = true;
+
+        let session: UserSession;
+        if (delivery.wsData) {
+          const data = delivery.wsData as Record<string, any>;
+          const adGroups = tokenService.extractAdGroups(pair.accessToken);
+          if (adGroups.length === 0) logAuth("[AUTH-AD] No hay grupos AD en el JWT de notificación");
+          session = {
+            id: data.userId,
+            email: data.email,
+            personnelEmail: data.personnelEmail,
+            username: data.username ?? data.email ?? "",
+            fullName: data.fullName ?? data.displayName ?? "",
+            displayName: data.displayName,
+            userType: "AzureAD",
+            roles: data.roles ?? [],
+            adGroups,
+          };
+        } else {
+          // Sin datos de usuario en el aviso (BroadcastChannel/reclamo): se resuelve vía /api/auth/me,
+          // igual que el login local y refreshAuth. getCurrentUser ya incluye los grupos AD del JWT.
+          session = await authService.getCurrentUser(pair.accessToken);
+        }
+
+        await doLoginStateRef.current(session, true);
+        azureCodeVerifierRef.current = null;
+        clearAzureAttempt();
+        finishAzureLoginAttempt(true);
+        setTimeout(() => setLocation("/"), 300);
+        succeeded = true;
+        logAuth("LOGIN OFFICE 365 COMPLETADO", { source: delivery.source });
+      } catch (e) {
+        logger.auth.error("Azure delivery handling error:", e);
+        if (tokensStored) tokenService.clearTokens();
+
+        const code: AzureLoginFailureCode = e instanceof AzureExchangeError ? e.kind : "UNKNOWN";
+        if (azureQueuedDeliveriesRef.current.length === 0) {
+          // Un código ajeno o vencido (p. ej. de un intento anterior) no debe ocultar el vigente: antes de
+          // rendirse se reclama una vez más.
+          const recovered =
+            code === "EXCHANGE_INVALID" && delivery.source !== "claim"
+              ? await tryClaimAzureDeliveryRef.current("exchange-invalid")
+              : false;
+          if (!recovered) failAzureLogin(code);
+        }
+      } finally {
+        isProcessingLoginRef.current = false;
+        if (succeeded) {
+          azureQueuedDeliveriesRef.current = [];
+        } else {
+          const next = azureQueuedDeliveriesRef.current.shift();
+          if (next) void processAzureDeliveryRef.current(next);
+        }
+      }
+    },
+    [finishAzureLoginAttempt, failAzureLogin, setLocation]
+  );
+  processAzureDeliveryRef.current = processAzureDelivery;
+
+  // Mensajes de SignalR: se consumen uno por uno (onMessage), no por lastMessage, para que dos mensajes
+  // seguidos no se pisen. Se asigna por ref porque el hook se llama antes de definir estos callbacks.
+  wsMessageHandlerRef.current = (msg: WebSocketMessage) => {
+    if (msg.eventType === "LoginFailed") {
+      logAuth("WS LOGIN FAILED EVENT", { code: msg.context?.code });
+      // Servidores anteriores no mandan código: equivale a cancelar o pulsar «Atrás» en Microsoft.
+      failAzureLogin(toAzureLoginFailureCode(msg.context?.code ?? "CANCELLED"), msg.context?.reference);
+      return;
+    }
+    if (msg.eventType !== "Login") return;
+    logAuth("WS LOGIN EVENT");
+
+    const key = msg.deliveryCode
+      ? `code:${msg.deliveryCode}`
+      : `ws:${msg.eventId ?? JSON.stringify({ u: msg.data?.email, ts: msg.timestamp ?? Date.now() })}`;
+    void processAzureDelivery({
+      key,
+      source: "websocket",
+      deliveryCode: msg.deliveryCode,
+      pair: msg.pair,
+      wsData: msg.data as Record<string, unknown> | undefined,
+    });
+  };
+
+  // La conexión en tiempo real quedó lista (inicial o tras reconectar): si hay un login pendiente, se reclama.
+  wsConnectedHandlerRef.current = () => {
+    if (azureLoginSettledRef.current && !loadAzureAttempt()) return;
+    void tryClaimAzureDeliveryRef.current("ws-connected");
+  };
+
+  // ─── BroadcastChannel: entrega desde /auth/azure/relay (backend Python) ───
+  // Aditivo al aviso de SignalR, NO lo reemplaza: login.microsoftonline.com envía
+  // Cross-Origin-Opener-Policy: same-origin, que corta window.opener, así que el callback de Python
+  // redirige el popup a /auth/azure/relay (mismo origen que esta pestaña) y esa página publica aquí.
+  // Cada mensaje se confirma (AZURE_LOGIN_ACK) para que el relay sepa que llegó antes de cerrarse.
+
+  useEffect(() => {
+    // Nunca lanza: sin BroadcastChannel cae a localStorage y, sin eso, el reclamo al servidor recupera el login.
+    const channel = openAzureLoginChannel(AZURE_LOGIN_BROADCAST_CHANNEL);
+
+    // Solo la pestaña que inició el login (o la que lo retoma tras recargar) reacciona y confirma.
+    const hasAzureAttempt = () => !azureLoginSettledRef.current || loadAzureAttempt() !== null;
+
+    const handleAzureDeliveryMessage = (payload: any) => {
+      if (!payload || !hasAzureAttempt()) return;
+
+      if (payload.type === "AZURE_LOGIN_FAILED") {
+        channel.post({ type: "AZURE_LOGIN_ACK" });
+        logAuth("BROADCASTCHANNEL LOGIN FAILED", { code: payload.code });
+        failAzureLoginRef.current(
+          toAzureLoginFailureCode(payload.code ?? "CANCELLED"),
+          typeof payload.ref === "string" ? payload.ref : undefined
+        );
+        return;
+      }
+      if (payload.type !== "AZURE_LOGIN_DELIVERY") return;
+
+      channel.post({ type: "AZURE_LOGIN_ACK" });
+      logAuth("BROADCASTCHANNEL LOGIN EVENT");
+      const key = payload.deliveryCode
+        ? `code:${payload.deliveryCode}`
+        : `bc:${payload.pair?.accessToken ?? Date.now()}`;
+      void processAzureDeliveryRef.current({
+        key,
+        source: "broadcast",
+        deliveryCode: payload.deliveryCode,
+        pair: payload.pair,
+      });
     };
 
-    channel.addEventListener("message", handleAzureDeliveryMessage);
+    const unsubscribe = channel.subscribe(handleAzureDeliveryMessage);
     return () => {
-      channel.removeEventListener("message", handleAzureDeliveryMessage);
+      unsubscribe();
       channel.close();
     };
-  }, [setLocation, finishAzureLoginAttempt]);
+  }, []);
+
+  // Si el navegador recargó o descartó la pestaña mientras el usuario estaba en Microsoft/Authenticator,
+  // el intento sigue guardado: al montar se reclama el login pendiente.
+  useEffect(() => {
+    if (tokenService.getAccessToken() || !loadAzureAttempt()) return;
+    void tryClaimAzureDeliveryRef.current("mount");
+  }, []);
+
+  // ─── Vigilancia del intento en curso ──────────────────────────────────────
+
+  const armAzureLoginWatchers = useCallback(
+    (popup: Window) => {
+      azurePopupRef.current = popup;
+      azureLoginSettledRef.current = false;
+
+      // Tiempo máximo: antes de rendirse se reclama una última vez. NO se puede sondear popup.closed
+      // (COOP de login.microsoftonline.com lo bloquea de forma permanente para esa ventana).
+      azureLoginTimeoutRef.current = setTimeout(async () => {
+        azureLoginTimeoutRef.current = null;
+        const stalePopup = azurePopupRef.current;
+        const recovered = await tryClaimAzureDeliveryRef.current("timeout");
+        if (recovered || isProcessingLoginRef.current || azureLoginSettledRef.current) return;
+        failAzureLoginRef.current("TIMEOUT");
+        try {
+          stalePopup?.close();
+        } catch {
+          /* ignore */
+        }
+      }, AZURE_LOGIN_TIMEOUT_MS);
+
+      // Reclamos escalonados: cubren el caso en que el aviso se pierde mientras el usuario sigue en la pestaña.
+      azureClaimTimersRef.current = AZURE_CLAIM_DELAYS_MS.map((delay) =>
+        setTimeout(() => {
+          if (azureLoginSettledRef.current || isProcessingLoginRef.current) return;
+          void tryClaimAzureDeliveryRef.current(`timer-${delay}`);
+        }, delay)
+      );
+
+      // Regreso a esta pestaña (cierre del popup, vuelta desde Authenticator, etc.): se reclama de inmediato y,
+      // si tras un margen no hay nada ni se está procesando, se avisa. El margen NO se reinicia con cada
+      // regreso de foco para no dar por perdido un login que el usuario aún está completando.
+      const onReturn = () => {
+        if (document.visibilityState === "hidden") return;
+        void tryClaimAzureDeliveryRef.current("return");
+        if (azureFocusGraceRef.current) return;
+        azureFocusGraceRef.current = setTimeout(async () => {
+          azureFocusGraceRef.current = null;
+          if (azureLoginSettledRef.current || isProcessingLoginRef.current) return;
+          const recovered = await tryClaimAzureDeliveryRef.current("return-grace");
+          if (recovered || isProcessingLoginRef.current || azureLoginSettledRef.current) return;
+          failAzureLoginRef.current("NOT_DELIVERED");
+        }, AZURE_RETURN_GRACE_MS);
+      };
+      azureReturnHandlerRef.current = onReturn;
+      window.addEventListener("focus", onReturn);
+      document.addEventListener("visibilitychange", onReturn);
+    },
+    []
+  );
 
   // ─── Chequeo inicial de sesión al montar ──────────────────────────────────
 
@@ -1021,25 +1165,44 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // ─── Login Office 365 ─────────────────────────────────────────────────────
 
   const loginWithOffice365 = async (): Promise<void> => {
+    // Un intento nuevo reemplaza al anterior por completo: sin esto los temporizadores y listeners del
+    // anterior seguían vivos y podían dar por fallido el intento nuevo.
+    const previousPopup = azurePopupRef.current;
+    clearAzureLoginWatchers();
+    try {
+      previousPopup?.close();
+    } catch {
+      /* ignore */
+    }
+    azureLoginSettledRef.current = true;
+    azureQueuedDeliveriesRef.current = [];
+
+    const reference = newAttemptReference();
     try {
       setAzureLoginPhase("waiting");
-      logAuth("Iniciando login Office 365...");
+      logAuth("Iniciando login Office 365...", { reference });
 
-      // PKCE (RFC 7636): el codeVerifier se genera aquí y queda SOLO en memoria de esta
-      // pestaña; solo su hash (codeChallenge) se envía al servidor. Se consume al recibir
-      // el deliveryCode por WebSocket (ver el efecto "WS: LoginNotification" más abajo).
+      // PKCE (RFC 7636): el codeVerifier se genera aquí; solo su hash (codeChallenge) viaja al servidor.
+      // Queda en memoria y, mientras dura el intento, en sessionStorage de ESTA pestaña para poder
+      // reclamar el login si el navegador la recarga durante la verificación (azureLoginAttempt.ts).
       const codeVerifier = generateCodeVerifier();
       azureCodeVerifierRef.current = codeVerifier;
+      azureAttemptRef.current = { reference };
+      saveAzureAttempt({ codeVerifier, reference, startedAt: Date.now() });
       const codeChallenge = await computeCodeChallenge(codeVerifier);
 
-      // El "state" de OAuth lo genera y valida RepositoryUta; el frontend no lo
-      // consume (el login se completa vía WebSocket con clientId+browserId).
-      const { url } = await authService.getAzureAuthUrl(codeChallenge);
+      // El "state" de OAuth lo genera y valida RepositoryUta; el frontend no lo consume. La conexión en
+      // tiempo real se asegura en paralelo (no retrasa el popup): si no está lista, el reclamo lo cubre.
+      const [{ url }] = await Promise.all([
+        authService.getAzureAuthUrl(codeChallenge),
+        ensureConnectedRef.current(2_000),
+      ]);
       const popup = window.open(url, "office365login", "width=600,height=700,left=200,top=100");
 
       if (!popup) {
         setAzureLoginPhase("idle");
         azureCodeVerifierRef.current = null;
+        clearAzureAttempt();
         toast({
           title: "No se pudo abrir la ventana de inicio de sesión",
           description: "El navegador bloqueó la ventana emergente. Permite ventanas emergentes para este sitio e intenta de nuevo.",
@@ -1048,56 +1211,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return;
       }
 
-      // A partir de aquí el login queda "en curso": isLoading se mantiene true hasta que
-      // finishAzureLoginAttempt() lo cierre (éxito por WebSocket, timeout, o ventana
-      // cerrada sin completar) — antes se apagaba apenas se abría el popup, sin reflejar
-      // la espera real de la MFA en Azure.
-      azurePopupRef.current = popup;
-      azureLoginSettledRef.current = false;
-
-      // B: si no llega ningún resultado (WS caído, deliveryCode perdido, etc.) en 2
-      // minutos, se avisa en vez de dejar la pantalla de login esperando en silencio.
-      azureLoginTimeoutRef.current = setTimeout(() => {
-        finishAzureLoginAttempt(
-          false,
-          "El inicio de sesión con Office 365 tardó demasiado. Intenta de nuevo."
-        );
-        try {
-          azurePopupRef.current?.close();
-        } catch {
-          /* ignore */
-        }
-      }, AZURE_LOGIN_TIMEOUT_MS);
-
-      // C: detecta que el usuario volvió a esta pestaña (típicamente porque cerró el popup,
-      // manualmente o solo tras la página de error/éxito del callback) sin leer NINGUNA
-      // propiedad del popup — ver la nota junto a azureFocusHandlerRef sobre por qué
-      // sondear popup.closed no es viable aquí. El servidor envía la notificación WS ANTES
-      // de responderle al popup (que recién ahí dispara su propio cierre), pero por las
-      // dudas se da un margen de 2s tras recuperar el foco antes de declarar el intento
-      // como fallido — evita un toast de error falso si el mensaje WS llega con una
-      // fracción de segundo de retraso, o si el usuario solo cambió de pestaña sin cerrar
-      // el popup (en ese caso el guard de azureLoginSettledRef ya lo habrá resuelto).
-      const onFocus = () => {
-        window.removeEventListener("focus", onFocus);
-        azureFocusHandlerRef.current = null;
-        setTimeout(() => {
-          finishAzureLoginAttempt(
-            false,
-            "No se detectó que el inicio de sesión se haya completado. Si ya cerraste la ventana de Office 365, intenta de nuevo."
-          );
-        }, 2000);
-      };
-      azureFocusHandlerRef.current = onFocus;
-      window.addEventListener("focus", onFocus);
+      // A partir de aquí el login queda "en curso" hasta que finishAzureLoginAttempt() lo cierre.
+      armAzureLoginWatchers(popup);
     } catch (error: unknown) {
       logger.auth.error("[AUTH] Error en Office 365 login:", error);
       setAzureLoginPhase("idle");
       azureLoginSettledRef.current = true;
       azureCodeVerifierRef.current = null;
+      clearAzureAttempt();
+      const info =
+        error instanceof AzureExchangeError
+          ? describeAzureLoginFailure(error.kind, reference)
+          : {
+              title: "Error de autenticación",
+              description: parseApiError(error).message,
+              neutral: false,
+            };
       toast({
-        title: "Error de autenticación",
-        description: parseApiError(error).message,
+        title: info.title,
+        description: info.description,
         variant: "destructive",
       });
     }

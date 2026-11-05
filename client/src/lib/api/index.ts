@@ -161,6 +161,46 @@ export type { HolidayResponseDTO } from './services/holidays';
 export { TiposReferenciaAPI, PaisesAPI, ProvinciasAPI, CantonesAPI, AcademicLadderAPI } from './services/catalogs';
 export type { RefType, AcademicLadderDto, AcademicLadderCreateDto, AcademicLadderUpdateDto } from './services/catalogs';
 
+// Sincronización de publicaciones científicas (perfil de investigador, vista previa/confirmación y revisión)
+export { ResearcherProfileAPI, PublicationSyncAPI, PublicationReviewAPI } from './services/publicationSync';
+export type {
+  ResearcherProfileDto,
+  SetOrcidResult,
+  ResearcherProviderIdDto,
+  SyncMissing,
+  SyncProviderStatus,
+  PublicationSyncReadiness,
+  SyncItemStatus,
+  SyncCandidate,
+  PublicationSyncItem,
+  PublicationSyncPreview,
+  SyncResolutionAction,
+  SyncResolution,
+  PublicationSyncResult,
+  PublicationApprovalStatus,
+  PublicationReviewFilter,
+  PublicationReviewItem,
+  PublicationReviewSummary,
+  PublicationReviewResult,
+} from './services/publicationSync';
+
+// Docentes titulares (listado, conteos y reporte)
+export { TeacherRosterAPI, NonTitularRosterAPI, TeacherStructuresAPI } from './services/teacherRoster';
+export type {
+  TeacherRosterFilter,
+  NonTitularRosterFilter,
+  NonTitularRosterStatus,
+  NonTitularRosterItemDto,
+  NonTitularRosterSummaryDto,
+  TeacherRosterStatus,
+  TeacherRosterItemDto,
+  TeacherRosterSummaryDto,
+  TeacherRosterCountDto,
+  TeacherRosterMatrixCellDto,
+  TeacherStructureDto,
+  TeacherStructureApplyChangeDto,
+} from './services/teacherRoster';
+
 // Parametrización de requisitos documentales por trámite
 export { TramiteRequirementsAPI } from './services/tramiteRequirements';
 export type {

@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ActionIconButton } from "@/components/ui/action-icon-button";
-import { User, Edit, Mail, Phone, Calendar, MapPin, Heart, Users, ShieldAlert, Plus, Trash2, FileText, ChevronDown, ChevronUp } from "lucide-react";
+import { User, Edit, Mail, Phone, Calendar, MapPin, Heart, Users, ShieldAlert, Plus, Trash2, FileText, ChevronDown, ChevronUp, FlaskConical } from "lucide-react";
+import { ResearcherProfileCard } from "@/components/person-detail/publication-sync/ResearcherProfileCard";
 import { Person, CatastrophicIllness } from "@/types/person";
 import { ReusableDocumentManager } from "@/components/ReusableDocumentManager";
 import { formatDateOnly } from "@/lib/dateOnly";
@@ -35,6 +36,8 @@ interface PersonalInfoTabProps {
   onAddCatastrophicIllness?: () => void;
   onEditCatastrophicIllness?: (item: CatastrophicIllness) => void;
   onDeleteCatastrophicIllness?: (id: number) => void;
+  /** Publicaciones sincronizadas de la persona (cambiar el ORCID pide confirmación si hay). */
+  syncedPublicationsCount?: number;
 }
 
 function buildRefMap(refs?: RefType[]) {
@@ -76,6 +79,7 @@ export function PersonalInfoTab({
   onAddCatastrophicIllness,
   onEditCatastrophicIllness,
   onDeleteCatastrophicIllness,
+  syncedPublicationsCount = 0,
 }: PersonalInfoTabProps) {
   const [expandedIllnessId, setExpandedIllnessId] = useState<number | null>(null);
   const [photoExpanded, setPhotoExpanded] = useState(false);
@@ -234,6 +238,20 @@ export function PersonalInfoTab({
             </div>
           </CardContent>
         </Card>
+
+        {person.personId ? (
+          <Card className="mt-4 sm:mt-6">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <FlaskConical className="h-5 w-5" />
+                Perfil de investigador
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResearcherProfileCard personId={person.personId} syncedCount={syncedPublicationsCount} embedded />
+            </CardContent>
+          </Card>
+        ) : null}
       </div>
 
       <div className="lg:col-span-2 space-y-4 sm:space-y-6">

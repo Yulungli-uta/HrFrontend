@@ -182,4 +182,17 @@ export const DB_FIELD_LIMITS = {
   resignationRetirementStatusHistory: {
     observation: 1000,
   },
+
+  // ── HR.tbl_ResearcherProfiles / tbl_ResearcherProviderIds / revisión de publicaciones ──
+  researcher: {
+    orcid: 19,
+    providerExternalId: 50,
+    reviewNotes: 300,
+  },
+
+  // ── HR.tbl_AcademicLadder (Escalafón Docente) ───────────────────────────
+  academicLadder: {
+    code: 30,
+    name: 120,
+  },
 } as const;

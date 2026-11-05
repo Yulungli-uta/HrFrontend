@@ -94,6 +94,8 @@ export interface AcademicLadderDto {
   minYearsService: number | null;
   isActive: boolean;
   isTitular: boolean;
+  /** Docentes con estructura docente activa asignada a este escalón. */
+  activeTeachers?: number;
 }
 
 export interface AcademicLadderCreateDto {

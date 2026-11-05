@@ -7,6 +7,9 @@ export type ContractDto = {
   contractCode: string;
 
   personID: number;
+  /** Solo viene en los listados paginados. */
+  personFullName?: string | null;
+  personIdCard?: string | null;
   contractTypeID: number;
   jobID?: number | null;
 

@@ -20,6 +20,7 @@ import type {
   ReportAuditFilter,
 } from '@/types/reports';
 import { REPORT_CONFIGS, getReportMimeType } from '@/types/reports';
+import { getDateRangeIssue } from '@/lib/reportDateRange';
 
 export class ReportError extends Error {
   public status?: number;
@@ -128,12 +129,7 @@ class ReportService {
   }
 
   validateDateRange(filter: ReportFilter): boolean {
-    if (filter.startDate && filter.endDate) {
-      const start = new Date(filter.startDate);
-      const end = new Date(filter.endDate);
-      return start <= end;
-    }
-    return true;
+    return !getDateRangeIssue(filter.startDate, filter.endDate).error;
   }
 
   cleanFilters(filter: ReportFilter): ReportFilter {

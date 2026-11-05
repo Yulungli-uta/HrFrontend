@@ -349,7 +349,7 @@ export default function ContractsPage() {
               <Input
                 value={currentParams.search ?? ""}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar por código o descripción..."
+                placeholder="Buscar por código, cédula o nombre..."
                 className="pl-10 pr-10"
               />
               {currentParams.search && (
@@ -457,9 +457,14 @@ export default function ContractsPage() {
                           <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shrink-0">
                             <User className="h-4 w-4 text-primary" />
                           </div>
-                          <span className="font-medium">
-                            {peopleById.get(Number(c.personID)) ?? `ID ${c.personID}`}
-                          </span>
+                          <div>
+                            <p className="font-medium text-sm">
+                              {c.personFullName ?? peopleById.get(Number(c.personID)) ?? `ID ${c.personID}`}
+                            </p>
+                            {c.personIdCard && (
+                              <p className="text-xs text-muted-foreground">{c.personIdCard}</p>
+                            )}
+                          </div>
                         </div>
                       </td>
                       <td className="p-4">
@@ -558,9 +563,14 @@ export default function ContractsPage() {
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">
-                      {peopleById.get(Number(c.personID)) ?? `ID ${c.personID}`}
-                    </span>
+                    <div>
+                      <p className="font-medium">
+                        {c.personFullName ?? peopleById.get(Number(c.personID)) ?? `ID ${c.personID}`}
+                      </p>
+                      {c.personIdCard && (
+                        <p className="text-xs text-muted-foreground">{c.personIdCard}</p>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <FileText className="h-4 w-4 text-muted-foreground" />

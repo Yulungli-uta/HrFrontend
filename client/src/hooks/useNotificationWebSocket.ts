@@ -1,4 +1,4 @@
-// hooks/useNotificationWebSocket.ts — VERSIÓN FINAL OPTIMIZADA
+// hooks/useNotificationWebSocket.ts
 import { useEffect, useState, useCallback, useRef } from "react";
 import * as signalR from "@microsoft/signalr";
 import { getBrowserId } from "@/utils/browserId";
@@ -18,6 +18,10 @@ export interface WebSocketMessage {
     loginSource?: string;
     sessionScope?: string;
     notificationType?: string;
+    /** LoginFailed: categoría genérica del fallo (ver azureLoginMessages.ts). */
+    code?: string;
+    /** LoginFailed: referencia corta que soporte puede buscar en el log del servidor. */
+    reference?: string;
   };
 
   data?: {
@@ -41,6 +45,17 @@ export interface WebSocketMessage {
   deliveryCode?: string;
 }
 
+export interface UseNotificationWebSocketOptions {
+  /**
+   * Se invoca de forma síncrona por CADA mensaje recibido. `lastMessage` solo conserva el último:
+   * si llegan dos seguidos en el mismo ciclo de render, el primero se pierde. Los eventos que no
+   * pueden perderse (login) deben consumirse por aquí.
+   */
+  onMessage?: (msg: WebSocketMessage) => void;
+  /** Se invoca cada vez que la conexión queda lista (inicial o tras reconectar) con los grupos ya unidos. */
+  onConnected?: () => void;
+}
+
 interface UseNotificationWebSocketReturn {
   isConnected: boolean;
   connection: signalR.HubConnection | null;
@@ -48,16 +63,22 @@ interface UseNotificationWebSocketReturn {
   sendMessage: (msg: any) => Promise<void>;
   reconnect: () => Promise<void>;
   disconnect: () => Promise<void>;
+  /** Espera (hasta `timeoutMs`) a que la conexión esté lista; false si no se logró. Nunca lanza. */
+  ensureConnected: (timeoutMs?: number) => Promise<boolean>;
 }
 
 const HUB_URL =
   import.meta.env.VITE_NOTIFICATION_HUB_URL ||
   "http://localhost:5010/notificationHub";
 
+/** withAutomaticReconnect() se rinde tras ~45 s; después de eso se reintenta con esta espera creciente. */
+const RECONNECT_DELAYS_MS = [2_000, 5_000, 10_000, 20_000, 30_000];
+
 // ----------------------------------------------------------------------
 
 export function useNotificationWebSocket(
-  clientId: string | null
+  clientId: string | null,
+  options: UseNotificationWebSocketOptions = {}
 ): UseNotificationWebSocketReturn {
   const [connection, setConnection] = useState<signalR.HubConnection | null>(
     null
@@ -67,8 +88,30 @@ export function useNotificationWebSocket(
 
   const reconnectingRef = useRef(false);
   const connectionRef = useRef<signalR.HubConnection | null>(null);
+  const connectedRef = useRef(false);
+  const stoppedRef = useRef(false);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retryCountRef = useRef(0);
+
+  // Los callbacks del llamador se guardan en refs para que cambiarlos no reconecte el hub.
+  const onMessageRef = useRef(options.onMessage);
+  const onConnectedRef = useRef(options.onConnected);
+  onMessageRef.current = options.onMessage;
+  onConnectedRef.current = options.onConnected;
 
   const browserId = getBrowserId();
+
+  const markConnected = useCallback((value: boolean) => {
+    connectedRef.current = value;
+    setIsConnected(value);
+  }, []);
+
+  const clearRetryTimer = useCallback(() => {
+    if (retryTimerRef.current) {
+      clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
+  }, []);
 
   // ----------------------------------------------------------------------
   const connectWebSocket = useCallback(async () => {
@@ -87,6 +130,9 @@ export function useNotificationWebSocket(
       return;
     }
 
+    clearRetryTimer();
+    let hub: signalR.HubConnection | null = null;
+
     try {
       reconnectingRef.current = true;
 
@@ -96,96 +142,162 @@ export function useNotificationWebSocket(
 
       logger.auth.debug("[WS] Connecting to hub");
 
-      // const hub = new signalR.HubConnectionBuilder()
-      //   .withUrl(url, {
-      //     skipNegotiation: true,
-      //     transport: signalR.HttpTransportType.WebSockets,
-      //   })
-      //   .withAutomaticReconnect()
-      //   .configureLogging(DEBUG ? signalR.LogLevel.Information : signalR.LogLevel.None)
-      //   .build();
-
-      const hub = new signalR.HubConnectionBuilder()
+      const created = new signalR.HubConnectionBuilder()
         .withUrl(url)
         .withAutomaticReconnect()
         .configureLogging(DEBUG ? signalR.LogLevel.Information : signalR.LogLevel.None)
         .build();
-        
-      // 🔥 Un solo handler unificado
-      hub.on("connected", (msg: any) => {
+      hub = created;
+
+      // Los mensajes llegan al llamador uno por uno (onMessage) y además quedan en lastMessage.
+      const dispatch = (msg: WebSocketMessage) => {
+        try {
+          onMessageRef.current?.(msg);
+        } catch (e) {
+          logger.auth.error("[WS] onMessage handler error:", e);
+        }
+        setLastMessage(msg);
+      };
+
+      created.on("connected", () => {
         logger.auth.debug("[WS] Server connected callback");
       });
 
-      hub.on("ReceiveNotification", (msg: WebSocketMessage) => {
+      created.on("ReceiveNotification", (msg: WebSocketMessage) => {
         logger.auth.debug("[WS] ReceiveNotification:", msg?.eventType);
-        setLastMessage(msg);
+        dispatch(msg);
       });
 
-      hub.on("LoginNotification", (msg: WebSocketMessage) => {
+      created.on("LoginNotification", (msg: WebSocketMessage) => {
         logger.auth.debug("[WS] LoginNotification:", msg?.eventType);
-        setLastMessage(msg);
+        dispatch(msg);
       });
 
-      hub.onreconnected(async () => {
+      created.onreconnecting(() => {
+        logger.auth.debug("[WS] Reconnecting");
+        markConnected(false);
+      });
+
+      created.onreconnected(async () => {
         logger.auth.debug("[WS] Reconnected");
 
-        setIsConnected(true);
-
         try {
-          await hub.invoke("JoinApplicationGroup", clientId, "UTA-Licencias");
-          await hub.invoke("JoinBrowserGroup", clientId, browserId);
+          // Sin volver a unirse a los grupos el servidor no puede avisar a esta pestaña.
+          await created.invoke("JoinApplicationGroup", clientId, "UTA-Licencias");
+          await created.invoke("JoinBrowserGroup", clientId, browserId);
+          markConnected(true);
+          onConnectedRef.current?.();
         } catch (e) {
           logger.auth.error("[WS] Error rejoining groups:", e);
+          // Conexión viva pero sin grupos: es inútil. Se cierra y onclose programa un reintento limpio.
+          void created.stop();
         }
       });
 
-      hub.onclose(() => {
+      // Cuando withAutomaticReconnect agota sus intentos (o el servidor cierra) la conexión queda
+      // muerta para siempre: se programa un reintento propio en vez de esperar una recarga de página.
+      created.onclose(() => {
+        // Solo cuenta el cierre de la conexión vigente: el de un hub ya reemplazado o detenido a propósito
+        // (desmontaje, StrictMode) no debe marcar como caída a la conexión nueva.
+        if (connectionRef.current !== created) return;
         logger.auth.debug("[WS] Disconnected");
-        setIsConnected(false);
+        connectionRef.current = null;
+        setConnection(null);
+        markConnected(false);
+        scheduleReconnectRef.current();
       });
 
-      await hub.start();
+      await created.start();
 
       logger.auth.debug("[WS] Connected OK");
 
-      // await hub.invoke("JoinApplicationGroup", clientId);
-      // await hub.invoke("JoinBrowserGroup", clientId, browserId);
-      await hub.invoke("JoinApplicationGroup", clientId, "UTA-Licencias");
-      await hub.invoke("JoinBrowserGroup", clientId, browserId);
+      await created.invoke("JoinApplicationGroup", clientId, "UTA-Licencias");
+      await created.invoke("JoinBrowserGroup", clientId, browserId);
 
-      connectionRef.current = hub;
-      setConnection(hub);
-      setIsConnected(true);
+      if (stoppedRef.current) {
+        // El hook se desmontó mientras conectaba: no dejar una conexión huérfana.
+        void created.stop();
+        return;
+      }
+
+      connectionRef.current = created;
+      setConnection(created);
+      retryCountRef.current = 0;
+      markConnected(true);
+      onConnectedRef.current?.();
     } catch (error) {
       logger.auth.error("[WS] Connection failed:", error);
+      if (hub) {
+        // Una conexión iniciada pero sin grupos no sirve; onclose (si ya se registró) reintentará.
+        try {
+          await hub.stop();
+        } catch {
+          /* ignore */
+        }
+      }
+      scheduleReconnectRef.current();
     } finally {
       reconnectingRef.current = false;
     }
-  }, [clientId, browserId]);
+  }, [clientId, browserId, clearRetryTimer, markConnected]);
+
+  // El reintento llama a connectWebSocket, que a su vez programa reintentos: se enlazan por ref.
+  const scheduleReconnectRef = useRef<() => void>(() => { });
+  scheduleReconnectRef.current = () => {
+    if (stoppedRef.current || retryTimerRef.current) return;
+    const delay =
+      RECONNECT_DELAYS_MS[Math.min(retryCountRef.current, RECONNECT_DELAYS_MS.length - 1)];
+    retryCountRef.current += 1;
+    logger.auth.debug(`[WS] Reintento de conexión en ${delay} ms`);
+    retryTimerRef.current = setTimeout(() => {
+      retryTimerRef.current = null;
+      if (!stoppedRef.current && !connectedRef.current) void connectWebSocket();
+    }, delay);
+  };
 
   // ----------------------------------------------------------------------
 
   const disconnectWebSocket = useCallback(async () => {
-    if (connectionRef.current) {
+    stoppedRef.current = true;
+    clearRetryTimer();
+    const hub = connectionRef.current;
+    if (hub) {
       logger.auth.debug("[WS] Disconnect requested");
 
-      await connectionRef.current.stop();
       connectionRef.current = null;
+      try {
+        await hub.stop();
+      } catch (e) {
+        logger.auth.error("[WS] Error stopping hub:", e);
+      }
 
-      setIsConnected(false);
+      markConnected(false);
       setConnection(null);
     }
-  }, []);
+  }, [clearRetryTimer, markConnected]);
 
   // ----------------------------------------------------------------------
 
   useEffect(() => {
-    if (clientId) connectWebSocket();
+    stoppedRef.current = false;
+    if (clientId) void connectWebSocket();
 
     return () => {
-      disconnectWebSocket();
+      void disconnectWebSocket();
     };
   }, [clientId, connectWebSocket, disconnectWebSocket]);
+
+  // Al volver a la pestaña (típico en celular tras usar Microsoft/Authenticator) el navegador pudo haber
+  // cortado la conexión: se reconecta de inmediato en vez de esperar al siguiente reintento programado.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      if (stoppedRef.current || connectedRef.current || !clientId) return;
+      void connectWebSocket();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [clientId, connectWebSocket]);
 
   // ----------------------------------------------------------------------
 
@@ -207,6 +319,23 @@ export function useNotificationWebSocket(
 
   // ----------------------------------------------------------------------
 
+  const ensureConnected = useCallback(
+    async (timeoutMs = 3_000): Promise<boolean> => {
+      if (connectedRef.current) return true;
+      if (!stoppedRef.current && !reconnectingRef.current) void connectWebSocket();
+
+      const deadline = Date.now() + timeoutMs;
+      while (Date.now() < deadline) {
+        if (connectedRef.current) return true;
+        await new Promise((resolve) => setTimeout(resolve, 150));
+      }
+      return connectedRef.current;
+    },
+    [connectWebSocket]
+  );
+
+  // ----------------------------------------------------------------------
+
   return {
     isConnected,
     connection,
@@ -214,5 +343,6 @@ export function useNotificationWebSocket(
     sendMessage,
     reconnect: connectWebSocket,
     disconnect: disconnectWebSocket,
+    ensureConnected,
   };
 }
