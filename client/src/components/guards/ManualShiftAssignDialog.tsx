@@ -16,7 +16,7 @@ import { usePlanningMutations } from '@/hooks/guards/useGuards';
 import { GuardShiftPlanningAPI, GuardServiceLocationsAPI, GuardRotationGroupsAPI } from '@/lib/api/services/guards';
 import { useRefTypesByCategory } from '@/hooks/useRefTypes';
 import { REF_TYPE_CATEGORIES } from '@/features/refTypeCategories';
-import type { GuardShiftCalendarItemDto, GuardServiceLocationDto, GuardRotationGroupDto } from '@/types/guards';
+import type { GuardShiftCalendarItemDto, GuardServiceLocationDto, GuardRotationGroupDto, PlanningEmployeeDto } from '@/types/guards';
 import { todayEcuador } from "@/lib/clock";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -29,6 +29,16 @@ function extractArray<T>(res: any): T[] {
 
 function today() {
   return todayEcuador();
+}
+
+// Guardias activos (con grupo o con cargo de guardia): el que aún no tiene grupo activo se marca en el nombre.
+async function searchPlanningEmployees(term: string) {
+  const res = await GuardRotationGroupsAPI.getPlanningEmployees(term);
+  const items = extractArray<PlanningEmployeeDto>(res).map(e => ({
+    ...e,
+    fullName: e.hasActiveGroup ? e.fullName : `${e.fullName} · sin grupo`,
+  }));
+  return { ...res, data: items } as typeof res & { data: typeof items };
 }
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -193,7 +203,10 @@ export function ManualShiftAssignDialog({ open, onClose, preselectedDate }: Prop
 
   return (
     <Dialog open={open} onOpenChange={v => !v && handleClose()}>
-      <DialogContent className="sm:max-w-md" aria-describedby={undefined}>
+      <DialogContent
+        className="sm:max-w-xl max-h-[92dvh] p-4 sm:p-6 w-[calc(100%-1rem)] grid-rows-[auto_minmax(0,1fr)_auto]"
+        aria-describedby={undefined}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="h-4 w-4" />
@@ -201,7 +214,7 @@ export function ManualShiftAssignDialog({ open, onClose, preselectedDate }: Prop
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-1">
+        <div className="space-y-4 py-1 overflow-y-auto min-h-0 px-1 -mx-1">
 
           {/* Guardia */}
           <div>
@@ -211,22 +224,36 @@ export function ManualShiftAssignDialog({ open, onClose, preselectedDate }: Prop
                 value={employeeId}
                 onSelect={v => { setEmployeeId(v); setOverrideConflict(false); }}
                 placeholder="Buscar guardia…"
-                searchFn={(term) => GuardRotationGroupsAPI.getActiveGroupEmployees(term)}
-                searchKey="guard-active-group-employees-search"
+                searchFn={searchPlanningEmployees}
+                searchKey="guard-planning-employees-search"
               />
             </div>
           </div>
 
-          {/* Fecha */}
-          <div>
-            <Label htmlFor="workDate" className="text-xs">Fecha de trabajo *</Label>
-            <Input
-              id="workDate"
-              type="date"
-              value={workDate}
-              onChange={e => { setWorkDate(e.target.value); setOverrideConflict(false); }}
-              className="mt-1"
-            />
+          {/* Fecha y turno */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="workDate" className="text-xs">Fecha de trabajo *</Label>
+              <Input
+                id="workDate"
+                type="date"
+                value={workDate}
+                onChange={e => { setWorkDate(e.target.value); setOverrideConflict(false); }}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Turno rotativo *</Label>
+              <div className="mt-1">
+                <ScheduleCombobox
+                  value={scheduleId}
+                  label={null}
+                  placeholder="Seleccionar turno rotativo…"
+                  onSelect={id => setScheduleId(id)}
+                  onlyRotating
+                />
+              </div>
+            </div>
           </div>
 
           {/* Repetir semanalmente */}
@@ -324,21 +351,8 @@ export function ManualShiftAssignDialog({ open, onClose, preselectedDate }: Prop
             </Alert>
           )}
 
-          {/* Turno — solo horarios rotativos */}
-          <div>
-            <Label className="text-xs">Turno rotativo *</Label>
-            <div className="mt-1">
-              <ScheduleCombobox
-                value={scheduleId}
-                label={null}
-                placeholder="Seleccionar turno rotativo…"
-                onSelect={id => setScheduleId(id)}
-                onlyRotating
-              />
-            </div>
-          </div>
-
-          {/* Ubicación */}
+          {/* Ubicación y grupo */}
+          <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <Label htmlFor="locationId" className="text-xs">Ubicación *</Label>
             <select
@@ -371,6 +385,7 @@ export function ManualShiftAssignDialog({ open, onClose, preselectedDate }: Prop
               ))}
             </select>
           </div>
+          </div>
 
           {/* Notas */}
           <div>
@@ -393,12 +408,13 @@ export function ManualShiftAssignDialog({ open, onClose, preselectedDate }: Prop
           )}
 
           {/* Ciclo de vida del estado */}
-          <div className="rounded-md border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 p-3 space-y-1.5">
-            <p className="text-xs font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-1.5">
+          <details className="group rounded-md border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 p-3">
+            <summary className="cursor-pointer select-none text-xs font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-1.5">
               <Info className="h-3.5 w-3.5 shrink-0" />
               Ciclo de vida del turno asignado
-            </p>
-            <ol className="text-[0.6875rem] text-blue-700 dark:text-blue-400 space-y-1 pl-1">
+              <span className="ml-auto text-[0.6875rem] font-normal group-open:hidden">Ver</span>
+            </summary>
+            <ol className="mt-2 text-[0.6875rem] text-blue-700 dark:text-blue-400 space-y-1 pl-1">
               <li className="flex items-start gap-1.5">
                 <span className="shrink-0 font-bold">1.</span>
                 <span>Se crea en estado <strong>PLANNED</strong> — el guardia tiene turno asignado.</span>
@@ -412,7 +428,7 @@ export function ManualShiftAssignDialog({ open, onClose, preselectedDate }: Prop
                 <span>Al cierre del día el job cruza con las picadas: <strong>COMPLETED</strong> si asistió, <strong>COVERED_BY_LEAVE</strong> si el turno coincide con vacación, permiso o licencia médica, <strong>ABSENT</strong> si no hubo registro.</span>
               </li>
             </ol>
-          </div>
+          </details>
         </div>
 
         <DialogFooter>

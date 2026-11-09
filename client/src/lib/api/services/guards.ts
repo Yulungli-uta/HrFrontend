@@ -128,6 +128,10 @@ export const GuardRotationGroupsAPI = {
   getActiveGroupEmployees: (search: string): Promise<ApiResponse<import('@/types/guards').EligibleEmployeeDto[]>> =>
     apiFetch(`${BASE}/guard-rotation-groups/active-group-employees?search=${encodeURIComponent(search)}`),
 
+  /** Guardias/supervisores activos para la asignación manual de turnos (con grupo activo o con cargo de guardia). */
+  getPlanningEmployees: (search: string): Promise<ApiResponse<import('@/types/guards').PlanningEmployeeDto[]>> =>
+    apiFetch(`${BASE}/guard-rotation-groups/planning-employees?search=${encodeURIComponent(search)}`),
+
   listPaged: (params: PagedRequest): Promise<ApiResponse<PagedResult<GuardRotationGroupDto>>> => {
     const qs = new URLSearchParams({ page: String(params.page), pageSize: String(params.pageSize) });
     if (params.search?.trim()) qs.set('search', params.search.trim());

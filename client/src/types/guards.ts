@@ -70,6 +70,11 @@ export interface EligibleEmployeeDto {
   email: string | null;
 }
 
+/** Guardia/supervisor activo ofrecido en la asignación manual; `hasActiveGroup` false = aún sin grupo activo. */
+export interface PlanningEmployeeDto extends EligibleEmployeeDto {
+  hasActiveGroup: boolean;
+}
+
 export interface GuardRotationGroupDto {
   groupId: number;
   groupCode: string | null;
