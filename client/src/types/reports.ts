@@ -577,12 +577,27 @@ export interface UseReportState {
 // ============================================
 
 /**
- * Obtiene el nombre de archivo para un reporte
+ * Sufijo del nombre de archivo con el alcance de un reporte SIIES: el rango de fechas (aaaammdd_aaaammdd) o, si se eligió un período
+ * académico, su código. El CSV de SIIES no puede llevar el rango en un encabezado (su primera fila es la de columnas), así que el
+ * rango va en el nombre. Vacío para los demás reportes o cuando no hay rango ni período.
  */
-export function getReportFileName(type: ReportType, format: ReportFormat): string {
+function getSiiesScopeSuffix(type: ReportType, filter?: ReportFilter): string {
+  if (!type.startsWith('siies-') || !filter) return '';
+
+  const compact = (d: string) => d.slice(0, 10).replace(/-/g, '');
+  if (filter.startDate && filter.endDate) return `_${compact(filter.startDate)}_${compact(filter.endDate)}`;
+
+  const period = filter.periodCode?.trim().replace(/[^A-Za-z0-9-]+/g, '-');
+  return period ? `_periodo-${period}` : '';
+}
+
+/**
+ * Obtiene el nombre de archivo para un reporte. En los reportes SIIES incluye el rango de fechas o el período académico elegido.
+ */
+export function getReportFileName(type: ReportType, format: ReportFormat, filter?: ReportFilter): string {
   const date = todayEcuador();
   const ext = format === 'excel' ? 'xlsx' : format;
-  return `reporte-${type}-${date}.${ext}`;
+  return `reporte-${type}${getSiiesScopeSuffix(type, filter)}-${date}.${ext}`;
 }
 
 /**

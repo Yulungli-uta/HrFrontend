@@ -87,7 +87,7 @@ export function useReport() {
         throw new Error('El archivo descargado está vacío');
       }
 
-      const fileName = getReportFileName(type, format);
+      const fileName = getReportFileName(type, format, cleaned);
       downloadBlob(blob, fileName);
 
       setState((prev) => ({ ...prev, isDownloading: false }));
