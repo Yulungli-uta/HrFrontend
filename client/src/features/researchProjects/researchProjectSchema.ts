@@ -24,6 +24,8 @@ export interface ParticipantFormValues {
 }
 
 export interface ResearchProjectFormValues {
+  projectCode: string;
+  departmentId: number | null;
   name: string;
   startDate: string;
   endDate: string;
@@ -76,6 +78,8 @@ export function buildResearchProjectSchema(ctx: ResearchSchemaContext) {
 
   return z
     .object({
+      projectCode: required("El código del proyecto es obligatorio").max(50, "Máximo 50 caracteres"),
+      departmentId: z.number({ message: "Elija la dependencia" }).nullable().refine((x) => x !== null, "Elija la dependencia"),
       name: required("El nombre del proyecto es obligatorio").max(500, "Máximo 500 caracteres"),
       startDate: required("La fecha de inicio es obligatoria"),
       endDate: required("La fecha de finalización es obligatoria"),

@@ -23,6 +23,7 @@ import {
   type ParticipantFormValues,
   type ResearchProjectFormValues,
 } from "@/features/researchProjects/researchProjectSchema";
+import { DepartmentSelect } from "@/components/departments/DepartmentSelect";
 import { ResearchProjectsAPI } from "@/lib/api";
 import type { ResearchParticipationInput, ResearchProject } from "@/lib/api";
 import { getServerErrorMessage } from "@/lib/api/utils/error-handling";
@@ -52,6 +53,8 @@ const newParticipant = (): ParticipantFormValues => ({
 });
 
 const emptyValues = (): ResearchProjectFormValues => ({
+  projectCode: "",
+  departmentId: null,
   name: "",
   startDate: "",
   endDate: "",
@@ -67,6 +70,9 @@ const emptyValues = (): ResearchProjectFormValues => ({
 });
 
 const valuesFrom = (p: ResearchProject): ResearchProjectFormValues => ({
+  // Los proyectos anteriores al dato traen el código automático PRJ-####: se deja vacío para que se registre el real.
+  projectCode: /^PRJ-\d+$/.test(p.code) ? "" : p.code,
+  departmentId: p.departmentId,
   name: p.name,
   startDate: p.startDate,
   endDate: p.endDate,
@@ -161,6 +167,8 @@ export function ResearchProjectForm({ open, onOpenChange, projectId }: ResearchP
   const save = useMutation({
     mutationFn: async (values: ResearchProjectFormValues) => {
       const input = {
+        projectCode: values.projectCode.trim(),
+        departmentId: values.departmentId as number,
         name: values.name.trim(),
         startDate: values.startDate,
         endDate: values.endDate,
@@ -239,6 +247,35 @@ export function ResearchProjectForm({ open, onOpenChange, projectId }: ResearchP
               <>
                 <section className="space-y-4">
                   <h3 className="text-sm font-semibold">Datos generales del proyecto</h3>
+
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <FormField
+                      control={form.control}
+                      name="projectCode"
+                      render={({ field: f }) => (
+                        <FormItem>
+                          <FormLabel required>Código del proyecto</FormLabel>
+                          <FormControl>
+                            <Input {...f} maxLength={50} placeholder="Ej. SFFJCS10" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="departmentId"
+                      render={({ field: f }) => (
+                        <FormItem className="sm:col-span-2">
+                          <FormLabel required>Dependencia (facultad / unidad)</FormLabel>
+                          <FormControl>
+                            <DepartmentSelect value={f.value ?? null} onChange={(id) => f.onChange(id)} placeholder="Seleccionar dependencia…" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
                   <FormField
                     control={form.control}

@@ -184,6 +184,7 @@ export default function ResearchProjectsPage() {
                   <TableRow>
                     <TableHead>Código</TableHead>
                     <TableHead>Proyecto</TableHead>
+                    <TableHead>Dependencia</TableHead>
                     <TableHead>Inicio</TableHead>
                     <TableHead>Fin</TableHead>
                     <TableHead>Prórroga</TableHead>
@@ -196,6 +197,7 @@ export default function ResearchProjectsPage() {
                     <TableRow key={p.id}>
                       <TableCell className="whitespace-nowrap font-mono text-xs">{p.code}</TableCell>
                       <TableCell className="min-w-[16rem] max-w-xl break-words">{p.name}</TableCell>
+                      <TableCell className="min-w-[8rem]">{p.departmentName ?? "—"}</TableCell>
                       <TableCell className="whitespace-nowrap">{formatDateOnly(p.startDate)}</TableCell>
                       <TableCell className="whitespace-nowrap">{formatDateOnly(p.endDate)}</TableCell>
                       <TableCell>{p.hasExtension ? <Badge>Sí</Badge> : <Badge variant="outline">No</Badge>}</TableCell>

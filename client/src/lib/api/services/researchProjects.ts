@@ -52,6 +52,8 @@ export interface ResearchParticipation {
 export interface ResearchProject {
   id: number;
   code: string;
+  departmentId: number | null;
+  departmentName: string | null;
   name: string;
   startDate: string;
   endDate: string;
@@ -66,6 +68,8 @@ export interface ResearchProject {
 export interface ResearchProjectListItem {
   id: number;
   code: string;
+  departmentId: number | null;
+  departmentName: string | null;
   name: string;
   startDate: string;
   endDate: string;
@@ -92,6 +96,8 @@ export interface ResearchParticipationInput {
 }
 
 export interface ResearchProjectInput {
+  projectCode: string;
+  departmentId: number;
   name: string;
   startDate: string;
   endDate: string;

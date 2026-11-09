@@ -29,6 +29,8 @@ const participant = (over: Partial<ParticipantFormValues> = {}): ParticipantForm
 });
 
 const valid = (over: Partial<ResearchProjectFormValues> = {}): ResearchProjectFormValues => ({
+  projectCode: "PRJ-TEST",
+  departmentId: 1,
   name: "Proyecto",
   startDate: "2023-01-01",
   endDate: "2024-12-31",
@@ -136,5 +138,15 @@ describe("participantBounds", () => {
 
   it("nunca pasa de hoy", () => {
     expect(participantBounds({ ...project, hasExtension: false, endDate: "2030-01-01" }, "2026-10-20").max).toBe("2026-10-20");
+  });
+
+  it("exige código y dependencia", () => {
+    expect(messages(valid({ projectCode: "  ", departmentId: null }))).toEqual(
+      expect.arrayContaining(["projectCode: El código del proyecto es obligatorio", "departmentId: Elija la dependencia"]),
+    );
+  });
+
+  it("limita el código a 50 caracteres", () => {
+    expect(messages(valid({ projectCode: "A".repeat(51) }))).toEqual(expect.arrayContaining(["projectCode: Máximo 50 caracteres"]));
   });
 });
