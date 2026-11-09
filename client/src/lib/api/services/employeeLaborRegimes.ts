@@ -26,6 +26,9 @@ export interface EmployeeLaborRegimeDto {
   isPrincipal: boolean;
   /** SIIES INGRESO_POR_CONCURSO. Null/undefined = sin clasificar todavía. */
   ingresoPorConcurso?: boolean | null;
+  /** SIIES RELACION_IES manual (ref_Types SIIES_RELACION_IES). Null = se deriva del documento que respalda el régimen. */
+  siiesRelacionIesTypeId?: number | null;
+  siiesRelacionIesName?: string | null;
 }
 
 export interface EmployeeLaborRegimeCreateDto {
@@ -41,6 +44,8 @@ export interface EmployeeLaborRegimeCreateDto {
   effectiveFrom: string;
   /** SIIES INGRESO_POR_CONCURSO. Opcional; puede completarse después con setIngresoPorConcurso. */
   ingresoPorConcurso?: boolean | null;
+  /** SIIES RELACION_IES manual. Opcional; puede completarse después con setSiiesRelacionIes. */
+  siiesRelacionIesTypeId?: number | null;
 }
 
 export interface EmployeeLaborRegimeCloseDto {
@@ -49,6 +54,11 @@ export interface EmployeeLaborRegimeCloseDto {
 
 export interface EmployeeLaborRegimeIngresoPorConcursoDto {
   ingresoPorConcurso: boolean;
+}
+
+export interface EmployeeLaborRegimeSiiesRelacionIesDto {
+  /** TypeId de ref_Types (SIIES_RELACION_IES); null quita el valor manual y vuelve a derivarse del documento. */
+  siiesRelacionIesTypeId: number | null;
 }
 
 function jsonBody<T>(data: T): { body: string } {
@@ -76,6 +86,15 @@ export const EmployeeLaborRegimesAPI = {
     data: EmployeeLaborRegimeIngresoPorConcursoDto
   ): Promise<ApiResponse<EmployeeLaborRegimeDto>> =>
     apiFetch<EmployeeLaborRegimeDto>(`${BASE_PATH}/${id}/ingreso-por-concurso`, {
+      method: 'POST',
+      ...jsonBody(data),
+    }),
+
+  setSiiesRelacionIes: (
+    id: number,
+    data: EmployeeLaborRegimeSiiesRelacionIesDto
+  ): Promise<ApiResponse<EmployeeLaborRegimeDto>> =>
+    apiFetch<EmployeeLaborRegimeDto>(`${BASE_PATH}/${id}/siies-relacion-ies`, {
       method: 'POST',
       ...jsonBody(data),
     }),

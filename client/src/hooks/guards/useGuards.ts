@@ -956,7 +956,12 @@ export function useLocationRotationMutations(onSuccess?: () => void) {
   const qc = useQueryClient();
   const { toast } = useToast();
 
-  const invalidatePeriods = () => qc.invalidateQueries({ queryKey: GUARD_KEYS.locationRotation });
+  // Los periodos y las asignaciones de ubicación son requisitos del chequeo previo a generar turnos: se refresca también.
+  const invalidateReadiness = () => qc.invalidateQueries({ queryKey: ['guards', 'readiness-check'] });
+  const invalidatePeriods = () => {
+    qc.invalidateQueries({ queryKey: GUARD_KEYS.locationRotation });
+    invalidateReadiness();
+  };
 
   const createPeriod = useMutation({
     mutationFn: (dto: CreateGuardLocationRotationPeriodDto) => GuardLocationRotationAPI.createPeriod(dto),
@@ -979,6 +984,7 @@ export function useLocationRotationMutations(onSuccess?: () => void) {
 
   const invalidateAssignments = (employeeId?: number | null) => {
     qc.invalidateQueries({ queryKey: ['guards', 'location-rotation'] });
+    invalidateReadiness();
     if (employeeId) qc.invalidateQueries({ queryKey: GUARD_KEYS.locationRotationAssignmentsByEmployee(employeeId) });
   };
 
@@ -1216,5 +1222,11 @@ export function useGuardReadinessCheck(targetDate: string, enabled = true) {
       return res.data;
     },
     enabled: enabled && !!targetDate,
+    // Es una validación de requisitos sobre parámetros que se editan en otras pantallas (periodos, asignaciones, patrones):
+    // el valor por defecto global (staleTime Infinity) la dejaba congelada hasta recargar la página. Se vuelve a consultar
+    // al abrir el panel y al volver a la ventana.
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
   });
 }

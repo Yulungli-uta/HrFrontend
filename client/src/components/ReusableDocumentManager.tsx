@@ -99,6 +99,12 @@ type Props = {
   entityId?: string | number;
   relativePath?: string;
 
+  /**
+   * Rol del archivo en contratos y acciones de personal: "signed" (documento firmado), "attachment" (anexo),
+   * "cancellation" (anulación) o "resignation" (renuncia). Sin valor se asume anexo. El backend decide la carpeta y el nombre.
+   */
+  documentRole?: "signed" | "attachment" | "cancellation" | "resignation";
+
   label?: string;
   accept?: string;
   maxSizeMB?: number;
@@ -207,6 +213,7 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
       entityType,
       entityId,
       relativePath,
+      documentRole,
       label = "Documentos",
       accept = "*/*",
       maxSizeMB = 20,
@@ -550,6 +557,7 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
             entityType,
             entityId: String(effectiveEntityId),
             relativePath,
+            documentRole,
             files: selected.map((s) => s.file),
             documentTypeId: docTypeEnabled ? (selectedDocTypeId ?? undefined) : undefined,
             documentReferenceNumber: batchNeedsRef ? (batchReferenceNumber.trim() || undefined) : undefined,
@@ -565,6 +573,7 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
               entityType,
               entityId: String(effectiveEntityId),
               relativePath,
+              documentRole,
               file: selected[0].file,
               documentTypeId: selected[0].documentTypeId ?? undefined,
               documentReferenceNumber: needsRef ? (selected[0].referenceNumber?.trim() || undefined) : undefined,
@@ -577,6 +586,7 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
               entityType,
               entityId: String(effectiveEntityId),
               relativePath,
+              documentRole,
               items: selected.map((s) => {
                 const needsRef = docTypeNeedsReference(s.documentTypeId);
                 return {
@@ -778,6 +788,7 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
           entityType,
           entityId: String(effectiveEntityId),
           relativePath: relativePath ?? "",
+          documentRole,
           file,
           documentTypeId: original.documentTypeId != null ? String(original.documentTypeId) : "",
           documentReferenceNumber: original.documentReferenceNumber ?? undefined,

@@ -39,6 +39,8 @@ interface FormData {
   effectiveFrom: string;
   /** SIIES INGRESO_POR_CONCURSO. "unset" = sin clasificar, "true"/"false" = SI/NO. */
   ingresoPorConcurso: "unset" | "true" | "false";
+  /** SIIES RELACION_IES manual. "derived" = según el documento que respalda el régimen; si no, el TypeId como texto. */
+  siiesRelacionIes: string;
 }
 
 const DOCUMENT_TYPE_OPTIONS = [
@@ -72,12 +74,14 @@ export function EmployeeLaborRegimeForm({
       documentNumber: "",
       effectiveFrom: todayEcuador(),
       ingresoPorConcurso: "unset",
+      siiesRelacionIes: "derived",
     },
   });
 
   useMemo(() => onDirtyChange?.(isDirty), [isDirty, onDirtyChange]);
 
   const { data: regimeTypes, isLoading: loadingRegimes } = useRefTypesByCategory(REF_TYPE_CATEGORIES.CONTRACT_TYPE);
+  const { data: relationTypes } = useRefTypesByCategory(REF_TYPE_CATEGORIES.SIIES_RELACION_IES);
 
   const { data: jobsResp, isLoading: loadingJobs } = useQuery({
     queryKey: ["jobs-list"],
@@ -134,6 +138,7 @@ export function EmployeeLaborRegimeForm({
         documentNumber: data.documentNumber || null,
         effectiveFrom: data.effectiveFrom,
         ingresoPorConcurso: data.ingresoPorConcurso === "unset" ? null : data.ingresoPorConcurso === "true",
+        siiesRelacionIesTypeId: data.siiesRelacionIes === "derived" ? null : Number(data.siiesRelacionIes),
       };
 
       createMutation.mutate(dto);
@@ -308,6 +313,32 @@ export function EmployeeLaborRegimeForm({
             </Select>
             <p className="text-xs text-muted-foreground">
               Requerido por el reporte SIIES Funcionarios. Si queda "sin clasificar", el reporte lo exporta como "NO" hasta que se complete.
+            </p>
+          </div>
+        )}
+      />
+
+      <Controller
+        name="siiesRelacionIes"
+        control={control}
+        render={({ field }) => (
+          <div className="space-y-2">
+            <Label>Relación IES (SIIES)</Label>
+            <Select value={field.value} onValueChange={field.onChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="Según el documento" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="derived">Según el documento</SelectItem>
+                {(relationTypes ?? []).map((t) => (
+                  <SelectItem key={t.typeID} value={String(t.typeID)}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Si se fija, el reporte SIIES usa este valor. Con "Según el documento" se deriva del tipo de contrato o acción.
             </p>
           </div>
         )}

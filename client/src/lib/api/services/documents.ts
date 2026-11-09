@@ -210,6 +210,8 @@ export const DocumentsAPI = {
     documentTypeId?: string;
     documentReferenceNumber?: string;
     documentReferenceDate?: string;
+    /** Rol del archivo en contratos y acciones: 'signed' (firmado), 'attachment' (anexo), 'cancellation' o 'resignation'. Sin valor = anexo. */
+    documentRole?: string;
   }): Promise<ApiResponse<DocumentUploadResultDto>> => {
     const form = new FormData();
     form.append('DirectoryCode', payload.directoryCode);
@@ -219,6 +221,7 @@ export const DocumentsAPI = {
     if (payload.documentTypeId) form.append('DocumentTypeId', payload.documentTypeId);
     if (payload.documentReferenceNumber) form.append('DocumentReferenceNumber', payload.documentReferenceNumber);
     if (payload.documentReferenceDate) form.append('DocumentReferenceDate', payload.documentReferenceDate);
+    if (payload.documentRole) form.append('DocumentRole', payload.documentRole);
     payload.files.forEach((f) => form.append('Files', f));
     return apiFetch<DocumentUploadResultDto>('/api/v1/rh/documents/upload', {
       method: 'POST',
@@ -239,6 +242,7 @@ export const DocumentsAPI = {
     if (args.documentTypeId) form.append('DocumentTypeId', args.documentTypeId);
     if (args.documentReferenceNumber) form.append('DocumentReferenceNumber', args.documentReferenceNumber);
     if (args.documentReferenceDate) form.append('DocumentReferenceDate', args.documentReferenceDate);
+    if (args.documentRole) form.append('DocumentRole', args.documentRole);
     form.append('File', args.file);
     return apiFetch<DocumentUploadResultDto>('/api/v1/rh/documents/upload-single', {
       method: 'POST',
@@ -259,6 +263,7 @@ export const DocumentsAPI = {
     if (args.relativePath) form.append('RelativePath', args.relativePath);
     args.items.forEach((it, i) => {
       form.append(`Items[${i}].DocumentTypeId`, it.documentTypeId);
+      if (args.documentRole) form.append(`Items[${i}].DocumentRole`, args.documentRole);
       if (it.documentReferenceNumber) form.append(`Items[${i}].DocumentReferenceNumber`, it.documentReferenceNumber);
       if (it.documentReferenceDate) form.append(`Items[${i}].DocumentReferenceDate`, it.documentReferenceDate);
       form.append(`Items[${i}].File`, it.file);

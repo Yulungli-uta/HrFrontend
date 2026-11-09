@@ -18,6 +18,9 @@ import { useToast } from "@/hooks/use-toast";
 import { EmployeeLaborRegimesAPI } from "@/lib/api";
 import type { EmployeeLaborRegimeDto } from "@/lib/api/services/employeeLaborRegimes";
 import { EmployeeCombobox } from "@/components/ui/EmployeeCombobox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useRefTypesByCategory } from "@/hooks/useRefTypes";
+import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { EmployeeLaborRegimeForm } from "@/components/forms/EmployeeLaborRegimeForm";
 import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
 import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
@@ -58,6 +61,27 @@ export default function EmployeeLaborRegimesPage() {
   });
 
   const regimes: EmployeeLaborRegimeDto[] = regimesResp?.status === "success" ? regimesResp.data ?? [] : [];
+
+  const { data: relationTypes } = useRefTypesByCategory(REF_TYPE_CATEGORIES.SIIES_RELACION_IES);
+
+  const relationMutation = useMutation({
+    mutationFn: async ({ id, typeId }: { id: number; typeId: number | null }) => {
+      const res = await EmployeeLaborRegimesAPI.setSiiesRelacionIes(id, { siiesRelacionIesTypeId: typeId });
+      if (res.status !== "success") throw new Error(res.error?.message || "No se pudo guardar la relación IES.");
+      return res;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["employee-labor-regimes", employeeId] });
+      toast({ title: "Relación IES guardada", description: "El reporte SIIES usará este valor para el régimen." });
+    },
+    onError: (err: unknown) => {
+      toast({
+        title: "Error al guardar la relación IES",
+        description: err instanceof Error ? err.message : "No se pudo guardar la relación IES.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const closeMutation = useMutation({
     mutationFn: async ({ id, effectiveTo }: { id: number; effectiveTo: string }) => {
@@ -150,6 +174,7 @@ export default function EmployeeLaborRegimesPage() {
                         <th className="p-3 font-medium">Departamento / Cargo</th>
                         <th className="p-3 font-medium">Documento</th>
                         <th className="p-3 font-medium">Vigencia</th>
+                        <th className="p-3 font-medium">Relación IES (SIIES)</th>
                         <th className="p-3 font-medium">Estado</th>
                         <th className="p-3 font-medium text-right">Acciones</th>
                       </tr>
@@ -157,7 +182,7 @@ export default function EmployeeLaborRegimesPage() {
                     <tbody>
                       {regimes.length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                          <td colSpan={7} className="p-8 text-center text-muted-foreground">
                             Este empleado no tiene regímenes registrados.
                           </td>
                         </tr>
@@ -188,6 +213,27 @@ export default function EmployeeLaborRegimesPage() {
                             <td className="p-3 text-muted-foreground">
                               {formatDate(r.effectiveFrom)}
                               {r.effectiveTo ? ` → ${formatDate(r.effectiveTo)}` : ""}
+                            </td>
+                            <td className="p-3">
+                              <Select
+                                value={r.siiesRelacionIesTypeId ? String(r.siiesRelacionIesTypeId) : "derived"}
+                                onValueChange={(v) =>
+                                  relationMutation.mutate({ id: r.id, typeId: v === "derived" ? null : Number(v) })
+                                }
+                                disabled={relationMutation.isPending}
+                              >
+                                <SelectTrigger className="h-8 w-[210px] text-xs">
+                                  <SelectValue placeholder="Según el documento" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="derived">Según el documento</SelectItem>
+                                  {(relationTypes ?? []).map((t) => (
+                                    <SelectItem key={t.typeID} value={String(t.typeID)}>
+                                      {t.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                             </td>
                             <td className="p-3">
                               <Badge

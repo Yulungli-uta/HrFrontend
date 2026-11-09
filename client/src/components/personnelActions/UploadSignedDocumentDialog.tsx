@@ -237,6 +237,7 @@ export function UploadSignedDocumentDialog({
             entityType={ENTITY_TYPE}
             entityId={actionId}
             relativePath={params.relativePath}
+            documentRole="signed"
             accept={params.accept || '.pdf'}
             maxSizeMB={params.maxSizeMB}
             maxFiles={1}

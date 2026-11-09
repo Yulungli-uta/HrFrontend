@@ -50,6 +50,8 @@ export interface UploadSingleArgs  {
   documentTypeId: string;
   documentReferenceNumber?: string;
   documentReferenceDate?: string;
+  /** Rol del archivo en contratos y acciones: 'signed' (firmado), 'attachment' (anexo), 'cancellation' o 'resignation'. Sin valor = anexo. */
+  documentRole?: string;
 };
 
 export interface UploadMappedItem  {
@@ -64,5 +66,7 @@ export interface UploadMappedArgs  {
   entityType: string;
   entityId: string | number;
   relativePath?: string;
+  /** Rol del archivo en contratos y acciones: 'signed' (firmado), 'attachment' (anexo), 'cancellation' o 'resignation'. Sin valor = anexo. */
+  documentRole?: string;
   items: UploadMappedItem[];
 };

@@ -121,6 +121,7 @@ export function ContractUploadSignedDialog({ open, onOpenChange, contractId, onS
             entityType={ENTITY_TYPE}
             entityId={contractId}
             relativePath={params.relativePath}
+            documentRole="signed"
             accept={params.accept || '.pdf'}
             maxSizeMB={params.maxSizeMB}
             maxFiles={1}
