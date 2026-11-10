@@ -1042,6 +1042,12 @@ export default function PersonForm({
                       Servicio DINARDAP en mantenimiento o no disponible — completa manualmente.
                     </p>
                   )}
+                  {!isEditing && dinardap.status === "forbidden" && (
+                    <p className="text-xs text-amber-600 flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3" />
+                      No tiene permiso para consultar Registro Civil — solicite el rol R_DINARDAP_REGISTRO_CIVIL o complete los datos manualmente.
+                    </p>
+                  )}
                   {!isEditing && dinardap.status === "error" && (
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
                       <AlertTriangle className="h-3 w-3" />

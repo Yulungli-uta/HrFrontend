@@ -77,6 +77,7 @@ const AttendanceReportPage = lazy(() => import("@/pages/reports/AttendanceReport
 const DepartmentsReportPage = lazy(() => import("@/pages/reports/DepartmentsReport"));
 const AttendanceSumaryReportPage = lazy(() => import("@/pages/reports/AttendanceSumaryReport"));
 const ReportAuditPage = lazy(() => import("@/pages/reports/ReportAudit"));
+const DinardapQueryLogPage = lazy(() => import("@/pages/DinardapQueryLog"));
 
 // Reportes v2 — sources del usuario
 const EmployeesByDepartmentReportPage = lazy(() => import("@/pages/reports/EmployeesByDepartmentReport"));
@@ -530,6 +531,11 @@ export const routes: RouteConfig[] = [
     path: "/reports/audit",
     component: ReportAuditPage,
     requiredPath: "/reports/audit"
+  },
+  {
+    path: "/reports/dinardap-queries",
+    component: DinardapQueryLogPage,
+    requiredPath: "/reports/dinardap-queries"
   },
 
   // ----- REPORTES V2 — USUARIO Y CALENDARIO -----

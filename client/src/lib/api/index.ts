@@ -62,6 +62,7 @@ export type {
 // Hoja de vida / curriculum
 export * from './services/cv';
 export * from './services/researchProjects';
+export * from './services/dinardapQueryLog';
 export type { AttendanceCalculationRequestDto as CvAttendanceRequestDto } from './services/cv';
 
 // Planificación masiva de vacaciones

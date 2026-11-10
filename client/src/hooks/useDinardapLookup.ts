@@ -19,7 +19,9 @@ import type { DinardapRegistroCivilDto } from "@/lib/api";
  *   relevantes vinieron null) — distinto de "unavailable", el usuario debe poder distinguirlos.
  * - "unavailable": el backend respondió 503 (ver PeopleController.DinardapLookup) — DINARDAP
  *   caído o en mantenimiento.
- * - "error": cualquier otro fallo (permiso, timeout, red) — no necesariamente mantenimiento.
+ * - "forbidden": el backend respondió 403 — la persona no tiene el rol de consulta de DINARDAP (R_DINARDAP_REGISTRO_CIVIL / R_DINARDAP_TITULOS);
+ *   se distingue de "unavailable" para decirle qué falta, no que el servicio está en mantenimiento.
+ * - "error": cualquier otro fallo (timeout, red) — no necesariamente mantenimiento.
  */
 export type DinardapLookupStatus =
   | "idle"
@@ -27,6 +29,7 @@ export type DinardapLookupStatus =
   | "found"
   | "not-found"
   | "unavailable"
+  | "forbidden"
   | "error";
 
 interface UseDinardapLookupOptions {
@@ -67,7 +70,7 @@ export function useDinardapLookup({ onFound, skip = false }: UseDinardapLookupOp
           // 503 = DINARDAP no disponible; cualquier otro código (401/403/500/timeout) es un
           // error distinto, no necesariamente mantenimiento.
           setData(null);
-          setStatus(resp.error?.code === 503 ? "unavailable" : "error");
+          setStatus(resp.error?.code === 503 ? "unavailable" : resp.error?.code === 403 ? "forbidden" : "error");
         }
       } catch {
         setData(null);
