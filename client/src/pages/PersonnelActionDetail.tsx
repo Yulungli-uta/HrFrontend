@@ -113,7 +113,8 @@ function InfoRow({ label, value }: { label: string; value?: string | null | numb
   return (
     <div className="grid grid-cols-2 gap-2 text-sm">
       <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium">{String(value)}</span>
+      {/* break-all: los códigos presupuestarios son cadenas largas sin espacios que se salían de la tarjeta */}
+      <span className="min-w-0 break-all font-medium">{String(value)}</span>
     </div>
   );
 }
