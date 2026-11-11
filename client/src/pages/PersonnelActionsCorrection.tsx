@@ -67,6 +67,8 @@ function buildUpdatePayload(data: CreatePersonnelActionRequest): UpdatePersonnel
     // Solo CorrectAsync (backend) aplica este campo -- permite corregir a qué empleado
     // pertenece la acción, incluso uno inactivo hoy.
     employeeId: data.employeeId,
+    // Solo CorrectAsync (backend) lo aplica: reclasifica a otro tipo de la misma familia (ej. a una serie de licencia).
+    actionTypeId: data.actionTypeId,
     actionNumber: data.actionNumber,
     actionDate: data.actionDate,
     effectiveDate: data.effectiveDate,
@@ -87,6 +89,7 @@ function buildUpdatePayload(data: CreatePersonnelActionRequest): UpdatePersonnel
     reason: data.reason,
     observations: data.observations,
     swornDeclaration: data.swornDeclaration,
+    possessionEnabled: data.possessionEnabled,
     institutionalProcess: data.institutionalProcess,
     managementLevel: data.managementLevel,
     workplace: data.workplace,
@@ -95,6 +98,9 @@ function buildUpdatePayload(data: CreatePersonnelActionRequest): UpdatePersonnel
     elaboratorId: data.elaboratorId,
     reviewerId: data.reviewerId,
     registrarId: data.registrarId,
+    // Motivo (0 = borrar) y bloque de comunicación electrónica / firma del servidor (reemplaza el bloque).
+    leaveReasonId: data.leaveReasonId,
+    notification: data.notification,
   };
 }
 

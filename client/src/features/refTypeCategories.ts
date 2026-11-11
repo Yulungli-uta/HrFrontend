@@ -82,6 +82,8 @@ export const REF_TYPE_CATEGORIES = {
   // ── Acciones de personal ──────────────────────────────────────────────
   PERSONNEL_ACTION_STATUS: "PERSONNEL_ACTION_STATUS",
   PERSONNEL_ACTION_TYPE: "PERSONNEL_ACTION_TYPE",
+  /** Motivos de licencia; Metadata.types indica a qué series (LCR, LSR…) aplica cada motivo. */
+  PERSONNEL_ACTION_LEAVE_REASON: "PERSONNEL_ACTION_LEAVE_REASON",
   AP_NIVEL_GESTION: "AP_NIVEL_GESTION",
   AP_PROCESO_INSTITUCIONAL: "AP_PROCESO_INSTITUCIONAL",
   AP_LUGAR_TRABAJO: "AP_LUGAR_TRABAJO",

@@ -86,6 +86,7 @@ export const DB_FIELD_LIMITS = {
     description: 300,
     numberingPrefix: 30,
     actionCategory: 30,
+    numberingFormat: 60,
   },
 
   // ── HR.tbl_FamilyBurden (Cargas Familiares) ─────────────────────────────

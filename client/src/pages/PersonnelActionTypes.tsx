@@ -345,6 +345,13 @@ export default function PersonnelActionTypesPage() {
 
                       <TableCell className="hidden md:table-cell font-mono text-sm">
                         {at.numberingPrefix}
+                        {at.parentTypeId ? (
+                          <p className="font-sans text-xs text-muted-foreground">
+                            Serie de{" "}
+                            {allActionTypesForStats.find((t) => t.personnelActionTypeId === at.parentTypeId)?.name
+                              ?? `#${at.parentTypeId}`}
+                          </p>
+                        ) : null}
                       </TableCell>
 
                       <TableCell className="hidden lg:table-cell">
@@ -473,6 +480,13 @@ export default function PersonnelActionTypesPage() {
                       description: editing.description ?? "",
                       numberingPrefix: editing.numberingPrefix,
                       defaultTemplateId: editing.defaultTemplateId ?? null,
+                      actionCategory: editing.actionCategory ?? "",
+                      siiesRelacionIesTypeId: editing.siiesRelacionIesTypeId
+                        ? String(editing.siiesRelacionIesTypeId)
+                        : "",
+                      parentTypeId: editing.parentTypeId ? String(editing.parentTypeId) : "",
+                      numberingFormat: editing.numberingFormat ?? "",
+                      numberingResetsYearly: editing.numberingResetsYearly ?? true,
                       isActive: editing.isActive,
                       requiresAdUserCreation: editing.requiresAdUserCreation,
                       requiresAdUserDisable: editing.requiresAdUserDisable,
@@ -483,6 +497,9 @@ export default function PersonnelActionTypesPage() {
               onDirtyChange={setIsFormDirty}
               onCancel={closeFormClean}
               onSuccess={closeFormClean}
+              parentTypeOptions={allActionTypesForStats
+                .filter((t) => !t.parentTypeId)
+                .map((t) => ({ id: t.personnelActionTypeId, name: t.name }))}
             />
           </div>
         </DialogContent>

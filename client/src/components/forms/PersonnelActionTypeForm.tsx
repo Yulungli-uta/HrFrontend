@@ -57,6 +57,12 @@ const schema = z.object({
   requiresAdGroupAssignment: z.boolean(),
   /** SIIES RELACION_IES homologado — opcional, requerido solo para el reporte SIIES. */
   siiesRelacionIesTypeId: z.string().optional(),
+  /** Tipo padre (grupo). Vacío = tipo raíz. Un hijo es una serie con prefijo y numeración propios (ej. LPE de "Licencia"). */
+  parentTypeId: z.string().optional(),
+  /** Formato del número con {PREFIX}, {SEQ}, {YEAR}; vacío = "{prefijo}-{año}-{secuencia}". */
+  numberingFormat: z.string().max(LIMITS.numberingFormat, `Máximo ${LIMITS.numberingFormat} caracteres`).optional(),
+  /** false = secuencia acumulada (no se reinicia cada año). */
+  numberingResetsYearly: z.boolean(),
 });
 
 export type PersonnelActionTypeFormValues = z.infer<typeof schema>;
@@ -68,6 +74,8 @@ export interface PersonnelActionTypeFormProps {
   onCancel: () => void;
   onSuccess: () => void;
   onDirtyChange?: (isDirty: boolean) => void;
+  /** Tipos raíz disponibles como padre (sin el propio tipo). */
+  parentTypeOptions?: Array<{ id: number; name: string }>;
 }
 
 const QUERY_KEY = "/api/v1/rh/personnel-action-type";
@@ -79,6 +87,7 @@ export function PersonnelActionTypeForm({
   onCancel,
   onSuccess,
   onDirtyChange,
+  parentTypeOptions = [],
 }: PersonnelActionTypeFormProps) {
   const queryClient = useQueryClient();
 
@@ -101,6 +110,9 @@ export function PersonnelActionTypeForm({
       siiesRelacionIesTypeId: (initialValues as any)?.siiesRelacionIesTypeId
         ? String((initialValues as any).siiesRelacionIesTypeId)
         : "",
+      parentTypeId: (initialValues as any)?.parentTypeId ? String((initialValues as any).parentTypeId) : "",
+      numberingFormat: initialValues?.numberingFormat ?? "",
+      numberingResetsYearly: initialValues?.numberingResetsYearly ?? true,
     },
   });
 
@@ -128,6 +140,9 @@ export function PersonnelActionTypeForm({
         siiesRelacionIesTypeId: values.siiesRelacionIesTypeId
           ? Number(values.siiesRelacionIesTypeId)
           : null,
+        parentTypeId: values.parentTypeId ? Number(values.parentTypeId) : null,
+        numberingFormat: values.numberingFormat?.trim() || null,
+        numberingResetsYearly: values.numberingResetsYearly,
       } as any);
       if (res.status === "error") throw new Error(res.error.message || "Error al crear");
       return res.data;
@@ -147,14 +162,18 @@ export function PersonnelActionTypeForm({
         description: values.description || undefined,
         numberingPrefix: values.numberingPrefix,
         defaultTemplateId: values.defaultTemplateId ?? null,
-        actionCategory: values.actionCategory || undefined,
+        // El formulario arranca con lo guardado: se envían valores explícitos (cadena vacía / 0 = borrar el valor).
+        actionCategory: values.actionCategory ?? "",
         isActive: values.isActive,
         requiresAdUserCreation: values.requiresAdUserCreation,
         requiresAdUserDisable: values.requiresAdUserDisable,
         requiresAdGroupAssignment: values.requiresAdGroupAssignment,
         siiesRelacionIesTypeId: values.siiesRelacionIesTypeId
           ? Number(values.siiesRelacionIesTypeId)
-          : null,
+          : 0,
+        parentTypeId: values.parentTypeId ? Number(values.parentTypeId) : 0,
+        numberingFormat: values.numberingFormat?.trim() ?? "",
+        numberingResetsYearly: values.numberingResetsYearly,
       } as any);
       if (res.status === "error") throw new Error(res.error.message || "Error al actualizar");
       return res;
@@ -264,6 +283,83 @@ export function PersonnelActionTypeForm({
                     Prefijo usado para generar el número de documento (Ej: AP-CONT-2025-001).
                   </FormDescription>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Tipo padre (grupo): un hijo es una serie con prefijo y numeración propios */}
+            <FormField
+              control={form.control}
+              name="parentTypeId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tipo padre (grupo)</FormLabel>
+                  <Select
+                    onValueChange={(v) => field.onChange(v === "none" ? "" : v)}
+                    value={field.value ? field.value : "none"}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Ninguno (tipo raíz)" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">Ninguno (tipo raíz)</SelectItem>
+                      {parentTypeOptions
+                        .filter((o) => o.id !== actionTypeId)
+                        .map((o) => (
+                          <SelectItem key={o.id} value={String(o.id)}>
+                            {o.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    Un tipo con hijos funciona como grupo (ej. "Licencia"): las acciones nuevas se registran contra uno
+                    de sus hijos, que son las series con prefijo propio. La jerarquía es de un solo nivel.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Formato del número y reinicio anual */}
+            <FormField
+              control={form.control}
+              name="numberingFormat"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Formato del número (opcional)</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Ej: DTH-UTA-{PREFIX}-{SEQ}-{YEAR}"
+                      maxLength={LIMITS.numberingFormat}
+                      {...field}
+                      value={field.value ?? ""}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Tokens: {"{PREFIX}"}, {"{SEQ}"} (obligatorio) y {"{YEAR}"}. Vacío = prefijo-año-secuencia (ej. DAP-2026-001).
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="numberingResetsYearly"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                  <div className="space-y-0.5">
+                    <FormLabel>La secuencia se reinicia cada año</FormLabel>
+                    <FormDescription>
+                      Desactívelo para series acumuladas (el año solo es un sufijo del número, como en LPE o LCR).
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  </FormControl>
                 </FormItem>
               )}
             />

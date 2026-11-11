@@ -334,6 +334,12 @@ export interface PersonnelActionTypeDto {
   reachesVigente: boolean;
   /** SIIES RELACION_IES homologado (ref_Types categoría SIIES_RELACION_IES). */
   siiesRelacionIesTypeId?: number | null;
+  /** Tipo padre (un solo nivel). Un tipo con hijos es un grupo (ej. "Licencia"); sus hijos son series con prefijo propio. */
+  parentTypeId?: number | null;
+  /** Formato del número con tokens {PREFIX}, {SEQ}, {YEAR}; null = "{prefijo}-{año}-{secuencia}". */
+  numberingFormat?: string | null;
+  /** false = secuencia acumulada (no se reinicia cada año). */
+  numberingResetsYearly?: boolean;
 }
 
 export const PersonnelActionTypeAPI = {
@@ -376,6 +382,9 @@ export const PersonnelActionTypeAPI = {
     requiresAdUserCreation?: boolean;
     requiresAdUserDisable?: boolean;
     requiresAdGroupAssignment?: boolean;
+    parentTypeId?: number | null;
+    numberingFormat?: string | null;
+    numberingResetsYearly?: boolean;
   }): Promise<ApiResponse<PersonnelActionTypeDto>> =>
     apiFetch<PersonnelActionTypeDto>(PERSONNEL_ACTION_TYPE_BASE, {
       method: 'POST',
@@ -393,6 +402,11 @@ export const PersonnelActionTypeAPI = {
     requiresAdUserCreation?: boolean;
     requiresAdUserDisable?: boolean;
     requiresAdGroupAssignment?: boolean;
+    /** null = conservar lo guardado; 0 = dejar como tipo raíz. */
+    parentTypeId?: number | null;
+    /** null = conservar; cadena vacía = formato por defecto. */
+    numberingFormat?: string | null;
+    numberingResetsYearly?: boolean;
   }): Promise<ApiResponse<void>> =>
     apiFetch<void>(`${PERSONNEL_ACTION_TYPE_BASE}/${id}`, {
       method: 'PUT',

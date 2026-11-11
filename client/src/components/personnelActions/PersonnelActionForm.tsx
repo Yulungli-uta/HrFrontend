@@ -1,5 +1,5 @@
 // src/components/personnelActions/PersonnelActionForm.tsx
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { useMutation } from '@tanstack/react-query';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -43,6 +43,7 @@ import { PersonSearchCombobox } from './PersonSearchCombobox';
 import { DepartmentSelect } from '@/components/departments/DepartmentSelect';
 import { JobSelect } from '@/components/ui/JobSelect';
 import { PersonnelActionsAPI } from '@/lib/api/services/contracts';
+import type { PersonnelActionTypeDto } from '@/lib/api/services/contracts';
 import type { PersonDto } from '@/lib/api';
 // import type { DepartmentAuthorityDto } from '@/lib/api/services/departmentAuthorities';
 import type {
@@ -114,9 +115,17 @@ const schema = z.object({
   employeeTypeId: z.coerce.number().optional().nullable(),
   // Clasificación de la acción
   swornDeclaration:     z.boolean().default(false),
+  possessionEnabled:    z.boolean().default(false),
   institutionalProcess: z.coerce.number().optional().nullable(),
   managementLevel:      z.coerce.number().optional().nullable(),
   workplace:            z.coerce.number().optional().nullable(),
+  // Licencia: motivo (solo series que lo exigen) y bloque de comunicación electrónica / firma del servidor
+  leaveReasonId:         z.coerce.number().optional().nullable(),
+  notificationEnabled:   z.boolean().default(false),
+  notificationDate:      z.string().optional(),
+  notificationTime:      z.string().optional(),
+  employeeSignatureDate: z.string().optional(),
+  employeeSignatureTime: z.string().optional(),
   // Responsables del documento
   dthDirectorId:        z.coerce.number().optional().nullable(),
   authorityNominatorId: z.coerce.number().optional().nullable(),
@@ -170,6 +179,59 @@ type Props = {
 function toDateInput(iso?: string | null): string {
   if (!iso) return '';
   return iso.slice(0, 10);
+}
+
+/** HH:mm:ss del servidor -> HH:mm para <input type="time">. */
+function toTimeInput(t?: string | null): string {
+  return t ? t.slice(0, 5) : '';
+}
+
+/** HH:mm del <input type="time"> -> HH:mm:ss que espera el backend (TimeOnly). */
+function toTimeOnly(t?: string | null): string | null {
+  if (!t) return null;
+  return t.length === 5 ? `${t}:00` : t;
+}
+
+/** Valores iniciales de los campos de licencia (motivo) y del bloque de comunicación electrónica / firma. */
+function leaveAndNotificationDefaults(src?: Partial<PersonnelActionDetail>) {
+  return {
+    leaveReasonId:         src?.leaveReasonId ?? null,
+    notificationEnabled:   src?.notificationEnabled ?? false,
+    notificationDate:      toDateInput(src?.notificationDate),
+    notificationTime:      toTimeInput(src?.notificationTime),
+    employeeSignatureDate: toDateInput(src?.employeeSignatureDate),
+    employeeSignatureTime: toTimeInput(src?.employeeSignatureTime),
+  };
+}
+
+/**
+ * Vista previa del número de documento, igual a la regla del backend (ConsumeNextNumberAsync): con formato del tipo
+ * reemplaza {PREFIX}/{SEQ}/{YEAR}; sin formato usa "{prefijo}-{año}-{secuencia de 3 dígitos}". La secuencia se
+ * reinicia al cambiar de año salvo en las series acumuladas. Es solo informativo: el número real lo reserva el servidor.
+ */
+function previewDocumentNumber(t: PersonnelActionTypeDto): string {
+  const year = Number(todayEcuador().slice(0, 4));
+  const resets = t.numberingResetsYearly ?? true;
+  const seq = !resets || t.numberingYear === year ? t.numberingLastSequence + 1 : 1;
+  if (t.numberingFormat?.trim()) {
+    return t.numberingFormat
+      .replace(/\{PREFIX\}/g, t.numberingPrefix)
+      .replace(/\{SEQ\}/g, String(seq))
+      .replace(/\{YEAR\}/g, String(year));
+  }
+  return `${t.numberingPrefix}-${year}-${String(seq).padStart(3, '0')}`;
+}
+
+/** Un motivo aplica a una serie si su Metadata JSON lista el prefijo en "types" (ej. {"types":["LCR","LCRA"]}). */
+function reasonAppliesToSeries(metadata: string | null | undefined, seriesPrefix: string | undefined): boolean {
+  if (!metadata || !seriesPrefix) return false;
+  try {
+    const parsed = JSON.parse(metadata) as { types?: unknown };
+    return Array.isArray(parsed.types)
+      && parsed.types.some((x) => typeof x === 'string' && x.toUpperCase() === seriesPrefix.toUpperCase());
+  } catch {
+    return false;
+  }
 }
 
 function today(): string {
@@ -346,10 +408,12 @@ export function PersonnelActionForm({
       reason:       defaultValues?.reason ?? '',
       observations: defaultValues?.observations ?? '',
       swornDeclaration:     defaultValues?.swornDeclaration ?? false,
+      possessionEnabled:    defaultValues?.possessionEnabled ?? false,
       institutionalProcess: defaultValues?.institutionalProcess ?? null,
       managementLevel:      defaultValues?.managementLevel ?? null,
       workplace:            defaultValues?.workplace ?? null,
       employeeTypeId:       defaultValues?.employeeTypeId ?? null,
+      ...leaveAndNotificationDefaults(defaultValues),
       dthDirectorId:        defaultValues?.dthDirectorId ?? null,
       authorityNominatorId: defaultValues?.authorityNominatorId ?? null,
       elaboratorId:         defaultValues?.elaboratorId ?? null,
@@ -366,6 +430,7 @@ export function PersonnelActionForm({
   useEffect(() => {
     if (!defaultValues) return;
     setUseEndDate(!!defaultValues.endDate && !defaultValues.endDate.startsWith('9999'));
+    setPickedGroupId(null);
     form.reset({
       employeeId:    defaultValues.employeeId ?? undefined,
       actionTypeId: defaultValues.actionTypeId ?? undefined,
@@ -389,10 +454,12 @@ export function PersonnelActionForm({
       reason:       defaultValues.reason ?? '',
       observations: defaultValues.observations ?? '',
       swornDeclaration:     defaultValues.swornDeclaration ?? false,
+      possessionEnabled:    defaultValues.possessionEnabled ?? false,
       institutionalProcess: defaultValues.institutionalProcess ?? null,
       managementLevel:      defaultValues.managementLevel ?? null,
       workplace:            defaultValues.workplace ?? null,
       employeeTypeId:       defaultValues.employeeTypeId ?? null,
+      ...leaveAndNotificationDefaults(defaultValues),
       dthDirectorId:        defaultValues.dthDirectorId ?? null,
       authorityNominatorId: defaultValues.authorityNominatorId ?? null,
       elaboratorId:         defaultValues.elaboratorId ?? null,
@@ -407,6 +474,36 @@ export function PersonnelActionForm({
   const watchedActionTypeId     = form.watch('actionTypeId');
   const watchedEmployeeId       = form.watch('employeeId');
   const watchedActionDate       = form.watch('actionDate');
+  const watchedNotificationEnabled = form.watch('notificationEnabled');
+
+  // Tipos de acción en dos niveles: el primer desplegable lista los tipos raíz y, si el elegido tiene series hijas
+  // activas (ej. "Licencia"), aparece un segundo desplegable con ellas. El tipo que se guarda es el último elegido.
+  const rootTypeOptions = actionTypeOptions.filter(({ item }) => !item.parentTypeId);
+  const currentType = actionTypeOptions.find(({ id }) => id === watchedActionTypeId)?.item;
+  const [pickedGroupId, setPickedGroupId] = useState<number | null>(null);
+  const groupId: number | null =
+    pickedGroupId ?? (currentType ? (currentType.parentTypeId ?? currentType.personnelActionTypeId) : null);
+  const childTypeOptions = groupId
+    ? actionTypeOptions.filter(({ item }) => item.parentTypeId === groupId)
+    : [];
+  // En histórico y corrección se admite el tipo general (las licencias antiguas no traen serie ni motivo).
+  const allowGroupType = !!maxDate || !!allowInactiveEmployees;
+
+  const { data: leaveReasonItems } = useRefTypesByCategory(REF_TYPE_CATEGORIES.PERSONNEL_ACTION_LEAVE_REASON);
+  const availableReasons = useMemo(
+    () => leaveReasonItems.filter(
+      (r: any) => r.isActive !== false && reasonAppliesToSeries(r.metadata, currentType?.numberingPrefix)
+    ),
+    [leaveReasonItems, currentType?.numberingPrefix]
+  );
+
+  const applyTypeSelection = (typeId: number, setTypeId: (id: number) => void) => {
+    setTypeId(typeId);
+    const selectedType = actionTypeOptions.find(({ id }) => id === typeId)?.item;
+    setActionRequiresUserCreation(selectedType?.requiresAdUserCreation ?? false);
+    form.setValue('leaveReasonId', null);
+    if (!isEdit && selectedType) form.setValue('actionNumber', previewDocumentNumber(selectedType));
+  };
 
   // RMU Origen: prioriza el historial salarial REAL del empleado (tbl_SalaryHistory) sobre el
   // catálogo de cargos — antes se leía job.rmu (RMU del Grupo Ocupacional vía vw_Jobs_WithDegreeAndGroup),
@@ -551,6 +648,7 @@ export function PersonnelActionForm({
     observations: values.observations || null,
     employeeTypeId:       values.employeeTypeId ?? null,
     swornDeclaration:     values.swornDeclaration ?? false,
+    possessionEnabled:    values.possessionEnabled ?? false,
     institutionalProcess: values.institutionalProcess ?? null,
     managementLevel:      values.managementLevel ?? null,
     workplace:            values.workplace ?? null,
@@ -559,6 +657,15 @@ export function PersonnelActionForm({
     elaboratorId:         values.elaboratorId ?? null,
     reviewerId:           values.reviewerId ?? null,
     registrarId:          values.registrarId ?? null,
+    // Motivo: 0 borra el guardado (el formulario es la fuente: arranca con lo que trae la acción).
+    leaveReasonId:        values.leaveReasonId ?? 0,
+    notification: {
+      enabled: !!values.notificationEnabled,
+      notificationDate:      values.notificationEnabled ? (values.notificationDate || null) : null,
+      notificationTime:      values.notificationEnabled ? toTimeOnly(values.notificationTime) : null,
+      employeeSignatureDate: values.notificationEnabled ? (values.employeeSignatureDate || null) : null,
+      employeeSignatureTime: values.notificationEnabled ? toTimeOnly(values.employeeSignatureTime) : null,
+    },
     generateDocument,
     isHistoricalEntry: !!maxDate,
   });
@@ -595,6 +702,30 @@ export function PersonnelActionForm({
           message: 'Selecciona el Régimen Laboral para crear la cuenta institucional.',
         });
         return;
+      }
+    }
+    // Licencia: el motivo es obligatorio cuando la serie lo exige (no en histórico ni corrección).
+    if (availableReasons.length > 0 && !values.leaveReasonId && !allowGroupType) {
+      form.setError('leaveReasonId', { type: 'manual', message: 'Seleccione el motivo de la licencia.' });
+      return;
+    }
+    // Comunicación electrónica y firma del servidor: fecha y hora van juntas y no antes de la fecha de la acción.
+    if (values.notificationEnabled) {
+      const pairs: Array<[keyof FormValues, keyof FormValues, string]> = [
+        ['notificationDate', 'notificationTime', 'la comunicación electrónica'],
+        ['employeeSignatureDate', 'employeeSignatureTime', 'la firma del servidor'],
+      ];
+      for (const [dateKey, timeKey, label] of pairs) {
+        const date = values[dateKey] as string | undefined;
+        const time = values[timeKey] as string | undefined;
+        if (!!date !== !!time) {
+          form.setError(date ? timeKey : dateKey, { type: 'manual', message: `Registre fecha y hora de ${label}.` });
+          return;
+        }
+        if (date && date < values.actionDate) {
+          form.setError(dateKey, { type: 'manual', message: 'No puede ser anterior a la fecha de la acción.' });
+          return;
+        }
       }
     }
     onSubmit(buildPayload(values, generateOnSaveRef.current));
@@ -670,7 +801,7 @@ export function PersonnelActionForm({
           {(isEdit || wizardStep === 1) && <>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-            {/* ── Tipo de Acción ── */}
+            {/* ── Tipo de Acción (tipo general y, si tiene series, el tipo específico) ── */}
             <FormField
               control={form.control}
               name="actionTypeId"
@@ -679,17 +810,19 @@ export function PersonnelActionForm({
                   <FormLabel>Tipo de Acción <span className="text-destructive">*</span></FormLabel>
                   <Select
                     disabled={isLoading || isBusy}
-                    value={field.value ? String(field.value) : ''}
+                    value={groupId ? String(groupId) : ''}
                     onValueChange={(v) => {
-                      const typeId = Number(v);
-                      field.onChange(typeId);
-                      const selectedType = actionTypeOptions.find(({ id }) => id === typeId)?.item;
-                      setActionRequiresUserCreation(selectedType?.requiresAdUserCreation ?? false);
-                      if (!isEdit && selectedType) {
-                        const nextSeq = selectedType.numberingLastSequence + 1;
-                        const formatted = `${selectedType.numberingPrefix}-${String(nextSeq).padStart(3, '0')}`;
-                        form.setValue('actionNumber', formatted);
+                      const rootId = Number(v);
+                      setPickedGroupId(rootId);
+                      const hasSeries = actionTypeOptions.some(({ item }) => item.parentTypeId === rootId);
+                      if (hasSeries && !allowGroupType) {
+                        // Hay que elegir la serie: el tipo queda vacío hasta que lo haga.
+                        field.onChange(undefined);
+                        form.setValue('leaveReasonId', null);
+                        setActionRequiresUserCreation(false);
+                        return;
                       }
+                      applyTypeSelection(rootId, field.onChange);
                     }}
                   >
                     <FormControl>
@@ -698,7 +831,7 @@ export function PersonnelActionForm({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {actionTypeOptions.map(({ item: t, id }) => (
+                      {rootTypeOptions.map(({ item: t, id }) => (
                         <SelectItem key={`action-type-${id}`} value={String(id)}>
                           {t.name ?? t.description ?? `Tipo ${id}`}
                         </SelectItem>
@@ -709,6 +842,82 @@ export function PersonnelActionForm({
                 </FormItem>
               )}
             />
+
+            {/* ── Tipo específico (series del tipo general elegido, ej. licencia por enfermedad) ── */}
+            {childTypeOptions.length > 0 && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium leading-none">
+                  Tipo específico {!allowGroupType && <span className="text-destructive">*</span>}
+                </label>
+                <Select
+                  disabled={isLoading || isBusy}
+                  value={
+                    watchedActionTypeId && watchedActionTypeId !== groupId
+                      ? String(watchedActionTypeId)
+                      : (allowGroupType && groupId ? String(groupId) : '')
+                  }
+                  onValueChange={(v) =>
+                    applyTypeSelection(Number(v), (id) =>
+                      form.setValue('actionTypeId', id, { shouldDirty: true, shouldValidate: true })
+                    )
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allowGroupType && groupId ? (
+                      <SelectItem value={String(groupId)}>General (sin serie específica)</SelectItem>
+                    ) : null}
+                    {childTypeOptions.map(({ item: t, id }) => (
+                      <SelectItem key={`action-type-${id}`} value={String(id)}>
+                        {t.name ?? `Tipo ${id}`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {!watchedActionTypeId && !allowGroupType && (
+                  <p className="text-sm font-medium text-destructive">Seleccione el tipo específico.</p>
+                )}
+              </div>
+            )}
+
+            {/* ── Motivo de la licencia (solo series que lo exigen) ── */}
+            {availableReasons.length > 0 && (
+              <FormField
+                control={form.control}
+                name="leaveReasonId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Motivo de la licencia {!allowGroupType && <span className="text-destructive">*</span>}
+                    </FormLabel>
+                    <Select
+                      disabled={isBusy}
+                      value={field.value ? String(field.value) : ''}
+                      onValueChange={(v) => field.onChange(Number(v))}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {availableReasons.map((r: any) => {
+                          const reasonId = Number(r.typeId ?? r.typeID ?? r.id);
+                          return (
+                            <SelectItem key={`leave-reason-${reasonId}`} value={String(reasonId)}>
+                              {r.name}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             {/* ── N° de Acción ── */}
             <FormField
@@ -903,6 +1112,48 @@ export function PersonnelActionForm({
                 );
               }}
             />
+
+            {/* Declaración Juramentada: junto a "Especificar fecha de fin" */}
+            <FormField
+              control={form.control}
+              name="swornDeclaration"
+              render={({ field }) => (
+                <FormItem className="flex items-center gap-2 sm:self-start">
+                  <FormControl>
+                    <Checkbox
+                      id="sworn-declaration"
+                      checked={field.value ?? false}
+                      disabled={isBusy}
+                      onCheckedChange={(v) => field.onChange(!!v)}
+                    />
+                  </FormControl>
+                  <FormLabel htmlFor="sworn-declaration" className="cursor-pointer select-none !mt-0">
+                    Incluye Declaración Juramentada
+                  </FormLabel>
+                </FormItem>
+              )}
+            />
+
+            {/* Posesión del puesto: si se marca, el documento imprime el nombre y la identificación del servidor */}
+            <FormField
+              control={form.control}
+              name="possessionEnabled"
+              render={({ field }) => (
+                <FormItem className="flex items-center gap-2 sm:self-start">
+                  <FormControl>
+                    <Checkbox
+                      id="possession-enabled"
+                      checked={field.value ?? false}
+                      disabled={isBusy}
+                      onCheckedChange={(v) => field.onChange(!!v)}
+                    />
+                  </FormControl>
+                  <FormLabel htmlFor="possession-enabled" className="cursor-pointer select-none !mt-0">
+                    Incluye Posesión del Puesto
+                  </FormLabel>
+                </FormItem>
+              )}
+            />
           </div>
 
           {/* ── Clasificación de la Acción ── */}
@@ -910,26 +1161,86 @@ export function PersonnelActionForm({
             <legend className="text-sm font-semibold px-1">Clasificación de la Acción</legend>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-              {/* Declaración Juramentada */}
+              {/* Comunicación electrónica y firma del servidor */}
               <FormField
                 control={form.control}
-                name="swornDeclaration"
+                name="notificationEnabled"
                 render={({ field }) => (
                   <FormItem className="sm:col-span-2 flex items-center gap-3 pt-1">
                     <FormControl>
                       <Checkbox
-                        id="sworn-declaration"
+                        id="notification-enabled"
                         checked={field.value ?? false}
                         disabled={isBusy}
                         onCheckedChange={(v) => field.onChange(!!v)}
                       />
                     </FormControl>
-                    <FormLabel htmlFor="sworn-declaration" className="cursor-pointer select-none font-normal">
-                      Incluye Declaración Juramentada
+                    <FormLabel htmlFor="notification-enabled" className="cursor-pointer select-none font-normal">
+                      Registrar fecha y hora de la comunicación electrónica y de la firma del servidor
                     </FormLabel>
                   </FormItem>
                 )}
               />
+
+              {watchedNotificationEnabled && (
+                <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-md border p-3">
+                  <p className="sm:col-span-2 text-xs font-semibold text-muted-foreground">Comunicación electrónica</p>
+                  <FormField
+                    control={form.control}
+                    name="notificationDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Fecha</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} value={field.value ?? ''} min={watchedActionDate || undefined} disabled={isBusy} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="notificationTime"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Hora</FormLabel>
+                        <FormControl>
+                          <Input type="time" {...field} value={field.value ?? ''} disabled={isBusy} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <p className="sm:col-span-2 text-xs font-semibold text-muted-foreground">Firma del servidor</p>
+                  <FormField
+                    control={form.control}
+                    name="employeeSignatureDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Fecha</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} value={field.value ?? ''} min={watchedActionDate || undefined} disabled={isBusy} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="employeeSignatureTime"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Hora</FormLabel>
+                        <FormControl>
+                          <Input type="time" {...field} value={field.value ?? ''} disabled={isBusy} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
             </div>
           </fieldset>
           </>}

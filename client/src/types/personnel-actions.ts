@@ -55,6 +55,8 @@ export interface PersonnelActionDetail extends PersonnelActionSummary {
     movementId?: number | null;
 
     swornDeclaration?: boolean | null;
+    /** La acción incluye posesión del puesto: el documento imprime el nombre y la identificación del servidor. */
+    possessionEnabled?: boolean | null;
     institutionalProcess?: number | null;
     managementLevel?: number | null;
     managementLevelName?: string | null;
@@ -86,10 +88,42 @@ export interface PersonnelActionDetail extends PersonnelActionSummary {
     updatedAt?: string | null;
     updatedBy?: number | null;
 
+    /** Grupo del tipo (ej. "Licencia") cuando la acción es de una serie hija; null si el tipo es raíz. */
+    actionTypeParentId?: number | null;
+    actionTypeParentName?: string | null;
+    /** Motivo de la licencia (ref_Types PERSONNEL_ACTION_LEAVE_REASON). */
+    leaveReasonId?: number | null;
+    leaveReasonName?: string | null;
+
+    /** Comunicación electrónica y firma del servidor (se imprimen en el documento cuando están activas). */
+    notificationEnabled?: boolean | null;
+    notificationDate?: string | null;
+    /** Hora HH:mm:ss (hora de Ecuador). */
+    notificationTime?: string | null;
+    employeeSignatureDate?: string | null;
+    employeeSignatureTime?: string | null;
+
+    /** Tipo de documento de identidad (CEDULA / PASAPORTE) del empleado. */
+    employeeIdentTypeName?: string | null;
+
     // Flags del tipo de acción incluidos por el backend al devolver el detalle
     actionTypeRequiresAdUserDisable?: boolean;
     actionTypeRequiresAdUserCreation?: boolean;
     actionTypeReachesVigente?: boolean;
+}
+
+/**
+ * Bloque de comunicación electrónica y firma del servidor. En las solicitudes de edición/corrección, un valor
+ * ausente significa "conservar lo guardado"; si se envía, reemplaza todo el bloque (enabled=false lo borra).
+ */
+export interface PersonnelActionNotification {
+    enabled: boolean;
+    notificationDate?: string | null;
+    /** HH:mm:ss */
+    notificationTime?: string | null;
+    employeeSignatureDate?: string | null;
+    /** HH:mm:ss */
+    employeeSignatureTime?: string | null;
 }
 
 export interface CreatePersonnelActionRequest {
@@ -126,6 +160,8 @@ export interface CreatePersonnelActionRequest {
     employeeTypeId?: number | null;
 
     swornDeclaration?: boolean | null;
+    /** En edición/corrección: ausente conserva lo guardado. */
+    possessionEnabled?: boolean | null;
     institutionalProcess?: number | null;
     managementLevel?: number | null;
     workplace?: number | null;
@@ -141,6 +177,10 @@ export interface CreatePersonnelActionRequest {
 
     /** true solo desde "Ingresar Histórico": el backend exige fechas anteriores a hoy. */
     isHistoricalEntry?: boolean;
+
+    /** Motivo de la licencia. En edición/corrección: null conserva lo guardado y 0 lo borra. */
+    leaveReasonId?: number | null;
+    notification?: PersonnelActionNotification | null;
 }
 
 export interface UpdatePersonnelActionRequest
@@ -153,6 +193,11 @@ export interface UpdatePersonnelActionRequest
      * lo ignora. Permite reasignar el empleado de una acción histórica, incluso uno inactivo.
      */
     employeeId?: number | null;
+    /**
+     * Solo lo aplica CorrectAsync (backend): reclasifica la acción a otro tipo de su misma familia
+     * (por ejemplo, de "Licencia" a una de sus series).
+     */
+    actionTypeId?: number | null;
 }
 
 /**

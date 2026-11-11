@@ -56,7 +56,7 @@ type LoadState<T> = {
 
 type RefType      = { typeId: number; name: string; category?: string };
 type ContractKind      = { contractTypeId?: number; contractTypeID?: number; id?: number; name: string };
-type ActionTypeOption  = { personnelActionTypeId: number; name: string; code: string };
+type ActionTypeOption  = { personnelActionTypeId: number; name: string; code: string; parentTypeId?: number | null };
 type GuardLocation    = { locationId: number; locationName: string; locationCode?: string };
 type GuardGroup       = { groupId: number; name: string };
 
@@ -441,7 +441,16 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
   );
 
   const actionTypeOptions = React.useMemo<Option[]>(
-    () => actionTypes.items.map((t) => ({ value: String(t.personnelActionTypeId), label: t.name })),
+    // Las series hijas (ej. licencia por enfermedad) se muestran bajo su grupo: "Licencia › Licencia por enfermedad".
+    // Filtrar por el grupo incluye también las acciones de sus series.
+    () => actionTypes.items
+      .map((t) => {
+        const parent = t.parentTypeId
+          ? actionTypes.items.find((p) => p.personnelActionTypeId === t.parentTypeId)
+          : undefined;
+        return { value: String(t.personnelActionTypeId), label: parent ? `${parent.name} › ${t.name}` : t.name };
+      })
+      .sort((a, b) => a.label.localeCompare(b.label, "es")),
     [actionTypes.items]
   );
 

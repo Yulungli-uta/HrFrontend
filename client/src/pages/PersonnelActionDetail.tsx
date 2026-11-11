@@ -188,6 +188,7 @@ export default function PersonnelActionDetail() {
     reason: data.reason,
     observations: data.observations,
     swornDeclaration:     data.swornDeclaration,
+    possessionEnabled:    data.possessionEnabled,
     institutionalProcess: data.institutionalProcess,
     managementLevel:      data.managementLevel,
     workplace:            data.workplace,
@@ -196,6 +197,9 @@ export default function PersonnelActionDetail() {
     elaboratorId:         data.elaboratorId,
     reviewerId:           data.reviewerId,
     registrarId:          data.registrarId,
+    // Motivo (0 = borrar) y bloque de comunicación electrónica / firma del servidor (reemplaza el bloque).
+    leaveReasonId:        data.leaveReasonId,
+    notification:         data.notification,
   });
 
   const handleUpdate = (data: CreatePersonnelActionRequest) => {
@@ -319,7 +323,13 @@ export default function PersonnelActionDetail() {
             <InfoRow label="Departamento" value={action.employeeDepartment} />
             <InfoRow label="Cargo" value={action.employeeJobTitle} />
             <Separator className="my-2" />
-            <InfoRow label="Tipo de Acción" value={action.actionTypeName} />
+            <InfoRow
+              label="Tipo de Acción"
+              value={action.actionTypeParentName
+                ? `${action.actionTypeParentName} › ${action.actionTypeName}`
+                : action.actionTypeName}
+            />
+            <InfoRow label="Motivo de la licencia" value={action.leaveReasonName} />
             <InfoRow label="N° Acción" value={action.actionNumber} />
             <InfoRow label="Fecha Acción" value={action.actionDate?.slice(0, 10)} />
             <InfoRow label="Fecha Vigencia" value={action.effectiveDate?.slice(0, 10)} />
@@ -368,6 +378,26 @@ export default function PersonnelActionDetail() {
               label="Decl. Juramentada"
               value={action.swornDeclaration != null ? (action.swornDeclaration ? 'Sí' : 'No') : undefined}
             />
+            <InfoRow
+              label="Posesión del puesto"
+              value={action.possessionEnabled != null ? (action.possessionEnabled ? 'Sí' : 'No') : undefined}
+            />
+            {action.notificationEnabled && (
+              <>
+                <InfoRow
+                  label="Comunicación electrónica"
+                  value={action.notificationDate
+                    ? `${action.notificationDate.slice(0, 10)} ${(action.notificationTime ?? '').slice(0, 5)}`.trim()
+                    : undefined}
+                />
+                <InfoRow
+                  label="Firma del servidor"
+                  value={action.employeeSignatureDate
+                    ? `${action.employeeSignatureDate.slice(0, 10)} ${(action.employeeSignatureTime ?? '').slice(0, 5)}`.trim()
+                    : undefined}
+                />
+              </>
+            )}
             {action.employeeTypeId && (
               <InfoRow
                 label="Régimen Laboral"
