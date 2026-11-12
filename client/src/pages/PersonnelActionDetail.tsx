@@ -168,6 +168,8 @@ export default function PersonnelActionDetail() {
   };
 
   const buildUpdatePayload = (data: CreatePersonnelActionRequest): UpdatePersonnelActionRequest => ({
+    // Subtipo: el backend lo acepta si es de la misma familia del tipo actual (ej. una serie de licencia).
+    actionTypeId: data.actionTypeId,
     actionNumber: data.actionNumber,
     actionDate: data.actionDate,
     effectiveDate: data.effectiveDate,

@@ -342,6 +342,14 @@ export interface PersonnelActionTypeDto {
   numberingResetsYearly?: boolean;
 }
 
+/** Tipo general con sus subtipos; con búsqueda, `children` trae solo los subtipos que coinciden. */
+export interface PersonnelActionTypeFamilyDto {
+  root: PersonnelActionTypeDto;
+  children: PersonnelActionTypeDto[];
+  /** Cantidad total de subtipos del tipo general, coincidan o no con la búsqueda. */
+  totalChildren: number;
+}
+
 export const PersonnelActionTypeAPI = {
   getAll: (): Promise<ApiResponse<PersonnelActionTypeDto[]>> =>
     apiFetch<PersonnelActionTypeDto[]>(PERSONNEL_ACTION_TYPE_BASE),
@@ -354,6 +362,19 @@ export const PersonnelActionTypeAPI = {
       ...(params.search?.trim() ? { search: params.search.trim() } : {}),
     });
     return apiFetch<PagedResult<PersonnelActionTypeDto>>(`${PERSONNEL_ACTION_TYPE_BASE}/paged?${qs.toString()}`);
+  },
+
+  /**
+   * Listado jerárquico paginado en el servidor POR TIPO GENERAL (cada elemento trae sus subtipos).
+   * La búsqueda (nombre, código, prefijo o descripción; sin acentos ni mayúsculas) también se resuelve en el servidor.
+   */
+  listTree: (params: PagedRequest): Promise<ApiResponse<PagedResult<PersonnelActionTypeFamilyDto>>> => {
+    const qs = new URLSearchParams({
+      page: String(params.page),
+      pageSize: String(params.pageSize),
+      ...(params.search?.trim() ? { search: params.search.trim() } : {}),
+    });
+    return apiFetch<PagedResult<PersonnelActionTypeFamilyDto>>(`${PERSONNEL_ACTION_TYPE_BASE}/tree?${qs.toString()}`);
   },
 
   getActive: (): Promise<ApiResponse<PersonnelActionTypeDto[]>> =>

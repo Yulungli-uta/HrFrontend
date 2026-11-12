@@ -246,7 +246,7 @@ export default function PersonnelActionsPage() {
             <table className="w-full">
               <thead className="bg-muted/50">
                 <tr>
-                  {['N°', 'Empleado', 'Tipo', 'Fecha', 'Vigencia', 'Estado', ''].map((h) => (
+                  {['N°', 'Empleado', 'Tipo', 'Subtipo', 'Fecha', 'Vigencia', 'Estado', ''].map((h) => (
                     <th
                       key={h}
                       className="p-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
@@ -259,7 +259,7 @@ export default function PersonnelActionsPage() {
               <tbody className="divide-y divide-border">
                 {items.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="p-8 text-center text-sm text-muted-foreground">
+                    <td colSpan={8} className="p-8 text-center text-sm text-muted-foreground">
                       No hay acciones de personal registradas.
                     </td>
                   </tr>
@@ -289,7 +289,8 @@ export default function PersonnelActionsPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="p-4 text-sm">{item.actionTypeName}</td>
+                      <td className="p-4 text-sm">{item.actionTypeParentName ?? item.actionTypeName}</td>
+                      <td className="p-4 text-sm text-muted-foreground">{item.actionTypeParentName ? item.actionTypeName : '—'}</td>
                       <td className="p-4 text-sm">{item.actionDate?.slice(0, 10)}</td>
                       <td className="p-4 text-sm text-muted-foreground">
                         {item.effectiveDate?.slice(0, 10) ?? '—'}
@@ -355,7 +356,7 @@ export default function PersonnelActionsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <FileText className="h-4 w-4 text-muted-foreground" />
-                    <span>{item.actionTypeName}</span>
+                    <span>{item.actionTypeParentName ? `${item.actionTypeParentName} › ${item.actionTypeName}` : item.actionTypeName}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-muted-foreground" />

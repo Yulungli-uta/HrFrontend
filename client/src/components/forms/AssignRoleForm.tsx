@@ -1,21 +1,14 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useForm } from "react-hook-form";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { RoleCombobox } from "@/components/ui/RoleCombobox";
 import { useToast } from "@/hooks/use-toast";
-import { RolesAPI, UserRolesAPI } from "@/lib/api";
-import type { ApiResponse, PagedResult } from "@/lib/api";
-import type { Role, CreateUserRoleDto } from "@/features/auth";
+import { UserRolesAPI } from "@/lib/api";
+import type { CreateUserRoleDto } from "@/features/auth";
 import { todayEcuador } from "@/lib/clock";
 
 interface AssignRoleFormProps {
@@ -66,27 +59,8 @@ export default function AssignRoleForm({
 
   const roleId = watch("roleId");
 
-  // Roles
-  const { data: rolesResponse, isLoading: rolesLoading } = useQuery<
-    ApiResponse<PagedResult<Role>>
-  >({
-    queryKey: ["roles"],
-    queryFn: () => RolesAPI.list(1, 10000),
-  });
-
-  const roles: Role[] = useMemo(() => {
-    const resp = rolesResponse as any;
-    if (resp?.status === "success") {
-      if (Array.isArray(resp?.data?.items))       return resp.data.items;
-      if (Array.isArray(resp?.data?.data?.items)) return resp.data.data.items;
-      if (Array.isArray(resp?.data))              return resp.data;
-    }
-    return [];
-  }, [rolesResponse]);
+  // El selector de roles (RoleCombobox) busca y pagina en el servidor; aquí solo se indican los roles ya asignados.
   const assignedIdsSet = useMemo(() => new Set(assignedRoleIds), [assignedRoleIds]);
-  const activeRoles = roles.filter(
-    (r: Role) => r.isActive && !r.isDeleted && !assignedIdsSet.has(r.id)
-  );
 
   // Mutación (usa assign, no create)
   const assignMutation = useMutation({
@@ -121,7 +95,7 @@ export default function AssignRoleForm({
     assignMutation.mutate(payload);
   };
 
-  const isLoading = assignMutation.isPending || rolesLoading;
+  const isLoading = assignMutation.isPending;
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -133,30 +107,11 @@ export default function AssignRoleForm({
           <Label htmlFor="roleId">
             Rol <span className="text-destructive">*</span>
           </Label>
-          <Select
+          <RoleCombobox
             value={roleId}
-            onValueChange={(value) => setValue("roleId", value, { shouldValidate: true })}
-            disabled={rolesLoading}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Seleccione un rol" />
-            </SelectTrigger>
-            <SelectContent>
-              {activeRoles.length === 0 ? (
-                <div className="p-2 text-sm text-muted-foreground">
-                  {assignedIdsSet.size > 0
-                    ? "El usuario ya tiene todos los roles disponibles asignados"
-                    : "No hay roles disponibles"}
-                </div>
-              ) : (
-                activeRoles.map((role) => (
-                  <SelectItem key={role.id} value={role.id.toString()}>
-                    {role.name} {role.description && `- ${role.description}`}
-                  </SelectItem>
-                ))
-              )}
-            </SelectContent>
-          </Select>
+            excludeRoleIds={assignedRoleIds}
+            onChange={(value) => setValue("roleId", value, { shouldValidate: true })}
+          />
           {errors.roleId && (
             <p className="text-sm text-destructive">{errors.roleId.message}</p>
           )}

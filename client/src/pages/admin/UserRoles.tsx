@@ -79,13 +79,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { RoleCombobox } from "@/components/ui/RoleCombobox";
 import { formatDate, todayEcuador } from "@/lib/clock";
 
 /* =========================
@@ -1293,20 +1287,6 @@ function EditUserRoleForm({
   onCancel: () => void;
   onSubmit: (data: { newRoleId: number; expiresAt?: string; reason?: string }) => void;
 }) {
-  const { data: rolesResponse, isLoading: rolesLoading } = useQuery<
-    ApiResponse<PagedResult<Role>>
-  >({
-    queryKey: ["roles"],
-    queryFn: () => RolesAPI.list(1, 10000),
-  });
-
-  const rolesForDialog: Role[] = useMemo(
-    () => normalizePagedItems<Role>(rolesResponse),
-    [rolesResponse]
-  );
-
-  const activeRoles = rolesForDialog.filter((r: Role) => r.isActive && !r.isDeleted);
-
   const [newRoleId, setNewRoleId] = useState<string>(String(oldRoleId));
   const [expiresAt, setExpiresAt] = useState<string>(defaultExpiresAt ?? "");
   const [reason, setReason] = useState<string>(defaultReason ?? "");
@@ -1331,28 +1311,10 @@ function EditUserRoleForm({
       <div className="space-y-4">
         <div className="space-y-2">
           <Label>Rol</Label>
-          <Select
+          <RoleCombobox
             value={newRoleId}
-            onValueChange={(v) => setNewRoleId(v)}
-            disabled={rolesLoading}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Seleccione un rol" />
-            </SelectTrigger>
-            <SelectContent>
-              {activeRoles.length === 0 ? (
-                <div className="p-2 text-sm text-muted-foreground">
-                  No hay roles disponibles
-                </div>
-              ) : (
-                activeRoles.map((role: Role) => (
-                  <SelectItem key={role.id} value={String(role.id)}>
-                    {role.name} {role.description && `- ${role.description}`}
-                  </SelectItem>
-                ))
-              )}
-            </SelectContent>
-          </Select>
+            onChange={(v) => { if (v) setNewRoleId(v); }}
+          />
         </div>
 
         <div className="space-y-2">

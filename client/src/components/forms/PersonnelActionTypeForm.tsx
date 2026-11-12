@@ -1,5 +1,5 @@
 // src/components/forms/PersonnelActionTypeForm.tsx
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -76,6 +76,8 @@ export interface PersonnelActionTypeFormProps {
   onDirtyChange?: (isDirty: boolean) => void;
   /** Tipos raíz disponibles como padre (sin el propio tipo). */
   parentTypeOptions?: Array<{ id: number; name: string }>;
+  /** Tipos existentes: sirven para avisar de un código repetido (bloquea) o un prefijo ya usado (solo avisa). */
+  existingTypes?: Array<{ id: number; name: string; code: string; numberingPrefix: string }>;
 }
 
 const QUERY_KEY = "/api/v1/rh/personnel-action-type";
@@ -88,6 +90,7 @@ export function PersonnelActionTypeForm({
   onSuccess,
   onDirtyChange,
   parentTypeOptions = [],
+  existingTypes = [],
 }: PersonnelActionTypeFormProps) {
   const queryClient = useQueryClient();
 
@@ -186,7 +189,23 @@ export function PersonnelActionTypeForm({
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
+  const watchedPrefix = form.watch("numberingPrefix") ?? "";
+  const prefixClashes = useMemo(() => {
+    const wanted = watchedPrefix.trim().toLowerCase();
+    if (!wanted) return [];
+    return existingTypes.filter(
+      (t) => t.id !== actionTypeId && t.numberingPrefix.trim().toLowerCase() === wanted,
+    );
+  }, [watchedPrefix, existingTypes, actionTypeId]);
+
   const onSubmit = (values: PersonnelActionTypeFormValues) => {
+    const sameCode = existingTypes.find(
+      (t) => t.id !== actionTypeId && t.code.trim().toLowerCase() === values.code.trim().toLowerCase(),
+    );
+    if (sameCode) {
+      form.setError("code", { message: `Ya existe un tipo con ese código: ${sameCode.name}` });
+      return;
+    }
     if (mode === "create") {
       createMutation.mutate(values);
     } else {
@@ -282,6 +301,12 @@ export function PersonnelActionTypeForm({
                   <FormDescription>
                     Prefijo usado para generar el número de documento (Ej: AP-CONT-2025-001).
                   </FormDescription>
+                  {prefixClashes.length > 0 && (
+                    <p className="text-sm text-amber-600">
+                      Atención: este prefijo ya lo usa {prefixClashes.map((t) => t.name).join(", ")}. Si es una serie
+                      distinta, verifique que el contador no genere números repetidos.
+                    </p>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}

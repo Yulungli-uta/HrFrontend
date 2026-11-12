@@ -7,6 +7,8 @@ export interface PersonnelActionSummary {
     employeeIdCard: string;
     actionTypeId: number;
     actionTypeName: string;
+    /** Tipo general cuando actionTypeName es una serie (p. ej. Licencia); null si el tipo es raíz. */
+    actionTypeParentName?: string | null;
     actionNumber?: string | null;
     actionDate: string;
     effectiveDate?: string | null;

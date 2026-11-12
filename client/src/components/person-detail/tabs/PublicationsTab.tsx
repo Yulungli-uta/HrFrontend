@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ActionIconButton } from "@/components/ui/action-icon-button";
@@ -17,6 +17,7 @@ import { OrcidRequiredGate } from "@/components/person-detail/publication-sync/O
 import { ResearcherOrcidLine } from "@/components/person-detail/publication-sync/ResearcherOrcidLine";
 import { PublicationSyncDialog } from "@/components/person-detail/publication-sync/PublicationSyncDialog";
 import { isPendingReview, isPublicationLocked, lockedMessage, publicationCounts } from "@/features/publications/publicationStatus";
+import { doiSearchText, doiUrl, normalizeDoi } from "@/features/publications/doi";
 
 interface PublicationsTabProps {
   publications: Publication[];
@@ -72,6 +73,16 @@ export function PublicationsTab({ publications: allPublications, onEdit, onDelet
     },
   ];
 
+  // DOI repetido: el mismo DOI normalizado en más de una publicación de la persona (probable carga duplicada).
+  const repeatedDois = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const p of publications) {
+      const n = normalizeDoi(p.doi);
+      if (n) counts.set(n, (counts.get(n) ?? 0) + 1);
+    }
+    return new Set([...counts.entries()].filter(([, c]) => c > 1).map(([doi]) => doi));
+  }, [publications]);
+
   const filterFields: CvFilterField<Publication>[] = [
     {
       key: "type",
@@ -79,11 +90,33 @@ export function PublicationsTab({ publications: allPublications, onEdit, onDelet
       options: buildFilterOptions(publications.map((p) => p.publicationTypeName)),
       getValue: (p) => p.publicationTypeName,
     },
+    {
+      key: "doi",
+      label: "DOI",
+      options: [
+        { value: "con", label: "Con DOI válido" },
+        { value: "sin", label: "Sin DOI" },
+        { value: "invalido", label: "DOI no válido (enlace u otro dato)" },
+      ],
+      getValue: (p) => (normalizeDoi(p.doi) ? "con" : p.doi?.trim() ? "invalido" : "sin"),
+    },
+    {
+      key: "doiRepeated",
+      label: "DOI repetido",
+      options: [
+        { value: "si", label: "Repetido en otra publicación" },
+        { value: "no", label: "Único" },
+      ],
+      getValue: (p) => {
+        const n = normalizeDoi(p.doi);
+        return n ? (repeatedDois.has(n) ? "si" : "no") : null;
+      },
+    },
   ];
 
   const list = useCvListState({
     items: publications,
-    searchText: (p) => `${p.title ?? ""} ${p.journalName ?? ""} ${p.location ?? ""}`,
+    searchText: (p) => `${p.title ?? ""} ${p.journalName ?? ""} ${p.location ?? ""} ${doiSearchText(p.doi)}`,
     sortOptions,
     defaultSort: "date_desc",
     filterFields,
@@ -140,7 +173,7 @@ export function PublicationsTab({ publications: allPublications, onEdit, onDelet
             <CvListToolbar
               search={list.search}
               onSearchChange={list.setSearch}
-              searchPlaceholder="Buscar por título, revista o lugar..."
+              searchPlaceholder="Buscar por título, revista, lugar o DOI..."
               sortValue={list.sortValue}
               onSortChange={list.setSortValue}
               sortOptions={sortOptions}
@@ -203,7 +236,24 @@ export function PublicationsTab({ publications: allPublications, onEdit, onDelet
                         )}
                         {publication.doi && (
                           <div className="flex items-center gap-1">
-                            <span>DOI: {publication.doi}</span>
+                            {doiUrl(publication.doi) ? (
+                              <a
+                                href={doiUrl(publication.doi)!}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-primary hover:underline break-all"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                DOI: {publication.doi}
+                              </a>
+                            ) : (
+                              <span>DOI: {publication.doi}</span>
+                            )}
+                            {normalizeDoi(publication.doi) && repeatedDois.has(normalizeDoi(publication.doi)!) && (
+                              <Badge variant="outline" className="ml-1 text-[10px] font-normal text-amber-600 border-amber-300">
+                                DOI repetido
+                              </Badge>
+                            )}
                           </div>
                         )}
                         {publication.link && (

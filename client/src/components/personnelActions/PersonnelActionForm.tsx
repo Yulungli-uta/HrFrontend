@@ -32,7 +32,8 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Loader2, Save, FileText, Eye, Download, AlertCircle, CheckCircle2, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Loader2, Save, FileText, Eye, Download, AlertCircle, CheckCircle2, ArrowLeft, ArrowRight, CornerDownRight } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { usePersonnelActionLookups } from '@/hooks/personnelActions/usePersonnelActionLookups';
@@ -63,6 +64,7 @@ function mapActionTypeToCheckbox(name?: string): string | null {
   const n = name.toUpperCase();
   if (n.includes('INGRESO') && !n.includes('REIN')) return 'CB_INGRESO';
   if (n.includes('REINGRESO'))  return 'CB_REINGRESO';
+  if (n.includes('REINTEGRO'))  return 'CB_REINTEGRO';
   if (n.includes('RESTITU'))    return 'CB_RESTITUCION';
   if (n.includes('ASCENSO'))    return 'CB_ASCENSO';
   if (n.includes('TRASLADO'))   return 'CB_TRASLADO';
@@ -486,6 +488,15 @@ export function PersonnelActionForm({
   const childTypeOptions = groupId
     ? actionTypeOptions.filter(({ item }) => item.parentTypeId === groupId)
     : [];
+  // Cantidad de subtipos por tipo general: se muestra en el desplegable para que se vea cuáles tienen un tipo específico.
+  const subtypeCountByRoot = useMemo(() => {
+    const counts = new Map<number, number>();
+    for (const { item } of actionTypeOptions) {
+      if (item.parentTypeId) counts.set(item.parentTypeId, (counts.get(item.parentTypeId) ?? 0) + 1);
+    }
+    return counts;
+  }, [actionTypeOptions]);
+  const groupType = actionTypeOptions.find(({ id }) => id === groupId)?.item;
   // En histórico y corrección se admite el tipo general (las licencias antiguas no traen serie ni motivo).
   const allowGroupType = !!maxDate || !!allowInactiveEmployees;
 
@@ -831,11 +842,21 @@ export function PersonnelActionForm({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {rootTypeOptions.map(({ item: t, id }) => (
-                        <SelectItem key={`action-type-${id}`} value={String(id)}>
-                          {t.name ?? t.description ?? `Tipo ${id}`}
-                        </SelectItem>
-                      ))}
+                      {rootTypeOptions.map(({ item: t, id }) => {
+                        const subtypes = subtypeCountByRoot.get(id) ?? 0;
+                        return (
+                          <SelectItem key={`action-type-${id}`} value={String(id)}>
+                            <span className="flex items-center gap-2">
+                              {t.name ?? t.description ?? `Tipo ${id}`}
+                              {subtypes > 0 && (
+                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                                  {subtypes} subtipos
+                                </Badge>
+                              )}
+                            </span>
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -843,12 +864,23 @@ export function PersonnelActionForm({
               )}
             />
 
-            {/* ── Tipo específico (series del tipo general elegido, ej. licencia por enfermedad) ── */}
+            {/* ── Subtipo (tipo específico): bloque propio, enlazado al tipo general elegido ── */}
             {childTypeOptions.length > 0 && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium leading-none">
-                  Tipo específico {!allowGroupType && <span className="text-destructive">*</span>}
-                </label>
+              <div
+                className={`sm:col-span-2 space-y-2 rounded-md border border-l-4 p-3 bg-muted/30 ${
+                  !watchedActionTypeId && !allowGroupType ? 'border-l-destructive' : 'border-l-primary'
+                }`}
+              >
+                <div className="flex flex-wrap items-center gap-2 text-sm font-medium leading-none">
+                  <CornerDownRight className="h-4 w-4 text-muted-foreground" />
+                  <span>
+                    Subtipo de <span className="font-semibold">{groupType?.name ?? 'este tipo'}</span>{' '}
+                    {!allowGroupType && <span className="text-destructive">*</span>}
+                  </span>
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                    {childTypeOptions.length} disponibles
+                  </Badge>
+                </div>
                 <Select
                   disabled={isLoading || isBusy}
                   value={
@@ -863,22 +895,31 @@ export function PersonnelActionForm({
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar" />
+                    <SelectValue placeholder="Seleccione el subtipo" />
                   </SelectTrigger>
                   <SelectContent>
                     {allowGroupType && groupId ? (
-                      <SelectItem value={String(groupId)}>General (sin serie específica)</SelectItem>
+                      <SelectItem value={String(groupId)}>General (sin subtipo específico)</SelectItem>
                     ) : null}
                     {childTypeOptions.map(({ item: t, id }) => (
                       <SelectItem key={`action-type-${id}`} value={String(id)}>
-                        {t.name ?? `Tipo ${id}`}
+                        <span className="flex items-center gap-2">
+                          {t.name ?? `Tipo ${id}`}
+                          <span className="font-mono text-[10px] text-muted-foreground">{t.numberingPrefix}</span>
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 {!watchedActionTypeId && !allowGroupType && (
-                  <p className="text-sm font-medium text-destructive">Seleccione el tipo específico.</p>
+                  <p className="text-sm font-medium text-destructive">Seleccione el subtipo para continuar.</p>
                 )}
+                {currentType?.parentTypeId ? (
+                  <p className="text-xs text-muted-foreground">
+                    Se registrará como <span className="font-medium">{groupType?.name} ▸ {currentType.name}</span>
+                    {' '}· serie <span className="font-mono">{currentType.numberingPrefix}</span>
+                  </p>
+                ) : null}
               </div>
             )}
 

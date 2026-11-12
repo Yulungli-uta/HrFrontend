@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -37,6 +37,7 @@ import {
 import { Shield, Plus, Edit, Trash2, Search, KeyRound } from "lucide-react";
 import { RolesAPI } from "@/lib/api";
 import { usePaged } from "@/hooks/pagination/usePaged";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { DataPagination } from "@/components/ui/DataPagination";
 import type { Role } from "@/features/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -102,6 +103,14 @@ export default function RolesPage() {
     },
     initialPageSize: 20,
   });
+
+  // La búsqueda la resuelve el servidor (nombre o descripción) y se pide con una breve espera al escribir,
+  // no en cada tecla; al cambiar el texto vuelve a la página 1 (lo hace usePaged.setSearch).
+  const [searchInput, setSearchInput] = useState("");
+  const debouncedSearch = useDebouncedValue(searchInput, 300);
+  useEffect(() => {
+    setSearch(debouncedSearch);
+  }, [debouncedSearch, setSearch]);
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => RolesAPI.remove(id),
@@ -217,8 +226,8 @@ export default function RolesPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
             <Input
               placeholder="Buscar por nombre o descripción..."
-              value={currentParams.search ?? ""}
-              onChange={(e) => setSearch(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               className="pl-10"
             />
           </div>
