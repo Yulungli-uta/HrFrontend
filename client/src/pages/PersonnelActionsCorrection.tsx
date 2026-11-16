@@ -79,6 +79,7 @@ function buildUpdatePayload(data: CreatePersonnelActionRequest): UpdatePersonnel
     originBudgetProgramCode: data.originBudgetProgramCode,
     originInstitutionalProcess: data.originInstitutionalProcess,
     originManagementLevel: data.originManagementLevel,
+    originWorkplace: data.originWorkplace,
     destinationDepartmentId: data.destinationDepartmentId,
     destinationJobId: data.destinationJobId,
     destinationBudgetCode: data.destinationBudgetCode,

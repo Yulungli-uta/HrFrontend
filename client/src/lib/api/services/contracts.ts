@@ -615,7 +615,32 @@ export const FinancialCertificationAPI = {
 // API de Actividades
 // =============================================================================
 
-export const ActivityAPI = createCrudService<any, any>('/api/v1/rh/activity');
+/** Filtros opcionales de los listados paginados de catálogos (los envía solo si tienen valor). */
+type CatalogFilterValue = string | number | boolean | null | undefined;
+
+function catalogPaged<TFilters extends Record<string, CatalogFilterValue>>(basePath: string) {
+  return (params: PagedRequest & TFilters): Promise<ApiResponse<PagedResult<any>>> => {
+    const { page, pageSize, sortBy, sortDirection, search, ...filters } = params;
+    const qs = new URLSearchParams({
+      page: String(page),
+      pageSize: String(pageSize),
+      ...(sortBy ? { sortBy } : {}),
+      ...(sortDirection ? { sortDirection } : {}),
+      ...(search?.trim() ? { search: search.trim() } : {}),
+    });
+    for (const [key, value] of Object.entries(filters)) {
+      if (value !== null && value !== undefined && value !== '') qs.set(key, String(value));
+    }
+    return apiFetch<PagedResult<any>>(`${basePath}/paged?${qs.toString()}`);
+  };
+}
+
+export const ActivityAPI = {
+  ...createCrudService<any, any>('/api/v1/rh/activity'),
+
+  /** Listado paginado: búsqueda por palabras (sin tildes) y filtros por estado y tipo (LABORAL / ADICIONAL). */
+  listPaged: catalogPaged<{ isActive?: boolean | null; type?: string | null }>('/api/v1/rh/activity'),
+};
 
 // =============================================================================
 // API de Actividades Adicionales
@@ -632,7 +657,12 @@ export const AdditionalActivityAPI = {
 // API de Grados / Títulos
 // =============================================================================
 
-export const DegreeAPI = createCrudService<any, any>('/api/v1/rh/degree');
+export const DegreeAPI = {
+  ...createCrudService<any, any>('/api/v1/rh/degree'),
+
+  /** Listado paginado: búsqueda por palabras (sin tildes) y filtro por estado. */
+  listPaged: catalogPaged<{ isActive?: boolean | null }>('/api/v1/rh/degree'),
+};
 
 // =============================================================================
 // API de Actividades de Cargos
@@ -645,19 +675,44 @@ export const JobActivityAPI = {
   // genérico de createCrudService no aplica aquí (no existe un Id simple en esta entidad).
   removeByKeys: (jobId: number, activitiesId: number): Promise<ApiResponse<void>> =>
     apiFetch<void>(`/api/v1/rh/job-activity/${jobId}/${activitiesId}`, { method: 'DELETE' }),
+
+  /** Actividades asignadas a un cargo (el servidor filtra; no trae las de los demás cargos). */
+  listByJob: (jobId: number): Promise<ApiResponse<any[]>> =>
+    apiFetch<any[]>(`/api/v1/rh/job-activity?jobId=${jobId}`),
 };
 
 // =============================================================================
 // API de Grupos Ocupacionales
 // =============================================================================
 
-export const OccupationalGroupAPI = createCrudService<any, any>('/api/v1/rh/occupational-group');
+export const OccupationalGroupAPI = {
+  ...createCrudService<any, any>('/api/v1/rh/occupational-group'),
+
+  /** Listado paginado: búsqueda por palabras (sin tildes) y filtros por estado, grado, familia y rango de RMU. */
+  listPaged: catalogPaged<{
+    isActive?: boolean | null;
+    degreeId?: number | null;
+    familyTypeId?: number | null;
+    rmuMin?: number | null;
+    rmuMax?: number | null;
+  }>('/api/v1/rh/occupational-group'),
+};
 
 // =============================================================================
 // API de Cargos
 // =============================================================================
 
-export const CargosAPI = createCrudService<any, any>('/api/v1/rh/jobs');
+export const CargosAPI = {
+  ...createCrudService<any, any>('/api/v1/rh/jobs'),
+
+  /** Listado paginado: búsqueda por palabras (sin tildes) y filtros por estado, grupo ocupacional, clasificación UEP y tipo de cargo. */
+  listPaged: catalogPaged<{
+    isActive?: boolean | null;
+    groupId?: number | null;
+    jobTypeId?: number | null;
+    uepScaleTypeId?: number | null;
+  }>('/api/v1/rh/jobs'),
+};
 
 // =============================================================================
 // API de Cargos Especializados
@@ -698,6 +753,12 @@ export const PersonnelActionsAPI = {
 
   getByEmployee: (employeeId: number): Promise<ApiResponse<PersonnelActionSummary[]>> =>
     apiFetch<PersonnelActionSummary[]>(`${PERSONNEL_ACTIONS_BASE}/by-employee/${employeeId}`),
+
+  /** Proceso Institucional, Nivel de Gestión y Lugar de trabajo vigentes del empleado (de su acción más reciente); sirve para precargar la situación actual. */
+  getCurrentClassification: (employeeId: number): Promise<ApiResponse<{ institutionalProcess: number | null; managementLevel: number | null; workplace: number | null }>> =>
+    apiFetch<{ institutionalProcess: number | null; managementLevel: number | null; workplace: number | null }>(
+      `${PERSONNEL_ACTIONS_BASE}/by-employee/${employeeId}/current-classification`,
+    ),
 
   create: (
     payload: CreatePersonnelActionRequest

@@ -35,6 +35,9 @@ export interface PersonnelActionDetail extends PersonnelActionSummary {
     originInstitutionalProcessName?: string | null;
     originManagementLevel?: number | null;
     originManagementLevelName?: string | null;
+    /** Lugar de trabajo de la situación de ORIGEN guardado en la acción (ref_Types AP_LUGAR_TRABAJO). */
+    originWorkplace?: number | null;
+    originWorkplaceName?: string | null;
 
     destinationDepartmentId?: number | null;
     destinationDepartmentName?: string | null;
@@ -144,6 +147,8 @@ export interface CreatePersonnelActionRequest {
     /** 0 / "" borra el valor guardado; null lo conserva (el backend no lo toca). */
     originInstitutionalProcess?: number | null;
     originManagementLevel?: number | null;
+    /** 0 borra el valor guardado; null lo conserva. */
+    originWorkplace?: number | null;
 
     destinationDepartmentId?: number | null;
     destinationJobId?: number | null;

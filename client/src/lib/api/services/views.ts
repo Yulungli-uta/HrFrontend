@@ -75,6 +75,8 @@ export interface VwJobWithDegreeAndGroup {
   degreeID?: number | null;
   degree?: string | null;
   degreeIsActive?: boolean | null;
+  /** Clasificación adicional (Escala UEP) del grupo ocupacional; vacía si el grupo no la tiene. */
+  uepScaleName?: string | null;
 }
 
 // =============================================================================

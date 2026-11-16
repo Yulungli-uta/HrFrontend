@@ -44,7 +44,13 @@ export function ActivityForm({
   };
 
   return (
-    <div className="space-y-4">
+    <form
+      className="space-y-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        handleSubmit();
+      }}
+    >
       <div>
         <Label className="text-sm font-medium">Tipo de actividad</Label>
         <div className="flex gap-2 text-xs">
@@ -64,6 +70,7 @@ export function ActivityForm({
       <div>
         <Label className="text-sm font-medium">Descripción *</Label>
         <Textarea
+          autoFocus
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
@@ -97,7 +104,7 @@ export function ActivityForm({
           <XCircle className="h-4 w-4 mr-1" />
           Cancelar
         </Button>
-        <Button type="button" onClick={handleSubmit} disabled={saving}>
+        <Button type="submit" disabled={saving || !description.trim()}>
           {saving ? (
             <>
               <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
@@ -111,6 +118,6 @@ export function ActivityForm({
           )}
         </Button>
       </div>
-    </div>
+    </form>
   );
 }

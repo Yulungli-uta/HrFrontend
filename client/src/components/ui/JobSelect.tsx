@@ -146,6 +146,7 @@ export function JobSelect({
                         {j.jobTypeName ?? '—'}
                         {' · '}
                         {j.occupationalGroup ?? '—'}
+                        {j.uepScaleName && !/uep/i.test(j.occupationalGroup ?? '') ? ` (${j.uepScaleName})` : ''}
                         {' · RMU '}
                         {j.rmu != null ? j.rmu.toLocaleString('es-EC', { minimumFractionDigits: 2 }) : '—'}
                       </p>

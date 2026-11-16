@@ -61,6 +61,8 @@ export const REF_TYPE_CATEGORIES = {
   JOB_TYPE: "JOB_TYPE",
   LABOR_REGIME: "LABOR_REGIME",
   UEP_SCALE_TYPE: "UEP_SCALE_TYPE",
+  /** Familia del grupo ocupacional (p. ej. "Personal Académico Titular"); dentro de una familia el grado no se repite. */
+  OCCUPATIONAL_GROUP_FAMILY: "OCCUPATIONAL_GROUP_FAMILY",
   WORK_MODALITY: "WORK_MODALITY",
   DOCUMENT_TYPE: "DOCUMENT_TYPE",
   PROCESS_ATTACHMENT_TYPE: "PROCESS_ATTACHMENT_TYPE",

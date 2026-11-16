@@ -11,10 +11,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import {
   Tabs,
   TabsContent,
@@ -22,34 +18,19 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 import {
-  Plus,
   Briefcase,
   ListChecks,
   Building2,
   GraduationCap,
   Wrench,
-  CheckCircle2,
-  XCircle,
-  Search,
-  Link2,
-  Link2Off,
   RefreshCw,
   LinkIcon,
 } from "lucide-react";
@@ -62,6 +43,8 @@ import {
   AdditionalActivityAPI,
   JobActivityAPI,
   type ApiResponse,
+  type PagedRequest,
+  type PagedResult,
 } from "@/lib/api";
 
 import { useToast } from "@/hooks/use-toast";
@@ -72,13 +55,16 @@ import {
   Job,
   JobActivity,
   OccupationalGroup,
-  normalizeActivity,
-  normalizeDegree,
   normalizeJob,
   normalizeJobActivity,
-  normalizeOccupationalGroup,
 } from "@/types/Job-activities";
 import { JobDetailForm } from "@/components/job-activities/JobDetailForm";
+import { JobsListPanel } from "@/components/job-activities/JobsListPanel";
+import { JobActivitiesAssignPanel } from "@/components/job-activities/JobActivitiesAssignPanel";
+import { DegreesPanel } from "@/components/job-activities/DegreesPanel";
+import { OccupationalGroupsPanel } from "@/components/job-activities/OccupationalGroupsPanel";
+import { ActivitiesPanel } from "@/components/job-activities/ActivitiesPanel";
+import { JOB_ACTIVITIES_KEYS, JOB_ACTIVITIES_QUERY_KEY } from "@/components/job-activities/queryKeys";
 import { DegreeForm } from "@/components/job-activities/DegreeForm";
 import { OccupationalGroupForm } from "@/components/job-activities/OccupationalGroupForm";
 import { ActivityForm } from "@/components/job-activities/ActivityForm";
@@ -94,6 +80,16 @@ function ensureSuccess<T>(res: ApiResponse<T>, defaultMessage: string): T {
   return res.data;
 }
 
+/** Total de registros de un catálogo (sin filtros) para las tarjetas: pide una página de 1 y lee `totalCount`. */
+function useCatalogTotal(key: string, fetcher: (params: PagedRequest) => Promise<ApiResponse<PagedResult<unknown>>>) {
+  const { data } = useQuery({
+    queryKey: [...JOB_ACTIVITIES_KEYS.counts, key],
+    queryFn: () => fetcher({ page: 1, pageSize: 1 }),
+    staleTime: 30_000,
+  });
+  return data?.status === "success" ? data.data.totalCount : null;
+}
+
 // =======================
 // COMPONENTE PRINCIPAL
 // =======================
@@ -103,9 +99,7 @@ export default function JobActivitiesPage() {
   const { toast } = useToast();
 
   // Estado de selección
-  const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
-  const [searchJob, setSearchJob] = useState("");
-  const [searchActivity, setSearchActivity] = useState("");
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
 
   // Dialogs
   const [isJobDialogOpen, setIsJobDialogOpen] = useState(false);
@@ -122,166 +116,43 @@ export default function JobActivitiesPage() {
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
 
   // ========================
-  // QUERIES
+  // CONSULTAS
   // ========================
+  // Cada listado (cargos, grados, grupos, actividades) es un panel con su propia consulta paginada y filtrada
+  // en el servidor. Aquí solo quedan los totales de las tarjetas y las actividades del cargo seleccionado.
 
-  const {
-    data: jobsRes,
-    isLoading: loadingJobs,
-    error: jobsError,
-  } = useQuery<ApiResponse<any[]>>({
-    queryKey: ["/api/v1/rh/jobs"],
-    queryFn: () => CargosAPI.list() as Promise<ApiResponse<any[]>>,
+  const jobsTotal = useCatalogTotal("jobs", CargosAPI.listPaged);
+  const degreesTotal = useCatalogTotal("degrees", DegreeAPI.listPaged);
+  const groupsTotal = useCatalogTotal("groups", OccupationalGroupAPI.listPaged);
+  const activitiesTotal = useCatalogTotal("activities", ActivityAPI.listPaged);
+
+  const { data: assignedRes } = useQuery<ApiResponse<any[]>>({
+    queryKey: [...JOB_ACTIVITIES_KEYS.assigned, selectedJob?.jobID ?? 0],
+    queryFn: () => JobActivityAPI.listByJob(selectedJob!.jobID),
+    enabled: !!selectedJob && selectedJob.jobID > 0,
   });
-
-  const {
-    data: degreesRes,
-    isLoading: loadingDegrees,
-    error: degreesError,
-  } = useQuery<ApiResponse<any[]>>({
-    queryKey: ["/api/v1/rh/degrees"],
-    queryFn: () => DegreeAPI.list() as Promise<ApiResponse<any[]>>,
-  });
-
-  const {
-    data: groupsRes,
-    isLoading: loadingGroups,
-    error: groupsError,
-  } = useQuery<ApiResponse<any[]>>({
-    queryKey: ["/api/v1/rh/occupational-group"],
-    queryFn: () =>
-      OccupationalGroupAPI.list() as Promise<ApiResponse<any[]>>,
-  });
-
-  const {
-    data: laboralActivitiesRes,
-    isLoading: loadingLaboralActivities,
-    error: laboralActivitiesError,
-  } = useQuery<ApiResponse<any[]>>({
-    queryKey: ["/api/v1/rh/activity"],
-    queryFn: () => ActivityAPI.list() as Promise<ApiResponse<any[]>>,
-  });
-
-  const {
-    data: additionalActivitiesRes,
-    isLoading: loadingAdditionalActivities,
-    error: additionalActivitiesError,
-  } = useQuery<ApiResponse<any[]>>({
-    queryKey: ["/api/v1/rh/additional-activity"],
-    queryFn: () =>
-      AdditionalActivityAPI.list() as Promise<ApiResponse<any[]>>,
-  });
-
-  const {
-    data: jobActivitiesRes,
-    isLoading: loadingJobActivities,
-    error: jobActivitiesError,
-  } = useQuery<ApiResponse<any[]>>({
-    queryKey: ["/api/v1/rh/job-activities"],
-    queryFn: () =>
-      JobActivityAPI.list() as Promise<ApiResponse<any[]>>,
-  });
-
-  // Normalización de datos desde API (robusto a camelCase/PascalCase)
-  const jobs: Job[] =
-    jobsRes?.status === "success"
-      ? jobsRes.data.map((j) => normalizeJob(j))
-      : [];
-
-  const degrees: Degree[] =
-    degreesRes?.status === "success"
-      ? degreesRes.data.map((d) => normalizeDegree(d))
-      : [];
-
-  const groups: OccupationalGroup[] =
-    groupsRes?.status === "success"
-      ? groupsRes.data.map((g) => normalizeOccupationalGroup(g))
-      : [];
-
-  const laboralActivities: Activity[] =
-    laboralActivitiesRes?.status === "success"
-      ? laboralActivitiesRes.data.map((a) => normalizeActivity(a))
-      : [];
-
-  const additionalActivities: Activity[] =
-    additionalActivitiesRes?.status === "success"
-      ? additionalActivitiesRes.data.map((a) => normalizeActivity(a))
-      : [];
 
   const jobActivities: JobActivity[] =
-    jobActivitiesRes?.status === "success"
-      ? jobActivitiesRes.data.map((ja) => normalizeJobActivity(ja))
-      : [];
+    assignedRes?.status === "success" ? assignedRes.data.map((ja) => normalizeJobActivity(ja)) : [];
 
-  // ========================
-  // DERIVADOS / MEMO
-  // ========================
-
-  const filteredJobs = useMemo(() => {
-    const term = searchJob.trim().toLowerCase();
-    if (!term) return jobs;
-
-    return jobs.filter((job) => {
-      const desc = job.description?.toLowerCase() ?? "";
-      return desc.includes(term);
-    });
-  }, [jobs, searchJob]);
-
-  const mapDegreeById = useMemo(
-    () =>
-      new Map<number, Degree>(
-        degrees.map((d) => [d.degreeId, d] as [number, Degree])
-      ),
-    [degrees]
+  const assignedActivityIds = useMemo(
+    () => new Set(jobActivities.filter((ja) => ja.isActive).map((ja) => ja.activitiesID)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [assignedRes]
   );
 
-  const mapGroupById = useMemo(
-    () =>
-      new Map<number, OccupationalGroup>(
-        groups.map((g) => [g.groupId, g] as [number, OccupationalGroup])
-      ),
-    [groups]
-  );
-
-  const selectedJob = useMemo(
-    () =>
-      selectedJobId != null
-        ? jobs.find((j) => j.jobID === selectedJobId) ?? null
-        : null,
-    [jobs, selectedJobId]
-  );
-
-  const allActivities: Activity[] = useMemo(
-    () => [
-      ...laboralActivities.map((a) => ({
-        ...a,
-        activitiesType: "LABORAL" as const,
-      })),
-      ...additionalActivities.map((a) => ({
-        ...a,
-        activitiesType: "ADICIONAL" as const,
-      })),
-    ],
-    [laboralActivities, additionalActivities]
-  );
-
-  const filteredActivities = useMemo(() => {
-    const term = searchActivity.trim().toLowerCase();
-    if (!term) return allActivities;
-
-    return allActivities.filter((a) =>
-      (a.description ?? "").toLowerCase().includes(term)
-    );
-  }, [allActivities, searchActivity]);
-
-  const assignedActivityIds = useMemo(() => {
-    if (!selectedJob) return new Set<number>();
-    return new Set(
-      jobActivities
-        .filter((ja) => ja.jobID === selectedJob.jobID && ja.isActive)
-        .map((ja) => ja.activitiesID)
-    );
-  }, [jobActivities, selectedJob]);
+  /** Refresca todos los listados de la pantalla (y las cachés antiguas que usan otras pantallas). */
+  const invalidateCatalogs = () => {
+    [
+      JOB_ACTIVITIES_QUERY_KEY,
+      ["/api/v1/rh/jobs"],
+      ["/api/v1/rh/degrees"],
+      ["/api/v1/rh/occupational-group"],
+      ["/api/v1/rh/activity"],
+      ["/api/v1/rh/additional-activity"],
+      ["/api/v1/rh/job-activities"],
+    ].forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));
+  };
 
   // ========================
   // MUTATIONS
@@ -309,7 +180,7 @@ export default function JobActivitiesPage() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/v1/rh/degrees"] });
+      invalidateCatalogs();
       toast({
         title: "✅ Grado guardado",
         description: "La información del grado se ha guardado correctamente.",
@@ -334,6 +205,7 @@ export default function JobActivitiesPage() {
       degreeId: number;
       rmu: number;
       uepScaleTypeId: number | null;
+      familyTypeId: number | null;
       isActive: boolean;
     }) => {
       const payload = {
@@ -341,6 +213,7 @@ export default function JobActivitiesPage() {
         degreeId: data.degreeId,
         rmu: data.rmu,
         uepScaleTypeId: data.uepScaleTypeId,
+        familyTypeId: data.familyTypeId,
         isActive: data.isActive,
       };
 
@@ -353,9 +226,7 @@ export default function JobActivitiesPage() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["/api/v1/rh/occupational-group"],
-      });
+      invalidateCatalogs();
       toast({
         title: "✅ Grupo ocupacional guardado",
         description: "El grupo ocupacional se ha guardado correctamente.",
@@ -404,17 +275,18 @@ export default function JobActivitiesPage() {
         return ensureSuccess(res, "Error al crear cargo");
       }
     },
-    onSuccess: (saved) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/v1/rh/jobs"] });
+    onSuccess: async (saved, variables) => {
+      invalidateCatalogs();
       toast({
         title: "✅ Cargo guardado",
         description: "Los datos del cargo se han guardado correctamente.",
       });
       setEditingJob(null);
       setIsJobDialogOpen(false);
-      const savedJob = normalizeJob(saved as any);
-      if (savedJob.jobID) {
-        setSelectedJobId(savedJob.jobID);
+      const savedId = normalizeJob(saved as any).jobID || variables.jobID || 0;
+      if (savedId > 0) {
+        const res = await CargosAPI.get(savedId);
+        if (res.status === "success") setSelectedJob(normalizeJob(res.data));
       }
     },
     onError: (error: unknown) => {
@@ -465,10 +337,8 @@ export default function JobActivitiesPage() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/v1/rh/activity"] });
-      queryClient.invalidateQueries({
-        queryKey: ["/api/v1/rh/additional-activity"],
-      });
+      invalidateCatalogs();
+      invalidateCatalogs();
       toast({
         title: "✅ Actividad guardada",
         description: "La actividad se ha guardado correctamente.",
@@ -496,7 +366,7 @@ export default function JobActivitiesPage() {
       return ensureSuccess(res, "Error al asignar actividad al cargo");
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/v1/rh/job-activities"] });
+      invalidateCatalogs();
     },
     onError: (error: unknown) => {
       toast({
@@ -517,7 +387,7 @@ export default function JobActivitiesPage() {
       return ensureSuccess(res, "Error al desasignar actividad");
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/v1/rh/job-activities"] });
+      invalidateCatalogs();
     },
     onError: (error: unknown) => {
       toast({
@@ -534,7 +404,7 @@ export default function JobActivitiesPage() {
 
   const handleSelectJob = (job: Job) => {
     if (!job.jobID) return;
-    setSelectedJobId(job.jobID);
+    setSelectedJob(job);
   };
 
   const handleOpenNewJob = () => {
@@ -615,13 +485,13 @@ export default function JobActivitiesPage() {
   };
 
   const handleOpenNewGroup = () => {
-    const defaultDegreeId = degrees[0]?.degreeId ?? 0;
     setEditingGroup({
       groupId: 0,
       description: "",
-      degreeId: defaultDegreeId,
+      degreeId: 0,
       rmu: 0,
       uepScaleTypeId: null,
+      familyTypeId: null,
       isActive: true,
       createdAt: "",
       updatedAt: null,
@@ -640,12 +510,21 @@ export default function JobActivitiesPage() {
     degreeId: number;
     rmu: number;
     uepScaleTypeId: number | null;
+    familyTypeId: number | null;
     isActive: boolean;
   }) => {
     if (!form.description.trim()) {
       toast({
         title: "Validación",
         description: "La descripción del grupo ocupacional es obligatoria.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!form.degreeId || form.degreeId <= 0) {
+      toast({
+        title: "Validación",
+        description: "Seleccione el grado asociado al grupo ocupacional.",
         variant: "destructive",
       });
       return;
@@ -746,66 +625,6 @@ export default function JobActivitiesPage() {
   };
 
   // ========================
-  // LOADING / ERROR SIMPLE
-  // ========================
-
-  const someLoading =
-    loadingJobs ||
-    loadingDegrees ||
-    loadingGroups ||
-    loadingLaboralActivities ||
-    loadingAdditionalActivities ||
-    loadingJobActivities;
-
-  if (someLoading && !jobs.length) {
-    return (
-      <div className="container mx-auto p-4 lg:p-6">
-        <div className="space-y-4">
-          <div className="h-8 w-64 bg-muted rounded animate-pulse" />
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <Card key={i} className="animate-pulse">
-                <CardHeader>
-                  <div className="h-4 w-1/2 bg-muted rounded" />
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="h-3 w-full bg-muted rounded" />
-                    <div className="h-3 w-2/3 bg-muted rounded" />
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const globalError =
-    jobsError ||
-    degreesError ||
-    groupsError ||
-    laboralActivitiesError ||
-    additionalActivitiesError ||
-    jobActivitiesError;
-
-  if (globalError) {
-    return (
-      <div className="container mx-auto p-4 lg:p-6">
-        <Card className="border-destructive/30 bg-destructive/10">
-          <CardContent className="pt-6">
-            <p className="text-destructive">
-              Error al cargar información de cargos/actividades. Revise la
-              conexión o intente nuevamente.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // ========================
   // RENDER
   // ========================
 
@@ -826,30 +645,7 @@ export default function JobActivitiesPage() {
         </div>
 
         <div className="flex flex-wrap gap-2 justify-end">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              queryClient.invalidateQueries({
-                queryKey: ["/api/v1/rh/jobs"],
-              });
-              queryClient.invalidateQueries({
-                queryKey: ["/api/v1/rh/degrees"],
-              });
-              queryClient.invalidateQueries({
-                queryKey: ["/api/v1/rh/occupational-group"],
-              });
-              queryClient.invalidateQueries({
-                queryKey: ["/api/v1/rh/activity"],
-              });
-              queryClient.invalidateQueries({
-                queryKey: ["/api/v1/rh/additional-activity"],
-              });
-              queryClient.invalidateQueries({
-                queryKey: ["/api/v1/rh/job-activities"],
-              });
-            }}
-          >
+          <Button variant="outline" size="sm" onClick={invalidateCatalogs}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Refrescar datos
           </Button>
@@ -866,7 +662,7 @@ export default function JobActivitiesPage() {
             <div>
               <p className="text-xs font-medium text-primary">Cargos</p>
               <p className="text-2xl font-bold text-primary">
-                {jobs.length}
+                {jobsTotal ?? "-"}
               </p>
             </div>
           </CardContent>
@@ -880,7 +676,7 @@ export default function JobActivitiesPage() {
             <div>
               <p className="text-xs font-medium text-indigo-900">Grados</p>
               <p className="text-2xl font-bold text-primary">
-                {degrees.length}
+                {degreesTotal ?? "-"}
               </p>
             </div>
           </CardContent>
@@ -896,7 +692,7 @@ export default function JobActivitiesPage() {
                 Grupos Ocupacionales
               </p>
               <p className="text-2xl font-bold text-success">
-                {groups.length}
+                {groupsTotal ?? "-"}
               </p>
             </div>
           </CardContent>
@@ -912,7 +708,7 @@ export default function JobActivitiesPage() {
                 Actividades totales
               </p>
               <p className="text-2xl font-bold text-secondary-foreground">
-                {allActivities.length}
+                {activitiesTotal ?? "-"}
               </p>
             </div>
           </CardContent>
@@ -932,111 +728,16 @@ export default function JobActivitiesPage() {
         {/* TAB CARGOS */}
         <TabsContent value="cargos" className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {/* Columna izquierda: listado de cargos */}
-            <Card className="lg:col-span-1">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <Briefcase className="h-5 w-5 text-primary" />
-                    Cargos
-                  </span>
-                  <Button
-                    size="sm"
-                    onClick={handleOpenNewJob}
-                    data-testid="button-add-job"
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Nuevo
-                  </Button>
-                </CardTitle>
-                <CardDescription>
-                  Seleccione un cargo para ver y editar su detalle y actividades.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="relative">
-                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    value={searchJob}
-                    onChange={(e) => setSearchJob(e.target.value)}
-                    placeholder="Buscar cargo por descripción..."
-                    className="pl-9"
-                  />
-                </div>
-                <ScrollArea className="h-[420px] border rounded-md">
-                  <Table>
-                    <TableBody>
-                      {filteredJobs.map((job) => {
-                        const group = job.groupId
-                          ? mapGroupById.get(job.groupId)
-                          : undefined;
-                        const isSelected = selectedJobId === job.jobID;
-                        return (
-                          <TableRow
-                            key={job.jobID || `job-${job.description}`}
-                            className={`cursor-pointer hover:bg-primary/10 ${
-                              isSelected ? "bg-primary/10/60" : ""
-                            }`}
-                            onClick={() => handleSelectJob(job)}
-                          >
-                            <TableCell className="align-top">
-                              <div className="flex flex-col">
-                                <span className="font-semibold text-sm">
-                                  {job.description || "(Sin descripción)"}
-                                </span>
-                                {group && (
-                                  <span className="text-xs text-muted-foreground">
-                                    Grupo: {group.description}
-                                  </span>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell className="w-[90px] text-right align-top">
-                              <Badge
-                                variant={
-                                  job.isActive ? "default" : "secondary"
-                                }
-                                className={
-                                  job.isActive
-                                    ? "bg-success/15 text-success"
-                                    : "bg-muted text-foreground"
-                                }
-                              >
-                                {job.isActive ? "Activo" : "Inactivo"}
-                              </Badge>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-7 w-7 mt-1"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleEditJob(job);
-                                }}
-                              >
-                                <Wrench className="h-4 w-4" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                      {filteredJobs.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={2} className="py-6 text-center">
-                            <p className="text-sm text-muted-foreground">
-                              No hay cargos que coincidan con la búsqueda.
-                            </p>
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </ScrollArea>
-              </CardContent>
-            </Card>
+            {/* Columna izquierda: listado de cargos (búsqueda y filtros en el servidor, paginado) */}
+            <JobsListPanel
+              selectedJobId={selectedJob?.jobID ?? null}
+              onSelect={handleSelectJob}
+              onNew={handleOpenNewJob}
+              onEdit={handleEditJob}
+            />
 
             {/* Columna derecha: detalle del cargo + actividades */}
             <div className="lg:col-span-2 space-y-4">
-              {/* Detalle del cargo */}
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2">
@@ -1044,8 +745,7 @@ export default function JobActivitiesPage() {
                     Detalle del cargo
                   </CardTitle>
                   <CardDescription>
-                    Edite la información básica del cargo. Los cambios afectan
-                    todos los procesos que usan este cargo.
+                    Edite la información básica del cargo. Los cambios afectan todos los procesos que usan este cargo.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -1053,20 +753,17 @@ export default function JobActivitiesPage() {
                     <JobDetailForm
                       key={selectedJob.jobID} // clave para forzar reinit al cambiar cargo
                       job={selectedJob}
-                      groups={groups}
                       onSave={handleSaveJob}
                       saving={jobMutation.isPending}
                     />
                   ) : (
                     <p className="text-sm text-muted-foreground">
-                      Seleccione un cargo en el panel izquierdo para ver su
-                      detalle.
+                      Seleccione un cargo en el panel izquierdo para ver su detalle.
                     </p>
                   )}
                 </CardContent>
               </Card>
 
-              {/* Asignación de actividades */}
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2">
@@ -1074,134 +771,25 @@ export default function JobActivitiesPage() {
                     Actividades asociadas al cargo
                   </CardTitle>
                   <CardDescription>
-                    Asigne o quite actividades laborales y adicionales para el
-                    cargo seleccionado.
+                    Asigne o quite actividades laborales y adicionales para el cargo seleccionado.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {selectedJob ? (
                     <>
-                      <div className="flex flex-col md:flex-row gap-3 md:items-center justify-between">
-                        <div className="text-sm">
-                          <span className="font-semibold">
-                            Cargo seleccionado:
-                          </span>{" "}
-                          {selectedJob.description || "(Sin descripción)"}
-                        </div>
-                        <div className="relative md:w-64">
-                          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            value={searchActivity}
-                            onChange={(e) =>
-                              setSearchActivity(e.target.value)
-                            }
-                            placeholder="Filtrar actividades..."
-                            className="pl-9"
-                          />
-                        </div>
+                      <div className="text-sm">
+                        <span className="font-semibold">Cargo seleccionado:</span>{" "}
+                        {selectedJob.description || "(Sin descripción)"}
                       </div>
-
-                      <ScrollArea className="h-[280px] border rounded-md">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Actividad</TableHead>
-                              <TableHead className="w-[110px]">Tipo</TableHead>
-                              <TableHead className="w-[130px] text-center">
-                                Estado
-                              </TableHead>
-                              <TableHead className="w-[120px] text-center">
-                                Acción
-                              </TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {filteredActivities.map((act) => {
-                              const isAssigned = assignedActivityIds.has(
-                                act.activitiesID
-                              );
-                              const isWorking =
-                                assignMutation.isPending ||
-                                unassignMutation.isPending;
-
-                              return (
-                                <TableRow key={act.activitiesID}>
-                                  <TableCell>
-                                    <div className="text-sm">
-                                      {act.description || "(Sin descripción)"}
-                                    </div>
-                                  </TableCell>
-                                  <TableCell>
-                                    <Badge
-                                      variant="outline"
-                                      className={
-                                        act.activitiesType === "LABORAL"
-                                          ? "bg-primary/10 text-primary border-primary/30"
-                                          : "bg-secondary/10 text-secondary-foreground border-warning/30"
-                                      }
-                                    >
-                                      {act.activitiesType === "LABORAL"
-                                        ? "Laboral"
-                                        : "Adicional"}
-                                    </Badge>
-                                  </TableCell>
-                                  <TableCell className="text-center">
-                                    {isAssigned ? (
-                                      <Badge className="bg-success/15 text-success">
-                                        Asignada
-                                      </Badge>
-                                    ) : (
-                                      <Badge
-                                        variant="outline"
-                                        className="text-muted-foreground"
-                                      >
-                                        No asignada
-                                      </Badge>
-                                    )}
-                                  </TableCell>
-                                  <TableCell className="text-center">
-                                    <Button
-                                      size="sm"
-                                      variant={
-                                        isAssigned ? "outline" : "default"
-                                      }
-                                      disabled={isWorking}
-                                      onClick={() => handleToggleAssign(act)}
-                                    >
-                                      {isAssigned ? (
-                                        <>
-                                          <Link2Off className="h-4 w-4 mr-1" />
-                                          Quitar
-                                        </>
-                                      ) : (
-                                        <>
-                                          <Link2 className="h-4 w-4 mr-1" />
-                                          Asignar
-                                        </>
-                                      )}
-                                    </Button>
-                                  </TableCell>
-                                </TableRow>
-                              );
-                            })}
-                            {filteredActivities.length === 0 && (
-                              <TableRow>
-                                <TableCell
-                                  colSpan={4}
-                                  className="text-center py-6 text-sm text-muted-foreground"
-                                >
-                                  No hay actividades que coincidan con el filtro.
-                                </TableCell>
-                              </TableRow>
-                            )}
-                          </TableBody>
-                        </Table>
-                      </ScrollArea>
+                      <JobActivitiesAssignPanel
+                        assignedIds={assignedActivityIds}
+                        isWorking={assignMutation.isPending || unassignMutation.isPending}
+                        onToggle={handleToggleAssign}
+                      />
                     </>
                   ) : (
                     <p className="text-sm text-muted-foreground">
-                      Seleccione primero un cargo para gestionar sus actividades
-                      asociadas.
+                      Seleccione primero un cargo para gestionar sus actividades asociadas.
                     </p>
                   )}
                 </CardContent>
@@ -1212,314 +800,15 @@ export default function JobActivitiesPage() {
 
         {/* TAB CLASIFICACIONES */}
         <TabsContent value="clasificaciones" className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* GRADOS */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <GraduationCap className="h-5 w-5 text-primary" />
-                    Grados
-                  </span>
-                  <Button size="sm" onClick={handleOpenNewDegree}>
-                    <Plus className="h-4 w-4 mr-1" />
-                    Nuevo
-                  </Button>
-                </CardTitle>
-                <CardDescription>
-                  Grados académicos / jerárquicos utilizados para agrupar puestos
-                  y grupos ocupacionales.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-[360px] border rounded-md">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Descripción</TableHead>
-                        <TableHead className="w-[120px] text-right">
-                          Estado
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {degrees.map((deg) => (
-                        <TableRow
-                          key={deg.degreeId}
-                          className="cursor-pointer hover:bg-primary/10"
-                          onClick={() => handleOpenEditDegree(deg)}
-                        >
-                          <TableCell>
-                            <span className="text-sm font-medium">
-                              {deg.description}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Badge
-                              variant={
-                                deg.isActive ? "default" : "secondary"
-                              }
-                              className={
-                                deg.isActive
-                                  ? "bg-success/15 text-success"
-                                  : "bg-muted text-foreground"
-                              }
-                            >
-                              {deg.isActive ? "Activo" : "Inactivo"}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      {degrees.length === 0 && (
-                        <TableRow>
-                          <TableCell
-                            colSpan={2}
-                            className="text-center py-6 text-sm text-muted-foreground"
-                          >
-                            No hay grados registrados.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-
-            {/* GRUPOS OCUPACIONALES */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <Building2 className="h-5 w-5 text-success" />
-                    Grupos Ocupacionales
-                  </span>
-                  <Button size="sm" onClick={handleOpenNewGroup}>
-                    <Plus className="h-4 w-4 mr-1" />
-                    Nuevo
-                  </Button>
-                </CardTitle>
-                <CardDescription>
-                  Grupos que agrupan puestos según nivel, RMU y grado asociado.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-[360px] border rounded-md">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Descripción</TableHead>
-                        <TableHead>Grado</TableHead>
-                        <TableHead className="w-[110px] text-right">
-                          RMU
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {groups.map((g) => {
-                        const degree = mapDegreeById.get(g.degreeId);
-                        return (
-                          <TableRow
-                            key={g.groupId}
-                            className="cursor-pointer hover:bg-emerald-50"
-                            onClick={() => handleOpenEditGroup(g)}
-                          >
-                            <TableCell>
-                              <div className="flex flex-col">
-                                <span className="text-sm font-medium">
-                                  {g.description}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                  ID: {g.groupId}
-                                </span>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <span className="text-xs">
-                                {degree?.description ?? "-"}
-                              </span>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <span className="font-mono text-sm">
-                                ${g.rmu.toFixed(2)}
-                              </span>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                      {groups.length === 0 && (
-                        <TableRow>
-                          <TableCell
-                            colSpan={3}
-                            className="text-center py-6 text-sm text-muted-foreground"
-                          >
-                            No hay grupos ocupacionales registrados.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </ScrollArea>
-              </CardContent>
-            </Card>
+          <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+            <DegreesPanel onNew={handleOpenNewDegree} onEdit={handleOpenEditDegree} />
+            <OccupationalGroupsPanel onNew={handleOpenNewGroup} onEdit={handleOpenEditGroup} />
           </div>
         </TabsContent>
 
         {/* TAB ACTIVIDADES */}
         <TabsContent value="actividades" className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-1 gap-4">
-            {/* ACTIVIDADES LABORALES */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <ListChecks className="h-5 w-5 text-primary" />
-                    Actividades laborales
-                  </span>
-                  <Button
-                    size="sm"
-                    onClick={() => handleOpenNewActivity("LABORAL")}
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Nueva
-                  </Button>
-                </CardTitle>
-                <CardDescription>
-                  Actividades propias del perfil del cargo, consideradas en la
-                  descripción de puesto.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-[360px] border rounded-md">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Descripción</TableHead>
-                        <TableHead className="w-[100px] text-right">
-                          Estado
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {laboralActivities.map((act) => (
-                        <TableRow
-                          key={act.activitiesID}
-                          className="cursor-pointer hover:bg-primary/10"
-                          onClick={() => handleOpenEditActivity(act)}
-                        >
-                          <TableCell>
-                            <span className="text-sm">
-                              {act.description || "(Sin descripción)"}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Badge
-                              variant={
-                                act.isActive ? "default" : "secondary"
-                              }
-                              className={
-                                act.isActive
-                                  ? "bg-success/15 text-success"
-                                  : "bg-muted text-foreground"
-                              }
-                            >
-                              {act.isActive ? "Activa" : "Inactiva"}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      {laboralActivities.length === 0 && (
-                        <TableRow>
-                          <TableCell
-                            colSpan={2}
-                            className="text-center py-6 text-sm text-muted-foreground"
-                          >
-                            No hay actividades laborales registradas.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-
-            {/* ACTIVIDADES ADICIONALES */}
-            {/* <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <ListChecks className="h-5 w-5 text-secondary-foreground" />
-                    Actividades adicionales
-                  </span>
-                  <Button
-                    size="sm"
-                    onClick={() => handleOpenNewActivity("ADICIONAL")}
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Nueva
-                  </Button>
-                </CardTitle>
-                <CardDescription>
-                  Actividades complementarias o adicionales que puede ejecutar
-                  el servidor público.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-[360px] border rounded-md">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Descripción</TableHead>
-                        <TableHead className="w-[100px] text-right">
-                          Estado
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {additionalActivities.map((act) => (
-                        <TableRow
-                          key={act.activitiesID}
-                          className="cursor-pointer hover:bg-secondary/10"
-                          onClick={() => handleOpenEditActivity(act)}
-                        >
-                          <TableCell>
-                            <span className="text-sm">
-                              {act.description || "(Sin descripción)"}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Badge
-                              variant={
-                                act.isActive ? "default" : "secondary"
-                              }
-                              className={
-                                act.isActive
-                                  ? "bg-success/15 text-success"
-                                  : "bg-muted text-foreground"
-                              }
-                            >
-                              {act.isActive ? "Activa" : "Inactiva"}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      {additionalActivities.length === 0 && (
-                        <TableRow>
-                          <TableCell
-                            colSpan={2}
-                            className="text-center py-6 text-sm text-muted-foreground"
-                          >
-                            No hay actividades adicionales registradas.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </ScrollArea>
-              </CardContent>
-            </Card> */}
-          </div>
+          <ActivitiesPanel onNew={() => handleOpenNewActivity("LABORAL")} onEdit={handleOpenEditActivity} />
         </TabsContent>
       </Tabs>
 
@@ -1544,7 +833,6 @@ export default function JobActivitiesPage() {
             <JobDetailForm
               key={editingJob.jobID || "nuevo"}
               job={editingJob}
-              groups={groups}
               inlineMode={false}
               onSave={handleSaveJob}
               saving={jobMutation.isPending}
@@ -1559,7 +847,7 @@ export default function JobActivitiesPage() {
 
       {/* Dialog Grado */}
       <Dialog open={isDegreeDialogOpen} onOpenChange={setIsDegreeDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="flex max-h-[90vh] w-[calc(100%-2rem)] flex-col sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <GraduationCap className="h-5 w-5 text-primary" />
@@ -1589,7 +877,7 @@ export default function JobActivitiesPage() {
 
       {/* Dialog Grupo Ocupacional */}
       <Dialog open={isGroupDialogOpen} onOpenChange={setIsGroupDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="flex max-h-[90vh] w-[calc(100%-2rem)] flex-col sm:max-w-xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Building2 className="h-5 w-5 text-success" />
@@ -1606,7 +894,6 @@ export default function JobActivitiesPage() {
             <OccupationalGroupForm
               key={editingGroup.groupId || "nuevo"}
               group={editingGroup}
-              degrees={degrees}
               saving={groupMutation.isPending}
               onSave={handleSaveGroup}
               onCancel={() => {

@@ -1,5 +1,33 @@
 import type { Config } from "tailwindcss";
 
+/**
+ * Los tokens de color (--primary, --success, …) son colores COMPLETOS (hsl(...)), no canales sueltos, por lo que Tailwind
+ * no puede aplicarles opacidad: sin esto, clases como `bg-primary/10`, `hover:bg-primary/90` o `border-destructive/30`
+ * no generaban CSS y quedaban transparentes. Cada token se declara como función que, cuando hay modificador de opacidad,
+ * usa color-mix; sin modificador devuelve el color tal cual.
+ */
+type AlphaColor = (options: { opacityValue?: string | number }) => string;
+const withAlpha = (cssVar: string): AlphaColor => ({ opacityValue }) => {
+  // Sin modificador Tailwind pasa `undefined` o su variable interna de opacidad: se devuelve el color tal cual.
+  if (opacityValue === undefined) return `var(${cssVar})`;
+  const raw = String(opacityValue);
+  if (raw.includes("var(")) return `var(${cssVar})`;
+  const numeric = Number(raw);
+  const percent = Number.isNaN(numeric) ? `calc(${raw} * 100%)` : `${Math.round(numeric * 10000) / 100}%`;
+  return `color-mix(in srgb, var(${cssVar}) ${percent}, transparent)`;
+};
+/** Convierte recursivamente cada "var(--x)" de un grupo de colores en su versión con soporte de opacidad. */
+const alphaTokens = <T extends Record<string, unknown>>(colors: T): T =>
+  Object.fromEntries(
+    Object.entries(colors).map(([key, value]) => {
+      if (typeof value === "string") {
+        const match = /^var\((--[\w-]+)\)$/.exec(value);
+        return [key, match ? withAlpha(match[1]) : value];
+      }
+      return [key, value && typeof value === "object" ? alphaTokens(value as Record<string, unknown>) : value];
+    }),
+  ) as T;
+
 export default {
   darkMode: ["class"],
   //content: ["./client/index.html", "./client/src/**/*.{js,jsx,ts,tsx}"],
@@ -14,7 +42,7 @@ export default {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
-      colors: {
+      colors: alphaTokens({
         background: "var(--background)",
         foreground: "var(--foreground)",
         card: {
@@ -81,7 +109,7 @@ export default {
           light: "#fb923c",
           dark: "#ea580c",
         },
-      },
+      }),
       fontFamily: {
         sans: ["var(--font-sans)"],
         serif: ["var(--font-serif)"],

@@ -15,6 +15,8 @@ export interface OccupationalGroup {
   degreeId: number;
   /** FK a ref_Types (Category='UEP_SCALE_TYPE') — clasificación "Escala UEP" adicional, cuando aplica. */
   uepScaleTypeId: number | null;
+  /** FK a ref_Types (Category='OCCUPATIONAL_GROUP_FAMILY') — familia del grupo; null en los grupos de la escala LOSEP. */
+  familyTypeId: number | null;
   isActive: boolean;
   createdAt?: string;
   updatedAt?: string | null;
@@ -89,6 +91,7 @@ export function normalizeOccupationalGroup(raw: any): OccupationalGroup {
       raw.degreeId ?? raw.DegreeId ?? raw.degreeID ?? 0,
     uepScaleTypeId:
       raw.uepScaleTypeId ?? raw.UepScaleTypeId ?? raw.uepScaleTypeID ?? null,
+    familyTypeId: raw.familyTypeId ?? raw.FamilyTypeId ?? null,
     isActive: raw.isActive ?? raw.IsActive ?? true,
     createdAt: raw.createdAt ?? raw.CreatedAt,
     updatedAt: raw.updatedAt ?? raw.UpdatedAt ?? null,

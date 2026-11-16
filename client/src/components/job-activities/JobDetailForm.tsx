@@ -7,9 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, RefreshCw, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Link2, RefreshCw, XCircle } from "lucide-react";
 
-import type { Job, OccupationalGroup } from "@/types/Job-activities";
+import type { Job } from "@/types/Job-activities";
+import { OccupationalGroupCombobox } from "./catalogCombos";
+import { academicGroupName, parseLadderLevel } from "./academicGroups";
+import { findAcademicGroup } from "./academicGroupLookup";
+import { JOB_ACTIVITIES_KEYS } from "./queryKeys";
+import { useGroupDetails } from "./useCatalogLabels";
 import { AcademicLadderAPI, type ApiResponse } from "@/lib/api";
 import type { AcademicLadderDto } from "@/lib/api/services/catalogs";
 import { useRefTypesByCategory } from "@/hooks/useRefTypes";
@@ -19,7 +24,6 @@ import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 
 interface JobDetailFormProps {
   job: Job;
-  groups: OccupationalGroup[];
   saving: boolean;
   onSave: (data: {
     jobID?: number;
@@ -58,7 +62,6 @@ function ensureSuccess<T>(res: ApiResponse<T>, defaultMessage: string): T {
 
 export function JobDetailForm({
   job,
-  groups,
   saving,
   onSave,
   inlineMode = true,
@@ -130,6 +133,46 @@ export function JobDetailForm({
   const activeAcademicLadders = (academicLadders ?? []).filter((l) => l.isActive !== false);
 
   // ===========================
+  // GRUPO QUE CORRESPONDE AL ESCALÓN (personal académico titular)
+  // El escalón da categoría y nivel; el grupo aporta el grado escalafonario y el RMU. Deben coincidir.
+  // ===========================
+
+  const selectedLadder = activeAcademicLadders.find((l) => String(l.ladderId) === academicLadderId);
+  const ladderLevel = parseLadderLevel(selectedLadder?.name);
+  const groupDetails = useGroupDetails([groupId ? Number(groupId) : null]);
+  const currentGroup = groupId ? groupDetails.get(Number(groupId)) : undefined;
+  const currentGroupName = currentGroup?.description;
+  const { data: uepScaleTypes } = useRefTypesByCategory(REF_TYPE_CATEGORIES.UEP_SCALE_TYPE);
+  const currentUepName = currentGroup?.uepScaleTypeId ? uepScaleTypes.find((t) => t.typeId === currentGroup.uepScaleTypeId)?.name : undefined;
+
+  const { data: expectedGroup } = useQuery({
+    queryKey: [...JOB_ACTIVITIES_KEYS.labels, "expected-group", ladderLevel?.category, ladderLevel?.level],
+    queryFn: () => findAcademicGroup(ladderLevel!),
+    enabled: !!ladderLevel,
+    staleTime: 10 * 60 * 1000,
+  });
+
+  // Aviso solo cuando el grupo elegido ya se conoce (o está vacío) y no es el del escalón.
+  const groupDiffers =
+    !!ladderLevel && !!expectedGroup && Number(groupId || 0) !== expectedGroup.groupId && (!groupId || !!currentGroupName);
+
+  const [autoLinkedGroup, setAutoLinkedGroup] = useState<string | null>(null);
+
+  /** Al elegir un escalón de titular, el grupo se asigna solo; el usuario puede cambiarlo y el aviso lo señala. */
+  const handleLadderChange = async (value: string) => {
+    setAcademicLadderId(value);
+    setAutoLinkedGroup(null);
+    const ladder = activeAcademicLadders.find((l) => String(l.ladderId) === value);
+    const level = parseLadderLevel(ladder?.name);
+    if (!level) return;
+    const group = await findAcademicGroup(level);
+    if (group) {
+      setGroupId(String(group.groupId));
+      setAutoLinkedGroup(group.description);
+    }
+  };
+
+  // ===========================
   // SINCRONIZAR FORM AL CAMBIAR CARGO
   // ===========================
 
@@ -177,7 +220,13 @@ export function JobDetailForm({
   };
 
   return (
-    <div className="space-y-4">
+    <form
+      className="space-y-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        handleSubmit();
+      }}
+    >
       {/* DESCRIPCIÓN DEL CARGO */}
       <div>
         <Label className="text-sm font-medium">Descripción del cargo *</Label>
@@ -187,6 +236,7 @@ export function JobDetailForm({
           rows={3}
           placeholder="Ej: COORDINADOR DE TALENTO HUMANO"
         />
+        <p className="mt-1 text-xs text-muted-foreground">El cargo se guarda en mayúsculas.</p>
       </div>
 
       {/* GRUPO OCUPACIONAL + TIPO DE CARGO */}
@@ -194,20 +244,50 @@ export function JobDetailForm({
         {/* Grupo ocupacional */}
         <div>
           <Label className="text-sm font-medium">Grupo ocupacional</Label>
-          <select
-            className="border border-input rounded-md px-3 py-2 text-sm w-full bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            value={groupId}
-            onChange={(e) => setGroupId(e.target.value)}
-          >
-            <option key="no-group" value="">
-              (sin grupo)
-            </option>
-            {groups.map((g) => (
-              <option key={g.groupId} value={g.groupId}>
-                {g.description} – ${g.rmu.toFixed(2)}
-              </option>
-            ))}
-          </select>
+          <OccupationalGroupCombobox
+            value={groupId ? Number(groupId) : null}
+            onChange={(id) => setGroupId(id ? String(id) : "")}
+            placeholder="(sin grupo)"
+            clearLabel="(sin grupo)"
+          />
+          {currentUepName && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Clasificación adicional (UEP): <strong className="text-foreground">{currentUepName}</strong>
+            </p>
+          )}
+          {autoLinkedGroup && !groupDiffers && (
+            <p className="mt-1 flex items-center gap-1 text-xs text-success">
+              <Link2 className="h-3 w-3" /> Asignado según el escalón docente.
+            </p>
+          )}
+          {groupDiffers && expectedGroup && ladderLevel && (
+            <div
+              role="alert"
+              className="mt-2 flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 p-2 text-xs text-foreground"
+            >
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+              <div className="space-y-1">
+                <p>
+                  {groupId
+                    ? "El grupo elegido no corresponde al escalón docente."
+                    : "Este escalón docente tiene un grupo ocupacional."}{" "}
+                  Corresponde: <strong>{academicGroupName(ladderLevel)}</strong>.
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-7"
+                  onClick={() => {
+                    setGroupId(String(expectedGroup.groupId));
+                    setAutoLinkedGroup(expectedGroup.description);
+                  }}
+                >
+                  Usar ese grupo
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Tipo de cargo (ref_Types CONTRACT_TYPE) */}
@@ -317,7 +397,7 @@ export function JobDetailForm({
           <select
             className="border border-input rounded-md px-3 py-2 text-sm w-full bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             value={academicLadderId}
-            onChange={(e) => setAcademicLadderId(e.target.value)}
+            onChange={(e) => void handleLadderChange(e.target.value)}
             disabled={loadingAcademicLadders || !!academicLaddersError}
           >
             {loadingAcademicLadders && (
@@ -391,7 +471,7 @@ export function JobDetailForm({
             Cancelar
           </Button>
         )}
-        <Button type="button" onClick={handleSubmit} disabled={saving}>
+        <Button type="submit" disabled={saving || !description.trim()}>
           {saving ? (
             <>
               <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
@@ -405,6 +485,6 @@ export function JobDetailForm({
           )}
         </Button>
       </div>
-    </div>
+    </form>
   );
 }

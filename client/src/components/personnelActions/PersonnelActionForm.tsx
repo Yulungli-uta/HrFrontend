@@ -1,7 +1,7 @@
 // src/components/personnelActions/PersonnelActionForm.tsx
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
@@ -104,6 +104,7 @@ const schema = z.object({
   originBudgetProgramCode: z.string().max(60, 'No puede exceder 60 caracteres').optional(),
   originInstitutionalProcess: z.coerce.number().optional().nullable(),
   originManagementLevel:      z.coerce.number().optional().nullable(),
+  originWorkplace:            z.coerce.number().optional().nullable(),
   destinationDepartmentId: z.coerce.number().optional().nullable(),
   destinationJobId:        z.coerce.number().optional().nullable(),
   destinationBudgetCode:   z.string().max(50, 'No puede exceder 50 caracteres').optional(),
@@ -400,6 +401,7 @@ export function PersonnelActionForm({
       originBudgetProgramCode: defaultValues?.originBudgetProgramCode ?? '',
       originInstitutionalProcess: defaultValues?.originInstitutionalProcess ?? null,
       originManagementLevel:      defaultValues?.originManagementLevel ?? null,
+      originWorkplace:            defaultValues?.originWorkplace ?? null,
       destinationDepartmentId: defaultValues?.destinationDepartmentId ?? null,
       destinationJobId:        defaultValues?.destinationJobId ?? null,
       destinationBudgetCode:   defaultValues?.destinationBudgetCode ?? '',
@@ -446,6 +448,7 @@ export function PersonnelActionForm({
       originBudgetProgramCode: defaultValues.originBudgetProgramCode ?? '',
       originInstitutionalProcess: defaultValues.originInstitutionalProcess ?? null,
       originManagementLevel:      defaultValues.originManagementLevel ?? null,
+      originWorkplace:            defaultValues.originWorkplace ?? null,
       destinationDepartmentId: defaultValues.destinationDepartmentId ?? null,
       destinationJobId:        defaultValues.destinationJobId ?? null,
       destinationBudgetCode:   defaultValues.destinationBudgetCode ?? '',
@@ -477,6 +480,50 @@ export function PersonnelActionForm({
   const watchedEmployeeId       = form.watch('employeeId');
   const watchedActionDate       = form.watch('actionDate');
   const watchedNotificationEnabled = form.watch('notificationEnabled');
+  // Campos de origen que se precargaron solos desde la situación vigente del empleado: solo esos quedan de solo lectura.
+  // Lo que el usuario elige a mano sigue siendo editable.
+  const [autoFilledOrigin, setAutoFilledOrigin] = useState({ process: false, level: false, workplace: false });
+  // Valores que la acción ya trae guardados al abrirla (edición): también quedan bloqueados; los vacíos se pueden elegir.
+  const savedOrigin = {
+    process: !!defaultValues?.originInstitutionalProcess,
+    level: !!defaultValues?.originManagementLevel,
+    workplace: !!defaultValues?.originWorkplace,
+  };
+
+  // Acción nueva: la clasificación actual del empleado (Proceso Institucional y Nivel de Gestión) es la que quedó como
+  // propuesta en su acción más reciente. Se precarga para que se vea la que corresponde; si no hay ninguna queda vacía y
+  // el campo se habilita para elegirla. Lo que el usuario ya eligió no se pisa.
+  const { data: currentClassification } = useQuery({
+    queryKey: ['personnel-action-current-classification', watchedEmployeeId],
+    queryFn: async () => {
+      const res = await PersonnelActionsAPI.getCurrentClassification(Number(watchedEmployeeId));
+      return res.status === 'success' ? res.data : null;
+    },
+    // En corrección o histórico no se precarga: el usuario registra la situación de origen que tenía el documento original.
+    enabled: !isEdit && !allowOriginRmuEdit && !!watchedEmployeeId && Number(watchedEmployeeId) > 0,
+    staleTime: 60 * 1000,
+  });
+  useEffect(() => {
+    if (!currentClassification) return;
+    const filled = { process: false, level: false, workplace: false };
+    if (!form.getValues('originInstitutionalProcess') && currentClassification.institutionalProcess) {
+      form.setValue('originInstitutionalProcess', currentClassification.institutionalProcess);
+      filled.process = true;
+    }
+    if (!form.getValues('originManagementLevel') && currentClassification.managementLevel) {
+      form.setValue('originManagementLevel', currentClassification.managementLevel);
+      filled.level = true;
+    }
+    if (!form.getValues('originWorkplace') && currentClassification.workplace) {
+      form.setValue('originWorkplace', currentClassification.workplace);
+      filled.workplace = true;
+    }
+    setAutoFilledOrigin((prev) => ({
+      process: prev.process || filled.process,
+      level: prev.level || filled.level,
+      workplace: prev.workplace || filled.workplace,
+    }));
+  }, [currentClassification, watchedEmployeeId, form]);
 
   // Tipos de acción en dos niveles: el primer desplegable lista los tipos raíz y, si el elegido tiene series hijas
   // activas (ej. "Licencia"), aparece un segundo desplegable con ellas. El tipo que se guarda es el último elegido.
@@ -579,6 +626,8 @@ export function PersonnelActionForm({
     form.setValue('originBudgetProgramCode', '');
     form.setValue('originInstitutionalProcess', null);
     form.setValue('originManagementLevel', null);
+    form.setValue('originWorkplace', null);
+    setAutoFilledOrigin({ process: false, level: false, workplace: false });
 
     setResolvingEmployee(true);
     try {
@@ -648,6 +697,7 @@ export function PersonnelActionForm({
     originBudgetProgramCode:    values.originBudgetProgramCode ?? '',
     originInstitutionalProcess: values.originInstitutionalProcess ?? 0,
     originManagementLevel:      values.originManagementLevel ?? 0,
+    originWorkplace:            values.originWorkplace ?? 0,
     destinationDepartmentId: values.destinationDepartmentId ?? null,
     destinationJobId:        values.destinationJobId ?? null,
     destinationBudgetCode:   values.destinationBudgetCode || null,
@@ -1357,9 +1407,10 @@ export function PersonnelActionForm({
                   </FormItem>
                 )}
               />
-              {/* Proceso institucional y nivel de gestión de la situación de ORIGEN: solo se editan al
-                  corregir o ingresar un histórico; en una acción nueva el backend los toma de la
-                  situación vigente del empleado (se muestran deshabilitados). */}
+              {/* Proceso institucional y nivel de gestión de la situación de ORIGEN: en una acción nueva se
+                  precargan con la situación vigente del empleado (su acción más reciente) y esos valores quedan de solo
+                  lectura; si el empleado no tiene ninguno, el campo queda vacío y habilitado para elegirlo (y lo elegido
+                  sigue editable). Al corregir o ingresar un histórico (allowOriginRmuEdit) siempre son editables. */}
               <FormField
                 control={form.control}
                 name="originInstitutionalProcess"
@@ -1367,7 +1418,7 @@ export function PersonnelActionForm({
                   <FormItem>
                     <FormLabel>Proceso Institucional</FormLabel>
                     <Select
-                      disabled={!allowOriginRmuEdit || isBusy}
+                      disabled={isBusy || (!allowOriginRmuEdit && (autoFilledOrigin.process || savedOrigin.process))}
                       value={field.value ? String(field.value) : 'none'}
                       onValueChange={(v) => field.onChange(v === 'none' ? null : Number(v))}
                     >
@@ -1377,7 +1428,7 @@ export function PersonnelActionForm({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="none">{allowOriginRmuEdit ? '— Sin categoría —' : 'Auto (situación vigente)'}</SelectItem>
+                        <SelectItem value="none">— Sin categoría —</SelectItem>
                         {institutionalProcessOptions.map((t) => {
                           const id = String(t.typeID ?? (t as any).typeId);
                           return (
@@ -1399,7 +1450,7 @@ export function PersonnelActionForm({
                   <FormItem>
                     <FormLabel>Nivel de Gestión</FormLabel>
                     <Select
-                      disabled={!allowOriginRmuEdit || isBusy}
+                      disabled={isBusy || (!allowOriginRmuEdit && (autoFilledOrigin.level || savedOrigin.level))}
                       value={field.value ? String(field.value) : 'none'}
                       onValueChange={(v) => field.onChange(v === 'none' ? null : Number(v))}
                     >
@@ -1409,8 +1460,42 @@ export function PersonnelActionForm({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="none">{allowOriginRmuEdit ? '— Sin categoría —' : 'Auto (situación vigente)'}</SelectItem>
+                        <SelectItem value="none">— Sin categoría —</SelectItem>
                         {managementLevelOptions.map((t) => {
+                          const id = String(t.typeID ?? (t as any).typeId);
+                          return (
+                            <SelectItem key={id} value={id}>
+                              {t.name}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              {/* Lugar de trabajo de la situación de ORIGEN: se precarga con el de la acción más reciente del empleado; si no
+                  tiene, queda vacío y habilitado. Al corregir o ingresar un histórico siempre es editable. */}
+              <FormField
+                control={form.control}
+                name="originWorkplace"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Lugar de Trabajo</FormLabel>
+                    <Select
+                      disabled={isBusy || (!allowOriginRmuEdit && (autoFilledOrigin.workplace || savedOrigin.workplace))}
+                      value={field.value ? String(field.value) : 'none'}
+                      onValueChange={(v) => field.onChange(v === 'none' ? null : Number(v))}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="— Sin categoría —" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">— Sin categoría —</SelectItem>
+                        {workplaceOptions.map((t) => {
                           const id = String(t.typeID ?? (t as any).typeId);
                           return (
                             <SelectItem key={id} value={id}>

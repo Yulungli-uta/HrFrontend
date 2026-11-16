@@ -1,98 +1,68 @@
 // src/components/job-activities/DegreeForm.tsx
 
-import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { CheckCircle2, RefreshCw, XCircle } from "lucide-react";
 import type { Degree } from "@/types/Job-activities";
+import { ActiveStateField } from "./ActiveStateField";
+import { CatalogFormFooter } from "./CatalogFormFooter";
+
+const schema = z.object({
+  description: z.string().trim().min(1, "La descripción es obligatoria.").max(200, "Máximo 200 caracteres."),
+  isActive: z.boolean(),
+});
+type FormValues = z.infer<typeof schema>;
 
 interface DegreeFormProps {
   degree: Degree;
   saving: boolean;
-  onSave: (data: {
-    degreeId?: number;
-    description: string;
-    isActive: boolean;
-  }) => void;
+  onSave: (data: { degreeId?: number; description: string; isActive: boolean }) => void;
   onCancel: () => void;
 }
 
-export function DegreeForm({
-  degree,
-  saving,
-  onSave,
-  onCancel,
-}: DegreeFormProps) {
-  const [description, setDescription] = useState(degree.description ?? "");
-  const [isActive, setIsActive] = useState<boolean>(degree.isActive);
-
-  // Sincronizar cuando cambie el grado recibido (ej. al abrir otro para editar)
-  useEffect(() => {
-    setDescription(degree.description ?? "");
-    setIsActive(degree.isActive);
-  }, [degree.degreeId, degree.description, degree.isActive]);
-
-  const handleSubmit = () => {
-    onSave({
-      // si es nuevo, degreeId vendrá undefined
-      degreeId: degree.degreeId || undefined,
-      description: description.trim(),
-      isActive,
-    });
-  };
+/** Alta y edición de un grado. El formulario se recrea por registro (key en el diálogo), sin efectos de sincronización. */
+export function DegreeForm({ degree, saving, onSave, onCancel }: DegreeFormProps) {
+  const form = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { description: degree.description ?? "", isActive: degree.isActive },
+  });
+  const { errors } = form.formState;
 
   return (
-    <div className="space-y-4">
-      <div>
-        <Label className="text-sm font-medium">Descripción del grado *</Label>
-        <Input
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Ej: Tercer nivel, Cuarto nivel..."
+    <form
+      className="flex min-h-0 flex-1 flex-col gap-4"
+      noValidate
+      onSubmit={form.handleSubmit((values) =>
+        onSave({ degreeId: degree.degreeId || undefined, description: values.description, isActive: values.isActive }),
+      )}
+    >
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-1 py-0.5">
+        <div className="space-y-1">
+          <Label htmlFor="degree-description" className="text-sm font-medium">
+            Descripción del grado *
+          </Label>
+          <Input
+            id="degree-description"
+            autoFocus
+            maxLength={200}
+            placeholder="Ej: Grado 5, Grado escalafonario 3"
+            aria-invalid={!!errors.description}
+            {...form.register("description")}
+          />
+          {errors.description && <p className="text-xs text-destructive">{errors.description.message}</p>}
+        </div>
+
+        <ActiveStateField
+          id={`degree-active-${degree.degreeId || "nuevo"}`}
+          noun="grado"
+          checked={form.watch("isActive")}
+          onChange={(value) => form.setValue("isActive", value, { shouldDirty: true })}
         />
       </div>
 
-      <div className="flex items-center gap-2">
-        <input
-          id={`degree-active-${degree.degreeId ?? "nuevo"}`}
-          type="checkbox"
-          className="h-4 w-4"
-          checked={isActive}
-          onChange={(e) => setIsActive(e.target.checked)}
-        />
-        <Label
-          htmlFor={`degree-active-${degree.degreeId ?? "nuevo"}`}
-          className="text-sm"
-        >
-          Grado activo
-        </Label>
-      </div>
-
-      <div className="flex justify-end gap-2 pt-2 border-t">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onCancel}
-          disabled={saving}
-        >
-          <XCircle className="h-4 w-4 mr-1" />
-          Cancelar
-        </Button>
-        <Button type="button" onClick={handleSubmit} disabled={saving}>
-          {saving ? (
-            <>
-              <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
-              Guardando...
-            </>
-          ) : (
-            <>
-              <CheckCircle2 className="h-4 w-4 mr-1" />
-              Guardar grado
-            </>
-          )}
-        </Button>
-      </div>
-    </div>
+      <CatalogFormFooter saving={saving} saveLabel="Guardar grado" onCancel={onCancel} />
+    </form>
   );
 }

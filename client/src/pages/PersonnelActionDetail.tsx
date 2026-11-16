@@ -36,6 +36,15 @@ function formatCurrency(value: number): string {
   return value.toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+/**
+ * Grupo ocupacional con su clasificación adicional (UEP) si la tiene; misma regla que el backend (PersonnelActionRepository.WithUep):
+ * si el nombre del grupo ya dice UEP (p. ej. "UEP NIVEL OCUPACIONAL B3") no se repite.
+ */
+function groupWithUep(group: string, uepScaleName?: string | null): string {
+  if (!uepScaleName || /uep/i.test(group)) return group;
+  return `${group} (${uepScaleName})`;
+}
+
 function buildDocumentOverrides(
   action: PersonnelActionDetail,
   jobs: VwJobWithDegreeAndGroup[],
@@ -46,13 +55,16 @@ function buildDocumentOverrides(
   const originJob = jobs.find(j => j.jobID === action.originJobId);
   if (originJob) {
     if (originJob.jobDescription) ov['CURRENT_JOB_TITLE'] = originJob.jobDescription;
-    if (originJob.occupationalGroup) ov['CURRENT_OCCUPATIONAL_GROUP'] = originJob.occupationalGroup;
+    if (originJob.occupationalGroup) ov['CURRENT_OCCUPATIONAL_GROUP'] = groupWithUep(originJob.occupationalGroup, originJob.uepScaleName);
     if (originJob.degree) ov['CURRENT_GRADE'] = originJob.degree;
   }
 
+  // Lugar de la situación de origen guardado en la acción: tiene prioridad sobre la ubicación del departamento.
+  if (action.originWorkplaceName) ov['CURRENT_WORKPLACE'] = action.originWorkplaceName;
+
   const originDept = departments.find(d => d.departmentID === action.originDepartmentId);
   if (originDept) {
-    if (originDept.location) ov['CURRENT_WORKPLACE'] = originDept.location;
+    if (!action.originWorkplaceName && originDept.location) ov['CURRENT_WORKPLACE'] = originDept.location;
   }
 
   // CURRENT_/PROPOSED_INSTITUTIONAL_PROCESS y CURRENT_/PROPOSED_MANAGEMENT_LEVEL los
@@ -70,7 +82,7 @@ function buildDocumentOverrides(
   const destJob = jobs.find(j => j.jobID === action.destinationJobId);
   if (destJob) {
     if (destJob.jobDescription) ov['PROPOSED_JOB_TITLE'] = destJob.jobDescription;
-    if (destJob.occupationalGroup) ov['PROPOSED_OCCUPATIONAL_GROUP'] = destJob.occupationalGroup;
+    if (destJob.occupationalGroup) ov['PROPOSED_OCCUPATIONAL_GROUP'] = groupWithUep(destJob.occupationalGroup, destJob.uepScaleName);
     if (destJob.degree) ov['PROPOSED_GRADE'] = destJob.degree;
   }
 
@@ -180,6 +192,7 @@ export default function PersonnelActionDetail() {
     originBudgetProgramCode: data.originBudgetProgramCode,
     originInstitutionalProcess: data.originInstitutionalProcess,
     originManagementLevel: data.originManagementLevel,
+    originWorkplace: data.originWorkplace,
     destinationDepartmentId: data.destinationDepartmentId,
     destinationJobId: data.destinationJobId,
     destinationBudgetCode: data.destinationBudgetCode,
@@ -348,8 +361,8 @@ export default function PersonnelActionDetail() {
             />
             <InfoRow label="Partida del Puesto (origen)" value={action.originBudgetCode} />
             <InfoRow label="Código Presupuestario (origen)" value={action.originBudgetProgramCode} />
-            {action.previousWorkplaceName && (
-              <InfoRow label="Lugar de Trabajo (actual)" value={action.previousWorkplaceName} />
+            {(action.originWorkplaceName || action.previousWorkplaceName) && (
+              <InfoRow label="Lugar de Trabajo (actual)" value={action.originWorkplaceName ?? action.previousWorkplaceName} />
             )}
             <Separator className="my-2" />
             <p className="text-xs font-semibold text-muted-foreground">Situación propuesta</p>
