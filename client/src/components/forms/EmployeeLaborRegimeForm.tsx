@@ -14,7 +14,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { CargosAPI, EmployeeLaborRegimesAPI } from "@/lib/api";
+import { CargosAPI, ContractsRHAPI, EmployeeLaborRegimesAPI } from "@/lib/api";
+// Directo del servicio: el índice exporta otro PersonnelActionsAPI (plantillas) con el mismo nombre.
+import { PersonnelActionsAPI } from "@/lib/api/services/contracts";
 import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import type { EmployeeLaborRegimeCreateDto } from "@/lib/api/services/employeeLaborRegimes";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
@@ -35,6 +37,8 @@ interface FormData {
   jobId: number | null;
   isIndefinite: boolean;
   documentType: string;
+  /** Id del contrato o de la acción de personal que respalda el régimen (según documentType). */
+  sourceId: number | null;
   documentNumber: string;
   effectiveFrom: string;
   /** SIIES INGRESO_POR_CONCURSO. "unset" = sin clasificar, "true"/"false" = SI/NO. */
@@ -43,11 +47,19 @@ interface FormData {
   siiesRelacionIes: string;
 }
 
+// Todo régimen necesita un documento de respaldo real (el backend rechaza regímenes huérfanos); las cargas
+// históricas sin documento se hacen por script, no desde esta pantalla.
 const DOCUMENT_TYPE_OPTIONS = [
-  { value: "CONTRACT", label: "Contrato" },
   { value: "PERSONNEL_ACTION", label: "Acción de personal" },
-  { value: "MIGRATION", label: "Otro / sin documento" },
+  { value: "CONTRACT", label: "Contrato" },
 ];
+
+interface SourceDocument {
+  id: number;
+  number: string;
+  label: string;
+  startDate: string | null;
+}
 
 export function EmployeeLaborRegimeForm({
   employeeId,
@@ -63,6 +75,8 @@ export function EmployeeLaborRegimeForm({
     register,
     handleSubmit,
     control,
+    setValue,
+    watch,
     formState: { errors, isDirty },
   } = useForm<FormData>({
     defaultValues: {
@@ -70,7 +84,8 @@ export function EmployeeLaborRegimeForm({
       departmentId: null,
       jobId: null,
       isIndefinite: false,
-      documentType: "MIGRATION",
+      documentType: "PERSONNEL_ACTION",
+      sourceId: null,
       documentNumber: "",
       effectiveFrom: todayEcuador(),
       ingresoPorConcurso: "unset",
@@ -92,6 +107,35 @@ export function EmployeeLaborRegimeForm({
     const raw = (jobsResp as any)?.data ?? jobsResp ?? [];
     return Array.isArray(raw) ? raw : raw?.items ?? [];
   })();
+
+  const documentType = watch("documentType");
+
+  const { data: sourceDocs, isLoading: loadingDocs } = useQuery<SourceDocument[]>({
+    queryKey: ["labor-regime-source-docs", employeeId, documentType],
+    queryFn: async () => {
+      if (documentType === "CONTRACT") {
+        const res = await ContractsRHAPI.listPaged({ page: 1, pageSize: 50, employeeId });
+        const items: any[] = res.status === "success" ? res.data?.items ?? [] : [];
+        return items.map((c) => ({
+          id: Number(c.contractID ?? c.contractId),
+          number: String(c.contractCode ?? ""),
+          label: `${c.contractCode ?? "Sin código"} · ${String(c.startDate ?? "").slice(0, 10)}`,
+          startDate: c.startDate ? String(c.startDate).slice(0, 10) : null,
+        }));
+      }
+      const res = await PersonnelActionsAPI.getByEmployee(employeeId);
+      const items = res.status === "success" ? res.data ?? [] : [];
+      return items
+        .filter((a) => a.status === "VIGENTE" || a.status === "FINALIZADO")
+        .map((a) => ({
+          id: a.actionId,
+          number: a.actionNumber ?? "",
+          label: `${a.actionNumber ?? "Sin número"} · ${a.actionTypeName} · ${a.status}`,
+          startDate: (a.effectiveDate ?? a.actionDate ?? null)?.slice(0, 10) ?? null,
+        }));
+    },
+    staleTime: 60_000,
+  });
 
   const createMutation = useMutation({
     mutationFn: (dto: EmployeeLaborRegimeCreateDto) => EmployeeLaborRegimesAPI.create(dto),
@@ -128,6 +172,15 @@ export function EmployeeLaborRegimeForm({
         return;
       }
 
+      if (!data.sourceId) {
+        toast({
+          title: "Documento de respaldo requerido",
+          description: "Seleccione el contrato o la acción de personal que respalda este régimen.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const dto: EmployeeLaborRegimeCreateDto = {
         employeeId,
         laborRegimeId: data.laborRegimeId,
@@ -136,6 +189,8 @@ export function EmployeeLaborRegimeForm({
         isIndefinite: data.isIndefinite,
         documentType: data.documentType,
         documentNumber: data.documentNumber || null,
+        sourceContractId: data.documentType === "CONTRACT" ? data.sourceId : null,
+        sourcePersonnelActionId: data.documentType === "PERSONNEL_ACTION" ? data.sourceId : null,
         effectiveFrom: data.effectiveFrom,
         ingresoPorConcurso: data.ingresoPorConcurso === "unset" ? null : data.ingresoPorConcurso === "true",
         siiesRelacionIesTypeId: data.siiesRelacionIes === "derived" ? null : Number(data.siiesRelacionIes),
@@ -250,7 +305,14 @@ export function EmployeeLaborRegimeForm({
                 <FileText className="inline h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
                 Tipo de documento
               </Label>
-              <Select value={field.value} onValueChange={field.onChange}>
+              <Select
+                value={field.value}
+                onValueChange={(v) => {
+                  field.onChange(v);
+                  setValue("sourceId", null);
+                  setValue("documentNumber", "");
+                }}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -266,17 +328,41 @@ export function EmployeeLaborRegimeForm({
           )}
         />
 
-        <div className="space-y-2">
-          <Label htmlFor="documentNumber">Número de documento (opcional)</Label>
-          <Input
-            id="documentNumber"
-            {...register("documentNumber", { maxLength: { value: 50, message: "Máximo 50 caracteres" } })}
-            placeholder="Ej: CONT-OCAS-2026-001"
-          />
-          {errors.documentNumber && (
-            <p className="text-xs text-destructive">{errors.documentNumber.message}</p>
+        <Controller
+          name="sourceId"
+          control={control}
+          render={({ field }) => (
+            <div className="space-y-2">
+              <Label>
+                Documento de respaldo <span className="text-destructive">*</span>
+              </Label>
+              <Select
+                value={field.value ? String(field.value) : ""}
+                onValueChange={(v) => {
+                  const id = Number(v);
+                  field.onChange(id);
+                  const doc = (sourceDocs ?? []).find((d) => d.id === id);
+                  setValue("documentNumber", doc?.number ?? "");
+                  if (doc?.startDate) setValue("effectiveFrom", doc.startDate, { shouldDirty: true });
+                }}
+                disabled={loadingDocs}
+              >
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={loadingDocs ? "Cargando…" : (sourceDocs ?? []).length ? "Seleccione el documento…" : "El empleado no tiene documentos"}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {(sourceDocs ?? []).map((d) => (
+                    <SelectItem key={d.id} value={String(d.id)}>
+                      {d.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           )}
-        </div>
+        />
       </div>
 
       <div className="space-y-2">

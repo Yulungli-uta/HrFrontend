@@ -1,4 +1,5 @@
 import { lazy, ComponentType } from "react";
+import { Redirect } from "wouter";
 
 export interface RouteConfig {
   path: string;
@@ -800,9 +801,16 @@ export const routes: RouteConfig[] = [
     requiredPath: "/admin/user-access-scopes"
   },
   {
-    path: "/admin/employee-labor-regimes",
+    // Fuera de /admin a propósito: PermissionService exige el rol Administrador a todo lo que cuelgue
+    // de /admin, y esta pantalla es de Talento Humano (R_RH / R_RH_ANALISTA).
+    path: "/employee-labor-regimes",
     component: EmployeeLaborRegimesPage,
-    requiredPath: "/admin/employee-labor-regimes"
+    requiredPath: "/employee-labor-regimes"
+  },
+  {
+    // Ruta anterior: se conserva solo para enlaces guardados.
+    path: "/admin/employee-labor-regimes",
+    component: () => <Redirect to="/employee-labor-regimes" />
   },
   {
     path: "/admin/menu-items",

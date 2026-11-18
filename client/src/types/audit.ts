@@ -10,6 +10,14 @@ export interface AuditLogEntry {
   dateTime: string;
   /** JSON serializado: { reason: string; changes: { field, oldValue, newValue }[] } para Action=CORRECTION. */
   details: string | null;
+  /** Solo en /audit/search: número de acción (acciones de personal) o código (contratos). */
+  recordNumber?: string | null;
+  /** Solo en /audit/search: apellidos y nombres de la persona afectada. */
+  personName?: string | null;
+  /** Solo en /audit/search: tipo de acción de personal (ej. "Traslado"). */
+  recordTypeName?: string | null;
+  /** Solo en /audit/search: estado actual de la acción de personal. */
+  recordStatus?: string | null;
 }
 
 export interface AuditFieldChange {
@@ -44,6 +52,8 @@ export function parseCorrectionDetails(entry: AuditLogEntry): CorrectionDetails 
 export interface AuditSearchFilter {
   tableName?: string | null;
   recordId?: string | null;
+  /** Número de acción/contrato, cédula o nombre de la persona (cada palabra debe coincidir). */
+  search?: string | null;
   userName?: string | null;
   dateFrom?: string | null;
   dateTo?: string | null;

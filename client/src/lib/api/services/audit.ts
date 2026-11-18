@@ -14,6 +14,7 @@ export const AuditAPI = {
     const params = new URLSearchParams();
     if (filter?.tableName) params.set('tableName', filter.tableName);
     if (filter?.recordId) params.set('recordId', filter.recordId);
+    if (filter?.search) params.set('search', filter.search);
     if (filter?.userName) params.set('userName', filter.userName);
     if (filter?.dateFrom) params.set('dateFrom', filter.dateFrom);
     if (filter?.dateTo) params.set('dateTo', filter.dateTo);

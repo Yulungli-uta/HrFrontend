@@ -127,6 +127,7 @@ export default function EmployeeLaborRegimesPage() {
             onSelect={setEmployeeId}
             onSelectEmployee={(emp) => setEmployeeLabel(emp.fullName ?? `Empleado #${emp.employeeID}`)}
             placeholder="Busca por nombre, cédula o cargo…"
+            includeInactive
           />
         </CardContent>
       </Card>

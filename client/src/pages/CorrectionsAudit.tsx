@@ -1,5 +1,6 @@
 // src/pages/CorrectionsAudit.tsx
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { Link } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
@@ -21,10 +22,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { ChevronDown, ChevronRight, Loader2, ShieldAlert } from 'lucide-react';
+import { ChevronDown, ChevronRight, ExternalLink, Loader2, ShieldAlert } from 'lucide-react';
 import { AuditAPI } from '@/lib/api';
 import { parseCorrectionDetails, type AuditLogEntry } from '@/types/audit';
 import { formatDateTime } from "@/lib/clock";
+import { useRefTypes } from '@/hooks/useRefTypes';
+import { fieldLabel, formatChangeValue, meaningfulChanges } from '@/features/audit/correctionFields';
 
 const MODULE_OPTIONS: { label: string; tableName: string | null }[] = [
   { label: 'Todos los módulos', tableName: null },
@@ -36,9 +39,11 @@ function moduleLabel(tableName: string): string {
   return MODULE_OPTIONS.find((m) => m.tableName === tableName)?.label ?? tableName;
 }
 
-function CorrectionRow({ entry }: { entry: AuditLogEntry }) {
+function CorrectionRow({ entry, refNames }: { entry: AuditLogEntry; refNames: ReadonlyMap<number, string> }) {
   const [expanded, setExpanded] = useState(false);
   const details = parseCorrectionDetails(entry);
+  const { visible, hiddenCount } = meaningfulChanges(details?.changes ?? []);
+  const isAction = entry.tableName === 'PersonnelActions';
 
   return (
     <>
@@ -47,43 +52,89 @@ function CorrectionRow({ entry }: { entry: AuditLogEntry }) {
           {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         </TableCell>
         <TableCell>
-          <Badge variant="outline">{moduleLabel(entry.tableName)}</Badge>
+          <div className="font-medium">{entry.recordNumber || 'Sin número'}</div>
+          <div className="text-xs text-muted-foreground">
+            {moduleLabel(entry.tableName)} · ID {entry.recordId}
+          </div>
         </TableCell>
-        <TableCell>#{entry.recordId}</TableCell>
+        <TableCell className="max-w-[16rem]">
+          <div className="truncate">{entry.personName ?? '—'}</div>
+          {entry.recordTypeName && (
+            <div className="text-xs text-muted-foreground truncate">{entry.recordTypeName}</div>
+          )}
+        </TableCell>
         <TableCell>{entry.userName}</TableCell>
-        <TableCell>{formatDateTime(entry.dateTime, 'es-EC', { dateStyle: 'medium', timeStyle: 'short' })}</TableCell>
-        <TableCell className="max-w-xs truncate">{details?.reason ?? '—'}</TableCell>
-        <TableCell className="text-right text-muted-foreground">
-          {details?.changes.length ?? 0} campo(s)
+        <TableCell className="whitespace-nowrap">
+          {formatDateTime(entry.dateTime, 'es-EC', { dateStyle: 'medium', timeStyle: 'short' })}
+        </TableCell>
+        <TableCell className="max-w-xs">
+          <span className="line-clamp-2">{details?.reason || '—'}</span>
+        </TableCell>
+        <TableCell className="text-right text-muted-foreground whitespace-nowrap">
+          {visible.length} campo(s)
         </TableCell>
       </TableRow>
       {expanded && (
         <TableRow>
           <TableCell colSpan={7} className="bg-muted/30">
-            {!details || details.changes.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-2">Sin detalle de campos.</p>
-            ) : (
-              <div className="my-2 border rounded-md overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Campo</TableHead>
-                      <TableHead>Valor anterior</TableHead>
-                      <TableHead>Valor nuevo</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {details.changes.map((c) => (
-                      <TableRow key={c.field}>
-                        <TableCell className="font-medium">{c.field}</TableCell>
-                        <TableCell className="text-destructive/80">{c.oldValue ?? '—'}</TableCell>
-                        <TableCell className="text-green-700 dark:text-green-400">{c.newValue ?? '—'}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+            <div className="my-2 space-y-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="space-y-1 text-sm">
+                  <p>
+                    <span className="text-muted-foreground">Motivo: </span>
+                    {details?.reason || 'No se registró motivo.'}
+                  </p>
+                  <p className="text-muted-foreground">
+                    {moduleLabel(entry.tableName)} {entry.recordNumber ? `Nº ${entry.recordNumber}` : 'sin número'}
+                    {' '}(ID {entry.recordId})
+                    {entry.personName ? ` · ${entry.personName}` : ''}
+                    {entry.recordTypeName ? ` · ${entry.recordTypeName}` : ''}
+                    {entry.recordStatus ? ` · Estado actual: ${entry.recordStatus}` : ''}
+                  </p>
+                </div>
+                {isAction && (
+                  <Button asChild variant="outline" size="sm" onClick={(e) => e.stopPropagation()}>
+                    <Link href={`/personnel-actions/${entry.recordId}`}>
+                      <ExternalLink className="h-4 w-4 mr-1.5" /> Ver acción de personal
+                    </Link>
+                  </Button>
+                )}
               </div>
-            )}
+
+              {visible.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-1">Sin detalle de campos.</p>
+              ) : (
+                <div className="border rounded-md overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Campo</TableHead>
+                        <TableHead>Valor anterior</TableHead>
+                        <TableHead>Valor nuevo</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {visible.map((c) => (
+                        <TableRow key={c.field}>
+                          <TableCell className="font-medium">{fieldLabel(c.field)}</TableCell>
+                          <TableCell className="text-destructive/80">
+                            {formatChangeValue(c.field, c.oldValue, refNames)}
+                          </TableCell>
+                          <TableCell className="text-green-700 dark:text-green-400">
+                            {formatChangeValue(c.field, c.newValue, refNames)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+              {hiddenCount > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {hiddenCount} cambio(s) técnico(s) omitido(s) (fecha de actualización o diferencias solo de formato).
+                </p>
+              )}
+            </div>
           </TableCell>
         </TableRow>
       )}
@@ -94,16 +145,18 @@ function CorrectionRow({ entry }: { entry: AuditLogEntry }) {
 export default function CorrectionsAuditPage() {
   const [tableName, setTableName] = useState<string>('__all__');
   const [userName, setUserName] = useState('');
+  const [search, setSearch] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [page, setPage] = useState(1);
   const pageSize = 20;
 
   const { data, isFetching } = useQuery({
-    queryKey: ['corrections-audit', tableName, userName, dateFrom, dateTo, page],
+    queryKey: ['corrections-audit', tableName, search, userName, dateFrom, dateTo, page],
     queryFn: () =>
       AuditAPI.searchCorrections({
         tableName: tableName === '__all__' ? null : tableName,
+        search: search.trim() || null,
         userName: userName.trim() || null,
         dateFrom: dateFrom || null,
         dateTo: dateTo || null,
@@ -111,6 +164,15 @@ export default function CorrectionsAuditPage() {
         pageSize,
       }),
   });
+
+  const { data: refData } = useRefTypes();
+  const refNames = useMemo(() => {
+    const map = new Map<number, string>();
+    if (refData?.status === 'success' && Array.isArray(refData.data)) {
+      for (const t of refData.data) map.set(t.typeID ?? t.typeId ?? t.id ?? -1, t.name);
+    }
+    return map;
+  }, [refData]);
 
   const result = data?.status === 'success' ? data.data : null;
   const items = result?.items ?? [];
@@ -132,7 +194,7 @@ export default function CorrectionsAuditPage() {
           <CardTitle>Filtros</CardTitle>
           <CardDescription>Combina cualquiera de estos filtros para acotar la búsqueda.</CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <CardContent className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div className="space-y-1.5">
             <Label>Módulo</Label>
             <Select
@@ -149,6 +211,14 @@ export default function CorrectionsAuditPage() {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Buscar registro</Label>
+            <Input
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              placeholder="Nº de documento, nombre o cédula"
+            />
           </div>
           <div className="space-y-1.5">
             <Label>Usuario</Label>
@@ -199,7 +269,8 @@ export default function CorrectionsAuditPage() {
                       <TableHead className="w-8" />
                       <TableHead>Módulo</TableHead>
                       <TableHead>Registro</TableHead>
-                      <TableHead>Usuario</TableHead>
+                      <TableHead>Persona</TableHead>
+                      <TableHead>Corregido por</TableHead>
                       <TableHead>Fecha</TableHead>
                       <TableHead>Motivo</TableHead>
                       <TableHead className="text-right">Cambios</TableHead>
@@ -207,7 +278,7 @@ export default function CorrectionsAuditPage() {
                   </TableHeader>
                   <TableBody>
                     {items.map((entry) => (
-                      <CorrectionRow key={entry.auditId} entry={entry} />
+                      <CorrectionRow key={entry.auditId} entry={entry} refNames={refNames} />
                     ))}
                   </TableBody>
                 </Table>
