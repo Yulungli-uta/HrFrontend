@@ -260,6 +260,10 @@ export interface UploadSignedDocumentRequest {
     comment?: string | null;
     /** true solo desde "Ingresar Histórico": omite aprovisionamiento/bloqueo AD en backend. */
     isHistoricalEntry?: boolean;
+    /** Confirmación de reemplazo cuando la acción ya tiene un firmado cargado (si no, el backend responde 409). */
+    replaceExisting?: boolean;
+    /** Motivo del reemplazo; obligatorio con replaceExisting. */
+    replaceReason?: string | null;
 }
 
 export interface CancelPersonnelActionRequest {

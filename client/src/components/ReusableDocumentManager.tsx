@@ -128,6 +128,11 @@ type Props = {
     required?: boolean;
     defaultValue?: string;
     clearOnSuccess?: boolean;
+    /**
+     * Nombres (ref_Types.Name) que NO se ofrecen al elegir el tipo de un archivo nuevo. Opt-in: los archivos ya
+     * subidos con ese tipo siguen mostrando su etiqueta.
+     */
+    excludeTypeNames?: string[];
   };
 
   /**
@@ -302,6 +307,13 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
       error: refTypesError,
       refetch: refetchRefTypes,
     } = useRefTypesByCategory(docTypeCategory, { enabled: docTypeEnabled && !!docTypeCategory });
+
+    // Tipos que se pueden elegir al subir (los excluidos solo se ocultan de las listas, no del mapa de etiquetas).
+    const selectableRefTypes = useMemo(() => {
+      const excluded = documentType?.excludeTypeNames;
+      if (!excluded?.length) return refTypes;
+      return refTypes.filter((rt) => !excluded.includes(String(rt.name ?? "")));
+    }, [refTypes, documentType?.excludeTypeNames]);
 
     const docTypeMap = useMemo(() => {
       const m = new Map<string, string>();
@@ -931,7 +943,7 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
                             <SelectValue placeholder={isLoadingRefTypes ? "Cargando tipos..." : "Seleccione un tipo"} />
                           </SelectTrigger>
                           <SelectContent>
-                            {refTypes.map((rt) => {
+                            {selectableRefTypes.map((rt) => {
                               const id = getRefTypeId(rt);
                               if (!id) return null;
                               return (
@@ -1125,7 +1137,7 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
                                   <SelectValue placeholder={isLoadingRefTypes ? "Cargando..." : "Seleccione un tipo"} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {refTypes.map((rt) => {
+                                  {selectableRefTypes.map((rt) => {
                                     const id = getRefTypeId(rt);
                                     if (!id) return null;
                                     return (

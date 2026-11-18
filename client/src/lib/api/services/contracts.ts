@@ -17,6 +17,7 @@
 import { apiFetch } from '../core/fetch';
 import { createApiService as createCrudService } from '../core/pagination';
 import type { ApiResponse } from '../core/fetch';
+import type { StoredFileVersion, ReplaceSignedDocumentRequest } from '@/types/storedFileVersions';
 import type { PagedRequest, PagedResult } from '../core/pagination';
 import type {
   Contract, InsertContract,
@@ -178,10 +179,30 @@ export const ContractsRHAPI = {
    */
   uploadSignedDocument: (
     id: number | string,
-    payload: { storedFileId: number; comment?: string | null }
+    payload: {
+      storedFileId: number;
+      comment?: string | null;
+      /** Confirmación de reemplazo cuando el contrato ya tiene un firmado cargado (si no, 409). */
+      replaceExisting?: boolean;
+      replaceReason?: string | null;
+    }
   ): Promise<ApiResponse<void>> =>
     apiFetch<void>(`${CONTRACTS_BASE}/${id}/document/upload-signed`, {
       method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  /** Versiones del documento firmado del contrato (vigente y anteriores). */
+  getSignedDocumentVersions: (id: number): Promise<ApiResponse<StoredFileVersion[]>> =>
+    apiFetch<StoredFileVersion[]>(`${CONTRACTS_BASE}/${id}/signed-document/versions`),
+
+  /**
+   * Corrección: registra o reemplaza el firmado en cualquier estado como versión nueva, sin cambiar el estado.
+   * Motivo obligatorio si ya había uno. Requiere CONTRACTS.MANAGE.
+   */
+  replaceSignedDocument: (id: number, payload: ReplaceSignedDocumentRequest): Promise<ApiResponse<void>> =>
+    apiFetch<void>(`${CONTRACTS_BASE}/${id}/signed-document`, {
+      method: 'PUT',
       body: JSON.stringify(payload),
     }),
 
@@ -831,6 +852,20 @@ export const PersonnelActionsAPI = {
   ): Promise<ApiResponse<void>> =>
     apiFetch<void>(`${PERSONNEL_ACTIONS_BASE}/${id}/upload-signed-document`, {
       method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  /** Versiones del documento firmado de la acción (vigente y anteriores). */
+  getSignedDocumentVersions: (id: number): Promise<ApiResponse<StoredFileVersion[]>> =>
+    apiFetch<StoredFileVersion[]>(`${PERSONNEL_ACTIONS_BASE}/${id}/signed-document/versions`),
+
+  /**
+   * Corrección: registra o reemplaza el firmado en cualquier estado como versión nueva, sin cambiar el estado.
+   * Motivo obligatorio si ya había uno. Requiere PERSONNEL_ACTIONS.MANAGE.
+   */
+  replaceSignedDocument: (id: number, payload: ReplaceSignedDocumentRequest): Promise<ApiResponse<void>> =>
+    apiFetch<void>(`${PERSONNEL_ACTIONS_BASE}/${id}/signed-document`, {
+      method: 'PUT',
       body: JSON.stringify(payload),
     }),
 

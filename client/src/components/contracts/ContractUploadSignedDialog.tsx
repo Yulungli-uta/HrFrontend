@@ -21,6 +21,8 @@ import {
 import { useDirectoryParams } from '@/hooks/directoryParams/useDirectoryParams';
 import { ContractsRHAPI } from '@/lib/api/services/contracts';
 import type { DocumentUploadResultDto } from '@/types/documents';
+import { ReplaceSignedConfirmDialog } from '@/components/documents/ReplaceSignedConfirmDialog';
+import { signedDocumentVersionsKey, useSignedDocumentVersions } from '@/hooks/useSignedDocumentVersions';
 import { CONTRACT_DIRECTORY_CODE, CONTRACT_ENTITY_TYPE } from '@/features/constants';
 
 const DIR_CODE = CONTRACT_DIRECTORY_CODE;
@@ -44,9 +46,14 @@ export function ContractUploadSignedDialog({ open, onOpenChange, contractId, onS
 
   const { directory, params } = useDirectoryParams(DIR_CODE);
 
+  // Control de firmado existente: si ya hay uno vigente se pide confirmar el reemplazo (con motivo) antes de subir nada.
+  const versions = useSignedDocumentVersions('contract', contractId, open);
+  const currentSigned = versions.data?.find((v) => v.isCurrent);
+  const [confirmReplaceOpen, setConfirmReplaceOpen] = useState(false);
+
   const isBusy = isUploading || isRegistering;
 
-  const handleConfirm = async () => {
+  const handleConfirm = async (replaceReason?: string) => {
     if (!managerRef.current) return;
 
     if (managerRef.current.getSelectedCount() === 0) {
@@ -55,6 +62,12 @@ export function ContractUploadSignedDialog({ open, onOpenChange, contractId, onS
         title: 'Sin archivo',
         description: 'Selecciona el documento firmado antes de continuar.',
       });
+      return;
+    }
+
+    // Ya hay un firmado vigente: el usuario decide si continuar (y por qué) antes de subir el archivo.
+    if (currentSigned && !replaceReason) {
+      setConfirmReplaceOpen(true);
       return;
     }
 
@@ -79,12 +92,16 @@ export function ContractUploadSignedDialog({ open, onOpenChange, contractId, onS
       const resp = await ContractsRHAPI.uploadSignedDocument(contractId, {
         storedFileId,
         comment: comment.trim() || undefined,
+        replaceExisting: replaceReason ? true : undefined,
+        replaceReason: replaceReason ?? undefined,
       });
       if (resp.status === 'success') {
         queryClient.invalidateQueries({ queryKey: ['contract-detail', contractId] });
         queryClient.invalidateQueries({ queryKey: ['contract-doc-status', contractId] });
         queryClient.invalidateQueries({ queryKey: ['contract-history', contractId] });
         queryClient.invalidateQueries({ queryKey: ['contracts-rh'] });
+        queryClient.invalidateQueries({ queryKey: signedDocumentVersionsKey('contract', contractId) });
+        queryClient.invalidateQueries({ queryKey: ['signed-files'] });
         toast({ title: 'Documento firmado registrado', description: 'El contrato pasó a FIRMADO_CARGADO.' });
         setComment('');
         onSuccess?.();
@@ -103,7 +120,7 @@ export function ContractUploadSignedDialog({ open, onOpenChange, contractId, onS
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!isBusy) onOpenChange(v); }}>
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Upload className="h-5 w-5" />
@@ -115,7 +132,8 @@ export function ContractUploadSignedDialog({ open, onOpenChange, contractId, onS
         </DialogHeader>
 
         <div className="space-y-4">
-          <ReusableDocumentManager
+          <div className="min-w-0 [overflow-wrap:anywhere]">
+            <ReusableDocumentManager
             ref={managerRef}
             directoryCode={directory?.code ?? DIR_CODE}
             entityType={ENTITY_TYPE}
@@ -126,10 +144,13 @@ export function ContractUploadSignedDialog({ open, onOpenChange, contractId, onS
             maxSizeMB={params.maxSizeMB}
             maxFiles={1}
             label="Documento firmado"
+            // El firmado vigente solo se cambia reemplazándolo (versión nueva); eliminarlo se rechaza en el backend.
+            roles={{ canUpload: true, canPreview: true, canDownload: true, canDelete: false }}
             showInternalUploadButton={false}
             entityReady={true}
             disabled={isBusy}
           />
+          </div>
 
           <div className="space-y-2">
             <Label htmlFor="contract-signed-comment">Comentario (opcional)</Label>
@@ -152,12 +173,22 @@ export function ContractUploadSignedDialog({ open, onOpenChange, contractId, onS
           >
             Cancelar
           </Button>
-          <Button onClick={handleConfirm} disabled={isBusy}>
+          <Button onClick={() => handleConfirm()} disabled={isBusy}>
             {isBusy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Confirmar Carga
           </Button>
         </DialogFooter>
       </DialogContent>
+      <ReplaceSignedConfirmDialog
+        open={confirmReplaceOpen}
+        onOpenChange={setConfirmReplaceOpen}
+        current={currentSigned}
+        subject="el contrato"
+        onConfirm={(reason) => {
+          setConfirmReplaceOpen(false);
+          void handleConfirm(reason);
+        }}
+      />
     </Dialog>
   );
 }

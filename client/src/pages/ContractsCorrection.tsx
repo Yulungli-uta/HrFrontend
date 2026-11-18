@@ -44,6 +44,7 @@ import { ContractsRHAPI } from '@/lib/api';
 import { useRefTypesByCategory } from '@/hooks/useRefTypes';
 import { REF_TYPE_CATEGORIES } from '@/features/refTypeCategories';
 import { ReusableDocumentManager } from '@/components/ReusableDocumentManager';
+import { SignedDocumentPanel } from '@/components/documents/SignedDocumentPanel';
 import { CONTRACT_DIRECTORY_CODE, CONTRACT_ENTITY_TYPE } from '@/features/constants';
 import { usePaged } from '@/hooks/pagination/usePaged';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
@@ -491,12 +492,12 @@ export default function ContractsCorrection() {
                   />
                 </div>
 
-                {/* Si el documento cargado fue el equivocado: quitarlo aquí no lo borra
-                    físicamente (soft-delete, Status=2) — solo deja de listarse. Se sube el
-                    correcto aparte, sin tocar el estado/flujo del contrato. El tipo de
-                    documento (incluido "Documento Firmado") es solo una etiqueta — este panel
-                    usa el endpoint genérico de subida, separado de cualquier transición de
-                    estado; elegir ese tipo aquí nunca cambia el estado del contrato. */}
+                {/* Documento firmado final: versionado (el reemplazo conserva el anterior como versión inactiva),
+                    en cualquier estado y sin tocar el estado/flujo del contrato. */}
+                <SignedDocumentPanel kind="contract" id={selected.contractID} />
+
+                {/* Anexos (resoluciones, oficios, memos): quitar uno no lo borra físicamente
+                    (soft-delete, Status=2) — solo deja de listarse. No incluye el documento firmado. */}
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
@@ -520,6 +521,7 @@ export default function ContractsCorrection() {
                         category: REF_TYPE_CATEGORIES.PROCESS_ATTACHMENT_TYPE,
                         label: 'Tipo de documento',
                         required: false,
+                        excludeTypeNames: ['DOCUMENTO_FIRMADO'],
                       }}
                     />
                   </CardContent>

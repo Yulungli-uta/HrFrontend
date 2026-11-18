@@ -54,6 +54,8 @@ export function ActionDocumentsPanel({
             category: REF_TYPE_CATEGORIES.PROCESS_ATTACHMENT_TYPE,
             label: 'Tipo de documento',
             required: false,
+            // El documento firmado final tiene su propio panel versionado; aquí solo anexos.
+            excludeTypeNames: ['DOCUMENTO_FIRMADO'],
           }}
         />
       </CardContent>

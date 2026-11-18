@@ -41,6 +41,7 @@ import { ArrowLeft, Search, ShieldAlert, Loader2, Eye, Pencil } from 'lucide-rea
 import { PersonnelActionsAPI } from '@/lib/api/services/contracts';
 import { PersonnelActionForm } from '@/components/personnelActions/PersonnelActionForm';
 import { ActionDocumentsPanel } from '@/components/personnelActions/ActionDocumentsPanel';
+import { SignedDocumentPanel } from '@/components/documents/SignedDocumentPanel';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import { useToast } from '@/hooks/use-toast';
 import { parseApiError } from '@/lib/error-handling';
@@ -458,9 +459,12 @@ export default function PersonnelActionsCorrection() {
                   />
                 </div>
 
-                {/* Si el documento cargado fue el equivocado: quitarlo aquí no lo borra
-                    físicamente (soft-delete, Status=2) — solo deja de listarse. Se sube el
-                    correcto aparte, sin tocar el estado/flujo de la acción. */}
+                {/* Documento firmado final: versionado (el reemplazo conserva el anterior como versión inactiva),
+                    en cualquier estado y sin tocar el estado/flujo de la acción. */}
+                <SignedDocumentPanel kind="action" id={selected.actionId} />
+
+                {/* Anexos (resoluciones, oficios, memos): quitar uno no lo borra físicamente
+                    (soft-delete, Status=2) — solo deja de listarse. No incluye el documento firmado. */}
                 <ActionDocumentsPanel actionId={selected.actionId} />
 
                 {detailQuery.isFetching || !actionDetail ? (

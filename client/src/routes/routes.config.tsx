@@ -129,6 +129,7 @@ const PersonnelActionsPage = lazy(() => import("@/pages/PersonnelActions"));
 const PersonnelActionDetailPage = lazy(() => import("@/pages/PersonnelActionDetail"));
 const PersonnelActionsCorrectionPage = lazy(() => import("@/pages/PersonnelActionsCorrection"));
 const PersonnelActionsHistoricalEntryPage = lazy(() => import("@/pages/PersonnelActionsHistoricalEntry"));
+const PersonnelActionSignedFilesPage = lazy(() => import("@/pages/PersonnelActionSignedFiles"));
 
 // Renuncia / Jubilación — el detalle se muestra como modal sobre la misma lista,
 // no como ruta con :id (evita exponer el ID en la URL).
@@ -171,6 +172,7 @@ const GuardVacationApprovalsPage = lazy(() => import("@/pages/guards/GuardVacati
 const ContractDetailPage = lazy(() => import("@/pages/ContractDetail"));
 const ContractsCorrectionPage = lazy(() => import("@/pages/ContractsCorrection"));
 const ContractsHistoricalEntryPage = lazy(() => import("@/pages/ContractsHistoricalEntry"));
+const ContractSignedFilesPage = lazy(() => import("@/pages/ContractSignedFiles"));
 
 // Plantillas documentales
 const DocumentTemplatesPage = lazy(() => import("@/pages/admin/DocumentTemplates"));
@@ -326,6 +328,12 @@ export const routes: RouteConfig[] = [
     requiredPath: "/personnel-actions/historical"
   },
   {
+    // Menú "Acción Personal" > "Acciones con archivo firmado" (solo lectura). Va antes de "/personnel-actions/:id".
+    path: "/personnel-actions/signed-files",
+    component: PersonnelActionSignedFilesPage,
+    requiredPath: "/personnel-actions/signed-files"
+  },
+  {
     path: "/personnel-actions/:id",
     component: PersonnelActionDetailPage,
     requiredPath: "/personnel-actions"
@@ -387,6 +395,12 @@ export const routes: RouteConfig[] = [
     path: "/contracts/historical",
     component: ContractsHistoricalEntryPage,
     requiredPath: "/contracts/historical"
+  },
+  {
+    // Menú "Gestion de Contratos" > "Contratos con archivo firmado" (solo lectura). Va antes de "/contracts/:id".
+    path: "/contracts/signed-files",
+    component: ContractSignedFilesPage,
+    requiredPath: "/contracts/signed-files"
   },
   {
     path: "/contracts/:id",

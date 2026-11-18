@@ -24,6 +24,8 @@ import { PersonnelActionsAPI } from '@/lib/api/services/contracts';
 // Servicio: RepositoryUta — POST /api/provisioning/employees/by-hr-id/{hrEmployeeId}/disable
 import { ProvisioningAPI } from '@/lib/api/services/provisioning';
 import type { DocumentUploadResultDto } from '@/types/documents';
+import { ReplaceSignedConfirmDialog } from '@/components/documents/ReplaceSignedConfirmDialog';
+import { signedDocumentVersionsKey, useSignedDocumentVersions } from '@/hooks/useSignedDocumentVersions';
 import { PERSONNEL_ACTION_DIRECTORY_CODE, PERSONNEL_ACTION_ENTITY_TYPE } from '@/features/constants';
 
 const DIR_CODE = PERSONNEL_ACTION_DIRECTORY_CODE;
@@ -80,19 +82,26 @@ export function UploadSignedDocumentDialog({
 
   const { directory, params } = useDirectoryParams(DIR_CODE);
 
+  // Control de firmado existente: si ya hay uno vigente se pide confirmar el reemplazo (con motivo) antes de subir nada.
+  const versions = useSignedDocumentVersions('action', actionId, open);
+  const currentSigned = versions.data?.find((v) => v.isCurrent);
+  const [confirmReplaceOpen, setConfirmReplaceOpen] = useState(false);
+
   // Servicio: HrBackend — POST /api/v1/rh/personnel-actions/{id}/upload-signed-document
   const registerMutation = useMutation({
-    mutationFn: (storedFileId: number) =>
+    mutationFn: ({ storedFileId, replaceReason }: { storedFileId: number; replaceReason?: string }) =>
       PersonnelActionsAPI.uploadSignedDocument(actionId, {
         storedFileId,
         comment: comment.trim() || undefined,
         isHistoricalEntry,
+        replaceExisting: replaceReason ? true : undefined,
+        replaceReason: replaceReason ?? undefined,
       }),
   });
 
   const isBusy = isUploading || registerMutation.isPending || isPostProcessing;
 
-  const handleConfirm = async () => {
+  const handleConfirm = async (replaceReason?: string) => {
     if (!managerRef.current) return;
 
     if (managerRef.current.getSelectedCount() === 0) {
@@ -101,6 +110,12 @@ export function UploadSignedDocumentDialog({
         title: 'Sin archivo',
         description: 'Selecciona el documento firmado antes de continuar.',
       });
+      return;
+    }
+
+    // Ya hay un firmado vigente: el usuario decide si continuar (y por qué) antes de subir el archivo.
+    if (currentSigned && !replaceReason) {
+      setConfirmReplaceOpen(true);
       return;
     }
 
@@ -128,7 +143,7 @@ export function UploadSignedDocumentDialog({
     // estado inválida); hay que revisar el status explícitamente.
     let registerResult;
     try {
-      registerResult = await registerMutation.mutateAsync(storedFileId);
+      registerResult = await registerMutation.mutateAsync({ storedFileId, replaceReason });
     } catch (err: unknown) {
       const detail = err instanceof Error ? err.message : 'Error inesperado al registrar el documento.';
       toast({ variant: 'destructive', title: 'Error al registrar', description: detail });
@@ -142,6 +157,8 @@ export function UploadSignedDocumentDialog({
     queryClient.invalidateQueries({ queryKey: ['personnel-action', actionId] });
     queryClient.invalidateQueries({ queryKey: ['personnel-actions'] });
     queryClient.invalidateQueries({ queryKey: ['personnel-action-history', actionId] });
+    queryClient.invalidateQueries({ queryKey: signedDocumentVersionsKey('action', actionId) });
+    queryClient.invalidateQueries({ queryKey: ['signed-files'] });
     toast({ title: 'Documento firmado registrado', description: 'La acción pasó a FIRMADO_CARGADO.' });
 
     // ── 3. Acciones post-carga según el tipo de acción ───────────────────────
@@ -212,7 +229,7 @@ export function UploadSignedDocumentDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!isBusy) onOpenChange(v); }}>
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Upload className="h-5 w-5" />
@@ -231,7 +248,8 @@ export function UploadSignedDocumentDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          <ReusableDocumentManager
+          <div className="min-w-0 [overflow-wrap:anywhere]">
+            <ReusableDocumentManager
             ref={managerRef}
             directoryCode={directory?.code ?? DIR_CODE}
             entityType={ENTITY_TYPE}
@@ -242,10 +260,13 @@ export function UploadSignedDocumentDialog({
             maxSizeMB={params.maxSizeMB}
             maxFiles={1}
             label="Documento firmado"
+            // El firmado vigente solo se cambia reemplazándolo (versión nueva); eliminarlo se rechaza en el backend.
+            roles={{ canUpload: true, canPreview: true, canDownload: true, canDelete: false }}
             showInternalUploadButton={false}
             entityReady={true}
             disabled={isBusy}
           />
+          </div>
 
           <div className="space-y-2">
             <Label htmlFor="signed-comment">Comentario (opcional)</Label>
@@ -268,12 +289,22 @@ export function UploadSignedDocumentDialog({
           >
             Cancelar
           </Button>
-          <Button onClick={handleConfirm} disabled={isBusy}>
+          <Button onClick={() => handleConfirm()} disabled={isBusy}>
             {isBusy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Confirmar Carga
           </Button>
         </DialogFooter>
       </DialogContent>
+      <ReplaceSignedConfirmDialog
+        open={confirmReplaceOpen}
+        onOpenChange={setConfirmReplaceOpen}
+        current={currentSigned}
+        subject="la acción"
+        onConfirm={(reason) => {
+          setConfirmReplaceOpen(false);
+          void handleConfirm(reason);
+        }}
+      />
     </Dialog>
   );
 }
