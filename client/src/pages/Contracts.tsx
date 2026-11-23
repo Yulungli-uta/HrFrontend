@@ -297,8 +297,8 @@ export default function ContractsPage() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-500/10 rounded-lg">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
+                <div className="p-2 bg-success/10 rounded-lg">
+                  <CheckCircle className="h-5 w-5 text-success" />
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Vigentes</p>
@@ -312,8 +312,8 @@ export default function ContractsPage() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-amber-500/10 rounded-lg">
-                  <Clock className="h-5 w-5 text-amber-600" />
+                <div className="p-2 bg-warning/10 rounded-lg">
+                  <Clock className="h-5 w-5 text-warning" />
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">En proceso</p>
@@ -327,8 +327,8 @@ export default function ContractsPage() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-500/10 rounded-lg">
-                  <Award className="h-5 w-5 text-blue-600" />
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <Award className="h-5 w-5 text-primary" />
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Cert. aprobadas</p>
@@ -505,14 +505,13 @@ export default function ContractsPage() {
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Button
+                              <Button tooltip={false}
                                 variant="ghost"
                                 size="icon"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   openView(c);
-                                }}
-                              >
+                                }} aria-label="Ver detalle">
                                 <Eye className="h-4 w-4" />
                               </Button>
                             </TooltipTrigger>

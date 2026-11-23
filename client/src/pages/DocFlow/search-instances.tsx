@@ -204,7 +204,7 @@ function ProcessSelector({
                 <span className={`text-sm flex-1 min-w-0 truncate ${hasChildren ? "font-semibold" : "font-medium"}`}>
                   {process.processName}
                 </span>
-                <Badge variant="secondary" className="text-[0.625rem] shrink-0 h-5 px-1.5">
+                <Badge variant="secondary" className="text-xs shrink-0 h-5 px-1.5">
                   {instanceCount}
                 </Badge>
               </button>
@@ -239,7 +239,7 @@ function ProcessSelector({
                           <FileStack className="h-2.5 w-2.5 text-muted-foreground" />
                         </div>
                         <span className="text-sm font-medium flex-1 min-w-0 truncate">{child.processName}</span>
-                        <Badge variant="secondary" className="text-[0.625rem] shrink-0 h-5 px-1.5">
+                        <Badge variant="secondary" className="text-xs shrink-0 h-5 px-1.5">
                           {childCount}
                         </Badge>
                       </button>
@@ -357,7 +357,7 @@ export default function SearchInstances() {
 
   return (
     <div className="flex flex-col gap-4 p-4 md:p-6" data-testid="page-search-instances">
-      <div className="flex items-center justify-between flex-wrap gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold flex items-center gap-2" data-testid="text-page-title">
             <Search className="h-5 w-5 text-primary" />
@@ -391,7 +391,7 @@ export default function SearchInstances() {
                 <FolderTree className="h-4 w-4 text-primary" />
                 Procesos
                 {selectedProcessIds.size > 0 && (
-                  <Badge variant="default" className="text-[0.625rem] h-5 px-1.5">
+                  <Badge variant="default" className="text-xs h-5 px-1.5">
                     {selectedProcessIds.size}
                   </Badge>
                 )}
@@ -570,7 +570,7 @@ export default function SearchInstances() {
                         <Link href={`/DocFlow/expedientes/${instance.instanceId}`}>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`button-view-${instance.instanceId}`}>
+                              <Button tooltip={false} variant="ghost" size="icon" className="h-8 w-8" data-testid={`button-view-${instance.instanceId}`} aria-label="Ver detalle">
                                 <Eye className="h-4 w-4" />
                               </Button>
                             </TooltipTrigger>

@@ -43,7 +43,7 @@ export function ReplaceSignedConfirmDialog({ open, onOpenChange, current, subjec
       <AlertDialogContent className="max-h-[90vh] overflow-y-auto">
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-amber-500" aria-hidden="true" />
+            <AlertTriangle className="h-5 w-5 text-warning" aria-hidden="true" />
             Ya existe un documento firmado cargado
           </AlertDialogTitle>
           <AlertDialogDescription asChild>

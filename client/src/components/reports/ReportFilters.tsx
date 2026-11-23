@@ -586,7 +586,7 @@ export function ReportFilters({ reportType, onFilterChange, initialFilter = {} }
               role={dateIssue.error ? "alert" : "status"}
               className={cn(
                 "text-sm md:col-span-2 lg:col-span-3",
-                dateIssue.error ? "text-destructive" : "text-amber-700 dark:text-amber-400"
+                dateIssue.error ? "text-destructive" : "text-warning "
               )}
             >
               {dateIssue.error ?? dateIssue.warning}

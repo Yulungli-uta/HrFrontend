@@ -1,4 +1,8 @@
 //src/pages/guards/GuardShiftPlanning.tsx
+import { useDirtyCloseGuard } from '@/hooks/useDirtyCloseGuard';
+import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
+import { useLocation } from 'wouter';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useState, useEffect, Fragment } from 'react';
 import {
   Calendar, RefreshCw, Zap, AlertTriangle, CheckCircle2, X,
@@ -35,14 +39,14 @@ import { addDays, formatDate, sundayOnOrBefore, todayEcuador } from "@/lib/clock
 // ─── Constantes de colores y etiquetas ───────────────────────────────────────
 
 const CELL_COLORS: Record<string, string> = {
-  PLANNED:   'bg-blue-100 text-blue-800 border-blue-200',
-  CONFIRMED: 'bg-green-100 text-green-800 border-green-200',
-  REPLACED:  'bg-purple-100 text-purple-800 border-purple-200',
-  CANCELLED: 'bg-gray-100 text-gray-400 border-gray-200',
-  UNCOVERED: 'bg-red-100 text-red-700 border-red-200',
-  COMPLETED: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-  ABSENT:    'bg-orange-100 text-orange-700 border-orange-200',
-  COVERED_BY_LEAVE: 'bg-sky-100 text-sky-800 border-sky-200',
+  PLANNED:   'bg-primary/10 text-primary border-primary/30',
+  CONFIRMED: 'bg-success/10 text-success border-success/30',
+  REPLACED:  'bg-cat-3/10 text-cat-3 border-cat-3/30',
+  CANCELLED: 'bg-muted text-muted-foreground border-border',
+  UNCOVERED: 'bg-destructive/10 text-destructive border-destructive/30',
+  COMPLETED: 'bg-success/10 text-success border-success/30',
+  ABSENT:    'bg-warning/10 text-warning border-warning/30',
+  COVERED_BY_LEAVE: 'bg-info/10 text-info border-info/30',
 };
 
 // Fallback palette cuando un grupo no tiene colorCode definido
@@ -51,34 +55,10 @@ const FALLBACK_COLORS = [
   '#0ea5e9', '#8b5cf6', '#f97316', '#14b8a6',
 ];
 
-function hexToRgb(hex: string): [number, number, number] {
-  const clean = hex.replace('#', '');
-  const full = clean.length === 3 ? clean.split('').map(c => c + c).join('') : clean;
-  const num = parseInt(full, 16);
-  return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
-}
-
-// Luminancia relativa (WCAG) para detectar colores demasiado claros como para usarse de texto.
-function relativeLuminance([r, g, b]: [number, number, number]) {
-  const [rl, gl, bl] = [r, g, b].map(c => {
-    const s = c / 255;
-    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
-  });
-  return 0.2126 * rl + 0.7152 * gl + 0.0722 * bl;
-}
-
-// Oscurece colores claros (amarillos, grises casi blancos) para que el texto siga siendo legible
-// en modo claro; conserva el hex original tal cual cuando ya tiene contraste suficiente.
-function darkenForText(hex: string): string {
-  const rgb = hexToRgb(hex);
-  if (relativeLuminance(rgb) < 0.55) return hex;
-  const [r, g, b] = rgb.map(c => Math.round(c * 0.45));
-  return `#${[r, g, b].map(c => c.toString(16).padStart(2, '0')).join('')}`;
-}
-
 function hexToGroupStyle(hex: string) {
   // Genera bg claro + texto legible + borde a partir del hex del grupo
-  return { backgroundColor: hex + '22', color: darkenForText(hex), borderColor: hex + '88' };
+  // El texto mezcla el color del grupo con el color de texto del tema: legible en modo claro y oscuro.
+  return { backgroundColor: hex + '22', color: `color-mix(in srgb, ${hex} 40%, var(--foreground))`, borderColor: hex + '88' };
 }
 
 // Construye mapa groupId → { hex, name }. El color mostrado es siempre el configurado en el
@@ -108,9 +88,9 @@ function buildGroupMeta(rows: import('@/types/guards').ScheduleBoardRowDto[]) {
 const SHIFT_ORDER = ['M', 'T', 'N'];
 const SHIFT_LABEL: Record<string, string> = { M: 'Mañana', T: 'Tarde', N: 'Noche' };
 const SHIFT_HEADER_COLOR: Record<string, string> = {
-  M: 'bg-yellow-400 text-yellow-900',
-  T: 'bg-orange-400 text-orange-900',
-  N: 'bg-slate-600 text-slate-100',
+  M: 'bg-warning/20 text-warning',
+  T: 'bg-warning/20 text-warning',
+  N: 'bg-primary/20 text-primary',
 };
 
 const STATUS_BADGE_VARIANT: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
@@ -284,15 +264,15 @@ function BoardCells({
         return (
           <td
             key={cell.date}
-            className={`border px-1 py-1 align-top min-w-[90px] max-w-[130px] ${isEmpty ? 'bg-red-50 dark:bg-transparent' : ''}`}
+            className={`border px-1 py-1 align-top min-w-[90px] max-w-[130px] ${isEmpty ? 'bg-destructive/10 dark:bg-transparent' : ''}`}
           >
             {isEmpty ? (
-              <span className="text-red-500 dark:text-red-400 font-medium text-[0.625rem]">Sin cobertura</span>
+              <span className="text-destructive font-medium text-xs">Sin cobertura</span>
             ) : (
               <div className="flex flex-col gap-0.5">
                 {/* Badge de estado post-proceso */}
                 {postStatus && (
-                  <span className={`self-start px-1 py-0 rounded text-[0.5625rem] font-bold border mb-0.5 ${CELL_COLORS[postStatus] ?? ''}`}>
+                  <span className={`self-start px-1 py-0 rounded text-xs font-bold border mb-0.5 ${CELL_COLORS[postStatus] ?? ''}`}>
                     {STATUS_LABEL[postStatus] ?? postStatus}
                   </span>
                 )}
@@ -302,12 +282,12 @@ function BoardCells({
                     <button
                       key={emp.planningId}
                       onClick={() => onCellClick(emp.planningId)}
-                      className={`w-full text-left px-1.5 py-0.5 rounded border text-[0.625rem] font-medium truncate transition-opacity hover:opacity-75 ${emp.isReplacement ? 'ring-1 ring-purple-400' : emp.isReassigned ? 'ring-1 ring-blue-400' : ''}`}
-                      style={meta ? hexToGroupStyle(meta.hex) : { backgroundColor: '#f3f4f6', color: '#374151', borderColor: '#d1d5db' }}
+                      className={`w-full text-left px-1.5 py-0.5 rounded border text-xs font-medium truncate transition-opacity hover:opacity-75 ${emp.isReplacement ? 'ring-1 ring-cat-3/50' : emp.isReassigned ? 'ring-1 ring-primary/50' : ''}`}
+                      style={meta ? hexToGroupStyle(meta.hex) : { backgroundColor: 'var(--muted)', color: 'var(--foreground)', borderColor: 'var(--border)' }}
                       title={`${emp.fullName}${emp.groupName ? ` — ${emp.groupName}` : ''} · ${STATUS_LABEL[cell.status] ?? cell.status}`}
                     >
-                      {emp.isReplacement && <span className="font-bold mr-0.5" style={{ color: '#7c3aed' }}>R</span>}
-                      {emp.isReassigned && <span className="font-bold mr-0.5" style={{ color: '#2563eb' }}>M</span>}
+                      {emp.isReplacement && <span className="font-bold mr-0.5 text-cat-3">R</span>}
+                      {emp.isReassigned && <span className="font-bold mr-0.5 text-primary">M</span>}
                       {displayGuardName(emp.fullName, emp.shortName, 16)}
                       {cell.status === 'ABSENT' && ' - Ausente'}
                     </button>
@@ -404,21 +384,21 @@ function ShiftBoard({
           {[...groupMeta.entries()].map(([groupId, { name, hex }]) => (
             <span
               key={groupId}
-              className="flex items-center gap-1 px-2 py-0.5 rounded-full border font-medium text-[0.6875rem]"
+              className="flex items-center gap-1 px-2 py-0.5 rounded-full border font-medium text-xs"
               style={hexToGroupStyle(hex)}
             >
               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: hex }} />
               {name}
             </span>
           ))}
-          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full border text-purple-700 bg-purple-50 border-purple-300 font-medium text-[0.6875rem]">
-            <span className="w-2 h-2 rounded-full bg-purple-500" />R Reemplazo
+          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full border text-cat-3 bg-cat-3/10 border-cat-3/40 font-medium text-xs">
+            <span className="w-2 h-2 rounded-full bg-cat-3" />R Reemplazo
           </span>
         </div>
       )}
 
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-xs">
+        <table data-mobile="scroll" className="w-full border-collapse text-xs">
           <thead>
             <tr className="bg-muted/60">
               <th className="border px-3 py-2 text-left sticky left-0 bg-muted z-10 min-w-[180px]">Turno / Ubicación</th>
@@ -433,7 +413,7 @@ function ShiftBoard({
           <tbody>
             {shiftCodes.map(shiftCode => {
               const rows = byShift.get(shiftCode)!;
-              const headerColor = SHIFT_HEADER_COLOR[shiftCode] ?? 'bg-gray-400 text-gray-100';
+              const headerColor = SHIFT_HEADER_COLOR[shiftCode] ?? 'bg-muted text-foreground';
               const { groups, standaloneRows } = buildLocationHierarchy(rows);
 
               return (
@@ -472,7 +452,7 @@ function ShiftBoard({
                             colSpan={board.dates.length + 1}
                             className="px-3 py-1.5 bg-muted/20 dark:bg-muted/10 border-l-[3px] border-l-primary/40"
                           >
-                            <div className="flex items-center gap-1.5 text-[0.6875rem] font-semibold text-foreground/80">
+                            <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground/80">
                               <Building2 className="h-3 w-3 shrink-0" />
                               {group.parentCode ? `[${group.parentCode}] ` : ''}{group.parentName}
                             </div>
@@ -485,7 +465,7 @@ function ShiftBoard({
                         <tr key={child.rowKey} className="hover:bg-muted/20">
                           <td className="border px-3 py-2 sticky left-0 bg-background z-10 font-medium">
                             <div className="flex items-center gap-1 pl-3">
-                              <span className="text-muted-foreground/60 text-[0.6875rem] shrink-0 select-none">↳</span>
+                              <span className="text-muted-foreground/60 text-xs shrink-0 select-none">↳</span>
                               <MapPin className="h-3 w-3 text-muted-foreground shrink-0" />
                               <span className="truncate max-w-[110px]">
                                 {child.locationCode ? `[${child.locationCode}] ` : ''}{child.locationName}
@@ -578,9 +558,9 @@ function PlanningDetailPanel({ planningId, onClose }: { planningId: number | nul
               )}
 
               {detail.hasActiveReplacement && (
-                <div className="rounded border border-purple-200 bg-purple-50 p-2">
-                  <p className="text-xs font-semibold text-purple-700">Reemplazante activo</p>
-                  <p className="text-xs text-purple-600">{detail.activeReplacementEmployeeName}</p>
+                <div className="rounded border border-cat-3/30 bg-cat-3/10 p-2">
+                  <p className="text-xs font-semibold text-cat-3">Reemplazante activo</p>
+                  <p className="text-xs text-cat-3">{detail.activeReplacementEmployeeName}</p>
                 </div>
               )}
 
@@ -590,7 +570,7 @@ function PlanningDetailPanel({ planningId, onClose }: { planningId: number | nul
                   <div className="space-y-1">
                     {detail.validations.map((v, i) => (
                       <div key={i} className={`rounded p-1.5 text-xs border
-                        ${v.severity === 'BLOCKING' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-yellow-50 border-yellow-200 text-yellow-700'}`}>
+                        ${v.severity === 'BLOCKING' ? 'bg-destructive/10 border-destructive/30 text-destructive' : 'bg-warning/10 border-warning/30 text-warning'}`}>
                         <span className="font-medium">[{CONFLICT_TYPE_LABELS[v.validationType] ?? v.validationType}]</span> {v.message}
                       </div>
                     ))}
@@ -603,7 +583,7 @@ function PlanningDetailPanel({ planningId, onClose }: { planningId: number | nul
               )}
 
               <div className="flex flex-col gap-2 pt-2">
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   {detail.status !== 'CANCELLED' && detail.status !== 'REPLACED' && (
                     <Button
                       size="sm" variant="secondary" className="flex-1"
@@ -636,7 +616,7 @@ function PlanningDetailPanel({ planningId, onClose }: { planningId: number | nul
                 )}
                 {detail.status !== 'CANCELLED' && (
                   confirmingCancel ? (
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                       <Button
                         size="sm" variant="destructive" className="flex-1"
                         disabled={cancel.isPending}
@@ -680,7 +660,7 @@ function PlanningDetailPanel({ planningId, onClose }: { planningId: number | nul
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-[0.625rem] text-muted-foreground uppercase font-semibold">{label}</p>
+      <p className="text-xs text-muted-foreground uppercase font-semibold">{label}</p>
       <p className="text-xs">{value}</p>
     </div>
   );
@@ -702,6 +682,8 @@ function GenerateDialog({
   const today = todayStr();
   const [step, setStep] = useState<GenStep>('form');
   const [previewData, setPreviewData] = useState<GeneratePreviewResponseDto | null>(null);
+  const [blockMessage, setBlockMessage] = useState<string | null>(null);
+  const [, navigate] = useLocation();
   const [form, setForm] = useState<GeneratePreviewRequestDto>({
     startDate: today,
     endDate: addDays(today, 29),
@@ -731,6 +713,8 @@ function GenerateDialog({
     preview.mutate(form, {
       onSuccess: (r) => {
         if (r.status === 'success') { setPreviewData(r.data); setStep('preview'); }
+        // apiFetch no rechaza la promesa en un error HTTP: sin esto la vista previa fallaba sin avisar.
+        else setBlockMessage(r.error.message);
       },
     });
   };
@@ -749,9 +733,11 @@ function GenerateDialog({
 
   const isBusy = preview.isPending || confirm.isPending;
 
+  const guard = useDirtyCloseGuard(open, handleClose);
   return (
-    <Dialog open={open} onOpenChange={v => !v && !isBusy && handleClose()}>
-      <DialogContent
+    <>
+    <Dialog open={open} onOpenChange={v => !v && !isBusy && guard.requestClose()}>
+      <DialogContent {...guard.dirtyProps}
         className="max-w-lg"
         onEscapeKeyDown={e => isBusy && e.preventDefault()}
         onInteractOutside={e => isBusy && e.preventDefault()}
@@ -769,7 +755,7 @@ function GenerateDialog({
               <div>
                 <Label className="text-xs">Modo</Label>
                 <select
-                  className="w-full h-9 border rounded-md px-3 text-sm bg-background mt-1"
+                  className="w-full h-9 border rounded-md px-3 text-sm bg-card mt-1"
                   value={form.mode}
                   onChange={e => {
                     const mode = e.target.value as GeneratePreviewRequestDto['mode'];
@@ -789,7 +775,7 @@ function GenerateDialog({
               <div>
                 <Label className="text-xs">Regenerar</Label>
                 <select
-                  className="w-full h-9 border rounded-md px-3 text-sm bg-background mt-1"
+                  className="w-full h-9 border rounded-md px-3 text-sm bg-card mt-1"
                   value={form.regenerateMode}
                   onChange={e => setForm(f => ({ ...f, regenerateMode: e.target.value as GeneratePreviewRequestDto['regenerateMode'] }))}
                 >
@@ -803,7 +789,7 @@ function GenerateDialog({
               <div>
                 <Label className="text-xs">Grupo *</Label>
                 <select
-                  className="w-full h-9 border rounded-md px-3 text-sm bg-background mt-1"
+                  className="w-full h-9 border rounded-md px-3 text-sm bg-card mt-1"
                   value={form.groupId ?? ''}
                   onChange={e => setForm(f => ({ ...f, groupId: Number(e.target.value) || undefined }))}
                 >
@@ -820,7 +806,7 @@ function GenerateDialog({
               <div>
                 <Label className="text-xs">Ubicación *</Label>
                 <select
-                  className="w-full h-9 border rounded-md px-3 text-sm bg-background mt-1"
+                  className="w-full h-9 border rounded-md px-3 text-sm bg-card mt-1"
                   value={form.locationId ?? ''}
                   onChange={e => setForm(f => ({ ...f, locationId: Number(e.target.value) || undefined }))}
                 >
@@ -844,7 +830,7 @@ function GenerateDialog({
                   onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
                 />
                 {isStartDateInvalid && form.startDate && (
-                  <p className="text-[0.625rem] text-destructive mt-1">La fecha no puede ser anterior a hoy.</p>
+                  <p className="text-xs text-destructive mt-1">La fecha no puede ser anterior a hoy.</p>
                 )}
               </div>
               <div>
@@ -856,7 +842,7 @@ function GenerateDialog({
                   onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))}
                 />
                 {isEndDateInvalid && form.endDate && (
-                  <p className="text-[0.625rem] text-destructive mt-1">No puede ser anterior a la fecha de inicio.</p>
+                  <p className="text-xs text-destructive mt-1">No puede ser anterior a la fecha de inicio.</p>
                 )}
               </div>
             </div>
@@ -911,10 +897,10 @@ function GenerateDialog({
                       <button
                         key={type}
                         onClick={() => setConflictTypeFilter(prev => prev === type ? null : type)}
-                        className={`text-[0.625rem] px-2 py-1 rounded-full border transition-colors ${
+                        className={`text-xs px-2 py-1 rounded-full border transition-colors ${
                           conflictTypeFilter === type
-                            ? 'bg-red-600 text-white border-red-600'
-                            : 'bg-background text-muted-foreground border-border hover:border-red-300'
+                            ? 'bg-destructive text-destructive-foreground border-destructive'
+                            : 'bg-background text-muted-foreground border-border hover:border-destructive/40'
                         }`}
                       >
                         {CONFLICT_TYPE_LABELS[type] ?? 'Otros'} ({count})
@@ -929,7 +915,7 @@ function GenerateDialog({
                       </p>
                       {hasActiveFilter && (
                         <button
-                          className="text-[0.625rem] text-primary hover:underline"
+                          className="text-xs text-primary hover:underline"
                           onClick={() => { setConflictGroupFilter(null); setConflictTypeFilter(null); }}
                         >
                           Ver todos ✕
@@ -937,7 +923,7 @@ function GenerateDialog({
                       )}
                     </div>
                     {filtered.slice(0, 30).map((item, idx) => (
-                      <div key={idx} className="text-red-700">
+                      <div key={idx} className="text-destructive">
                         <span className="font-medium">{item.workDate}</span> — {item.employeeFullName} [{item.groupName}]: [{CONFLICT_TYPE_LABELS[item.conflictType ?? ''] ?? item.conflictType}] {item.conflictMessage}
                       </div>
                     ))}
@@ -959,7 +945,7 @@ function GenerateDialog({
         {/* Paso 3: done */}
         {step === 'done' && (
           <div className="py-4 text-center">
-            <CheckCircle2 className="h-10 w-10 text-green-500 mx-auto mb-2" />
+            <CheckCircle2 className="h-10 w-10 text-success mx-auto mb-2" />
             <p className="font-medium">Generación confirmada</p>
             <p className="text-sm text-muted-foreground">El cronograma ha sido actualizado.</p>
           </div>
@@ -988,8 +974,24 @@ function GenerateDialog({
             </Button>
           )}
         </DialogFooter>
+      <AlertDialog open={blockMessage !== null} onOpenChange={v => { if (!v) setBlockMessage(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>No se puede generar la planificación</AlertDialogTitle>
+            <AlertDialogDescription>{blockMessage}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cerrar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setBlockMessage(null); handleClose(); navigate('/guards/location-rotation'); }}>
+              Ir a Asignación de Ubicaciones
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       </DialogContent>
     </Dialog>
+    <UnsavedChangesDialog open={guard.confirmOpen} onClose={guard.closeConfirm} onConfirmExit={guard.confirmExit} />
+    </>
   );
 }
 
@@ -1024,9 +1026,11 @@ function CancelRangeDialog({
     onClose();
   };
 
+  const guard2 = useDirtyCloseGuard(open, handleClose);
   return (
-    <Dialog open={open} onOpenChange={v => !v && handleClose()}>
-      <DialogContent className="max-w-md">
+    <>
+    <Dialog open={open} onOpenChange={v => !v && guard2.requestClose()}>
+      <DialogContent {...guard2.dirtyProps} className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Cancelar planificación</DialogTitle>
           <DialogDescription>Confirma la cancelación de esta planificación de turnos.</DialogDescription>
@@ -1040,7 +1044,7 @@ function CancelRangeDialog({
           <div>
             <Label className="text-xs">Grupo *</Label>
             <select
-              className="w-full h-9 border rounded-md px-3 text-sm bg-background mt-1"
+              className="w-full h-9 border rounded-md px-3 text-sm bg-card mt-1"
               value={groupId}
               onChange={e => setGroupId(
                 e.target.value === '' ? '' : e.target.value === 'ALL' ? 'ALL' : Number(e.target.value)
@@ -1095,15 +1099,17 @@ function CancelRangeDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <UnsavedChangesDialog open={guard2.confirmOpen} onClose={guard2.closeConfirm} onConfirmExit={guard2.confirmExit} />
+    </>
   );
 }
 
 function Stat({ label, value, color }: { label: string; value: number; color: 'blue' | 'yellow' | 'red' | 'green' }) {
   const colors = {
-    blue: 'bg-blue-50 text-blue-600',
-    yellow: 'bg-yellow-50 text-yellow-600',
-    red: 'bg-red-50 text-red-600',
-    green: 'bg-green-50 text-green-600',
+    blue: 'bg-primary/10 text-primary',
+    yellow: 'bg-warning/10 text-warning',
+    red: 'bg-destructive/10 text-destructive',
+    green: 'bg-success/10 text-success',
   };
   return (
     <div className={`rounded p-2 ${colors[color]}`}>
@@ -1156,7 +1162,7 @@ function GroupBreakdownTable({
 
   return (
     <div className="rounded-md border overflow-hidden">
-      <table className="w-full text-xs">
+      <table data-mobile="scroll" className="w-full text-xs">
         <thead className="bg-muted/50">
           <tr>
             <th className="text-left px-2 py-1 font-medium">Grupo</th>
@@ -1171,13 +1177,13 @@ function GroupBreakdownTable({
               key={r.groupName}
               onClick={() => r.conflictos > 0 && onSelectGroup(r.groupId)}
               className={`border-t ${r.conflictos > 0 ? 'cursor-pointer hover:bg-muted/50' : ''} ${
-                selectedGroupId === r.groupId ? 'bg-red-50' : ''
+                selectedGroupId === r.groupId ? 'bg-destructive/10' : ''
               }`}
             >
               <td className="px-2 py-1">{r.groupName}</td>
-              <td className="text-right px-2 py-1 text-blue-600 font-medium">{r.generar}</td>
-              <td className="text-right px-2 py-1 text-yellow-600">{r.omitidos}</td>
-              <td className="text-right px-2 py-1 text-red-600">{r.conflictos}</td>
+              <td className="text-right px-2 py-1 text-primary font-medium">{r.generar}</td>
+              <td className="text-right px-2 py-1 text-warning">{r.omitidos}</td>
+              <td className="text-right px-2 py-1 text-destructive">{r.conflictos}</td>
             </tr>
           ))}
         </tbody>
@@ -1233,11 +1239,11 @@ export default function GuardShiftPlanningPage() {
   const [selectedPlanningId, setSelectedPlanningId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState('cronograma');
 
-  const { data: boardResp, isLoading: boardLoading, refetch } = useScheduleBoard(boardFilter);
+  const { data: boardResp, isLoading: boardLoading, isFetching: boardFetching, refetch } = useScheduleBoard(boardFilter);
   // Grupo/Ubicación/Estado/Turno se comparten con "Por ubicación" (boardFilter) para que
   // "Por guardia" y "Conflictos" no muestren datos fuera de lo que el usuario filtró — pero
   // el rango de fechas es propio de esta pestaña (guardDateRange), no la semana de boardFilter.
-  const { data: calendarResp, isLoading: calLoading } = useGuardCalendar(
+  const { data: calendarResp, isLoading: calLoading, isFetching: calFetching, refetch: refetchCalendar } = useGuardCalendar(
     {
       startDate: guardDateRange.startDate,
       endDate: guardDateRange.endDate,
@@ -1268,6 +1274,7 @@ export default function GuardShiftPlanningPage() {
     i => i.status !== 'CANCELLED' && (i.hasPermissionConflict || i.hasVacationConflict || i.hasValidationWarning)
   );
   const isLoading = boardLoading || calLoading;
+  const isRefreshing = boardFetching || calFetching;
 
   return (
     <div className="p-6 space-y-4">
@@ -1276,14 +1283,14 @@ export default function GuardShiftPlanningPage() {
           (ocupaba espacio permanente en la pantalla incluso cuando ya no hacía falta). */}
 
       {/* Cabecera */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between gap-2">
         <div className="flex items-center gap-3">
           <Calendar className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-bold">Planificación de Turnos</h1>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" size="sm" onClick={() => { refetch(); refetchCalendar(); }} disabled={isRefreshing}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
             Actualizar
           </Button>
           <Button variant="outline" size="sm" onClick={() => setShowManualDialog(true)}>
@@ -1308,7 +1315,7 @@ export default function GuardShiftPlanningPage() {
             <div>
               <Label className="text-xs">Ubicación</Label>
               <select
-                className="h-9 border rounded-md px-3 text-sm bg-background"
+                className="h-9 border rounded-md px-3 text-sm bg-card"
                 value={boardFilter.locationId ?? ''}
                 onChange={e => setBoardFilter(f => ({ ...f, locationId: Number(e.target.value) || undefined }))}
               >
@@ -1319,7 +1326,7 @@ export default function GuardShiftPlanningPage() {
             <div>
               <Label className="text-xs">Grupo</Label>
               <select
-                className="h-9 border rounded-md px-3 text-sm bg-background"
+                className="h-9 border rounded-md px-3 text-sm bg-card"
                 value={boardFilter.groupId ?? ''}
                 onChange={e => setBoardFilter(f => ({ ...f, groupId: Number(e.target.value) || undefined }))}
               >
@@ -1330,7 +1337,7 @@ export default function GuardShiftPlanningPage() {
             <div>
               <Label className="text-xs">Turno</Label>
               <select
-                className="h-9 border rounded-md px-3 text-sm bg-background"
+                className="h-9 border rounded-md px-3 text-sm bg-card"
                 value={boardFilter.scheduleCode ?? ''}
                 onChange={e => setBoardFilter(f => ({ ...f, scheduleCode: e.target.value || undefined }))}
               >
@@ -1343,7 +1350,7 @@ export default function GuardShiftPlanningPage() {
             <div>
               <Label className="text-xs">Estado</Label>
               <select
-                className="h-9 border rounded-md px-3 text-sm bg-background"
+                className="h-9 border rounded-md px-3 text-sm bg-card"
                 value={boardFilter.status ?? ''}
                 onChange={e => setBoardFilter(f => ({ ...f, status: e.target.value || undefined }))}
               >
@@ -1375,7 +1382,7 @@ export default function GuardShiftPlanningPage() {
             <AlertTriangle className="h-3.5 w-3.5 mr-1.5" />
             Conflictos
             {conflicts.length > 0 && (
-              <Badge variant="destructive" className="ml-1.5 text-[0.625rem] px-1">{conflicts.length}</Badge>
+              <Badge variant="destructive" className="ml-1.5 text-xs px-1">{conflicts.length}</Badge>
             )}
           </TabsTrigger>
         </TabsList>
@@ -1467,7 +1474,7 @@ export default function GuardShiftPlanningPage() {
             <CardContent>
               {conflicts.length === 0 ? (
                 <div className="flex items-center gap-2 py-6 justify-center text-muted-foreground text-sm">
-                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                  <CheckCircle2 className="h-5 w-5 text-success" />
                   Sin conflictos en el rango seleccionado.
                 </div>
               ) : (
@@ -1500,10 +1507,10 @@ export default function GuardShiftPlanningPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-1 flex-wrap">
-                            {item.hasPermissionConflict && <Badge variant="destructive" className="text-[0.625rem] px-1">Permiso</Badge>}
-                            {item.hasVacationConflict && <Badge variant="destructive" className="text-[0.625rem] px-1">Vacación</Badge>}
-                            {item.hasValidationWarning && <Badge variant="outline" className="text-[0.625rem] px-1 border-yellow-400 text-yellow-700">Alerta</Badge>}
-                            {item.hasReplacement && <Badge variant="secondary" className="text-[0.625rem] px-1">Reemplazo</Badge>}
+                            {item.hasPermissionConflict && <Badge variant="destructive" className="text-xs px-1">Permiso</Badge>}
+                            {item.hasVacationConflict && <Badge variant="destructive" className="text-xs px-1">Vacación</Badge>}
+                            {item.hasValidationWarning && <Badge variant="outline" className="text-xs px-1 border-warning/50 text-warning">Alerta</Badge>}
+                            {item.hasReplacement && <Badge variant="secondary" className="text-xs px-1">Reemplazo</Badge>}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -1549,18 +1556,18 @@ export default function GuardShiftPlanningPage() {
 // ─── Subcomponente: cronograma por guardia ────────────────────────────────────
 
 const GUARD_SHIFT_CHIP: Record<string, { label: string; title: string; cls: string }> = {
-  M: { label: 'M', title: 'Mañana',  cls: 'bg-yellow-100 text-yellow-800 border-yellow-300' },
-  T: { label: 'T', title: 'Tarde',   cls: 'bg-orange-100 text-orange-800 border-orange-300' },
-  N: { label: 'N', title: 'Noche',   cls: 'bg-indigo-100 text-indigo-800 border-indigo-300' },
+  M: { label: 'M', title: 'Mañana',  cls: 'bg-warning/10 text-warning border-warning/40' },
+  T: { label: 'T', title: 'Tarde',   cls: 'bg-warning/10 text-warning border-warning/40' },
+  N: { label: 'N', title: 'Noche',   cls: 'bg-primary/10 text-primary border-primary/40' },
 };
-const GUARD_LIBRE_CHIP = { label: 'L', title: 'Libre', cls: 'bg-slate-100 text-slate-500 border-slate-200' };
+const GUARD_LIBRE_CHIP = { label: 'L', title: 'Libre', cls: 'bg-muted text-muted-foreground border-border' };
 
 function ShiftChip({ code }: { code: string | null | undefined }) {
   const chip = code ? (GUARD_SHIFT_CHIP[code] ?? { label: code.substring(0, 1), title: code, cls: 'bg-muted text-foreground border-border' }) : GUARD_LIBRE_CHIP;
   return (
     <span
       title={chip.title}
-      className={`inline-flex items-center justify-center w-5 h-5 rounded text-[0.6875rem] font-bold border ${chip.cls}`}
+      className={`inline-flex items-center justify-center w-5 h-5 rounded text-xs font-bold border ${chip.cls}`}
     >
       {chip.label}
     </span>
@@ -1590,21 +1597,21 @@ function GuardCronograma({
   return (
     <div>
       {/* Leyenda */}
-      <div className="flex items-center gap-3 px-3 py-2 border-b text-[0.6875rem] text-muted-foreground">
+      <div className="flex items-center gap-3 px-3 py-2 border-b text-xs text-muted-foreground">
         <span className="font-semibold text-foreground/70">Leyenda:</span>
         {Object.entries(GUARD_SHIFT_CHIP).map(([, chip]) => (
           <span key={chip.title} className="flex items-center gap-1">
-            <span className={`inline-flex items-center justify-center w-4 h-4 rounded text-[0.625rem] font-bold border ${chip.cls}`}>{chip.label}</span>
+            <span className={`inline-flex items-center justify-center w-4 h-4 rounded text-xs font-bold border ${chip.cls}`}>{chip.label}</span>
             {chip.title}
           </span>
         ))}
         <span className="flex items-center gap-1">
-          <span className={`inline-flex items-center justify-center w-4 h-4 rounded text-[0.625rem] font-bold border ${GUARD_LIBRE_CHIP.cls}`}>{GUARD_LIBRE_CHIP.label}</span>
+          <span className={`inline-flex items-center justify-center w-4 h-4 rounded text-xs font-bold border ${GUARD_LIBRE_CHIP.cls}`}>{GUARD_LIBRE_CHIP.label}</span>
           Libre / sin turno
         </span>
       </div>
 
-      <table className="w-full border-collapse text-xs">
+      <table data-mobile="scroll" className="w-full border-collapse text-xs">
         <thead>
           <tr className="bg-muted/60">
             <th className="border px-3 py-2 text-left sticky left-0 bg-muted z-10 min-w-[190px]">Guardia</th>

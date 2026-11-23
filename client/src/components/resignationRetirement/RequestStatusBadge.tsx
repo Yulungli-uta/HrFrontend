@@ -12,12 +12,12 @@ const STATUS_LABEL: Record<ResignationRetirementStatus, string> = {
 };
 
 const STATUS_VARIANT: Record<ResignationRetirementStatus, string> = {
-  PENDIENTE: 'bg-amber-50 text-amber-700 border-amber-200',
-  EN_REVISION: 'bg-blue-50 text-blue-700 border-blue-200',
-  DEVUELTO: 'bg-orange-50 text-orange-700 border-orange-200',
-  APROBADO: 'bg-green-50 text-green-700 border-green-200',
-  RECHAZADO: 'bg-red-50 text-red-700 border-red-200',
-  ANULADO: 'bg-gray-100 text-gray-600 border-gray-300',
+  PENDIENTE: 'bg-warning/10 text-warning border-warning/30',
+  EN_REVISION: 'bg-primary/10 text-primary border-primary/30',
+  DEVUELTO: 'bg-warning/10 text-warning border-warning/30',
+  APROBADO: 'bg-success/10 text-success border-success/30',
+  RECHAZADO: 'bg-destructive/10 text-destructive border-destructive/30',
+  ANULADO: 'bg-muted text-muted-foreground border-border',
 };
 
 export function RequestStatusBadge({ status }: { status: ResignationRetirementStatus }) {

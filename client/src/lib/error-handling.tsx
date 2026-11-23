@@ -162,7 +162,7 @@ export function ErrorMessage({ error, title, onRetry, variant = "card", classNam
         <Icon className="h-4 w-4 shrink-0" />
         <span className="truncate">{errorMessage}</span>
         {onRetry && (
-          <Button variant="ghost" size="icon" onClick={onRetry} data-testid="button-retry-compact">
+          <Button variant="ghost" size="icon" onClick={onRetry} data-testid="button-retry-compact" aria-label="Actualizar">
             <RefreshCw className="h-3 w-3" />
           </Button>
         )}

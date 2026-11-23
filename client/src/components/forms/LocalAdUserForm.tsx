@@ -183,7 +183,7 @@ export default function LocalAdUserForm({ user, onSuccess, onCancel, onDirtyChan
           </div>
         </div>
 
-        <div className="flex justify-end gap-3 pt-2">
+        <div className="flex justify-end gap-3 pt-2 flex-wrap">
           <Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button>
           <Button type="submit" disabled={updateMutation.isPending} className="bg-primary hover:bg-primary/90">
             {updateMutation.isPending
@@ -242,8 +242,7 @@ export default function LocalAdUserForm({ user, onSuccess, onCancel, onDirtyChan
             <button
               type="button"
               onClick={() => setShowPassword((v) => !v)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"} title={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}>
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
@@ -284,16 +283,16 @@ export default function LocalAdUserForm({ user, onSuccess, onCancel, onDirtyChan
         </div>
       </div>
 
-      <div className="flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 p-3">
-        <Cloud className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
-        <p className="text-xs text-blue-700 dark:text-blue-300">
+      <div className="flex items-start gap-3 rounded-lg border border-primary/30 bg-primary/10 p-3">
+        <Cloud className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+        <p className="text-xs text-primary">
           El usuario se creará en <strong>Active Directory local</strong>. La sincronización
           con <strong>Microsoft Entra ID / Office 365</strong> ocurre automáticamente vía Entra Connect
           (puede tardar hasta 30 minutos).
         </p>
       </div>
 
-      <div className="flex justify-end gap-3 pt-2">
+      <div className="flex justify-end gap-3 pt-2 flex-wrap">
         <Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button>
         <Button type="submit" disabled={createMutation.isPending} className="bg-primary hover:bg-primary/90">
           {createMutation.isPending

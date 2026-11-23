@@ -1,0 +1,22 @@
+/* =============================================================================
+ * PREFERENCIAS DE USUARIO — se cargan DESPUÉS de semantic.css para que siempre ganen.
+ * Los atributos data-* los pone applyVisualPreferences (features/preferences) y el
+ * script de index.html antes del primer pintado.
+ * Con la marca UTA los valores de contraste se derivan de los mismos tonos de marca.
+ * ============================================================================= */
+
+/* Contraste alto sobre la marca UTA */
+html[data-brand="uta2026"][data-contrast="high"] {
+  --muted-foreground: hsl(210 25% 20%);
+  --border: hsl(210 20% 42%);
+  --input: hsl(210 20% 42%);
+  --sidebar-border: hsl(210 20% 42%);
+  --ring: var(--brand-blue);
+}
+html[data-brand="uta2026"].dark[data-contrast="high"] {
+  --muted-foreground: hsl(210 25% 90%);
+  --border: hsl(210 20% 60%);
+  --input: hsl(210 20% 60%);
+  --sidebar-border: hsl(210 20% 60%);
+  --ring: hsl(207 90% 75%);
+}

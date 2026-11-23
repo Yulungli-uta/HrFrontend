@@ -524,7 +524,7 @@ export default function RoleMenuItemsPage({
 
   return (
     <div className="container mx-auto p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div className="min-w-0">
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-2 truncate">
             <Settings className="h-8 w-8 shrink-0" />

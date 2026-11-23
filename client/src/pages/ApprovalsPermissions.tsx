@@ -813,7 +813,7 @@ export default function ApprovalsPermissions() {
   /* ----------------- UI ----------------- */
   return (
     <div className="container mx-auto p-4 md:p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-foreground">Aprobaciones</h1>
           <p className="text-muted-foreground mt-1 text-sm md:text-base">
@@ -833,7 +833,7 @@ export default function ApprovalsPermissions() {
             <CardDescription>Total: {permsThisYear.length}</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {[
                 { key: "Pending", label: "Pendiente" },
                 { key: "Approved", label: "Aprobado" },
@@ -882,7 +882,7 @@ export default function ApprovalsPermissions() {
             <CardDescription>Total: {justThisYear.length}</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {[
                 { key: "PENDING", label: "Pendiente" },
                 { key: "APPROVED", label: "Aprobada" },
@@ -902,7 +902,7 @@ export default function ApprovalsPermissions() {
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="space-y-6">
         <div className="sticky top-0 z-30 bg-card/90 backdrop-blur border-b">
           <div className="container mx-auto px-0 py-3">
-            <TabsList className="grid w-full grid-cols-3 overflow-x-auto rounded-lg">
+            <TabsList className="max-sm:flex max-sm:justify-start grid w-full grid-cols-3 overflow-x-auto rounded-lg">
               <TabsTrigger value="permisos" className="flex items-center gap-2 text-xs sm:text-sm">
                 <CalendarCheck className="h-4 w-4" /> Permisos ({allPerms.length})
               </TabsTrigger>

@@ -622,7 +622,7 @@ export function DepartmentAuthorityForm({
       )}
 
       {/* ── Botones de acción ── */}
-      <div className="flex justify-end gap-3 pt-2 border-t border-border">
+      <div className="flex justify-end gap-3 pt-2 border-t border-border flex-wrap">
         <Button
           type="button"
           variant="outline"

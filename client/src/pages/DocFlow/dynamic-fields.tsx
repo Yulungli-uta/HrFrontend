@@ -485,7 +485,7 @@ function getFieldErrorMessage(field: EditableField): string | null {
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-3">
           {isMobile && onBack && (
-            <Button variant="ghost" size="sm" onClick={onBack} data-testid="button-back-to-tree-df">
+            <Button variant="ghost" size="sm" onClick={onBack} data-testid="button-back-to-tree-df" aria-label="Siguiente">
               <ChevronRight className="h-4 w-4 rotate-180" />
             </Button>
           )}
@@ -511,7 +511,7 @@ function getFieldErrorMessage(field: EditableField): string | null {
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-3">
           {isMobile && onBack && (
-            <Button variant="ghost" size="sm" onClick={onBack} data-testid="button-back-to-tree-df">
+            <Button variant="ghost" size="sm" onClick={onBack} data-testid="button-back-to-tree-df" aria-label="Siguiente">
               <ChevronRight className="h-4 w-4 rotate-180" />
             </Button>
           )}
@@ -524,7 +524,7 @@ function getFieldErrorMessage(field: EditableField): string | null {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button
             variant="outline"
             size="sm"
@@ -564,7 +564,7 @@ function getFieldErrorMessage(field: EditableField): string | null {
             </span>
           )}
           {hasChanges && (
-            <Badge variant="outline" className="text-warning border-amber-300 dark:text-amber-400 dark:border-amber-700">
+            <Badge variant="outline" className="text-warning border-warning/40">
               Sin guardar
             </Badge>
           )}
@@ -724,8 +724,7 @@ function getFieldErrorMessage(field: EditableField): string | null {
                           size="sm"
                           className="text-destructive hover:text-destructive"
                           onClick={() => setDeleteConfirm(field._key)}
-                          data-testid={`button-delete-field-${index}`}
-                        >
+                          data-testid={`button-delete-field-${index}`} aria-label="Eliminar">
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -749,14 +748,14 @@ function getFieldErrorMessage(field: EditableField): string | null {
                           <span className="text-sm font-medium truncate">{field.name}</span>
                           <Badge
                             variant="outline"
-                            className="text-[0.625rem] px-1.5 py-0 h-4 shrink-0"
+                            className="text-xs px-1.5 py-0 h-4 shrink-0"
                           >
                             {getFieldTypeLabel(field.type)}
                           </Badge>
                           {field.required && (
                             <Badge
                               variant="outline"
-                              className="text-[0.625rem] px-1.5 py-0 h-4 shrink-0 border-destructive/40 text-destructive dark:border-destructive/60 dark:text-destructive/80"
+                              className="text-xs px-1.5 py-0 h-4 shrink-0 border-destructive/40 text-destructive dark:border-destructive/60 dark:text-destructive/80"
                             >
                               Obligatorio
                             </Badge>
@@ -771,13 +770,12 @@ function getFieldErrorMessage(field: EditableField): string | null {
                       <div className="flex items-center gap-1 shrink-0">
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Button
+                            <Button tooltip={false}
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8"
                               onClick={() => setEditingField(field._key)}
-                              data-testid={`button-edit-field-${index}`}
-                            >
+                              data-testid={`button-edit-field-${index}`} aria-label="Editar">
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
                           </TooltipTrigger>
@@ -785,13 +783,12 @@ function getFieldErrorMessage(field: EditableField): string | null {
                         </Tooltip>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Button
+                            <Button tooltip={false}
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 text-destructive hover:text-destructive"
                               onClick={() => setDeleteConfirm(field._key)}
-                              data-testid={`button-delete-field-${index}`}
-                            >
+                              data-testid={`button-delete-field-${index}`} aria-label="Eliminar">
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </TooltipTrigger>

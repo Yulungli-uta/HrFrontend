@@ -132,9 +132,9 @@ export function SenescytSyncDialog({ open, onOpenChange, personId }: SenescytSyn
                 <p className="text-2xl font-semibold">{preview.totalEncontrados}</p>
                 <p className="text-xs text-muted-foreground">Encontrados</p>
               </div>
-              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-900 dark:bg-emerald-950">
-                <p className="text-2xl font-semibold text-emerald-700 dark:text-emerald-400">{preview.totalNuevos}</p>
-                <p className="text-xs text-emerald-700 dark:text-emerald-400">Nuevos</p>
+              <div className="rounded-lg border border-success/30 bg-success/10 p-3">
+                <p className="text-2xl font-semibold text-success">{preview.totalNuevos}</p>
+                <p className="text-xs text-success">Nuevos</p>
               </div>
               <div className="rounded-lg border p-3">
                 <p className="text-2xl font-semibold text-muted-foreground">{preview.totalYaExistentes}</p>
@@ -152,7 +152,7 @@ export function SenescytSyncDialog({ open, onOpenChange, personId }: SenescytSyn
                         <p className="text-xs text-muted-foreground break-words">{item.institucion}</p>
                       )}
                       {item.requiereRevision && (
-                        <p className="text-xs text-amber-600 mt-1">⚠ {item.motivoRevision}</p>
+                        <p className="text-xs text-warning mt-1">⚠ {item.motivoRevision}</p>
                       )}
                     </div>
                     <Badge variant={item.yaExiste ? "outline" : "default"} className="shrink-0 text-xs">
@@ -171,7 +171,7 @@ export function SenescytSyncDialog({ open, onOpenChange, personId }: SenescytSyn
             )}
             {preview.totalNuevos === 0 && preview.totalEncontrados > 0 && (
               <div className="flex flex-col items-center gap-2 py-4 text-center">
-                <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+                <CheckCircle2 className="h-6 w-6 text-success" />
                 <p className="text-sm text-muted-foreground">
                   Ya está actualizado — los {preview.totalEncontrados} título(s) que devuelve DINARDAP ya están registrados aquí.
                 </p>
@@ -182,7 +182,7 @@ export function SenescytSyncDialog({ open, onOpenChange, personId }: SenescytSyn
 
         {step === "done" && (
           <div className="flex flex-col items-center gap-3 py-6 text-center">
-            <CheckCircle2 className="h-8 w-8 text-emerald-600" />
+            <CheckCircle2 className="h-8 w-8 text-success" />
             <p className="text-sm">{resultMessage}</p>
           </div>
         )}

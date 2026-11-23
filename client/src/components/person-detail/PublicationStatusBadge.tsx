@@ -4,8 +4,8 @@ import { cn } from "@/lib/utils";
 import { publicationBadge, type PublicationStateFields } from "@/features/publications/publicationStatus";
 
 const TONE_CLASS = {
-  review: "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300",
-  approved: "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
+  review: "border-warning/40 bg-warning/10 text-warning ",
+  approved: "border-success/40 bg-success/10 text-success ",
   rejected: "border-muted-foreground/30 bg-muted text-muted-foreground",
 } as const;
 

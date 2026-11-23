@@ -1131,7 +1131,7 @@ export function ContractDialog(props: {
                     <div className="flex items-center gap-2 flex-1">
                       <div
                         className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${wizardStep > step
-                          ? "bg-success text-white"
+                          ? "bg-success text-success-foreground"
                           : wizardStep === step
                             ? "bg-primary text-primary-foreground"
                             : "bg-muted text-muted-foreground"
@@ -1143,7 +1143,7 @@ export function ContractDialog(props: {
                           step
                         )}
                       </div>
-                      <div className="flex-1">
+                      <div className="hidden min-w-0 flex-1 sm:block">
                         <div className="text-xs font-medium">
                           {step === 1
                             ? "Datos básicos"
@@ -1179,7 +1179,7 @@ export function ContractDialog(props: {
               onValueChange={setActiveTab}
               className="w-full"
             >
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="max-sm:flex max-sm:justify-start grid w-full grid-cols-4">
                 <TabsTrigger value="overview">
                   <Eye className="h-4 w-4 mr-2" />
                   Resumen
@@ -1310,7 +1310,7 @@ export function ContractDialog(props: {
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                         Régimen y modalidad laboral
                       </p>
-                      <div className="grid grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
                           <p className="text-xs text-muted-foreground">Régimen</p>
                           <p className="text-sm font-medium mt-0.5">
@@ -1499,8 +1499,7 @@ export function ContractDialog(props: {
                             key={`next-${s.typeID}`}
                             variant="outline"
                             onClick={() => handleChangeStatus(s.typeID)}
-                            disabled={changeStatusMut.isPending}
-                          >
+                            disabled={changeStatusMut.isPending} aria-label="Flujo de trabajo">
                             <Workflow className="h-4 w-4 mr-2" />
                             {s.name}
                           </Button>
@@ -1648,7 +1647,7 @@ export function ContractDialog(props: {
                             <div className={`text-xs rounded p-2 ${pendingCount === null
                               ? "text-muted-foreground"
                               : pendingCount > 0
-                                ? "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300"
+                                ? "bg-success/10 text-success "
                                 : "bg-destructive/10 text-destructive"
                               }`}>
                               {pendingCount === null
@@ -1764,7 +1763,7 @@ export function ContractDialog(props: {
                               {(isView || form.laborRegimeID) ? (
                                 <div className="flex items-center gap-1 h-9 px-3 rounded-md border border-input bg-background text-sm">
                                   {laborRegimeName
-                                    ? <><span className="font-medium flex-1">{laborRegimeName}</span><span className="text-[0.625rem] text-muted-foreground shrink-0">(auto)</span></>
+                                    ? <><span className="font-medium flex-1">{laborRegimeName}</span><span className="text-xs text-muted-foreground shrink-0">(auto)</span></>
                                     : <span className="italic text-muted-foreground">No especificado</span>}
                                 </div>
                               ) : (
@@ -1789,7 +1788,7 @@ export function ContractDialog(props: {
                               <Label className="text-xs text-muted-foreground">Modalidad</Label>
                               <div className="flex items-center gap-1 h-9 px-3 rounded-md border border-input bg-background text-sm">
                                 {workModalityName
-                                  ? <><span className="font-medium flex-1">{workModalityName}</span><span className="text-[0.625rem] text-muted-foreground shrink-0">(auto)</span></>
+                                  ? <><span className="font-medium flex-1">{workModalityName}</span><span className="text-xs text-muted-foreground shrink-0">(auto)</span></>
                                   : <span className="italic text-muted-foreground">No especificada</span>}
                               </div>
                             </div>
@@ -1799,7 +1798,7 @@ export function ContractDialog(props: {
                               <Label className="text-xs text-muted-foreground">Horas contratadas</Label>
                               <div className="flex items-center gap-1 h-9 px-3 rounded-md border border-input bg-background text-sm">
                                 {form.contractedHours != null && form.contractedHours > 0
-                                  ? <><span className="font-medium flex-1">{form.contractedHours}h</span><span className="text-[0.625rem] text-muted-foreground shrink-0">(auto)</span></>
+                                  ? <><span className="font-medium flex-1">{form.contractedHours}h</span><span className="text-xs text-muted-foreground shrink-0">(auto)</span></>
                                   : <span className="italic text-muted-foreground">No especificadas</span>}
                               </div>
                             </div>
@@ -2031,12 +2030,12 @@ export function ContractDialog(props: {
                       {/* Adendum con padre seleccionado: muestra info de la cert auto-cargada */}
                       {isAdendumType && form.parentID ? (
                         form.certificationID ? (
-                          <p className="text-sm text-green-700 dark:text-green-300 flex items-center gap-1.5">
+                          <p className="text-sm text-success flex items-center gap-1.5">
                             <CheckCircle2 className="h-4 w-4 shrink-0" />
                             Certificación <span className="font-medium">#{form.certificationID}</span> cargada desde el contrato padre.
                           </p>
                         ) : (
-                          <p className="text-xs text-amber-600 dark:text-amber-400">
+                          <p className="text-xs text-warning">
                             El contrato padre no tiene certificación financiera vinculada.
                           </p>
                         )
@@ -2071,7 +2070,7 @@ export function ContractDialog(props: {
                           )}
 
                           {certRequestId ? (
-                            <p className="text-xs text-green-700 dark:text-green-300 flex items-center gap-1">
+                            <p className="text-xs text-success flex items-center gap-1">
                               <FileText className="h-3 w-3" />
                               Solicitud <span className="font-medium">#{certRequestId}</span> vinculada automáticamente.
                             </p>
@@ -2088,7 +2087,7 @@ export function ContractDialog(props: {
                             <div className={`text-xs rounded p-2 ${pendingCount === null
                               ? "text-muted-foreground"
                               : pendingCount > 0
-                                ? "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300"
+                                ? "bg-success/10 text-success "
                                 : "bg-destructive/10 text-destructive"
                               }`}>
                               {pendingCount === null
@@ -2225,7 +2224,7 @@ export function ContractDialog(props: {
                               <span className="font-medium flex-1">{laborRegimeName}</span>
                               <button
                                 type="button"
-                                className="text-[0.625rem] text-muted-foreground underline shrink-0 hover:text-foreground"
+                                className="text-xs text-muted-foreground underline shrink-0 hover:text-foreground"
                                 onClick={() => setForm((f) => ({ ...f, laborRegimeID: null, contractTypeID: 0, jobID: null }))}
                               >
                                 cambiar
@@ -2256,7 +2255,7 @@ export function ContractDialog(props: {
                               <span className="font-medium flex-1">{workModalityName}</span>
                               <button
                                 type="button"
-                                className="text-[0.625rem] text-muted-foreground underline shrink-0 hover:text-foreground"
+                                className="text-xs text-muted-foreground underline shrink-0 hover:text-foreground"
                                 onClick={() => setForm((f) => ({ ...f, workModalityID: null }))}
                               >
                                 cambiar
@@ -2284,7 +2283,7 @@ export function ContractDialog(props: {
                           <Label className="text-xs text-muted-foreground">Horas contratadas</Label>
                           <div className="flex items-center gap-1 h-9 px-3 rounded-md border border-input bg-background text-sm">
                             {form.contractedHours != null && form.contractedHours > 0
-                              ? <><span className="font-medium flex-1">{form.contractedHours}h</span><span className="text-[0.625rem] text-muted-foreground shrink-0">(auto)</span></>
+                              ? <><span className="font-medium flex-1">{form.contractedHours}h</span><span className="text-xs text-muted-foreground shrink-0">(auto)</span></>
                               : <span className="italic text-muted-foreground">No especificadas</span>}
                           </div>
                         </div>
@@ -2377,7 +2376,7 @@ export function ContractDialog(props: {
                       <Label htmlFor="wizard-person">
                         Persona <span className="text-destructive">*</span>
                         {isPersonFromDetail && (
-                          <span className="ml-2 text-xs text-green-600 dark:text-green-400 font-normal">
+                          <span className="ml-2 text-xs text-success font-normal">
                             (pre-completada desde el detalle)
                           </span>
                         )}
@@ -2678,7 +2677,7 @@ export function ContractDialog(props: {
                   )}
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   {wizardStep < 3 ? (
                     <Button
                       onClick={() => setWizardStep((s) => s + 1)}
@@ -2717,7 +2716,7 @@ export function ContractDialog(props: {
                 </Button>
 
                 {!isView && (
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <Button
                       variant="outline"
                       onClick={() => setMode("view")}
@@ -2726,8 +2725,7 @@ export function ContractDialog(props: {
                     </Button>
                     <Button
                       onClick={handleSave}
-                      disabled={updateMut.isPending}
-                    >
+                      disabled={updateMut.isPending} aria-label="Guardar">
                       {updateMut.isPending ? (
                         <>Guardando...</>
                       ) : (

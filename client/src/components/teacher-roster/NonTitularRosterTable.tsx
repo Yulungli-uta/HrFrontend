@@ -34,7 +34,7 @@ function SalaryCell({ item }: { item: NonTitularRosterItemDto }) {
       <span className="tabular-nums font-medium">{money(item.rmu)}</span>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Badge className={`${status.cls} text-[0.625rem] px-1.5 py-0 cursor-help`}>{status.text}</Badge>
+          <Badge className={`${status.cls} text-xs px-1.5 py-0 cursor-help`}>{status.text}</Badge>
         </TooltipTrigger>
         <TooltipContent className="max-w-xs text-xs">
           {item.rmuSource ?? "Sin documento de origen"}
@@ -126,7 +126,7 @@ export function NonTitularRosterTable({ items, isLoading, showSalary }: NonTitul
                     {item.contractState === "VIGENTE" ? "Vigente" : "Vencido"}
                   </Badge>
                   {!item.employeeIsActive && (
-                    <Badge variant="outline" className="text-[0.625rem] border-warning/50 text-warning">Empleado inactivo</Badge>
+                    <Badge variant="outline" className="text-xs border-warning/50 text-warning">Empleado inactivo</Badge>
                   )}
                 </div>
               </TableCell>

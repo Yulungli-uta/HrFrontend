@@ -72,10 +72,10 @@ function StepDot({ n, label, active, done }: { n: number; label: string; active:
   return (
     <div className="flex flex-col items-center gap-0.5 min-w-[72px]">
       <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-colors
-        ${done ? 'bg-green-500 border-green-500 text-white' : active ? 'bg-primary border-primary text-primary-foreground' : 'bg-background border-muted-foreground/30 text-muted-foreground'}`}>
+        ${done ? 'bg-success border-success text-success-foreground' : active ? 'bg-primary border-primary text-primary-foreground' : 'bg-background border-muted-foreground/30 text-muted-foreground'}`}>
         {done ? '✓' : n}
       </div>
-      <span className={`text-[0.625rem] text-center leading-tight ${active ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
+      <span className={`text-xs text-center leading-tight ${active ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
         {label}
       </span>
     </div>
@@ -86,7 +86,7 @@ function StepDot({ n, label, active, done }: { n: number; label: string; active:
 
 function Hint({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex items-start gap-2 rounded-md bg-blue-50 border border-blue-100 px-3 py-2 text-xs text-blue-700">
+    <div className="flex items-start gap-2 rounded-md bg-primary/10 border border-primary/30 px-3 py-2 text-xs text-primary">
       <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
       <span>{children}</span>
     </div>
@@ -105,12 +105,12 @@ function DaySummary({ rows }: { rows: DetailRow[] }) {
   return (
     <div className="flex gap-3 text-xs text-muted-foreground mb-2">
       <span className="flex items-center gap-1">
-        <Sun className="h-3 w-3 text-amber-500" /> {work} trabajo
+        <Sun className="h-3 w-3 text-warning" /> {work} trabajo
         {extraShifts > 0 && <span className="ml-1">({extraShifts} con 2do horario)</span>}
-        {withSchedule < workShifts.length && <span className="text-orange-500 ml-1">({workShifts.length - withSchedule} sin horario)</span>}
+        {withSchedule < workShifts.length && <span className="text-warning ml-1">({workShifts.length - withSchedule} sin horario)</span>}
       </span>
       <span className="flex items-center gap-1">
-        <Moon className="h-3 w-3 text-indigo-400" /> {rest} descanso
+        <Moon className="h-3 w-3 text-primary" /> {rest} descanso
       </span>
     </div>
   );
@@ -258,7 +258,7 @@ export default function RotationPatternsPage() {
 
   return (
     <div className="p-6 space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <RotateCw className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-bold">Patrones de Rotación</h1>
@@ -322,7 +322,7 @@ export default function RotationPatternsPage() {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Configurados:</span>
-                    <span className={p.details.length < p.cycleDays ? 'text-orange-500 font-medium' : 'text-green-600 font-medium'}>
+                    <span className={p.details.length < p.cycleDays ? 'text-warning font-medium' : 'text-success font-medium'}>
                       {p.details.length}/{p.cycleDays} días
                     </span>
                   </div>
@@ -337,8 +337,8 @@ export default function RotationPatternsPage() {
                           title={d ? `${dayOrderLabel(i + 1)}: ${d.isRestDay ? 'Descanso' : (d.scheduleDescription ?? 'Trabajo')}` : `${dayOrderLabel(i + 1)} — sin configurar`}
                           className={`w-6 h-6 rounded text-xs flex items-center justify-center border
                             ${!d ? 'bg-muted border-muted text-muted-foreground' :
-                              d.isRestDay ? 'bg-indigo-100 border-indigo-200 text-indigo-600' :
-                              'bg-amber-100 border-amber-200 text-amber-700'}`}
+                              d.isRestDay ? 'bg-primary/10 border-primary/30 text-primary' :
+                              'bg-warning/10 border-warning/30 text-warning'}`}
                         >
                           {!d ? '?' : d.isRestDay ? <Moon className="h-3 w-3" /> : <Sun className="h-3 w-3" />}
                         </div>
@@ -349,7 +349,7 @@ export default function RotationPatternsPage() {
                     )}
                   </div>
 
-                  <div className="flex gap-2 pt-1">
+                  <div className="flex gap-2 pt-1 flex-wrap">
                     <Button
                       variant="outline" size="sm" className="flex-1"
                       onClick={() => openEditDetails(p)}
@@ -618,26 +618,26 @@ function DetailsTable({
             const dayRows = rows.filter(r => r.dayOrder === dayOrder);
             const isRest = dayRows[0]?.isRestDay ?? false;
             return dayRows.map((row, i) => (
-              <TableRow key={row.id} className={row.isRestDay ? 'bg-indigo-50/60' : ''}>
+              <TableRow key={row.id} className={row.isRestDay ? 'bg-primary/60' : ''}>
                 <TableCell className="text-center font-bold text-sm py-1.5">
                   {i === 0 && (
                     <span
                       title={`Día ${row.dayOrder} del ciclo`}
-                      className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-[0.625rem] font-semibold
-                      ${row.isRestDay ? 'bg-indigo-100 text-indigo-600' : 'bg-amber-100 text-amber-700'}`}>
+                      className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold
+                      ${row.isRestDay ? 'bg-primary/10 text-primary' : 'bg-warning/10 text-warning'}`}>
                       {dayOrderLabel(row.dayOrder)}
                     </span>
                   )}
                 </TableCell>
                 <TableCell className="py-1.5">
                   {row.isRestDay ? (
-                    <span className="text-xs text-indigo-500 flex items-center gap-1">
+                    <span className="text-xs text-primary flex items-center gap-1">
                       <Moon className="h-3 w-3" /> Día de descanso
                     </span>
                   ) : (
                     <div className="flex items-center gap-1">
                       {dayRows.length > 1 && (
-                        <span className="text-[0.625rem] text-muted-foreground w-14 shrink-0">Turno {i + 1}</span>
+                        <span className="text-xs text-muted-foreground w-14 shrink-0">Turno {i + 1}</span>
                       )}
                       <ScheduleCombobox
                         value={row.scheduleId}

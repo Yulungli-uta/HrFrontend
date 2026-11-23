@@ -17,8 +17,8 @@ interface AddressesTabProps {
   refTypesMap?: Record<number, string>;
   /** Mapas id → nombre para resolver país/provincia/cantón (PKs string, mismo patrón que WorkExperiencesTab/BooksTab) */
   countryMap?: Record<number, string>;
-  provinceMap?: Record<number, string>;
-  cantonMap?: Record<number, string>;
+  provinceMap?: Record<string, string>;
+  cantonMap?: Record<string, string>;
 }
 
 export function AddressesTab({
@@ -64,7 +64,7 @@ export function AddressesTab({
 
   return (
     <Card className="shadow-sm">
-      <CardHeader className="flex flex-row items-center justify-between gap-2">
+      <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap gap-2">
         <CardTitle className="flex items-center gap-2">
           <MapPin className="h-5 w-5 text-uta-blue" />
           <span>Direcciones</span>
@@ -112,16 +112,16 @@ export function AddressesTab({
             {list.paginatedItems.map((address) => {
               const typeName = refTypesMap[Number(address.addressTypeId)] ?? null;
               const countryName = countryMap[Number(address.countryId)] ?? null;
-              const provinceName = provinceMap[Number(address.provinceId)] ?? null;
-              const cantonName = cantonMap[Number(address.cantonId)] ?? null;
+              const provinceName = provinceMap[String(address.provinceId)] ?? null;
+              const cantonName = cantonMap[String(address.cantonId)] ?? null;
 
               return (
-                <Card key={address.addressId} className="hover:shadow-md transition-shadow border-l-4 border-l-teal-500">
+                <Card key={address.addressId} className="hover:shadow-md transition-shadow border-l-4 border-l-cat-6">
                   <CardContent className="p-3 flex flex-col gap-2">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-start gap-2 min-w-0">
-                        <div className="flex items-center justify-center h-8 w-8 rounded-md bg-teal-500/10 shrink-0">
-                          <MapPin className="h-4 w-4 text-teal-500" />
+                        <div className="flex items-center justify-center h-8 w-8 rounded-md bg-cat-6/10 shrink-0">
+                          <MapPin className="h-4 w-4 text-cat-6" />
                         </div>
                         <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">

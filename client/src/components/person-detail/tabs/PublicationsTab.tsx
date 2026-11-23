@@ -124,7 +124,7 @@ export function PublicationsTab({ publications: allPublications, onEdit, onDelet
 
   return (
     <Card className="mt-4">
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <FileText className="h-5 w-5 text-primary" />
           <CardTitle className="text-lg sm:text-xl">
@@ -139,7 +139,7 @@ export function PublicationsTab({ publications: allPublications, onEdit, onDelet
             )}
           </CardTitle>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {personId ? (
             <Button size="sm" variant="outline" onClick={() => setSyncOpen(true)}>
               <RefreshCw className="h-4 w-4 mr-2" />
@@ -250,7 +250,7 @@ export function PublicationsTab({ publications: allPublications, onEdit, onDelet
                               <span>DOI: {publication.doi}</span>
                             )}
                             {normalizeDoi(publication.doi) && repeatedDois.has(normalizeDoi(publication.doi)!) && (
-                              <Badge variant="outline" className="ml-1 text-[10px] font-normal text-amber-600 border-amber-300">
+                              <Badge variant="outline" className="ml-1 text-xs font-normal text-warning border-warning/40">
                                 DOI repetido
                               </Badge>
                             )}

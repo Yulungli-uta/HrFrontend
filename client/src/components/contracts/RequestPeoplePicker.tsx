@@ -119,7 +119,7 @@ export function RequestPeoplePicker({ requestId, selectedRequestPersonId, onSele
             {slots && (
               <div className={`text-xs rounded px-2 py-1 font-medium ${
                 slots.slotsAvailable > 0
-                  ? "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300"
+                  ? "bg-success/10 text-success "
                   : "bg-destructive/10 text-destructive"
               }`}>
                 <Users className="h-3 w-3 inline mr-1" />

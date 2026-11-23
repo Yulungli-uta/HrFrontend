@@ -1,4 +1,5 @@
 // src/pages/admin/EmployeeLaborRegimes.tsx
+import { RowAction } from "@/components/ui/row-action";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,7 +14,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { ScrollText, Plus, Loader2, RefreshCw, AlertCircle, XCircle, Star } from "lucide-react";
+import { ScrollText, Plus, Loader2, AlertCircle, XCircle, Star } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { EmployeeLaborRegimesAPI } from "@/lib/api";
 import type { EmployeeLaborRegimeDto } from "@/lib/api/services/employeeLaborRegimes";
@@ -134,15 +135,12 @@ export default function EmployeeLaborRegimesPage() {
 
       {employeeId && (
         <>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <h2 className="text-sm font-semibold text-muted-foreground">
               Regímenes de {employeeLabel || `empleado #${employeeId}`}
             </h2>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => refetch()} className="flex items-center gap-2">
-                <RefreshCw className="h-4 w-4" />
-                <span className="hidden sm:inline">Actualizar</span>
-              </Button>
+            <div className="flex items-center gap-2 flex-wrap">
+              <RowAction action="refresh" onClick={() => refetch()} />
               <Button size="sm" onClick={() => setIsFormOpen(true)} className="flex items-center gap-2 bg-primary hover:bg-primary/90">
                 <Plus className="h-4 w-4" />
                 Agregar régimen
@@ -308,7 +306,7 @@ export default function EmployeeLaborRegimesPage() {
               onChange={(e) => setCloseDate(e.target.value)}
             />
           </div>
-          <div className="flex justify-end gap-3 pt-2">
+          <div className="flex justify-end gap-3 pt-2 flex-wrap">
             <Button variant="outline" onClick={() => setCloseTarget(null)} disabled={closeMutation.isPending}>
               Cancelar
             </Button>

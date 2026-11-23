@@ -74,7 +74,7 @@ export default function AzureLoginRelay() {
     <div className="min-h-screen flex items-center justify-center">
       <div className="text-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-2" />
-        <p className="text-gray-600 dark:text-gray-400 text-sm">Completando inicio de sesión…</p>
+        <p className="text-muted-foreground text-sm">Completando inicio de sesión…</p>
       </div>
     </div>
   );

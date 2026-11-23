@@ -1,4 +1,6 @@
 // src/pages/guards/GuardLocationRotation.tsx
+import { useDirtyCloseGuard } from '@/hooks/useDirtyCloseGuard';
+import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
 import { useEffect, useState } from 'react';
 import { MapPin, Plus, Loader2, ChevronLeft, ChevronRight, Users, Building2, Trash2, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -54,7 +56,8 @@ function PeriodFormDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editTarget?.locationRotationPeriodId]);
 
-  const f = <K extends keyof PeriodForm>(k: K, v: PeriodForm[K]) => setForm(p => ({ ...p, [k]: v }));
+  const f = <K extends keyof PeriodForm>(k: K, v: PeriodForm[K]) => { guard.touch(); setForm(p => ({ ...p, [k]: v })); };
+  const guard = useDirtyCloseGuard(open, onClose);
   const isSaving = createPeriod.isPending || updatePeriod.isPending;
 
   const handleSave = () => {
@@ -75,8 +78,9 @@ function PeriodFormDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="sm:max-w-sm" aria-describedby={undefined}>
+    <>
+    <Dialog open={open} onOpenChange={v => !v && guard.requestClose()}>
+      <DialogContent className="sm:max-w-sm max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>{editTarget ? 'Editar periodo' : 'Nuevo periodo de rotación'}</DialogTitle>
         </DialogHeader>
@@ -114,6 +118,8 @@ function PeriodFormDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <UnsavedChangesDialog open={guard.confirmOpen} onClose={guard.closeConfirm} onConfirmExit={guard.confirmExit} />
+    </>
   );
 }
 
@@ -138,7 +144,8 @@ function AssignmentFormDialog({
     isFixedSchedule: false,
     notes: '',
   });
-  const f = <K extends keyof typeof form>(k: K, v: typeof form[K]) => setForm(p => ({ ...p, [k]: v }));
+  const guard = useDirtyCloseGuard(open, onClose);
+  const f = <K extends keyof typeof form>(k: K, v: typeof form[K]) => { guard.touch(); setForm(p => ({ ...p, [k]: v })); };
 
   const handleSave = () => {
     if (!form.locationId) return;
@@ -154,14 +161,15 @@ function AssignmentFormDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="sm:max-w-sm" aria-describedby={undefined}>
+    <>
+    <Dialog open={open} onOpenChange={v => !v && guard.requestClose()}>
+      <DialogContent className="sm:max-w-sm max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
         <DialogHeader><DialogTitle>Nueva asignación</DialogTitle></DialogHeader>
         <div className="space-y-3 py-1">
           <div>
             <Label>Grupo (opcional)</Label>
             <select
-              className="w-full h-9 border rounded-md px-3 text-sm bg-background mt-1"
+              className="w-full h-9 border rounded-md px-3 text-sm bg-card mt-1"
               value={form.groupId}
               onChange={e => f('groupId', e.target.value !== '' ? Number(e.target.value) : '')}
             >
@@ -196,6 +204,8 @@ function AssignmentFormDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <UnsavedChangesDialog open={guard.confirmOpen} onClose={guard.closeConfirm} onConfirmExit={guard.confirmExit} />
+    </>
   );
 }
 
@@ -402,7 +412,7 @@ function PeriodDetailView({
           />
           {view === 'location' && (
             <select
-              className="h-8 border rounded-md px-2 text-sm bg-background"
+              className="h-8 border rounded-md px-2 text-sm bg-card"
               value={coverageGroupFilter}
               onChange={e => setCoverageGroupFilter(e.target.value === '' ? '' : Number(e.target.value))}
             >
@@ -412,7 +422,7 @@ function PeriodDetailView({
           )}
           {view === 'group' && (
             <select
-              className="h-8 border rounded-md px-2 text-sm bg-background"
+              className="h-8 border rounded-md px-2 text-sm bg-card"
               value={coverageLocationFilter}
               onChange={e => setCoverageLocationFilter(e.target.value === '' ? '' : Number(e.target.value))}
             >
@@ -468,6 +478,7 @@ function PeriodDetailView({
                   </TableCell>
                   <TableCell>
                     <p className="text-sm font-medium">{a.locationName}</p>
+                    {a.locationIsActive === false && <Badge variant="destructive" className="text-xs mt-0.5">Ubicación inactiva</Badge>}
                     {a.locationCode && <p className="text-xs text-muted-foreground font-mono">{a.locationCode}</p>}
                   </TableCell>
                   <TableCell className="text-center">
@@ -489,8 +500,7 @@ function PeriodDetailView({
                     <Button
                       variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive"
                       onClick={() => deleteAssignment.mutate({ id: a.locationRotationAssignmentId })}
-                      disabled={deleteAssignment.isPending}
-                    >
+                      disabled={deleteAssignment.isPending} aria-label="Eliminar">
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </TableCell>
@@ -517,6 +527,18 @@ export default function GuardLocationRotationPage() {
   const periods: GuardLocationRotationPeriodDto[] = data?.status === 'success' ? (data.data ?? []) : [];
 
   const [selected, setSelected] = useState<GuardLocationRotationPeriodDto | null>(null);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const hasFilters = search !== '' || statusFilter !== 'all' || fromDate !== '' || toDate !== '';
+  const term = search.trim().toLowerCase();
+  // Un período entra si su rango toca el rango pedido (se cruzan), no solo si está contenido.
+  const filteredPeriods = periods.filter(p =>
+    (statusFilter === 'all' || (statusFilter === 'active') === p.isActive)
+    && (term === '' || p.name.toLowerCase().includes(term) || (p.notes ?? '').toLowerCase().includes(term))
+    && (fromDate === '' || p.endDate >= fromDate)
+    && (toDate === '' || p.startDate <= toDate));
   const [periodForm, setPeriodForm] = useState<{ open: boolean; edit: GuardLocationRotationPeriodDto | null }>({
     open: false, edit: null,
   });
@@ -535,7 +557,7 @@ export default function GuardLocationRotationPage() {
 
   return (
     <div className="p-4 sm:p-6 space-y-5">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-3">
           <MapPin className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-bold">Asignación de Ubicaciones</h1>
@@ -545,18 +567,51 @@ export default function GuardLocationRotationPage() {
         </Button>
       </div>
 
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="flex-1 min-w-[200px]">
+          <Label htmlFor="period-search">Buscar</Label>
+          <Input id="period-search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Nombre u observación" />
+        </div>
+        <div>
+          <Label htmlFor="period-status">Estado</Label>
+          <select
+            id="period-status"
+            className="w-full h-9 border rounded-md px-3 text-sm bg-card mt-1"
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value as 'all' | 'active' | 'inactive')}
+          >
+            <option value="all">Todos</option>
+            <option value="active">Activos</option>
+            <option value="inactive">Inactivos</option>
+          </select>
+        </div>
+        <div>
+          <Label htmlFor="period-from">Desde</Label>
+          <Input id="period-from" type="date" value={fromDate} max={toDate || undefined} onChange={e => setFromDate(e.target.value)} />
+        </div>
+        <div>
+          <Label htmlFor="period-to">Hasta</Label>
+          <Input id="period-to" type="date" value={toDate} min={fromDate || undefined} onChange={e => setToDate(e.target.value)} />
+        </div>
+        {hasFilters && (
+          <Button variant="outline" size="sm" onClick={() => { setSearch(''); setStatusFilter('all'); setFromDate(''); setToDate(''); }}>
+            Limpiar
+          </Button>
+        )}
+      </div>
+
       {isLoading ? (
         <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground">
           <Loader2 className="h-5 w-5 animate-spin" />Cargando…
         </div>
-      ) : periods.length === 0 ? (
+      ) : filteredPeriods.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <MapPin className="h-10 w-10 mx-auto mb-2 opacity-30" />
-          <p>No hay periodos de rotación registrados.</p>
+          <p>{periods.length === 0 ? 'No hay periodos de rotación registrados.' : 'Ningún período coincide con los filtros.'}</p>
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {periods.map(p => (
+          {filteredPeriods.map(p => (
             <Card
               key={p.locationRotationPeriodId}
               className="cursor-pointer hover:shadow-md transition-shadow hover:border-primary/50"

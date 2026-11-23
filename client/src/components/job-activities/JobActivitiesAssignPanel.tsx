@@ -108,7 +108,7 @@ export function JobActivitiesAssignPanel({ assignedIds, isWorking, onToggle }: P
                     )}
                   </TableCell>
                   <TableCell className="text-center">
-                    <Button size="sm" variant={isAssigned ? "outline" : "default"} disabled={isWorking} onClick={() => onToggle(act)}>
+                    <Button size="sm" variant={isAssigned ? "outline" : "default"} disabled={isWorking} onClick={() => onToggle(act)} aria-label="Desvincular">
                       {isAssigned ? (
                         <>
                           <Link2Off className="mr-1 h-4 w-4" />

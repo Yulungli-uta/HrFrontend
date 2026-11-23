@@ -121,7 +121,7 @@ export function TrainingsTab({ trainings, onEdit, onDelete, refTypesMap = {}, kn
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
         <CardTitle className="flex items-center text-lg">
           <GraduationCap className="mr-2 h-5 w-5" />
           Capacitaciones
@@ -129,7 +129,7 @@ export function TrainingsTab({ trainings, onEdit, onDelete, refTypesMap = {}, kn
             {trainings.length}
           </Badge>
         </CardTitle>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {personId != null && (
             <Button size="sm" variant="outline" onClick={() => setSyncDialogOpen(true)}>
               <RefreshCw className="mr-2 h-4 w-4" />
@@ -206,13 +206,13 @@ export function TrainingsTab({ trainings, onEdit, onDelete, refTypesMap = {}, kn
                   : null;
 
                   return (
-                    <Card key={training.trainingId} className="hover:shadow-md transition-shadow border-l-4 border-l-purple-500">
+                    <Card key={training.trainingId} className="hover:shadow-md transition-shadow border-l-4 border-l-cat-3">
                       <CardContent className="p-3">
                       <div className="flex flex-col h-full">
                         <div className="flex items-start justify-between mb-2 gap-2">
                           <div className="flex items-start gap-2 min-w-0 flex-1">
-                            <div className="flex items-center justify-center h-8 w-8 rounded-md bg-purple-500/10 shrink-0">
-                              <GraduationCap className="h-4 w-4 text-purple-500" />
+                            <div className="flex items-center justify-center h-8 w-8 rounded-md bg-cat-3/10 shrink-0">
+                              <GraduationCap className="h-4 w-4 text-cat-3" />
                             </div>
                             <div className="min-w-0">
                               <h4 className="font-semibold text-foreground text-sm leading-tight mb-0.5">
@@ -280,7 +280,7 @@ export function TrainingsTab({ trainings, onEdit, onDelete, refTypesMap = {}, kn
                               </Badge>
                             )}
                             {training.source === "DEaDV" && (
-                              <Badge className="text-xs bg-emerald-100 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-400">
+                              <Badge className="text-xs bg-success/10 text-success hover:bg-success/20">
                                 <ShieldCheck className="mr-1 h-3 w-3" />
                                 Sincronizado con DEaDV
                               </Badge>

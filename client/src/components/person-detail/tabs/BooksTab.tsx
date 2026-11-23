@@ -79,7 +79,7 @@ export function BooksTab({ books, onEdit, onDelete, countryMap = {}, personIdCar
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
         <CardTitle className="flex items-center text-lg">
           <BookOpen className="mr-2 h-5 w-5" />
           Libros Publicados

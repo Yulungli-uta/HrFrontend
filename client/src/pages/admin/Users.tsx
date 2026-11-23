@@ -341,7 +341,7 @@ export default function UsersPage() {
   return (
     <div className="container mx-auto p-6">
       {/* Encabezado */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
             <UsersIcon className="h-8 w-8" />
@@ -525,7 +525,7 @@ export default function UsersPage() {
                         : <span className="italic">Nunca</span>}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
+                      <div className="flex justify-end gap-1 flex-wrap">
                         {/* Editar */}
                         <ActionIconButton
                           icon={Edit}
@@ -617,7 +617,7 @@ export default function UsersPage() {
               onClick={() =>
                 deleteUserId && deleteMutation.mutate(deleteUserId)
               }
-              className="bg-destructive hover:bg-red-700"
+              className="bg-destructive hover:bg-destructive/90"
             >
               {deleteMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -772,8 +772,7 @@ function ResetPasswordDialog({ user, onClose }: ResetPasswordDialogProps) {
               <button
                 type="button"
                 onClick={() => setShowPwd((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label={showPwd ? "Ocultar contraseña" : "Mostrar contraseña"} title={showPwd ? "Ocultar contraseña" : "Mostrar contraseña"}>
                 {showPwd ? (
                   <EyeOff className="h-4 w-4" />
                 ) : (
@@ -799,8 +798,7 @@ function ResetPasswordDialog({ user, onClose }: ResetPasswordDialogProps) {
               <button
                 type="button"
                 onClick={() => setShowConfirm((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label={showConfirm ? "Ocultar contraseña" : "Mostrar contraseña"} title={showConfirm ? "Ocultar contraseña" : "Mostrar contraseña"}>
                 {showConfirm ? (
                   <EyeOff className="h-4 w-4" />
                 ) : (
@@ -833,7 +831,7 @@ function ResetPasswordDialog({ user, onClose }: ResetPasswordDialogProps) {
           </div>
 
           {/* Botones */}
-          <div className="flex justify-end gap-3 pt-1">
+          <div className="flex justify-end gap-3 pt-1 flex-wrap">
             <Button
               type="button"
               variant="outline"

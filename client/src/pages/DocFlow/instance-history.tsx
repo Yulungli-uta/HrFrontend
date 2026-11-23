@@ -158,7 +158,7 @@ export default function InstanceHistory() {
         <Link href={`/DocFlow/expedientes/${instanceId}`}>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="shrink-0" data-testid="button-back-detail">
+              <Button tooltip={false} variant="ghost" size="icon" className="shrink-0" data-testid="button-back-detail" aria-label="Volver">
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
@@ -193,7 +193,7 @@ export default function InstanceHistory() {
             </div>
             <div>
               <p className="text-lg font-bold" data-testid="stat-total-movements">{stats.total}</p>
-              <p className="text-[0.6875rem] text-muted-foreground">Movimientos</p>
+              <p className="text-xs text-muted-foreground">Movimientos</p>
             </div>
           </CardContent>
         </Card>
@@ -204,7 +204,7 @@ export default function InstanceHistory() {
             </div>
             <div>
               <p className="text-lg font-bold" data-testid="stat-advances">{stats.advances}</p>
-              <p className="text-[0.6875rem] text-muted-foreground">Avances</p>
+              <p className="text-xs text-muted-foreground">Avances</p>
             </div>
           </CardContent>
         </Card>
@@ -215,18 +215,18 @@ export default function InstanceHistory() {
             </div>
             <div>
               <p className="text-lg font-bold" data-testid="stat-returns">{stats.returns}</p>
-              <p className="text-[0.6875rem] text-muted-foreground">Retornos</p>
+              <p className="text-xs text-muted-foreground">Retornos</p>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-3 flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15 dark:bg-blue-900/30">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15">
               <User className="h-4 w-4 text-primary dark:text-primary/70" />
             </div>
             <div>
               <p className="text-lg font-bold" data-testid="stat-users">{stats.uniqueUsers}</p>
-              <p className="text-[0.6875rem] text-muted-foreground">Participantes</p>
+              <p className="text-xs text-muted-foreground">Participantes</p>
             </div>
           </CardContent>
         </Card>
@@ -239,7 +239,7 @@ export default function InstanceHistory() {
               <Filter className="h-4 w-4 text-primary" />
               Filtros
               {activeFilterCount > 0 && (
-                <Badge variant="secondary" className="text-[0.625rem] h-5 px-1.5">
+                <Badge variant="secondary" className="text-xs h-5 px-1.5">
                   {activeFilterCount}
                 </Badge>
               )}

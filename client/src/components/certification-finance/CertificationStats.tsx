@@ -35,7 +35,7 @@ export function CertificationStats(props: {
               <FileText className="h-4 w-4 lg:h-5 lg:w-5 text-primary mr-2" />
               Total
             </span>
-            <Badge variant="secondary" className="bg-blue-200 text-primary text-xs lg:text-sm">
+            <Badge variant="secondary" className="bg-primary/20 text-primary text-xs lg:text-sm">
               {total}
             </Badge>
           </CardTitle>
@@ -71,7 +71,7 @@ export function CertificationStats(props: {
               <Clock className="h-4 w-4 lg:h-5 lg:w-5 text-secondary-foreground mr-2" />
               Pendientes
             </span>
-            <Badge variant="secondary" className="bg-orange-200 text-secondary-foreground text-xs lg:text-sm">
+            <Badge variant="secondary" className="bg-warning/20 text-secondary-foreground text-xs lg:text-sm">
               {pending}
             </Badge>
           </CardTitle>
@@ -109,7 +109,7 @@ export function CertificationStats(props: {
               <DollarSign className="h-4 w-4 lg:h-5 lg:w-5 text-secondary-foreground mr-2" />
               Presupuesto Total
             </span>
-            <Badge variant="secondary" className="bg-purple-200 text-accent-foreground text-xs lg:text-sm">
+            <Badge variant="secondary" className="bg-cat-3/20 text-accent-foreground text-xs lg:text-sm">
               ${totalBudget.toLocaleString()}
             </Badge>
           </CardTitle>

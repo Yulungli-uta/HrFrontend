@@ -1,8 +1,9 @@
 // src/pages/MyDocumentsPage.tsx
+import { RowAction } from "@/components/ui/row-action";
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FolderOpen, Download, Loader2, AlertCircle } from 'lucide-react';
+import { FolderOpen, Loader2, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { EmployeeCertificatesAPI } from '@/lib/api/services/employeeSelfService';
 import { parseApiError } from '@/lib/api/utils/error-handling';
@@ -94,9 +95,7 @@ export default function MyDocumentsPage() {
                       <td className="p-3">{formatDate(c.issuedAt)}</td>
                       <td className="p-3"><StatusBadge label="Emitido" tone="success" /></td>
                       <td className="p-3 text-right">
-                        <Button variant="outline" size="sm" onClick={() => handleDownload(c.requestId)}>
-                          <Download className="h-4 w-4 mr-1" /> Descargar
-                        </Button>
+                        <RowAction action="download" onClick={() => handleDownload(c.requestId)} />
                       </td>
                     </tr>
                   ))}

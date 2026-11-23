@@ -81,7 +81,7 @@ export function StatusChangeDialog(props: {
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 pt-4 border-t">
+        <div className="flex justify-end gap-2 pt-4 border-t flex-wrap">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Cancelar
           </Button>

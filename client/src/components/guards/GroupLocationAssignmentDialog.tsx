@@ -1,3 +1,5 @@
+import { useDirtyCloseGuard } from '@/hooks/useDirtyCloseGuard';
+import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
 import { useEffect, useState } from 'react';
 import { MapPin, Loader2 } from 'lucide-react';
 import {
@@ -104,9 +106,11 @@ export function GroupLocationAssignmentDialog({ open, group, onClose }: Props) {
 
   const isSaving = createAssignment.isPending || updateAssignment.isPending;
 
+  const guard = useDirtyCloseGuard(open, onClose);
   return (
-    <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="sm:max-w-md" aria-describedby={undefined}>
+    <>
+    <Dialog open={open} onOpenChange={v => !v && guard.requestClose()}>
+      <DialogContent {...guard.dirtyProps} className="sm:max-w-md max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MapPin className="h-4 w-4" />
@@ -213,5 +217,7 @@ export function GroupLocationAssignmentDialog({ open, group, onClose }: Props) {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <UnsavedChangesDialog open={guard.confirmOpen} onClose={guard.closeConfirm} onConfirmExit={guard.confirmExit} />
+    </>
   );
 }

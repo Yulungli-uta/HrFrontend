@@ -1,4 +1,8 @@
 //src/pages/guards/GuardRotationGroups.tsx
+import { RowAction } from "@/components/ui/row-action";
+import { useToast } from '@/hooks/use-toast';
+import { useDirtyCloseGuard } from '@/hooks/useDirtyCloseGuard';
+import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
 import { useState, useMemo } from 'react';
 import { todayEcuador } from "@/lib/clock";
 
@@ -53,10 +57,10 @@ import type {
 const today = todayEcuador();
 
 const SEQ_COLORS: Record<string, string> = {
-  L: 'bg-slate-100 text-slate-600',
-  M: 'bg-yellow-100 text-yellow-700',
-  T: 'bg-orange-100 text-orange-700',
-  N: 'bg-indigo-100 text-indigo-700',
+  L: 'bg-muted text-muted-foreground',
+  M: 'bg-warning/10 text-warning',
+  T: 'bg-warning/10 text-warning',
+  N: 'bg-primary/10 text-primary',
 };
 
 const GROUP_LEVEL_LABEL: Record<string, string> = {
@@ -79,7 +83,7 @@ function PatternChips({ sequence }: { sequence: string | null }) {
         <span
           key={i}
           title={labels[c] ?? c}
-          className={`w-5 h-5 rounded text-xs flex items-center justify-center font-medium ${SEQ_COLORS[c] ?? 'bg-gray-100 text-gray-600'}`}
+          className={`w-5 h-5 rounded text-xs flex items-center justify-center font-medium ${SEQ_COLORS[c] ?? 'bg-muted text-muted-foreground'}`}
         >
           {c}
         </span>
@@ -133,7 +137,7 @@ function GroupActivePattern({
   if (variant === 'badge') {
     return (
       <span
-        className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[0.6875rem] font-medium bg-primary/10 text-primary cursor-pointer hover:bg-primary/20 transition-colors"
+        className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium bg-primary/10 text-primary cursor-pointer hover:bg-primary/20 transition-colors"
         title={`Desde ${active.validFrom} · Inicio ciclo: ${active.startCycleDate}`}
         onClick={onAssign}
       >
@@ -145,7 +149,7 @@ function GroupActivePattern({
   return (
     <div className="space-y-0.5">
       <p className="text-xs font-medium text-foreground leading-tight">{active.patternName}</p>
-      <p className="text-[0.625rem] text-muted-foreground">
+      <p className="text-xs text-muted-foreground">
         Desde {active.validFrom} · Ciclo: {active.startCycleDate}
       </p>
     </div>
@@ -218,14 +222,14 @@ function EmployeeLocationSection({
   if (pendingDelete && currentAssignment) {
     return (
       <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
-        <span className="inline-flex items-center gap-1 text-[0.625rem] bg-red-50 text-red-600 border border-red-200 rounded-full px-2 py-0.5 font-medium line-through">
+        <span className="inline-flex items-center gap-1 text-xs bg-destructive/10 text-destructive border border-destructive/30 rounded-full px-2 py-0.5 font-medium line-through">
           <MapPin className="h-2.5 w-2.5" />
           {currentAssignment.locationCode ? `[${currentAssignment.locationCode}] ` : ''}
           {currentAssignment.locationName}
         </span>
-        <span className="text-[0.625rem] text-red-500 font-medium">se quitará</span>
+        <span className="text-xs text-destructive font-medium">se quitará</span>
         <button
-          className="text-[0.625rem] text-muted-foreground hover:text-foreground underline"
+          className="text-xs text-muted-foreground hover:text-foreground underline"
           onClick={() => onCancelPending(employeeId)}
         >
           deshacer
@@ -245,17 +249,17 @@ function EmployeeLocationSection({
     <div className="mt-1.5 flex flex-col gap-1 w-full min-w-0">
       {/* Badge de asignación actual con botón X para quitar */}
       {currentAssignment && !isPending && (
-        <span className="inline-flex items-center gap-1 text-[0.625rem] bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-2 py-0.5 font-medium max-w-full">
+        <span className="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary border border-primary/30 rounded-full px-2 py-0.5 font-medium max-w-full">
           <MapPin className="h-2.5 w-2.5 shrink-0" />
           <span className="truncate">
             {currentAssignment.locationCode ? `[${currentAssignment.locationCode}] ` : ''}
             {currentAssignment.locationName}
             {currentAssignment.periodName && (
-              <span className="text-blue-400 ml-0.5">· {currentAssignment.periodName}</span>
+              <span className="text-primary ml-0.5">· {currentAssignment.periodName}</span>
             )}
           </span>
           <button
-            className="ml-0.5 shrink-0 text-blue-400 hover:text-red-500 transition-colors"
+            className="ml-0.5 shrink-0 text-primary hover:text-destructive transition-colors"
             title="Quitar asignación de ubicación"
             onClick={() => onMarkDelete(employeeId, currentAssignment.locationRotationAssignmentId)}
           >
@@ -291,7 +295,7 @@ function EmployeeLocationSection({
         </select>
         {isPending && (
           <button
-            className="shrink-0 text-[0.625rem] text-muted-foreground hover:text-foreground"
+            className="shrink-0 text-xs text-muted-foreground hover:text-foreground"
             title="Cancelar cambio"
             onClick={() => onCancelPending(employeeId)}
           >
@@ -376,6 +380,7 @@ function GroupEmployeesPanel({ group }: { group: LocationGroupDetailDto }) {
   const [removeTarget, setRemoveTarget] = useState<GuardRotationGroupEmployeeDto | null>(null);
   const [removeDate, setRemoveDate] = useState(today);
   const [employeeSearch, setEmployeeSearch] = useState('');
+  const { toast } = useToast();
 
   const activeIds = new Set(active.map(e => e.employeeId));
   const pendingIds = new Set(pending.map(p => p.employeeId));
@@ -390,7 +395,18 @@ function GroupEmployeesPanel({ group }: { group: LocationGroupDetailDto }) {
 
   const handleAdd = (emp: any) => {
     const employeeId: number | undefined = emp?.employeeID ?? emp?.employeeId;
-    if (!emp || employeeId == null || activeIds.has(employeeId) || pendingIds.has(employeeId)) return;
+    if (!emp || employeeId == null) return;
+    if (activeIds.has(employeeId) || pendingIds.has(employeeId)) {
+      toast({
+        title: 'Guardia ya agregado',
+        description: activeIds.has(employeeId)
+          ? 'Este guardia ya pertenece al grupo.'
+          : 'Este guardia ya está en la lista por asignar.',
+        variant: 'destructive',
+      });
+      setComboKey(k => k + 1);
+      return;
+    }
     setPending(prev => [...prev, {
       employeeId,
       fullName: emp.fullName ?? emp.employeeFullName ?? '',
@@ -529,8 +545,7 @@ function GroupEmployeesPanel({ group }: { group: LocationGroupDetailDto }) {
                     <Button
                       variant="ghost" size="icon"
                       className="h-6 w-6 shrink-0 text-destructive hover:text-destructive"
-                      onClick={() => { setRemoveTarget(e); setRemoveDate(today); }}
-                    >
+                      onClick={() => { setRemoveTarget(e); setRemoveDate(today); }} aria-label="Quitar">
                       <UserMinus className="h-3.5 w-3.5" />
                     </Button>
                   </div>
@@ -605,7 +620,7 @@ function GroupEmployeesPanel({ group }: { group: LocationGroupDetailDto }) {
         )}
       </div>
       <Dialog open={!!removeTarget} onOpenChange={() => setRemoveTarget(null)}>
-        <DialogContent className="sm:max-w-sm" aria-describedby={undefined}>
+        <DialogContent className="sm:max-w-sm max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
           <DialogHeader><DialogTitle>Cerrar vigencia</DialogTitle></DialogHeader>
           <p className="text-sm">Cerrar la asignación de <strong>{removeTarget?.employeeFullName}</strong>:</p>
           <div>
@@ -632,6 +647,8 @@ type GroupForm = {
   description: string;
   colorCode: string;
   parentGroupId: number | '';
+  /** Solo para mostrar el padre actual si ya no figura entre las opciones (p. ej. quedó inactivo). */
+  parentGroupName?: string | null;
   groupLevelTypeId: number | '';
   isActive: boolean;
   isSpecial: boolean;
@@ -658,7 +675,8 @@ function GroupFormDialog({
     return mode.current;
   });
 
-  const f = <K extends keyof GroupForm>(k: K, v: GroupForm[K]) => { setColorConflictMessage(null); setForm(p => ({ ...p, [k]: v })); };
+  const guard = useDirtyCloseGuard(!!mode, onClose);
+  const f = <K extends keyof GroupForm>(k: K, v: GroupForm[K]) => { guard.touch(); setColorConflictMessage(null); setForm(p => ({ ...p, [k]: v })); };
 
   // El backend avisa (sin bloquear del todo) si el color ya lo usa otro grupo activo — se
   // detecta por el prefijo del mensaje y se ofrece confirmar en vez de forzar a elegir otro
@@ -698,8 +716,9 @@ function GroupFormDialog({
   const isSaving = create.isPending || update.isPending;
 
   return (
-    <Dialog open={!!mode} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="sm:max-w-md" aria-describedby={undefined}>
+    <>
+    <Dialog open={!!mode} onOpenChange={v => !v && guard.requestClose()}>
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>{mode?.kind === 'create' ? 'Nuevo grupo' : 'Editar grupo'}</DialogTitle>
         </DialogHeader>
@@ -717,7 +736,7 @@ function GroupFormDialog({
             <div>
               <Label>Color</Label>
               <div className="flex gap-2 mt-1">
-                <input type="color" value={form.colorCode || '#3b82f6'}
+                <input type="color" value={form.colorCode || '#00345e'}
                   onChange={e => f('colorCode', e.target.value)}
                   className="h-9 w-12 rounded border cursor-pointer" />
                 <Input value={form.colorCode} onChange={e => f('colorCode', e.target.value)}
@@ -726,7 +745,7 @@ function GroupFormDialog({
             </div>
           </div>
           {colorConflictMessage && (
-            <div className="rounded-md border border-amber-300 bg-amber-50 p-2.5 text-xs text-amber-800 space-y-1.5">
+            <div className="rounded-md border border-warning/40 bg-warning/10 p-2.5 text-xs text-warning space-y-1.5">
               <p>{colorConflictMessage}</p>
               <Button size="sm" variant="outline" className="h-7" onClick={() => handleSave(true)} disabled={isSaving}>
                 Usar este color de todas formas
@@ -741,23 +760,26 @@ function GroupFormDialog({
             <div>
               <Label>Grupo padre</Label>
               <select
-                className="w-full h-9 border rounded-md px-3 text-sm bg-background mt-1"
+                className="w-full h-9 border rounded-md px-3 text-sm bg-card mt-1"
                 value={form.parentGroupId}
                 onChange={e => f('parentGroupId', e.target.value !== '' ? Number(e.target.value) : '')}
               >
                 <option value="">Sin grupo padre</option>
+                {form.parentGroupId !== '' && !generalGroups.some(g => g.groupId === form.parentGroupId) && (
+                  <option value={form.parentGroupId}>{form.parentGroupName ?? `Grupo ${form.parentGroupId}`} (no disponible)</option>
+                )}
                 {generalGroups.map(g => <option key={g.groupId} value={g.groupId}>{g.name}</option>)}
               </select>
             </div>
             <div>
               <Label>Nivel</Label>
               <select
-                className="w-full h-9 border rounded-md px-3 text-sm bg-background mt-1"
+                className="w-full h-9 border rounded-md px-3 text-sm bg-card mt-1"
                 value={form.groupLevelTypeId}
                 onChange={e => f('groupLevelTypeId', e.target.value !== '' ? Number(e.target.value) : '')}
               >
                 <option value="">Sin nivel</option>
-                {levelTypes.map(t => <option key={t.typeId} value={t.typeId}>{t.name}</option>)}
+                {levelTypes.map(t => <option key={t.typeId} value={t.typeId}>{levelLabel(t.name)}</option>)}
               </select>
             </div>
           </div>
@@ -783,6 +805,8 @@ function GroupFormDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <UnsavedChangesDialog open={guard.confirmOpen} onClose={guard.closeConfirm} onConfirmExit={guard.confirmExit} />
+    </>
   );
 }
 
@@ -814,9 +838,11 @@ function DuplicateGroupDialog({
     duplicate.mutate({ groupId: baseGroup.groupId, dto });
   };
 
+  const guard2 = useDirtyCloseGuard(!!baseGroup, handleClose);
   return (
-    <Dialog open={!!baseGroup} onOpenChange={v => !v && handleClose()}>
-      <DialogContent className="sm:max-w-md" aria-describedby={undefined}>
+    <>
+    <Dialog open={!!baseGroup} onOpenChange={v => !v && guard2.requestClose()}>
+      <DialogContent {...guard2.dirtyProps} className="sm:max-w-md max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Copy className="h-4 w-4" />
@@ -849,6 +875,8 @@ function DuplicateGroupDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <UnsavedChangesDialog open={guard2.confirmOpen} onClose={guard2.closeConfirm} onConfirmExit={guard2.confirmExit} />
+    </>
   );
 }
 
@@ -895,7 +923,7 @@ function HierarchyView({
     groupId: g.groupId,
     current: {
       name: g.name, groupCode: g.groupCode ?? '', description: g.description ?? '',
-      colorCode: g.colorCode ?? '', parentGroupId: g.parentGroupId ?? '',
+      colorCode: g.colorCode ?? '', parentGroupId: g.parentGroupId ?? '', parentGroupName: g.parentGroupName,
       groupLevelTypeId: g.groupLevelTypeId ?? '', isActive: g.isActive, isSpecial: g.isSpecial,
     },
   });
@@ -982,7 +1010,7 @@ function HierarchyView({
                     />
                   </div>
                 </div>
-                <div className="flex gap-1">
+                <div className="flex gap-1 flex-wrap">
                   <Button variant="outline" size="sm" className="h-7 text-xs"
                     onClick={() => setEmpPanel(toLocationDetail(g))}>
                     <Users className="h-3 w-3 mr-1" />Guardias
@@ -1104,7 +1132,7 @@ function HierarchyView({
                                 </Badge>
                               </TableCell>
                               <TableCell className="text-right">
-                                <div className="flex gap-1 justify-end">
+                                <div className="flex gap-1 justify-end flex-wrap">
                                   <Button variant="outline" size="sm" className="h-7 text-xs"
                                     onClick={() => setEmpPanel(toLocationDetail(sub))}>
                                     <Users className="h-3 w-3 mr-1" />Guardias
@@ -1117,12 +1145,8 @@ function HierarchyView({
                                     onClick={() => setLocationPanel(toLocationDetail(sub))}>
                                     <MapPin className="h-3 w-3 mr-1" />Ubicación
                                   </Button>
-                                  <Button variant="ghost" size="sm" className="h-7 text-xs"
-                                    onClick={() => onOpenForm(toEditMode(sub))}>Editar</Button>
-                                  <Button variant="outline" size="sm" className="h-7 text-xs"
-                                    onClick={() => setDuplicateTarget(sub)}>
-                                    <Copy className="h-3 w-3 mr-1" />Duplicar
-                                  </Button>
+                                  <RowAction action="edit" onClick={() => onOpenForm(toEditMode(sub))} />
+                                  <RowAction action="duplicate" onClick={() => setDuplicateTarget(sub)} />
                                 </div>
                               </TableCell>
                             </TableRow>
@@ -1208,7 +1232,7 @@ function AllGroupsView({
     groupId: g.groupId,
     current: {
       name: g.name, groupCode: g.groupCode ?? '', description: g.description ?? '',
-      colorCode: g.colorCode ?? '', parentGroupId: g.parentGroupId ?? '',
+      colorCode: g.colorCode ?? '', parentGroupId: g.parentGroupId ?? '', parentGroupName: g.parentGroupName,
       groupLevelTypeId: g.groupLevelTypeId ?? '', isActive: g.isActive, isSpecial: g.isSpecial,
     },
   });
@@ -1221,7 +1245,7 @@ function AllGroupsView({
 
   return (
     <div className="space-y-3">
-      <div className="grid gap-2 lg:grid-cols-[minmax(220px,1fr)_repeat(5,minmax(140px,auto))]">
+      <div className="grid gap-2 lg:grid-cols-3 2xl:grid-cols-[minmax(220px,1fr)_repeat(5,minmax(140px,auto))]">
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -1394,7 +1418,7 @@ function AllGroupsView({
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex gap-1 justify-end">
+                      <div className="flex gap-1 justify-end flex-wrap">
                         <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setEmpPanel(toLocationDetail(g))}>
                           <Users className="h-3 w-3 mr-1" />Guardias
                         </Button>
@@ -1404,10 +1428,8 @@ function AllGroupsView({
                         <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setLocationPanel(toLocationDetail(g))}>
                           <MapPin className="h-3 w-3 mr-1" />Ubicación
                         </Button>
-                        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => onOpenForm(toEditMode(g))}>Editar</Button>
-                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setDuplicateTarget(g)}>
-                          <Copy className="h-3 w-3 mr-1" />Duplicar
-                        </Button>
+                        <RowAction action="edit" onClick={() => onOpenForm(toEditMode(g))} />
+                        <RowAction action="duplicate" onClick={() => setDuplicateTarget(g)} />
                       </div>
                     </TableCell>
                   </TableRow>
@@ -1467,7 +1489,7 @@ function LocationGroupsView({
       groupId: g.groupId,
       current: {
         name: g.groupName, groupCode: g.groupCode ?? '', description: g.description ?? '',
-        colorCode: full?.colorCode ?? '', parentGroupId: full?.parentGroupId ?? '',
+        colorCode: full?.colorCode ?? '', parentGroupId: full?.parentGroupId ?? '', parentGroupName: full?.parentGroupName,
         groupLevelTypeId: full?.groupLevelTypeId ?? '', isActive: g.isActive, isSpecial: g.isSpecial,
       },
     });
@@ -1587,7 +1609,7 @@ function LocationGroupsView({
                       <Badge variant={g.isActive ? 'default' : 'secondary'}>{g.isActive ? 'Activo' : 'Inactivo'}</Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex gap-1 justify-end">
+                      <div className="flex gap-1 justify-end flex-wrap">
                         <Button variant="outline" size="sm" onClick={() => setEmployeePanelGroup(g)}>
                           <Users className="h-3.5 w-3.5 mr-1" />Guardias
                         </Button>
@@ -1597,7 +1619,7 @@ function LocationGroupsView({
                         <Button variant="outline" size="sm" onClick={() => setLocationDialogGroup(g)}>
                           <MapPin className="h-3.5 w-3.5 mr-1" />Ubicación
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => openEdit(g)}>Editar</Button>
+                        <RowAction action="edit" onClick={() => openEdit(g)} />
                       </div>
                     </TableCell>
                   </TableRow>
@@ -1685,7 +1707,7 @@ export default function GuardRotationGroupsPage() {
   return (
     <div className="p-4 sm:p-6 space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-3">
           <Shield className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-bold">Grupos de Rotación</h1>

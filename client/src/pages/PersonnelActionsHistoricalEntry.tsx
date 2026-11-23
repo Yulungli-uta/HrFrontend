@@ -98,7 +98,7 @@ export default function PersonnelActionsHistoricalEntry() {
         </p>
       </div>
 
-      <Alert className="border-blue-300 bg-blue-50 text-blue-900 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
+      <Alert className="border-primary/40 bg-primary/10 text-primary">
         <History className="h-4 w-4" />
         <AlertDescription>
           Esto es un registro <strong>histórico</strong>: usa la fecha real en que ocurrió, no la de hoy.
@@ -109,10 +109,10 @@ export default function PersonnelActionsHistoricalEntry() {
       </Alert>
 
       {lastCreatedId != null && (
-        <Alert className="border-green-300 bg-green-50 text-green-900 dark:border-green-800 dark:bg-green-950 dark:text-green-200">
+        <Alert className="border-success/40 bg-success/10 text-success">
           <AlertDescription className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <span>Último registro histórico creado: Acción #{lastCreatedId}.</span>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Button variant="outline" size="sm" onClick={() => setUploadOpen(true)}>
                 <Upload className="mr-2 h-4 w-4" /> Subir documento firmado
               </Button>

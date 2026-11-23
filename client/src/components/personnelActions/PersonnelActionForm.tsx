@@ -899,7 +899,7 @@ export function PersonnelActionForm({
                             <span className="flex items-center gap-2">
                               {t.name ?? t.description ?? `Tipo ${id}`}
                               {subtypes > 0 && (
-                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                                <Badge variant="secondary" className="text-xs px-1.5 py-0">
                                   {subtypes} subtipos
                                 </Badge>
                               )}
@@ -927,7 +927,7 @@ export function PersonnelActionForm({
                     Subtipo de <span className="font-semibold">{groupType?.name ?? 'este tipo'}</span>{' '}
                     {!allowGroupType && <span className="text-destructive">*</span>}
                   </span>
-                  <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                  <Badge variant="outline" className="text-xs px-1.5 py-0">
                     {childTypeOptions.length} disponibles
                   </Badge>
                 </div>
@@ -955,7 +955,7 @@ export function PersonnelActionForm({
                       <SelectItem key={`action-type-${id}`} value={String(id)}>
                         <span className="flex items-center gap-2">
                           {t.name ?? `Tipo ${id}`}
-                          <span className="font-mono text-[10px] text-muted-foreground">{t.numberingPrefix}</span>
+                          <span className="font-mono text-xs text-muted-foreground">{t.numberingPrefix}</span>
                         </span>
                       </SelectItem>
                     ))}
@@ -1076,7 +1076,7 @@ export function PersonnelActionForm({
                     </p>
                   )}
                   {!resolvingEmployee && personHasNoEmployee && (
-                    <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1 mt-1">
+                    <p className="text-xs text-warning flex items-center gap-1 mt-1">
                       <AlertCircle className="h-3 w-3 shrink-0" />
                       Sin empleado activo. El empleado y usuario se crearán al cargar el documento firmado (requiere que el tipo de acción lo permita).
                     </p>
@@ -1822,7 +1822,7 @@ export function PersonnelActionForm({
 
           {/* ── Botones de acción ── */}
           <div className="flex justify-between gap-3 flex-wrap pt-2 border-t">
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Button type="button" variant="outline" onClick={onCancel} disabled={isBusy}>
                 Cancelar
               </Button>
@@ -1839,7 +1839,7 @@ export function PersonnelActionForm({
               )}
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               {isEdit ? (
                 <Button type="submit" disabled={isBusy || isLoading}>
                   {isBusy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

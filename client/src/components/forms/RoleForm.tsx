@@ -170,7 +170,7 @@ export default function RoleForm({ role, onSuccess, onCancel, onDirtyChange }: R
       </div>
 
       {/* Botones de acción */}
-      <div className="flex justify-end gap-3">
+      <div className="flex justify-end gap-3 flex-wrap">
         <Button
           type="button"
           variant="outline"

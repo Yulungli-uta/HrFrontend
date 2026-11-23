@@ -212,12 +212,12 @@ function ProcessTree({
                           {rules.length > 0 && (
                             <div className="flex items-center gap-2 mt-0.5">
                               {mandatoryCount > 0 && (
-                                <span className="text-[0.625rem] text-destructive dark:text-destructive/80">
+                                <span className="text-xs text-destructive dark:text-destructive/80">
                                   {mandatoryCount} oblig.
                                 </span>
                               )}
                               {optionalCount > 0 && (
-                                <span className="text-[0.625rem] text-muted-foreground">
+                                <span className="text-xs text-muted-foreground">
                                   {optionalCount} opc.
                                 </span>
                               )}
@@ -306,7 +306,7 @@ function ProcessRulesOverview({
               key={rule.ruleId}
               className={`flex items-center gap-2 p-2 rounded-md border text-sm ${
                 rule.isMandatory
-                  ? "border-destructive/30 bg-destructive/10/50 dark:border-red-800/40"
+                  ? "border-destructive/30 bg-destructive/10/50"
                   : "border-muted bg-muted/30"
               }`}
               data-testid={`rule-overview-${rule.ruleId}`}
@@ -319,7 +319,7 @@ function ProcessRulesOverview({
               <span className="flex-1 min-w-0 truncate">{rule.docTypeName}</span>
               <Badge
                 variant="outline"
-                className={`text-[0.625rem] px-1.5 py-0 h-4 shrink-0 ${
+                className={`text-xs px-1.5 py-0 h-4 shrink-0 ${
                   rule.isMandatory
                     ? "border-destructive/40 text-destructive dark:border-destructive/60 dark:text-destructive/80"
                     : "text-muted-foreground"
@@ -486,11 +486,10 @@ function InstancesForProcess({
                         <Link href={`/expedientes/${instance.instanceId}`}>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Button
+                              <Button tooltip={false}
                                 variant="ghost"
                                 size="icon"
-                                data-testid={`button-view-process-instance-${instance.instanceId}`}
-                              >
+                                data-testid={`button-view-process-instance-${instance.instanceId}`} aria-label="Ver detalle">
                                 <Eye className="h-4 w-4" />
                               </Button>
                             </TooltipTrigger>
@@ -526,7 +525,7 @@ export default function ProcessInstances() {
         <Link href="/procesos">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" data-testid="button-back-processes">
+              <Button tooltip={false} variant="ghost" size="icon" data-testid="button-back-processes" aria-label="Volver">
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             </TooltipTrigger>

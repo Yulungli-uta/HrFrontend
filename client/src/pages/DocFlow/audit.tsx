@@ -99,7 +99,7 @@ export default function Audit() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2 flex-wrap gap-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Total Retornos
             </CardTitle>
@@ -112,7 +112,7 @@ export default function Audit() {
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2 flex-wrap gap-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Expedientes Afectados
             </CardTitle>
@@ -125,7 +125,7 @@ export default function Audit() {
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2 flex-wrap gap-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Con Comentarios
             </CardTitle>

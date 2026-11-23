@@ -903,9 +903,9 @@ export default function ScheduleChangePlansPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="bg-gradient-to-br from-blue-500 to-blue-700 text-white border-none shadow-md overflow-hidden relative">
+        <Card className="bg-primary text-primary-foreground border-none shadow-md overflow-hidden relative">
           <div className="absolute right-0 top-0 opacity-10 bg-card w-24 h-24 rounded-full -mr-8 -mt-8 translate-x-4" />
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10 flex-wrap gap-2">
             <CardTitle className="text-sm font-medium text-primary-foreground">Planes Creados</CardTitle>
             <CalendarDays className="h-5 w-5 text-primary-foreground" />
           </CardHeader>
@@ -917,29 +917,29 @@ export default function ScheduleChangePlansPage() {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-teal-500 to-emerald-600 text-white border-none shadow-md overflow-hidden relative">
+        <Card className="bg-success text-success-foreground border-none shadow-md overflow-hidden relative">
           <div className="absolute right-0 top-0 opacity-10 bg-card w-24 h-24 rounded-full -mr-8 -mt-8 translate-x-4" />
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-            <CardTitle className="text-sm font-medium text-teal-100">Planes Aprobados</CardTitle>
-            <CheckCircle2 className="h-5 w-5 text-teal-100" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10 flex-wrap gap-2">
+            <CardTitle className="text-sm font-medium text-current">Planes Aprobados</CardTitle>
+            <CheckCircle2 className="h-5 w-5 text-current" />
           </CardHeader>
           <CardContent className="relative z-10">
             <div className="text-4xl font-extrabold">{stats.approved}</div>
-            <p className="text-xs text-teal-100 mt-1 opacity-80">
+            <p className="text-xs text-current mt-1 opacity-80">
               Listos para su ejecución
             </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white border-none shadow-md overflow-hidden relative">
+        <Card className="bg-cat-3 text-current border-none shadow-md overflow-hidden relative">
           <div className="absolute right-0 top-0 opacity-10 bg-card w-24 h-24 rounded-full -mr-8 -mt-8 translate-x-4" />
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-            <CardTitle className="text-sm font-medium text-indigo-100">Planes Ejecutados</CardTitle>
-            <Clock3 className="h-5 w-5 text-indigo-100" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10 flex-wrap gap-2">
+            <CardTitle className="text-sm font-medium text-primary-foreground">Planes Ejecutados</CardTitle>
+            <Clock3 className="h-5 w-5 text-primary-foreground" />
           </CardHeader>
           <CardContent className="relative z-10">
             <div className="text-4xl font-extrabold">{stats.executed}</div>
-            <p className="text-xs text-indigo-100 mt-1 opacity-80">
+            <p className="text-xs text-primary-foreground mt-1 opacity-80">
               Cambios de horario aplicados
             </p>
           </CardContent>

@@ -326,11 +326,11 @@ export const RequiredDocumentsChecklist = forwardRef<RequiredDocumentsChecklistH
                       <span className="truncate">{f.originalFileName || f.storedFileName}</span>
                     </div>
                     <div className="flex gap-1 shrink-0">
-                      <Button type="button" variant="outline" className="h-7 w-7 p-0" onClick={() => handleDownload(f)}>
+                      <Button type="button" variant="outline" className="h-7 w-7 p-0" onClick={() => handleDownload(f)} aria-label="Descargar">
                         <Download className="h-3 w-3" />
                       </Button>
                       {canDelete && !disabled && (
-                        <Button type="button" variant="outline" className="h-7 w-7 p-0" onClick={() => handleDeleteExisting(f)}>
+                        <Button type="button" variant="outline" className="h-7 w-7 p-0" onClick={() => handleDeleteExisting(f)} aria-label="Eliminar">
                           <Trash2 className="h-3 w-3" />
                         </Button>
                       )}

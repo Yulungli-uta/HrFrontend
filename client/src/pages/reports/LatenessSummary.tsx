@@ -103,7 +103,7 @@ export default function LatenessSummaryPage() {
           <div>
             <Label className="text-xs">Régimen laboral</Label>
             <select
-              className="w-full h-9 border rounded-md px-3 text-sm bg-background mt-1"
+              className="w-full h-9 border rounded-md px-3 text-sm bg-card mt-1"
               value={laborRegimeId}
               onChange={e => updateFilter(() => setLaborRegimeId(e.target.value === '' ? '' : Number(e.target.value)))}
             >
@@ -141,7 +141,7 @@ export default function LatenessSummaryPage() {
           ) : (
             <>
               <div className="rounded-md border overflow-x-auto">
-                <Table>
+                <Table mobile="scroll">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Empleado</TableHead>

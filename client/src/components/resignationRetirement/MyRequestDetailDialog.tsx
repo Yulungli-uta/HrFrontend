@@ -152,7 +152,7 @@ export function MyRequestDetailDialog({ open, onOpenChange, requestId, onChanged
                 <DialogDescription>Solicitud #{request.requestId}</DialogDescription>
               </DialogHeader>
 
-              <div className="flex justify-end gap-2 -mt-2">
+              <div className="flex justify-end gap-2 -mt-2 flex-wrap">
                 {EDITABLE_STATUSES.includes(request.status) && (
                   <Button variant="outline" size="sm" onClick={() => setMode('edit')}>
                     <Pencil className="h-4 w-4 mr-1" />
@@ -258,7 +258,7 @@ export function MyRequestDetailDialog({ open, onOpenChange, requestId, onChanged
                       value={cancelReason.trim() === '' ? '' : cancelReason}
                       onChange={(e) => setCancelReason(e.target.value)}
                     />
-                    <div className="flex justify-end gap-2">
+                    <div className="flex justify-end gap-2 flex-wrap">
                       <Button variant="outline" size="sm" onClick={() => setCancelReason('')} disabled={isCancelling}>
                         Cancelar
                       </Button>

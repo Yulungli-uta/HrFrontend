@@ -64,7 +64,7 @@ export function BankAccountsTab({
 
   return (
     <Card className="shadow-sm">
-      <CardHeader className="flex flex-row items-center justify-between gap-2">
+      <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap gap-2">
         <CardTitle className="flex items-center gap-2">
           <Landmark className="h-5 w-5 text-uta-blue" />
           <span>Cuentas Bancarias</span>
@@ -116,14 +116,14 @@ export function BankAccountsTab({
                 <Card
                   key={account.accountId}
                   className={`hover:shadow-md transition-shadow border-l-4 ${
-                    account.isPrimary ? "border-l-amber-500" : "border-l-pink-500"
+                    account.isPrimary ? "border-l-warning" : "border-l-cat-4"
                   }`}
                 >
                   <CardContent className="p-3 flex flex-col gap-1.5">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-start gap-2 min-w-0">
-                        <div className="flex items-center justify-center h-8 w-8 rounded-md bg-pink-500/10 shrink-0">
-                          <Landmark className="h-4 w-4 text-pink-500" />
+                        <div className="flex items-center justify-center h-8 w-8 rounded-md bg-cat-4/10 shrink-0">
+                          <Landmark className="h-4 w-4 text-cat-4" />
                         </div>
                         <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -136,7 +136,7 @@ export function BankAccountsTab({
                             </Badge>
                           )}
                           {account.isPrimary && (
-                            <Badge variant="default" className="text-xs bg-amber-500 hover:bg-amber-500">
+                            <Badge variant="default" className="text-xs bg-warning hover:bg-warning/90">
                               <Star className="h-3 w-3 mr-1 fill-current" />
                               Principal
                             </Badge>

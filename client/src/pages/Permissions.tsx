@@ -1,4 +1,5 @@
 // src/pages/Permissions.tsx
+import { RowAction } from "@/components/ui/row-action";
 import { useEffect, useMemo, useState } from "react";
 import { DataPagination } from "@/components/ui/DataPagination";
 import { useQuery } from "@tanstack/react-query";
@@ -14,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Search, Sun, Wallet, RotateCcw, X, Filter } from "lucide-react";
+import { Plus, Search, Sun, Wallet, X, Filter } from "lucide-react";
 
 import PermissionForm, { type DocumentsConfig } from "@/components/forms/PermissionForm";
 import VacationForm from "@/components/forms/VacationForm";
@@ -226,15 +227,15 @@ function MetricCard(props: {
       <div className="mt-3 grid grid-cols-3 gap-2">
         <div className="rounded-xl bg-background/60 p-3 text-center">
           <div className={`font-bold leading-none ${emphasize ? "text-5xl" : "text-4xl"}`}>{s.d}</div>
-          <div className="mt-1 text-[0.6875rem] text-muted-foreground">días</div>
+          <div className="mt-1 text-xs text-muted-foreground">días</div>
         </div>
         <div className="rounded-xl bg-background/60 p-3 text-center">
           <div className={`font-bold leading-none ${emphasize ? "text-5xl" : "text-4xl"}`}>{s.h}</div>
-          <div className="mt-1 text-[0.6875rem] text-muted-foreground">horas</div>
+          <div className="mt-1 text-xs text-muted-foreground">horas</div>
         </div>
         <div className="rounded-xl bg-background/60 p-3 text-center">
           <div className={`font-bold leading-none ${emphasize ? "text-5xl" : "text-4xl"}`}>{s.m}</div>
-          <div className="mt-1 text-[0.6875rem] text-muted-foreground">min</div>
+          <div className="mt-1 text-xs text-muted-foreground">min</div>
         </div>
       </div>
 
@@ -663,18 +664,7 @@ export default function PermissionsPage() {
             <div className="text-sm font-medium">{balanceLoading ? "Cargando..." : "OK"}</div>
           </div>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              refetchPermissions();
-              refetchVacations();
-              refetchBalance();
-            }}
-          >
-            <RotateCcw className="mr-2 h-4 w-4" />
-            Refrescar
-          </Button>
+          <RowAction action="refresh" onClick={() => { refetchPermissions(); refetchVacations(); refetchBalance(); }} />
         </div>
       </div>
 
@@ -809,18 +799,7 @@ export default function PermissionsPage() {
           </div>
 
           <div className="xl:col-span-2 flex items-end">
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => {
-                refetchPermissions();
-                refetchVacations();
-                refetchBalance();
-              }}
-            >
-              <RotateCcw className="mr-2 h-4 w-4" />
-              Refrescar
-            </Button>
+            <RowAction action="refresh" onClick={() => { refetchPermissions(); refetchVacations(); refetchBalance(); }} />
           </div>
         </div>
 
@@ -886,7 +865,7 @@ export default function PermissionsPage() {
           <p className="text-sm text-muted-foreground">Gestión de solicitudes</p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {activeTab === "permissions" ? (
             <Button onClick={openCreatePermission} className="w-full sm:w-auto">
               <Plus className="mr-2 h-4 w-4" /> Nuevo permiso
@@ -910,7 +889,7 @@ export default function PermissionsPage() {
         className="space-y-4"
       >
         <div className="rounded-2xl border bg-card p-3 md:p-4">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="max-sm:flex max-sm:justify-start grid w-full grid-cols-2">
             <TabsTrigger value="permissions">Permisos</TabsTrigger>
             <TabsTrigger value="vacations">Vacaciones</TabsTrigger>
           </TabsList>
@@ -946,13 +925,9 @@ export default function PermissionsPage() {
 
                         <div className="mt-3 flex gap-2">
                           {String(p.status) === "Pending" ? (
-                            <Button variant="outline" className="w-full" onClick={() => openEditPermission(p)}>
-                              Editar
-                            </Button>
+                            <RowAction action="edit" onClick={() => openEditPermission(p)} />
                           ) : (
-                            <Button variant="outline" className="w-full" disabled>
-                              Editar
-                            </Button>
+                            <RowAction action="edit" disabled />
                           )}
                         </div>
                       </div>
@@ -993,9 +968,7 @@ export default function PermissionsPage() {
                             </td>
                             <td className="p-2">
                               {String(p.status) === "Pending" ? (
-                                <Button variant="outline" size="sm" onClick={() => openEditPermission(p)}>
-                                  Editar
-                                </Button>
+                                <RowAction action="edit" onClick={() => openEditPermission(p)} />
                               ) : (
                                 <span className="text-xs text-muted-foreground">-</span>
                               )}
@@ -1055,13 +1028,9 @@ export default function PermissionsPage() {
 
                         <div className="mt-3 flex gap-2">
                           {String(v.status) === "Planned" ? (
-                            <Button variant="outline" className="w-full" onClick={() => openEditVacation(v)}>
-                              Editar
-                            </Button>
+                            <RowAction action="edit" onClick={() => openEditVacation(v)} />
                           ) : (
-                            <Button variant="outline" className="w-full" disabled>
-                              Editar
-                            </Button>
+                            <RowAction action="edit" disabled />
                           )}
                         </div>
                       </div>
@@ -1100,9 +1069,7 @@ export default function PermissionsPage() {
                             </td>
                             <td className="p-2">
                               {String(v.status) === "Planned" ? (
-                                <Button variant="outline" size="sm" onClick={() => openEditVacation(v)}>
-                                  Editar
-                                </Button>
+                                <RowAction action="edit" onClick={() => openEditVacation(v)} />
                               ) : (
                                 <span className="text-xs text-muted-foreground">-</span>
                               )}

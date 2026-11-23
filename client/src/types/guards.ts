@@ -741,6 +741,8 @@ export interface GuardLocationRotationAssignmentDto {
   isFixedSchedule: boolean;
   notes: string | null;
   isActive: boolean;
+  /** false cuando la ubicación asignada fue inactivada después de crear la asignación. */
+  locationIsActive?: boolean;
 }
 
 export interface CreateGuardLocationRotationAssignmentDto {

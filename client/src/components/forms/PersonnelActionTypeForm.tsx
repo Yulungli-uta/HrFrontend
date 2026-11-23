@@ -302,7 +302,7 @@ export function PersonnelActionTypeForm({
                     Prefijo usado para generar el número de documento (Ej: AP-CONT-2025-001).
                   </FormDescription>
                   {prefixClashes.length > 0 && (
-                    <p className="text-sm text-amber-600">
+                    <p className="text-sm text-warning">
                       Atención: este prefijo ya lo usa {prefixClashes.map((t) => t.name).join(", ")}. Si es una serie
                       distinta, verifique que el contador no genere números repetidos.
                     </p>

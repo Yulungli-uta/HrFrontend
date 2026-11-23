@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { RowAction } from "@/components/ui/row-action";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Card, CardContent, CardHeader, CardTitle, CardDescription,
@@ -22,7 +23,7 @@ import { useAuth } from "@/features/auth";
 import { ACTION_PERMISSIONS } from "@/features/actionPermissions";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { categoryLabel, dedicationLabel, levelLabel } from "@/lib/academicLabels";
-import { GraduationCap, Plus, Pencil, ArrowRight, Search, Users } from "lucide-react";
+import { GraduationCap, Plus, ArrowRight, Search, Users } from "lucide-react";
 import {
   AcademicLadderAPI,
   type ApiResponse,
@@ -380,10 +381,7 @@ export default function AcademicLadderPage() {
                     </TableCell>
                     {canUpdate && (
                       <TableCell className="text-right">
-                        <Button variant="outline" size="sm" onClick={() => openEdit(ladder)}>
-                          <Pencil className="h-3 w-3 mr-1" />
-                          Editar
-                        </Button>
+                        <RowAction action="edit" onClick={() => openEdit(ladder)} />
                       </TableCell>
                     )}
                   </TableRow>

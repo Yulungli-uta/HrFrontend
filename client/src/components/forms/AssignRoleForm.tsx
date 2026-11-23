@@ -149,7 +149,7 @@ export default function AssignRoleForm({
       </div>
 
       {/* Acciones */}
-      <div className="flex justify-end gap-3">
+      <div className="flex justify-end gap-3 flex-wrap">
         <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
           Cancelar
         </Button>

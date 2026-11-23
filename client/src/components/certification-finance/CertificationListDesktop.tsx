@@ -1,9 +1,10 @@
 // src/pages/certification-finance/CertificationListDesktop.tsx
+import { RowAction } from "@/components/ui/row-action";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Calendar, Download, Eye } from "lucide-react";
+import { Calendar } from "lucide-react";
 import type { UIFinancialCertification } from "@/types/certificationFinance";
 
 function formatECDate(input?: string | null): string {
@@ -17,7 +18,7 @@ function formatECDate(input?: string | null): string {
 function statusBadgeCls(statusName?: string | null): string {
   const n = (statusName ?? "").toUpperCase();
   if (n === "APROBADA") return "bg-success/15 text-success hover:bg-success/15 border-success/30";
-  if (n === "PENDIENTE_REVISION") return "bg-amber-500/15 text-amber-700 dark:text-amber-400 hover:bg-amber-500/15 border-amber-500/30";
+  if (n === "PENDIENTE_REVISION") return "bg-warning/15 text-warning hover:bg-warning/25 border-warning/30";
   if (n === "RECHAZADA") return "bg-destructive/15 text-destructive hover:bg-destructive/15 border-destructive/30";
   return "bg-muted text-foreground hover:bg-muted border-border";
 }
@@ -109,22 +110,10 @@ export function CertificationListDesktop(props: {
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       {c.filename && c.filepath && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => onDownloadLegacy(directoryCode, c.filepath!, c.filename!)}
-                          className="h-8"
-                          title="Descargar archivo"
-                        >
-                          <Download className="h-3 w-3 mr-2" />
-                          Descargar
-                        </Button>
+                        <RowAction action="download" onClick={() => onDownloadLegacy(directoryCode, c.filepath!, c.filename!)} title="Descargar archivo" />
                       )}
 
-                      <Button variant="outline" size="sm" onClick={() => onView(c)} className="flex items-center gap-1">
-                        <Eye className="h-3 w-3" />
-                        Detalles
-                      </Button>
+                      <RowAction action="view" onClick={() => onView(c)} />
                     </div>
                   </TableCell>
                 </TableRow>

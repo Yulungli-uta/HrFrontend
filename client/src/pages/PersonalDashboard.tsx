@@ -1,4 +1,5 @@
 // src/pages/PersonalDashboard.tsx
+import { RowAction } from "@/components/ui/row-action";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -336,9 +337,7 @@ export default function PersonalDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => refetchPunches()}>
-            <RefreshCw className="h-4 w-4 mr-2" /> Actualizar
-          </Button>
+          <RowAction action="refresh" onClick={() => refetchPunches()} />
         </div>
       </header>
 
@@ -443,7 +442,7 @@ export default function PersonalDashboard() {
 
       {/* Tabs */}
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
+        <TabsList className="max-sm:flex max-sm:justify-start grid w-full grid-cols-2 md:grid-cols-4">
           <TabsTrigger value="resumen">Resumen</TabsTrigger>
           <TabsTrigger value="permisos">Permisos</TabsTrigger>
           <TabsTrigger value="vacaciones">Vacaciones</TabsTrigger>

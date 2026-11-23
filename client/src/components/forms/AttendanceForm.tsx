@@ -350,19 +350,19 @@ export default function AttendanceForm({ onSuccess, onCancel }: AttendanceFormPr
             </div>
 
             {isWithinCooldown && (
-              <div className="p-3 bg-amber-100 border border-amber-300 rounded-md flex items-start">
+              <div className="p-3 bg-warning/10 border border-warning/40 rounded-md flex items-start">
                 <AlertCircle className="h-5 w-5 text-warning mr-2 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-amber-800">
+                <p className="text-sm text-warning">
                   Debe esperar al menos 5 minutos entre marcaciones. Podrá registrar nuevamente en{" "}
                   {5 - timeSinceLastPunch} minutos.
                 </p>
               </div>
             )}
 
-            <div className="flex gap-4 justify-center">
+            <div className="flex gap-4 justify-center flex-wrap">
               <Button
                 size="lg"
-                className="flex-1 max-w-32 bg-success hover:bg-green-700 h-16 flex flex-col"
+                className="flex-1 max-w-32 bg-success hover:bg-success/90 h-16 flex flex-col"
                 onClick={() => handleQuickPunch("In")}
                 disabled={isLoading || isGettingLocation || Boolean(isWithinCooldown)}
                 data-testid="button-quick-in"
@@ -372,7 +372,7 @@ export default function AttendanceForm({ onSuccess, onCancel }: AttendanceFormPr
               </Button>
               <Button
                 size="lg"
-                className="flex-1 max-w-32 bg-destructive hover:bg-red-700 h-16 flex flex-col"
+                className="flex-1 max-w-32 bg-destructive hover:bg-destructive/90 h-16 flex flex-col"
                 onClick={() => handleQuickPunch("Out")}
                 disabled={isLoading || isGettingLocation || Boolean(isWithinCooldown)}
                 data-testid="button-quick-out"
@@ -474,9 +474,9 @@ export default function AttendanceForm({ onSuccess, onCancel }: AttendanceFormPr
               )}
 
               {isWithinCooldown && (
-                <div className="p-3 bg-amber-100 border border-amber-300 rounded-md flex items-start">
+                <div className="p-3 bg-warning/10 border border-warning/40 rounded-md flex items-start">
                   <AlertCircle className="h-5 w-5 text-warning mr-2 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-amber-800">
+                  <p className="text-sm text-warning">
                     Debe esperar al menos 5 minutos entre marcaciones. Podrá registrar nuevamente en{" "}
                     {5 - timeSinceLastPunch} minutos.
                   </p>

@@ -280,7 +280,7 @@ export function PdfScrollViewer({ data, zoom, fitRequest = 0, onZoomChange, clas
                 pageRefs.current[index] = el;
               }}
               data-index={index}
-              className="bg-white shadow-md"
+              className="bg-background shadow-md"
               style={{ width: size.width * scale, height: size.height * scale }}
             >
               <canvas

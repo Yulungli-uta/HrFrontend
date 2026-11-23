@@ -16,7 +16,7 @@ function formatECDate(input?: string | null): string {
 function statusBadgeCls(statusName?: string | null): string {
   const n = (statusName ?? "").toUpperCase();
   if (n === "APROBADA") return "bg-success/15 text-success hover:bg-success/15 border-success/30";
-  if (n === "PENDIENTE_REVISION") return "bg-amber-500/15 text-amber-700 dark:text-amber-400 hover:bg-amber-500/15 border-amber-500/30";
+  if (n === "PENDIENTE_REVISION") return "bg-warning/15 text-warning hover:bg-warning/25 border-warning/30";
   if (n === "RECHAZADA") return "bg-destructive/15 text-destructive hover:bg-destructive/15 border-destructive/30";
   return "bg-muted text-foreground hover:bg-muted border-border";
 }
@@ -51,7 +51,7 @@ export function CertificationListMobile(props: {
                 <Calendar className="h-3 w-3" />
                 {formatECDate(c.certBudgetDate)}
                 {c.daysUntilExpiry && c.daysUntilExpiry < 30 && (
-                  <Badge variant="outline" className="bg-warning/10 text-warning border-warning/30 text-[0.625rem]">
+                  <Badge variant="outline" className="bg-warning/10 text-warning border-warning/30 text-xs">
                     {c.daysUntilExpiry}d
                   </Badge>
                 )}

@@ -324,7 +324,7 @@ export default function HolidaysPage() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Gestión de Días Feriados</h1>
           <p className="text-muted-foreground mt-2">
@@ -461,7 +461,7 @@ export default function HolidaysPage() {
       {/* Filtros y búsqueda */}
       <Card>
         <CardHeader>
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4">
             <div>
               <CardTitle>Días Feriados</CardTitle>
               <CardDescription>
@@ -507,7 +507,7 @@ export default function HolidaysPage() {
                   <SelectItem value="inactive">Inactivos</SelectItem>
                 </SelectContent>
               </Select>
-              <Button variant="outline" size="icon" onClick={loadHolidays}>
+              <Button variant="outline" size="icon" onClick={loadHolidays} aria-label="Actualizar">
                 <RefreshCw className="h-4 w-4" />
               </Button>
             </div>
@@ -546,19 +546,17 @@ export default function HolidaysPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap">
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={() => handleEditHoliday(holiday)}
-                        >
+                          onClick={() => handleEditHoliday(holiday)} aria-label="Editar">
                           <Edit className="h-4 w-4" />
                         </Button>
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={() => handleDeleteClick(holiday)}
-                        >
+                          onClick={() => handleDeleteClick(holiday)} aria-label="Eliminar">
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>

@@ -255,7 +255,7 @@ export default function TramiteRequirementsPage() {
 
   return (
     <div className="container mx-auto p-4 sm:p-6 space-y-6">
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
         <div className="flex-1 min-w-0">
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground truncate">Requisitos Documentales por Trámite</h1>
           <p className="text-muted-foreground mt-2 text-sm sm:text-base">
@@ -270,7 +270,7 @@ export default function TramiteRequirementsPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
             <div>
               <CardTitle className="text-lg">Módulo</CardTitle>
               <CardDescription className="text-sm">Configure los requisitos documentales por trámite/módulo.</CardDescription>
@@ -345,11 +345,11 @@ export default function TramiteRequirementsPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <div className="flex gap-1">
-                          <Button variant="outline" onClick={() => openEditDialog(r)} className="h-8 w-8 p-0">
+                        <div className="flex gap-1 flex-wrap">
+                          <Button variant="outline" onClick={() => openEditDialog(r)} className="h-8 w-8 p-0" aria-label="Editar">
                             <Edit className="h-3 w-3" />
                           </Button>
-                          <Button variant="outline" onClick={() => { setToDelete(r); setIsDeleteDialogOpen(true); }} className="h-8 w-8 p-0">
+                          <Button variant="outline" onClick={() => { setToDelete(r); setIsDeleteDialogOpen(true); }} className="h-8 w-8 p-0" aria-label="Eliminar">
                             <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>

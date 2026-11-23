@@ -53,9 +53,9 @@ const SCREEN_HELP_TEXT =
   'disponibles y vincular una versión de plantilla a tipos de documento o procesos específicos.';
 
 const STATUS_COLORS: Record<DocumentTemplateStatus, string> = {
-  Draft:     'bg-yellow-100 text-yellow-700',
-  Published: 'bg-green-100 text-green-700',
-  Archived:  'bg-gray-100 text-gray-500',
+  Draft:     'bg-warning/10 text-warning',
+  Published: 'bg-success/10 text-success',
+  Archived:  'bg-muted text-muted-foreground',
 };
 
 const STATUS_LABELS: Record<DocumentTemplateStatus, string> = {
@@ -243,8 +243,7 @@ export default function TemplateEditorPage() {
         <Button
           size="sm"
           variant="ghost"
-          onClick={() => navigate('/admin/document-templates')}
-        >
+          onClick={() => navigate('/admin/document-templates')} aria-label="Anterior">
           <ChevronLeft className="h-4 w-4" />
         </Button>
 
@@ -262,7 +261,7 @@ export default function TemplateEditorPage() {
               v{template.version} · {STATUS_LABELS[template.status]}
             </Badge>
             {isDirty && (
-              <Badge variant="outline" className="text-xs text-amber-600 border-amber-400">
+              <Badge variant="outline" className="text-xs text-warning border-warning/50">
                 Sin guardar
               </Badge>
             )}
@@ -326,7 +325,7 @@ export default function TemplateEditorPage() {
           )}
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 flex-wrap">
           <Button
             size="sm"
             variant="outline"
@@ -370,7 +369,7 @@ export default function TemplateEditorPage() {
           {template.status === 'Draft' && (
             <Button
               size="sm"
-              className="bg-green-600 hover:bg-green-700 text-white"
+              className="bg-success hover:bg-success/90 text-success-foreground"
               onClick={() => statusMutation.mutate('Published')}
               disabled={statusMutation.isPending || isDirty}
               title={isDirty ? 'Guarda los cambios primero' : 'Publicar'}
@@ -393,7 +392,7 @@ export default function TemplateEditorPage() {
               <Button
                 size="sm"
                 variant="outline"
-                className="text-gray-500"
+                className="text-muted-foreground"
                 onClick={() => statusMutation.mutate('Archived')}
                 disabled={statusMutation.isPending}
               >
@@ -411,7 +410,7 @@ export default function TemplateEditorPage() {
           <div className="h-full flex flex-col items-center justify-center gap-3 text-center text-muted-foreground p-6">
             <LayoutGrid className="h-10 w-10 opacity-40" />
             <p className="text-sm">Ocultaste todos los paneles. Elige qué quieres ver:</p>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Button size="sm" variant="outline" onClick={() => togglePanel('editor')}>
                 <Code2 className="h-3.5 w-3.5 mr-1" /> Mostrar editor
               </Button>
@@ -609,7 +608,7 @@ export default function TemplateEditorPage() {
                         <p className="font-medium truncate">{ct.name}</p>
                         <Badge
                           variant="outline"
-                          className={`text-xs mt-1 ${ct.isDefault ? 'text-green-600 border-green-400' : 'text-muted-foreground'}`}
+                          className={`text-xs mt-1 ${ct.isDefault ? 'text-success border-success/50' : 'text-muted-foreground'}`}
                         >
                           {ct.isDefault ? 'Plantilla predeterminada actual' : 'No vinculado'}
                         </Badge>
@@ -660,7 +659,7 @@ export default function TemplateEditorPage() {
                         <p className="font-medium truncate">{at.name}</p>
                         <Badge
                           variant="outline"
-                          className={`text-xs mt-1 ${at.isDefault ? 'text-green-600 border-green-400' : 'text-muted-foreground'}`}
+                          className={`text-xs mt-1 ${at.isDefault ? 'text-success border-success/50' : 'text-muted-foreground'}`}
                         >
                           {at.isDefault ? 'Plantilla predeterminada actual' : 'No vinculado'}
                         </Badge>

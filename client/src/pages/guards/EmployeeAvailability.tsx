@@ -1,3 +1,5 @@
+import { useDirtyCloseGuard } from '@/hooks/useDirtyCloseGuard';
+import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
 import { useState } from 'react';
 import { Ban, RefreshCw, Plus, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -71,7 +73,7 @@ export default function EmployeeAvailabilityPage() {
     reason: '',
   });
 
-  const { data: resp, isLoading } = useAvailabilityBlocksPaged(filter, page, pageSize, true);
+  const { data: resp, isLoading, isFetching, refetch } = useAvailabilityBlocksPaged(filter, page, pageSize, true);
   const { data: blockSourceTypesData } = useGuardRefTypes(REF_TYPE_CATEGORIES.GUARD_BLOCK_SOURCE);
   const { createManual, syncPermissions, syncVacations } = useAvailabilityMutations();
 
@@ -119,16 +121,18 @@ export default function EmployeeAvailabilityPage() {
   const canCreateManual = !!manualForm.employeeId && !!manualForm.sourceTypeId &&
     !!manualForm.startDateTime && !!manualForm.endDateTime;
 
+  const guard = useDirtyCloseGuard(openManual, () => setOpenManual(false));
+  const guard2 = useDirtyCloseGuard(openSync, () => setOpenSync(false));
   return (
     <div className="p-6 space-y-5">
-      <div className="flex items-center justify-between flex-wrap gap-2">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between gap-2">
         <div className="flex items-center gap-3">
           <Ban className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-bold">Disponibilidad de Empleados</h1>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Button variant="outline" size="sm" onClick={() => setPage(1)} disabled={isLoading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+          <Button variant="outline" size="sm" onClick={() => { setPage(1); refetch(); }} disabled={isFetching}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
             Actualizar
           </Button>
           <Button variant="secondary" size="sm" onClick={() => setOpenSync(true)}>
@@ -152,7 +156,7 @@ export default function EmployeeAvailabilityPage() {
                   value={filterEmployeeId}
                   onSelect={handleEmployeeFilterChange}
                   placeholder="Todos los empleados"
-                  searchFn={(term) => GuardRotationGroupsAPI.getActiveGroupEmployees(term)}
+                  searchFn={(term) => GuardRotationGroupsAPI.getEligibleEmployees(term)}
                   searchKey="guard-active-group-employees-search"
                 />
               </div>
@@ -168,7 +172,7 @@ export default function EmployeeAvailabilityPage() {
             <div>
               <Label className="text-xs">Fuente</Label>
               <select
-                className="h-9 border rounded-md px-3 text-sm bg-background"
+                className="h-9 border rounded-md px-3 text-sm bg-card"
                 value={filter.sourceType ?? ''}
                 onChange={e => updateFilter(f => ({ ...f, sourceType: e.target.value || undefined }))}
               >
@@ -182,7 +186,7 @@ export default function EmployeeAvailabilityPage() {
             <div>
               <Label className="text-xs">Estado</Label>
               <select
-                className="h-9 border rounded-md px-3 text-sm bg-background"
+                className="h-9 border rounded-md px-3 text-sm bg-card"
                 value={filter.status ?? ''}
                 onChange={e => updateFilter(f => ({ ...f, status: e.target.value || undefined }))}
               >
@@ -261,8 +265,8 @@ export default function EmployeeAvailabilityPage() {
       </Card>
 
       {/* Dialog: Bloqueo manual */}
-      <Dialog open={openManual} onOpenChange={setOpenManual}>
-        <DialogContent className="max-w-md">
+      <Dialog open={openManual} onOpenChange={v => (v ? setOpenManual(true) : guard.requestClose())}>
+        <DialogContent {...guard.dirtyProps} className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Crear bloqueo manual</DialogTitle>
             <DialogDescription>Bloquea manualmente la disponibilidad de un empleado en un rango de fechas.</DialogDescription>
@@ -275,7 +279,7 @@ export default function EmployeeAvailabilityPage() {
                   value={manualForm.employeeId}
                   onSelect={id => setManualForm(f => ({ ...f, employeeId: id }))}
                   placeholder="Buscar empleado…"
-                  searchFn={(term) => GuardRotationGroupsAPI.getActiveGroupEmployees(term)}
+                  searchFn={(term) => GuardRotationGroupsAPI.getEligibleEmployees(term)}
                   searchKey="guard-active-group-employees-search"
                 />
               </div>
@@ -283,7 +287,7 @@ export default function EmployeeAvailabilityPage() {
             <div>
               <Label>Tipo de bloqueo *</Label>
               <select
-                className="w-full h-9 border rounded-md px-3 text-sm bg-background mt-1"
+                className="w-full h-9 border rounded-md px-3 text-sm bg-card mt-1"
                 value={manualForm.sourceTypeId ?? ''}
                 onChange={e => setManualForm(f => ({ ...f, sourceTypeId: e.target.value ? Number(e.target.value) : null }))}
               >
@@ -330,10 +334,11 @@ export default function EmployeeAvailabilityPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <UnsavedChangesDialog open={guard.confirmOpen} onClose={guard.closeConfirm} onConfirmExit={guard.confirmExit} />
 
       {/* Dialog: Sincronizar */}
-      <Dialog open={openSync} onOpenChange={setOpenSync}>
-        <DialogContent className="max-w-md">
+      <Dialog open={openSync} onOpenChange={v => (v ? setOpenSync(true) : guard2.requestClose())}>
+        <DialogContent {...guard2.dirtyProps} className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Sincronizar bloqueos de disponibilidad</DialogTitle>
             <DialogDescription>Sincroniza los bloqueos de disponibilidad con las fuentes configuradas.</DialogDescription>
@@ -364,6 +369,7 @@ export default function EmployeeAvailabilityPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <UnsavedChangesDialog open={guard2.confirmOpen} onClose={guard2.closeConfirm} onConfirmExit={guard2.confirmExit} />
     </div>
   );
 }

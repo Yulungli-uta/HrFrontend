@@ -78,7 +78,7 @@ export function OrcidRequiredGate({ personId, isOwnProfile }: OrcidRequiredGateP
 
   return (
     <>
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
         <span className="flex items-center gap-2">
           <AlertCircle className="h-4 w-4 shrink-0" />
           Registre su ORCID para poder sincronizar sus publicaciones.

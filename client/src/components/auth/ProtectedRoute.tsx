@@ -196,7 +196,7 @@ function LoadingScreen() {
   return (
     <div className="flex items-center justify-center min-h-[400px]">
       <div className="text-center">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
         <p className="text-muted-foreground dark:text-muted-foreground">Verificando permisos...</p>
       </div>
     </div>
@@ -228,7 +228,7 @@ function UnauthorizedPage({ reason, requiredPath, requiredRoles, noPermissions }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[600px] p-8 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+    <div className="flex flex-col items-center justify-center min-h-[600px] p-8 bg-gradient-to-br from-muted/50 to-muted">
       <div className="max-w-md w-full bg-card dark:bg-card rounded-lg shadow-xl p-8 text-center">
         {/* Icono */}
         <div className="mb-6 flex justify-center">
@@ -251,10 +251,10 @@ function UnauthorizedPage({ reason, requiredPath, requiredRoles, noPermissions }
         </p>
 
         {/* Información adicional */}
-        <div className="bg-warning/10 dark:bg-yellow-900/20 border border-warning/30 dark:border-yellow-800 rounded-lg p-4 mb-6">
+        <div className="bg-warning/10 border border-warning/30 rounded-lg p-4 mb-6">
           <div className="flex items-start gap-3">
             <Shield className="w-5 h-5 text-warning dark:text-warning/80 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-warning dark:text-yellow-200 text-left">
+            <p className="text-sm text-warning text-left">
               Si crees que deberías tener acceso a esta página, contacta con el administrador del sistema.
             </p>
           </div>
@@ -284,7 +284,7 @@ function UnauthorizedPage({ reason, requiredPath, requiredRoles, noPermissions }
 
         {/* Debug info (solo en desarrollo) */}
         {import.meta.env.DEV && (
-          <div className="mt-6 pt-6 border-t border-border dark:border-gray-700">
+          <div className="mt-6 pt-6 border-t border-border">
             <details className="text-left">
               <summary className="text-sm text-muted-foreground dark:text-muted-foreground/70 cursor-pointer hover:text-foreground dark:hover:text-muted-foreground">
                 Debug Info (solo en desarrollo)

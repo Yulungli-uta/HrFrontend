@@ -56,19 +56,19 @@ function EntraSyncBadge({ sync }: { sync: EntraSyncResult | null }) {
   if (!sync) return null;
   if (sync.status === "Synced")
     return (
-      <Badge variant="outline" className="text-xs text-green-700 border-green-300 bg-green-50 flex items-center gap-1">
+      <Badge variant="outline" className="text-xs text-success border-success/40 bg-success/10 flex items-center gap-1">
         <Cloud className="h-3 w-3" /> Sincronizado
       </Badge>
     );
   if (sync.status === "Disabled")
     return (
-      <Badge variant="outline" className="text-xs text-amber-700 border-amber-300 bg-amber-50 flex items-center gap-1">
+      <Badge variant="outline" className="text-xs text-warning border-warning/40 bg-warning/10 flex items-center gap-1">
         <CloudOff className="h-3 w-3" /> Entra deshabilitado
       </Badge>
     );
   if (sync.status === "PendingSync")
     return (
-      <Badge variant="outline" className="text-xs text-blue-700 border-blue-300 bg-blue-50 flex items-center gap-1">
+      <Badge variant="outline" className="text-xs text-primary border-primary/40 bg-primary/10 flex items-center gap-1">
         <Cloud className="h-3 w-3" /> Pendiente sync
       </Badge>
     );
@@ -251,7 +251,7 @@ function UsersTab() {
               className="pl-10"
             />
           </div>
-          <Button variant="outline" onClick={handleSearch} disabled={isFetching}>
+          <Button variant="outline" onClick={handleSearch} disabled={isFetching} aria-label="Buscar">
             {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
           </Button>
           <Button variant="outline" size="icon" onClick={() => refetch()} title="Actualizar">
@@ -316,7 +316,7 @@ function UsersTab() {
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Más acciones">
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -344,7 +344,7 @@ function UsersTab() {
                           </DropdownMenuItem>
                           {user.accountEnabled && (
                             <DropdownMenuItem
-                              className="text-amber-700 focus:text-amber-700 focus:bg-amber-50"
+                              className="text-warning focus:text-warning focus:bg-warning/10"
                               onClick={() => setMoveToInactiveUser(user)}
                             >
                               <LogOut className="h-4 w-4 mr-2" />
@@ -461,7 +461,7 @@ function UsersTab() {
       <AlertDialog open={!!moveToInactiveUser} onOpenChange={(open) => !open && setMoveToInactiveUser(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-amber-700">
+            <AlertDialogTitle className="flex items-center gap-2 text-warning">
               <LogOut className="h-5 w-5" />
               Mover a OU Inactivos
             </AlertDialogTitle>
@@ -476,7 +476,7 @@ function UsersTab() {
             <AlertDialogAction
               onClick={() => moveToInactiveUser && moveToInactiveMut.mutate(moveToInactiveUser)}
               disabled={moveToInactiveMut.isPending}
-              className="bg-amber-600 hover:bg-amber-700 text-white"
+              className="bg-warning hover:bg-warning/90 text-warning-foreground"
             >
               {moveToInactiveMut.isPending
                 ? <Loader2 className="h-4 w-4 animate-spin" />
@@ -667,7 +667,7 @@ function GroupsTab() {
               className="pl-10"
             />
           </div>
-          <Button variant="outline" onClick={handleSearch} disabled={isFetching}>
+          <Button variant="outline" onClick={handleSearch} disabled={isFetching} aria-label="Buscar">
             {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
           </Button>
           <Button variant="outline" size="icon" onClick={() => refetch()} title="Actualizar">
@@ -711,7 +711,7 @@ function GroupsTab() {
               />
             </div>
           </div>
-          <div className="flex justify-end gap-3">
+          <div className="flex justify-end gap-3 flex-wrap">
             <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancelar</Button>
             <Button
               onClick={() => createGroupMutation.mutate()}
@@ -892,8 +892,7 @@ function GroupMembersSheet({ group, onClose }: { group: LocalAdGroupResponse; on
             <Button
               onClick={handleAddByEmail}
               disabled={!addEmail.trim() || searching || addMutation.isPending}
-              className="shrink-0"
-            >
+              className="shrink-0" aria-label="Agregar usuario">
               {searching || addMutation.isPending
                 ? <Loader2 className="h-4 w-4 animate-spin" />
                 : <UserPlus className="h-4 w-4" />}
@@ -966,9 +965,9 @@ export default function LocalADManagementPage() {
       </div>
 
       {/* Aviso LDAP */}
-      <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 flex items-start gap-3">
-        <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-        <p className="text-sm text-amber-700 dark:text-amber-400">
+      <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 flex items-start gap-3">
+        <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+        <p className="text-sm text-warning">
           <strong>Limitación LDAP:</strong> el total de registros no es exacto. Use "Cargar más"
           para paginar. Los contadores son aproximados.
         </p>
@@ -976,7 +975,7 @@ export default function LocalADManagementPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="users">
-        <TabsList className="grid w-full max-w-xs grid-cols-2">
+        <TabsList className="max-sm:flex max-sm:justify-start grid w-full max-w-xs grid-cols-2">
           <TabsTrigger value="users" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             Usuarios

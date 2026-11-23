@@ -53,12 +53,12 @@ import { parseApiError } from '@/lib/error-handling';
 
 const STATUS_BADGE: Record<string, string> = {
   BORRADOR: 'bg-secondary text-secondary-foreground',
-  GENERADO: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-  PENDIENTE_FIRMAS: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-  FIRMADO_CARGADO: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-  FINALIZADO: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  VIGENTE: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200',
-  VENCIDO: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+  GENERADO: 'bg-primary/10 text-primary ',
+  PENDIENTE_FIRMAS: 'bg-warning/10 text-warning ',
+  FIRMADO_CARGADO: 'bg-cat-3/10 text-cat-3 ',
+  FINALIZADO: 'bg-success/10 text-success ',
+  VIGENTE: 'bg-success/10 text-success ',
+  VENCIDO: 'bg-warning/10 text-warning ',
   ANULADO: 'bg-destructive/10 text-destructive',
 };
 
@@ -474,7 +474,7 @@ export default function ContractsCorrection() {
               </>
             ) : (
               <>
-                <Alert className="border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                <Alert className="border-warning/40 bg-warning/10 text-warning">
                   <ShieldAlert className="h-4 w-4" />
                   <AlertDescription>
                     Esta corrección se aplica sin importar el estado del contrato y queda registrada

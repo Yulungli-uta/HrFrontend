@@ -1,4 +1,5 @@
 // src/pages/MyCertificatesPage.tsx
+import { RowAction } from "@/components/ui/row-action";
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
@@ -144,9 +145,7 @@ export default function MyCertificatesPage() {
                           <StatusBadge label={STATUS_LABEL[c.status] ?? c.status} tone={statusTone(c.status)} />
                         </td>
                         <td className="p-3 text-right">
-                          <Button variant="outline" size="sm" onClick={() => setSelectedId(c.requestId)}>
-                            Ver
-                          </Button>
+                          <RowAction action="view" onClick={() => setSelectedId(c.requestId)} />
                         </td>
                       </tr>
                     ))

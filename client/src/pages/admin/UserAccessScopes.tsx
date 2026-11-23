@@ -1,4 +1,5 @@
 // src/pages/admin/UserAccessScopes.tsx
+import { RowAction } from "@/components/ui/row-action";
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
@@ -139,11 +140,8 @@ export default function UserAccessScopesPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => refetchScopes()} className="flex items-center gap-2">
-            <RefreshCw className="h-4 w-4" />
-            <span className="hidden sm:inline">Actualizar</span>
-          </Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <RowAction action="refresh" onClick={() => refetchScopes()} />
           <Button size="sm" onClick={() => setIsFormOpen(true)} className="flex items-center gap-2 bg-primary hover:bg-primary/90">
             <Plus className="h-4 w-4" />
             Asignar acceso
@@ -227,16 +225,15 @@ export default function UserAccessScopesPage() {
                         {s.expiresAt ? formatDate(s.expiresAt) : "Sin expiración"}
                       </td>
                       <td className="p-3 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button variant="outline" size="sm" onClick={() => setHistoryEmployeeId(s.employeeId)} className="h-8 px-2">
+                        <div className="flex items-center justify-end gap-1 flex-wrap">
+                          <Button variant="outline" size="sm" onClick={() => setHistoryEmployeeId(s.employeeId)} className="h-8 px-2" aria-label="Ver historial">
                             <History className="h-3.5 w-3.5" />
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => setDeleteTarget(s)}
-                            className="h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
-                          >
+                            className="h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10" aria-label="Eliminar">
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>
@@ -284,7 +281,7 @@ export default function UserAccessScopesPage() {
             <AlertDialogCancel disabled={deleteMutation.isPending}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
-              className="bg-destructive hover:bg-red-700 flex items-center gap-2"
+              className="bg-destructive hover:bg-destructive/90 flex items-center gap-2"
               disabled={deleteMutation.isPending}
             >
               {deleteMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -362,16 +359,15 @@ function ScopeCard({
         <p className="text-xs text-muted-foreground">
           {scope.expiresAt ? `Expira: ${formatDate(scope.expiresAt)}` : "Sin expiración"}
         </p>
-        <div className="flex justify-end gap-2 pt-1">
-          <Button variant="outline" size="sm" onClick={onHistory} className="h-8 px-2">
+        <div className="flex justify-end gap-2 pt-1 flex-wrap">
+          <Button variant="outline" size="sm" onClick={onHistory} className="h-8 px-2" aria-label="Ver historial">
             <History className="h-3.5 w-3.5" />
           </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={onDelete}
-            className="h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
-          >
+            className="h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10" aria-label="Eliminar">
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>

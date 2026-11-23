@@ -39,7 +39,7 @@ const statusBarColors: Record<string, string> = {
   "En Revision": "bg-primary dark:bg-primary/80",
   "Aprobado": "bg-success",
   "Retornado": "bg-destructive",
-  "Finalizado": "bg-purple-500 dark:bg-purple-400",
+  "Finalizado": "bg-cat-3 ",
 };
 
 const processBarColors = [
@@ -159,7 +159,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {statCards.map((stat) => (
           <Card key={stat.title}>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2 flex-wrap gap-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 {stat.title}
               </CardTitle>

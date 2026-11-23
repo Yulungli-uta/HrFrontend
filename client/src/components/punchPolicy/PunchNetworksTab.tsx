@@ -196,7 +196,7 @@ export default function PunchNetworksTab({ canManage }: { canManage: boolean }) 
                   </TableCell>
                   {canManage && (
                     <TableCell>
-                      <div className="flex justify-end gap-1">
+                      <div className="flex justify-end gap-1 flex-wrap">
                         <ActionIconButton icon={Pencil} label={`Editar ${n.name}`} onClick={() => openForm(n)} />
                         <ActionIconButton icon={Trash2} label={`Eliminar ${n.name}`} tone="destructive" onClick={() => setToDelete(n)} />
                       </div>

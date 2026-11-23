@@ -553,7 +553,7 @@ function RulesSection({
         </span>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button
+            <Button tooltip={false}
               variant="outline"
               size="sm"
               className="h-7 text-xs"
@@ -591,11 +591,11 @@ function RulesSection({
                   </p>
                   <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                     {rule.isMandatory ? (
-                      <Badge variant="default" className="text-[0.625rem] h-5">
+                      <Badge variant="default" className="text-xs h-5">
                         Obligatorio
                       </Badge>
                     ) : (
-                      <Badge variant="outline" className="text-[0.625rem] h-5">
+                      <Badge variant="outline" className="text-xs h-5">
                         Opcional
                       </Badge>
                     )}
@@ -607,13 +607,12 @@ function RulesSection({
                 <div className="flex items-center gap-0.5 shrink-0">
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button
+                      <Button tooltip={false}
                         variant="ghost"
                         size="icon"
                         className="h-7 w-7"
                         onClick={() => handleEdit(rule)}
-                        data-testid={`button-edit-rule-${rule.ruleId}`}
-                      >
+                        data-testid={`button-edit-rule-${rule.ruleId}`} aria-label="Editar">
                         <Pencil className="h-3 w-3" />
                       </Button>
                     </TooltipTrigger>
@@ -621,13 +620,12 @@ function RulesSection({
                   </Tooltip>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button
+                      <Button tooltip={false}
                         variant="ghost"
                         size="icon"
                         className="h-7 w-7 text-destructive hover:text-destructive"
                         onClick={() => setDeleteConfirm(rule)}
-                        data-testid={`button-delete-rule-${rule.ruleId}`}
-                      >
+                        data-testid={`button-delete-rule-${rule.ruleId}`} aria-label="Eliminar">
                         <Trash2 className="h-3 w-3" />
                       </Button>
                     </TooltipTrigger>
@@ -680,13 +678,12 @@ function RulesSection({
                     <div className="flex items-center justify-center gap-0.5">
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Button
+                          <Button tooltip={false}
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7"
                             onClick={() => handleEdit(rule)}
-                            data-testid={`button-edit-rule-${rule.ruleId}`}
-                          >
+                            data-testid={`button-edit-rule-${rule.ruleId}`} aria-label="Editar">
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
                         </TooltipTrigger>
@@ -694,13 +691,12 @@ function RulesSection({
                       </Tooltip>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Button
+                          <Button tooltip={false}
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7 text-destructive hover:text-destructive"
                             onClick={() => setDeleteConfirm(rule)}
-                            data-testid={`button-delete-rule-${rule.ruleId}`}
-                          >
+                            data-testid={`button-delete-rule-${rule.ruleId}`} aria-label="Eliminar">
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </TooltipTrigger>
@@ -786,7 +782,7 @@ function ProcessNode({
             <CollapsibleTrigger asChild>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button
+                  <Button tooltip={false}
                     variant="ghost"
                     size="icon"
                     data-testid={`button-toggle-process-${process.processId}`}
@@ -849,13 +845,12 @@ function ProcessNode({
           <div className="flex items-center gap-1 shrink-0">
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button
+                <Button tooltip={false}
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8"
                   onClick={() => onEditProcess(process)}
-                  data-testid={`button-edit-process-${process.processId}`}
-                >
+                  data-testid={`button-edit-process-${process.processId}`} aria-label="Editar">
                   <Pencil className="h-3.5 w-3.5" />
                 </Button>
               </TooltipTrigger>
@@ -865,13 +860,12 @@ function ProcessNode({
             {(!hasChildren || level > 0) && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button
+                  <Button tooltip={false}
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8"
                     onClick={() => setShowRules(!showRules)}
-                    data-testid={`button-toggle-rules-${process.processId}`}
-                  >
+                    data-testid={`button-toggle-rules-${process.processId}`} aria-label="Ver documento">
                     <FileText className="h-3.5 w-3.5" />
                   </Button>
                 </TooltipTrigger>
@@ -953,7 +947,7 @@ export default function Processes() {
       className="flex flex-col gap-6 p-4 md:p-6"
       data-testid="page-processes"
     >
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1
             className="text-2xl font-semibold tracking-tight"

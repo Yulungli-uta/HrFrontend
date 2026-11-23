@@ -59,7 +59,7 @@ export default function SigningProcessesPage() {
             {showAll ? "Supervisión administrativa de los procesos creados por todos los usuarios." : "Documentos que has enviado a firmar y su avance."}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Link href="/signatures/validate-document">
             <Button variant="outline">
               <ShieldCheck className="mr-2 h-4 w-4" />

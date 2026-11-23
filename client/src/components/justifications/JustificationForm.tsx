@@ -407,7 +407,7 @@ export default function JustificationForm({ onCreated, onCancel, onDirtyChange }
     return (
       <div className="flex justify-center items-center p-8">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p>Cargando tipos de justificación...</p>
         </div>
       </div>
@@ -586,7 +586,7 @@ export default function JustificationForm({ onCreated, onCancel, onDirtyChange }
         <p className="text-xs text-muted-foreground mt-1">Máximo 500 caracteres.</p>
       </div>
 
-      <div className="flex items-center justify-end gap-2 pt-2">
+      <div className="flex items-center justify-end gap-2 pt-2 flex-wrap">
         <Button type="button" variant="outline" onClick={onCancel} disabled={submitting || loadingTypes}>
           Cancelar
         </Button>

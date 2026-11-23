@@ -30,8 +30,8 @@ interface PersonalInfoTabProps {
   /** Mapa plano id → nombre para todos los ref_types (fallback robusto) */
   refTypesMap?: Record<number, string>;
   countryMap?: Record<number, string>;
-  provinceMap?: Record<number, string>;
-  cantonMap?: Record<number, string>;
+  provinceMap?: Record<string, string>;
+  cantonMap?: Record<string, string>;
   catastrophicIllnesses?: CatastrophicIllness[];
   onAddCatastrophicIllness?: () => void;
   onEditCatastrophicIllness?: (item: CatastrophicIllness) => void;
@@ -132,7 +132,7 @@ export function PersonalInfoTab({
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
       <div className="lg:col-span-1">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 flex-wrap gap-2">
             <CardTitle className="flex items-center text-lg">
               <User className="mr-2 h-5 w-5" />
               Información Personal
@@ -300,14 +300,14 @@ export function PersonalInfoTab({
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Provincia</label>
                 <p className="mt-1 text-foreground">
-                  {(isValidId(person.provinceId) && provinceMap[Number(person.provinceId)]) || "—"}
+                  {(isValidId(person.provinceId) && provinceMap[String(person.provinceId)]) || "—"}
                 </p>
               </div>
 
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Cantón</label>
                 <p className="mt-1 text-foreground">
-                  {(isValidId(person.cantonId) && cantonMap[Number(person.cantonId)]) || "—"}
+                  {(isValidId(person.cantonId) && cantonMap[String(person.cantonId)]) || "—"}
                 </p>
               </div>
             </div>
@@ -315,7 +315,7 @@ export function PersonalInfoTab({
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 flex-wrap gap-2">
             <CardTitle className="flex items-center gap-2">
               <Heart className="h-5 w-5" />
               Salud

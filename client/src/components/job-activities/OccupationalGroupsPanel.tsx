@@ -134,7 +134,7 @@ export function OccupationalGroupsPanel({ onNew, onEdit }: Props) {
         </CatalogFilterBar>
 
         <div className="rounded-md border">
-          <Table className="min-w-[640px]">
+          <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Descripción</TableHead>

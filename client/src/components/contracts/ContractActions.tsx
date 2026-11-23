@@ -170,7 +170,7 @@ export function ContractActions({
         {s === 'FIRMADO_CARGADO' && (
           <Button
             size="sm"
-            className="bg-green-600 hover:bg-green-700 text-white"
+            className="bg-success hover:bg-success/90 text-success-foreground"
             onClick={() => openDialog('finalize')}
             disabled={isBusy}
           >
@@ -241,7 +241,7 @@ export function ContractActions({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-green-600" /> Finalizar Contrato
+              <CheckCircle2 className="h-5 w-5 text-success" /> Finalizar Contrato
             </AlertDialogTitle>
             <AlertDialogDescription>
               El contrato quedará <b>FINALIZADO</b>. Esta operación no se puede revertir.
@@ -253,7 +253,7 @@ export function ContractActions({
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={closeDialog}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction className="bg-green-600 hover:bg-green-700" onClick={confirmFinalize}>
+            <AlertDialogAction className="bg-success hover:bg-success/90" onClick={confirmFinalize}>
               Finalizar
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -284,7 +284,7 @@ export function ContractActions({
           <AlertDialogFooter>
             <AlertDialogCancel onClick={closeDialog}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive hover:bg-destructive/90 text-white"
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
               onClick={confirmCancel}
               disabled={!cancelReason.trim()}
             >

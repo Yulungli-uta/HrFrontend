@@ -17,7 +17,7 @@ import {
   Database, Server, Code, Key, RefreshCw, Download, Upload, History,
 } from "lucide-react";
 import { useAuth } from "@/features/auth";
-import logoPath from "@/assets/LogoUTA.png";
+import logoEscudo from "@/assets/brand/uta-escudo-blanco.svg";
 import { logger } from "@/lib/logger";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
@@ -138,7 +138,7 @@ const SidebarFooter: React.FC<SidebarFooterProps> = ({ collapsed, userName, user
           <span className="text-xs font-semibold text-sidebar-foreground truncate leading-tight">
             {userName || "Usuario"}
           </span>
-          <span className="text-[0.625rem] text-sidebar-foreground/60 truncate leading-tight">
+          <span className="text-xs text-sidebar-foreground/60 truncate leading-tight">
             {userType === "AzureAD" ? "Cuenta institucional" : "Usuario local"}
           </span>
         </div>
@@ -161,21 +161,16 @@ const SidebarFooter: React.FC<SidebarFooterProps> = ({ collapsed, userName, user
 /* ─── Subcomponente: Cabecera del sidebar ───────────────────────────────── */
 interface SidebarHeaderProps { collapsed: boolean; onToggle: () => void; hideToggle?: boolean; }
 const SidebarHeader: React.FC<SidebarHeaderProps> = ({ collapsed, onToggle, hideToggle }) => (
-  <div className="shrink-0 border-b border-sidebar-border px-3 py-3">
-    <div className="flex items-center justify-between gap-2">
+  <div className="uta-band shrink-0 border-b border-sidebar-border px-3 h-14 flex items-center">
+    <div className="flex w-full items-center justify-between gap-2">
       <div className="flex items-center gap-2 min-w-0 overflow-hidden">
-        <img src={logoPath} alt="UTA" className="h-8 w-8 shrink-0 object-contain" />
+        {/* Escudo oficial en blanco sobre la banda institucional + nombre legible. */}
+        <img src={logoEscudo} alt="Universidad Técnica de Ambato" className="h-10 w-10 shrink-0 object-contain" />
         {!collapsed && (
           <div className="flex flex-col min-w-0">
-            <span className="text-xs font-bold text-sidebar-primary leading-tight truncate">
-              Universidad Técnica
-            </span>
-            <span className="text-xs font-bold text-sidebar-primary leading-tight truncate">
-              de Ambato
-            </span>
-            <span className="text-[0.625rem] text-sidebar-foreground/50 leading-tight truncate mt-0.5">
-              Sistema de RRHH
-            </span>
+            <span className="text-xs font-bold text-sidebar-primary leading-tight truncate">Universidad Técnica</span>
+            <span className="text-xs font-bold text-sidebar-primary leading-tight truncate">de Ambato</span>
+            <span className="text-xs text-sidebar-foreground/70 leading-tight truncate mt-0.5">Sistema de RRHH</span>
           </div>
         )}
       </div>
@@ -226,7 +221,7 @@ const NavNodeItem: React.FC<NavNodeItemProps> = ({
                                w-0.5 h-4 rounded-full bg-sidebar-primary-foreground" />
             )}
             <Icon className="h-3.5 w-3.5 shrink-0" />
-            {!collapsed && <span className="min-w-0 break-words text-[0.6875rem] leading-snug">{node.label}</span>}
+            {!collapsed && <span className="min-w-0 break-words text-xs leading-snug">{node.label}</span>}
           </Link>
         </TooltipTrigger>
         <TooltipContent side="right">{node.label}</TooltipContent>
@@ -248,7 +243,7 @@ const NavNodeItem: React.FC<NavNodeItemProps> = ({
           >
             <span className="flex items-center gap-2 min-w-0">
               <Icon className="h-3.5 w-3.5 shrink-0" />
-              {!collapsed && <span className="min-w-0 break-words text-left text-[0.6875rem] leading-snug">{node.label}</span>}
+              {!collapsed && <span className="min-w-0 break-words text-left text-xs leading-snug">{node.label}</span>}
             </span>
             {!collapsed && (
               <span
@@ -436,7 +431,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onLogout, varian
           {!collapsed && (
             <>
               <p className="text-xs font-semibold text-sidebar-foreground">Sin opciones de menú</p>
-              <p className="text-[0.625rem] text-sidebar-foreground/50 leading-relaxed">
+              <p className="text-xs text-sidebar-foreground/50 leading-relaxed">
                 Contacta al administrador para asignar tus permisos.
               </p>
             </>
@@ -483,11 +478,11 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onLogout, varian
                 hover:bg-muted/40
                 focus:border-primary/50
                 focus:ring-2 focus:ring-primary/20
-                dark:border-slate-700
-                dark:bg-slate-900
-                dark:text-slate-100
-                dark:placeholder:text-slate-400
-                dark:hover:bg-slate-800
+               
+               
+               
+               
+               
               "
             />
           </div>
@@ -512,7 +507,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onLogout, varian
                 <span className="flex items-center gap-2 min-w-0 text-left">
                   <GroupIcon className="h-4 w-4 shrink-0" />
                   {!collapsed && (
-                    <span className="min-w-0 break-words text-left text-[0.6875rem] font-semibold uppercase leading-snug tracking-wide">
+                    <span className="min-w-0 break-words text-left text-xs font-semibold uppercase leading-snug tracking-wide">
                       {group.title}
                     </span>
                   )}
@@ -552,7 +547,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onLogout, varian
         {!collapsed && searchTerm.trim() && filteredNavGroups.length === 0 && (
           <div className="flex flex-col items-center py-6 gap-2 text-center px-2">
             <Search className="h-5 w-5 text-sidebar-foreground/30" />
-            <p className="text-[0.625rem] text-sidebar-foreground/50 leading-relaxed">
+            <p className="text-xs text-sidebar-foreground/50 leading-relaxed">
               Sin resultados para <strong>"{searchTerm.trim()}"</strong>
             </p>
           </div>

@@ -362,7 +362,7 @@ export default function People() {
   return (
     <div className="flex flex-col gap-4">
       {/* Título + botón agregar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
             Gestión de Personas
@@ -414,7 +414,7 @@ export default function People() {
         <Card className="bg-primary/10 border-primary/30">
           <CardContent className="p-4 flex items-center gap-3">
             <div className="bg-primary p-2 rounded-full shrink-0">
-              <Users className="h-5 w-5 text-white" />
+              <Users className="h-5 w-5 text-primary-foreground" />
             </div>
             <div className="min-w-0">
               <p className="text-sm font-medium text-primary">Total Personas</p>
@@ -427,7 +427,7 @@ export default function People() {
         <Card className="bg-success/10 border-success/30">
           <CardContent className="p-4 flex items-center gap-3">
             <div className="bg-success p-2 rounded-full shrink-0">
-              <UserCheck className="h-5 w-5 text-white" />
+              <UserCheck className="h-5 w-5 text-success-foreground" />
             </div>
             <div className="min-w-0">
               <p className="text-sm font-medium text-success">Empleados Activos</p>
@@ -440,7 +440,7 @@ export default function People() {
         <Card className="bg-destructive/10 border-destructive/30">
           <CardContent className="p-4 flex items-center gap-3">
             <div className="bg-destructive p-2 rounded-full shrink-0">
-              <UserX className="h-5 w-5 text-white" />
+              <UserX className="h-5 w-5 text-destructive-foreground" />
             </div>
             <div className="min-w-0">
               <p className="text-sm font-medium text-destructive">Empleados Inactivos</p>
@@ -460,7 +460,7 @@ export default function People() {
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <h2 className="text-base font-semibold text-foreground">Directorio de Personal</h2>
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 flex-wrap">
               <Button
                 variant={activeFilter === "all" ? "default" : "outline"}
                 size="sm"
@@ -486,7 +486,7 @@ export default function People() {
                 Inactivos
               </Button>
             </div>
-            <div className="flex items-center gap-1 border border-border rounded-lg p-0.5">
+            <div className="flex items-center gap-1 border border-border rounded-lg p-0.5 flex-wrap">
               <Button
                 variant={viewMode === "table" ? "default" : "ghost"}
                 size="sm"
@@ -607,8 +607,8 @@ export default function People() {
                             variant="outline"
                             className={
                               person.isActive
-                                ? "border-emerald-500/30 bg-emerald-500/10 text-success dark:text-emerald-300"
-                                : "border-slate-500/30 bg-slate-500/10 text-slate-700 dark:text-slate-300"
+                                ? "border-success/30 bg-success/10 text-success"
+                                : "border-muted-foreground/30 bg-muted-foreground/10 text-foreground "
                             }
                           >
                             {person.isActive ? "Activo" : "Inactivo"}

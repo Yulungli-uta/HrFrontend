@@ -1,9 +1,11 @@
 // src/pages/admin/UserRoles.tsx
+import { RowAction } from "@/components/ui/row-action";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo, useCallback, useEffect } from "react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { StatCard as SharedStatCard } from "@/components/ui/stat-card";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -467,15 +469,7 @@ export default function UserRolesPage() {
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleRefresh}
-                  className="flex items-center gap-2"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  <span className="hidden lg:inline">Actualizar</span>
-                </Button>
+                <RowAction action="refresh" onClick={handleRefresh} />
               </TooltipTrigger>
               <TooltipContent>
                 <p>Sincronizar datos más recientes</p>
@@ -531,9 +525,9 @@ export default function UserRolesPage() {
         />
       </div>
 
-      <Card className="border-l-4 border-l-blue-500">
+      <Card className="border-l-4 border-l-primary">
         <CardContent className="p-6">
-          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+          <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-center justify-between">
             <div className="relative flex-1 w-full lg:max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
               <Input
@@ -664,7 +658,7 @@ export default function UserRolesPage() {
       </Card>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-4 w-full max-w-md">
+        <TabsList className="max-sm:flex max-sm:justify-start grid grid-cols-4 w-full max-w-md">
           <TabsTrigger
             value="all"
             onClick={() =>
@@ -794,7 +788,7 @@ export default function UserRolesPage() {
                   });
                 }
               }}
-              className="bg-destructive hover:bg-red-700 flex items-center gap-2"
+              className="bg-destructive hover:bg-destructive/90 flex items-center gap-2"
               disabled={deleteMutation.isPending}
             >
               {deleteMutation.isPending && (
@@ -900,37 +894,8 @@ export default function UserRolesPage() {
 ========================= */
 
 function StatCard({ title, value, icon, color, onClick }: any) {
-  const colorClasses = {
-    blue: "bg-primary/10 text-primary border-primary/30",
-    green: "bg-success/10 text-success border-success/30",
-    purple: "bg-accent/50 text-accent-foreground border-secondary/30",
-    orange: "bg-warning/10 text-warning border-warning/30",
-  };
-
-  return (
-    <Card
-      className={`border-l-4 cursor-pointer transition-all hover:shadow-md hover:scale-105 ${
-        colorClasses[color as keyof typeof colorClasses]
-      }`}
-      onClick={onClick}
-    >
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">{title}</p>
-            <p className="text-2xl font-bold mt-1">{value}</p>
-          </div>
-          <div
-            className={`p-3 rounded-full ${
-              colorClasses[color as keyof typeof colorClasses].split(" ")[0]
-            }`}
-          >
-            {icon}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
+  const tone = ({ blue: "primary", green: "success", purple: "cat-3", orange: "warning" } as const)[color as "blue" | "green" | "purple" | "orange"] ?? "primary";
+  return <SharedStatCard tone={tone} label={title} value={value} iconNode={icon} onClick={onClick} />;
 }
 
 function CardView({
@@ -1027,8 +992,7 @@ function CardView({
                   size="sm"
                   variant="outline"
                   onClick={() => onViewHistory(user.id)}
-                  className="flex items-center gap-1"
-                >
+                  className="flex items-center gap-1" aria-label="Ver historial">
                   <History className="h-4 w-4" />
                 </Button>
 
@@ -1065,7 +1029,7 @@ function CardView({
                                 ? formatDate(ur.assignedAt)
                                 : "-"}
                             </TableCell>
-                            <TableCell className="text-right flex items-center gap-2 justify-end">
+                            <TableCell className="text-right whitespace-nowrap space-x-2">
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -1077,8 +1041,7 @@ function CardView({
                                     reason: ur.reason,
                                   })
                                 }
-                                className="h-8"
-                              >
+                                className="h-8" aria-label="Editar">
                                 <Edit3 className="h-4 w-4" />
                               </Button>
 
@@ -1088,8 +1051,7 @@ function CardView({
                                 onClick={() =>
                                   onDeleteAssignment(ur.userId, ur.roleId)
                                 }
-                                className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8 p-0"
-                              >
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8 p-0" aria-label="Eliminar">
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </TableCell>
@@ -1184,26 +1146,24 @@ function TableView({
                     )}
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
+                    <div className="flex items-center justify-end gap-2 flex-wrap">
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => onViewHistory(user.id)}
-                      >
+                        onClick={() => onViewHistory(user.id)} aria-label="Ver historial">
                         <History className="h-4 w-4" />
                       </Button>
 
                       <Button
                         size="sm"
                         onClick={() => onAssignRole(user.id)}
-                        className="bg-primary hover:bg-primary/90"
-                      >
+                        className="bg-primary hover:bg-primary/90" aria-label="Agregar">
                         <Plus className="h-4 w-4" />
                       </Button>
 
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="sm">
+                          <Button variant="outline" size="sm" aria-label="Más acciones">
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -1241,8 +1201,7 @@ function TableView({
                                       reason: ur.reason,
                                     })
                                   }
-                                  className="h-7 px-2"
-                                >
+                                  className="h-7 px-2" aria-label="Editar">
                                   <Edit3 className="h-3.5 w-3.5" />
                                 </Button>
                                 <Button
@@ -1251,8 +1210,7 @@ function TableView({
                                   onClick={() =>
                                     onDeleteAssignment(ur.userId, ur.roleId)
                                   }
-                                  className="h-7 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                >
+                                  className="h-7 px-2 text-destructive hover:text-destructive hover:bg-destructive/10" aria-label="Eliminar">
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </Button>
                               </div>
@@ -1341,7 +1299,7 @@ function EditUserRoleForm({
         </div>
       </div>
 
-      <div className="flex justify-end gap-3">
+      <div className="flex justify-end gap-3 flex-wrap">
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancelar
         </Button>

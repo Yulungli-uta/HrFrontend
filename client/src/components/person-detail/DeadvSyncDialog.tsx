@@ -139,9 +139,9 @@ export function DeadvSyncDialog({ open, onOpenChange, personId }: DeadvSyncDialo
                   <p className="text-2xl font-semibold">{preview.totalFound}</p>
                   <p className="text-xs text-muted-foreground">Encontrados</p>
                 </div>
-                <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-900 dark:bg-emerald-950">
-                  <p className="text-2xl font-semibold text-emerald-700 dark:text-emerald-400">{pending}</p>
-                  <p className="text-xs text-emerald-700 dark:text-emerald-400">Faltan sincronizar</p>
+                <div className="rounded-lg border border-success/30 bg-success/10 p-3">
+                  <p className="text-2xl font-semibold text-success">{pending}</p>
+                  <p className="text-xs text-success">Faltan sincronizar</p>
                 </div>
                 <div className="rounded-lg border p-3">
                   <p className="text-2xl font-semibold text-muted-foreground">{preview.totalAlreadySynced}</p>
@@ -184,7 +184,7 @@ export function DeadvSyncDialog({ open, onOpenChange, personId }: DeadvSyncDialo
               )}
               {pending === 0 && preview.totalFound > 0 && (
                 <div className="flex flex-col items-center gap-2 py-4 text-center">
-                  <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+                  <CheckCircle2 className="h-6 w-6 text-success" />
                   <p className="text-sm text-muted-foreground">
                     Ya está actualizado — los {preview.totalFound} certificado(s) de DEaDV ya están registrados aquí.
                   </p>
@@ -195,7 +195,7 @@ export function DeadvSyncDialog({ open, onOpenChange, personId }: DeadvSyncDialo
 
           {step === "done" && (
             <div className="flex flex-col items-center gap-3 py-6 text-center">
-              <CheckCircle2 className="h-8 w-8 text-emerald-600" />
+              <CheckCircle2 className="h-8 w-8 text-success" />
               <p className="text-sm">{resultMessage}</p>
             </div>
           )}

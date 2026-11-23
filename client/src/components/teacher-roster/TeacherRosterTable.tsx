@@ -43,7 +43,7 @@ function SalaryCell({ item }: { item: TeacherRosterItemDto }) {
       <span className="tabular-nums font-medium">{money(item.rmu)}</span>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Badge className={`${status.cls} text-[0.625rem] px-1.5 py-0 cursor-help`}>{status.text}</Badge>
+          <Badge className={`${status.cls} text-xs px-1.5 py-0 cursor-help`}>{status.text}</Badge>
         </TooltipTrigger>
         <TooltipContent className="max-w-xs text-xs">
           {item.rmuSource ?? "Sin documento de origen"}
@@ -112,7 +112,7 @@ export function TeacherRosterTable({ items, isLoading, showSalary, onEdit }: Tea
                 {/* Categoría y nivel con color propio: el nivel sube de intensidad (1 → 2 → 3) para distinguirlo de un vistazo. */}
                 <Badge className={`${categoryTone(item.categoryName).badge} font-semibold whitespace-nowrap`}>{categoryLabel(item.categoryName)}</Badge>
                 <div className="mt-1">
-                  <Badge className={`${categoryTone(item.categoryName).levels[levelIndex(item.levelName)]} text-[0.6875rem] px-2 py-0 whitespace-nowrap`}>
+                  <Badge className={`${categoryTone(item.categoryName).levels[levelIndex(item.levelName)]} text-xs px-2 py-0 whitespace-nowrap`}>
                     {levelLabel(item.levelName)}
                   </Badge>
                 </div>
@@ -151,7 +151,7 @@ export function TeacherRosterTable({ items, isLoading, showSalary, onEdit }: Tea
                   {item.pendingScaleActionNumber && (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Badge variant="outline" className="gap-1 text-[0.625rem] border-warning/50 text-warning cursor-help">
+                        <Badge variant="outline" className="gap-1 text-xs border-warning/50 text-warning cursor-help">
                           <ArrowUpRight className="h-3 w-3" />Acción posterior
                         </Badge>
                       </TooltipTrigger>
@@ -164,7 +164,7 @@ export function TeacherRosterTable({ items, isLoading, showSalary, onEdit }: Tea
                   {item.ladderMismatch && (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Badge variant="outline" className="gap-1 text-[0.625rem] border-warning/50 text-warning cursor-help">
+                        <Badge variant="outline" className="gap-1 text-xs border-warning/50 text-warning cursor-help">
                           <AlertTriangle className="h-3 w-3" />Cargo distinto
                         </Badge>
                       </TooltipTrigger>
@@ -184,7 +184,7 @@ export function TeacherRosterTable({ items, isLoading, showSalary, onEdit }: Tea
                     <div className="flex items-center justify-end gap-1">
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Button
+                          <Button tooltip={false}
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 hover:bg-primary/10 hover:text-primary"

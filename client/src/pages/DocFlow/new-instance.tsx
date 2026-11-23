@@ -264,7 +264,7 @@ export default function NewInstance() {
         <Link href="/DocFlow/expedientes">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" data-testid="button-back-new">
+              <Button tooltip={false} variant="ghost" size="icon" data-testid="button-back-new" aria-label="Volver">
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
@@ -520,13 +520,12 @@ export default function NewInstance() {
                   />
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button
+                      <Button tooltip={false}
                         type="button"
                         variant="ghost"
                         size="icon"
                         onClick={() => removeMetaField(index)}
-                        data-testid={`button-remove-meta-${index}`}
-                      >
+                        data-testid={`button-remove-meta-${index}`} aria-label="Eliminar">
                         <Trash2 className="h-4 w-4 text-muted-foreground" />
                       </Button>
                     </TooltipTrigger>

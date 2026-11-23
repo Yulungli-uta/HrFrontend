@@ -471,7 +471,7 @@ function IconActionButton({
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button
+          <Button tooltip={false}
             variant={variant}
             size="icon"
             className="h-8 w-8"
@@ -521,7 +521,7 @@ export default function MassVacationPlansPage() {
 
   return (
     <div className="p-4 sm:p-6 space-y-5">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <CalendarRange className="h-6 w-6 text-primary shrink-0" />
           <div className="min-w-0">
@@ -582,9 +582,11 @@ export default function MassVacationPlansPage() {
                 <TableBody>
                   {plans.map((p) => (
                     <TableRow key={p.planId} className="cursor-pointer" onClick={() => setSelectedPlan(p)}>
-                      <TableCell className="flex items-center gap-2 text-sm">
-                        {p.departmentId ? <Building2 className="h-3.5 w-3.5 text-muted-foreground" /> : <Globe className="h-3.5 w-3.5 text-muted-foreground" />}
-                        {p.departmentName ?? 'Toda la institución'}
+                      <TableCell className="text-sm">
+                        <div className="flex items-center gap-2">
+                          {p.departmentId ? <Building2 className="h-3.5 w-3.5 text-muted-foreground" /> : <Globe className="h-3.5 w-3.5 text-muted-foreground" />}
+                          {p.departmentName ?? 'Toda la institución'}
+                        </div>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground max-w-[220px] truncate">{p.description ?? '—'}</TableCell>
                       <TableCell className="text-xs font-mono">

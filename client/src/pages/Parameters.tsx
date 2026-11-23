@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import BrandingCard from "@/components/admin/BrandingCard";
 import { Button } from "@/components/ui/button";
 import { Plus, Settings2, Edit, Trash2, Search, RefreshCw, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -144,7 +145,7 @@ export default function ParametersPage() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Parámetros del Sistema</h1>
           <p className="text-muted-foreground mt-2">
@@ -255,9 +256,11 @@ export default function ParametersPage() {
         />
       </div>
 
+      <BrandingCard />
+
       <Card>
         <CardHeader>
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4">
             <div>
               <CardTitle>Parámetros registrados</CardTitle>
               <CardDescription>{totalCount} en total</CardDescription>
@@ -277,7 +280,7 @@ export default function ParametersPage() {
                   }}
                 />
               </div>
-              <Button variant="outline" size="icon" onClick={load}><RefreshCw className="h-4 w-4" /></Button>
+              <Button variant="outline" size="icon" onClick={load} aria-label="Actualizar"><RefreshCw className="h-4 w-4" /></Button>
             </div>
           </div>
         </CardHeader>
@@ -307,9 +310,9 @@ export default function ParametersPage() {
                       <Badge variant={p.isActive ? "default" : "secondary"}>{p.isActive ? "Activo" : "Inactivo"}</Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm" onClick={() => openEdit(p)}><Edit className="h-4 w-4" /></Button>
-                        <Button variant="outline" size="sm" onClick={() => { setToDelete(p); setIsDeleteOpen(true); }}><Trash2 className="h-4 w-4" /></Button>
+                      <div className="flex gap-2 flex-wrap">
+                        <Button variant="outline" size="sm" onClick={() => openEdit(p)} aria-label="Editar"><Edit className="h-4 w-4" /></Button>
+                        <Button variant="outline" size="sm" onClick={() => { setToDelete(p); setIsDeleteOpen(true); }} aria-label="Eliminar"><Trash2 className="h-4 w-4" /></Button>
                       </div>
                     </TableCell>
                   </TableRow>

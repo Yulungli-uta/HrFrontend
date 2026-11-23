@@ -140,7 +140,7 @@ export default function KnowledgeAreasPage() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Áreas de Conocimiento</h1>
           <p className="text-muted-foreground mt-2">
@@ -221,7 +221,7 @@ export default function KnowledgeAreasPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4">
             <div>
               <CardTitle>Áreas registradas</CardTitle>
               <CardDescription>{items.length} en total (todos los niveles)</CardDescription>
@@ -231,7 +231,7 @@ export default function KnowledgeAreasPage() {
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input placeholder="Buscar por nombre o código..." className="pl-8" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
               </div>
-              <Button variant="outline" size="icon" onClick={load}><RefreshCw className="h-4 w-4" /></Button>
+              <Button variant="outline" size="icon" onClick={load} aria-label="Actualizar"><RefreshCw className="h-4 w-4" /></Button>
             </div>
           </div>
         </CardHeader>
@@ -259,9 +259,9 @@ export default function KnowledgeAreasPage() {
                       <Badge variant={item.isActive ? "default" : "secondary"}>{item.isActive ? "Activa" : "Inactiva"}</Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm" onClick={() => openEdit(item)}><Edit className="h-4 w-4" /></Button>
-                        <Button variant="outline" size="sm" onClick={() => { setToDelete(item); setIsDeleteOpen(true); }}><Trash2 className="h-4 w-4" /></Button>
+                      <div className="flex gap-2 flex-wrap">
+                        <Button variant="outline" size="sm" onClick={() => openEdit(item)} aria-label="Editar"><Edit className="h-4 w-4" /></Button>
+                        <Button variant="outline" size="sm" onClick={() => { setToDelete(item); setIsDeleteOpen(true); }} aria-label="Eliminar"><Trash2 className="h-4 w-4" /></Button>
                       </div>
                     </TableCell>
                   </TableRow>

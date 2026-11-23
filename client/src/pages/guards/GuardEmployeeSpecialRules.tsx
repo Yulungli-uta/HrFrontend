@@ -1,3 +1,6 @@
+import { useDirtyCloseGuard } from '@/hooks/useDirtyCloseGuard';
+import { RowAction } from "@/components/ui/row-action";
+import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
 import { useState, useEffect } from 'react';
 import { Shield, Plus, Loader2, Search } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -89,7 +92,8 @@ function RuleFormDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editTarget]);
 
-  const f = <K extends keyof RuleForm>(k: K, v: RuleForm[K]) => setForm(p => ({ ...p, [k]: v }));
+  const guard = useDirtyCloseGuard(open, onClose);
+  const f = <K extends keyof RuleForm>(k: K, v: RuleForm[K]) => { guard.touch(); setForm(p => ({ ...p, [k]: v })); };
   const isSaving = create.isPending || update.isPending;
 
   const handleSave = () => {
@@ -122,8 +126,9 @@ function RuleFormDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="sm:max-w-md" aria-describedby={undefined}>
+    <>
+    <Dialog open={open} onOpenChange={v => !v && guard.requestClose()}>
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>{editTarget ? 'Editar regla especial' : 'Nueva regla especial'}</DialogTitle>
         </DialogHeader>
@@ -138,7 +143,7 @@ function RuleFormDialog({
                   if (emp) setEmpName(emp.fullName ?? '');
                 }}
                 placeholder="Buscar guardia…"
-                searchFn={(term) => GuardRotationGroupsAPI.getActiveGroupEmployees(term)}
+                searchFn={(term) => GuardRotationGroupsAPI.getEligibleEmployees(term)}
                 searchKey="guard-active-group-employees-search"
               />
             </div>
@@ -153,7 +158,7 @@ function RuleFormDialog({
           <div>
             <Label>Ubicación fija (opcional)</Label>
             <select
-              className="w-full h-9 border rounded-md px-3 text-sm bg-background mt-1"
+              className="w-full h-9 border rounded-md px-3 text-sm bg-card mt-1"
               value={form.fixedLocationId}
               onChange={e => f('fixedLocationId', e.target.value !== '' ? Number(e.target.value) : '')}
             >
@@ -178,7 +183,7 @@ function RuleFormDialog({
                   const label = s
                     ? `${s.description}${s.scheduleCode ? ` (${s.scheduleCode})` : ''}`
                     : '';
-                  setForm(p => ({ ...p, fixedScheduleId: id ?? '', fixedScheduleLabel: label }));
+                  { guard.touch(); setForm(p => ({ ...p, fixedScheduleId: id ?? '', fixedScheduleLabel: label })); }
                 }}
               />
             </div>
@@ -239,6 +244,8 @@ function RuleFormDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <UnsavedChangesDialog open={guard.confirmOpen} onClose={guard.closeConfirm} onConfirmExit={guard.confirmExit} />
+    </>
   );
 }
 
@@ -257,7 +264,7 @@ export default function GuardEmployeeSpecialRulesPage() {
 
   return (
     <div className="p-4 sm:p-6 space-y-5">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-3">
           <Shield className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-bold">Reglas Especiales de Guardias</h1>
@@ -325,7 +332,7 @@ export default function GuardEmployeeSpecialRulesPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" onClick={() => openEdit(r)}>Editar</Button>
+                      <RowAction action="edit" onClick={() => openEdit(r)} />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -334,9 +341,9 @@ export default function GuardEmployeeSpecialRulesPage() {
           </div>
 
           {/* Pagination */}
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <div className="flex items-center justify-between text-sm text-muted-foreground flex-wrap gap-2">
             <span>{totalCount} reglas</span>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => goToPage(page - 1)}>Anterior</Button>
               <span className="flex items-center px-2">Pág {page} / {totalPages}</span>
               <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => goToPage(page + 1)}>Siguiente</Button>

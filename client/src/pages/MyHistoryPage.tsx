@@ -86,7 +86,7 @@ export default function MyHistoryPage() {
           <CardContent className="p-4 sm:p-6">
             <ol className="relative border-l border-border ml-3 space-y-6">
               {entries.map((entry, idx) => (
-                <li key={`${entry.source}-${entry.sourceId}-${idx}`} className="ml-6">
+                <li key={`${entry.source}-${entry.sourceId}-${idx}`} className="ml-6 min-w-0 break-words">
                   <span className="absolute -left-3 flex h-6 w-6 items-center justify-center rounded-full bg-background ring-2 ring-border text-muted-foreground">
                     {SOURCE_ICON[entry.source]}
                   </span>

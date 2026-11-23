@@ -69,7 +69,7 @@ export function EmergencyContactsTab({
 
   return (
     <Card className="shadow-sm">
-      <CardHeader className="flex flex-row items-center justify-between gap-2">
+      <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap gap-2">
         <CardTitle className="flex items-center gap-2">
           <User className="h-5 w-5 text-uta-blue" />
           <span>Contactos de Emergencia</span>

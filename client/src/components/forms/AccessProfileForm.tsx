@@ -118,7 +118,7 @@ export default function AccessProfileForm({ profile, onSuccess, onCancel, onDirt
         </div>
       </div>
 
-      <div className="flex justify-end gap-3">
+      <div className="flex justify-end gap-3 flex-wrap">
         <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
           Cancelar
         </Button>

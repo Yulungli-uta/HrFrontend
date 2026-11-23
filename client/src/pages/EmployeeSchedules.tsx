@@ -1,4 +1,5 @@
 //src/pages/EmployeeSchedules.tsx
+import { RowAction } from "@/components/ui/row-action";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePaged } from "@/hooks/pagination/usePaged";
@@ -36,17 +37,7 @@ import {
   HorariosAPI,
   handleApiError,
 } from "@/lib/api";
-import {
-  Search,
-  User,
-  Clock,
-  Calendar,
-  Plus,
-  Edit,
-  Trash2,
-  Building,
-  Users,
-} from "lucide-react";
+import { Search, User, Clock, Calendar, Plus, Building, Users } from "lucide-react";
 import AssignScheduleForm from "@/components/forms/AssignScheduleForm";
 import EditScheduleForm from "@/components/forms/EditScheduleForm";
 import type {
@@ -462,7 +453,7 @@ export default function EmployeeSchedules() {
       <div className="container mx-auto p-6">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
-            <div className="mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600" />
+            <div className="mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-primary" />
             <p className="mt-4 text-muted-foreground">Cargando datos de empleados...</p>
           </div>
         </div>
@@ -505,7 +496,7 @@ export default function EmployeeSchedules() {
 
   return (
     <div className="container mx-auto space-y-6 p-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">
             Gestión de Horarios
@@ -522,7 +513,7 @@ export default function EmployeeSchedules() {
           <Card className="bg-primary/10 border-primary/30">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="bg-primary p-2 rounded-full">
-                <Users className="h-5 w-5 text-white" />
+                <Users className="h-5 w-5 text-primary-foreground" />
               </div>
               <div>
                 <p className="text-sm font-medium text-primary">Total Empleados</p>
@@ -537,7 +528,7 @@ export default function EmployeeSchedules() {
           <Card className="bg-success/10 border-success/30">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="bg-success p-2 rounded-full">
-                <Clock className="h-5 w-5 text-white" />
+                <Clock className="h-5 w-5 text-success-foreground" />
               </div>
               <div>
                 <p className="text-sm font-medium text-success">Con Horario</p>
@@ -552,7 +543,7 @@ export default function EmployeeSchedules() {
           <Card className="bg-warning/10 border-warning/30">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="bg-warning p-2 rounded-full">
-                <Calendar className="h-5 w-5 text-white" />
+                <Calendar className="h-5 w-5 text-warning-foreground" />
               </div>
               <div>
                 <p className="text-sm font-medium text-warning">Sin Horario</p>
@@ -565,7 +556,7 @@ export default function EmployeeSchedules() {
           </Card>
 
           <Card
-            className="cursor-pointer bg-violet-500/10 border-violet-500/30"
+            className="cursor-pointer bg-cat-3/10 border-cat-3/30"
             onClick={() =>
               setFilters((f) => ({
                 ...f,
@@ -574,18 +565,18 @@ export default function EmployeeSchedules() {
             }
           >
             <CardContent className="p-4 flex items-center gap-3">
-              <div className="bg-violet-500 p-2 rounded-full">
-                <Clock className="h-5 w-5 text-white" />
+              <div className="bg-cat-3 p-2 rounded-full">
+                <Clock className="h-5 w-5 text-background" />
               </div>
               <div>
-                <p className="text-sm font-medium text-violet-600">
+                <p className="text-sm font-medium text-cat-3">
                   Horario Especial
                 </p>
-                <p className="text-2xl font-bold text-violet-600">
+                <p className="text-2xl font-bold text-cat-3">
                   {globalStats?.specialSchedules ?? "—"}
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  Sustituto/maternidad/lactancia/otro
+                <p className="text-xs text-muted-foreground break-words">
+                  Sustituto / maternidad / lactancia / otro
                 </p>
               </div>
             </CardContent>
@@ -669,7 +660,7 @@ export default function EmployeeSchedules() {
         <CardContent className="p-0">
           {filters.status === "special" && loadingSpecial ? (
             <div className="py-8 text-center text-muted-foreground">
-              <div className="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600" />
+              <div className="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
               <p className="mt-4">Cargando horarios especiales...</p>
             </div>
           ) : filteredEmployees.length === 0 ? (
@@ -783,7 +774,7 @@ export default function EmployeeSchedules() {
                             </Badge>
                           )}
                           {employee.isSpecialSchedule && (
-                            <Badge className="bg-violet-500/15 text-violet-600">
+                            <Badge className="bg-cat-3/15 text-cat-3">
                               Especial
                               {employee.specialScheduleCaseType
                                 ? `: ${employee.specialScheduleCaseType}`
@@ -796,24 +787,8 @@ export default function EmployeeSchedules() {
                       <TableCell className="space-x-2 whitespace-nowrap text-right">
                         {hasSchedule ? (
                           <>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleEditSchedule(employee)}
-                            >
-                              <Edit className="mr-1 h-4 w-4" />
-                              Editar
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() =>
-                                handleDeleteSchedule(employee.employeeID)
-                              }
-                            >
-                              <Trash2 className="mr-1 h-4 w-4" />
-                              Eliminar
-                            </Button>
+                            <RowAction action="edit" onClick={() => handleEditSchedule(employee)} />
+                            <RowAction action="delete" onClick={() => handleDeleteSchedule(employee.employeeID) } />
                           </>
                         ) : (
                           <Button

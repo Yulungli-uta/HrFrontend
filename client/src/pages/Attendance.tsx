@@ -171,7 +171,7 @@ function RangeQueryModal({ employeeId }: { employeeId: number }) {
                     <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Dispositivo</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-border">
                   {queryResults.map((punch) => (
                     <tr key={punch.id ?? `${punch.punchTime ?? "no-time"}-${punch.deviceId ?? "no-device"}`}>
                       <td className="px-4 py-3">{format(punch.punchTime ? new Date(punch.punchTime) : new Date(0), "dd/MM/yyyy HH:mm:ss")}</td>
@@ -552,16 +552,16 @@ export default function AttendancePage() {
   if (!isAuthenticated || !employeeId) {
     return (
       <div className="container mx-auto p-6 max-w-2xl">
-        <Card className="border-warning/30 bg-amber-50">
+        <Card className="border-warning/30 bg-warning/10">
           <CardHeader>
-            <CardTitle className="text-amber-800 flex items-center gap-2">
+            <CardTitle className="text-warning flex items-center gap-2">
               <Info className="h-5 w-5" />
               Sesión requerida
             </CardTitle>
             <CardDescription>No se pudo determinar su identificador de empleado.</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-amber-800 text-sm">
+            <p className="text-warning text-sm">
               Inicie sesión nuevamente o verifique que su cuenta tenga detalles de empleado asociados.
             </p>
           </CardContent>
@@ -639,7 +639,7 @@ export default function AttendancePage() {
             <p className="text-destructive text-sm">{errorMessage}</p>
 
             <div className="flex flex-wrap gap-2">
-              <Button onClick={handleRetry} className="bg-destructive hover:bg-red-700">
+              <Button onClick={handleRetry} className="bg-destructive hover:bg-destructive/90">
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Reintentar
               </Button>
@@ -667,7 +667,7 @@ export default function AttendancePage() {
   // =========================
   const formattedDate = format(currentTime, "EEEE, d 'de' MMMM 'de' yyyy", { locale: es });
   const nextPunchLabel = nextPunchType === "In" ? "Registrar Entrada" : "Registrar Salida";
-  const nextPunchColor = nextPunchType === "In" ? "bg-success hover:bg-green-700" : "bg-destructive hover:bg-red-700";
+  const nextPunchColor = nextPunchType === "In" ? "bg-success hover:bg-success/90" : "bg-destructive hover:bg-destructive/90";
 
   return (
     <div className="container mx-auto p-4 sm:p-6 max-w-5xl">
@@ -751,7 +751,7 @@ export default function AttendancePage() {
                 )}
 
                 {isWithinCooldown && (
-                  <div className="mt-2 p-2 bg-amber-100 border border-amber-300 rounded-md flex items-start text-xs text-amber-800">
+                  <div className="mt-2 p-2 bg-warning/10 border border-warning/40 rounded-md flex items-start text-xs text-warning">
                     <AlertCircle className="h-4 w-4 mr-2 mt-0.5" />
                     Debe esperar {COOLDOWN_MINUTES - timeSinceLastPunch} min para volver a marcar.
                   </div>

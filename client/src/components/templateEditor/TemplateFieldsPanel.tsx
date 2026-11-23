@@ -179,10 +179,10 @@ export function TemplateFieldsPanel({ templateId, htmlContent, fields, readOnly,
                 key={f.fieldId}
                 draggable
                 onDragStart={e => handleDragStart(e, f.fieldName)}
-                className="flex items-center gap-2 p-2 rounded-md border bg-blue-50 border-blue-200 dark:bg-blue-950/40 dark:border-blue-800 text-sm cursor-grab active:cursor-grabbing"
+                className="flex items-center gap-2 p-2 rounded-md border bg-primary/10 border-primary/30 text-sm cursor-grab active:cursor-grabbing"
                 title="Arrastra este campo hacia el editor HTML"
               >
-                <GripVertical className="h-4 w-4 text-blue-500 dark:text-blue-400 shrink-0" />
+                <GripVertical className="h-4 w-4 text-primary shrink-0" />
                 <div className="min-w-0 flex-1">
                   <p className="font-mono font-medium text-xs">{`{{${f.fieldName}}}`}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
@@ -211,15 +211,15 @@ export function TemplateFieldsPanel({ templateId, htmlContent, fields, readOnly,
               onDragStart={e => handleDragStart(e, token)}
               className={`rounded-md border text-sm cursor-grab active:cursor-grabbing ${
                 field
-                  ? 'bg-green-50 border-green-200 dark:bg-green-950/40 dark:border-green-800'
-                  : 'bg-amber-50 border-amber-200 dark:bg-amber-950/40 dark:border-amber-800'
+                  ? 'bg-success/10 border-success/30 '
+                  : 'bg-warning/10 border-warning/30 '
               }`}
             >
               <div className="flex items-start gap-2 p-2">
                 <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                 {field
-                  ? <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0 text-green-600 dark:text-green-400" />
-                  : <Circle className="h-4 w-4 text-amber-500 dark:text-amber-400 mt-0.5 shrink-0" />
+                  ? <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0 text-success" />
+                  : <Circle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
                 }
                 <div className="min-w-0 flex-1">
                   <p className="font-mono font-medium text-xs">{`{{${token}}}`}</p>
@@ -229,10 +229,10 @@ export function TemplateFieldsPanel({ templateId, htmlContent, fields, readOnly,
                       {field.sourceProperty && ` · ${field.sourceProperty}`}
                     </p>
                   ) : (
-                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">Sin campo definido</p>
+                    <p className="text-xs text-warning mt-0.5">Sin campo definido</p>
                   )}
                   {institutionalHint && (
-                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">{institutionalHint}</p>
+                    <p className="text-xs text-primary mt-0.5">{institutionalHint}</p>
                   )}
                 </div>
                 {!readOnly && (
@@ -309,7 +309,7 @@ export function TemplateFieldsPanel({ templateId, htmlContent, fields, readOnly,
                     />
                     <Label className="text-xs">Campo requerido</Label>
                   </div>
-                  <div className="flex justify-end gap-2 pt-1">
+                  <div className="flex justify-end gap-2 pt-1 flex-wrap">
                     <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditingToken(null)}>
                       Cancelar
                     </Button>

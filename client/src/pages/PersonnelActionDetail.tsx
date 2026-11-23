@@ -113,10 +113,10 @@ function buildDocumentOverrides(
 
 const STATUS_BADGE: Record<string, string> = {
   BORRADOR: 'bg-secondary text-secondary-foreground',
-  GENERADO: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-  PENDIENTE_FIRMAS: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-  FIRMADO_CARGADO: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-  FINALIZADO: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+  GENERADO: 'bg-primary/10 text-primary ',
+  PENDIENTE_FIRMAS: 'bg-warning/10 text-warning ',
+  FIRMADO_CARGADO: 'bg-cat-3/10 text-cat-3 ',
+  FINALIZADO: 'bg-success/10 text-success ',
   ANULADO: 'bg-destructive/10 text-destructive',
 };
 

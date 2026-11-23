@@ -178,7 +178,7 @@ export default function RolesPage() {
 
   return (
     <div className="container mx-auto p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
             <Shield className="h-8 w-8" />
@@ -275,7 +275,7 @@ export default function RolesPage() {
                         : "-"}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
+                      <div className="flex justify-end gap-1 flex-wrap">
                         <ActionIconButton
                           icon={Edit}
                           label="Editar rol"
@@ -328,7 +328,7 @@ export default function RolesPage() {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteRoleId && deleteMutation.mutate(deleteRoleId)}
-              className="bg-destructive hover:bg-red-700"
+              className="bg-destructive hover:bg-destructive/90"
             >
               Eliminar
             </AlertDialogAction>

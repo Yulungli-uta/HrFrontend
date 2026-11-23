@@ -227,7 +227,7 @@ const FilesUploadPage: React.FC = () => {
 
       {/* Tabs para subida individual vs múltiple */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="max-sm:flex max-sm:justify-start grid w-full grid-cols-2">
           <TabsTrigger value="single" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
             Subida Individual

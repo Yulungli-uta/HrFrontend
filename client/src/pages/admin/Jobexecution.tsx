@@ -50,7 +50,7 @@ const ExecutionStatus: React.FC<{ state: ExecutionState }> = ({ state }) => {
 
   if (state.success === true) {
     return (
-      <div className="mt-3 flex items-center gap-2 text-sm text-green-400">
+      <div className="mt-3 flex items-center gap-2 text-sm text-success">
         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
         </svg>
@@ -61,7 +61,7 @@ const ExecutionStatus: React.FC<{ state: ExecutionState }> = ({ state }) => {
 
   if (state.success === false && state.error) {
     return (
-      <div className="mt-3 flex items-center gap-2 text-sm text-red-400">
+      <div className="mt-3 flex items-center gap-2 text-sm text-destructive">
         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path
             strokeLinecap="round"
@@ -332,7 +332,7 @@ const JobExecution: React.FC = () => {
           )}
 
           {isLargeRange && (
-            <div className="mt-4 rounded-md border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-300">
+            <div className="mt-4 rounded-md border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
               El rango seleccionado es amplio. La ejecución puede tardar bastante tiempo.
             </div>
           )}
@@ -415,7 +415,7 @@ const JobExecution: React.FC = () => {
               <button
                 onClick={executeContractExpiration}
                 disabled={contractExpirationState.loading}
-                className="mt-2 rounded-md bg-amber-600 px-6 py-2 font-medium text-white transition-colors hover:bg-amber-700 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground md:mt-0"
+                className="mt-2 rounded-md bg-warning px-6 py-2 font-medium text-warning-foreground transition-colors hover:bg-warning/90 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground md:mt-0"
               >
                 {contractExpirationState.loading ? 'Ejecutando...' : 'Ejecutar ahora'}
               </button>
@@ -425,9 +425,9 @@ const JobExecution: React.FC = () => {
           </div>
         </div>
 
-        <div className="mt-6 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
-          <h3 className="mb-2 text-sm font-semibold text-amber-400">Consideraciones</h3>
-          <ul className="list-inside list-disc space-y-1 text-sm text-amber-400">
+        <div className="mt-6 rounded-2xl border border-warning/20 bg-warning/5 p-4">
+          <h3 className="mb-2 text-sm font-semibold text-warning">Consideraciones</h3>
+          <ul className="list-inside list-disc space-y-1 text-sm text-warning">
             <li>
               Solo aplica a contratos <strong>VIGENTE</strong> con fecha fin anterior a hoy sin
               addenda activa.
@@ -498,7 +498,7 @@ const JobExecution: React.FC = () => {
               <button
                 onClick={executeStudentEnrollmentSync}
                 disabled={studentSyncState.loading || !periodCode.trim()}
-                className="mt-2 rounded-md bg-emerald-600 px-6 py-2 font-medium text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground md:mt-0"
+                className="mt-2 rounded-md bg-success px-6 py-2 font-medium text-success-foreground transition-colors hover:bg-success/90 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground md:mt-0"
               >
                 {studentSyncState.loading ? 'Ejecutando...' : 'Ejecutar ahora'}
               </button>
@@ -508,9 +508,9 @@ const JobExecution: React.FC = () => {
           </div>
         </div>
 
-        <div className="mt-6 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4">
-          <h3 className="mb-2 text-sm font-semibold text-emerald-400">Consideraciones</h3>
-          <ul className="list-inside list-disc space-y-1 text-sm text-emerald-400">
+        <div className="mt-6 rounded-2xl border border-success/20 bg-success/5 p-4">
+          <h3 className="mb-2 text-sm font-semibold text-success">Consideraciones</h3>
+          <ul className="list-inside list-disc space-y-1 text-sm text-success">
             <li>El origen de datos de matrícula debe estar configurado (tabla SQL o API externa).</li>
             <li>La cuenta de servicio de RepositoryUta debe estar configurada en producción.</li>
             <li>Configure <span className="font-mono text-xs">StudentEmployeeTypeIds = [0]</span> en RepositoryUta appsettings.</li>
@@ -572,7 +572,7 @@ const JobExecution: React.FC = () => {
                       )
                     }
                     disabled={dinardapSyncState.loading}
-                    className="mt-2 rounded-md bg-emerald-600 px-6 py-2 font-medium text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground md:mt-0"
+                    className="mt-2 rounded-md bg-success px-6 py-2 font-medium text-success-foreground transition-colors hover:bg-success/90 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground md:mt-0"
                   >
                     {dinardapSyncState.loading
                       ? 'Ejecutando...'
@@ -586,9 +586,9 @@ const JobExecution: React.FC = () => {
               </div>
             </div>
 
-            <div className="mt-6 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4">
-              <h3 className="mb-2 text-sm font-semibold text-emerald-400">Consideraciones</h3>
-              <ul className="list-inside list-disc space-y-1 text-sm text-emerald-400">
+            <div className="mt-6 rounded-2xl border border-success/20 bg-success/5 p-4">
+              <h3 className="mb-2 text-sm font-semibold text-success">Consideraciones</h3>
+              <ul className="list-inside list-disc space-y-1 text-sm text-success">
                 <li>Requiere el permiso <span className="font-mono text-xs">DINARDAP_HR.READ</span>.</li>
                 <li>Dedup por número de registro SENESCYT — nunca modifica un título ya existente.</li>
                 <li>

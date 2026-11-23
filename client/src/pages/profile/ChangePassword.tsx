@@ -66,8 +66,7 @@ function PasswordInput({
         <button
           type="button"
           onClick={() => setShow((v) => !v)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-        >
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label={show ? "Ocultar contraseña" : "Mostrar contraseña"} title={show ? "Ocultar contraseña" : "Mostrar contraseña"}>
           {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
         </button>
       </div>
@@ -123,18 +122,18 @@ function SimpleTab({ isAzureAD, method }: { isAzureAD: boolean; method: string }
   return (
     <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="space-y-5">
       {isAzureAD && method === "LocalAd" && (
-        <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-3">
-          <Server className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-          <p className="text-sm text-amber-700 dark:text-amber-300">
+        <div className="flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/10 p-3">
+          <Server className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+          <p className="text-sm text-warning">
             Su cuenta es de <strong>Office 365</strong>. La contraseña se cambiará en el
             <strong> Active Directory local</strong>. Se requiere su contraseña actual para verificación.
           </p>
         </div>
       )}
       {isAzureAD && method !== "LocalAd" && (
-        <div className="flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 p-3">
-          <Cloud className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
-          <p className="text-sm text-blue-700 dark:text-blue-300">
+        <div className="flex items-start gap-3 rounded-lg border border-primary/30 bg-primary/10 p-3">
+          <Cloud className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+          <p className="text-sm text-primary">
             Su cuenta es de <strong>Office 365</strong>. La nueva contraseña se aplicará directamente en Azure AD.
             No se requiere contraseña actual.
           </p>
@@ -168,7 +167,7 @@ function SimpleTab({ isAzureAD, method }: { isAzureAD: boolean; method: string }
 
       <PasswordRequirements />
 
-      <div className="flex justify-end gap-3">
+      <div className="flex justify-end gap-3 flex-wrap">
         <Button type="button" variant="outline" onClick={() => reset()} disabled={mutation.isPending}>
           Limpiar
         </Button>
@@ -256,9 +255,9 @@ function TwoFaTab({ isAzureAD, method }: { isAzureAD: boolean; method: string })
       {step === "request" ? (
         <div className="space-y-4">
           {isAzureAD && method === "LocalAd" && (
-            <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-3">
-              <Server className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-              <p className="text-sm text-amber-700 dark:text-amber-300">
+            <div className="flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/10 p-3">
+              <Server className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+              <p className="text-sm text-warning">
                 Su cuenta es de <strong>Office 365</strong>. El código OTP verificará su identidad y la
                 contraseña se cambiará en el <strong>Active Directory local</strong>. Se requerirá su
                 contraseña actual.
@@ -266,9 +265,9 @@ function TwoFaTab({ isAzureAD, method }: { isAzureAD: boolean; method: string })
             </div>
           )}
           {isAzureAD && method !== "LocalAd" && (
-            <div className="flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 p-3">
-              <Cloud className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
-              <p className="text-sm text-blue-700 dark:text-blue-300">
+            <div className="flex items-start gap-3 rounded-lg border border-primary/30 bg-primary/10 p-3">
+              <Cloud className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+              <p className="text-sm text-primary">
                 Su cuenta es de <strong>Office 365</strong>. El código OTP verificará su identidad
                 antes de aplicar el cambio en Azure AD. No se requiere contraseña actual.
               </p>
@@ -299,8 +298,8 @@ function TwoFaTab({ isAzureAD, method }: { isAzureAD: boolean; method: string })
           </div>
 
           {otpDevCode && (
-            <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
-              <p className="text-xs text-amber-700 dark:text-amber-400 font-medium mb-1">Código de desarrollo (solo visible en entorno DEV):</p>
+            <div className="p-3 rounded-lg bg-warning/10 border border-warning/30">
+              <p className="text-xs text-warning font-medium mb-1">Código de desarrollo (solo visible en entorno DEV):</p>
               <Badge variant="outline" className="font-mono text-lg tracking-widest px-4 py-1">
                 {otpDevCode}
               </Badge>
@@ -348,7 +347,7 @@ function TwoFaTab({ isAzureAD, method }: { isAzureAD: boolean; method: string })
 
           <PasswordRequirements />
 
-          <div className="flex justify-between gap-3">
+          <div className="flex justify-between gap-3 flex-wrap">
             <Button type="button" variant="outline" onClick={handleReset} disabled={verifyMutation.isPending}>
               Reiniciar
             </Button>
@@ -396,14 +395,14 @@ export default function ChangePasswordPage() {
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             Seguridad de la cuenta
-            <Badge variant="outline" className={isAzureAD ? "text-blue-600 border-blue-300 bg-blue-50" : "text-green-700 border-green-300 bg-green-50"}>
+            <Badge variant="outline" className={isAzureAD ? "text-primary border-primary/40 bg-primary/10" : "text-success border-success/40 bg-success/10"}>
               {isAzureAD ? "Office 365" : "Cuenta local"}
             </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="simple">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsList className="max-sm:flex max-sm:justify-start grid w-full grid-cols-2 mb-6">
               <TabsTrigger value="simple" className="flex items-center gap-2">
                 <KeyRound className="h-4 w-4" />
                 Cambio directo
@@ -428,7 +427,7 @@ export default function ChangePasswordPage() {
       <Card className="mt-6">
         <CardContent className="pt-6">
           <div className="bg-warning/10 border border-warning/30 rounded-lg p-4">
-            <p className="text-sm text-warning-foreground">
+            <p className="text-sm text-warning">
               <strong>Importante:</strong> Después de cambiar su contraseña, todas las sesiones
               activas en otros dispositivos serán cerradas por seguridad.
             </p>

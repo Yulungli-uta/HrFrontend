@@ -15,6 +15,7 @@
 
 import { apiFetch } from '../core/fetch';
 import { createApiService as createCrudService } from '../core/pagination';
+import type { PagedResult } from '../core/pagination';
 import type { ApiResponse } from '../core/fetch';
 
 // =============================================================================
@@ -58,8 +59,16 @@ export const PaisesAPI = createCrudService<any, any>('/api/v1/rh/geo/countries')
 export const ProvinciasAPI = {
   ...createCrudService<any, any>('/api/v1/rh/geo/provinces'),
 
-  getByCountry: (countryId: number): Promise<ApiResponse<any[]>> =>
+  getByCountry: (countryId: string | number): Promise<ApiResponse<any[]>> =>
     apiFetch<any[]>(`/api/v1/rh/geo/provinces/country/${countryId}`),
+
+  /** Búsqueda paginada por nombre, con filtro opcional por país. */
+  listPagedFiltered: (params: { page: number; pageSize: number; search?: string; countryId?: string }): Promise<ApiResponse<PagedResult<any>>> => {
+    const qs = new URLSearchParams({ page: String(params.page), pageSize: String(params.pageSize) });
+    if (params.search?.trim()) qs.set('search', params.search.trim());
+    if (params.countryId) qs.set('countryId', params.countryId);
+    return apiFetch<PagedResult<any>>(`/api/v1/rh/geo/provinces/paged?${qs.toString()}`);
+  },
 };
 
 // =============================================================================
@@ -69,8 +78,19 @@ export const ProvinciasAPI = {
 export const CantonesAPI = {
   ...createCrudService<any, any>('/api/v1/rh/geo/cantons'),
 
-  getByProvince: (provinceId: number): Promise<ApiResponse<any[]>> =>
+  getByProvince: (provinceId: string | number): Promise<ApiResponse<any[]>> =>
     apiFetch<any[]>(`/api/v1/rh/geo/cantons/province/${provinceId}`),
+
+  /**
+   * Búsqueda paginada por nombre, con filtro opcional por provincia.
+   * No usar `list()`: el backend ya no lista todos los cantones (el catálogo tiene decenas de miles de filas).
+   */
+  listPagedFiltered: (params: { page: number; pageSize: number; search?: string; provinceId?: string }): Promise<ApiResponse<PagedResult<any>>> => {
+    const qs = new URLSearchParams({ page: String(params.page), pageSize: String(params.pageSize) });
+    if (params.search?.trim()) qs.set('search', params.search.trim());
+    if (params.provinceId) qs.set('provinceId', params.provinceId);
+    return apiFetch<PagedResult<any>>(`/api/v1/rh/geo/cantons/paged?${qs.toString()}`);
+  },
 };
 
 // =============================================================================

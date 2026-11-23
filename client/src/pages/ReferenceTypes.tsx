@@ -515,7 +515,7 @@ export default function ReferenceTypesPage() {
   return (
     <div className="container mx-auto p-4 sm:p-6 space-y-6">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
         <div className="flex-1 min-w-0">
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground truncate">Gestión de Tipos de Referencia</h1>
           <p className="text-muted-foreground mt-2 text-sm sm:text-base">
@@ -841,7 +841,7 @@ export default function ReferenceTypesPage() {
 
       {/* Pestañas para vista por tabla y por categoría */}
       <Tabs defaultValue="table" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="max-sm:flex max-sm:justify-start grid w-full grid-cols-2">
           <TabsTrigger value="table" className="text-xs sm:text-sm">Vista de Tabla</TabsTrigger>
           <TabsTrigger value="categories" className="text-xs sm:text-sm">Vista por Categorías</TabsTrigger>
         </TabsList>
@@ -850,7 +850,7 @@ export default function ReferenceTypesPage() {
           {/* Filtros y búsqueda */}
           <Card>
             <CardHeader>
-              <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row justify-between items-stretch sm:items-center gap-4">
                 <div className="flex-1 min-w-0">
                   <CardTitle className="text-lg sm:text-xl">Tipos de Referencia</CardTitle>
                   <CardDescription className="text-sm">
@@ -948,21 +948,19 @@ export default function ReferenceTypesPage() {
                               {formatDate(type.CreatedAt)}
                             </TableCell>
                             <TableCell>
-                              <div className="flex gap-1">
+                              <div className="flex gap-1 flex-wrap">
                                 <Button
                                   variant="outline"
                                   /* size="sm" */
                                   onClick={() => handleEditType(type)}
-                                  className="h-8 w-8 p-0"
-                                >
+                                  className="h-8 w-8 p-0" aria-label="Editar">
                                   <Edit className="h-3 w-3" />
                                 </Button>
                                 <Button
                                   variant="outline"
                                   /* size="sm" */
                                   onClick={() => handleDeleteClick(type)}
-                                  className="h-8 w-8 p-0"
-                                >
+                                  className="h-8 w-8 p-0" aria-label="Eliminar">
                                   <Trash2 className="h-3 w-3" />
                                 </Button>
                               </div>
@@ -1023,8 +1021,7 @@ export default function ReferenceTypesPage() {
                               variant="ghost"
                               /* size="sm" */
                               onClick={() => handleEditType(type)}
-                              className="h-6 w-6 p-0"
-                            >
+                              className="h-6 w-6 p-0" aria-label="Editar">
                               <Edit className="h-3 w-3" />
                             </Button>
                           </div>

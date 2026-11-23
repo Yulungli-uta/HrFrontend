@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { RowAction } from "@/components/ui/row-action";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -299,12 +300,9 @@ export default function GeneralSearch() {
                       <span>{instance.createdByName}</span>
                       <span>{formatDate(instance.createdAt)}</span>
                     </div>
-                    <div className="flex items-center gap-1.5 mt-2">
+                    <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                       <Link href={`/DocFlow/expedientes/${instance.instanceId}`}>
-                        <Button variant="outline" size="sm" className="h-7 text-xs" data-testid={`button-view-${instance.instanceId}`}>
-                          <Eye className="h-3 w-3 mr-1" />
-                          Ver
-                        </Button>
+                        <RowAction action="view" data-testid={`button-view-${instance.instanceId}`} />
                       </Link>
                       <Link href={`/DocFlow/expedientes/${instance.instanceId}/historial`}>
                         <Button variant="ghost" size="sm" className="h-7 text-xs" data-testid={`button-history-${instance.instanceId}`}>
@@ -371,7 +369,7 @@ export default function GeneralSearch() {
                           <Link href={`/DocFlow/expedientes/${instance.instanceId}`}>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`button-view-${instance.instanceId}`}>
+                                <Button tooltip={false} variant="ghost" size="icon" className="h-8 w-8" data-testid={`button-view-${instance.instanceId}`} aria-label="Ver detalle">
                                   <Eye className="h-4 w-4" />
                                 </Button>
                               </TooltipTrigger>
@@ -381,7 +379,7 @@ export default function GeneralSearch() {
                           <Link href={`/DocFlow/expedientes/${instance.instanceId}/historial`}>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`button-history-${instance.instanceId}`}>
+                                <Button tooltip={false} variant="ghost" size="icon" className="h-8 w-8" data-testid={`button-history-${instance.instanceId}`} aria-label="Ver historial">
                                   <History className="h-4 w-4" />
                                 </Button>
                               </TooltipTrigger>

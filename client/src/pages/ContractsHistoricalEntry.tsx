@@ -42,7 +42,7 @@ export default function ContractsHistoricalEntry() {
         </p>
       </div>
 
-      <Alert className="border-blue-300 bg-blue-50 text-blue-900 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
+      <Alert className="border-primary/40 bg-primary/10 text-primary">
         <History className="h-4 w-4" />
         <AlertDescription>
           Esto es un registro <strong>histórico</strong>: usa la fecha real en que ocurrió, no la

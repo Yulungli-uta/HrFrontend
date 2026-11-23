@@ -385,8 +385,7 @@ export default function UserForm({ user, onSuccess, onCancel, onDirtyChange }: U
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"} title={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}>
                 {showPassword ? (
                   <EyeOff className="h-4 w-4" />
                 ) : (
@@ -417,8 +416,7 @@ export default function UserForm({ user, onSuccess, onCancel, onDirtyChange }: U
               <button
                 type="button"
                 onClick={() => setShowConfirm((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label={showConfirm ? "Ocultar contraseña" : "Mostrar contraseña"} title={showConfirm ? "Ocultar contraseña" : "Mostrar contraseña"}>
                 {showConfirm ? (
                   <EyeOff className="h-4 w-4" />
                 ) : (
@@ -463,7 +461,7 @@ export default function UserForm({ user, onSuccess, onCancel, onDirtyChange }: U
       )}
 
       {/* Botones */}
-      <div className="flex justify-end gap-3 pt-2">
+      <div className="flex justify-end gap-3 pt-2 flex-wrap">
         <Button
           type="button"
           variant="outline"

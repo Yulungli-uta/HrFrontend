@@ -898,7 +898,7 @@ export default function BookForm({
         {/* ==================== */}
         {/* BOTONES */}
         {/* ==================== */}
-        <div className="flex gap-2 pt-4 justify-end">
+        <div className="flex gap-2 pt-4 justify-end flex-wrap">
           <Button
             type="button"
             variant="outline"

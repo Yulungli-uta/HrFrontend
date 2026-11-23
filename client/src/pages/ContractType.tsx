@@ -1,4 +1,5 @@
 // src/pages/ContractType.tsx
+import { RowAction } from "@/components/ui/row-action";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 
@@ -402,7 +403,7 @@ export default function ContractTypesPage() {
                 <FileText className="h-4 w-4 lg:h-5 lg:w-5 text-primary mr-2" />
                 Total
               </span>
-              <Badge className="bg-blue-200 text-primary text-xs lg:text-sm">
+              <Badge className="bg-primary/20 text-primary text-xs lg:text-sm">
                 {totalContractTypes}
               </Badge>
             </CardTitle>
@@ -445,7 +446,7 @@ export default function ContractTypesPage() {
                 <Clock className="h-4 w-4 lg:h-5 lg:w-5 text-secondary-foreground mr-2" />
                 Renovables
               </span>
-              <Badge className="bg-orange-200 text-secondary-foreground text-xs lg:text-sm">
+              <Badge className="bg-warning/20 text-secondary-foreground text-xs lg:text-sm">
                 {renewableContractTypes}
               </Badge>
             </CardTitle>
@@ -469,7 +470,7 @@ export default function ContractTypesPage() {
                 <Calendar className="h-4 w-4 lg:h-5 lg:w-5 text-secondary-foreground mr-2" />
                 Con Período Prueba
               </span>
-              <Badge className="bg-purple-200 text-accent-foreground text-xs lg:text-sm">
+              <Badge className="bg-cat-3/20 text-accent-foreground text-xs lg:text-sm">
                 {probationContractTypes}
               </Badge>
             </CardTitle>
@@ -618,16 +619,16 @@ export default function ContractTypesPage() {
                 {(contractType.requiresAdUserCreation || contractType.requiresAdUserDisable || contractType.requiresAdGroupAssignment || contractType.isDocenteOcasional) && (
                   <div className="flex flex-wrap gap-1">
                     {contractType.requiresAdUserCreation && (
-                      <Badge variant="outline" className="text-[0.625rem] bg-blue-50 text-blue-700 border-blue-200">Crea AD</Badge>
+                      <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30">Crea AD</Badge>
                     )}
                     {contractType.requiresAdUserDisable && (
-                      <Badge variant="outline" className="text-[0.625rem] bg-amber-50 text-amber-700 border-amber-200">Deshabilita AD</Badge>
+                      <Badge variant="outline" className="text-xs bg-warning/10 text-warning border-warning/30">Deshabilita AD</Badge>
                     )}
                     {contractType.requiresAdGroupAssignment && (
-                      <Badge variant="outline" className="text-[0.625rem] bg-green-50 text-green-700 border-green-200">Grupos AD</Badge>
+                      <Badge variant="outline" className="text-xs bg-success/10 text-success border-success/30">Grupos AD</Badge>
                     )}
                     {contractType.isDocenteOcasional && (
-                      <Badge variant="outline" className="text-[0.625rem] bg-purple-50 text-purple-700 border-purple-200">Profesor Ocasional (SIIES)</Badge>
+                      <Badge variant="outline" className="text-xs bg-cat-3/10 text-cat-3 border-cat-3/30">Profesor Ocasional (SIIES)</Badge>
                     )}
                   </div>
                 )}
@@ -725,16 +726,7 @@ export default function ContractTypesPage() {
                     </TableCell>
 
                     <TableCell className="text-right">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleViewDetails(contractType)}
-                        data-testid={`button-view-contract-type-${contractType.contractTypeId}`}
-                        className="inline-flex items-center gap-1"
-                      >
-                        <Eye className="h-3 w-3" />
-                        Ver Detalles
-                      </Button>
+                      <RowAction action="view" onClick={() => handleViewDetails(contractType)} data-testid={`button-view-contract-type-${contractType.contractTypeId}`} />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -1014,7 +1006,7 @@ export default function ContractTypesPage() {
                         variant="outline"
                         className={
                           selectedContractType.requiresAdUserCreation
-                            ? "bg-blue-50 text-blue-700 border-blue-200"
+                            ? "bg-primary/10 text-primary border-primary/30"
                             : "text-muted-foreground"
                         }
                       >
@@ -1027,7 +1019,7 @@ export default function ContractTypesPage() {
                         variant="outline"
                         className={
                           selectedContractType.requiresAdUserDisable
-                            ? "bg-amber-50 text-amber-700 border-amber-200"
+                            ? "bg-warning/10 text-warning border-warning/30"
                             : "text-muted-foreground"
                         }
                       >
@@ -1040,7 +1032,7 @@ export default function ContractTypesPage() {
                         variant="outline"
                         className={
                           selectedContractType.requiresAdGroupAssignment
-                            ? "bg-green-50 text-green-700 border-green-200"
+                            ? "bg-success/10 text-success border-success/30"
                             : "text-muted-foreground"
                         }
                       >

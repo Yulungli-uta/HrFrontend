@@ -6,7 +6,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "check:styles": "node scripts/check-styles.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

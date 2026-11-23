@@ -216,7 +216,7 @@ export default function ExternalPunchTab({ canManage }: { canManage: boolean }) 
                       </TableCell>
                       {canManage && (
                         <TableCell>
-                          <div className="flex justify-end gap-1">
+                          <div className="flex justify-end gap-1 flex-wrap">
                             <ActionIconButton icon={Pencil} label={`Editar a ${p.fullName}`} onClick={() => openEdit(p)} />
                             <ActionIconButton icon={Trash2} label={`Quitar a ${p.fullName}`} tone="destructive" onClick={() => setToRemove(p)} />
                           </div>

@@ -2,7 +2,9 @@ import { createRoot } from "react-dom/client";
 import { Router } from "wouter";
 import App from "./App";
 import "./index.css";
-import "./uta-branding.css";
+import "./styles/brand.css";
+import "./styles/semantic.css";
+import "./styles/preferences.css";
 import { logger } from "@/lib/logger";
 import { installSpanishZodErrorMap } from "@/lib/zodErrorMap";
 

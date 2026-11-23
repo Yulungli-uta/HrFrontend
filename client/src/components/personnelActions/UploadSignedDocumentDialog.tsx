@@ -238,7 +238,7 @@ export function UploadSignedDocumentDialog({
           <DialogDescription>
             Sube el documento con las firmas manuales para continuar el trámite.
             {(requiresAdUserDisable || requiresAdUserCreation) && (
-              <span className="block mt-1 text-amber-500 text-xs font-medium">
+              <span className="block mt-1 text-warning text-xs font-medium">
                 {requiresAdUserDisable
                   ? 'Al confirmar, la acción se finalizará automáticamente y se deshabilitará la cuenta AD del empleado.'
                   : 'Al confirmar, la acción se finalizará automáticamente y se cerrará la acción de personal vigente anterior.'}

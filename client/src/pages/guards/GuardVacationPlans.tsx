@@ -1,6 +1,9 @@
 //src/pages/guards/GuardVacationPlans.tsx
+import { RowAction } from "@/components/ui/row-action";
+import { useDirtyCloseGuard } from '@/hooks/useDirtyCloseGuard';
+import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
 import { useState, useEffect } from 'react';
-import { CalendarDays, Plus, Loader2, Send, XCircle, Pencil, Search } from 'lucide-react';
+import { CalendarDays, Plus, Loader2, Send, XCircle, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -106,14 +109,12 @@ const TYPE_LABEL: Record<string, string> = {
 
 function PlanFormDialog({ open, onClose, plan }: { open: boolean; onClose: () => void; plan?: GuardVacationPlanDto | null }) {
   const today = todayEcuador();
-  const currentYear = new Date().getFullYear();
   const isEditing = !!plan;
   const { create, update } = useVacationPlanMutations(() => onClose());
 
   const buildInitialForm = (p?: GuardVacationPlanDto | null) => ({
     employeeId: (p?.employeeId ?? '') as number | '',
     employeeFullName: p?.employeeFullName ?? '',
-    vacationYear: p?.vacationYear ?? currentYear,
     plannedStartDate: p?.plannedStartDate ?? today,
     plannedEndDate: p?.plannedEndDate ?? today,
     notes: p?.notes ?? '',
@@ -138,7 +139,6 @@ function PlanFormDialog({ open, onClose, plan }: { open: boolean; onClose: () =>
   const handleSave = () => {
     if (form.employeeId === '' || !form.plannedStartDate || !form.plannedEndDate) return;
     if (form.plannedStartDate < today) return;
-    if (form.vacationYear < currentYear) return;
     if (isEditing && plan) {
       const dto: UpdateGuardVacationPlanDto = {
         plannedStartDate: form.plannedStartDate,
@@ -149,7 +149,7 @@ function PlanFormDialog({ open, onClose, plan }: { open: boolean; onClose: () =>
     } else {
       const dto: CreateGuardVacationPlanDto = {
         employeeId: Number(form.employeeId),
-        vacationYear: form.vacationYear,
+        vacationYear: Number(form.plannedStartDate.slice(0, 4)),
         plannedStartDate: form.plannedStartDate,
         plannedEndDate: form.plannedEndDate,
         notes: form.notes || undefined,
@@ -158,14 +158,15 @@ function PlanFormDialog({ open, onClose, plan }: { open: boolean; onClose: () =>
     }
   };
 
-  const startDateInvalid = !!form.plannedStartDate && form.plannedStartDate < today;
-  const yearInvalid = form.vacationYear < currentYear;
+  // Un plan que ya inició no se edita (igual que en el backend): los ajustes van por solicitud de cambio de fechas.
+  const alreadyStarted = isEditing && !!plan && plan.plannedStartDate < today;
+  const startDateInvalid = !alreadyStarted && !!form.plannedStartDate && form.plannedStartDate < today;
   const canSave = !isPending && form.employeeId !== '' && !!form.plannedStartDate &&
-    !!form.plannedEndDate && !startDateInvalid && !yearInvalid;
+    !!form.plannedEndDate && !startDateInvalid && !alreadyStarted;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-sm" aria-describedby={undefined}>
+      <DialogContent className="sm:max-w-sm max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
         <DialogHeader><DialogTitle>{isEditing ? 'Editar plan de vacaciones' : 'Nuevo plan de vacaciones'}</DialogTitle></DialogHeader>
         <div className="space-y-3 py-1">
           <div>
@@ -175,22 +176,18 @@ function PlanFormDialog({ open, onClose, plan }: { open: boolean; onClose: () =>
             ) : (
               <EmployeeCombobox value={form.employeeId !== '' ? Number(form.employeeId) : null}
                 onSelect={(id) => f('employeeId', id ?? '')} placeholder="Buscar guardia…"
-                searchFn={(term) => GuardRotationGroupsAPI.getActiveGroupEmployees(term)}
+                searchFn={(term) => GuardRotationGroupsAPI.getEligibleEmployees(term)}
                 searchKey="guard-active-group-employees-search" />
             )}
           </div>
-          <div>
-            <Label>Año de vacaciones *</Label>
-            {isEditing ? (
-              <p className="text-sm font-medium h-9 flex items-center px-3 border rounded-md bg-muted/40">{form.vacationYear}</p>
-            ) : (
-              <>
-                <Input type="number" value={form.vacationYear} min={currentYear} max={currentYear + 5}
-                  onChange={e => f('vacationYear', Number(e.target.value))} />
-                {yearInvalid && <p className="text-xs text-destructive mt-1">El año no puede ser anterior al año en curso.</p>}
-              </>
-            )}
-          </div>
+          <p className="text-xs text-muted-foreground">
+            Año de vacaciones: <strong>{form.plannedStartDate.slice(0, 4)}</strong> (según la fecha de inicio).
+          </p>
+          {alreadyStarted && (
+            <p className="rounded-md border border-warning/40 bg-warning/10 p-2.5 text-xs text-warning" role="alert">
+              Este plan ya inició o su fecha ya pasó, por lo que no se puede modificar. Para ajustarlo use una solicitud de cambio de fechas.
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Inicio planificado *</Label>
@@ -236,9 +233,11 @@ function SubmitToDirectionDialog({
   isPending: boolean;
 }) {
   const [notes, setNotes] = useState('');
+  const guard = useDirtyCloseGuard(open, onClose);
   return (
-    <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="sm:max-w-sm" aria-describedby={undefined}>
+    <>
+    <Dialog open={open} onOpenChange={v => !v && guard.requestClose()}>
+      <DialogContent {...guard.dirtyProps} className="sm:max-w-sm max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
         <DialogHeader><DialogTitle className="flex items-center gap-2"><Send className="h-4 w-4" />Enviar a dirección</DialogTitle></DialogHeader>
         <p className="text-sm text-muted-foreground">{title}</p>
         <div>
@@ -248,12 +247,14 @@ function SubmitToDirectionDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={isPending}>Cancelar</Button>
-          <Button onClick={() => onConfirm(notes)} disabled={isPending}>
+          <Button onClick={() => onConfirm(notes)} disabled={isPending} aria-label="Enviar">
             {isPending ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />Enviando…</> : <><Send className="h-3.5 w-3.5 mr-2" />Enviar a dirección</>}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <UnsavedChangesDialog open={guard.confirmOpen} onClose={guard.closeConfirm} onConfirmExit={guard.confirmExit} />
+    </>
   );
 }
 
@@ -273,9 +274,11 @@ function RejectDialog({
   isPending: boolean;
 }) {
   const [reason, setReason] = useState('');
+  const guard2 = useDirtyCloseGuard(open, onClose);
   return (
-    <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="sm:max-w-sm" aria-describedby={undefined}>
+    <>
+    <Dialog open={open} onOpenChange={v => !v && guard2.requestClose()}>
+      <DialogContent {...guard2.dirtyProps} className="sm:max-w-sm max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
         <DialogHeader><DialogTitle className="flex items-center gap-2 text-destructive"><XCircle className="h-4 w-4" />Rechazar</DialogTitle></DialogHeader>
         <p className="text-sm text-muted-foreground">{title}</p>
         <div>
@@ -291,6 +294,8 @@ function RejectDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <UnsavedChangesDialog open={guard2.confirmOpen} onClose={guard2.closeConfirm} onConfirmExit={guard2.confirmExit} />
+    </>
   );
 }
 
@@ -323,7 +328,7 @@ export default function GuardVacationPlansPage() {
 
   return (
     <div className="p-4 sm:p-6 space-y-5">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-3">
           <CalendarDays className="h-6 w-6 text-primary" />
           <div>
@@ -338,7 +343,7 @@ export default function GuardVacationPlansPage() {
 
       <div className="flex items-center gap-3">
         <Label className="text-sm">Año:</Label>
-        <select className="h-9 border rounded-md px-3 text-sm bg-background" value={year ?? ''}
+        <select className="h-9 border rounded-md px-3 text-sm bg-card" value={year ?? ''}
           onChange={e => setYear(e.target.value ? Number(e.target.value) : undefined)}>
           <option value="">Todos</option>
           {[currentYear - 1, currentYear, currentYear + 1].map(y => <option key={y} value={y}>{y}</option>)}
@@ -395,10 +400,8 @@ export default function GuardVacationPlansPage() {
                         <TableCell className="text-xs font-mono">{p.plannedStartDate} → {p.plannedEndDate}</TableCell>
                         <TableCell className="text-xs text-muted-foreground max-w-[140px] truncate">{p.notes ?? '—'}</TableCell>
                         <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button size="sm" variant="outline" onClick={() => setEditPlan(p)}>
-                              <Pencil className="h-3.5 w-3.5 mr-1" />Editar
-                            </Button>
+                          <div className="flex items-center justify-end gap-2 flex-wrap">
+                            <RowAction action="edit" onClick={() => setEditPlan(p)} />
                             <Button size="sm" variant="outline" onClick={() => setSubmitPlan(p)}>
                               <Send className="h-3.5 w-3.5 mr-1" />Enviar a dirección
                             </Button>
@@ -456,7 +459,7 @@ export default function GuardVacationPlansPage() {
                         <TableCell className="text-xs max-w-[140px] truncate">{r.reason}</TableCell>
                         <TableCell className="text-xs font-mono">{formatDate(r.requestedAt)}</TableCell>
                         <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-2 flex-wrap">
                             <Button size="sm" variant="outline" onClick={() => setSubmitRequest(r)}>
                               <Send className="h-3.5 w-3.5 mr-1" />Enviar a dirección
                             </Button>

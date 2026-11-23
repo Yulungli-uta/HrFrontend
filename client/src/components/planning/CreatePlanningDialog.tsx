@@ -1008,8 +1008,7 @@ export default function CreatePlanningDialog({
 
             <Button
               onClick={() => createMutation.mutate()}
-              disabled={createMutation.isPending || !isPlanStatusesReady || !isEmployeeStatusesReady}
-            >
+              disabled={createMutation.isPending || !isPlanStatusesReady || !isEmployeeStatusesReady} aria-label="Agregar">
               {createMutation.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />

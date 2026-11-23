@@ -77,7 +77,7 @@ export function LanguagesTab({ languages, onEdit, onDelete, refTypesMap = {}, pe
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
         <CardTitle className="flex items-center text-lg">
           <LanguagesIcon className="mr-2 h-5 w-5" />
           Idiomas
@@ -127,13 +127,13 @@ export function LanguagesTab({ languages, onEdit, onDelete, refTypesMap = {}, pe
                 const isExpanded = expandedId === language.languageId;
 
                 return (
-                  <Card key={language.languageId} className="hover:shadow-md transition-shadow border-l-4 border-l-indigo-500">
+                  <Card key={language.languageId} className="hover:shadow-md transition-shadow border-l-4 border-l-primary">
                     <CardContent className="p-3">
                       <div className="flex flex-col h-full">
                         <div className="flex items-start justify-between mb-2 gap-2">
                           <div className="flex items-start gap-2 min-w-0 flex-1">
-                            <div className="flex items-center justify-center h-8 w-8 rounded-md bg-indigo-500/10 shrink-0">
-                              <LanguagesIcon className="h-4 w-4 text-indigo-500" />
+                            <div className="flex items-center justify-center h-8 w-8 rounded-md bg-primary/10 shrink-0">
+                              <LanguagesIcon className="h-4 w-4 text-primary" />
                             </div>
                             <div className="min-w-0">
                               <h4 className="font-semibold text-foreground text-sm leading-tight mb-0.5">

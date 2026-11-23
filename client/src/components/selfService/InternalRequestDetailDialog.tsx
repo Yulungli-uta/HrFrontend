@@ -143,7 +143,7 @@ export function InternalRequestDetailDialog({ open, onOpenChange, requestId, onC
                   <Textarea id="description" rows={4} value={description}
                     onChange={(e) => { setDescription(e.target.value); setIsFormDirty(true); }} />
                 </div>
-                <div className="flex justify-end gap-2">
+                <div className="flex justify-end gap-2 flex-wrap">
                   <Button variant="outline" onClick={() => handleEditOpenChange(false)} disabled={updateMutation.isPending}>Cancelar</Button>
                   <Button onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending || !subject.trim()}>
                     {updateMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
@@ -162,7 +162,7 @@ export function InternalRequestDetailDialog({ open, onOpenChange, requestId, onC
                 <DialogDescription>Solicitud #{request.requestId} · {request.requestType}</DialogDescription>
               </DialogHeader>
 
-              <div className="flex justify-end gap-2 -mt-2">
+              <div className="flex justify-end gap-2 -mt-2 flex-wrap">
                 {EDITABLE_STATUSES.includes(request.status) && (
                   <Button variant="outline" size="sm" onClick={startEdit}>
                     <Pencil className="h-4 w-4 mr-1" /> Editar
@@ -191,7 +191,7 @@ export function InternalRequestDetailDialog({ open, onOpenChange, requestId, onC
                       value={cancelReason.trim() === '' ? '' : cancelReason}
                       onChange={(e) => setCancelReason(e.target.value)}
                     />
-                    <div className="flex justify-end gap-2">
+                    <div className="flex justify-end gap-2 flex-wrap">
                       <Button variant="outline" size="sm" onClick={() => setCancelReason('')} disabled={isCancelling}>Cancelar</Button>
                       <Button size="sm" className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
                         disabled={isCancelling || !cancelReason.trim()} onClick={handleCancel}>

@@ -1,3 +1,5 @@
+import { useDirtyCloseGuard } from '@/hooks/useDirtyCloseGuard';
+import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
 import { useState, useEffect } from 'react';
 import { ArrowLeftRight, Loader2, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import {
@@ -120,9 +122,11 @@ export function ShiftReplacementDialog({ open, detail, onClose }: Props) {
     (!hasConflict || overrideConflict) &&
     !conflictLoading;
 
+  const guard = useDirtyCloseGuard(open, handleClose);
   return (
-    <Dialog open={open} onOpenChange={v => !v && handleClose()}>
-      <DialogContent className="sm:max-w-md" aria-describedby={undefined}>
+    <>
+    <Dialog open={open} onOpenChange={v => !v && guard.requestClose()}>
+      <DialogContent {...guard.dirtyProps} className="sm:max-w-md max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ArrowLeftRight className="h-4 w-4" />
@@ -149,7 +153,7 @@ export function ShiftReplacementDialog({ open, detail, onClose }: Props) {
           <div>
             <Label className="text-xs">Tipo de cambio *</Label>
             <select
-              className="w-full h-9 border rounded-md px-3 text-sm bg-background mt-1"
+              className="w-full h-9 border rounded-md px-3 text-sm bg-card mt-1"
               value={changeTypeId}
               onChange={e => {
                 setChangeTypeId(Number(e.target.value));
@@ -173,7 +177,7 @@ export function ShiftReplacementDialog({ open, detail, onClose }: Props) {
                   setOverrideConflict(false);
                 }}
                 placeholder="Buscar empleado reemplazante…"
-                searchFn={(term) => GuardRotationGroupsAPI.getActiveGroupEmployees(term)}
+                searchFn={(term) => GuardRotationGroupsAPI.getEligibleEmployees(term)}
                 searchKey="guard-active-group-employees-search"
               />
             </div>
@@ -189,7 +193,7 @@ export function ShiftReplacementDialog({ open, detail, onClose }: Props) {
 
           {/* Sin conflicto */}
           {replacementEmployeeId && conflictChecked && !hasConflict && !conflictLoading && (
-            <div className="flex items-center gap-2 text-xs text-green-600">
+            <div className="flex items-center gap-2 text-xs text-success">
               <CheckCircle2 className="h-3.5 w-3.5" />
               El reemplazante no tiene turnos asignados ese día.
             </div>
@@ -232,7 +236,7 @@ export function ShiftReplacementDialog({ open, detail, onClose }: Props) {
               <Label className="text-xs">
                 Turno asignado al reemplazante *
               </Label>
-              <p className="text-[0.6875rem] text-muted-foreground mb-1">
+              <p className="text-xs text-muted-foreground mb-1">
                 El reemplazante trabajará en este turno en lugar del original.
               </p>
               <ScheduleCombobox
@@ -270,5 +274,7 @@ export function ShiftReplacementDialog({ open, detail, onClose }: Props) {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <UnsavedChangesDialog open={guard.confirmOpen} onClose={guard.closeConfirm} onConfirmExit={guard.confirmExit} />
+    </>
   );
 }

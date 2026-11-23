@@ -72,15 +72,15 @@ type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline';
 function statusBadge(statusId: number): { variant: BadgeVariant; className: string } {
   switch (statusId) {
     case PROVISIONING_STATUS_ID.Requested:
-      return { variant: 'outline',    className: 'text-slate-600 border-slate-400' };
+      return { variant: 'outline',    className: 'text-muted-foreground border-muted-foreground/50' };
     case PROVISIONING_STATUS_ID.CreatedInLocalAd:
-      return { variant: 'secondary',  className: 'bg-blue-100 text-blue-800 border-blue-300' };
+      return { variant: 'secondary',  className: 'bg-primary/10 text-primary border-primary/40' };
     case PROVISIONING_STATUS_ID.PendingEntraSync:
-      return { variant: 'outline',    className: 'text-amber-700 border-amber-400 bg-amber-50' };
+      return { variant: 'outline',    className: 'text-warning border-warning/50 bg-warning/10' };
     case PROVISIONING_STATUS_ID.SyncedInEntra:
-      return { variant: 'secondary',  className: 'bg-cyan-100 text-cyan-800 border-cyan-300' };
+      return { variant: 'secondary',  className: 'bg-cat-2/10 text-cat-2 border-cat-2/40' };
     case PROVISIONING_STATUS_ID.LicenseAssigned:
-      return { variant: 'default',    className: 'bg-green-600 text-white hover:bg-green-700' };
+      return { variant: 'default',    className: 'bg-success text-success-foreground hover:bg-success/90' };
     case PROVISIONING_STATUS_ID.LicenseFailed:
     case PROVISIONING_STATUS_ID.LocalAdFailed:
       return { variant: 'destructive', className: '' };
@@ -135,7 +135,7 @@ function PasswordResetDialog({
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-green-700">
+          <DialogTitle className="flex items-center gap-2 text-success">
             <KeyRound className="w-5 h-5" />
             Contraseña Restablecida
           </DialogTitle>
@@ -150,20 +150,20 @@ function PasswordResetDialog({
 
           <div>
             <p className="text-xs text-muted-foreground mb-1">Contraseña temporal</p>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <code className="flex-1 bg-muted px-3 py-2 rounded font-mono text-sm tracking-wider">
                 {visible ? result.newTemporaryPassword : '●'.repeat(result.newTemporaryPassword.length)}
               </code>
-              <Button variant="ghost" size="icon" onClick={() => setVisible((v) => !v)}>
+              <Button variant="ghost" size="icon" onClick={() => setVisible((v) => !v)} aria-label={visible ? "Ocultar contraseña" : "Mostrar contraseña"}>
                 {visible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </Button>
-              <Button variant="ghost" size="icon" onClick={copyPassword}>
+              <Button variant="ghost" size="icon" onClick={copyPassword} aria-label="Copiar">
                 <Copy className="w-4 h-4" />
               </Button>
             </div>
           </div>
 
-          <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded border border-amber-200">
+          <p className="text-xs text-warning bg-warning/10 p-2 rounded border border-warning/30">
             Entregue estas credenciales al empleado de forma segura. Esta ventana es la única oportunidad de verla.
           </p>
         </div>
@@ -266,10 +266,10 @@ export default function EmployeeProvisioning() {
   return (
     <div className="p-6 space-y-4">
       {/* Cabecera */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <ShieldCheck className="w-6 h-6 text-blue-600" />
+            <ShieldCheck className="w-6 h-6 text-primary" />
             Aprovisionamiento de Empleados
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -368,7 +368,7 @@ export default function EmployeeProvisioning() {
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {row.licenseSkuId
-                          ? <span className="text-green-700 font-medium">{row.licenseSkuId}</span>
+                          ? <span className="text-success font-medium">{row.licenseSkuId}</span>
                           : formatDate(row.licenseAssignedAt)}
                       </TableCell>
                       <TableCell className="max-w-[180px]">
@@ -400,7 +400,7 @@ export default function EmployeeProvisioning() {
                             <Button
                               size="sm"
                               variant="outline"
-                              className="h-7 px-2 text-xs gap-1 text-cyan-700 border-cyan-300"
+                              className="h-7 px-2 text-xs gap-1 text-cat-2 border-cat-2/40"
                               disabled={isBusy || completeMut.isPending}
                               onClick={() => completeMut.mutate(row.id)}
                               title="Verificar Entra sync y asignar licencia"
@@ -469,7 +469,7 @@ export default function EmployeeProvisioning() {
           <DialogContent className="max-w-sm">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <Clock className="w-5 h-5 text-cyan-600" />
+                <Clock className="w-5 h-5 text-cat-2" />
                 Procesamiento Completado
               </DialogTitle>
             </DialogHeader>
@@ -480,11 +480,11 @@ export default function EmployeeProvisioning() {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Licencias asignadas</span>
-                <span className="font-semibold text-green-700">{completePendingResult.licenseAssigned}</span>
+                <span className="font-semibold text-success">{completePendingResult.licenseAssigned}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Aún pendientes</span>
-                <span className="font-semibold text-amber-700">{completePendingResult.stillPending}</span>
+                <span className="font-semibold text-warning">{completePendingResult.stillPending}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Fallidos</span>

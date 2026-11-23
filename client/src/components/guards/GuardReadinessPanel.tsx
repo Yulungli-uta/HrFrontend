@@ -47,7 +47,7 @@ export function GuardReadinessPanel({ targetDate }: Props) {
           {data.items.map((item) => (
             <li key={item.key} className="flex items-start gap-2 text-sm">
               {item.passed ? (
-                <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
+                <CheckCircle2 className="h-4 w-4 text-success mt-0.5 shrink-0" />
               ) : (
                 <XCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
               )}

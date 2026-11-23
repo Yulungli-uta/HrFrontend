@@ -147,19 +147,19 @@ export function ContractTextImportModal({ open, templateId, onClose, onImport }:
             </div>
 
             {result.placeholders.length > 0 && (
-              <div className="p-3 bg-amber-50 border border-amber-200 dark:bg-amber-950/40 dark:border-amber-800 rounded-lg">
-                <div className="flex items-center gap-2 mb-2 text-amber-700 dark:text-amber-400 text-sm font-medium">
+              <div className="p-3 bg-warning/10 border border-warning/30 rounded-lg">
+                <div className="flex items-center gap-2 mb-2 text-warning text-sm font-medium">
                   <AlertTriangle className="h-4 w-4" />
                   {result.placeholders.length} placeholders legados detectados
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {result.placeholders.map(p => (
-                    <Badge key={p.placeholder} variant="outline" className="text-xs font-mono text-amber-700 border-amber-400 dark:text-amber-400 dark:border-amber-700">
+                    <Badge key={p.placeholder} variant="outline" className="text-xs font-mono text-warning border-warning/50">
                       {p.placeholder} ×{p.occurrences}
                     </Badge>
                   ))}
                 </div>
-                <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+                <p className="text-xs text-warning mt-2">
                   Reemplaza los {'{N}'} con tokens {'{{CAMPO}}'} en el editor después de importar.
                 </p>
               </div>

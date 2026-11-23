@@ -46,7 +46,7 @@ export function JustificationList({
       </CardHeader>
       <CardContent className="p-0">
         <ScrollArea className="h-[600px]">
-          <div className="divide-y divide-gray-200">
+          <div className="divide-y divide-border">
             {items.map(j => (
               <Row
                 key={j.punchJustID}
@@ -85,23 +85,22 @@ function Row({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 ml-4">
+        <div className="flex items-center gap-2 ml-4 flex-wrap">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" onClick={onView}><Eye className="h-4 w-4" /></Button>
+                <Button tooltip={false} variant="ghost" size="sm" onClick={onView} aria-label="Ver detalle"><Eye className="h-4 w-4" /></Button>
               </TooltipTrigger>
               <TooltipContent>Ver detalles</TooltipContent>
             </Tooltip>
             {item.status === "PENDING" && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button
+                  <Button tooltip={false}
                     variant="ghost"
                     size="sm"
                     onClick={onDelete}
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                  >
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10" aria-label="Eliminar">
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>

@@ -1,4 +1,6 @@
 //src/pages/guards/GuardVacationApprovals.tsx
+import { useDirtyCloseGuard } from '@/hooks/useDirtyCloseGuard';
+import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
 import { useState } from 'react';
 import { ClipboardCheck, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -71,11 +73,13 @@ function ApprovePlanDialog({
   isPending: boolean;
 }) {
   const [notes, setNotes] = useState('');
+  const guard = useDirtyCloseGuard(!!plan, onClose);
   return (
-    <Dialog open={!!plan} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="sm:max-w-sm" aria-describedby={undefined}>
+    <>
+    <Dialog open={!!plan} onOpenChange={v => !v && guard.requestClose()}>
+      <DialogContent {...guard.dirtyProps} className="sm:max-w-sm max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-green-600">
+          <DialogTitle className="flex items-center gap-2 text-success">
             <CheckCircle2 className="h-4 w-4" />Aprobar plan de vacaciones
           </DialogTitle>
         </DialogHeader>
@@ -94,12 +98,14 @@ function ApprovePlanDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={isPending}>Cancelar</Button>
-          <Button className="bg-green-600 hover:bg-green-700" onClick={() => onConfirm(notes)} disabled={isPending}>
+          <Button className="bg-success hover:bg-success/90" onClick={() => onConfirm(notes)} disabled={isPending} aria-label="Aprobar">
             {isPending ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />Aprobando…</> : <><CheckCircle2 className="h-3.5 w-3.5 mr-2" />Aprobar</>}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <UnsavedChangesDialog open={guard.confirmOpen} onClose={guard.closeConfirm} onConfirmExit={guard.confirmExit} />
+    </>
   );
 }
 
@@ -114,9 +120,11 @@ function RejectDialog({
   isPending: boolean;
 }) {
   const [reason, setReason] = useState('');
+  const guard2 = useDirtyCloseGuard(open, onClose);
   return (
-    <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="sm:max-w-sm" aria-describedby={undefined}>
+    <>
+    <Dialog open={open} onOpenChange={v => !v && guard2.requestClose()}>
+      <DialogContent {...guard2.dirtyProps} className="sm:max-w-sm max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-destructive">
             <XCircle className="h-4 w-4" />Rechazar
@@ -136,6 +144,8 @@ function RejectDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <UnsavedChangesDialog open={guard2.confirmOpen} onClose={guard2.closeConfirm} onConfirmExit={guard2.confirmExit} />
+    </>
   );
 }
 
@@ -150,11 +160,13 @@ function ApproveRequestDialog({
   isPending: boolean;
 }) {
   const [notes, setNotes] = useState('');
+  const guard3 = useDirtyCloseGuard(!!request, onClose);
   return (
-    <Dialog open={!!request} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="sm:max-w-sm" aria-describedby={undefined}>
+    <>
+    <Dialog open={!!request} onOpenChange={v => !v && guard3.requestClose()}>
+      <DialogContent {...guard3.dirtyProps} className="sm:max-w-sm max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-green-600">
+          <DialogTitle className="flex items-center gap-2 text-success">
             <CheckCircle2 className="h-4 w-4" />Aprobar solicitud
           </DialogTitle>
         </DialogHeader>
@@ -173,12 +185,14 @@ function ApproveRequestDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={isPending}>Cancelar</Button>
-          <Button className="bg-green-600 hover:bg-green-700" onClick={() => onConfirm(notes)} disabled={isPending}>
+          <Button className="bg-success hover:bg-success/90" onClick={() => onConfirm(notes)} disabled={isPending} aria-label="Aprobar">
             {isPending ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />Aprobando…</> : <><CheckCircle2 className="h-3.5 w-3.5 mr-2" />Aprobar</>}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <UnsavedChangesDialog open={guard3.confirmOpen} onClose={guard3.closeConfirm} onConfirmExit={guard3.confirmExit} />
+    </>
   );
 }
 
@@ -246,7 +260,7 @@ export default function GuardVacationApprovalsPage() {
           </div>
           <div>
             <Label className="text-xs">Estado</Label>
-            <select className="h-9 border rounded-md px-3 text-sm bg-background" value={planStatus}
+            <select className="h-9 border rounded-md px-3 text-sm bg-card" value={planStatus}
               onChange={e => setPlanStatus(e.target.value)}>
               <option value="">Todos</option>
               <option value="PLANNED">Planificado</option>
@@ -257,7 +271,7 @@ export default function GuardVacationApprovalsPage() {
           </div>
           <div>
             <Label className="text-xs">Año</Label>
-            <select className="h-9 border rounded-md px-3 text-sm bg-background" value={planYear ?? ''}
+            <select className="h-9 border rounded-md px-3 text-sm bg-card" value={planYear ?? ''}
               onChange={e => setPlanYear(e.target.value ? Number(e.target.value) : undefined)}>
               <option value="">Todos</option>
               {[currentYear - 1, currentYear, currentYear + 1].map(y => <option key={y} value={y}>{y}</option>)}
@@ -316,8 +330,8 @@ export default function GuardVacationApprovalsPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         {p.statusName === 'PENDING_DIRECTION_APPROVAL' && (
-                          <div className="flex items-center justify-end gap-2">
-                            <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => setApprovePlan(p)}>
+                          <div className="flex items-center justify-end gap-2 flex-wrap">
+                            <Button size="sm" className="bg-success hover:bg-success/90" onClick={() => setApprovePlan(p)}>
                               <CheckCircle2 className="h-3.5 w-3.5 mr-1" />Aprobar
                             </Button>
                             <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setRejectPlan(p)}>
@@ -331,9 +345,9 @@ export default function GuardVacationApprovalsPage() {
                 </TableBody>
               </Table>
             </div>
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <div className="flex items-center justify-between text-sm text-muted-foreground flex-wrap gap-2">
               <span>{plansQ.totalCount} planes</span>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Button variant="outline" size="sm" disabled={plansQ.page <= 1} onClick={() => plansQ.goToPage(plansQ.page - 1)}>Anterior</Button>
                 <span className="flex items-center px-2">Pág {plansQ.page} / {plansQ.totalPages}</span>
                 <Button variant="outline" size="sm" disabled={plansQ.page >= plansQ.totalPages} onClick={() => plansQ.goToPage(plansQ.page + 1)}>Siguiente</Button>
@@ -356,7 +370,7 @@ export default function GuardVacationApprovalsPage() {
           </div>
           <div>
             <Label className="text-xs">Estado</Label>
-            <select className="h-9 border rounded-md px-3 text-sm bg-background" value={reqStatus}
+            <select className="h-9 border rounded-md px-3 text-sm bg-card" value={reqStatus}
               onChange={e => setReqStatus(e.target.value)}>
               <option value="">Todos</option>
               <option value="REQUESTED">Solicitado</option>
@@ -424,8 +438,8 @@ export default function GuardVacationApprovalsPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         {r.status === 'PENDING_DIRECTION_APPROVAL' && (
-                          <div className="flex items-center justify-end gap-2">
-                            <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => setApproveReq(r)}>
+                          <div className="flex items-center justify-end gap-2 flex-wrap">
+                            <Button size="sm" className="bg-success hover:bg-success/90" onClick={() => setApproveReq(r)}>
                               <CheckCircle2 className="h-3.5 w-3.5 mr-1" />Aprobar
                             </Button>
                             <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setRejectReq(r)}>
@@ -439,9 +453,9 @@ export default function GuardVacationApprovalsPage() {
                 </TableBody>
               </Table>
             </div>
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <div className="flex items-center justify-between text-sm text-muted-foreground flex-wrap gap-2">
               <span>{reqsQ.totalCount} solicitudes</span>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Button variant="outline" size="sm" disabled={reqsQ.page <= 1} onClick={() => reqsQ.goToPage(reqsQ.page - 1)}>Anterior</Button>
                 <span className="flex items-center px-2">Pág {reqsQ.page} / {reqsQ.totalPages}</span>
                 <Button variant="outline" size="sm" disabled={reqsQ.page >= reqsQ.totalPages} onClick={() => reqsQ.goToPage(reqsQ.page + 1)}>Siguiente</Button>

@@ -210,7 +210,7 @@ export function ResearcherProfileCard({ personId, syncedCount, embedded = false 
                 <Label htmlFor="rp-provider" className="text-xs">Plataforma</Label>
                 <select
                   id="rp-provider"
-                  className="h-10 rounded-md border bg-background px-2 text-sm"
+                  className="h-10 rounded-md border bg-card px-2 text-sm"
                   value={addProvider}
                   onChange={(e) => setAddProvider(e.target.value)}
                 >
@@ -264,7 +264,7 @@ export function ResearcherProfileCard({ personId, syncedCount, embedded = false 
               disabled={entry.isPending}
             />
             {mustConfirm && (
-              <label className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+              <label className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 p-2 text-xs text-warning">
                 <input
                   type="checkbox"
                   className="mt-0.5"

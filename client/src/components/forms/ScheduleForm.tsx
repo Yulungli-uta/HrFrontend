@@ -429,7 +429,7 @@ export default function ScheduleForm({
       <Card className="w-full max-w-3xl mx-auto">
         <CardContent className="pt-6">
           <div className="flex justify-center items-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
             <span className="ml-2">Cargando formulario...</span>
           </div>
         </CardContent>
@@ -715,7 +715,7 @@ export default function ScheduleForm({
                     <Switch
                       checked={field.value}
                       onCheckedChange={field.onChange}
-                      className="data-[state=checked]:bg-purple-600"
+                      className="data-[state=checked]:bg-cat-3"
                     />
                   </FormControl>
                 </FormItem>
@@ -827,7 +827,7 @@ export default function ScheduleForm({
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="flex-1 h-12 sm:h-10 bg-success hover:bg-green-700"
+                className="flex-1 h-12 sm:h-10 bg-success hover:bg-success/90"
               >
                 <Save className="mr-2 h-4 w-4" />
                 {isLoading

@@ -27,7 +27,7 @@ export function OrcidEntryFields({ id, value, onChange, error, confirmName, disa
         onChange={(e) => onChange(e.target.value)}
       />
       {confirmName !== null && (
-        <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+        <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 p-2 text-xs text-warning">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>
             Este ORCID pertenece a <strong>{confirmName}</strong>, y no coincide con el nombre registrado de la persona. Si es la

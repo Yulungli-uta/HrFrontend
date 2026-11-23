@@ -229,7 +229,7 @@ export default function EditScheduleForm({
               </p>
             </div>
 
-            <div className="flex justify-end gap-3 pt-2">
+            <div className="flex justify-end gap-3 pt-2 flex-wrap">
               <Button
                 type="button"
                 variant="outline"

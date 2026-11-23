@@ -6,7 +6,7 @@ import type { PersonnelActionStatusHistory } from '@/types/personnel-actions';
 import { formatDateTime } from "@/lib/clock";
 
 const STATUS_ICON: Record<string, React.ReactNode> = {
-  FINALIZADO: <CheckCircle2 className="h-4 w-4 text-green-600" />,
+  FINALIZADO: <CheckCircle2 className="h-4 w-4 text-success" />,
   ANULADO: <XCircle className="h-4 w-4 text-destructive" />,
 };
 
@@ -53,7 +53,7 @@ export function StatusHistoryTimeline({ actionId }: Props) {
   return (
     <ol className="relative border-l border-border ml-3 space-y-6">
       {entries.map((entry) => (
-        <li key={entry.historyId} className="ml-6">
+        <li key={entry.historyId} className="ml-6 min-w-0 break-words">
           <span className="absolute -left-3 flex h-6 w-6 items-center justify-center rounded-full bg-background ring-2 ring-border">
             <StatusIcon status={entry.statusCode} />
           </span>

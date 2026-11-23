@@ -138,7 +138,7 @@ export function BulkPersonUploadDialog({ open, onOpenChange, onConfirm }: Props)
             <div className="flex items-center gap-3 flex-wrap">
               <Badge variant="secondary">{rows.length} filas leídas</Badge>
               {validRows.length > 0 && (
-                <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+                <Badge className="bg-success/10 text-success hover:bg-success/20">
                   <CheckCircle2 className="h-3 w-3 mr-1" />
                   {validRows.length} válidas
                 </Badge>
@@ -190,7 +190,7 @@ export function BulkPersonUploadDialog({ open, onOpenChange, onConfirm }: Props)
                               <AlertCircle className="h-3 w-3" /> No encontrada
                             </Badge>
                           ) : (
-                            <Badge className="text-xs gap-1 bg-green-100 text-green-800 hover:bg-green-100">
+                            <Badge className="text-xs gap-1 bg-success/10 text-success hover:bg-success/20">
                               <CheckCircle2 className="h-3 w-3" /> Válida
                             </Badge>
                           )}

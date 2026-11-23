@@ -262,7 +262,7 @@ export const DepartmentModal = ({
             isConcurrencyError
               ? "bg-primary/10 border-primary/30"
               : isValidationError
-              ? "bg-amber-50 border-warning/30"
+              ? "bg-warning/10 border-warning/30"
               : "bg-destructive/10 border-destructive/30"
           }`}>
             <div className="flex items-start gap-3">
@@ -274,7 +274,7 @@ export const DepartmentModal = ({
               <div className="flex-1">
                 <p className={`text-sm font-medium ${
                   isConcurrencyError ? "text-primary" :
-                  isValidationError ? "text-amber-800" :
+                  isValidationError ? "text-warning" :
                   "text-destructive"
                 }`}>
                   {isConcurrencyError ? "Conflicto de simultaneidad" :

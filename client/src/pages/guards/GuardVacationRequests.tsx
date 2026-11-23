@@ -1,4 +1,6 @@
 //src/pages/guards/GuardVacationRequests.tsx
+import { useDirtyCloseGuard } from '@/hooks/useDirtyCloseGuard';
+import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
 import { useState } from 'react';
 import { CalendarCheck, Plus, Loader2, ArrowLeftRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -66,8 +68,11 @@ function ChangeDatesDialog({
     reason: '',
   };
   const [form, setForm] = useState(init);
-  const f = <K extends keyof typeof init>(k: K, v: typeof init[K]) =>
+  const guard = useDirtyCloseGuard(open, onClose);
+  const f = <K extends keyof typeof init>(k: K, v: typeof init[K]) => {
+    guard.touch();
     setForm(p => ({ ...p, [k]: v }));
+  };
 
   const handleSave = () => {
     if (!plan || !form.reason.trim()) return;
@@ -87,8 +92,9 @@ function ChangeDatesDialog({
   const canSave = !createChangeDates.isPending && !!form.reason.trim();
 
   return (
-    <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="sm:max-w-sm" aria-describedby={undefined}>
+    <>
+    <Dialog open={open} onOpenChange={v => !v && guard.requestClose()}>
+      <DialogContent className="sm:max-w-sm max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ArrowLeftRight className="h-4 w-4" />
@@ -130,6 +136,8 @@ function ChangeDatesDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <UnsavedChangesDialog open={guard.confirmOpen} onClose={guard.closeConfirm} onConfirmExit={guard.confirmExit} />
+    </>
   );
 }
 
@@ -165,9 +173,11 @@ function AccumulateDialog({
 
   const canSave = !createAccumulate.isPending && !!reason.trim();
 
+  const guard2 = useDirtyCloseGuard(open, onClose);
   return (
-    <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="sm:max-w-sm" aria-describedby={undefined}>
+    <>
+    <Dialog open={open} onOpenChange={v => !v && guard2.requestClose()}>
+      <DialogContent {...guard2.dirtyProps} className="sm:max-w-sm max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
         <DialogHeader><DialogTitle>Solicitar acumulación de vacaciones</DialogTitle></DialogHeader>
         {plan && (
           <div className="text-xs text-muted-foreground bg-muted/30 rounded-md px-3 py-2">
@@ -189,6 +199,8 @@ function AccumulateDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <UnsavedChangesDialog open={guard2.confirmOpen} onClose={guard2.closeConfirm} onConfirmExit={guard2.confirmExit} />
+    </>
   );
 }
 
@@ -230,7 +242,7 @@ export default function GuardVacationRequestsPage() {
       <div className="flex items-center gap-3">
         <CalendarCheck className="h-6 w-6 text-primary" />
         <div>
-          <h1 className="text-2xl font-bold">Mis Solicitudes de Vacaciones</h1>
+          <h1 className="text-2xl font-bold">Cambios y Acumulación de Vacaciones</h1>
           <p className="text-sm text-muted-foreground">Vista del guardia — solicitudes personales</p>
         </div>
       </div>
@@ -243,7 +255,7 @@ export default function GuardVacationRequestsPage() {
         <Tabs defaultValue="plans">
           <TabsList>
             <TabsTrigger value="plans">Mis vacaciones aprobadas</TabsTrigger>
-            <TabsTrigger value="requests">Mis solicitudes de cambio</TabsTrigger>
+            <TabsTrigger value="requests">Mis cambios o acumulaciones solicitados</TabsTrigger>
           </TabsList>
 
           {/* Planes APROBADOS — desde aquí puede hacer solicitudes */}
@@ -276,7 +288,7 @@ export default function GuardVacationRequestsPage() {
                           {p.notes ?? '—'}
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-2 flex-wrap">
                             <Button size="sm" variant="outline" onClick={() => openChangeDates(p)}>
                               <Plus className="h-3.5 w-3.5 mr-1" />Cambio de fechas
                             </Button>

@@ -178,7 +178,7 @@ export default function AppParamsPage() {
 
   return (
     <div className="container mx-auto p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
             <SlidersHorizontal className="h-8 w-8" />
@@ -262,7 +262,7 @@ export default function AppParamsPage() {
                         <div className="flex items-center gap-1.5">
                           {p.nemonic}
                           {sensitive && (
-                            <ShieldAlert className="h-3.5 w-3.5 text-amber-500 shrink-0" aria-label="Valor sensible" />
+                            <ShieldAlert className="h-3.5 w-3.5 text-warning shrink-0" aria-label="Valor sensible" />
                           )}
                         </div>
                       </TableCell>
@@ -292,7 +292,7 @@ export default function AppParamsPage() {
                         {p.modifiedBy && <div className="text-muted-foreground/70">{p.modifiedBy}</div>}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
+                        <div className="flex justify-end gap-1 flex-wrap">
                           <ActionIconButton
                             icon={Edit}
                             label="Editar parámetro"
@@ -342,7 +342,7 @@ export default function AppParamsPage() {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteNemonic && deleteMutation.mutate(deleteNemonic)}
-              className="bg-destructive hover:bg-red-700"
+              className="bg-destructive hover:bg-destructive/90"
             >
               Eliminar
             </AlertDialogAction>
@@ -453,7 +453,7 @@ function AppParamForm({
           />
         )}
         {sensitive && (
-          <p className="text-xs text-amber-600 flex items-center gap-1">
+          <p className="text-xs text-warning flex items-center gap-1">
             <ShieldAlert className="h-3 w-3" /> Este parámetro parece sensible (credencial/secreto).
           </p>
         )}

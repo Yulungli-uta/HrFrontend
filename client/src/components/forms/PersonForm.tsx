@@ -302,10 +302,10 @@ const getSafeOptions = (
 const fieldClassName =
   "border-border bg-background text-foreground placeholder:text-muted-foreground " +
   "transition-colors focus-visible:ring-2 focus-visible:ring-primary/20 " +
-  "dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-400";
+  "";
 
 const disabledFieldClassName =
-  "border-border bg-muted text-muted-foreground dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-400";
+  "border-border bg-muted text-muted-foreground ";
 
 const SectionCard = ({
   title,
@@ -314,7 +314,7 @@ const SectionCard = ({
   title: string;
   children: React.ReactNode;
 }) => (
-  <Card className="border-border/70 bg-card shadow-sm dark:border-slate-800 dark:bg-slate-950/60">
+  <Card className="border-border/70 bg-card shadow-sm">
     <CardHeader className="pb-4">
       <CardTitle className="text-lg font-semibold text-foreground">
         {title}
@@ -376,7 +376,7 @@ const SafeSelect = ({
         <Input
           value="No hay opciones disponibles"
           disabled
-          className="border-border bg-muted text-muted-foreground dark:border-slate-800 dark:bg-slate-900"
+          className="border-border bg-muted text-muted-foreground"
         />
         <p className="text-sm text-muted-foreground">
           Este campo no está disponible actualmente
@@ -398,7 +398,7 @@ const SafeSelect = ({
           "transition-colors",
           "hover:bg-muted/50",
           "focus:ring-2 focus:ring-primary/20",
-          "dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800/80",
+          "",
           required && !value
             ? "border-destructive focus:ring-destructive/20"
             : "",
@@ -407,7 +407,7 @@ const SafeSelect = ({
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
 
-      <SelectContent className="border-border bg-popover text-popover-foreground dark:border-slate-800 dark:bg-slate-950">
+      <SelectContent className="border-border bg-popover text-popover-foreground">
         {safeOptions.map((option) => (
           <SelectItem key={option.id} value={option.id.toString()}>
             {option.name}
@@ -659,40 +659,31 @@ export default function PersonForm({
     }
   }, [watchIdentType]);
 
+  // Carga bajo demanda por padre: el catálogo completo tiene miles de provincias y decenas de miles de cantones.
   const { data: provincesResp } = useQuery<ApiResponse<Province[]>>({
-    queryKey: ["provinces"],
-    queryFn: () => ProvinciasAPI.list(),
+    queryKey: ["provinces", "country", watchCountryId],
+    queryFn: () => ProvinciasAPI.getByCountry(watchCountryId as string),
+    enabled: !!watchCountryId,
+    staleTime: 10 * 60_000,
+    refetchOnWindowFocus: false,
   });
 
   const { data: cantonsResp } = useQuery<ApiResponse<Canton[]>>({
-    queryKey: ["cantons"],
-    queryFn: () => CantonesAPI.list(),
+    queryKey: ["cantons", "province", watchProvinceId],
+    queryFn: () => CantonesAPI.getByProvince(watchProvinceId as string),
+    enabled: !!watchProvinceId,
+    staleTime: 10 * 60_000,
+    refetchOnWindowFocus: false,
   });
 
-  const allProvinces = useMemo(
-    () => (provincesResp?.status === "success" ? provincesResp.data || [] : []),
-    [provincesResp]
-  );
-
-  const allCantons = useMemo(
-    () => (cantonsResp?.status === "success" ? cantonsResp.data || [] : []),
-    [cantonsResp]
-  );
-
   const filteredProvinces = useMemo(
-    () =>
-      allProvinces.filter(
-        (province) => !watchCountryId || province.countryId === watchCountryId
-      ),
-    [allProvinces, watchCountryId]
+    () => (watchCountryId && provincesResp?.status === "success" ? provincesResp.data || [] : []),
+    [provincesResp, watchCountryId]
   );
 
   const filteredCantons = useMemo(
-    () =>
-      allCantons.filter(
-        (canton) => !watchProvinceId || canton.provinceId === watchProvinceId
-      ),
-    [allCantons, watchProvinceId]
+    () => (watchProvinceId && cantonsResp?.status === "success" ? cantonsResp.data || [] : []),
+    [cantonsResp, watchProvinceId]
   );
 
   const countryInitialized = useRef(false);
@@ -889,7 +880,7 @@ export default function PersonForm({
       )}
 
       {isRefTypesLoading && (
-        <Alert className="border-border bg-muted/50 dark:border-slate-800 dark:bg-slate-900/70">
+        <Alert className="border-border bg-muted/50">
           <Loader2 className="h-4 w-4 animate-spin" />
           <AlertDescription>Cargando tipos de referencia...</AlertDescription>
         </Alert>
@@ -924,7 +915,7 @@ export default function PersonForm({
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="mb-6 grid h-auto w-full grid-cols-4 rounded-2xl border border-border bg-muted/60 p-1 dark:border-slate-800 dark:bg-slate-900/80">
+        <TabsList className="max-sm:flex max-sm:justify-start mb-6 grid h-auto w-full grid-cols-4 rounded-2xl border border-border bg-muted/60 p-1">
           <TabsTrigger
             value="basic"
             className="rounded-xl text-xs text-muted-foreground transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:font-semibold data-[state=active]:shadow-md dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground sm:text-sm"
@@ -1025,25 +1016,25 @@ export default function PersonForm({
                     </p>
                   )}
                   {!isEditing && dinardap.status === "found" && (
-                    <p className="text-xs text-emerald-600 flex items-center gap-1">
+                    <p className="text-xs text-success flex items-center gap-1">
                       <ShieldCheck className="h-3 w-3" />
                       Verificado con Registro Civil
                     </p>
                   )}
                   {!isEditing && dinardap.status === "not-found" && (
-                    <p className="text-xs text-amber-600 flex items-center gap-1">
+                    <p className="text-xs text-warning flex items-center gap-1">
                       <AlertTriangle className="h-3 w-3" />
                       Datos no encontrados en Registro Civil para esta cédula — completa manualmente.
                     </p>
                   )}
                   {!isEditing && dinardap.status === "unavailable" && (
-                    <p className="text-xs text-amber-600 flex items-center gap-1">
+                    <p className="text-xs text-warning flex items-center gap-1">
                       <ServerCrash className="h-3 w-3" />
                       Servicio DINARDAP en mantenimiento o no disponible — completa manualmente.
                     </p>
                   )}
                   {!isEditing && dinardap.status === "forbidden" && (
-                    <p className="text-xs text-amber-600 flex items-center gap-1">
+                    <p className="text-xs text-warning flex items-center gap-1">
                       <AlertTriangle className="h-3 w-3" />
                       No tiene permiso para consultar Registro Civil — solicite el rol R_DINARDAP_REGISTRO_CIVIL o complete los datos manualmente.
                     </p>
@@ -1308,7 +1299,7 @@ export default function PersonForm({
                       >
                         <SelectValue placeholder="Seleccione provincia" />
                       </SelectTrigger>
-                      <SelectContent className="border-border bg-popover text-popover-foreground dark:border-slate-800 dark:bg-slate-950">
+                      <SelectContent className="border-border bg-popover text-popover-foreground">
                         {filteredProvinces.map((province) => (
                           <SelectItem
                             key={province.provinceId}
@@ -1346,7 +1337,7 @@ export default function PersonForm({
                       <SelectTrigger id="cantonId" className={fieldClassName}>
                         <SelectValue placeholder="Seleccione cantón" />
                       </SelectTrigger>
-                      <SelectContent className="border-border bg-popover text-popover-foreground dark:border-slate-800 dark:bg-slate-950">
+                      <SelectContent className="border-border bg-popover text-popover-foreground">
                         {filteredCantons.map((canton) => (
                           <SelectItem
                             key={canton.cantonId}
@@ -1490,7 +1481,7 @@ export default function PersonForm({
           <TabsContent value="health" className="space-y-6">
             <SectionCard title="Información de Salud">
               {/* Checkbox: tiene discapacidad */}
-              <div className="rounded-xl border border-border bg-muted/40 p-4 dark:border-slate-800 dark:bg-slate-900/70">
+              <div className="rounded-xl border border-border bg-muted/40 p-4">
                 <Controller
                   control={control}
                   name="hasDisability"
@@ -1586,7 +1577,7 @@ export default function PersonForm({
                         >
                           <SelectValue placeholder="Seleccione tipo de discapacidad" />
                         </SelectTrigger>
-                        <SelectContent className="border-border bg-popover text-popover-foreground dark:border-slate-800 dark:bg-slate-950">
+                        <SelectContent className="border-border bg-popover text-popover-foreground">
                           {disabilityTypes.map((option) => (
                             <SelectItem key={option.id} value={option.name}>
                               {option.name}
@@ -1696,7 +1687,7 @@ export default function PersonForm({
                         >
                           <SelectValue placeholder="Seleccione necesidades especiales" />
                         </SelectTrigger>
-                        <SelectContent className="border-border bg-popover text-popover-foreground dark:border-slate-800 dark:bg-slate-950">
+                        <SelectContent className="border-border bg-popover text-popover-foreground">
                           <SelectItem value="none">Ninguna</SelectItem>
                           {specialNeedsTypes.map((option) => (
                             <SelectItem
@@ -1782,8 +1773,8 @@ export default function PersonForm({
             </SectionCard>
           </TabsContent>
 
-          <div className="flex flex-col-reverse justify-between gap-3 border-t border-border pt-6 dark:border-slate-800 sm:flex-row sm:justify-end">
-            <div className="flex gap-2">
+          <div className="flex flex-col-reverse justify-between gap-3 border-t border-border pt-6 sm:flex-row sm:justify-end">
+            <div className="flex gap-2 flex-wrap">
               <Button
                 type="button"
                 variant="outline"
@@ -1841,7 +1832,7 @@ export default function PersonForm({
         </form>
       </Tabs>
 
-      <Card className="border-border bg-muted/50 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
+      <Card className="border-border bg-muted/50 shadow-sm">
         <CardContent className="pt-6">
           <h4 className="mb-2 text-sm font-medium text-foreground">
             Información de validación:

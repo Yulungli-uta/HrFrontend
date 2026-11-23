@@ -53,7 +53,7 @@ export function HistoryTimeline({ entries }: { entries: HistoryTimelineEntry[] }
   return (
     <ol className="relative border-l border-border ml-3 space-y-6">
       {entries.map((entry) => (
-        <li key={entry.id} className="ml-6">
+        <li key={entry.id} className="ml-6 min-w-0 break-words">
           <span className="absolute -left-3 flex h-6 w-6 items-center justify-center rounded-full bg-background ring-2 ring-border">
             <ActionIcon action={entry.action} />
           </span>

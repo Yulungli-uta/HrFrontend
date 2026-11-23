@@ -118,7 +118,7 @@ function VisibilityBadge({ visibility, deptName }: { visibility: import("@/types
           className={`text-xs gap-1 ${
             isPublic
               ? "border-success/40 text-success dark:border-success/60 dark:text-success/80"
-              : "border-amber-300 text-warning dark:border-amber-700 dark:text-amber-400"
+              : "border-warning/40 text-warning "
           }`}
           data-testid={`badge-visibility-${isPublic ? "public" : "private"}`}
         >
@@ -249,7 +249,7 @@ function DocumentsTab({ instanceId, processId, service, permissions }: { instanc
               <CheckCircle2 className="h-4 w-4 text-primary" />
               Documentos del Expediente
               {hasMultipleGroups && (
-                <Badge variant="outline" className="text-[0.625rem] px-1.5 py-0 h-4 text-muted-foreground">
+                <Badge variant="outline" className="text-xs px-1.5 py-0 h-4 text-muted-foreground">
                   {groupedCompletion.length} subprocesos
                 </Badge>
               )}
@@ -280,7 +280,7 @@ function DocumentsTab({ instanceId, processId, service, permissions }: { instanc
                     progressPercent === 100
                       ? "bg-success"
                       : progressPercent >= 50
-                        ? "bg-amber-500 dark:bg-amber-400"
+                        ? "bg-warning "
                         : "bg-destructive"
                   }`}
                   style={{ width: `${progressPercent}%` }}
@@ -323,7 +323,7 @@ function DocumentsTab({ instanceId, processId, service, permissions }: { instanc
                           {group.processName}
                         </span>
                         {group.isCurrentProcess && (
-                          <Badge variant="outline" className="text-[0.625rem] px-1.5 py-0 h-4 border-primary/40 text-primary">
+                          <Badge variant="outline" className="text-xs px-1.5 py-0 h-4 border-primary/40 text-primary">
                             Actual
                           </Badge>
                         )}
@@ -351,8 +351,8 @@ function DocumentsTab({ instanceId, processId, service, permissions }: { instanc
                               isComplete
                                 ? "border-success/30 bg-success/10/50"
                                 : rule.isMandatory
-                                  ? "border-destructive/30 bg-destructive/10/50 dark:border-red-800/40"
-                                  : "border-warning/30 bg-amber-50/50 dark:border-amber-800/40 dark:bg-amber-950/20"
+                                  ? "border-destructive/30 bg-destructive/10/50"
+                                  : "border-warning/30 bg-warning/50 "
                             }`}
                             data-testid={`rule-completion-${rule.ruleId}`}
                           >
@@ -361,15 +361,15 @@ function DocumentsTab({ instanceId, processId, service, permissions }: { instanc
                                 isComplete
                                   ? "bg-success dark:bg-success"
                                   : rule.isMandatory
-                                    ? "bg-destructive/15 dark:bg-red-900/40 border-2 border-destructive/40"
-                                    : "bg-amber-100 dark:bg-amber-900/40 border-2 border-amber-300 dark:border-amber-600"
+                                    ? "bg-destructive/15 border-2 border-destructive/40"
+                                    : "bg-warning/10 border-2 border-warning/40 "
                               }`}>
                                 {isComplete ? (
                                   <CheckCircle2 className="h-4 w-4 text-white" />
                                 ) : rule.isMandatory ? (
                                   <AlertCircle className="h-3.5 w-3.5 text-destructive dark:text-destructive/80" />
                                 ) : (
-                                  <Circle className="h-3.5 w-3.5 text-warning dark:text-amber-400" />
+                                  <Circle className="h-3.5 w-3.5 text-warning" />
                                 )}
                               </div>
                               <div className="flex-1 min-w-0">
@@ -380,7 +380,7 @@ function DocumentsTab({ instanceId, processId, service, permissions }: { instanc
                                     {rule.docTypeName}
                                   </span>
                                   {rule.isMandatory ? (
-                                    <Badge variant="outline" className={`text-[0.625rem] px-1.5 py-0 h-4 font-semibold ${
+                                    <Badge variant="outline" className={`text-xs px-1.5 py-0 h-4 font-semibold ${
                                       isComplete
                                         ? "border-success/40 text-success dark:border-success/60 dark:text-success/80"
                                         : "border-destructive/40 text-destructive dark:border-destructive/60 dark:text-destructive/80"
@@ -388,12 +388,12 @@ function DocumentsTab({ instanceId, processId, service, permissions }: { instanc
                                       Obligatorio
                                     </Badge>
                                   ) : (
-                                    <Badge variant="outline" className="text-[0.625rem] px-1.5 py-0 h-4 text-muted-foreground">
+                                    <Badge variant="outline" className="text-xs px-1.5 py-0 h-4 text-muted-foreground">
                                       Opcional
                                     </Badge>
                                   )}
                                   {!group.isCurrentProcess && isComplete && (
-                                    <Badge variant="outline" className="text-[0.625rem] px-1.5 py-0 h-4 border-blue-300 text-primary dark:border-blue-700 dark:text-primary/70">
+                                    <Badge variant="outline" className="text-xs px-1.5 py-0 h-4 border-primary/40 text-primary dark:text-primary/70">
                                       Otro subproceso
                                     </Badge>
                                   )}
@@ -406,13 +406,12 @@ function DocumentsTab({ instanceId, processId, service, permissions }: { instanc
                                 {canUploadHere && (
                                   <Tooltip>
                                     <TooltipTrigger asChild>
-                                      <Button
+                                      <Button tooltip={false}
                                         variant="ghost"
                                         size="icon"
                                         className="h-8 w-8"
                                         onClick={() => handleUploadForRule(rule.ruleId)}
-                                        data-testid={`button-upload-rule-${rule.ruleId}`}
-                                      >
+                                        data-testid={`button-upload-rule-${rule.ruleId}`} aria-label="Subir archivo">
                                         {uploadingRuleId === rule.ruleId ? (
                                           <Loader2 className="h-4 w-4 animate-spin" />
                                         ) : (
@@ -449,20 +448,20 @@ function DocumentsTab({ instanceId, processId, service, permissions }: { instanc
                                     <div className="flex-1 min-w-0 pt-1">
                                       <div className="flex items-center gap-1.5">
                                         <span className="text-xs font-medium truncate">{doc.title}</span>
-                                        <Badge variant="outline" className="text-[0.625rem] px-1 py-0 h-3.5 text-muted-foreground shrink-0">
+                                        <Badge variant="outline" className="text-xs px-1 py-0 h-3.5 text-muted-foreground shrink-0">
                                           v{doc.currentVersion}
                                         </Badge>
                                         <VisibilityBadge visibility={doc.visibility} deptName={doc.uploaderDeptName} />
                                       </div>
                                       <div className="flex items-center gap-2 flex-wrap mt-0.5">
-                                        <p className="text-[0.6875rem] text-muted-foreground">{formatDate(doc.createdAt)}</p>
+                                        <p className="text-xs text-muted-foreground">{formatDate(doc.createdAt)}</p>
                                         {latestExt && (
-                                          <Badge variant="secondary" className="text-[0.5625rem] px-1 py-0 h-3.5 uppercase">
+                                          <Badge variant="secondary" className="text-xs px-1 py-0 h-3.5 uppercase">
                                             {latestExt.replace(/^\./, "")}
                                           </Badge>
                                         )}
                                         {doc.visibility === "PRIVATE_TO_UPLOADER_DEPT" && doc.uploaderDeptName && (
-                                          <span className="inline-flex items-center gap-1 text-[0.6875rem] px-1.5 py-0 rounded bg-amber-100/80 text-warning dark:bg-amber-900/30 dark:text-amber-400" data-testid={`text-dept-doc-${doc.documentId}`}>
+                                          <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0 rounded bg-warning/80 text-warning" data-testid={`text-dept-doc-${doc.documentId}`}>
                                             <Building2 className="h-2.5 w-2.5" />
                                             Solo {doc.uploaderDeptName}
                                           </span>
@@ -472,13 +471,12 @@ function DocumentsTab({ instanceId, processId, service, permissions }: { instanc
                                     <div className="flex items-center gap-0.5 opacity-0 group-hover/doc:opacity-100 transition-opacity shrink-0">
                                       <Tooltip>
                                         <TooltipTrigger asChild>
-                                          <Button
+                                          <Button tooltip={false}
                                             variant="ghost"
                                             size="icon"
                                             className="h-7 w-7"
                                             onClick={() => setSelectedDoc(doc)}
-                                            data-testid={`button-versions-doc-${doc.documentId}`}
-                                          >
+                                            data-testid={`button-versions-doc-${doc.documentId}`} aria-label="Ver historial">
                                             <History className="h-3.5 w-3.5" />
                                           </Button>
                                         </TooltipTrigger>
@@ -486,13 +484,12 @@ function DocumentsTab({ instanceId, processId, service, permissions }: { instanc
                                       </Tooltip>
                                       <Tooltip>
                                         <TooltipTrigger asChild>
-                                          <Button
+                                          <Button tooltip={false}
                                             variant="ghost"
                                             size="icon"
                                             className="h-7 w-7"
                                             onClick={() => handlePreview(doc)}
-                                            data-testid={`button-preview-doc-${doc.documentId}`}
-                                          >
+                                            data-testid={`button-preview-doc-${doc.documentId}`} aria-label="Ver detalle">
                                             <Eye className="h-3.5 w-3.5" />
                                           </Button>
                                         </TooltipTrigger>
@@ -500,14 +497,13 @@ function DocumentsTab({ instanceId, processId, service, permissions }: { instanc
                                       </Tooltip>
                                       <Tooltip>
                                         <TooltipTrigger asChild>
-                                          <Button
+                                          <Button tooltip={false}
                                             variant="ghost"
                                             size="icon"
                                             className="h-7 w-7"
                                             disabled={String(downloadingId) === String(doc.documentId)}
                                             onClick={() => handleDownload(doc)}
-                                            data-testid={`button-download-doc-${doc.documentId}`}
-                                          >
+                                            data-testid={`button-download-doc-${doc.documentId}`} aria-label="Descargar">
                                             {String(downloadingId) === String(doc.documentId) ? (
                                               <Loader2 className="h-3.5 w-3.5 animate-spin" />
                                             ) : (
@@ -527,7 +523,7 @@ function DocumentsTab({ instanceId, processId, service, permissions }: { instanc
                             {!isComplete && uploaded === 0 && (
                               <div className="px-3 pb-3 ml-10">
                                 <p className={`text-xs flex items-center gap-1 ${
-                                  rule.isMandatory ? "text-destructive dark:text-destructive/80" : "text-warning dark:text-amber-400"
+                                  rule.isMandatory ? "text-destructive dark:text-destructive/80" : "text-warning"
                                 }`}>
                                   <Upload className="h-3 w-3" />
                                   Pendiente de carga
@@ -539,7 +535,7 @@ function DocumentsTab({ instanceId, processId, service, permissions }: { instanc
                             )}
                             {!isComplete && uploaded > 0 && (
                               <div className="px-3 pb-3 ml-10">
-                                <p className="text-xs text-warning dark:text-amber-400 flex items-center gap-1">
+                                <p className="text-xs text-warning flex items-center gap-1">
                                   <Upload className="h-3 w-3" />
                                   Faltan {rule.minFiles - uploaded} archivo{(rule.minFiles - uploaded) !== 1 ? "s" : ""}
                                 </p>
@@ -619,7 +615,7 @@ function VersionHistory({ documentId, service }: { documentId: string | number; 
           </div>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" data-testid={`button-download-version-${v.versionId}`}>
+              <Button tooltip={false} variant="ghost" size="icon" data-testid={`button-download-version-${v.versionId}`} aria-label="Descargar">
                 <Download className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
@@ -732,10 +728,10 @@ function MandatoryBlockingAlert({ instance, service }: { instance: WorkflowInsta
   if (pendingMandatory.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-2 p-4 rounded-md bg-destructive/10 border border-destructive/30 dark:bg-red-900/20 dark:border-red-800" data-testid="alert-mandatory-blocking">
+    <div className="flex flex-col gap-2 p-4 rounded-md bg-destructive/10 border border-destructive/30" data-testid="alert-mandatory-blocking">
       <div className="flex items-center gap-2">
         <ShieldAlert className="h-5 w-5 text-destructive dark:text-destructive/80 shrink-0" />
-        <p className="text-sm font-medium text-destructive dark:text-red-300">
+        <p className="text-sm font-medium text-destructive">
           No es posible avanzar el expediente
         </p>
       </div>
@@ -748,9 +744,9 @@ function MandatoryBlockingAlert({ instance, service }: { instance: WorkflowInsta
           return (
             <li key={rule.ruleId} className="flex items-center gap-2 text-xs" data-testid={`pending-mandatory-${rule.ruleId}`}>
               <AlertCircle className="h-3.5 w-3.5 text-destructive dark:text-destructive/80 shrink-0" />
-              <span className="text-destructive dark:text-red-300 font-medium">{rule.docTypeName}</span>
+              <span className="text-destructive font-medium">{rule.docTypeName}</span>
               {group && !group.isCurrentProcess && (
-                <Badge variant="outline" className="text-[0.625rem] px-1.5 py-0 h-4 border-destructive/40 text-destructive dark:border-destructive/60 dark:text-destructive/80">
+                <Badge variant="outline" className="text-xs px-1.5 py-0 h-4 border-destructive/40 text-destructive dark:border-destructive/60 dark:text-destructive/80">
                   {group.processName}
                 </Badge>
               )}
@@ -824,9 +820,9 @@ function ActionsTab({ instance, service, permissions }: { instance: WorkflowInst
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {!hasAnyPermission && permissions.reason && (
-            <div className="flex items-center gap-2 p-3 rounded-md bg-amber-50 border border-warning/30 dark:bg-amber-900/20 dark:border-amber-800" role="status" data-testid="warning-no-permissions">
-              <ShieldAlert className="h-4 w-4 text-warning dark:text-amber-400 shrink-0" />
-              <p className="text-sm text-warning dark:text-amber-300">{permissions.reason}</p>
+            <div className="flex items-center gap-2 p-3 rounded-md bg-warning/10 border border-warning/30" role="status" data-testid="warning-no-permissions">
+              <ShieldAlert className="h-4 w-4 text-warning shrink-0" />
+              <p className="text-sm text-warning">{permissions.reason}</p>
             </div>
           )}
 
@@ -936,7 +932,7 @@ export default function InstanceDetail() {
         <Link href="/Docflow/expedientes">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" data-testid="button-back">
+              <Button tooltip={false} variant="ghost" size="icon" data-testid="button-back" aria-label="Volver">
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             </TooltipTrigger>

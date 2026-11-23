@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 /**
  * Tono semántico reutilizado en toda la app (success/warning/destructive/primary/muted).
  * IMPORTANTE: usar SIEMPRE estos tokens (definidos en index.css con valores distintos para
- * modo claro/oscuro) en vez de colores literales de Tailwind (bg-green-50, text-amber-700, ...),
+ * modo claro/oscuro) en vez de colores literales de Tailwind (bg-success/10, text-warning, ...),
  * que no se adaptan a modo oscuro.
  */
 export type StatusTone = 'success' | 'warning' | 'destructive' | 'primary' | 'muted';

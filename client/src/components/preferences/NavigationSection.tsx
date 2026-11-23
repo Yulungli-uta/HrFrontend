@@ -43,7 +43,7 @@ export default function NavigationSection({ value, routes, onChange }: Props) {
           <RadioGroup
             value={value.menuStartMode ?? "remember"}
             onValueChange={(v) => onChange({ menuStartMode: v as MenuStartMode })}
-            className="grid-flow-col auto-cols-max gap-5"
+            className="flex flex-wrap gap-x-5 gap-y-2"
             aria-label="Estado inicial del menú lateral"
           >
             {MENU_MODES.map((m) => (

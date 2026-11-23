@@ -1,0 +1,29 @@
+/* =============================================================================
+ * IDENTIDAD UTA — ÚNICO ARCHIVO QUE SE EDITA PARA CAMBIAR LA MARCA
+ * Fuente: "Recursos gráficos para usos temporales" (DIRCOM, 2026).
+ *
+ * Aquí viven los valores de marca (colores base, tipografías, forma). El resto del
+ * sistema los consume mediante tokens semánticos (semantic.css): ninguna pantalla ni
+ * componente define colores propios. Para cambiar la identidad basta con editar este
+ * archivo; para ajustar un estado (éxito, alerta…) o el modo oscuro, semantic.css.
+ *
+ * Se activa con <html data-brand="uta2026"> (ver index.html). Quitar el atributo
+ * devuelve el aspecto anterior mientras exista el tema heredado en index.css.
+ * ============================================================================= */
+html[data-brand="uta2026"] {
+  /* Colores institucionales (guía: azul #00345e, rojo #ab171f, blanco) */
+  --brand-blue-h: 207;  --brand-blue-s: 100%;  --brand-blue-l: 18%;   /* #00345e */
+  --brand-red-h: 357;   --brand-red-s: 76%;    --brand-red-l: 38%;     /* #ab171f */
+  --brand-blue: hsl(var(--brand-blue-h) var(--brand-blue-s) var(--brand-blue-l));
+  --brand-red:  hsl(var(--brand-red-h) var(--brand-red-s) var(--brand-red-l));
+
+  /* Tipografía: Gotham (títulos) y Helvetica Neue (cuerpo). Gotham requiere archivos
+     con licencia de DIRCOM; mientras no estén en /public/fonts se usa Montserrat. */
+  --font-display: "Gotham", "Montserrat", "Helvetica Neue", Arial, sans-serif;
+  --font-sans:    "Helvetica Neue", "Inter", Helvetica, Arial, sans-serif; /* Inter cubre equipos sin Helvetica Neue (Windows) */
+  --font-serif:   Georgia, serif;
+  --font-mono:    Menlo, Consolas, monospace;
+
+  /* Forma */
+  --radius: 0.5rem;
+}

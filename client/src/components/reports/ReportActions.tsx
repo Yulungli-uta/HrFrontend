@@ -46,8 +46,7 @@ export function ReportActions({
             disabled={isLoading}
             variant="outline"
             size="lg"
-            className="flex-1 min-w-[200px]"
-          >
+            className="flex-1 min-w-[200px]" aria-label="Ver detalle">
             {isPreviewing ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -67,8 +66,7 @@ export function ReportActions({
               onClick={onDownloadPdf}
               disabled={isLoading}
               size="lg"
-              className="flex-1 min-w-[200px]"
-            >
+              className="flex-1 min-w-[200px]" aria-label="Ver documento">
               {isDownloading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -90,8 +88,7 @@ export function ReportActions({
               disabled={isLoading}
               variant="secondary"
               size="lg"
-              className="flex-1 min-w-[200px]"
-            >
+              className="flex-1 min-w-[200px]" aria-label="Exportar a Excel">
               {isDownloading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -113,8 +110,7 @@ export function ReportActions({
               disabled={isLoading}
               variant="secondary"
               size="lg"
-              className="flex-1 min-w-[200px]"
-            >
+              className="flex-1 min-w-[200px]" aria-label="Descargar">
               {isDownloading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

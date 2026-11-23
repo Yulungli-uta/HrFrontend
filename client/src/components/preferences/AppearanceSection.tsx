@@ -35,7 +35,7 @@ export default function AppearanceSection({ value, onChange }: Props) {
           <RadioGroup
             value={value.theme ?? "system"}
             onValueChange={(v) => onChange({ theme: v as ThemePreference })}
-            className="grid-flow-col auto-cols-max gap-5"
+            className="flex flex-wrap gap-x-5 gap-y-2"
             aria-label="Tema"
           >
             {THEMES.map((t) => (
@@ -54,7 +54,7 @@ export default function AppearanceSection({ value, onChange }: Props) {
           <RadioGroup
             value={value.density ?? "standard"}
             onValueChange={(v) => onChange({ density: v as Density })}
-            className="grid-flow-col auto-cols-max gap-5"
+            className="flex flex-wrap gap-x-5 gap-y-2"
             aria-label="Densidad"
           >
             {DENSITIES.map((d) => (

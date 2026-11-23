@@ -358,7 +358,7 @@ export function PublicationSyncDialog({ open, onOpenChange, personId }: Publicat
                 <Counter value={preview.existingCount + preview.lockedCount} label="Ya existen" />
               </div>
               {preview.isPartial && (
-                <p className="rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                <p className="rounded-md border border-warning/40 bg-warning/10 p-2 text-xs text-warning">
                   {preview.message || "La consulta fue parcial: puede faltar alguna publicación. Vuelva a sincronizar más tarde."}
                 </p>
               )}
@@ -395,7 +395,7 @@ export function PublicationSyncDialog({ open, onOpenChange, personId }: Publicat
 
           {step === "done" && result && (
             <div className="flex flex-col items-center gap-3 py-6 text-center">
-              <CheckCircle2 className="h-8 w-8 text-emerald-600" />
+              <CheckCircle2 className="h-8 w-8 text-success" />
               <p className="text-sm">
                 {result.created} publicación(es) nueva(s) y {result.completed} completada(s) quedaron en revisión.
                 {result.skipped > 0 && ` ${result.skipped} omitida(s).`}
@@ -449,7 +449,7 @@ function Counter({ value, label, tone }: { value: number; label: string; tone?: 
     <div
       className={
         tone === "ok"
-          ? "rounded-lg border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-900 dark:bg-emerald-950"
+          ? "rounded-lg border border-success/30 bg-success/10 p-3 "
           : "rounded-lg border p-3"
       }
     >

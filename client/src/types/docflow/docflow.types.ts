@@ -164,11 +164,11 @@ export interface InstancePermissions {
 
 export const instanceStatusColors: Record<string, string> = {
   "Borrador": "bg-muted text-muted-foreground",
-  "Pendiente": "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
-  "En Revision": "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
-  "Aprobado": "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-  "Retornado": "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
-  "Finalizado": "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
+  "Pendiente": "bg-warning/10 text-warning ",
+  "En Revision": "bg-primary/10 text-primary ",
+  "Aprobado": "bg-success/10 text-success ",
+  "Retornado": "bg-destructive/10 text-destructive ",
+  "Finalizado": "bg-cat-3/10 text-cat-3 ",
 };
 
 export const insertDocumentRuleSchema = z.object({

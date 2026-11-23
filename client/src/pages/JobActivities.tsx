@@ -151,6 +151,13 @@ export default function JobActivitiesPage() {
       ["/api/v1/rh/activity"],
       ["/api/v1/rh/additional-activity"],
       ["/api/v1/rh/job-activities"],
+      // Cachés que alimentan Acciones de Personal, Contratos y el dashboard: sin esto mostraban el grupo/grado/UEP viejo
+      // hasta recargar la página (el cliente usa staleTime infinito por defecto).
+      ["vw-jobs-all"],
+      ["vw-jobs-select"],
+      ["th-jobs"],
+      ["degree-combobox"],
+      ["occupational-group-combobox"],
     ].forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));
   };
 
@@ -657,7 +664,7 @@ export default function JobActivitiesPage() {
         <Card className="bg-primary/10 dark:bg-primary/15 border-primary/30">
           <CardContent className="p-4 flex items-center gap-3">
             <div className="bg-primary p-2 rounded-full">
-              <Briefcase className="h-5 w-5 text-white" />
+              <Briefcase className="h-5 w-5 text-primary-foreground" />
             </div>
             <div>
               <p className="text-xs font-medium text-primary">Cargos</p>
@@ -670,11 +677,11 @@ export default function JobActivitiesPage() {
 
         <Card className="bg-primary/10 dark:bg-primary/15 border-primary/30">
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="bg-indigo-500 p-2 rounded-full">
-              <GraduationCap className="h-5 w-5 text-white" />
+            <div className="bg-primary p-2 rounded-full">
+              <GraduationCap className="h-5 w-5 text-primary-foreground" />
             </div>
             <div>
-              <p className="text-xs font-medium text-indigo-900">Grados</p>
+              <p className="text-xs font-medium text-primary">Grados</p>
               <p className="text-2xl font-bold text-primary">
                 {degreesTotal ?? "-"}
               </p>
@@ -684,11 +691,11 @@ export default function JobActivitiesPage() {
 
         <Card className="bg-success/10 dark:bg-success/15 border-success/30">
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="bg-emerald-500 p-2 rounded-full">
-              <Building2 className="h-5 w-5 text-white" />
+            <div className="bg-success p-2 rounded-full">
+              <Building2 className="h-5 w-5 text-success-foreground" />
             </div>
             <div>
-              <p className="text-xs font-medium text-emerald-900">
+              <p className="text-xs font-medium text-success">
                 Grupos Ocupacionales
               </p>
               <p className="text-2xl font-bold text-success">
@@ -700,11 +707,11 @@ export default function JobActivitiesPage() {
 
         <Card className="bg-warning/10 dark:bg-warning/15 border-warning/30">
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="bg-orange-500 p-2 rounded-full">
-              <ListChecks className="h-5 w-5 text-white" />
+            <div className="bg-warning p-2 rounded-full">
+              <ListChecks className="h-5 w-5 text-warning-foreground" />
             </div>
             <div>
-              <p className="text-xs font-medium text-orange-900">
+              <p className="text-xs font-medium text-warning">
                 Actividades totales
               </p>
               <p className="text-2xl font-bold text-secondary-foreground">

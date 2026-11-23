@@ -62,7 +62,7 @@ export function EmployeeInfoCard({ info }: { info: EmployeeConsolidatedInfo }) {
                 {info.vigenteSourceType === 'CONTRACT' ? 'Contrato' : 'Acción de personal'}
               </Badge>
             ) : (
-              <Badge variant="outline" className="ml-1 bg-red-50 text-red-700 border-red-200">
+              <Badge variant="outline" className="ml-1 bg-destructive/10 text-destructive border-destructive/30">
                 Sin vigente
               </Badge>
             )}

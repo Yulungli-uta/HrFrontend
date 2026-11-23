@@ -20,6 +20,7 @@ const DashboardTH = lazy(() => import("@/pages/DashboardTH"));
 // Páginas principales
 const PeoplePage = lazy(() => import("@/pages/People"));
 const PersonDetail = lazy(() => import("@/pages/PersonDetail"));
+const StyleGuide = lazy(() => import("@/pages/StyleGuide"));
 const EmployeesPage = lazy(() => import("@/pages/Employees"));
 const FacultiesPage = lazy(() => import("@/pages/Faculties"));
 const DepartmentsPage = lazy(() => import("@/pages/Departments"));
@@ -259,6 +260,10 @@ export const routes: RouteConfig[] = [
   {
     path: "/perfil",
     component: PersonDetail
+  },
+  {
+    path: "/estilos",
+    component: StyleGuide
   },
   {
     path: "/preferencias",

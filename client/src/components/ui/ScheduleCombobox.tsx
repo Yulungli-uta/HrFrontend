@@ -158,7 +158,7 @@ export function ScheduleCombobox({
       <PopoverContent className="w-80 p-0" align="start" side="bottom">
         <Command shouldFilter={false}>
           {onlyRotating && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 border-b bg-blue-50 text-blue-700 text-xs">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 border-b bg-primary/10 text-primary text-xs">
               <RotateCw className="h-3 w-3 shrink-0" />
               Solo horarios rotativos
             </div>
@@ -207,7 +207,7 @@ export function ScheduleCombobox({
                     <p className="text-xs text-muted-foreground">
                       {fmtTime(entry)} – {fmtTime(exit)}
                       {overnight && (
-                        <span className="ml-1 text-orange-500 font-medium">+1 día</span>
+                        <span className="ml-1 text-warning font-medium">+1 día</span>
                       )}
                       {s.workingDays && (
                         <span className="ml-2 opacity-60">{s.workingDays}</span>

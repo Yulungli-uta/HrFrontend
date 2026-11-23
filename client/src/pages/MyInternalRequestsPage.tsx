@@ -1,4 +1,5 @@
 // src/pages/MyInternalRequestsPage.tsx
+import { RowAction } from "@/components/ui/row-action";
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
@@ -152,7 +153,7 @@ export default function MyInternalRequestsPage() {
                           <StatusBadge label={STATUS_LABEL[r.status] ?? r.status} tone={statusTone(r.status)} />
                         </td>
                         <td className="p-3 text-right">
-                          <Button variant="outline" size="sm" onClick={() => setSelectedId(r.requestId)}>Ver</Button>
+                          <RowAction action="view" onClick={() => setSelectedId(r.requestId)} />
                         </td>
                       </tr>
                     ))

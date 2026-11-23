@@ -1,3 +1,5 @@
+import { useDirtyCloseGuard } from '@/hooks/useDirtyCloseGuard';
+import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
 import { useState, useEffect } from 'react';
 import { CalendarClock, Loader2, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import {
@@ -155,9 +157,11 @@ export function ShiftReassignDialog({ open, detail, onClose }: Props) {
     (repeatWeekly || !hasConflict || overrideConflict) &&
     !conflictLoading;
 
+  const guard = useDirtyCloseGuard(open, handleClose);
   return (
-    <Dialog open={open} onOpenChange={v => !v && handleClose()}>
-      <DialogContent className="sm:max-w-md" aria-describedby={undefined}>
+    <>
+    <Dialog open={open} onOpenChange={v => !v && guard.requestClose()}>
+      <DialogContent {...guard.dirtyProps} className="sm:max-w-md max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CalendarClock className="h-4 w-4" />
@@ -204,7 +208,7 @@ export function ShiftReassignDialog({ open, detail, onClose }: Props) {
             <Label htmlFor="newLocationId" className="text-xs">Nueva ubicación *</Label>
             <select
               id="newLocationId"
-              className="w-full h-9 border rounded-md px-3 text-sm bg-background mt-1"
+              className="w-full h-9 border rounded-md px-3 text-sm bg-card mt-1"
               value={newLocationId ?? ''}
               onChange={e => setNewLocationId(e.target.value ? Number(e.target.value) : null)}
             >
@@ -222,7 +226,7 @@ export function ShiftReassignDialog({ open, detail, onClose }: Props) {
             <div className="flex items-center justify-between gap-3 rounded-md border p-2">
               <div>
                 <Label className="text-xs">Repetir semanalmente</Label>
-                <p className="text-[0.6875rem] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Aplica la misma reasignación cada semana, buscando el turno equivalente del guardia.
                 </p>
               </div>
@@ -268,7 +272,7 @@ export function ShiftReassignDialog({ open, detail, onClose }: Props) {
           )}
 
           {!recurringResult && conflictChecked && !hasConflict && !conflictLoading && (
-            <div className="flex items-center gap-2 text-xs text-green-600">
+            <div className="flex items-center gap-2 text-xs text-success">
               <CheckCircle2 className="h-3.5 w-3.5" />
               El guardia no tiene otro turno asignado esa fecha.
             </div>
@@ -334,5 +338,7 @@ export function ShiftReassignDialog({ open, detail, onClose }: Props) {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <UnsavedChangesDialog open={guard.confirmOpen} onClose={guard.closeConfirm} onConfirmExit={guard.confirmExit} />
+    </>
   );
 }

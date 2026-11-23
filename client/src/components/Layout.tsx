@@ -8,6 +8,7 @@ import Header from "./Header";
 import { useAuth } from "@/features/auth";
 import { useUserPreferences } from "@/features/preferences";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
+import { useResponsiveTables } from "@/hooks/useResponsiveTables";
 import { DEFAULT_PREFERENCES } from "@/types/userPreferences";
 
 interface LayoutProps {
@@ -15,6 +16,7 @@ interface LayoutProps {
 }
 
 export default function Layout({ children }: LayoutProps) {
+  useResponsiveTables();
   const { isAuthenticated, isLoading, user, employeeDetails, logout } = useAuth();
 
   const { preferences, isReady: preferencesReady, setMenuCollapsed } = useUserPreferences();

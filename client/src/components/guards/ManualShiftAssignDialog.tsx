@@ -1,3 +1,5 @@
+import { useDirtyCloseGuard } from '@/hooks/useDirtyCloseGuard';
+import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
 import { useState, useEffect } from 'react';
 import { UserPlus, Loader2, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
 import {
@@ -201,9 +203,11 @@ export function ManualShiftAssignDialog({ open, onClose, preselectedDate }: Prop
     (repeatWeekly || !hasConflict || overrideConflict) &&
     !conflictLoading;
 
+  const guard = useDirtyCloseGuard(open, handleClose);
   return (
-    <Dialog open={open} onOpenChange={v => !v && handleClose()}>
-      <DialogContent
+    <>
+    <Dialog open={open} onOpenChange={v => !v && guard.requestClose()}>
+      <DialogContent {...guard.dirtyProps}
         className="sm:max-w-xl max-h-[92dvh] p-4 sm:p-6 w-[calc(100%-1rem)] grid-rows-[auto_minmax(0,1fr)_auto]"
         aria-describedby={undefined}
       >
@@ -261,7 +265,7 @@ export function ManualShiftAssignDialog({ open, onClose, preselectedDate }: Prop
             <div className="flex items-center justify-between gap-3 rounded-md border p-2">
               <div>
                 <Label className="text-xs">Repetir semanalmente</Label>
-                <p className="text-[0.6875rem] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Crea el mismo turno cada semana a partir de la fecha de arriba.
                 </p>
               </div>
@@ -309,7 +313,7 @@ export function ManualShiftAssignDialog({ open, onClose, preselectedDate }: Prop
           )}
 
           {!recurringResult && employeeId && conflictChecked && !hasConflict && !conflictLoading && (
-            <div className="flex items-center gap-2 text-xs text-green-600">
+            <div className="flex items-center gap-2 text-xs text-success">
               <CheckCircle2 className="h-3.5 w-3.5" />
               El guardia no tiene turnos asignados ese día.
             </div>
@@ -357,7 +361,7 @@ export function ManualShiftAssignDialog({ open, onClose, preselectedDate }: Prop
             <Label htmlFor="locationId" className="text-xs">Ubicación *</Label>
             <select
               id="locationId"
-              className="w-full h-9 border rounded-md px-3 text-sm bg-background mt-1"
+              className="w-full h-9 border rounded-md px-3 text-sm bg-card mt-1"
               value={locationId ?? ''}
               onChange={e => setLocationId(e.target.value ? Number(e.target.value) : null)}
             >
@@ -375,7 +379,7 @@ export function ManualShiftAssignDialog({ open, onClose, preselectedDate }: Prop
             <Label htmlFor="groupId" className="text-xs">Grupo (opcional)</Label>
             <select
               id="groupId"
-              className="w-full h-9 border rounded-md px-3 text-sm bg-background mt-1"
+              className="w-full h-9 border rounded-md px-3 text-sm bg-card mt-1"
               value={groupId ?? ''}
               onChange={e => setGroupId(e.target.value ? Number(e.target.value) : null)}
             >
@@ -408,13 +412,13 @@ export function ManualShiftAssignDialog({ open, onClose, preselectedDate }: Prop
           )}
 
           {/* Ciclo de vida del estado */}
-          <details className="group rounded-md border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 p-3">
-            <summary className="cursor-pointer select-none text-xs font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-1.5">
+          <details className="group rounded-md border border-primary/30 bg-primary/10 p-3">
+            <summary className="cursor-pointer select-none text-xs font-semibold text-primary flex items-center gap-1.5">
               <Info className="h-3.5 w-3.5 shrink-0" />
               Ciclo de vida del turno asignado
-              <span className="ml-auto text-[0.6875rem] font-normal group-open:hidden">Ver</span>
+              <span className="ml-auto text-xs font-normal group-open:hidden">Ver</span>
             </summary>
-            <ol className="mt-2 text-[0.6875rem] text-blue-700 dark:text-blue-400 space-y-1 pl-1">
+            <ol className="mt-2 text-xs text-primary space-y-1 pl-1">
               <li className="flex items-start gap-1.5">
                 <span className="shrink-0 font-bold">1.</span>
                 <span>Se crea en estado <strong>PLANNED</strong> — el guardia tiene turno asignado.</span>
@@ -449,5 +453,7 @@ export function ManualShiftAssignDialog({ open, onClose, preselectedDate }: Prop
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <UnsavedChangesDialog open={guard.confirmOpen} onClose={guard.closeConfirm} onConfirmExit={guard.confirmExit} />
+    </>
   );
 }

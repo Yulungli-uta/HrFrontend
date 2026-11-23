@@ -19,53 +19,53 @@ function getCategoryConfig(cat: FileCategory) {
     case "pdf":
       return {
         Icon: FileText,
-        bg: "bg-destructive/10 dark:bg-red-950/40",
-        border: "border-destructive/30 dark:border-red-800/50",
+        bg: "bg-destructive/10",
+        border: "border-destructive/30",
         iconColor: "text-destructive dark:text-destructive/80",
         label: "PDF",
-        lineColor: "bg-destructive/20/60 dark:bg-red-800/40",
+        lineColor: "bg-destructive/20/60",
       };
     case "image":
       return {
         Icon: Image,
-        bg: "bg-primary/10 dark:bg-blue-950/40",
-        border: "border-primary/30 dark:border-blue-800/50",
+        bg: "bg-primary/10",
+        border: "border-primary/30",
         iconColor: "text-primary dark:text-primary/70",
         label: "IMG",
-        lineColor: "bg-blue-200/60 dark:bg-primary/80/40",
+        lineColor: "bg-primary/60 dark:bg-primary/80/40",
       };
     case "spreadsheet":
       return {
         Icon: FileSpreadsheet,
-        bg: "bg-success/10 dark:bg-green-950/40",
-        border: "border-success/30 dark:border-green-800/50",
+        bg: "bg-success/10",
+        border: "border-success/30",
         iconColor: "text-success dark:text-success/80",
         label: "XLS",
-        lineColor: "bg-success/20/60 dark:bg-green-800/40",
+        lineColor: "bg-success/20/60",
       };
     case "presentation":
       return {
         Icon: Presentation,
-        bg: "bg-secondary/10 dark:bg-orange-950/40",
-        border: "border-warning/30 dark:border-orange-800/50",
-        iconColor: "text-orange-500 dark:text-orange-400",
+        bg: "bg-secondary/10",
+        border: "border-warning/30",
+        iconColor: "text-warning ",
         label: "PPT",
-        lineColor: "bg-orange-200/60 dark:bg-orange-800/40",
+        lineColor: "bg-warning/60 ",
       };
     case "code":
       return {
         Icon: FileCode,
-        bg: "bg-accent/50 dark:bg-purple-950/40",
-        border: "border-secondary/30 dark:border-purple-800/50",
-        iconColor: "text-purple-500 dark:text-purple-400",
+        bg: "bg-accent/50",
+        border: "border-secondary/30",
+        iconColor: "text-cat-3 ",
         label: "COD",
-        lineColor: "bg-purple-200/60 dark:bg-purple-800/40",
+        lineColor: "bg-cat-3/60 ",
       };
     default:
       return {
         Icon: File,
         bg: "bg-background dark:bg-background/40",
-        border: "border-border dark:border-gray-700/50",
+        border: "border-border",
         iconColor: "text-muted-foreground dark:text-muted-foreground/70",
         label: "DOC",
         lineColor: "bg-muted/60 dark:bg-muted/40",
@@ -112,13 +112,13 @@ export function DocumentThumbnail({ documentId, fileExtension, title, onClick, c
 
           <div className="flex flex-col items-center pb-1">
             <Icon className={`h-4 w-4 ${iconColor}`} />
-            <span className={`text-[0.5rem] font-bold uppercase leading-none mt-0.5 ${iconColor}`}>
+            <span className={`text-xs font-bold uppercase leading-none mt-0.5 ${iconColor}`}>
               {label}
             </span>
           </div>
 
           <div className="absolute top-0 right-0 w-3 h-3">
-            <div className="absolute top-0 right-0 w-0 h-0 border-t-[12px] border-r-[12px] border-t-white dark:border-t-gray-900 border-r-transparent" />
+            <div className="absolute top-0 right-0 w-0 h-0 border-t-[12px] border-r-[12px] border-t-white border-r-transparent" />
           </div>
         </div>
       </TooltipTrigger>

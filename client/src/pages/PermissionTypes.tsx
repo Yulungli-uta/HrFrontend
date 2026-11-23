@@ -619,12 +619,12 @@ export default function PermissionTypesPage() {
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="pb-3">
             <CardTitle className="text-base md:text-lg flex items-center">
-              <Shield className="mr-2 h-5 w-5 text-amber-700 dark:text-warning" />
+              <Shield className="mr-2 h-5 w-5 text-warning dark:text-warning" />
               Requieren Aprobación
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-amber-700 dark:text-warning">{stats.approvalYes}</div>
+            <div className="text-2xl font-bold text-warning dark:text-warning">{stats.approvalYes}</div>
             <p className="text-sm text-muted-foreground">necesitan autorización</p>
           </CardContent>
         </Card>
@@ -817,14 +817,14 @@ export default function PermissionTypesPage() {
                         <div className="text-xs text-muted-foreground mt-1">ID: {type.TypeId ?? '—'}</div>
                       </div>
 
-                      <Badge variant={type.IsActive ? "default" : "outline"} className={type.IsActive ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200" : ""}>
+                      <Badge variant={type.IsActive ? "default" : "outline"} className={type.IsActive ? "bg-success/10 text-success hover:bg-success/30" : ""}>
                         {type.IsActive ? 'Activo' : 'Inactivo'}
                       </Badge>
                     </div>
 
                     <div className="mt-4 flex flex-wrap gap-2">
                       {type.RequiresApproval ? (
-                        <Badge variant="default" className="bg-warning/15 text-amber-800 dark:text-warning hover:bg-warning/25">
+                        <Badge variant="default" className="bg-warning/15 text-warning dark:text-warning hover:bg-warning/25">
                           <CheckCircle className="h-3 w-3 mr-1" />
                           Aprobación
                         </Badge>
@@ -842,7 +842,7 @@ export default function PermissionTypesPage() {
                       )}
 
                       {type.RequiresDocumentation ? (
-                        <Badge variant="default" className="bg-slate-100 text-slate-800 hover:bg-slate-200">
+                        <Badge variant="default" className="bg-muted text-foreground hover:bg-border/80">
                           <Paperclip className="h-3 w-3 mr-1" />
                           Documentación
                         </Badge>
@@ -851,7 +851,7 @@ export default function PermissionTypesPage() {
                       )}
 
                       {type.IsMedical ? (
-                        <Badge variant="default" className="bg-rose-100 text-rose-800 hover:bg-rose-200">
+                        <Badge variant="default" className="bg-destructive/10 text-destructive hover:bg-destructive/30">
                           <HeartPulse className="h-3 w-3 mr-1" />
                           Médico
                         </Badge>
@@ -929,7 +929,7 @@ export default function PermissionTypesPage() {
 
                         <TableCell>
                           {type.RequiresApproval ? (
-                            <Badge variant="default" className="bg-warning/15 text-amber-800 dark:text-warning hover:bg-warning/25">
+                            <Badge variant="default" className="bg-warning/15 text-warning dark:text-warning hover:bg-warning/25">
                               <CheckCircle className="h-3 w-3 mr-1" />
                               Requerida
                             </Badge>
@@ -957,7 +957,7 @@ export default function PermissionTypesPage() {
 
                         <TableCell>
                           {type.RequiresDocumentation ? (
-                            <Badge variant="default" className="bg-slate-100 text-slate-800 hover:bg-slate-200">
+                            <Badge variant="default" className="bg-muted text-foreground hover:bg-border/80">
                               <Paperclip className="h-3 w-3 mr-1" />
                               Sí
                             </Badge>
@@ -971,7 +971,7 @@ export default function PermissionTypesPage() {
 
                         <TableCell>
                           {type.IsMedical ? (
-                            <Badge variant="default" className="bg-rose-100 text-rose-800 hover:bg-rose-200">
+                            <Badge variant="default" className="bg-destructive/10 text-destructive hover:bg-destructive/30">
                               <HeartPulse className="h-3 w-3 mr-1" />
                               Sí
                             </Badge>
@@ -985,7 +985,7 @@ export default function PermissionTypesPage() {
 
                         <TableCell>
                           {type.IsActive ? (
-                            <Badge variant="default" className="bg-emerald-100 text-emerald-800 hover:bg-emerald-200">
+                            <Badge variant="default" className="bg-success/10 text-success hover:bg-success/30">
                               <Power className="h-3 w-3 mr-1" />
                               Activo
                             </Badge>
@@ -1026,7 +1026,7 @@ export default function PermissionTypesPage() {
                         </TableCell>
 
                         <TableCell>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 flex-wrap">
                             <Button
                               variant="outline"
                               size="sm"

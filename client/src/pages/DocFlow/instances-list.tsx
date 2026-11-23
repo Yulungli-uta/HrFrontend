@@ -188,7 +188,7 @@ export default function InstancesList() {
 
   return (
     <div className="flex flex-col gap-6 p-4 md:p-6" data-testid="page-instances">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight" data-testid="text-instances-title">
             Expedientes
@@ -420,7 +420,7 @@ export default function InstancesList() {
                         <Link href={`/DocFlow/expedientes/${instance.instanceId}`}>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Button variant="ghost" size="icon" data-testid={`button-view-instance-${instance.instanceId}`}>
+                              <Button tooltip={false} variant="ghost" size="icon" data-testid={`button-view-instance-${instance.instanceId}`} aria-label="Ver detalle">
                                 <Eye className="h-4 w-4" />
                               </Button>
                             </TooltipTrigger>

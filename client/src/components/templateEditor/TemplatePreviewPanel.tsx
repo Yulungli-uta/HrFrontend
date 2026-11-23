@@ -69,7 +69,7 @@ export function TemplatePreviewPanel({ templateId, htmlContent, employeeId, manu
           <Eye className="h-4 w-4" />
           Vista previa
           {preview?.unresolvedFields && preview.unresolvedFields.length > 0 && (
-            <Badge variant="outline" className="text-amber-600 border-amber-400 text-xs">
+            <Badge variant="outline" className="text-warning border-warning/50 text-xs">
               <AlertTriangle className="h-3 w-3 mr-1" />
               {preview.unresolvedFields.length} sin resolver
             </Badge>
@@ -91,7 +91,7 @@ export function TemplatePreviewPanel({ templateId, htmlContent, employeeId, manu
       ) : (
         <div className="flex-1 flex flex-col">
           {preview.unresolvedFields.length > 0 && (
-            <div className="px-3 py-2 bg-amber-50 border-b text-xs text-amber-700 space-y-0.5">
+            <div className="px-3 py-2 bg-warning/10 border-b text-xs text-warning space-y-0.5">
               <p className="font-medium">Campos sin resolver:</p>
               {preview.unresolvedFields.map(f => (
                 <p key={f.fieldName}>• {f.fieldName}: {f.reason}</p>
@@ -100,7 +100,7 @@ export function TemplatePreviewPanel({ templateId, htmlContent, employeeId, manu
           )}
           <iframe
             ref={iframeRef}
-            className="flex-1 w-full border-0 bg-white"
+            className="flex-1 w-full border-0 bg-background"
             style={{ colorScheme: 'light' }}
             title="preview"
             sandbox="allow-same-origin"

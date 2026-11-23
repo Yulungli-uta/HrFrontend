@@ -34,9 +34,9 @@ import {
 import { VersionHistoryDrawer } from '@/components/templateEditor/VersionHistoryDrawer';
 
 const STATUS_COLORS: Record<DocumentTemplateStatus, string> = {
-  Draft:     'bg-yellow-100 text-yellow-700',
-  Published: 'bg-green-100 text-green-700',
-  Archived:  'bg-gray-100 text-gray-500',
+  Draft:     'bg-warning/10 text-warning',
+  Published: 'bg-success/10 text-success',
+  Archived:  'bg-muted text-muted-foreground',
 };
 
 const STATUS_LABELS: Record<DocumentTemplateStatus, string> = {
@@ -193,7 +193,7 @@ export default function DocumentTemplatesPage() {
 
   return (
     <div className="p-6 space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <FileText className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-bold">Plantillas Documentales</h1>
@@ -283,7 +283,7 @@ export default function DocumentTemplatesPage() {
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Badge className="bg-blue-100 text-blue-700 cursor-default">
+                            <Badge className="bg-primary/10 text-primary cursor-default">
                               En uso ({t.usedBy.length})
                             </Badge>
                           </TooltipTrigger>
@@ -302,7 +302,7 @@ export default function DocumentTemplatesPage() {
                   </TableCell>
                   <TableCell className="text-sm">{t.fieldCount}</TableCell>
                   <TableCell>
-                    <div className="flex justify-end gap-1">
+                    <div className="flex justify-end gap-1 flex-wrap">
                       <Button
                         size="sm"
                         variant="ghost"
@@ -323,7 +323,7 @@ export default function DocumentTemplatesPage() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="text-green-600"
+                          className="text-success"
                           onClick={() => statusMutation.mutate({ id: t.templateId, status: 'Published' })}
                           title="Publicar"
                         >
@@ -343,7 +343,7 @@ export default function DocumentTemplatesPage() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="text-gray-500"
+                            className="text-muted-foreground"
                             onClick={() => statusMutation.mutate({ id: t.templateId, status: 'Archived' })}
                             title="Archivar"
                           >

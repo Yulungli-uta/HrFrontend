@@ -68,7 +68,7 @@ export function BrowserCompatibilityDialog() {
       <DialogContent className="sm:max-w-md" aria-describedby="browser-compat-description">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
+            <AlertTriangle className="h-5 w-5 text-warning shrink-0" />
             Navegador no compatible o desactualizado
           </DialogTitle>
           <DialogDescription id="browser-compat-description">

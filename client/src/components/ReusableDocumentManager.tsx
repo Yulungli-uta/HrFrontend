@@ -1,4 +1,5 @@
 // src/components/ReusableDocumentManager.tsx
+import { RowAction } from "@/components/ui/row-action";
 import React, {
   useCallback,
   useEffect,
@@ -888,16 +889,7 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
               <span>{label}</span>
 
               <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => refresh()}
-                  disabled={loadingList || uploading || !entityReady}
-                  title={!entityReady ? "Guarda primero para habilitar la lista" : "Actualizar lista"}
-                >
-                  {loadingList ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                  <span className="ml-2">Actualizar</span>
-                </Button>
+                <RowAction action="refresh" onClick={() => refresh()} disabled={loadingList || uploading || !entityReady} title={!entityReady ? "Guarda primero para habilitar la lista" : "Actualizar lista"} />
               </div>
             </CardTitle>
           </CardHeader>
@@ -1248,13 +1240,12 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
                             {canShowPreview && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon" 
+                                  <Button tooltip={false} variant="ghost" size="icon" 
                                     onClick={(e) => {
                                       e.preventDefault();
                                       e.stopPropagation();
                                       openPreview(it);
-                                    }}
-                                  >
+                                    }} aria-label="Ver detalle">
                                     <Eye className="h-4 w-4" />
                                   </Button>
                                 </TooltipTrigger>
@@ -1265,7 +1256,7 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
                             {canDownload && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon" onClick={() => download(it)}>
+                                  <Button tooltip={false} variant="ghost" size="icon" onClick={() => download(it)} aria-label="Descargar">
                                     <Download className="h-4 w-4" />
                                   </Button>
                                 </TooltipTrigger>
@@ -1276,7 +1267,7 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
                             {canDelete && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon" onClick={() => removeServer(it)}>
+                                  <Button tooltip={false} variant="ghost" size="icon" onClick={() => removeServer(it)} aria-label="Eliminar">
                                     <Trash2 className="h-4 w-4 text-destructive" />
                                   </Button>
                                 </TooltipTrigger>
@@ -1287,7 +1278,7 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
                             {allowReplace && canUpload && canDelete && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon" onClick={() => startReplace(it)} disabled={uploading}>
+                                  <Button tooltip={false} variant="ghost" size="icon" onClick={() => startReplace(it)} disabled={uploading} aria-label="Reemplazar">
                                     <Replace className="h-4 w-4" />
                                   </Button>
                                 </TooltipTrigger>
@@ -1298,7 +1289,7 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
                             {allowReplace && it.documentTypeId != null && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon" onClick={() => openHistory(it)}>
+                                  <Button tooltip={false} variant="ghost" size="icon" onClick={() => openHistory(it)} aria-label="Ver historial">
                                     <History className="h-4 w-4" />
                                   </Button>
                                 </TooltipTrigger>
@@ -1360,7 +1351,7 @@ export const ReusableDocumentManager = forwardRef<ReusableDocumentManagerHandle,
               )}
             </div>
 
-            <div className="flex justify-end gap-2 pt-4">
+            <div className="flex justify-end gap-2 pt-4 flex-wrap">
               {previewItem && canDownload && (
                 <Button variant="outline" onClick={() => download(previewItem)}>
                   <Download className="h-4 w-4 mr-2" /> Descargar

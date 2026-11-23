@@ -1,4 +1,5 @@
 // src/pages/PersonnelActionTypes.tsx
+import { RowAction } from "@/components/ui/row-action";
 import { useQuery } from "@tanstack/react-query";
 import { Fragment, useEffect, useState, useMemo } from "react";
 
@@ -28,18 +29,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  ChevronDown,
-  ChevronRight,
-  ClipboardList,
-  CornerDownRight,
-  Plus,
-  Search,
-  Eye,
-  Monitor,
-  UserX,
-  Users,
-} from "lucide-react";
+import { ChevronDown, ChevronRight, ClipboardList, CornerDownRight, Plus, Search, Monitor, UserX, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -270,7 +260,7 @@ export default function PersonnelActionTypesPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center justify-between">
               <span className="flex items-center gap-2">
-                <Monitor className="h-4 w-4 text-blue-500" />
+                <Monitor className="h-4 w-4 text-primary" />
                 Crea en AD
               </span>
               <Badge variant="secondary">{stats.adCreate}</Badge>
@@ -285,7 +275,7 @@ export default function PersonnelActionTypesPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center justify-between">
               <span className="flex items-center gap-2">
-                <UserX className="h-4 w-4 text-amber-500" />
+                <UserX className="h-4 w-4 text-warning" />
                 Deshabilita AD
               </span>
               <Badge variant="secondary">{stats.adDisable}</Badge>
@@ -300,7 +290,7 @@ export default function PersonnelActionTypesPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center justify-between">
               <span className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-green-500" />
+                <Users className="h-4 w-4 text-success" />
                 Asigna grupos
               </span>
               <Badge variant="secondary">{stats.adGroups}</Badge>
@@ -323,7 +313,7 @@ export default function PersonnelActionTypesPage() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button type="button" variant="outline" size="sm" onClick={expandAll} disabled={isSearching}>
             Expandir todo
           </Button>
@@ -594,7 +584,7 @@ export default function PersonnelActionTypesPage() {
                         variant={selected.isActive ? "default" : "secondary"}
                         className={
                           selected.isActive
-                            ? "bg-green-100 text-green-800"
+                            ? "bg-success/10 text-success"
                             : "bg-muted text-foreground"
                         }
                       >
@@ -615,7 +605,7 @@ export default function PersonnelActionTypesPage() {
                         variant="outline"
                         className={
                           selected.requiresAdUserCreation
-                            ? "bg-blue-50 text-blue-700 border-blue-200"
+                            ? "bg-primary/10 text-primary border-primary/30"
                             : "text-muted-foreground"
                         }
                       >
@@ -628,7 +618,7 @@ export default function PersonnelActionTypesPage() {
                         variant="outline"
                         className={
                           selected.requiresAdUserDisable
-                            ? "bg-amber-50 text-amber-700 border-amber-200"
+                            ? "bg-warning/10 text-warning border-warning/30"
                             : "text-muted-foreground"
                         }
                       >
@@ -641,7 +631,7 @@ export default function PersonnelActionTypesPage() {
                         variant="outline"
                         className={
                           selected.requiresAdGroupAssignment
-                            ? "bg-green-50 text-green-700 border-green-200"
+                            ? "bg-success/10 text-success border-success/30"
                             : "text-muted-foreground"
                         }
                       >
@@ -741,13 +731,13 @@ function TypeRow({ at, isRoot = false, hasChildren = false, childCount = 0, open
       <TableCell className="hidden lg:table-cell">
         <div className="flex flex-wrap gap-1">
           {at.requiresAdUserCreation && (
-            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">Crea</Badge>
+            <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30">Crea</Badge>
           )}
           {at.requiresAdUserDisable && (
-            <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">Deshabilita</Badge>
+            <Badge variant="outline" className="text-xs bg-warning/10 text-warning border-warning/30">Deshabilita</Badge>
           )}
           {at.requiresAdGroupAssignment && (
-            <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">Grupos</Badge>
+            <Badge variant="outline" className="text-xs bg-success/10 text-success border-success/30">Grupos</Badge>
           )}
           {!at.requiresAdUserCreation && !at.requiresAdUserDisable && !at.requiresAdGroupAssignment && (
             <span className="text-xs text-muted-foreground">—</span>
@@ -758,24 +748,21 @@ function TypeRow({ at, isRoot = false, hasChildren = false, childCount = 0, open
       <TableCell>
         <Badge
           variant={at.isActive ? "default" : "secondary"}
-          className={at.isActive ? "bg-green-100 text-green-800 hover:bg-green-100" : "bg-muted text-foreground hover:bg-muted"}
+          className={at.isActive ? "bg-success/10 text-success hover:bg-success/20" : "bg-muted text-foreground hover:bg-muted"}
         >
           {at.isActive ? "Activo" : "Inactivo"}
         </Badge>
       </TableCell>
 
       <TableCell className="text-right">
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-2 flex-wrap">
           {isRoot && onAddSubtype && (
             <Button variant="outline" size="sm" onClick={onAddSubtype} className="inline-flex items-center gap-1">
               <Plus className="h-3 w-3" />
               <span className="hidden sm:inline">Subtipo</span>
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={onView} className="inline-flex items-center gap-1">
-            <Eye className="h-3 w-3" />
-            <span className="hidden sm:inline">Ver</span>
-          </Button>
+          <RowAction action="view" onClick={onView} />
         </div>
       </TableCell>
     </TableRow>

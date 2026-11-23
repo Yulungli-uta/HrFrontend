@@ -327,7 +327,7 @@ const employeeStats = useMemo(() => {
   if (isLoading) {
     return (
       <div className="flex flex-col gap-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
           <div className="space-y-2">
             <div className="h-8 w-56 bg-muted rounded animate-pulse" />
             <div className="h-4 w-72 bg-muted rounded animate-pulse" />
@@ -365,7 +365,7 @@ const employeeStats = useMemo(() => {
   if (isError) {
     return (
       <div className="flex flex-col h-full justify-center">
-        <Card className="border-destructive/30 dark:border-red-800/40 bg-destructive/10 shadow-md">
+        <Card className="border-destructive/30 bg-destructive/10 shadow-md">
           <CardContent className="pt-6">
             <p className="text-destructive dark:text-destructive/80 font-medium">
               Error al cargar los empleados: {errorMessage || "Error desconocido"}
@@ -378,7 +378,7 @@ const employeeStats = useMemo(() => {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
             Gestión de Empleados
@@ -439,7 +439,7 @@ const employeeStats = useMemo(() => {
         <Card className="bg-primary/10 border-primary/30">
           <CardContent className="p-4 flex items-center gap-3">
             <div className="bg-primary p-2 rounded-full shrink-0">
-              <Users className="h-5 w-5 text-white" />
+              <Users className="h-5 w-5 text-primary-foreground" />
             </div>
             <div className="min-w-0">
               <p className="text-sm font-medium text-primary">Total Empleados</p>
@@ -452,7 +452,7 @@ const employeeStats = useMemo(() => {
         <Card className="bg-success/10 border-success/30">
           <CardContent className="p-4 flex items-center gap-3">
             <div className="bg-success p-2 rounded-full shrink-0">
-              <UserCheck className="h-5 w-5 text-white" />
+              <UserCheck className="h-5 w-5 text-success-foreground" />
             </div>
             <div className="min-w-0">
               <p className="text-sm font-medium text-success">Activos</p>
@@ -465,7 +465,7 @@ const employeeStats = useMemo(() => {
         <Card className="bg-destructive/10 border-destructive/30">
           <CardContent className="p-4 flex items-center gap-3">
             <div className="bg-destructive p-2 rounded-full shrink-0">
-              <UserX className="h-5 w-5 text-white" />
+              <UserX className="h-5 w-5 text-destructive-foreground" />
             </div>
             <div className="min-w-0">
               <p className="text-sm font-medium text-destructive">Inactivos</p>
@@ -503,7 +503,7 @@ const employeeStats = useMemo(() => {
               <Card className="border-warning/30 bg-warning/10">
                 <CardContent className="p-4 flex items-center gap-3">
                   <div className="bg-warning p-2 rounded-full shrink-0">
-                    <UserX className="h-5 w-5 text-white" />
+                    <UserX className="h-5 w-5 text-warning-foreground" />
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-warning">Sin régimen</p>
@@ -518,7 +518,7 @@ const employeeStats = useMemo(() => {
       )}
 
       <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
           <h2 className="text-base font-semibold text-foreground">Lista de Empleados</h2>
           <div className="flex gap-2 shrink-0">
             <Button
@@ -679,7 +679,7 @@ const employeeStats = useMemo(() => {
                         className={
                           employee.employeeIsActive
                             ? "bg-success/15 text-success"
-                            : "bg-destructive/15 text-destructive dark:text-red-300"
+                            : "bg-destructive/15 text-destructive"
                         }
                       >
                         {employee.employeeIsActive ? "Activo" : "Inactivo"}
@@ -742,7 +742,7 @@ const employeeStats = useMemo(() => {
                       className={
                         employee.employeeIsActive
                           ? "bg-success/15 text-success shrink-0 text-xs"
-                          : "bg-destructive/15 text-destructive dark:text-red-300 shrink-0 text-xs"
+                          : "bg-destructive/15 text-destructive shrink-0 text-xs"
                       }
                     >
                       {employee.employeeIsActive ? "Activo" : "Inactivo"}
@@ -847,7 +847,7 @@ const employeeStats = useMemo(() => {
           {selectedEmployee && (
             <>
               <div className="flex items-center gap-4 mb-6">
-                <div className="bg-primary/15 dark:bg-blue-900/30 p-3 rounded-full">
+                <div className="bg-primary/15 p-3 rounded-full">
                   <UserCog className="h-8 w-8 text-primary dark:text-primary/70" />
                 </div>
                 <div>
@@ -874,7 +874,7 @@ const employeeStats = useMemo(() => {
                         className={
                           selectedEmployee.employeeIsActive
                             ? "bg-success/15 text-success"
-                            : "bg-destructive/15 text-destructive dark:text-red-300"
+                            : "bg-destructive/15 text-destructive"
                         }
                       >
                         {selectedEmployee.employeeIsActive

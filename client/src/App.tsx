@@ -12,19 +12,19 @@ import AppRouter from "./routes/AppRouter";
 
 function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-muted/50 p-4">
       <div className="text-center max-w-md">
-        <div className="text-red-500 text-5xl mb-4">⚠️</div>
-        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">
+        <div className="text-destructive text-5xl mb-4">⚠️</div>
+        <h2 className="text-2xl font-bold text-foreground mb-2">
           Ocurrió un error inesperado
         </h2>
-        <p className="text-gray-600 dark:text-gray-400 mb-4">
+        <p className="text-muted-foreground mb-4">
           {(error instanceof Error ? error.message : null) ||
             "Por favor, recarga la página o intenta de nuevo."}
         </p>
         <button
           onClick={resetErrorBoundary}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+          className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"
         >
           Recargar página
         </button>

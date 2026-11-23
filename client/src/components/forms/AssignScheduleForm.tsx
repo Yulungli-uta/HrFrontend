@@ -339,7 +339,7 @@ export default function AssignScheduleForm({
           {/* Catálogo vs. horario especial individual */}
           <div className="space-y-2">
             <Label>Tipo de horario <span className="text-destructive">*</span></Label>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Button type="button" size="sm" variant={mode === "catalog" ? "default" : "outline"}
                 onClick={() => setMode("catalog")} disabled={assignScheduleMutation.isPending}>
                 Horario del catálogo

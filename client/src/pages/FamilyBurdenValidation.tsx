@@ -1,4 +1,5 @@
 // src/pages/FamilyBurdenValidation.tsx
+import { RowAction } from "@/components/ui/row-action";
 import { useEffect, useRef, useState } from 'react';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
@@ -31,6 +32,7 @@ import { REF_TYPE_CATEGORIES } from '@/features/refTypeCategories';
 import { useRefTypesByCategory } from '@/hooks/useRefTypes';
 import { ReusableDocumentManager } from '@/components/ReusableDocumentManager';
 import { FAMILY_MEMBER_DOCUMENT_DIRECTORY_CODE, FAMILY_MEMBER_DOCUMENT_ENTITY_TYPE } from '@/features/constants';
+import { StatCard } from '@/components/ui/stat-card';
 import { useToast } from '@/hooks/use-toast';
 import { parseApiError } from '@/lib/error-handling';
 import { usePaged } from '@/hooks/pagination/usePaged';
@@ -224,7 +226,7 @@ function DetailDialog({
               <XCircle className="h-3.5 w-3.5 mr-1" /> Rechazar
             </Button>
             <Button
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-success hover:bg-success/90"
               onClick={() => onApprove(item.burdenId)}
               disabled={isApproving || isRejecting}
             >
@@ -284,27 +286,17 @@ interface FamilyBurdenStats {
 
 function StatsCards({ stats, isLoading }: { stats: FamilyBurdenStats | null; isLoading: boolean }) {
   const cards = [
-    { label: 'Total registros', value: stats?.totalCount, icon: ListChecks, tone: 'text-foreground' },
-    { label: 'Pendientes', value: stats?.registeredCount, icon: Clock, tone: 'text-amber-600 dark:text-amber-400' },
-    { label: 'Aprobados', value: stats?.approvedCount, icon: CheckCircle2, tone: 'text-green-600 dark:text-green-400' },
-    { label: 'Rechazados', value: stats?.rejectedCount, icon: XCircle, tone: 'text-destructive' },
-    { label: 'Con discapacidad', value: stats?.disabilityCount, icon: Accessibility, tone: 'text-blue-600 dark:text-blue-400' },
-  ];
+    { label: 'Total registros', value: stats?.totalCount, icon: ListChecks, tone: 'primary' },
+    { label: 'Pendientes', value: stats?.registeredCount, icon: Clock, tone: 'warning' },
+    { label: 'Aprobados', value: stats?.approvedCount, icon: CheckCircle2, tone: 'success' },
+    { label: 'Rechazados', value: stats?.rejectedCount, icon: XCircle, tone: 'danger' },
+    { label: 'Con discapacidad', value: stats?.disabilityCount, icon: Accessibility, tone: 'info' },
+  ] as const;
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
       {cards.map((c) => (
-        <Card key={c.label}>
-          <CardContent className="p-3 sm:p-4 flex items-center gap-3">
-            <c.icon className={`h-6 w-6 sm:h-7 sm:w-7 shrink-0 ${c.tone}`} />
-            <div className="min-w-0">
-              <p className="text-lg sm:text-2xl font-bold leading-tight">
-                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : c.value ?? 0}
-              </p>
-              <p className="text-[0.6875rem] sm:text-xs text-muted-foreground truncate">{c.label}</p>
-            </div>
-          </CardContent>
-        </Card>
+        <StatCard key={c.label} tone={c.tone} icon={c.icon} label={c.label} value={c.value ?? 0} loading={isLoading} />
       ))}
     </div>
   );
@@ -533,9 +525,7 @@ export default function FamilyBurdenValidationPage() {
                               Revisar
                             </Button>
                           ) : (
-                            <Button size="sm" variant="ghost" onClick={() => setSelected(item)}>
-                              Ver
-                            </Button>
+                            <RowAction action="view" onClick={() => setSelected(item)} />
                           )}
                         </TableCell>
                       </TableRow>

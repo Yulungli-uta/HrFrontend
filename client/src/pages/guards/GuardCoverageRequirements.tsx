@@ -1,3 +1,6 @@
+import { useDirtyCloseGuard } from '@/hooks/useDirtyCloseGuard';
+import { RowAction } from "@/components/ui/row-action";
+import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
 import { useState } from 'react';
 import { ClipboardList, Plus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -51,6 +54,8 @@ export default function GuardCoverageRequirementsPage() {
     isActive: true,
     notes: '',
   });
+  const guard = useDirtyCloseGuard(open, () => setOpen(false));
+  const setFormTouched: typeof setForm = (v) => { guard.touch(); setForm(v); };
 
   const openCreate = () => {
     setForm({
@@ -111,7 +116,7 @@ export default function GuardCoverageRequirementsPage() {
 
   return (
     <div className="p-6 space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <ClipboardList className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-bold">Requisitos de Cobertura</h1>
@@ -165,7 +170,7 @@ export default function GuardCoverageRequirementsPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="sm" onClick={() => openEdit(r)}>Editar</Button>
+                      <RowAction action="edit" onClick={() => openEdit(r)} />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -188,8 +193,8 @@ export default function GuardCoverageRequirementsPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-md">
+      <Dialog open={open} onOpenChange={v => (v ? setOpen(true) : guard.requestClose())}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{mode === 'create' ? 'Nuevo requisito de cobertura' : 'Editar requisito'}</DialogTitle>
             <DialogDescription>
@@ -204,9 +209,9 @@ export default function GuardCoverageRequirementsPage() {
                 <div>
                   <Label>Ubicación *</Label>
                   <select
-                    className="w-full h-9 border rounded-md px-3 text-sm bg-background mt-1"
+                    className="w-full h-9 border rounded-md px-3 text-sm bg-card mt-1"
                     value={form.locationId || ''}
-                    onChange={e => setForm(f => ({ ...f, locationId: Number(e.target.value) }))}
+                    onChange={e => setFormTouched(f => ({ ...f, locationId: Number(e.target.value) }))}
                   >
                     <option value="">Seleccionar ubicación…</option>
                     {locations.map(l => (
@@ -223,7 +228,7 @@ export default function GuardCoverageRequirementsPage() {
                       value={form.scheduleId}
                       label={form.scheduleLabel || null}
                       placeholder="Buscar horario…"
-                      onSelect={(id, s) => setForm(f => ({
+                      onSelect={(id, s) => setFormTouched(f => ({
                         ...f,
                         scheduleId: id,
                         scheduleLabel: s ? `${s.description}` : '',
@@ -242,9 +247,9 @@ export default function GuardCoverageRequirementsPage() {
             <div>
               <Label>Día de la semana</Label>
               <select
-                className="w-full h-9 border rounded-md px-3 text-sm bg-background mt-1"
+                className="w-full h-9 border rounded-md px-3 text-sm bg-card mt-1"
                 value={form.dayOfWeek}
-                onChange={e => setForm(f => ({ ...f, dayOfWeek: Number(e.target.value) }))}
+                onChange={e => setFormTouched(f => ({ ...f, dayOfWeek: Number(e.target.value) }))}
               >
                 {DAY_NAMES.map((name, i) => <option key={i} value={i}>{name}</option>)}
               </select>
@@ -254,28 +259,28 @@ export default function GuardCoverageRequirementsPage() {
               <Input
                 type="number" min={1}
                 value={form.requiredGuards}
-                onChange={e => setForm(f => ({ ...f, requiredGuards: Number(e.target.value) }))}
+                onChange={e => setFormTouched(f => ({ ...f, requiredGuards: Number(e.target.value) }))}
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Válido desde</Label>
-                <Input type="date" value={form.validFrom} onChange={e => setForm(f => ({ ...f, validFrom: e.target.value }))} />
+                <Input type="date" value={form.validFrom} onChange={e => setFormTouched(f => ({ ...f, validFrom: e.target.value }))} />
               </div>
               <div>
                 <Label>Válido hasta</Label>
-                <Input type="date" min={form.validFrom} value={form.validTo} onChange={e => setForm(f => ({ ...f, validTo: e.target.value }))} />
+                <Input type="date" min={form.validFrom} value={form.validTo} onChange={e => setFormTouched(f => ({ ...f, validTo: e.target.value }))} />
               </div>
             </div>
             {mode === 'edit' && (
               <div className="flex items-center justify-between">
                 <Label>Activo</Label>
-                <Switch checked={form.isActive} onCheckedChange={v => setForm(f => ({ ...f, isActive: v }))} />
+                <Switch checked={form.isActive} onCheckedChange={v => setFormTouched(f => ({ ...f, isActive: v }))} />
               </div>
             )}
             <div>
               <Label>Notas</Label>
-              <Input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
+              <Input value={form.notes} onChange={e => setFormTouched(f => ({ ...f, notes: e.target.value }))} />
             </div>
           </div>
           <DialogFooter>
@@ -289,6 +294,7 @@ export default function GuardCoverageRequirementsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <UnsavedChangesDialog open={guard.confirmOpen} onClose={guard.closeConfirm} onConfirmExit={guard.confirmExit} />
     </div>
   );
 }

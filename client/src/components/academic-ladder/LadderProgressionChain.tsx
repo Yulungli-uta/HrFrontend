@@ -67,7 +67,7 @@ export function LadderProgressionChain({ ladders }: LadderProgressionChainProps)
                         {ladder.name}
                       </Badge>
                       {ladder.minYearsService != null && (
-                        <span className="text-[0.625rem] text-muted-foreground mt-0.5">
+                        <span className="text-xs text-muted-foreground mt-0.5">
                           {ladder.minYearsService} años mín.
                         </span>
                       )}

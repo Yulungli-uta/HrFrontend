@@ -978,7 +978,7 @@ export function CertificationDialog(props: {
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
-                    className="flex-1 border-amber-500 text-amber-700 hover:bg-amber-50"
+                    className="flex-1 border-warning text-warning hover:bg-warning/20"
                     disabled={!rejectTempReason.trim() || isRejectTemporaryPending}
                     onClick={() => {
                       if (!selected.certificationId || !rejectTempReason.trim()) return;
@@ -1034,7 +1034,7 @@ export function CertificationDialog(props: {
               <div className="flex flex-wrap gap-2">
                 {onApprove && (
                   <Button
-                    className="flex-1 bg-green-600 hover:bg-green-700"
+                    className="flex-1 bg-success hover:bg-success/90"
                     disabled={isApprovePending || isRejectPending || isRejectTemporaryPending}
                     onClick={() => {
                       if (!selected.certificationId) return;
@@ -1049,7 +1049,7 @@ export function CertificationDialog(props: {
                 {onRejectTemporary && (
                   <Button
                     variant="outline"
-                    className="flex-1 border-amber-500 text-amber-700 hover:bg-amber-50"
+                    className="flex-1 border-warning text-warning hover:bg-warning/20"
                     disabled={isApprovePending || isRejectPending || isRejectTemporaryPending}
                     onClick={() => setShowRejectTempInput(true)}
                   >
@@ -1075,13 +1075,13 @@ export function CertificationDialog(props: {
 
         {/* Panel de Reenviar — solo en vista y cuando está PENDIENTE_CORRECCION */}
         {isView && selected && isPendingCorrection && onResend && (
-          <div className="mt-6 border rounded-lg p-4 space-y-3 bg-amber-50/50 border-amber-200">
-            <p className="text-sm font-medium text-amber-800">Certificación con corrección pendiente</p>
+          <div className="mt-6 border rounded-lg p-4 space-y-3 bg-warning/50 border-warning/30">
+            <p className="text-sm font-medium text-warning">Certificación con corrección pendiente</p>
             <p className="text-xs text-muted-foreground">
               El financiero solicitó correcciones. Una vez corregida la información, reenvía para revisión.
             </p>
             <Button
-              className="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white"
+              className="w-full sm:w-auto bg-warning hover:bg-warning/90 text-warning-foreground"
               disabled={isResendPending}
               onClick={() => {
                 if (!selected.certificationId) return;

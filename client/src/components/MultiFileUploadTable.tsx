@@ -584,7 +584,7 @@ export const ReusableMultipleFileUpload: React.FC<ReusableMultipleFileUploadProp
                         {canPreview(fileWithMeta) && (
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Button
+                              <Button tooltip={false}
                                 type="button"
                                 variant="ghost"
                                 size="icon"
@@ -606,7 +606,7 @@ export const ReusableMultipleFileUpload: React.FC<ReusableMultipleFileUploadProp
                         {enableDownload && (
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Button
+                              <Button tooltip={false}
                                 type="button"
                                 variant="ghost"
                                 size="icon"
@@ -627,7 +627,7 @@ export const ReusableMultipleFileUpload: React.FC<ReusableMultipleFileUploadProp
                         {/* Botón de eliminar */}
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Button
+                            <Button tooltip={false}
                               type="button"
                               variant="ghost"
                               size="icon"

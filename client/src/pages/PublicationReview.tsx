@@ -39,8 +39,8 @@ type TabValue = "SIN_REVISION" | "APROBADA" | "RECHAZADA" | "ALL";
 type NotesAction = "reject" | "reopen";
 
 const STATUS_BADGE: Record<PublicationApprovalStatus, { label: string; className: string }> = {
-  SIN_REVISION: { label: "En revisión", className: "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300" },
-  APROBADA: { label: "Aprobada", className: "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300" },
+  SIN_REVISION: { label: "En revisión", className: "border-warning/40 bg-warning/10 text-warning " },
+  APROBADA: { label: "Aprobada", className: "border-success/40 bg-success/10 text-success " },
   RECHAZADA: { label: "Rechazada", className: "border-muted-foreground/30 bg-muted text-muted-foreground" },
 };
 
@@ -154,7 +154,7 @@ export default function PublicationReviewPage() {
   const openNotes = (action: NotesAction, ids: number[]) => { setNotes(""); setNotesDialog({ action, ids }); };
 
   const rowActions = (item: PublicationReviewItem) => (
-    <div className="flex items-center justify-end gap-1">
+    <div className="flex items-center justify-end gap-1 flex-wrap">
       <ActionIconButton icon={Eye} label="Ver detalle" onClick={() => setDetail(item)} />
       {item.approvalStatus === "SIN_REVISION" && (
         <>
@@ -213,7 +213,7 @@ export default function PublicationReviewPage() {
               />
             </div>
             <select
-              className="h-10 rounded-md border bg-background px-2 text-sm"
+              className="h-10 rounded-md border bg-card px-2 text-sm"
               value={providerCode}
               onChange={(e) => { setProviderCode(e.target.value); setPage(1); }}
               aria-label="Proveedor"

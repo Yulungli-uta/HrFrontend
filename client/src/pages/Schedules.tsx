@@ -272,7 +272,7 @@ export default function SchedulesPage() {
           <Card className="bg-primary/10 border-primary/30">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="bg-primary p-2 rounded-full">
-                <Users className="h-5 w-5 text-white" />
+                <Users className="h-5 w-5 text-primary-foreground" />
               </div>
               <div>
                 <p className="text-sm font-medium text-primary">Total</p>
@@ -284,7 +284,7 @@ export default function SchedulesPage() {
           <Card className="bg-success/10 border-success/30">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="bg-success p-2 rounded-full">
-                <Clock className="h-5 w-5 text-white" />
+                <Clock className="h-5 w-5 text-success-foreground" />
               </div>
               <div>
                 <p className="text-sm font-medium text-success">Fijos</p>
@@ -295,8 +295,8 @@ export default function SchedulesPage() {
 
           <Card className="bg-secondary/20 border-secondary/30">
             <CardContent className="p-4 flex items-center gap-3">
-              <div className="bg-purple-500 p-2 rounded-full">
-                <Settings className="h-5 w-5 text-white" />
+              <div className="bg-cat-3 p-2 rounded-full">
+                <Settings className="h-5 w-5 text-background" />
               </div>
               <div>
                 <p className="text-sm font-medium text-foreground">Rotativos</p>
@@ -307,8 +307,8 @@ export default function SchedulesPage() {
 
           <Card className="bg-warning/10 border-warning/30">
             <CardContent className="p-4 flex items-center gap-3">
-              <div className="bg-orange-500 p-2 rounded-full">
-                <Calendar className="h-5 w-5 text-white" />
+              <div className="bg-warning p-2 rounded-full">
+                <Calendar className="h-5 w-5 text-warning-foreground" />
               </div>
               <div>
                 <p className="text-sm font-medium text-warning">Con Almuerzo</p>
@@ -444,7 +444,7 @@ export default function SchedulesPage() {
                               )}
                             </TableCell>
                             <TableCell className="text-right">
-                              <div className="flex justify-end gap-1">
+                              <div className="flex justify-end gap-1 flex-wrap">
                                 <ActionIconButton
                                   icon={Edit}
                                   label="Editar horario"
@@ -489,7 +489,7 @@ export default function SchedulesPage() {
                         </div>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label="Más acciones">
                               <MoreVertical className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>

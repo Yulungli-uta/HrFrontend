@@ -2,12 +2,6 @@ import * as React from "react";
 import type { LucideIcon } from "lucide-react";
 
 import { Button, type ButtonProps } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 type ActionTone = "default" | "primary" | "success" | "warning" | "destructive" | "muted";
@@ -50,7 +44,8 @@ export const ActionIconButton = React.forwardRef<
     },
     ref
   ) => {
-    const button = (
+    // El tooltip lo muestra Button (un solo lugar para todos los botones de icono).
+    return (
       <Button
         ref={ref}
         type={type}
@@ -58,26 +53,16 @@ export const ActionIconButton = React.forwardRef<
         size={touch ? "iconTouch" : "iconSm"}
         className={cn("shrink-0", toneClassName[tone], className)}
         aria-label={props["aria-label"] ?? label}
-        title={label}
+        tooltip={disabled ? false : label}
+        tooltipSide={tooltipSide}
         disabled={disabled}
         {...props}
       >
         <Icon className={cn("h-4 w-4", iconClassName)} />
         <span className="sr-only">{label}</span>
       </Button>
-    );
-
-    if (disabled) return button;
-
-    return (
-      <TooltipProvider delayDuration={150}>
-        <Tooltip>
-          <TooltipTrigger asChild>{button}</TooltipTrigger>
-          <TooltipContent side={tooltipSide}>{label}</TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    );
+    )
   }
-);
+)
 
 ActionIconButton.displayName = "ActionIconButton";

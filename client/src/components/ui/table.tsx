@@ -2,13 +2,20 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
-const Table = React.forwardRef<
-  HTMLTableElement,
-  React.HTMLAttributes<HTMLTableElement>
->(({ className, ...props }, ref) => (
+export interface TableProps extends React.HTMLAttributes<HTMLTableElement> {
+  /**
+   * Comportamiento en pantallas pequeñas (< 640 px). Por defecto cada fila se muestra como una tarjeta con la etiqueta de
+   * cada columna (ver hooks/useResponsiveTables y index.css), sin cortar datos ni botones. Con "scroll" se conserva la
+   * tabla ancha con desplazamiento horizontal (matrices, reportes). También se conserva si declara un ancho mínimo (`min-w-…`).
+   */
+  mobile?: "stack" | "scroll"
+}
+
+const Table = React.forwardRef<HTMLTableElement, TableProps>(({ className, mobile, ...props }, ref) => (
   <div className="relative w-full overflow-auto">
     <table
       ref={ref}
+      data-mobile={mobile}
       className={cn("w-full caption-bottom text-sm", className)}
       {...props}
     />

@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'wouter';
+import type { LucideIcon } from 'lucide-react';
+import { StatCard as SharedStatCard } from '@/components/ui/stat-card';
 import { useGuardDashboard } from '@/hooks/guards/useGuards';
 
 function StatCard({ icon: Icon, label, value, color, href, alert }: {
@@ -16,28 +18,17 @@ function StatCard({ icon: Icon, label, value, color, href, alert }: {
   href?: string;
   alert?: boolean;
 }) {
-  const content = (
-    <Card className={`hover:shadow-md transition-shadow ${href ? 'cursor-pointer' : ''} ${alert && (value ?? 0) > 0 ? 'border-orange-300' : ''}`}>
-      <CardContent className="p-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground">{label}</p>
-            <p className={`text-3xl font-bold mt-1 ${color}`}>
-              {value ?? '—'}
-            </p>
-          </div>
-          <div className={`p-3 rounded-full bg-current/10 ${color}`}>
-            <Icon className="h-6 w-6" />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
+  const tone = alert && (value ?? 0) > 0 ? 'warning'
+    : color.includes('success') ? 'success'
+    : color.includes('warning') ? 'warning'
+    : color.includes('destructive') ? 'danger'
+    : 'primary';
+  const content = <SharedStatCard tone={tone} icon={Icon as LucideIcon} label={label} value={value ?? '—'} className={href ? 'cursor-pointer hover:shadow-md transition-shadow' : ''} />;
   return href ? <Link href={href}>{content}</Link> : content;
 }
 
 export default function GuardDashboardPage() {
-  const { data: dashResp, isLoading, refetch } = useGuardDashboard();
+  const { data: dashResp, isLoading, isFetching, refetch } = useGuardDashboard();
 
   const dash = dashResp?.status === 'success' ? dashResp.data : null;
   const todayShifts = dash?.todayShifts ?? [];
@@ -46,7 +37,7 @@ export default function GuardDashboardPage() {
   return (
     <div className="p-6 space-y-6">
       {/* Encabezado */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <Shield className="h-7 w-7 text-primary" />
           <div>
@@ -54,8 +45,8 @@ export default function GuardDashboardPage() {
             <p className="text-sm text-muted-foreground">Resumen operativo del día</p>
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+        <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
           Actualizar
         </Button>
       </div>
@@ -66,14 +57,14 @@ export default function GuardDashboardPage() {
           icon={Calendar}
           label="Turnos hoy"
           value={dash?.todayShiftsCount}
-          color="text-blue-600"
+          color="text-primary"
           href="/guards/planning"
         />
         <StatCard
           icon={AlertTriangle}
           label="Sin cobertura"
           value={dash?.uncoveredPostsCount}
-          color="text-red-600"
+          color="text-destructive"
           href="/guards/planning"
           alert
         />
@@ -81,7 +72,7 @@ export default function GuardDashboardPage() {
           icon={AlertCircle}
           label="Reemplazos pendientes"
           value={dash?.pendingReplacementsCount}
-          color="text-orange-500"
+          color="text-warning"
           href="/guards/changes"
           alert
         />
@@ -89,14 +80,14 @@ export default function GuardDashboardPage() {
           icon={Ban}
           label="En permiso/vacación"
           value={dash?.employeesWithPermissionOrVacationCount}
-          color="text-yellow-600"
+          color="text-warning"
           href="/guards/availability"
         />
         <StatCard
           icon={Clock}
           label="Alertas doble turno"
           value={dash?.doubleShiftAlertsCount}
-          color="text-purple-600"
+          color="text-cat-3"
           alert
         />
       </div>
@@ -107,7 +98,7 @@ export default function GuardDashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-blue-500" />
+              <Calendar className="h-4 w-4 text-primary" />
               Turnos de hoy ({todayShifts.length})
             </CardTitle>
           </CardHeader>
@@ -122,7 +113,7 @@ export default function GuardDashboardPage() {
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="text-xs text-muted-foreground">{s.locationName}</span>
                       {(s.hasPermissionConflict || s.hasVacationConflict) && (
-                        <Badge variant="destructive" className="text-[0.625rem] px-1 py-0">Conflicto</Badge>
+                        <Badge variant="destructive" className="text-xs px-1 py-0">Conflicto</Badge>
                       )}
                     </div>
                   </li>
@@ -144,14 +135,14 @@ export default function GuardDashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-orange-500" />
+              <AlertCircle className="h-4 w-4 text-warning" />
               Reemplazos pendientes ({pendingReplacements.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
             {pendingReplacements.length === 0 ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
-                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                <CheckCircle2 className="h-4 w-4 text-success" />
                 No hay cambios pendientes
               </div>
             ) : (
@@ -197,7 +188,7 @@ export default function GuardDashboardPage() {
                   <span>{icon}</span>
                   <div className="text-left">
                     <p className="text-xs font-semibold">{label}</p>
-                    <p className="text-[0.625rem] text-muted-foreground">Paso {step}</p>
+                    <p className="text-xs text-muted-foreground">Paso {step}</p>
                   </div>
                 </Button>
               </Link>

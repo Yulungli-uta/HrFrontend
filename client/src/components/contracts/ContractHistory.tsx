@@ -74,7 +74,7 @@ export function ContractHistory(props: { contractId: number; enabled: boolean })
                         ? "border-primary bg-primary"
                         : isLast
                         ? "border-muted-foreground"
-                        : "border-blue-500"
+                        : "border-primary"
                     }`}
                   />
 

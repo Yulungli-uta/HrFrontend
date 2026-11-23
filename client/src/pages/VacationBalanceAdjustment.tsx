@@ -318,7 +318,7 @@ function IndividualAdjustmentTab() {
           <Label className="mb-2 block">
             {mode === "Set" ? "Valor final del saldo" : "Cantidad a incrementar (+) o descontar (-)"}
           </Label>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <FormField
               control={form.control as any}
               name="days"
@@ -584,8 +584,8 @@ function BulkAdjustmentTab() {
           </div>
 
           {negativeCount > 0 && (
-            <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950 dark:border-amber-800 p-3 text-sm">
-              <AlertTriangle className="h-4 w-4 mt-0.5 text-amber-600 dark:text-amber-400 shrink-0" />
+            <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm">
+              <AlertTriangle className="h-4 w-4 mt-0.5 text-warning shrink-0" />
               <span>
                 {negativeCount} de {parsedRows.length} filas tienen saldo negativo en el archivo. Si "Permitir saldos negativos" está desmarcado, esas filas serán rechazadas.
               </span>

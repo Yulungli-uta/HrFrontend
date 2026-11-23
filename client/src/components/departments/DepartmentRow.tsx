@@ -93,7 +93,7 @@ export const DepartmentRow = ({
 
         {/* Acciones */}
         <TableCell className="py-3 text-right">
-          <div className="flex items-center justify-end gap-1">
+          <div className="flex items-center justify-end gap-1 flex-wrap">
             {/* Toggle de estado — activa/desactiva sin abrir modal */}
             <ActionIconButton
               icon={Power}

@@ -18,7 +18,7 @@ function NotificationIcon({ type }: { type: DocflowNotification["type"] }) {
     );
   }
   return (
-    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-warning/15 dark:bg-yellow-900/30">
+    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-warning/15">
       <AlertTriangle className="h-4 w-4 text-warning dark:text-warning/80" />
     </div>
   );
@@ -64,7 +64,7 @@ export function NotificationBell() {
           <Bell className="h-4 w-4" />
           {unreadCount > 0 && (
             <span
-              className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[0.625rem] font-medium text-destructive-foreground"
+              className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-xs font-medium text-destructive-foreground"
               data-testid="badge-notification-count"
             >
               {unreadCount > 99 ? "99+" : unreadCount}

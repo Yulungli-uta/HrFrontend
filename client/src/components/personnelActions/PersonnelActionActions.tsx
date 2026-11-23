@@ -201,7 +201,7 @@ export function PersonnelActionActions({
         {s === 'FIRMADO_CARGADO' && !reachesVigente && (
           <Button
             size="sm"
-            className="bg-green-600 hover:bg-green-700 text-white"
+            className="bg-success hover:bg-success/90 text-success-foreground"
             onClick={() => openDialog('finalize')}
             disabled={isBusy}
           >
@@ -212,7 +212,7 @@ export function PersonnelActionActions({
         {/* VIGENTE: indicador informativo, sin acción — el estado ya representa
             que esta acción es la actual del empleado. */}
         {s === 'VIGENTE' && (
-          <span className="inline-flex items-center gap-1.5 rounded-md bg-green-50 px-2.5 py-1.5 text-sm font-medium text-green-700 border border-green-200">
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-success/10 px-2.5 py-1.5 text-sm font-medium text-success border border-success/30">
             <CheckCircle2 className="h-4 w-4" /> Vigente
           </span>
         )}
@@ -290,7 +290,7 @@ export function PersonnelActionActions({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-green-600" /> Finalizar Acción
+              <CheckCircle2 className="h-5 w-5 text-success" /> Finalizar Acción
             </AlertDialogTitle>
             <AlertDialogDescription>
               El trámite se cerrará definitivamente. La acción pasará a <b>FINALIZADO</b>.
@@ -309,7 +309,7 @@ export function PersonnelActionActions({
           <AlertDialogFooter>
             <AlertDialogCancel onClick={closeDialog}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-success hover:bg-success/90"
               onClick={confirmFinalize}
             >
               Finalizar
@@ -342,7 +342,7 @@ export function PersonnelActionActions({
           <AlertDialogFooter>
             <AlertDialogCancel onClick={closeDialog}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive hover:bg-destructive/90 text-white"
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
               onClick={confirmCancel}
               disabled={!cancelReason.trim()}
             >

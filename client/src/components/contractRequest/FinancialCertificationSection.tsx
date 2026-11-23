@@ -162,7 +162,7 @@ export function FinancialCertificationSection({ requestId, readOnly = false, cre
 
   return (
     <Card>
-      <CardHeader className="pb-3 flex flex-row items-center justify-between">
+      <CardHeader className="pb-3 flex flex-row items-center justify-between flex-wrap gap-2">
         <CardTitle className="text-base flex items-center gap-2">
           <Banknote className="h-4 w-4" />
           Certificación Financiera

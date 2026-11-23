@@ -42,13 +42,13 @@ type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline';
 function statusBadge(statusId: number): { variant: BadgeVariant; className: string } {
   switch (statusId) {
     case StudentProvisioningStatus.Requested:
-      return { variant: 'outline', className: 'text-slate-600 border-slate-400' };
+      return { variant: 'outline', className: 'text-muted-foreground border-muted-foreground/50' };
     case StudentProvisioningStatus.CreatedInAd:
-      return { variant: 'secondary', className: 'bg-blue-100 text-blue-800 border-blue-300' };
+      return { variant: 'secondary', className: 'bg-primary/10 text-primary border-primary/40' };
     case StudentProvisioningStatus.AdFailed:
       return { variant: 'destructive', className: '' };
     case StudentProvisioningStatus.Disabled:
-      return { variant: 'outline', className: 'text-amber-700 border-amber-400' };
+      return { variant: 'outline', className: 'text-warning border-warning/50' };
     default:
       return { variant: 'outline', className: '' };
   }
@@ -120,7 +120,7 @@ export default function StudentProvisioningPage() {
 
   return (
     <div className="container mx-auto max-w-6xl p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Aprovisionamiento de Estudiantes</h1>
           <p className="text-sm text-muted-foreground mt-1">

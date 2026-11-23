@@ -94,7 +94,7 @@ export function ActivityForm({
         </Label>
       </div>
 
-      <div className="flex justify-end gap-2 pt-2 border-t">
+      <div className="flex justify-end gap-2 pt-2 border-t flex-wrap">
         <Button
           type="button"
           variant="outline"
@@ -104,7 +104,7 @@ export function ActivityForm({
           <XCircle className="h-4 w-4 mr-1" />
           Cancelar
         </Button>
-        <Button type="submit" disabled={saving || !description.trim()}>
+        <Button type="submit" disabled={saving || !description.trim()} aria-label="Actualizar">
           {saving ? (
             <>
               <RefreshCw className="h-4 w-4 mr-1 animate-spin" />

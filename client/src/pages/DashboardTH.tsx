@@ -59,9 +59,9 @@ const fmtDate = (s?: string | null) =>
   s ? formatDate(s, "es-EC", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
 
 const COLORS = [
-  "#818cf8", "#34d399", "#fbbf24", "#f87171",
-  "#a78bfa", "#60a5fa", "#f472b6", "#2dd4bf",
-  "#fb923c", "#a3e635",
+  "var(--cat-1)", "var(--cat-2)", "var(--cat-3)", "var(--cat-4)",
+  "var(--cat-5)", "var(--cat-6)", "var(--cat-7)", "var(--cat-8)",
+  "var(--chart-2)", "var(--chart-4)",
 ];
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -99,11 +99,11 @@ const CustomPieTooltip = ({ active, payload }: any) => {
         <div className="mt-1 space-y-0.5">
           <div className="flex justify-between gap-4">
             <span className="text-muted-foreground">Unidades:</span>
-            <span className="font-bold text-indigo-600 dark:text-indigo-400 tabular-nums">{value}</span>
+            <span className="font-bold text-primary tabular-nums">{value}</span>
           </div>
           <div className="flex justify-between gap-4">
             <span className="text-muted-foreground">Porcentaje:</span>
-            <span className="font-bold text-indigo-600 dark:text-indigo-400 tabular-nums">{(pct * 100).toFixed(1)}%</span>
+            <span className="font-bold text-primary tabular-nums">{(pct * 100).toFixed(1)}%</span>
           </div>
         </div>
       </div>
@@ -123,7 +123,7 @@ const CustomChartTooltip = ({ active, payload, label, unitSingular, unitPlural }
         <p className="font-semibold text-foreground truncate" title={titleName}>{titleName}</p>
         <div className="mt-1 flex items-center justify-between gap-4">
           <span className="text-muted-foreground">Total:</span>
-          <span className="font-bold text-indigo-600 dark:text-indigo-400 tabular-nums">
+          <span className="font-bold text-primary tabular-nums">
             {value} {unit}
           </span>
         </div>
@@ -164,7 +164,7 @@ const TickXAngled = ({ x, y, payload }: any) => {
 function ChartLoader({ height = 220, label = "Cargando información..." }: { height?: number; label?: string }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2" style={{ height }}>
-      <Loader2 className="h-8 w-8 animate-spin text-indigo-600 dark:text-indigo-400" />
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
       <span className="text-xs text-muted-foreground animate-pulse">{label}</span>
     </div>
   );
@@ -622,9 +622,9 @@ export default function DashboardTH() {
       {/* ── KPIs globales — siempre visibles ── */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {([
-          { label: "Empleados activos",   value: kpiActive,   loading: loadingStats || fetchingStats, icon: UserCheck,   iconCls: "text-indigo-500 dark:text-indigo-400",   bgCls: "bg-indigo-500/10 dark:bg-indigo-500/20" },
+          { label: "Empleados activos",   value: kpiActive,   loading: loadingStats || fetchingStats, icon: UserCheck,   iconCls: "text-primary ",   bgCls: "bg-primary/10 " },
           { label: "Empleados inactivos", value: kpiInactive, loading: loadingStats || fetchingStats, icon: Users,       iconCls: "text-muted-foreground",                  bgCls: "bg-muted" },
-          { label: "Autoridades activas", value: kpiAuth,     loading: loadingAuth || fetchingAuth,   icon: ShieldCheck, iconCls: "text-emerald-500 dark:text-emerald-400", bgCls: "bg-emerald-500/10 dark:bg-emerald-500/20" },
+          { label: "Autoridades activas", value: kpiAuth,     loading: loadingAuth || fetchingAuth,   icon: ShieldCheck, iconCls: "text-success ", bgCls: "bg-success/10 " },
         ] as const).map(({ label, value, loading, icon: Icon, iconCls, bgCls }) => (
           <Card key={label} className="hover:shadow-md transition-shadow">
             <CardContent className="p-4 sm:p-5">
@@ -647,7 +647,7 @@ export default function DashboardTH() {
 
       {/* ── Pestañas principales ── */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
-        <TabsList className="grid w-full grid-cols-2 h-10">
+        <TabsList className="max-sm:flex max-sm:justify-start grid w-full grid-cols-2 h-10">
           <TabsTrigger value="personal" className="text-xs sm:text-sm gap-1.5">
             <Users className="h-3.5 w-3.5 shrink-0" />
             <span className="hidden sm:inline">Gestión de Personal</span>
@@ -787,7 +787,7 @@ export default function DashboardTH() {
                       : `${activeFiltered.length.toLocaleString()} empleados${selectedEmpType !== "Todos" ? ` · ${empTypeLabel(selectedEmpType)}` : ""}`}
                   </CardDescription>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 flex-wrap">
                   <Button variant="outline" size="sm" onClick={() => setDeptExpandOpen(true)} disabled={byDepartmentAll.length === 0}>
                     <Maximize2 className="h-3.5 w-3.5 mr-1.5" /> Expandir
                   </Button>
@@ -880,7 +880,7 @@ export default function DashboardTH() {
                           </UITooltipTrigger>
                           <UITooltipContent side="top" className="max-w-[280px]">
                             <p className="font-semibold text-xs text-foreground">{d.name}</p>
-                            <p className="text-[0.6875rem] text-muted-foreground mt-0.5">{d.empleados} {d.empleados === 1 ? "empleado" : "empleados"}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{d.empleados} {d.empleados === 1 ? "empleado" : "empleados"}</p>
                           </UITooltipContent>
                         </UITooltip>
                       ))}
@@ -1151,30 +1151,30 @@ export default function DashboardTH() {
                 label: `Contratos ${CURRENT_YEAR}`,
                 value: contractsTotalCount,
                 icon: ScrollText,
-                iconCls: "text-indigo-500 dark:text-indigo-400",
-                bgCls: "bg-indigo-500/10 dark:bg-indigo-500/20",
+                iconCls: "text-primary ",
+                bgCls: "bg-primary/10 ",
               },
               {
                 label: "Próximos a vencer (30 días)",
                 value: contractsExpiring.length,
                 icon: AlertTriangle,
-                iconCls: contractsExpiring.length > 0 ? "text-amber-500 dark:text-amber-400" : "text-muted-foreground",
-                bgCls: contractsExpiring.length > 0 ? "bg-amber-500/10 dark:bg-amber-500/20" : "bg-muted",
+                iconCls: contractsExpiring.length > 0 ? "text-warning " : "text-muted-foreground",
+                bgCls: contractsExpiring.length > 0 ? "bg-warning/10 " : "bg-muted",
               },
               {
                 label: "Contratos vencidos",
                 value: contractsExpiredCount,
                 icon: Calendar,
-                iconCls: contractsExpiredCount > 0 ? "text-rose-500 dark:text-rose-400" : "text-muted-foreground",
-                bgCls: contractsExpiredCount > 0 ? "bg-rose-500/10 dark:bg-rose-500/20" : "bg-muted",
+                iconCls: contractsExpiredCount > 0 ? "text-destructive " : "text-muted-foreground",
+                bgCls: contractsExpiredCount > 0 ? "bg-destructive/10 " : "bg-muted",
                 loadingOverride: null,
               },
               {
                 label: "Acciones de personal",
                 value: kpiActions,
                 icon: FileText,
-                iconCls: "text-amber-500 dark:text-amber-400",
-                bgCls: "bg-amber-500/10 dark:bg-amber-500/20",
+                iconCls: "text-warning ",
+                bgCls: "bg-warning/10 ",
                 loadingOverride: loadingActions || fetchingActions,
               },
             ]).map(({ label, value, icon: Icon, iconCls, bgCls, loadingOverride }) => (
@@ -1278,7 +1278,7 @@ export default function DashboardTH() {
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
                 <div>
                   <CardTitle className="text-base flex items-center gap-2">
-                    <AlertTriangle className="h-4 w-4 text-amber-500" /> Contratos próximos a vencer
+                    <AlertTriangle className="h-4 w-4 text-warning" /> Contratos próximos a vencer
                   </CardTitle>
                   <CardDescription>
                     {contractsExpiringFiltered.length} contratos · ordenados por urgencia
@@ -1352,8 +1352,8 @@ export default function DashboardTH() {
                         <TableCell className="text-xs text-muted-foreground">{fmtDate(c.endDate)}</TableCell>
                         <TableCell className="text-right">
                           <span className={`text-xs font-semibold tabular-nums ${
-                            c.days <= 7 ? "text-rose-500 dark:text-rose-400"
-                            : c.days <= 15 ? "text-amber-500 dark:text-amber-400"
+                            c.days <= 7 ? "text-destructive "
+                            : c.days <= 15 ? "text-warning "
                             : "text-muted-foreground"}`}>
                             {c.days} {c.days === 1 ? "día" : "días"}
                           </span>
@@ -1378,7 +1378,7 @@ export default function DashboardTH() {
                   </CardTitle>
                   <CardDescription>Distribución por tipo y estado</CardDescription>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 flex-wrap">
                   <Button size="sm" variant={actionView === "tipo" ? "default" : "ghost"}
                     className="h-7 text-xs px-3" onClick={() => setActionView("tipo")}>
                     Por tipo
@@ -1387,7 +1387,7 @@ export default function DashboardTH() {
                     className="h-7 text-xs px-3" onClick={() => setActionView("estado")}>
                     Por estado
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => navigate("/personnel-actions")}>
+                  <Button variant="ghost" size="sm" onClick={() => navigate("/personnel-actions")} aria-label="Siguiente">
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>

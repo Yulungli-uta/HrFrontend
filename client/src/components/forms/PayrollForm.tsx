@@ -204,7 +204,7 @@ export default function PayrollForm({ onSuccess, onCancel, onDirtyChange }: Payr
                   <Card 
                     key={employeeId} 
                     className={`p-4 cursor-pointer transition-colors ${
-                      isSelected ? 'ring-2 ring-blue-500 bg-primary/10' : 'hover:bg-background'
+                      isSelected ? 'ring-2 ring-primary bg-primary/10' : 'hover:bg-background'
                     }`}
                     onClick={() => handleEmployeeSelection(employeeId, !isSelected)}
                   >

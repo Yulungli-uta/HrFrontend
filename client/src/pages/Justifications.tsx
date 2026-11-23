@@ -1,4 +1,5 @@
 // src/pages/Justifications.tsx
+import { RowAction } from "@/components/ui/row-action";
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -612,7 +613,7 @@ function Row({
         <div className="flex items-center gap-1">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="sm" onClick={() => onView(j)}>
+              <Button tooltip={false} variant="ghost" size="sm" onClick={() => onView(j)} aria-label="Ver detalle">
                 <Eye className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
@@ -622,7 +623,7 @@ function Row({
           {j.status === "PENDING" && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" onClick={() => onDelete(j)}>
+                <Button tooltip={false} variant="ghost" size="sm" onClick={() => onDelete(j)} aria-label="Eliminar">
                   <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
               </TooltipTrigger>
@@ -699,10 +700,7 @@ function CardItem({
         <p className="text-sm text-foreground line-clamp-2">{j.reason}</p>
 
         <div className="mt-4 flex items-center justify-end gap-2">
-          <Button variant="outline" size="sm" className="gap-2" onClick={() => onView(j)}>
-            <Eye className="h-4 w-4" />
-            Ver
-          </Button>
+          <RowAction action="view" onClick={() => onView(j)} />
 
           {j.status === "PENDING" && (
             <Button variant="outline" size="sm" className="gap-2" onClick={() => onDelete(j)}>

@@ -654,7 +654,7 @@ export default function ContractRequestPage() {
                 <FileText className="h-4 w-4 text-primary mr-2" />
                 Total
               </span>
-              <Badge variant="secondary" className="bg-blue-200 text-primary text-xs">
+              <Badge variant="secondary" className="bg-primary/20 text-primary text-xs">
                 {contracts.length}
               </Badge>
             </CardTitle>
@@ -934,7 +934,7 @@ export default function ContractRequestPage() {
                             </div>
                             <div className="bg-background rounded-lg p-3 border">
                               <p className="text-xs text-muted-foreground mb-1">Contratados</p>
-                              <p className="text-2xl font-bold text-green-600">{qSlots.data.totalPeopleHired ?? selected.totalPeopleHired}</p>
+                              <p className="text-2xl font-bold text-success">{qSlots.data.totalPeopleHired ?? selected.totalPeopleHired}</p>
                             </div>
                             <div className="bg-background rounded-lg p-3 border">
                               <p className="text-xs text-muted-foreground mb-1">Cupos libres</p>
@@ -949,7 +949,7 @@ export default function ContractRequestPage() {
                             </div>
                             <div className="bg-background rounded-lg p-3 border">
                               <p className="text-xs text-muted-foreground mb-1">Contratados</p>
-                              <p className="text-2xl font-bold text-green-600">{selected.totalPeopleHired}</p>
+                              <p className="text-2xl font-bold text-success">{selected.totalPeopleHired}</p>
                             </div>
                             <div className="bg-background rounded-lg p-3 border">
                               <p className="text-xs text-muted-foreground mb-1">Cupos libres</p>
@@ -976,7 +976,7 @@ export default function ContractRequestPage() {
 
               {/* Botones Guardar / Cancelar edición */}
               {isEditing && (
-                <div className="flex gap-2 justify-end">
+                <div className="flex gap-2 justify-end flex-wrap">
                   <Button variant="outline" onClick={cancelEditing} disabled={updateMut.isPending}>
                     Cancelar
                   </Button>

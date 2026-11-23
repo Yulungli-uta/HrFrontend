@@ -1,4 +1,5 @@
 // src/pages/ApprovalsMedicalPermissions.tsx
+import { RowAction } from "@/components/ui/row-action";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -36,21 +37,7 @@ import {
   handleApiError,
 } from "@/lib/api";
 import { useEmployeeLookupMap } from "@/hooks/useEmployeeLookupMap";
-import {
-  Search,
-  User,
-  Clock,
-  CheckCircle,
-  XCircle,
-  HeartPulse,
-  Stethoscope,
-  CalendarRange,
-  RefreshCw,
-  Paperclip,
-  Eye,
-  Download,
-  FileText,
-} from "lucide-react";
+import { Search, User, Clock, CheckCircle, XCircle, HeartPulse, Stethoscope, CalendarRange, Paperclip, Download, FileText } from "lucide-react";
 import { parseApiError } from "@/lib/error-handling";
 import {
   Dialog,
@@ -539,15 +526,12 @@ export default function ApprovalsMedicalPermissionsPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Badge className="bg-rose-100 text-rose-800 hover:bg-rose-100">
+          <Badge className="bg-destructive/10 text-destructive hover:bg-destructive/20">
             <Stethoscope className="h-3 w-3 mr-1" />
             Médico
           </Badge>
 
-          <Button variant="outline" onClick={() => refetch()}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refrescar
-          </Button>
+          <RowAction action="refresh" onClick={() => refetch()} />
         </div>
       </div>
 
@@ -561,7 +545,7 @@ export default function ApprovalsMedicalPermissionsPage() {
             <CardDescription>Total: {permsThisYear.length}</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {[
                 { key: "Pending", label: "Pendiente" },
                 { key: "Approved", label: "Aprobado" },
@@ -913,7 +897,7 @@ export default function ApprovalsMedicalPermissionsPage() {
 
           <div className="space-y-4">
             {selectedPermissionType?.requiresDocumentation === false && (
-              <div className="rounded-md border border-warning/30 bg-amber-50 p-3 text-sm text-warning">
+              <div className="rounded-md border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
                 Este tipo no está configurado para requerir documentación, pero igual pueden existir archivos adjuntos.
               </div>
             )}
@@ -947,16 +931,7 @@ export default function ApprovalsMedicalPermissionsPage() {
                     </div>
 
                     <div className="flex flex-wrap gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          handleOpenDocument(doc.fileGuid, doc.originalFileName || doc.fileName, false)
-                        }
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        Ver
-                      </Button>
+                      <RowAction action="view" onClick={() => handleOpenDocument(doc.fileGuid, doc.originalFileName || doc.fileName, false) } />
 
                       <Button
                         size="sm"

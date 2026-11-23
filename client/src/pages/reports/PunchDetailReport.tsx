@@ -90,12 +90,12 @@ export default function PunchDetailReport() {
           </div>
         </div>
       )}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-3">
           <Fingerprint className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-bold">Reporte detallado de picadas</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button
             variant="outline" size="sm" disabled={isDownloading || !!rangeError}
             onClick={() => download({ type: 'punch-detail', format: 'pdf', filter })}
@@ -144,7 +144,7 @@ export default function PunchDetailReport() {
             <div>
               <Label className="text-xs">Régimen laboral</Label>
               <select
-                className="w-full h-9 border rounded-md px-3 text-sm bg-background mt-1"
+                className="w-full h-9 border rounded-md px-3 text-sm bg-card mt-1"
                 value={laborRegimeId}
                 onChange={e => updateFilter(() => setLaborRegimeId(e.target.value === '' ? '' : Number(e.target.value)))}
               >
@@ -158,7 +158,7 @@ export default function PunchDetailReport() {
             <div>
               <Label className="text-xs">Atraso</Label>
               <select
-                className="w-full h-9 border rounded-md px-3 text-sm bg-background mt-1"
+                className="w-full h-9 border rounded-md px-3 text-sm bg-card mt-1"
                 value={lateness}
                 onChange={e => updateFilter(() => setLateness(e.target.value as '' | 'yes' | 'no'))}
               >
@@ -200,7 +200,7 @@ export default function PunchDetailReport() {
           ) : !rangeError && (
             <>
               <div className="rounded-md border overflow-x-auto" aria-busy={loading}>
-                <Table>
+                <Table mobile="scroll">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Cédula</TableHead>

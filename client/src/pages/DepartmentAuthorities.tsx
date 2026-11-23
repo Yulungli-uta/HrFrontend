@@ -40,6 +40,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { StatCard } from "@/components/ui/stat-card";
+import type { LucideIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -135,23 +137,8 @@ interface StatsCardProps {
 }
 
 function StatsCard({ label, value, icon: Icon, colorClass }: StatsCardProps) {
-  return (
-    <Card className="bg-card border-border">
-      <CardContent className="pt-4 pb-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
-              {label}
-            </p>
-            <p className={`text-2xl font-bold mt-0.5 ${colorClass}`}>{value}</p>
-          </div>
-          <div className={`rounded-full p-2.5 ${colorClass.replace("text-", "bg-").replace("primary", "primary/10").replace("success", "success/10").replace("warning", "warning/10").replace("destructive", "destructive/10")}`}>
-            <Icon className={`h-5 w-5 ${colorClass}`} />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
+  const tone = colorClass.includes("success") ? "success" : colorClass.includes("warning") ? "warning" : colorClass.includes("destructive") ? "danger" : "primary";
+  return <StatCard tone={tone} label={label} value={value} icon={Icon as LucideIcon} />;
 }
 
 // =============================================================================
@@ -209,8 +196,7 @@ function DenominationLookup() {
             onClick={handleSearch}
             disabled={loading || !idCard.trim()}
             size="sm"
-            className="bg-primary hover:bg-primary/90 text-primary-foreground shrink-0"
-          >
+            className="bg-primary hover:bg-primary/90 text-primary-foreground shrink-0" aria-label="Actualizar">
             {loading ? (
               <RefreshCw className="h-4 w-4 animate-spin" />
             ) : (
@@ -799,12 +785,11 @@ export default function DepartmentAuthoritiesPage() {
                           <div className="flex items-center justify-end gap-1">
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Button
+                                <Button tooltip={false}
                                   variant="ghost"
                                   size="icon"
                                   className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
-                                  onClick={() => handleOpenEdit(item)}
-                                >
+                                  onClick={() => handleOpenEdit(item)} aria-label="Editar">
                                   <Pencil className="h-3.5 w-3.5" />
                                 </Button>
                               </TooltipTrigger>
@@ -813,7 +798,7 @@ export default function DepartmentAuthoritiesPage() {
 
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Button
+                                <Button tooltip={false}
                                   variant="ghost"
                                   size="icon"
                                   className={`h-8 w-8 ${
@@ -827,8 +812,7 @@ export default function DepartmentAuthoritiesPage() {
                                       isActive: !item.isActive,
                                     })
                                   }
-                                  disabled={statusMutation.isPending}
-                                >
+                                  disabled={statusMutation.isPending} aria-label="Cambiar estado">
                                   {item.isActive ? (
                                     <ToggleRight className="h-3.5 w-3.5" />
                                   ) : (
@@ -843,12 +827,11 @@ export default function DepartmentAuthoritiesPage() {
 
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Button
+                                <Button tooltip={false}
                                   variant="ghost"
                                   size="icon"
                                   className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
-                                  onClick={() => setDeleteId(item.authorityId)}
-                                >
+                                  onClick={() => setDeleteId(item.authorityId)} aria-label="Eliminar">
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </Button>
                               </TooltipTrigger>

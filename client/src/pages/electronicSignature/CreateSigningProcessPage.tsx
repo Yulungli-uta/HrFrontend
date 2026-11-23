@@ -371,8 +371,7 @@ export default function CreateSigningProcessPage() {
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7 text-destructive hover:text-destructive"
-                          onClick={() => removeSigner(s.tempId)}
-                        >
+                          onClick={() => removeSigner(s.tempId)} aria-label="Eliminar">
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </TableCell>

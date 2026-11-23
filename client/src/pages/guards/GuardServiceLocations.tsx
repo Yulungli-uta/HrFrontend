@@ -82,7 +82,7 @@ function LocationTreeNode({
   return (
     <div>
       <div
-        className="flex items-center gap-2 py-2 px-3 rounded-md hover:bg-muted/50 group"
+        className="flex flex-wrap items-center gap-2 py-2 px-3 rounded-md hover:bg-muted/50 group"
         style={{ marginLeft: depth * 16 }}
       >
         <button
@@ -95,18 +95,17 @@ function LocationTreeNode({
           }
         </button>
         <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-        <span className="text-sm font-medium flex-1">{node.locationName}</span>
+        <span className="text-sm font-medium flex-1 min-w-0 break-words">{node.locationName}</span>
         {node.locationCode && (
           <span className="text-xs text-muted-foreground font-mono">{node.locationCode}</span>
         )}
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-1 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
           {node.isAssignable && <Badge variant="outline" className="text-xs">Asignable</Badge>}
           {node.requiresCoverage && <Badge variant="secondary" className="text-xs">Cobertura</Badge>}
           {!node.isActive && <Badge variant="destructive" className="text-xs">Inactivo</Badge>}
           <Button
             variant="ghost" size="icon" className="h-6 w-6 ml-1"
-            onClick={e => { e.stopPropagation(); onEdit(node); }}
-          >
+            onClick={e => { e.stopPropagation(); onEdit(node); }} aria-label="Editar">
             <Pencil className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -124,7 +123,7 @@ function LocationTreeNode({
 
 export default function GuardServiceLocationsPage() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('active');
-  const { data: resp, isLoading, refetch } = useGuardLocationsTree(statusFilter !== 'active');
+  const { data: resp, isLoading, isFetching, refetch } = useGuardLocationsTree(statusFilter !== 'active');
   const { create, update } = useGuardLocationMutations();
 
   const [open, setOpen] = useState(false);
@@ -216,14 +215,14 @@ export default function GuardServiceLocationsPage() {
 
   return (
     <div className="p-6 space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between gap-2">
         <div className="flex items-center gap-3">
           <MapPin className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-bold">Ubicaciones de Servicio</h1>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
             Actualizar
           </Button>
           <Button size="sm" onClick={openCreate}>
@@ -277,7 +276,7 @@ export default function GuardServiceLocationsPage() {
 
       {/* Dialog crear/editar */}
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{mode === 'create' ? 'Nueva ubicación' : 'Editar ubicación'}</DialogTitle>
             <DialogDescription>

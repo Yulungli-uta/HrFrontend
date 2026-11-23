@@ -110,7 +110,7 @@ export function FamilyMembersTab({
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
         <CardTitle className="flex items-center text-lg">
           <Users className="mr-2 h-5 w-5" />
           Cargas Familiares

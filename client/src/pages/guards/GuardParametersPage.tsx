@@ -1,4 +1,7 @@
 // src/pages/guards/GuardParametersPage.tsx
+import { useDirtyCloseGuard } from '@/hooks/useDirtyCloseGuard';
+import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
+import { guardCodeLabel } from '@/lib/guardLabels';
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { TiposReferenciaAPI } from '@/lib/api';
@@ -64,6 +67,8 @@ export default function GuardParametersPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [deleteItem, setDeleteItem] = useState<RefItem | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const guard = useDirtyCloseGuard(isFormOpen, closeForm);
+  const setFormTouched: typeof setForm = (v) => { guard.touch(); setForm(v); };
   // Categorías disponibles en el formulario — siempre del dominio activo
   const [formCategories, setFormCategories] = useState<string[]>([]);
 
@@ -190,10 +195,16 @@ export default function GuardParametersPage() {
   function getTabItems(domainKey: string) {
     const domain = GUARD_PARAMETER_DOMAINS.find(d => d.key === domainKey);
     if (!domain) return [];
-    const q = search.toLowerCase();
+    const q = search.trim().toLowerCase();
     return allItems
       .filter(x => domain.categories.includes(x.category))
-      .filter(x => !q || x.name.toLowerCase().includes(q) || x.category.toLowerCase().includes(q));
+      .filter(x => !q
+        // Busca también por lo que el usuario ve: nombre en español, categoría mostrada y descripción.
+        || x.name.toLowerCase().includes(q)
+        || guardCodeLabel(x.name).toLowerCase().includes(q)
+        || x.category.toLowerCase().includes(q)
+        || prettyCategory(x.category).toLowerCase().includes(q)
+        || (x.description ?? '').toLowerCase().includes(q));
   }
 
   const activeDomain = GUARD_PARAMETER_DOMAINS.find(d => d.key === activeTab)!;
@@ -201,7 +212,7 @@ export default function GuardParametersPage() {
   return (
     <div className="container mx-auto p-4 sm:p-6 space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <ShieldCheck className="h-6 w-6 text-primary" />
@@ -211,7 +222,7 @@ export default function GuardParametersPage() {
             Administre los catálogos y valores de referencia del módulo de Guardias Rotativos.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button variant="outline" size="icon" onClick={() => refetch()} title="Refrescar">
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
@@ -235,7 +246,7 @@ export default function GuardParametersPage() {
         {GUARD_PARAMETER_DOMAINS.map(d => (
           <TabsContent key={d.key} value={d.key} className="space-y-4 mt-4">
             {/* Barra de búsqueda + botón agregar */}
-            <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center justify-between">
+            <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center justify-between">
               <Input
                 placeholder="Buscar por nombre o categoría..."
                 className="sm:max-w-xs text-sm"
@@ -278,7 +289,7 @@ export default function GuardParametersPage() {
                       {getTabItems(d.key).map(item => (
                         <TableRow key={item.typeId}>
                           <TableCell className="font-mono text-xs text-muted-foreground">{item.typeId}</TableCell>
-                          <TableCell className="font-medium text-sm">{item.name}</TableCell>
+                          <TableCell className="font-medium text-sm">{guardCodeLabel(item.name)}{guardCodeLabel(item.name) !== item.name && <span className="ml-2 font-mono text-xs text-muted-foreground">{item.name}</span>}</TableCell>
                           <TableCell>
                             <Badge variant="outline" className="text-xs">{prettyCategory(item.category)}</Badge>
                           </TableCell>
@@ -291,15 +302,14 @@ export default function GuardParametersPage() {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <div className="flex gap-1">
-                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(item)}>
+                            <div className="flex gap-1 flex-wrap">
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(item)} aria-label="Editar">
                                 <Edit className="h-3.5 w-3.5" />
                               </Button>
                               <Button
                                 variant="ghost" size="icon"
                                 className="h-7 w-7 text-destructive hover:text-destructive"
-                                onClick={() => setDeleteItem(item)}
-                              >
+                                onClick={() => setDeleteItem(item)} aria-label="Eliminar">
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
                             </div>
@@ -314,22 +324,21 @@ export default function GuardParametersPage() {
                 <div className="md:hidden space-y-3">
                   {getTabItems(d.key).map(item => (
                     <div key={item.typeId} className="rounded-lg border bg-card p-4 space-y-2">
-                      <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start justify-between gap-2 flex-wrap">
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate">{item.name}</p>
+                          <p className="font-medium text-sm truncate">{guardCodeLabel(item.name)}</p>
                           {item.description && (
                             <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{item.description}</p>
                           )}
                         </div>
                         <div className="flex gap-1 shrink-0">
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(item)}>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(item)} aria-label="Editar">
                             <Edit className="h-3.5 w-3.5" />
                           </Button>
                           <Button
                             variant="ghost" size="icon"
                             className="h-7 w-7 text-destructive"
-                            onClick={() => setDeleteItem(item)}
-                          >
+                            onClick={() => setDeleteItem(item)} aria-label="Eliminar">
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>
@@ -350,8 +359,8 @@ export default function GuardParametersPage() {
       </Tabs>
 
       {/* Diálogo crear / editar — categorías del dominio activo únicamente */}
-      <Dialog open={isFormOpen} onOpenChange={open => { if (!open) closeForm(); }}>
-        <DialogContent className="max-w-md">
+      <Dialog open={isFormOpen} onOpenChange={open => { if (!open) guard.requestClose(); }}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editItem ? 'Editar Tipo' : 'Nuevo Tipo de Referencia'}</DialogTitle>
             <DialogDescription>
@@ -372,7 +381,7 @@ export default function GuardParametersPage() {
                 // En creación: selector restringido al dominio del tab activo
                 <Select
                   value={form.category}
-                  onValueChange={v => setForm(f => ({ ...f, category: v }))}
+                  onValueChange={v => setFormTouched(f => ({ ...f, category: v }))}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccionar categoría" />
@@ -389,7 +398,7 @@ export default function GuardParametersPage() {
               <Label>Nombre *</Label>
               <Input
                 value={form.name}
-                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                onChange={e => setFormTouched(f => ({ ...f, name: e.target.value }))}
                 placeholder="Nombre del tipo"
               />
             </div>
@@ -398,14 +407,14 @@ export default function GuardParametersPage() {
               <Textarea
                 rows={2}
                 value={form.description}
-                onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                onChange={e => setFormTouched(f => ({ ...f, description: e.target.value }))}
                 placeholder="Descripción opcional"
               />
             </div>
             <div className="flex items-center gap-2">
               <Switch
                 checked={form.isActive}
-                onCheckedChange={v => setForm(f => ({ ...f, isActive: v }))}
+                onCheckedChange={v => setFormTouched(f => ({ ...f, isActive: v }))}
               />
               <Label>Activo</Label>
             </div>
@@ -422,7 +431,7 @@ export default function GuardParametersPage() {
 
       {/* Diálogo confirmar eliminación */}
       <Dialog open={!!deleteItem} onOpenChange={open => { if (!open) setDeleteItem(null); }}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Confirmar eliminación</DialogTitle>
             <DialogDescription>
@@ -442,6 +451,7 @@ export default function GuardParametersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <UnsavedChangesDialog open={guard.confirmOpen} onClose={guard.closeConfirm} onConfirmExit={guard.confirmExit} />
     </div>
   );
 }

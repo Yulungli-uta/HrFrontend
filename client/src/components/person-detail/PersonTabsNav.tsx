@@ -95,7 +95,7 @@ export function PersonTabsNav({ tabs, active, counts, personId }: PersonTabsNavP
                 <Icon className="h-4 w-4 shrink-0" />
                 <span>{label}</span>
                 {count ? (
-                  <span className="rounded-full bg-primary/15 px-1.5 text-[11px] font-semibold leading-5 text-primary" aria-label={`${count} registros`}>
+                  <span className="rounded-full bg-primary/15 px-1.5 text-xs font-semibold leading-5 text-primary" aria-label={`${count} registros`}>
                     {count}
                   </span>
                 ) : null}

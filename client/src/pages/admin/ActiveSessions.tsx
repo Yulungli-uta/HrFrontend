@@ -158,7 +158,7 @@ export default function ActiveSessionsPage() {
   return (
     <div className="container mx-auto p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
             <Shield className="h-8 w-8" />
@@ -240,12 +240,12 @@ export default function ActiveSessionsPage() {
                         <TableCell className="text-sm whitespace-nowrap">{fmtDate(s.expiresAt)}</TableCell>
                         <TableCell>
                           {s.isWebSocketConnected
-                            ? <span title="WebSocket conectado"><Wifi className="h-4 w-4 text-green-500" /></span>
+                            ? <span title="WebSocket conectado"><Wifi className="h-4 w-4 text-success" /></span>
                             : <span title="Sin WebSocket"><WifiOff className="h-4 w-4 text-muted-foreground" /></span>
                           }
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
+                          <div className="flex justify-end gap-1 flex-wrap">
                             <Button
                               variant="outline" size="sm"
                               title="Ver la actividad de acceso de este usuario"
@@ -257,7 +257,7 @@ export default function ActiveSessionsPage() {
                               variant="outline" size="sm"
                               title="Revocar esta sesión"
                               onClick={() => setRevokeSessionId(s.sessionId)}
-                              className="text-amber-600 hover:text-amber-700"
+                              className="text-warning hover:text-warning"
                             >
                               <LogOut className="h-4 w-4" />
                             </Button>
@@ -329,12 +329,12 @@ export default function ActiveSessionsPage() {
                           {c.secretRotatedAt ? fmtDate(c.secretRotatedAt) : <span className="italic text-muted-foreground">Nunca</span>}
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
+                          <div className="flex justify-end gap-1 flex-wrap">
                             <Button
                               variant="outline" size="sm"
                               title={c.isActive ? "Suspender cliente" : "Activar cliente"}
                               onClick={() => setToggleClientId(c)}
-                              className={c.isActive ? "text-amber-600 hover:text-amber-700" : "text-green-600 hover:text-green-700"}
+                              className={c.isActive ? "text-warning hover:text-warning" : "text-success hover:text-success"}
                             >
                               <Power className="h-4 w-4" />
                             </Button>
@@ -342,7 +342,7 @@ export default function ActiveSessionsPage() {
                               variant="outline" size="sm"
                               title="Rotar secret"
                               onClick={() => setRotateClientId(c.id)}
-                              className="text-blue-600 hover:text-blue-700"
+                              className="text-primary hover:text-primary"
                             >
                               <Key className="h-4 w-4" />
                             </Button>
@@ -372,7 +372,7 @@ export default function ActiveSessionsPage() {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => revokeSessionId && revokeMutation.mutate(revokeSessionId)}
-              className="bg-amber-600 hover:bg-amber-700"
+              className="bg-warning hover:bg-warning/90"
             >
               {revokeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Revocar sesión"}
             </AlertDialogAction>
@@ -394,7 +394,7 @@ export default function ActiveSessionsPage() {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => revokeAllUserId && revokeAllMutation.mutate(revokeAllUserId.userId)}
-              className="bg-destructive hover:bg-red-700"
+              className="bg-destructive hover:bg-destructive/90"
             >
               {revokeAllMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Revocar todas"}
             </AlertDialogAction>
@@ -420,7 +420,7 @@ export default function ActiveSessionsPage() {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => toggleClientId && toggleMutation.mutate(toggleClientId.id)}
-              className={toggleClientId?.isActive ? "bg-amber-600 hover:bg-amber-700" : "bg-green-600 hover:bg-green-700"}
+              className={toggleClientId?.isActive ? "bg-warning hover:bg-warning/90" : "bg-success hover:bg-success/90"}
             >
               {toggleMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : (toggleClientId?.isActive ? "Suspender" : "Activar")}
             </AlertDialogAction>
@@ -442,7 +442,7 @@ export default function ActiveSessionsPage() {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => rotateClientId && rotateMutation.mutate(rotateClientId)}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-primary hover:bg-primary/90"
             >
               {rotateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Rotar secret"}
             </AlertDialogAction>
@@ -455,7 +455,7 @@ export default function ActiveSessionsPage() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Key className="h-5 w-5 text-blue-500" />
+              <Key className="h-5 w-5 text-primary" />
               Nuevo ClientSecret generado
             </DialogTitle>
             <DialogDescription>
@@ -470,8 +470,8 @@ export default function ActiveSessionsPage() {
               <code className="flex-1 text-sm font-mono break-all select-all">
                 {rotateResult?.newClientSecret}
               </code>
-              <Button variant="ghost" size="sm" onClick={copySecret} className="shrink-0">
-                {secretCopied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+              <Button variant="ghost" size="sm" onClick={copySecret} className="shrink-0" aria-label="Confirmar">
+                {secretCopied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
             <p className="text-xs text-muted-foreground mt-2">

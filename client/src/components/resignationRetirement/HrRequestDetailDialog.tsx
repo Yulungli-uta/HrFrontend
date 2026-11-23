@@ -100,7 +100,7 @@ export function HrRequestDetailDialog({ open, onOpenChange, requestId, onChanged
                     <Button
                       size="sm"
                       onClick={() => setReviewAction('approve')}
-                      className="bg-green-600 hover:bg-green-700"
+                      className="bg-success hover:bg-success/90"
                       disabled={request.supportingDocuments.length === 0}
                       title={
                         request.supportingDocuments.length === 0

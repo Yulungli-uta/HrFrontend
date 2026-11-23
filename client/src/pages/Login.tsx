@@ -12,8 +12,10 @@ import {
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-// import logoPath from "../../public/LogoUTA.png";
-import logoPath from "@/assets/LogoUTA.png";
+import logoPath from "@/assets/brand/uta-horizontal-azul.svg";
+import logoPathDark from "@/assets/brand/uta-horizontal-blanco.svg";
+import { useQuery } from "@tanstack/react-query";
+import { BrandingAPI } from "@/lib/api";
 import {
   Tabs,
   TabsContent,
@@ -31,6 +33,19 @@ import { consumeReturnTo, readReloginNotice, RELOGIN_NOTICE_EVENT, type ReloginN
 const DEBUG = import.meta.env.VITE_DEBUG_AUTH === "true";
 
 export default function LoginPage() {
+  // Logos del login configurables (Parámetros del Sistema > Identidad visual); sin configuración se usa el escudo oficial.
+  const { data: publicBranding } = useQuery({
+    queryKey: ["branding-public"],
+    queryFn: async () => {
+      const res = await BrandingAPI.getPublic();
+      return res.status === "success" ? res.data : null;
+    },
+    staleTime: 60_000,
+    retry: false,
+  });
+  const lightLogo = publicBranding?.loginLogoLight ? BrandingAPI.publicLogoUrl("LOGIN_LOGO_LIGHT", publicBranding.loginLogoLight) : logoPath;
+  const darkLogo = publicBranding?.loginLogoDark ? BrandingAPI.publicLogoUrl("LOGIN_LOGO_DARK", publicBranding.loginLogoDark) : logoPathDark;
+
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [localLoading, setLocalLoading] = useState(false);
@@ -152,18 +167,15 @@ export default function LoginPage() {
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="space-y-4 text-center">
           <div className="flex justify-center">
-            <img
-              src={logoPath}
-              alt="Universidad Técnica de Ambato"
-              className="h-16 w-auto"
-            />
+            <img src={lightLogo} alt="Universidad Técnica de Ambato" className="h-28 w-auto max-w-full object-contain dark:hidden" />
+            <img src={darkLogo} alt="Universidad Técnica de Ambato" className="hidden h-28 w-auto max-w-full object-contain dark:block" />
           </div>
           <div>
             <CardTitle className="text-2xl font-bold text-primary">
-              Universidad Técnica de Ambato
-            </CardTitle>
-            <CardDescription className="text-muted-foreground dark:text-muted-foreground">
               Sistema de Gestión de Talento Humano
+            </CardTitle>
+            <CardDescription className="text-muted-foreground">
+              Acceso con su cuenta institucional
             </CardDescription>
           </div>
         </CardHeader>
@@ -189,7 +201,7 @@ export default function LoginPage() {
           </div> */}
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="max-sm:flex max-sm:justify-start grid w-full grid-cols-2">
               <TabsTrigger value="local">Local</TabsTrigger>
               <TabsTrigger value="office365">Office 365</TabsTrigger>
             </TabsList>

@@ -64,7 +64,7 @@ export function StatsDashboard({ data }: StatsDashboardProps) {
     blue:   "border-l-primary bg-primary/10",
     green:  "border-l-success bg-success/10",
     orange: "border-l-uta-orange bg-uta-orange/10",
-    purple: "border-l-purple-500 bg-purple-500/10",
+    purple: "border-l-cat-3 bg-cat-3/10",
     red:    "border-l-destructive bg-destructive/10",
     yellow: "border-l-warning bg-warning/10",
   };
@@ -73,7 +73,7 @@ export function StatsDashboard({ data }: StatsDashboardProps) {
     blue:   "text-primary",
     green:  "text-success",
     orange: "text-uta-orange",
-    purple: "text-purple-500",
+    purple: "text-cat-3",
     red:    "text-destructive",
     yellow: "text-warning",
   };

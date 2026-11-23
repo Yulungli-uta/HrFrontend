@@ -295,25 +295,25 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
                       </p>
                     )}
                     {dinardap.status === 'found' && (
-                      <p className="text-xs text-emerald-600 flex items-center gap-1">
+                      <p className="text-xs text-success flex items-center gap-1">
                         <ShieldCheck className="h-3 w-3" />
                         Verificado con Registro Civil
                       </p>
                     )}
                     {dinardap.status === 'not-found' && (
-                      <p className="text-xs text-amber-600 flex items-center gap-1">
+                      <p className="text-xs text-warning flex items-center gap-1">
                         <AlertTriangle className="h-3 w-3" />
                         Datos no encontrados en Registro Civil para esta cédula — completa manualmente.
                       </p>
                     )}
                     {dinardap.status === 'unavailable' && (
-                      <p className="text-xs text-amber-600 flex items-center gap-1">
+                      <p className="text-xs text-warning flex items-center gap-1">
                         <ServerCrash className="h-3 w-3" />
                         Servicio DINARDAP en mantenimiento o no disponible — completa manualmente.
                       </p>
                     )}
                     {dinardap.status === 'forbidden' && (
-                      <p className="text-xs text-amber-600 flex items-center gap-1">
+                      <p className="text-xs text-warning flex items-center gap-1">
                         <AlertTriangle className="h-3 w-3" />
                         No tiene permiso para consultar Registro Civil — solicite el rol R_DINARDAP_REGISTRO_CIVIL o complete los datos manualmente.
                       </p>
@@ -426,7 +426,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
               />
             </div>
 
-            <div className="flex justify-end gap-3 pt-2">
+            <div className="flex justify-end gap-3 pt-2 flex-wrap">
               <Button
                 type="button"
                 variant="outline"

@@ -173,7 +173,7 @@ export default function HrParametersPage() {
   return (
     <div className="container mx-auto p-4 sm:p-6 space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Settings2 className="h-6 w-6 text-primary" />
@@ -183,7 +183,7 @@ export default function HrParametersPage() {
             Administre los catálogos y valores de referencia del módulo de RR.HH.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button variant="outline" size="icon" onClick={() => refetch()} title="Refrescar">
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
@@ -207,7 +207,7 @@ export default function HrParametersPage() {
         {HR_PARAMETER_DOMAINS.map(d => (
           <TabsContent key={d.key} value={d.key} className="space-y-4 mt-4">
             {/* Barra de búsqueda + botón agregar */}
-            <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center justify-between">
+            <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center justify-between">
               <Input
                 placeholder="Buscar por nombre o categoría..."
                 className="sm:max-w-xs text-sm"
@@ -263,15 +263,14 @@ export default function HrParametersPage() {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <div className="flex gap-1">
-                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(item)}>
+                            <div className="flex gap-1 flex-wrap">
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(item)} aria-label="Editar">
                                 <Edit className="h-3.5 w-3.5" />
                               </Button>
                               <Button
                                 variant="ghost" size="icon"
                                 className="h-7 w-7 text-destructive hover:text-destructive"
-                                onClick={() => setDeleteItem(item)}
-                              >
+                                onClick={() => setDeleteItem(item)} aria-label="Eliminar">
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
                             </div>
@@ -286,7 +285,7 @@ export default function HrParametersPage() {
                 <div className="md:hidden space-y-3">
                   {getTabItems(d.key).map(item => (
                     <div key={item.typeId} className="rounded-lg border bg-card p-4 space-y-2">
-                      <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start justify-between gap-2 flex-wrap">
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-sm truncate">{item.name}</p>
                           {item.description && (
@@ -294,14 +293,13 @@ export default function HrParametersPage() {
                           )}
                         </div>
                         <div className="flex gap-1 shrink-0">
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(item)}>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(item)} aria-label="Editar">
                             <Edit className="h-3.5 w-3.5" />
                           </Button>
                           <Button
                             variant="ghost" size="icon"
                             className="h-7 w-7 text-destructive"
-                            onClick={() => setDeleteItem(item)}
-                          >
+                            onClick={() => setDeleteItem(item)} aria-label="Eliminar">
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>

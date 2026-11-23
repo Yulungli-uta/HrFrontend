@@ -234,7 +234,7 @@ export default function OvertimePlanning() {
           {invalidRange && (
             <p className="text-sm text-destructive">La fecha "Desde" no puede ser posterior a "Hasta".</p>
           )}
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button onClick={applyFilters} disabled={invalidRange}>
               <Search className="h-4 w-4 mr-2" />
               Buscar

@@ -184,7 +184,7 @@ export default function SignatureCallbackEndpoints() {
                         />
                       </TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(endpoint)}>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(endpoint)} aria-label="Editar">
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
                       </TableCell>

@@ -107,7 +107,7 @@ export default function ResearchProjectsPage() {
   return (
     <div className="container mx-auto space-y-4 p-4 sm:p-6">
       <Card>
-        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between flex-wrap gap-2">
           <div>
             <CardTitle>Proyectos de investigación</CardTitle>
             <CardDescription>Registro de proyectos con sus resoluciones y la participación de cada persona.</CardDescription>
@@ -203,7 +203,7 @@ export default function ResearchProjectsPage() {
                       <TableCell>{p.hasExtension ? <Badge>Sí</Badge> : <Badge variant="outline">No</Badge>}</TableCell>
                       <TableCell className="text-center">{p.participantsCount}</TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
+                        <div className="flex justify-end gap-1 flex-wrap">
                           <Button variant="ghost" size="icon" aria-label="Editar proyecto" onClick={() => openEdit(p.id)}>
                             <Pencil className="h-4 w-4" />
                           </Button>

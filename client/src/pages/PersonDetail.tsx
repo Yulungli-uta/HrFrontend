@@ -1,7 +1,7 @@
 //src/pages/PersonDetail.tsx
 import { useState, useMemo } from "react";
 import { useParams, useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/features/auth";
 
 import { Button } from "@/components/ui/button";
@@ -204,18 +204,36 @@ export default function PersonDetail() {
     refetchOnWindowFocus: false,
   });
 
-  const { data: provincesResponse } = useQuery({
-    queryKey: ["provinces"],
-    queryFn: () => ProvinciasAPI.list(),
-    staleTime: 5 * 60_000,
-    refetchOnWindowFocus: false,
+  // Solo se resuelven los nombres de las provincias y cantones que usa esta persona y sus direcciones:
+  // el catálogo completo tiene miles de filas y no se descarga.
+  const geoIds = useMemo(() => {
+    const provinces = new Set<string>();
+    const cantons = new Set<string>();
+    const add = (item: any) => {
+      if (item?.provinceId) provinces.add(String(item.provinceId));
+      if (item?.cantonId) cantons.add(String(item.cantonId));
+    };
+    add(person);
+    ((data as any)?.addresses ?? []).forEach(add);
+    return { provinces: [...provinces], cantons: [...cantons] };
+  }, [person, data]);
+
+  const provinceQueries = useQueries({
+    queries: geoIds.provinces.map((id) => ({
+      queryKey: ["province", id],
+      queryFn: () => ProvinciasAPI.get(id),
+      staleTime: 10 * 60_000,
+      refetchOnWindowFocus: false,
+    })),
   });
 
-  const { data: cantonsResponse } = useQuery({
-    queryKey: ["cantons"],
-    queryFn: () => CantonesAPI.list(),
-    staleTime: 5 * 60_000,
-    refetchOnWindowFocus: false,
+  const cantonQueries = useQueries({
+    queries: geoIds.cantons.map((id) => ({
+      queryKey: ["canton", id],
+      queryFn: () => CantonesAPI.get(id),
+      staleTime: 10 * 60_000,
+      refetchOnWindowFocus: false,
+    })),
   });
 
   const { data: institutionsResponse } = useQuery({
@@ -294,19 +312,24 @@ export default function PersonDetail() {
     return map;
   }, [knowledgeAreasResponse]);
 
+  // Claves de texto: los IDs geográficos ("00101", "0100101") no deben convertirse a número (se pierden ceros y pueden chocar).
   const provinceMap = useMemo(() => {
-    if (provincesResponse?.status === "success" && Array.isArray(provincesResponse.data)) {
-      return buildNameMap(provincesResponse.data, ["provinceId", "id"], ["name", "provinceName"]);
-    }
-    return {};
-  }, [provincesResponse]);
+    const map: Record<string, string> = {};
+    provinceQueries.forEach((q) => {
+      const row = q.data?.status === "success" ? (q.data.data as any) : null;
+      if (row?.provinceId) map[String(row.provinceId)] = row.provinceName;
+    });
+    return map;
+  }, [provinceQueries]);
 
   const cantonMap = useMemo(() => {
-    if (cantonsResponse?.status === "success" && Array.isArray(cantonsResponse.data)) {
-      return buildNameMap(cantonsResponse.data, ["cantonId", "id"], ["name", "cantonName"]);
-    }
-    return {};
-  }, [cantonsResponse]);
+    const map: Record<string, string> = {};
+    cantonQueries.forEach((q) => {
+      const row = q.data?.status === "success" ? (q.data.data as any) : null;
+      if (row?.cantonId) map[String(row.cantonId)] = row.cantonName;
+    });
+    return map;
+  }, [cantonQueries]);
 
   const institutionMap = useMemo(() => {
     if (institutionsResponse?.status === "success" && Array.isArray(institutionsResponse.data)) {
@@ -465,8 +488,7 @@ export default function PersonDetail() {
                   variant="ghost"
                   size="icon"
                   onClick={() => navigate("/people")}
-                  className="sm:hidden"
-                >
+                  className="sm:hidden" aria-label="Volver">
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
               </>

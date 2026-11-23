@@ -34,13 +34,13 @@ import { formatDateTime } from "@/lib/clock";
 
 const STATUS_BADGE: Record<string, string> = {
   BORRADOR: 'bg-secondary text-secondary-foreground',
-  GENERADO: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-  PENDIENTE_FIRMAS: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-  FIRMADO_CARGADO: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-  FINALIZADO: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  VIGENTE: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200',
-  VENCIDO: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
-  RENUNCIA: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+  GENERADO: 'bg-primary/10 text-primary ',
+  PENDIENTE_FIRMAS: 'bg-warning/10 text-warning ',
+  FIRMADO_CARGADO: 'bg-cat-3/10 text-cat-3 ',
+  FINALIZADO: 'bg-success/10 text-success ',
+  VIGENTE: 'bg-success/10 text-success ',
+  VENCIDO: 'bg-warning/10 text-warning ',
+  RENUNCIA: 'bg-muted text-foreground ',
   ANULADO: 'bg-destructive/10 text-destructive',
 };
 
@@ -69,7 +69,7 @@ function InfoRow({ label, value }: { label: string; value?: string | null | numb
 function HistoryEntry({ entry }: { entry: ContractStatusHistoryEntry }) {
   const icon =
     entry.statusCode === 'FINALIZADO' ? (
-      <CheckCircle2 className="h-4 w-4 text-green-600" />
+      <CheckCircle2 className="h-4 w-4 text-success" />
     ) : entry.statusCode === 'ANULADO' ? (
       <XCircle className="h-4 w-4 text-destructive" />
     ) : (
@@ -79,7 +79,7 @@ function HistoryEntry({ entry }: { entry: ContractStatusHistoryEntry }) {
   const label = STATUS_LABEL[entry.statusCode] ?? entry.statusCode;
 
   return (
-    <li className="ml-6">
+    <li className="ml-6 min-w-0 break-words">
       <span className="absolute -left-3 flex h-6 w-6 items-center justify-center rounded-full bg-background ring-2 ring-border">
         {icon}
       </span>

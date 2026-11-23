@@ -12,7 +12,7 @@ interface Props {
 /** Pie común de los diálogos de catálogo: cancelar y guardar, con el estado "Guardando...". */
 export function CatalogFormFooter({ saving, saveLabel, onCancel }: Props) {
   return (
-    <div className="flex justify-end gap-2 border-t pt-3">
+    <div className="flex justify-end gap-2 border-t pt-3 flex-wrap">
       <Button type="button" variant="outline" onClick={onCancel} disabled={saving}>
         <XCircle className="mr-1 h-4 w-4" />
         Cancelar

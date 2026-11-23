@@ -13,6 +13,33 @@ import { trimDeep } from '@/lib/textNormalize';
 // Tipos públicos
 // =============================================================================
 
+// Textos técnicos en inglés que genera el framework (validación del modelo, 404/500 sin cuerpo, etc.) y que nunca
+// deben llegar al usuario. Los mensajes de las reglas de negocio vienen en español desde el backend y no se tocan.
+const TECHNICAL_HTTP_MESSAGES = [
+  /validation errors? occurred/i,
+  /field is required/i,
+  /could not be converted/i,
+  /^an error occurred/i,
+  /^bad request$/i,
+  /^not found$/i,
+  /^internal server error$/i,
+  /^unauthorized$/i,
+  /^forbidden$/i,
+  /^error http \d+$/i,
+  /^request failed/i,
+];
+
+function toFriendlyHttpMessage(status: number, message: string): string {
+  if (!TECHNICAL_HTTP_MESSAGES.some((pattern) => pattern.test(message.trim()))) return message;
+  if (status === 400 || status === 422) return 'Revise los datos ingresados: hay campos obligatorios o con un formato incorrecto.';
+  if (status === 401) return 'Su sesión expiró o no es válida. Inicie sesión nuevamente.';
+  if (status === 403) return 'No tiene permiso para realizar esta acción.';
+  if (status === 404) return 'No se encontró el registro solicitado.';
+  if (status === 409) return 'La operación no se puede completar porque entra en conflicto con otro registro.';
+  if (status >= 500) return 'Ocurrió un problema en el servidor. Intente nuevamente; si persiste, contacte a soporte técnico.';
+  return 'No se pudo completar la operación. Intente nuevamente.';
+}
+
 export type ApiResponse<T> =
   | { status: 'success'; data: T }
   | { status: 'error'; error: ApiError };
@@ -289,7 +316,7 @@ async function parseErrorResponse(
 
   const apiError: ApiError = {
     code: response.status,
-    message: errorMessage,
+    message: toFriendlyHttpMessage(response.status, errorMessage),
     details: errorDetails,
   };
 

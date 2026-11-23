@@ -22,9 +22,9 @@ import {
 import { formatDate } from "@/lib/clock";
 
 const STATUS_COLORS: Record<DocumentTemplateStatus, string> = {
-  Draft:     'bg-yellow-100 text-yellow-700',
-  Published: 'bg-green-100 text-green-700',
-  Archived:  'bg-gray-100 text-gray-500',
+  Draft:     'bg-warning/10 text-warning',
+  Published: 'bg-success/10 text-success',
+  Archived:  'bg-muted text-muted-foreground',
 };
 
 const STATUS_LABELS: Record<DocumentTemplateStatus, string> = {

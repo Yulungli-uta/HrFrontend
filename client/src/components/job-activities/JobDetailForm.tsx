@@ -301,7 +301,7 @@ export function JobDetailForm({
           )}
 
           <select
-            className="border border-input rounded-md px-3 py-2 text-sm w-full bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            className="border border-input rounded-md px-3 py-2 text-sm w-full bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             value={jobTypeId}
             onChange={(e) => setJobTypeId(e.target.value)}
             disabled={loadingContractTypes || !!contractTypesError}
@@ -341,7 +341,7 @@ export function JobDetailForm({
           )}
 
           <select
-            className="border border-input rounded-md px-3 py-2 text-sm w-full bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            className="border border-input rounded-md px-3 py-2 text-sm w-full bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             value={siiesTipoFuncionarioTypeId}
             onChange={(e) => setSiiesTipoFuncionarioTypeId(e.target.value)}
             disabled={loadingSiiesTipoFuncionario || !!siiesTipoFuncionarioError}
@@ -395,7 +395,7 @@ export function JobDetailForm({
           )}
 
           <select
-            className="border border-input rounded-md px-3 py-2 text-sm w-full bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            className="border border-input rounded-md px-3 py-2 text-sm w-full bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             value={academicLadderId}
             onChange={(e) => void handleLadderChange(e.target.value)}
             disabled={loadingAcademicLadders || !!academicLaddersError}
@@ -471,7 +471,7 @@ export function JobDetailForm({
             Cancelar
           </Button>
         )}
-        <Button type="submit" disabled={saving || !description.trim()}>
+        <Button type="submit" disabled={saving || !description.trim()} aria-label="Actualizar">
           {saving ? (
             <>
               <RefreshCw className="h-4 w-4 mr-1 animate-spin" />

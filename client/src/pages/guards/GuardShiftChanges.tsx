@@ -1,3 +1,5 @@
+import { useDirtyCloseGuard } from '@/hooks/useDirtyCloseGuard';
+import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
 import { useState } from 'react';
 import { RefreshCw, Check, X, AlertCircle, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -66,7 +68,7 @@ function ChangesTable({ changes, onApprove, onReject, onRevert, showActions }: C
   if (changes.length === 0) {
     return (
       <div className="flex items-center gap-2 py-8 text-muted-foreground">
-        <Check className="h-5 w-5 text-green-500" />
+        <Check className="h-5 w-5 text-success" />
         <span className="text-sm">No hay registros.</span>
       </div>
     );
@@ -129,21 +131,21 @@ function ChangesTable({ changes, onApprove, onReject, onRevert, showActions }: C
               </TableCell>
               {showActions && (
                 <TableCell className="text-right">
-                  <div className="flex justify-end gap-1">
+                  <div className="flex justify-end gap-1 flex-wrap">
                     {c.status === 'PENDING' && (
                       <>
-                        <Button size="icon" variant="ghost" className="h-7 w-7 text-green-600"
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-success"
                           title="Aprobar" onClick={() => onApprove(c)}>
                           <Check className="h-4 w-4" />
                         </Button>
-                        <Button size="icon" variant="ghost" className="h-7 w-7 text-red-600"
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive"
                           title="Rechazar" onClick={() => onReject(c)}>
                           <X className="h-4 w-4" />
                         </Button>
                       </>
                     )}
                     {canRevert && (
-                      <Button size="icon" variant="ghost" className="h-7 w-7 text-orange-600"
+                      <Button size="icon" variant="ghost" className="h-7 w-7 text-warning"
                         title="Deshacer reasignación" onClick={() => onRevert(c)}>
                         <Undo2 className="h-4 w-4" />
                       </Button>
@@ -184,7 +186,7 @@ function ChangesList({ onApprove, onReject, onRevert }: TabActions) {
   });
   const groups: GuardRotationGroupDto[] = extractArray(groupsResp);
 
-  const { data: resp, isLoading, refetch } = useAllChangesPaged(page, pageSize, statusFilter || undefined, {
+  const { data: resp, isLoading, isFetching, refetch } = useAllChangesPaged(page, pageSize, statusFilter || undefined, {
     changeType: changeTypeFilter || undefined,
     groupId: groupFilter === '' ? undefined : groupFilter,
     fromDate: fromDate || undefined,
@@ -210,7 +212,7 @@ function ChangesList({ onApprove, onReject, onRevert }: TabActions) {
           <div>
             <Label className="text-xs">Estado</Label>
             <select
-              className="h-9 border rounded-md px-3 text-sm bg-background"
+              className="h-9 border rounded-md px-3 text-sm bg-card"
               value={statusFilter}
               onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
             >
@@ -223,7 +225,7 @@ function ChangesList({ onApprove, onReject, onRevert }: TabActions) {
           <div>
             <Label className="text-xs">Grupo</Label>
             <select
-              className="h-9 border rounded-md px-3 text-sm bg-background"
+              className="h-9 border rounded-md px-3 text-sm bg-card"
               value={groupFilter}
               onChange={e => { setGroupFilter(e.target.value ? Number(e.target.value) : ''); setPage(1); }}
             >
@@ -236,7 +238,7 @@ function ChangesList({ onApprove, onReject, onRevert }: TabActions) {
           <div>
             <Label className="text-xs">Tipo</Label>
             <select
-              className="h-9 border rounded-md px-3 text-sm bg-background"
+              className="h-9 border rounded-md px-3 text-sm bg-card"
               value={changeTypeFilter}
               onChange={e => { setChangeTypeFilter(e.target.value); setPage(1); }}
             >
@@ -254,8 +256,8 @@ function ChangesList({ onApprove, onReject, onRevert }: TabActions) {
             <Input type="date" className="h-9" value={toDate} onChange={e => { setToDate(e.target.value); setPage(1); }} />
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
-          <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isLoading ? 'animate-spin' : ''}`} />
+        <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
+          <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isFetching ? 'animate-spin' : ''}`} />
           Actualizar
         </Button>
       </div>
@@ -322,10 +324,12 @@ export default function GuardShiftChangesPage() {
     });
   };
 
+  const guard = useDirtyCloseGuard(actionDialog?.type === 'approve', () => setActionDialog(null));
+  const guard2 = useDirtyCloseGuard(actionDialog?.type === 'reject', () => setActionDialog(null));
   return (
     <div className="p-6 space-y-5">
       <div className="flex items-center gap-3">
-        <AlertCircle className="h-6 w-6 text-orange-500" />
+        <AlertCircle className="h-6 w-6 text-warning" />
         <div>
           <h1 className="text-2xl font-bold">Cambios de Turno</h1>
           <p className="text-sm text-muted-foreground">Reemplazos y cambios de turno de guardias</p>
@@ -335,10 +339,10 @@ export default function GuardShiftChangesPage() {
       <ChangesList onApprove={openApprove} onReject={openReject} onRevert={openRevert} />
 
       {/* Dialog aprobar */}
-      <Dialog open={actionDialog?.type === 'approve'} onOpenChange={v => !v && setActionDialog(null)}>
-        <DialogContent className="max-w-md">
+      <Dialog open={actionDialog?.type === 'approve'} onOpenChange={v => !v && guard.requestClose()}>
+        <DialogContent {...guard.dirtyProps} className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-green-600">
+            <DialogTitle className="flex items-center gap-2 text-success">
               <Check className="h-5 w-5" />
               Aprobar cambio de turno
             </DialogTitle>
@@ -356,7 +360,7 @@ export default function GuardShiftChangesPage() {
                 <div>
                   <span className="text-muted-foreground">Horario:</span> {actionDialog.change.originalScheduleDescription}
                   {actionDialog.change.newScheduleDescription && actionDialog.change.newScheduleDescription !== actionDialog.change.originalScheduleDescription && (
-                    <span className="text-blue-600"> → {actionDialog.change.newScheduleDescription}</span>
+                    <span className="text-primary"> → {actionDialog.change.newScheduleDescription}</span>
                   )}
                 </div>
                 {actionDialog.change.reason && (
@@ -375,18 +379,19 @@ export default function GuardShiftChangesPage() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setActionDialog(null)} disabled={isSaving}>Cancelar</Button>
-            <Button onClick={handleApprove} disabled={isSaving} className="bg-green-600 hover:bg-green-700">
+            <Button onClick={handleApprove} disabled={isSaving} className="bg-success hover:bg-success/90">
               {isSaving ? 'Procesando…' : 'Aprobar'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <UnsavedChangesDialog open={guard.confirmOpen} onClose={guard.closeConfirm} onConfirmExit={guard.confirmExit} />
 
       {/* Dialog rechazar */}
-      <Dialog open={actionDialog?.type === 'reject'} onOpenChange={v => !v && setActionDialog(null)}>
-        <DialogContent className="max-w-md">
+      <Dialog open={actionDialog?.type === 'reject'} onOpenChange={v => !v && guard2.requestClose()}>
+        <DialogContent {...guard2.dirtyProps} className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-red-600">
+            <DialogTitle className="flex items-center gap-2 text-destructive">
               <X className="h-5 w-5" />
               Rechazar cambio de turno
             </DialogTitle>
@@ -420,12 +425,13 @@ export default function GuardShiftChangesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <UnsavedChangesDialog open={guard2.confirmOpen} onClose={guard2.closeConfirm} onConfirmExit={guard2.confirmExit} />
 
       {/* Dialog deshacer reasignación */}
       <Dialog open={!!revertTarget} onOpenChange={v => !v && setRevertTarget(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-orange-600">
+            <DialogTitle className="flex items-center gap-2 text-warning">
               <Undo2 className="h-5 w-5" />
               Deshacer reasignación
             </DialogTitle>
@@ -460,7 +466,7 @@ export default function GuardShiftChangesPage() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setRevertTarget(null)} disabled={revertReassignment.isPending}>Cancelar</Button>
-            <Button onClick={handleRevert} disabled={revertReassignment.isPending} className="bg-orange-600 hover:bg-orange-700">
+            <Button onClick={handleRevert} disabled={revertReassignment.isPending} className="bg-warning hover:bg-warning/90">
               {revertReassignment.isPending ? 'Deshaciendo…' : 'Deshacer'}
             </Button>
           </DialogFooter>

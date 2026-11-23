@@ -7,6 +7,7 @@ import {
   ChevronRight, Loader2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { PaisesAPI, ProvinciasAPI, CantonesAPI } from "@/lib/api";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,6 +30,7 @@ interface Canton { cantonId: string; provinceId: string; cantonName: string; }
 type Kind = "country" | "province" | "canton";
 
 export default function GeoLocationsPage() {
+  const isDesktop = useIsDesktop();
   const { toast } = useToast();
   const [countries, setCountries] = useState<Country[]>([]);
   const [provinces, setProvinces] = useState<Province[]>([]);
@@ -48,13 +50,25 @@ export default function GeoLocationsPage() {
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ kind: Kind; id: string; label: string } | null>(null);
 
+  // El catálogo completo tiene miles de provincias y decenas de miles de cantones: solo se cargan los países y,
+  // bajo demanda, las provincias del país elegido y los cantones de la provincia elegida.
+  const loadProvinces = async (countryId: string | null) => {
+    if (!countryId) { setProvinces([]); return; }
+    const res = await ProvinciasAPI.getByCountry(countryId);
+    setProvinces(res.status === "success" ? res.data ?? [] : []);
+  };
+  const loadCantons = async (provinceId: string | null) => {
+    if (!provinceId) { setCantons([]); return; }
+    const res = await CantonesAPI.getByProvince(provinceId);
+    setCantons(res.status === "success" ? res.data ?? [] : []);
+  };
+
   const load = async () => {
     try {
       setIsLoading(true);
-      const [c, p, ca] = await Promise.all([PaisesAPI.list(), ProvinciasAPI.list(), CantonesAPI.list()]);
+      const c = await PaisesAPI.list();
       setCountries(c.status === "success" ? c.data ?? [] : []);
-      setProvinces(p.status === "success" ? p.data ?? [] : []);
-      setCantons(ca.status === "success" ? ca.data ?? [] : []);
+      await Promise.all([loadProvinces(selectedCountryId), loadCantons(selectedProvinceId)]);
     } catch (error) {
       logger.error("GeoLocations", "Error cargando ubicaciones geográficas", error);
       toast({ title: "Error", description: "No se pudieron cargar los datos geográficos", variant: "destructive" });
@@ -66,6 +80,14 @@ export default function GeoLocationsPage() {
   useEffect(() => {
     load();
   }, []);
+
+  useEffect(() => {
+    loadProvinces(selectedCountryId).catch((e) => logger.error("GeoLocations", "Error cargando provincias", e));
+  }, [selectedCountryId]);
+
+  useEffect(() => {
+    loadCantons(selectedProvinceId).catch((e) => logger.error("GeoLocations", "Error cargando cantones", e));
+  }, [selectedProvinceId]);
 
   const selectedCountry = countries.find((c) => c.countryId === selectedCountryId) ?? null;
   const selectedProvince = provinces.find((p) => p.provinceId === selectedProvinceId) ?? null;
@@ -79,8 +101,6 @@ export default function GeoLocationsPage() {
     [cantons, selectedProvinceId]
   );
 
-  const provinceCountOf = (countryId: string) => provinces.filter((p) => p.countryId === countryId).length;
-  const cantonCountOf = (provinceId: string) => cantons.filter((c) => c.provinceId === provinceId).length;
 
   // CountryId/ProvinceId/CantonId son claves string compuestas y NO se autogeneran en el backend
   // (confirmado: sin ValueGeneratedOnAdd en la config EF). Convención real en BD:
@@ -90,16 +110,18 @@ export default function GeoLocationsPage() {
     const max = countries.reduce((m, c) => Math.max(m, parseInt(c.countryId, 10) || 0), 0);
     return String(max + 1).padStart(3, "0");
   };
-  const nextProvinceId = (countryId: string) => {
-    const siblings = provinces.filter((p) => p.countryId === countryId);
-    const maxSeq = siblings.reduce((m, p) => Math.max(m, parseInt(p.provinceId.slice(3), 10) || 0), 0);
-    return `${countryId}${String(maxSeq + 1).padStart(2, "0")}`;
+  // Solo hay cargados los hijos del padre elegido. Secuencia de 2 dígitos y, si el padre ya tiene 99 o más hijos
+  // (o alguno con secuencia de 3 dígitos), de 3 dígitos. Los IDs se tratan siempre como texto.
+  const nextChildId = (parentId: string, siblingIds: string[]) => {
+    const seqs = siblingIds.map((id) => id.slice(parentId.length));
+    const maxSeq = seqs.reduce((m, q) => Math.max(m, parseInt(q, 10) || 0), 0);
+    const width = maxSeq >= 99 || seqs.some((q) => q.length >= 3) ? 3 : 2;
+    return `${parentId}${String(maxSeq + 1).padStart(width, "0")}`;
   };
-  const nextCantonId = (provinceId: string) => {
-    const siblings = cantons.filter((c) => c.provinceId === provinceId);
-    const maxSeq = siblings.reduce((m, c) => Math.max(m, parseInt(c.cantonId.slice(provinceId.length), 10) || 0), 0);
-    return `${provinceId}${String(maxSeq + 1).padStart(2, "0")}`;
-  };
+  const nextProvinceId = (countryId: string) =>
+    nextChildId(countryId, provinces.filter((p) => p.countryId === countryId).map((p) => p.provinceId));
+  const nextCantonId = (provinceId: string) =>
+    nextChildId(provinceId, cantons.filter((c) => c.provinceId === provinceId).map((c) => c.cantonId));
 
   const filteredCountries = useMemo(
     () => countries.filter((c) => c.countryName.toLowerCase().includes(searchCountry.toLowerCase())),
@@ -221,14 +243,14 @@ export default function GeoLocationsPage() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* Encabezado */}
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Ubicaciones Geográficas</h1>
           <p className="text-muted-foreground mt-2">
             Países, provincias y cantones — usados en direcciones, instituciones y hoja de vida.
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <StatPill icon={Globe} label="Países" value={countries.length} />
           <StatPill icon={MapPin} label="Provincias" value={provinces.length} />
           <StatPill icon={Landmark} label="Cantones" value={cantons.length} />
@@ -255,7 +277,7 @@ export default function GeoLocationsPage() {
 
       {/* Explorador de 3 columnas */}
       <Card className="overflow-hidden p-0">
-        <ResizablePanelGroup direction="horizontal" className="min-h-[560px]">
+        <ResizablePanelGroup direction={isDesktop ? "horizontal" : "vertical"} className={isDesktop ? "min-h-[560px]" : "min-h-[1100px]"}>
           <ResizablePanel defaultSize={33} minSize={20}>
             <GeoColumn
               icon={Globe}
@@ -273,7 +295,6 @@ export default function GeoLocationsPage() {
                   <GeoRow
                     key={c.countryId}
                     label={c.countryName}
-                    sublabel={`${provinceCountOf(c.countryId)} provincia${provinceCountOf(c.countryId) === 1 ? "" : "s"}`}
                     selected={c.countryId === selectedCountryId}
                     onClick={() => selectCountry(c.countryId)}
                     onEdit={() => openEdit("country", c)}
@@ -307,7 +328,6 @@ export default function GeoLocationsPage() {
                   <GeoRow
                     key={p.provinceId}
                     label={p.provinceName}
-                    sublabel={`${cantonCountOf(p.provinceId)} cantón${cantonCountOf(p.provinceId) === 1 ? "" : "es"}`}
                     selected={p.provinceId === selectedProvinceId}
                     onClick={() => selectProvince(p.provinceId)}
                     onEdit={() => openEdit("province", p)}
@@ -469,7 +489,7 @@ function StatPill({ icon: Icon, label, value }: { icon: any; label: string; valu
       <Icon className="h-4 w-4 text-primary" />
       <div className="leading-none">
         <div className="text-sm font-bold text-foreground">{value}</div>
-        <div className="text-[0.6875rem] text-muted-foreground">{label}</div>
+        <div className="text-xs text-muted-foreground">{label}</div>
       </div>
     </div>
   );
@@ -502,7 +522,7 @@ function GeoColumn({
         <div className="flex items-center gap-2 min-w-0">
           <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
           <span className="font-semibold text-sm truncate">{title}</span>
-          <Badge variant="secondary" className="text-[0.625rem] px-1.5 shrink-0">{count}</Badge>
+          <Badge variant="secondary" className="text-xs px-1.5 shrink-0">{count}</Badge>
         </div>
         <Button
           size="icon"
@@ -562,19 +582,19 @@ function GeoRow({
     >
       <div className="min-w-0">
         <div className="text-sm font-medium truncate">{label}</div>
-        {sublabel && <div className="text-[0.6875rem] text-muted-foreground">{sublabel}</div>}
+        {sublabel && <div className="text-xs text-muted-foreground">{sublabel}</div>}
       </div>
       <div className="flex items-center gap-0.5 shrink-0">
         <button
           onClick={(e) => { e.stopPropagation(); onEdit(); }}
-          className="opacity-0 group-hover:opacity-100 rounded p-1 hover:bg-background/80 transition-opacity"
+          className="[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 focus-within:opacity-100 rounded p-1 hover:bg-background/80 transition-opacity"
           title="Editar"
         >
           <Edit className="h-3.5 w-3.5 text-muted-foreground" />
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          className="opacity-0 group-hover:opacity-100 rounded p-1 hover:bg-destructive/10 transition-opacity"
+          className="[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 focus-within:opacity-100 rounded p-1 hover:bg-destructive/10 transition-opacity"
           title="Eliminar"
         >
           <Trash2 className="h-3.5 w-3.5 text-destructive" />

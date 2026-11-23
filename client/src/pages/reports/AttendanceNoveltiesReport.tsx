@@ -70,12 +70,12 @@ export default function AttendanceNoveltiesReport() {
 
   return (
     <div className="p-6 space-y-5">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-3">
           <AlertTriangle className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-bold">Novedades de Asistencia</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button
             variant="outline" size="sm" disabled={isDownloading}
             onClick={() => download({ type: 'attendance-novelties', format: 'pdf', filter })}
@@ -113,7 +113,7 @@ export default function AttendanceNoveltiesReport() {
           <div>
             <Label className="text-xs">Régimen laboral</Label>
             <select
-              className="w-full h-9 border rounded-md px-3 text-sm bg-background mt-1"
+              className="w-full h-9 border rounded-md px-3 text-sm bg-card mt-1"
               value={laborRegimeId}
               onChange={e => updateFilter(() => setLaborRegimeId(e.target.value === '' ? '' : Number(e.target.value)))}
             >
@@ -127,7 +127,7 @@ export default function AttendanceNoveltiesReport() {
           <div>
             <Label className="text-xs">Tipo de novedad</Label>
             <select
-              className="w-full h-9 border rounded-md px-3 text-sm bg-background mt-1"
+              className="w-full h-9 border rounded-md px-3 text-sm bg-card mt-1"
               value={noveltyType}
               onChange={e => updateFilter(() => setNoveltyType(e.target.value))}
             >
@@ -164,7 +164,7 @@ export default function AttendanceNoveltiesReport() {
           ) : (
             <>
               <div className="rounded-md border overflow-x-auto">
-                <Table>
+                <Table mobile="scroll">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Empleado</TableHead>

@@ -100,8 +100,7 @@ export function AddendumList(props: {
                         variant="ghost"
                         size="sm"
                         onClick={() => onOpenAddendum(a)}
-                        className="shrink-0"
-                      >
+                        className="shrink-0" aria-label="Ver detalle">
                         <Eye className="h-4 w-4" />
                       </Button>
                     )}

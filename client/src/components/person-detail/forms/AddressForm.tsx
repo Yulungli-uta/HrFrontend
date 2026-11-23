@@ -86,38 +86,22 @@ export default function AddressForm({
     error: addressTypesError,
   } = useRefTypesByCategory(REF_TYPE_CATEGORIES.ADDRESS_TYPE);
 
-  const { data: provincesResp } = useQuery({
-    queryKey: ["provinces"],
-    queryFn: () => ProvinciasAPI.list(),
-  });
-  const { data: cantonsResp } = useQuery({
-    queryKey: ["cantons"],
-    queryFn: () => CantonesAPI.list(),
-  });
-
   const addressTypes: RefType[] = addressTypesRaw.filter((t: any) => t.isActive);
 
-  const allProvinces: any[] = provincesResp?.status === "success" ? provincesResp.data ?? [] : [];
-  const allCantons: any[] = cantonsResp?.status === "success" ? cantonsResp.data ?? [] : [];
-
-  // Países que sí tienen provincias cargadas en el catálogo — hoy, solo Ecuador.
-  const countriesWithProvinces = useMemo(
-    () => new Set(allProvinces.map((p) => p.countryId)),
-    [allProvinces]
-  );
-
+  // Provincia y cantón solo se exigen si el país / la provincia elegidos tienen opciones cargadas en el catálogo.
+  // El esquema se crea una vez y lee este valor al validar (las consultas dependen del formulario, no al revés).
+  const geoRequiredRef = useRef({ province: false, canton: false });
   const resolvedSchema = useMemo(
     () =>
       addressFormSchema.superRefine((data, ctx) => {
-        if (!countriesWithProvinces.has(data.countryId)) return;
-        if (!data.provinceId) {
+        if (geoRequiredRef.current.province && !data.provinceId) {
           ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["provinceId"], message: "La provincia es requerida" });
         }
-        if (!data.cantonId) {
+        if (geoRequiredRef.current.canton && !data.cantonId) {
           ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["cantonId"], message: "El cantón es requerido" });
         }
       }),
-    [countriesWithProvinces]
+    []
   );
 
   const form = useForm<AddressFormData>({
@@ -162,14 +146,35 @@ export default function AddressForm({
   const watchCountryId = useWatch({ control: form.control, name: "countryId" });
   const watchProvinceId = useWatch({ control: form.control, name: "provinceId" });
 
-  const filteredProvinces = useMemo(
-    () => allProvinces.filter((p) => !watchCountryId || p.countryId === watchCountryId),
-    [allProvinces, watchCountryId]
+  // Carga bajo demanda por padre: el catálogo completo tiene miles de provincias y decenas de miles de cantones.
+  const { data: provincesResp } = useQuery({
+    queryKey: ["provinces", "country", watchCountryId],
+    queryFn: () => ProvinciasAPI.getByCountry(watchCountryId as string),
+    enabled: !!watchCountryId,
+    staleTime: 10 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+  const { data: cantonsResp } = useQuery({
+    queryKey: ["cantons", "province", watchProvinceId],
+    queryFn: () => CantonesAPI.getByProvince(watchProvinceId as string),
+    enabled: !!watchProvinceId,
+    staleTime: 10 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+  const filteredProvinces: any[] = useMemo(
+    () => (watchCountryId && provincesResp?.status === "success" ? provincesResp.data ?? [] : []),
+    [provincesResp, watchCountryId]
   );
-  const filteredCantons = useMemo(
-    () => allCantons.filter((c) => !watchProvinceId || c.provinceId === watchProvinceId),
-    [allCantons, watchProvinceId]
+  const filteredCantons: any[] = useMemo(
+    () => (watchProvinceId && cantonsResp?.status === "success" ? cantonsResp.data ?? [] : []),
+    [cantonsResp, watchProvinceId]
   );
+  geoRequiredRef.current = {
+    province: filteredProvinces.length > 0,
+    canton: !!watchProvinceId && filteredCantons.length > 0,
+  };
+  const provinceRequired = filteredProvinces.length > 0;
+  const cantonRequired = !!watchProvinceId && filteredCantons.length > 0;
 
   // Al cambiar país/provincia, invalidar las selecciones hijas que ya no correspondan —
   // salvo en el reset inicial al editar (donde countryId/provinceId ya vienen del registro).
@@ -295,7 +300,7 @@ export default function AddressForm({
             name="provinceId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel required={countriesWithProvinces.has(watchCountryId)}>Provincia</FormLabel>
+                <FormLabel required={provinceRequired}>Provincia</FormLabel>
                 <Select
                   disabled={isLoading || !watchCountryId}
                   value={field.value || ""}
@@ -324,7 +329,7 @@ export default function AddressForm({
             name="cantonId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel required={countriesWithProvinces.has(watchCountryId)}>Cantón</FormLabel>
+                <FormLabel required={cantonRequired}>Cantón</FormLabel>
                 <Select
                   disabled={isLoading || !watchProvinceId}
                   value={field.value || ""}

@@ -95,9 +95,21 @@ export default {
         },
         // Custom colors from design reference
         surface: "var(--surface)",
-        success: "var(--success)",
-        warning: "var(--warning)",
+        success: { DEFAULT: "var(--success)", foreground: "var(--success-foreground)" },
+        warning: { DEFAULT: "var(--warning)", foreground: "var(--warning-foreground)" },
+        info: { DEFAULT: "var(--info)", foreground: "var(--info-foreground)" },
         error: "var(--error)",
+        // Categorías (etiquetas y series que no son estado). Definidas en styles/semantic.css.
+        cat: {
+          "1": "var(--cat-1)",
+          "2": "var(--cat-2)",
+          "3": "var(--cat-3)",
+          "4": "var(--cat-4)",
+          "5": "var(--cat-5)",
+          "6": "var(--cat-6)",
+          "7": "var(--cat-7)",
+          "8": "var(--cat-8)",
+        },
         // UTA Brand Colors
         "uta-blue": {
           DEFAULT: "#1e40af",

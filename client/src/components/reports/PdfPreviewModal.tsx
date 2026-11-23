@@ -59,7 +59,7 @@ export function PdfPreviewModal({ isOpen, onClose, base64Data, reportName, onDow
           <DialogTitle className="flex items-center justify-between gap-2 pr-6">
             <span className="truncate">Vista Previa - {reportName}</span>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Button variant="outline" size="sm" onClick={handleZoomOut} disabled={zoom <= MIN_ZOOM} aria-label="Alejar">
                 <ZoomOut className="h-4 w-4" />
               </Button>
@@ -90,7 +90,7 @@ export function PdfPreviewModal({ isOpen, onClose, base64Data, reportName, onDow
             Arrastre el documento, use las barras o los botones ◀ ▶ para desplazarse; el 100 % es el tamaño real de la hoja.
           </p>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             {onDownload && (
               <Button onClick={onDownload} variant="default">
                 <Download className="mr-2 h-4 w-4" />

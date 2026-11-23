@@ -120,7 +120,7 @@ function CorrectionRow({ entry, refNames }: { entry: AuditLogEntry; refNames: Re
                           <TableCell className="text-destructive/80">
                             {formatChangeValue(c.field, c.oldValue, refNames)}
                           </TableCell>
-                          <TableCell className="text-green-700 dark:text-green-400">
+                          <TableCell className="text-success">
                             {formatChangeValue(c.field, c.newValue, refNames)}
                           </TableCell>
                         </TableRow>
@@ -289,7 +289,7 @@ export default function CorrectionsAuditPage() {
                   <p className="text-sm text-muted-foreground">
                     Página {result.page} de {result.totalPages}
                   </p>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <Button
                       variant="outline"
                       size="sm"

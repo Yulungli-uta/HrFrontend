@@ -162,6 +162,10 @@ export type { HolidayResponseDTO } from './services/holidays';
 export { TiposReferenciaAPI, PaisesAPI, ProvinciasAPI, CantonesAPI, AcademicLadderAPI } from './services/catalogs';
 export type { RefType, AcademicLadderDto, AcademicLadderCreateDto, AcademicLadderUpdateDto } from './services/catalogs';
 
+// Identidad visual (logos parametrizables)
+export { BrandingAPI } from './services/branding';
+export type { BrandKey, BrandAssetInfo, PublicBranding } from './services/branding';
+
 // Sincronización de publicaciones científicas (perfil de investigador, vista previa/confirmación y revisión)
 export { ResearcherProfileAPI, PublicationSyncAPI, PublicationReviewAPI } from './services/publicationSync';
 export type {

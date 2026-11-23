@@ -331,7 +331,7 @@ export function RequestForm({ existing, onSuccess, onCancel, onDirtyChange }: Pr
         </CardContent>
       </Card>
 
-      <div className="flex justify-end gap-3 pt-2">
+      <div className="flex justify-end gap-3 pt-2 flex-wrap">
         <Button type="button" variant="outline" onClick={onCancel} disabled={isBusy}>
           Cancelar
         </Button>

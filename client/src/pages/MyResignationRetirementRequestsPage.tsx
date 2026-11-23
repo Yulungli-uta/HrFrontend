@@ -131,20 +131,19 @@ export default function MyResignationRetirementRequestsPage() {
             </div>
 
             {result && result.totalPages > 1 && (
-              <div className="flex items-center justify-between p-3 border-t">
+              <div className="flex items-center justify-between p-3 border-t flex-wrap gap-2">
                 <span className="text-xs text-muted-foreground">
                   Página {result.page} de {result.totalPages} — {result.totalCount} solicitudes
                 </span>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+                <div className="flex gap-2 flex-wrap">
+                  <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} aria-label="Anterior">
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     disabled={page >= result.totalPages}
-                    onClick={() => setPage((p) => p + 1)}
-                  >
+                    onClick={() => setPage((p) => p + 1)} aria-label="Siguiente">
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>

@@ -122,7 +122,9 @@ export const GuardRotationGroupsAPI = {
   getEligibleEmployees: (search: string): Promise<ApiResponse<import('@/types/guards').EligibleEmployeeDto[]>> =>
     apiFetch(`${BASE}/guard-rotation-groups/eligible-employees?search=${encodeURIComponent(search)}`),
 
-  /** Empleados con membresía activa en algún grupo de rotación (guardia o supervisor —
+  /** Ya no lo usan las pantallas: Reglas Especiales, Disponibilidad, Vacaciones y Reemplazos buscan por cargo
+   * (getEligibleEmployees), no por pertenencia a un grupo.
+   * Empleados con membresía activa en algún grupo de rotación (guardia o supervisor —
    * Supervisor es un grupo más). Para pantallas que solo deben ofrecer personal que YA es
    * guardia/supervisor activo: Vacaciones, Reglas Especiales, Disponibilidad. */
   getActiveGroupEmployees: (search: string): Promise<ApiResponse<import('@/types/guards').EligibleEmployeeDto[]>> =>

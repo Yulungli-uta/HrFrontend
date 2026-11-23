@@ -277,7 +277,7 @@ export function TeacherStructureChangeDialog({
             {err.reason && <p className="text-xs text-destructive">{err.reason.message}</p>}
           </div>
 
-          <div className="flex justify-end gap-3 pt-1">
+          <div className="flex justify-end gap-3 pt-1 flex-wrap">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
             <Button type="submit" disabled={isSaving || !resolvedLadder}>Aplicar cambio</Button>
           </div>

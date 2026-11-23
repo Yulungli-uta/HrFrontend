@@ -18,10 +18,10 @@ import { addMonths, todayEcuador } from "@/lib/clock";
 const today = todayEcuador();
 
 const SEQ_COLORS: Record<string, string> = {
-  L: 'bg-slate-100 text-slate-500',
-  M: 'bg-yellow-100 text-yellow-700',
-  T: 'bg-orange-100 text-orange-700',
-  N: 'bg-indigo-100 text-indigo-700',
+  L: 'bg-muted text-muted-foreground',
+  M: 'bg-warning/10 text-warning',
+  T: 'bg-warning/10 text-warning',
+  N: 'bg-primary/10 text-primary',
 };
 
 function detailLetter(d: RotationPatternDetailDto): string {
@@ -36,7 +36,7 @@ function detailLetter(d: RotationPatternDetailDto): string {
 function PatternDayChips({ pattern }: { pattern: RotationPatternDto }) {
   return (
     <div className="mt-1.5 space-y-1">
-      <p className="text-[0.625rem] text-muted-foreground">{pattern.cycleDays} días de ciclo</p>
+      <p className="text-xs text-muted-foreground">{pattern.cycleDays} días de ciclo</p>
       <div className="flex flex-wrap gap-0.5">
         {pattern.details.map(d => {
           const letter = detailLetter(d);
@@ -44,7 +44,7 @@ function PatternDayChips({ pattern }: { pattern: RotationPatternDto }) {
             <span
               key={d.dayOrder}
               title={d.isRestDay ? 'Libre' : (d.scheduleDescription ?? d.scheduleCode ?? `Día ${d.dayOrder}`)}
-              className={`w-6 h-6 rounded text-[0.625rem] flex flex-col items-center justify-center font-semibold ${SEQ_COLORS[letter] ?? 'bg-gray-100 text-gray-600'}`}
+              className={`w-6 h-6 rounded text-xs flex flex-col items-center justify-center font-semibold ${SEQ_COLORS[letter] ?? 'bg-muted text-muted-foreground'}`}
             >
               {letter}
             </span>
@@ -186,7 +186,7 @@ export function GroupPatternAssignmentDialog({ open, group, onClose }: Props) {
                   <p className="text-sm font-semibold flex items-center gap-1.5">
                     {activePattern.patternName}
                     {!activePattern.patternIsActive && (
-                      <Badge variant="destructive" className="text-[0.625rem]">Patrón inactivo</Badge>
+                      <Badge variant="destructive" className="text-xs">Patrón inactivo</Badge>
                     )}
                   </p>
                   <p className="text-xs text-muted-foreground">
@@ -217,7 +217,7 @@ export function GroupPatternAssignmentDialog({ open, group, onClose }: Props) {
                 </div>
               </div>
               {activePattern.patternCode && (
-                <p className="text-[0.625rem] font-mono text-muted-foreground">{activePattern.patternCode}</p>
+                <p className="text-xs font-mono text-muted-foreground">{activePattern.patternCode}</p>
               )}
             </div>
           ) : (
@@ -244,7 +244,7 @@ export function GroupPatternAssignmentDialog({ open, group, onClose }: Props) {
           <div>
             <Label className="text-xs">Patrón *</Label>
             <select
-              className="w-full h-9 border rounded-md px-3 text-sm bg-background mt-1"
+              className="w-full h-9 border rounded-md px-3 text-sm bg-card mt-1"
               value={form.patternId}
               onChange={e => { setForm(f => ({ ...f, patternId: e.target.value })); setIsFormDirty(true); }}
             >
@@ -263,11 +263,11 @@ export function GroupPatternAssignmentDialog({ open, group, onClose }: Props) {
                   <p className="text-xs text-muted-foreground mb-1">{selectedPattern.description}</p>
                 )}
                 <PatternDayChips pattern={selectedPattern} />
-                <div className="mt-2 flex flex-wrap gap-2 text-[0.625rem] text-muted-foreground">
-                  <span className="flex items-center gap-0.5"><span className="w-3 h-3 rounded bg-slate-100 inline-block" /> Libre</span>
-                  <span className="flex items-center gap-0.5"><span className="w-3 h-3 rounded bg-yellow-100 inline-block" /> Mañana</span>
-                  <span className="flex items-center gap-0.5"><span className="w-3 h-3 rounded bg-orange-100 inline-block" /> Tarde</span>
-                  <span className="flex items-center gap-0.5"><span className="w-3 h-3 rounded bg-indigo-100 inline-block" /> Noche</span>
+                <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-0.5"><span className="w-3 h-3 rounded bg-muted inline-block" /> Libre</span>
+                  <span className="flex items-center gap-0.5"><span className="w-3 h-3 rounded bg-warning/10 inline-block" /> Mañana</span>
+                  <span className="flex items-center gap-0.5"><span className="w-3 h-3 rounded bg-warning/10 inline-block" /> Tarde</span>
+                  <span className="flex items-center gap-0.5"><span className="w-3 h-3 rounded bg-primary/10 inline-block" /> Noche</span>
                 </div>
               </div>
             )}
@@ -282,7 +282,7 @@ export function GroupPatternAssignmentDialog({ open, group, onClose }: Props) {
                 disabled={requiresSundayAnchor}
                 onChange={e => { setForm(f => ({ ...f, startCycleDate: e.target.value })); setIsFormDirty(true); }}
               />
-              <p className="text-[0.625rem] text-muted-foreground mt-0.5">
+              <p className="text-xs text-muted-foreground mt-0.5">
                 {requiresSundayAnchor
                   ? 'Calculado automáticamente en domingo, para respetar los días configurados en el patrón (Día 1 = Domingo)'
                   : 'Fecha desde la cual contar el ciclo'}
@@ -295,7 +295,7 @@ export function GroupPatternAssignmentDialog({ open, group, onClose }: Props) {
                 value={form.validFrom}
                 onChange={e => { setForm(f => ({ ...f, validFrom: e.target.value })); setIsFormDirty(true); }}
               />
-              <p className="text-[0.625rem] text-muted-foreground mt-0.5">Inicio de vigencia del patrón</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Inicio de vigencia del patrón</p>
             </div>
           </div>
 
@@ -305,7 +305,7 @@ export function GroupPatternAssignmentDialog({ open, group, onClose }: Props) {
               type="date" className="h-8 text-sm mt-1" disabled
               value={form.validTo}
             />
-            <p className="text-[0.625rem] text-muted-foreground mt-0.5">
+            <p className="text-xs text-muted-foreground mt-0.5">
               Calculado automáticamente: 3 meses después de "Válido desde"
             </p>
           </div>

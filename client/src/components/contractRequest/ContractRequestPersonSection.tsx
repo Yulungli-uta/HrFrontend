@@ -245,13 +245,13 @@ export const ContractRequestPersonSection = forwardRef<ContractRequestPersonSect
     return (
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             <CardTitle className="text-base flex items-center gap-2">
               <UserCheck className="h-4 w-4 text-primary" />
               Personas sugeridas
             </CardTitle>
             {!readOnly && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Button variant="outline" size="sm" onClick={() => setBulkDialogOpen(true)}>
                   <Upload className="h-3 w-3 mr-1" />
                   Carga masiva
@@ -381,8 +381,7 @@ export const ContractRequestPersonSection = forwardRef<ContractRequestPersonSect
                                 variant="ghost"
                                 size="icon"
                                 className="h-7 w-7 text-destructive hover:text-destructive"
-                                onClick={() => handleRemoveRow(row._tempId)}
-                              >
+                                onClick={() => handleRemoveRow(row._tempId)} aria-label="Eliminar">
                                 <Trash2 className="h-3 w-3" />
                               </Button>
                             </TableCell>
@@ -613,7 +612,7 @@ export const ContractRequestPersonSection = forwardRef<ContractRequestPersonSect
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex justify-end gap-2 pt-2 flex-wrap">
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
                 <Button onClick={handleAddRow} disabled={!canSaveRow}>
                   Agregar

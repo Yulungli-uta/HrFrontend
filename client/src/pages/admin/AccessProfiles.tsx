@@ -234,7 +234,7 @@ function ManageProfileRolesDialog({
           </>
         )}
 
-        <div className="flex justify-end gap-3 pt-2">
+        <div className="flex justify-end gap-3 pt-2 flex-wrap">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cerrar
           </Button>
@@ -554,7 +554,7 @@ export default function AccessProfilesPage() {
 
   return (
     <div className="container mx-auto p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
             <Users2 className="h-8 w-8" />
@@ -651,7 +651,7 @@ export default function AccessProfilesPage() {
                       {profile.createdAt ? formatDate(profile.createdAt) : "-"}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
+                      <div className="flex justify-end gap-1 flex-wrap">
                         <ActionIconButton
                           icon={Users2}
                           label="Gestionar roles"
@@ -705,7 +705,7 @@ export default function AccessProfilesPage() {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteProfileId && deleteMutation.mutate(deleteProfileId)}
-              className="bg-destructive hover:bg-red-700"
+              className="bg-destructive hover:bg-destructive/90"
             >
               Eliminar
             </AlertDialogAction>

@@ -105,7 +105,7 @@ export default function Header({
                 {/* Avatar con iniciales */}
                 <div
                   className="w-7 h-7 rounded-full bg-primary flex items-center justify-center
-                              text-primary-foreground text-[0.625rem] font-bold shrink-0 select-none"
+                              text-primary-foreground text-xs font-bold shrink-0 select-none"
                 >
                   {initials || <User className="h-3.5 w-3.5" />}
                 </div>
@@ -128,7 +128,7 @@ export default function Header({
               {/* Info del usuario */}
               <div className="px-3 py-2 border-b border-border mb-1">
                 <p className="text-xs font-semibold text-foreground truncate">{displayName}</p>
-                <p className="text-[0.625rem] text-muted-foreground mt-0.5">Cuenta activa</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Cuenta activa</p>
               </div>
 
               <DropdownMenuItem
