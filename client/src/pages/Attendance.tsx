@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Timer, Clock, MapPin, Filter, AlertCircle, CheckCircle, Calendar, Search, RefreshCw, Info } from "lucide-react";
+import { Timer, MapPin, AlertCircle, CheckCircle, Calendar, Search, RefreshCw, Info } from "lucide-react";
 import type { AttendancePunch } from "@/shared/schema";
 import { MarcacionesEspecializadasAPI, handleApiError, TimeAPI } from "@/lib/api";
 import { useAuth } from "@/features/auth";
@@ -126,7 +126,7 @@ function RangeQueryModal({ employeeId }: { employeeId: number }) {
     <Dialog>
       <DialogTrigger asChild>
         <Button variant="outline" className="gap-2" aria-label="Consultar por fechas" title="Consultar por fechas">
-          <Search className="h-4 w-4" /> Consultar por Fechas
+          <Search className="h-4 w-4" /> <span className="hidden sm:inline">Consultar por Fechas</span>
         </Button>
       </DialogTrigger>
 
@@ -248,7 +248,8 @@ function ConnectionStatus({
       title={lastSync ? `Última sync: ${format(lastSync, "HH:mm:ss")}` : undefined}
     >
       <div className={`h-2 w-2 rounded-full mr-1 ${isOnline ? "bg-success" : "bg-destructive"}`} />
-      <span className="text-xs">{isOnline ? "Conectado" : "Sin conexión"}</span>
+      <span className="hidden text-xs sm:inline">{isOnline ? "Conectado" : "Sin conexión"}</span>
+      <span className="sr-only sm:hidden">{isOnline ? "Conectado" : "Sin conexión"}</span>
     </div>
   );
 }
@@ -709,25 +710,146 @@ export default function AttendancePage() {
   const nextPunchLabel = nextPunchType === "In" ? "Registrar Entrada" : "Registrar Salida";
   const nextPunchColor = nextPunchType === "In" ? "bg-success hover:bg-success/90" : "bg-destructive hover:bg-destructive/90";
 
-  return (
-    <div className="container mx-auto p-4 sm:p-6 max-w-5xl">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-5 gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Mi Control de Asistencia</h1>
-          <div className="flex items-center text-muted-foreground mt-1 sm:mt-2">
-            <span className="text-sm sm:text-base">{formattedDate}</span>
+  // Línea de estado bajo el botón: un único mensaje, en este orden de prioridad
+  const statusLine = (() => {
+    if (punchResult) {
+      const ok = punchResult.kind === "ok";
+      return (
+        <div
+          role={ok ? "status" : "alert"}
+          className={`flex items-start justify-between gap-2 rounded-md border px-3 py-2 text-sm ${
+            ok ? "border-success/30 bg-success/10 text-success" : "border-destructive/40 bg-destructive/10 text-destructive"
+          }`}
+        >
+          <div className="min-w-0">
+            <p className="font-semibold leading-tight">{ok ? "✓ " : "✕ "}{punchResult.title}</p>
+            <p className="break-words text-xs">{punchResult.message}</p>
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            {!ok && (
+              <Button size="sm" variant="outline" className="h-8" onClick={handlePunch} disabled={createPunchMutation.isPending}>
+                Reintentar
+              </Button>
+            )}
+            <Button size="sm" variant="ghost" className="h-8" onClick={() => setPunchResult(null)} aria-label="Cerrar aviso">
+              Cerrar
+            </Button>
           </div>
         </div>
+      );
+    }
+    if (apiStatus === "offline") {
+      return (
+        <p className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
+          <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" /> Sin conexión con el servidor.
+        </p>
+      );
+    }
+    if (isWithinCooldown) {
+      return (
+        <p className="flex items-center gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning">
+          <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" /> Podrá volver a marcar en {COOLDOWN_MINUTES - timeSinceLastPunch} min
+        </p>
+      );
+    }
+    if (lastPunchToday) {
+      return (
+        <p className="text-center text-sm text-muted-foreground">
+          Última: <span className="font-medium tabular-nums text-foreground">{format(new Date(lastPunchToday.punchTime ?? 0), "HH:mm:ss")}</span>
+          {" · "}
+          {PUNCH_TYPES[lastPunchToday.punchType as PunchKind]?.label ?? lastPunchToday.punchType} · hace {timeSinceLastPunch} min
+        </p>
+      );
+    }
+    return <p className="text-center text-sm text-muted-foreground">Aún no ha marcado hoy</p>;
+  })();
 
-        <div className="flex flex-wrap gap-2 items-center">
+  return (
+    <div className="container mx-auto max-w-5xl p-4 sm:p-6">
+      {/* Cabecera compacta: título, fecha y herramientas en una sola fila */}
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold leading-tight text-foreground sm:text-3xl">
+            <span className="sm:hidden">Mi asistencia</span>
+            <span className="hidden sm:inline">Mi Control de Asistencia</span>
+          </h1>
+          <p className="mt-0.5 text-xs text-muted-foreground sm:mt-1 sm:text-base">
+            <span className="sm:hidden">{format(currentTime, "EEEE, d 'de' MMMM", { locale: es })}</span>
+            <span className="hidden sm:inline">{formattedDate}</span>
+          </p>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2">
           <ConnectionStatus isOnline={apiStatus === "online"} isLoading={apiStatus === "checking"} lastSync={lastSync} />
+          <RangeQueryModal employeeId={employeeId} />
+          <Button variant="outline" size="icon" onClick={handleRetry} title="Actualizar datos" aria-label="Actualizar datos">
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
 
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
+      <div className="grid gap-4">
+        {/* Franja principal: en escritorio la siguiente marcación, la hora y el botón van en una sola fila */}
+        <Card className={`border-l-4 ${nextPunchType === "In" ? "border-l-success" : "border-l-destructive"}`}>
+          <CardContent className="p-4 sm:p-5 lg:p-6">
+            <div className="grid gap-3 lg:grid-cols-[1fr_auto_18rem] lg:items-center lg:gap-10">
+              <div className="hidden lg:block">
+                <p className="text-sm text-muted-foreground">Siguiente marcación</p>
+                <p className={`text-3xl font-bold ${nextPunchType === "In" ? "text-success" : "text-destructive"}`}>
+                  {nextPunchType === "In" ? "Entrada" : "Salida"}
+                </p>
+              </div>
+
+              <div className="text-center">
+                <p className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
+                  Hora del servidor
+                  {currentLocation && <MapPin className="h-3 w-3" aria-label="Ubicación detectada" />}
+                </p>
+                <p className="text-4xl font-bold leading-tight tabular-nums text-foreground sm:text-5xl lg:text-6xl">
+                  {format(currentTime, "HH:mm:ss")}
+                </p>
+              </div>
+
+              <Button
+                size="lg"
+                className={`${nextPunchColor} h-16 w-full text-lg lg:h-20 lg:text-xl`}
+                onClick={handlePunch}
+                disabled={!canPunch || createPunchMutation.isPending}
+                aria-label={nextPunchLabel}
+              >
+                {createPunchMutation.isPending ? (
+                  <>
+                    <RefreshCw className="mr-2 h-5 w-5 animate-spin" />
+                    Procesando...
+                  </>
+                ) : (
+                  <>
+                    <Timer className="mr-2 h-5 w-5" />
+                    {nextPunchLabel}
+                  </>
+                )}
+              </Button>
+            </div>
+
+            <div aria-live="polite" className="mt-3">
+              {statusLine}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Marcaciones de hoy */}
+        <Card className="overflow-hidden">
+          <div className="flex items-center justify-between gap-2 border-b border-border bg-background px-4 py-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <h2 className="whitespace-nowrap text-sm font-semibold sm:text-lg">Marcaciones de hoy</h2>
+              <Badge variant="outline" className="shrink-0 bg-primary/10 text-primary">
+                {filteredPunches.length}
+              </Badge>
+            </div>
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              className="rounded-md border border-input py-2 px-3 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              className="h-8 w-[6.5rem] shrink-0 rounded-md border border-input bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               aria-label="Filtrar por tipo de marcación"
             >
               <option value="all">Todas</option>
@@ -736,147 +858,20 @@ export default function AttendancePage() {
             </select>
           </div>
 
-          <RangeQueryModal employeeId={employeeId} />
-
-          <Button variant="outline" size="icon" onClick={handleRetry} title="Actualizar datos" aria-label="Actualizar datos">
-            <RefreshCw className="h-4 w-4" />
-          </Button>
-        </div>
+          <CardContent className="p-0">
+            {filteredPunches.length === 0 ? (
+              <p className="px-4 py-6 text-center text-sm text-muted-foreground">Aún no hay marcaciones hoy.</p>
+            ) : (
+              <PunchTable
+                punches={filteredPunches.map((p) => ({
+                  ...p,
+                  punchId: p.id ?? `${p.punchTime ?? "no-time"}-${p.deviceId ?? "no-device"}`,
+                })) as any}
+              />
+            )}
+          </CardContent>
+        </Card>
       </div>
-
-      <Card className="mb-5">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Timer className="h-5 w-5" />
-            Registrar Marcación
-          </CardTitle>
-          {/* <CardDescription>
-            Haga clic para registrar su {nextPunchType === "In" ? "entrada" : "salida"} con hora del servidor.
-          </CardDescription> */}
-        </CardHeader>
-
-        <CardContent>
-          <div className="bg-background p-4 rounded-lg mb-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
-              <div>
-                <p className="text-xs sm:text-sm text-muted-foreground">Hora actual del servidor</p>
-                <p className="text-xl sm:text-2xl font-semibold">{format(currentTime, "HH:mm:ss")}</p>
-              </div>
-
-              <div className="text-left sm:text-right">
-                {isGettingLocation ? (
-                  <p className="text-xs text-muted-foreground">Obteniendo ubicación...</p>
-                ) : currentLocation ? (
-                  <p className="text-xs text-muted-foreground flex items-center justify-start sm:justify-end">
-                    <MapPin className="h-3 w-3 mr-1" />
-                    Ubicación detectada
-                  </p>
-                ) : (
-                  <p className="text-xs text-warning">Ubicación no disponible (se solicitará al registrar)</p>
-                )}
-
-                {lastPunchToday && (
-                  <div className="mt-2 p-2 bg-primary/10 rounded-md text-xs text-primary">
-                    Última: {format(new Date(lastPunchToday.punchTime ?? 0), "HH:mm:ss")} (
-                    {PUNCH_TYPES[lastPunchToday.punchType as PunchKind]?.label ?? lastPunchToday.punchType}) · Hace{" "}
-                    {timeSinceLastPunch} min
-                  </div>
-                )}
-
-                {apiStatus === "offline" && (
-                  <div className="mt-2 p-2 bg-destructive/15 border border-destructive/40 rounded-md flex items-start text-xs text-destructive">
-                    <AlertCircle className="h-4 w-4 mr-2 mt-0.5" />
-                    Sin conexión con el servidor.
-                  </div>
-                )}
-
-                {isWithinCooldown && (
-                  <div className="mt-2 p-2 bg-warning/10 border border-warning/40 rounded-md flex items-start text-xs text-warning">
-                    <AlertCircle className="h-4 w-4 mr-2 mt-0.5" />
-                    Debe esperar {COOLDOWN_MINUTES - timeSinceLastPunch} min para volver a marcar.
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {punchResult && (
-            <div
-              role={punchResult.kind === "error" ? "alert" : "status"}
-              className={`mb-4 flex items-start justify-between gap-3 rounded-lg border p-3 text-sm ${
-                punchResult.kind === "ok"
-                  ? "border-success/30 bg-success/10 text-success"
-                  : "border-destructive/40 bg-destructive/10 text-destructive"
-              }`}
-            >
-              <div className="min-w-0">
-                <p className="font-semibold">{punchResult.title}</p>
-                <p className="break-words">{punchResult.message}</p>
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                {punchResult.kind === "error" && (
-                  <Button size="sm" variant="outline" onClick={handlePunch} disabled={createPunchMutation.isPending}>
-                    Reintentar
-                  </Button>
-                )}
-                <Button size="sm" variant="ghost" onClick={() => setPunchResult(null)} aria-label="Cerrar aviso">
-                  Cerrar
-                </Button>
-              </div>
-            </div>
-          )}
-
-          <div className="flex justify-center">
-            <Button
-              size="lg"
-              className={`${nextPunchColor} min-w-[220px] h-14 text-lg`}
-              onClick={handlePunch}
-              disabled={!canPunch || createPunchMutation.isPending}
-              aria-label={nextPunchLabel}
-            >
-              {createPunchMutation.isPending ? (
-                <>
-                  <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
-                  Procesando...
-                </>
-              ) : (
-                <>
-                  <Timer className="h-5 w-5 mr-2" />
-                  {nextPunchLabel}
-                </>
-              )}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="bg-background py-3">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <CardTitle className="text-base sm:text-lg">Mis Marcaciones de Hoy</CardTitle>
-            <Badge variant="outline" className="bg-primary/10 text-primary w-fit">
-              Total: {filteredPunches.length}
-            </Badge>
-          </div>
-        </CardHeader>
-
-        <CardContent className="p-0">
-          {filteredPunches.length === 0 ? (
-            <div className="text-center p-10">
-              <Timer className="h-12 w-12 text-muted-foreground/70 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-foreground mb-2">Sin marcaciones hoy</h3>
-              <p className="text-muted-foreground">Use el botón de arriba para registrar su marcación.</p>
-            </div>
-          ) : (
-            <PunchTable
-              punches={filteredPunches.map((p) => ({
-                ...p,
-                punchId: p.id ?? `${p.punchTime ?? "no-time"}-${p.deviceId ?? "no-device"}`,
-              })) as any}
-            />
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }
