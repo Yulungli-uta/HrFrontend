@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { DataPagination } from '@/components/ui/DataPagination';
+import { useMobileInfiniteList, withMobileList } from "@/hooks/pagination/useMobileInfiniteList";
 import { TimePlanningOverviewAPI } from '@/lib/api';
 import type { TimePlanningOverviewEmployee } from '@/lib/api';
 import PlanStatusBadge from '@/components/planning/PlanStatusBadge';
@@ -31,15 +32,20 @@ export default function OvertimePlanEmployeesPanel({ planId, employeeStatusTypeI
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['time-planning-overview-employees', planId, employeeStatusTypeId ?? null, page, pageSize],
-    queryFn: async () => {
-      const resp = await TimePlanningOverviewAPI.getPlanEmployees(planId, { page, pageSize, employeeStatusTypeId });
-      if (resp.status !== 'success') throw new Error('No se pudieron cargar los empleados del plan.');
-      return resp.data;
-    },
+  const employeesKey = ['time-planning-overview-employees', planId, employeeStatusTypeId ?? null];
+  const fetchEmployees = async (pg: number, size: number) => {
+    const resp = await TimePlanningOverviewAPI.getPlanEmployees(planId, { page: pg, pageSize: size, employeeStatusTypeId });
+    if (resp.status !== 'success') throw new Error('No se pudieron cargar los empleados del plan.');
+    return resp.data;
+  };
+  const mobile = useMobileInfiniteList<any>({ queryKey: employeesKey, fetchPage: fetchEmployees, pageSize, getKey: (e) => e.employeeId });
+  const employeesQuery = useQuery({
+    queryKey: [...employeesKey, page, pageSize],
+    queryFn: () => fetchEmployees(page, pageSize),
     staleTime: 30_000,
+    enabled: !mobile.active,
   });
+  const { data, isLoading, isError } = withMobileList(employeesQuery, mobile);
 
   if (isLoading) return <Skeleton className="h-20 w-full" />;
   if (isError || !data) {
@@ -98,6 +104,8 @@ export default function OvertimePlanEmployeesPanel({ planId, employeeStatusTypeI
       </div>
 
       <DataPagination
+        infinite={mobile.infinite}
+        itemLabel="empleados"
         page={data.page}
         totalPages={data.totalPages}
         totalCount={data.totalCount}

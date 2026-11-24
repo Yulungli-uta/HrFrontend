@@ -311,6 +311,8 @@ export function FamilyMembersTab({
             )}
 
             <DataPagination
+              infinite={list.infinite}
+              itemLabel="familiares"
               page={list.page}
               totalPages={list.totalPages}
               totalCount={list.totalCount}

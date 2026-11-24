@@ -2,6 +2,7 @@
 // listado de procesos creados: ambos listan hasta 200 filas del backend sin paginación
 // propia, así que se resuelve en el cliente en vez de duplicar la lógica en cada página.
 import { useMemo, useState } from "react";
+import { useClientInfiniteSlice } from "@/hooks/pagination/useClientInfiniteSlice";
 import type { SigningProcessListItem } from "@/types/electronic-signature";
 
 export function useSignatureListFilters(rows: SigningProcessListItem[], statusOf: (row: SigningProcessListItem) => string) {
@@ -26,7 +27,7 @@ export function useSignatureListFilters(rows: SigningProcessListItem[], statusOf
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, pageCount);
-  const paged = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const { visibleItems: paged, infinite } = useClientInfiniteSlice(filtered, { page: currentPage, setPage, pageSize });
 
   const setSearchAndReset = (value: string) => {
     setSearch(value);
@@ -49,6 +50,7 @@ export function useSignatureListFilters(rows: SigningProcessListItem[], statusOf
     statusOptions,
     filtered,
     paged,
+    infinite,
     page: currentPage,
     pageSize,
     setPageSize: setPageSizeAndReset,

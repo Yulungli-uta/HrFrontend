@@ -33,6 +33,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { DataPagination } from '@/components/ui/DataPagination';
+import { useMobileInfiniteList, withMobileList } from "@/hooks/pagination/useMobileInfiniteList";
 import { DepartmentSelect } from '@/components/departments/DepartmentSelect';
 import { TimePlanningOverviewAPI } from '@/lib/api';
 import type { TimePlanningOverviewEmployee, TimePlanningOverviewFilter } from '@/lib/api';
@@ -95,15 +96,20 @@ export default function OvertimePlanning() {
     search: applied.search.trim() || undefined,
   };
 
-  const { data, isLoading, isFetching, isError, refetch } = useQuery({
+  const { page: _page, pageSize: _pageSize, ...baseFilter } = filter;
+  const fetchPlans = async (pg: number, size: number) => {
+    const resp = await TimePlanningOverviewAPI.getPlans({ ...filter, page: pg, pageSize: size });
+    if (resp.status !== 'success') throw new Error('No se pudo cargar la planificación.');
+    return resp.data;
+  };
+  const mobile = useMobileInfiniteList<any>({ queryKey: ['time-planning-overview', baseFilter], fetchPage: fetchPlans, pageSize });
+  const plansQuery = useQuery({
     queryKey: ['time-planning-overview', filter],
-    queryFn: async () => {
-      const resp = await TimePlanningOverviewAPI.getPlans(filter);
-      if (resp.status !== 'success') throw new Error('No se pudo cargar la planificación.');
-      return resp.data;
-    },
+    queryFn: () => fetchPlans(page, pageSize),
     staleTime: 30_000,
+    enabled: !mobile.active,
   });
+  const { data, isLoading, isFetching, isError, refetch } = withMobileList(plansQuery, mobile);
 
   const applyFilters = () => {
     if (invalidRange) return;
@@ -329,6 +335,8 @@ export default function OvertimePlanning() {
 
           {data && data.totalCount > 0 && (
             <DataPagination
+              infinite={mobile.infinite}
+              itemLabel="planes"
               page={data.page}
               totalPages={data.totalPages}
               totalCount={data.totalCount}

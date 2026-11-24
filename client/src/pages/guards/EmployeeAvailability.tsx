@@ -74,7 +74,7 @@ export default function EmployeeAvailabilityPage() {
     reason: '',
   });
 
-  const { data: resp, isLoading, isFetching, refetch } = useAvailabilityBlocksPaged(filter, page, pageSize, true);
+  const { data: resp, isLoading, isFetching, refetch, infinite } = useAvailabilityBlocksPaged(filter, page, pageSize, true);
   const { data: blockSourceTypesData } = useGuardRefTypes(REF_TYPE_CATEGORIES.GUARD_BLOCK_SOURCE);
   const { createManual, syncPermissions, syncVacations } = useAvailabilityMutations();
 
@@ -248,6 +248,8 @@ export default function EmployeeAvailabilityPage() {
           )}
           {(pagedData?.totalPages ?? 0) > 1 && (
             <DataPagination
+              infinite={infinite}
+              itemLabel="bloqueos"
               page={pagedData?.page ?? page}
               totalPages={pagedData?.totalPages ?? 0}
               totalCount={pagedData?.totalCount ?? 0}

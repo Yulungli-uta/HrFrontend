@@ -4,6 +4,7 @@ import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
 import { useState } from 'react';
 import { ClipboardCheck, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { DataPagination } from '@/components/ui/DataPagination';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -345,14 +346,19 @@ export default function GuardVacationApprovalsPage() {
                 </TableBody>
               </Table>
             </div>
-            <div className="flex items-center justify-between text-sm text-muted-foreground flex-wrap gap-2">
-              <span>{plansQ.totalCount} planes</span>
-              <div className="flex gap-2 flex-wrap">
-                <Button variant="outline" size="sm" disabled={plansQ.page <= 1} onClick={() => plansQ.goToPage(plansQ.page - 1)}>Anterior</Button>
-                <span className="flex items-center px-2">Pág {plansQ.page} / {plansQ.totalPages}</span>
-                <Button variant="outline" size="sm" disabled={plansQ.page >= plansQ.totalPages} onClick={() => plansQ.goToPage(plansQ.page + 1)}>Siguiente</Button>
-              </div>
-            </div>
+            <DataPagination
+              infinite={plansQ.infinite}
+              itemLabel="planes"
+              page={plansQ.page}
+              totalPages={plansQ.totalPages}
+              totalCount={plansQ.totalCount}
+              pageSize={plansQ.pageSize}
+              hasPreviousPage={plansQ.hasPreviousPage}
+              hasNextPage={plansQ.hasNextPage}
+              onPageChange={plansQ.goToPage}
+              onPageSizeChange={plansQ.setPageSize}
+              disabled={plansQ.isLoading}
+            />
           </>
         )}
         </TabsContent>
@@ -453,14 +459,19 @@ export default function GuardVacationApprovalsPage() {
                 </TableBody>
               </Table>
             </div>
-            <div className="flex items-center justify-between text-sm text-muted-foreground flex-wrap gap-2">
-              <span>{reqsQ.totalCount} solicitudes</span>
-              <div className="flex gap-2 flex-wrap">
-                <Button variant="outline" size="sm" disabled={reqsQ.page <= 1} onClick={() => reqsQ.goToPage(reqsQ.page - 1)}>Anterior</Button>
-                <span className="flex items-center px-2">Pág {reqsQ.page} / {reqsQ.totalPages}</span>
-                <Button variant="outline" size="sm" disabled={reqsQ.page >= reqsQ.totalPages} onClick={() => reqsQ.goToPage(reqsQ.page + 1)}>Siguiente</Button>
-              </div>
-            </div>
+            <DataPagination
+              infinite={reqsQ.infinite}
+              itemLabel="solicitudes"
+              page={reqsQ.page}
+              totalPages={reqsQ.totalPages}
+              totalCount={reqsQ.totalCount}
+              pageSize={reqsQ.pageSize}
+              hasPreviousPage={reqsQ.hasPreviousPage}
+              hasNextPage={reqsQ.hasNextPage}
+              onPageChange={reqsQ.goToPage}
+              onPageSizeChange={reqsQ.setPageSize}
+              disabled={reqsQ.isLoading}
+            />
           </>
         )}
         </TabsContent>

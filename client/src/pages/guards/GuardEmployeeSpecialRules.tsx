@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { Shield, Plus, Loader2, Search } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { DataPagination } from '@/components/ui/DataPagination';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -252,8 +253,10 @@ function RuleFormDialog({
 // ─── Main page ─────────────────────────────────────────────────────────────────
 
 export default function GuardEmployeeSpecialRulesPage() {
-  const { items, page, pageSize, totalCount, totalPages, goToPage, currentParams, setSearch, isLoading } =
-    useSpecialRulesPaged(20);
+  const {
+    items, page, pageSize, totalCount, totalPages, hasPreviousPage, hasNextPage,
+    goToPage, setPageSize, currentParams, setSearch, isLoading, infinite,
+  } = useSpecialRulesPaged(20);
   const searchValue = currentParams.search ?? '';
 
   const [formOpen, setFormOpen] = useState(false);
@@ -341,14 +344,19 @@ export default function GuardEmployeeSpecialRulesPage() {
           </div>
 
           {/* Pagination */}
-          <div className="flex items-center justify-between text-sm text-muted-foreground flex-wrap gap-2">
-            <span>{totalCount} reglas</span>
-            <div className="flex gap-2 flex-wrap">
-              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => goToPage(page - 1)}>Anterior</Button>
-              <span className="flex items-center px-2">Pág {page} / {totalPages}</span>
-              <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => goToPage(page + 1)}>Siguiente</Button>
-            </div>
-          </div>
+          <DataPagination
+            infinite={infinite}
+            itemLabel="reglas"
+            page={page}
+            totalPages={totalPages}
+            totalCount={totalCount}
+            pageSize={pageSize}
+            hasPreviousPage={hasPreviousPage}
+            hasNextPage={hasNextPage}
+            onPageChange={goToPage}
+            onPageSizeChange={setPageSize}
+            disabled={isLoading}
+          />
         </>
       )}
 

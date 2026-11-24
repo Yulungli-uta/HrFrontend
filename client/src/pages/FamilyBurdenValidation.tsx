@@ -340,6 +340,7 @@ export default function FamilyBurdenValidationPage() {
     goToPage,
     setPageSize,
     setSearch,
+    infinite,
   } = usePaged<FamilyBurdenValidationItem>({
     // selectedStatusTypeId entra en la queryKey para que cambiar el filtro de
     // estado dispare un refetch (usePaged solo re-consulta cuando cambia su
@@ -535,6 +536,8 @@ export default function FamilyBurdenValidationPage() {
               </div>
 
               <DataPagination
+                infinite={infinite}
+                itemLabel="cargas familiares"
                 page={page}
                 totalPages={totalPages}
                 totalCount={totalCount}

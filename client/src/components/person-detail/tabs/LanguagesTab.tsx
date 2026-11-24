@@ -221,6 +221,8 @@ export function LanguagesTab({ languages, onEdit, onDelete, refTypesMap = {}, pe
             )}
 
             <DataPagination
+              infinite={list.infinite}
+              itemLabel="idiomas"
               page={list.page}
               totalPages={list.totalPages}
               totalCount={list.totalCount}

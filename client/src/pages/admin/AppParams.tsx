@@ -3,6 +3,10 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Card, CardContent } from "@/components/ui/card";
+import { ResponsiveDataView } from "@/components/ui/responsive-data-view";
+import { RecordAvatar, RecordCard } from "@/components/ui/RecordCard";
+import { StatusBadge } from "@/components/ui/status-badge";
+
 import { Button } from "@/components/ui/button";
 import { ActionIconButton } from "@/components/ui/action-icon-button";
 import { Badge } from "@/components/ui/badge";
@@ -101,6 +105,7 @@ export default function AppParamsPage() {
     setPageSize,
     setSearch,
     currentParams,
+    infinite,
   } = usePaged<AppParamRow>({
     queryKey: "app-params",
     queryFn: async (reqParams) => {
@@ -232,8 +237,66 @@ export default function AppParamsPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardContent className="pt-6">
+      <Card className="max-md:border-0 max-md:bg-transparent max-md:shadow-none">
+        <CardContent className="pt-6 max-md:p-0">
+          <ResponsiveDataView
+            items={params}
+            getKey={(p) => p.nemonic}
+            empty={
+              <p className="py-8 text-center text-muted-foreground">
+                {currentParams.search ? "No se encontraron parámetros" : "No hay parámetros registrados"}
+              </p>
+            }
+            renderCard={(p) => {
+              const sensitive = looksSensitive(p);
+              const isRevealed = revealed.has(p.nemonic);
+              return (
+                <RecordCard
+                  tone={sensitive ? "warning" : "primary"}
+                  leading={<RecordAvatar seed={String(p.nemonic)} icon={SlidersHorizontal} />}
+                  title={<span className="break-all font-mono text-sm">{p.nemonic}</span>}
+                  subtitle={p.description || undefined}
+                  badges={
+                    <>
+                      <StatusBadge tone="info">{p.category}</StatusBadge>
+                      {sensitive && <StatusBadge tone="warning">Valor sensible</StatusBadge>}
+                    </>
+                  }
+                  meta={[
+                    {
+                      label: "Valor",
+                      value: <span className="break-all font-mono">{sensitive && !isRevealed ? maskValue(p.value) : p.value}</span>,
+                    },
+                    ...(p.lastModified
+                      ? [{ label: "Modificado", value: `${formatDateTime(p.lastModified)}${p.modifiedBy ? ` · ${p.modifiedBy}` : ""}` }]
+                      : []),
+                  ]}
+                  actions={
+                    <>
+                      {sensitive && (
+                        <ActionIconButton
+                          icon={isRevealed ? EyeOff : Eye}
+                          label={isRevealed ? "Ocultar valor" : "Mostrar valor"}
+                          tone="primary"
+                          touch
+                          onClick={() => toggleReveal(p.nemonic)}
+                        />
+                      )}
+                      <ActionIconButton icon={Edit} label="Editar parámetro" tone="primary" touch onClick={() => handleEdit(p)} />
+                      <ActionIconButton
+                        icon={Trash2}
+                        label="Eliminar parámetro"
+                        tone="destructive"
+                        touch
+                        className="ml-auto"
+                        onClick={() => setDeleteNemonic(p.nemonic)}
+                      />
+                    </>
+                  }
+                />
+              );
+            }}
+            renderTable={() => (
           <Table>
             <TableHeader>
               <TableRow>
@@ -313,10 +376,14 @@ export default function AppParamsPage() {
               )}
             </TableBody>
           </Table>
+            )}
+          />
         </CardContent>
       </Card>
 
       <DataPagination
+        infinite={infinite}
+        itemLabel="parámetros"
         page={page}
         totalPages={totalPages}
         totalCount={totalCount}

@@ -29,6 +29,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DataPagination } from "@/components/ui/DataPagination";
+import { useClientInfiniteSlice } from "@/hooks/pagination/useClientInfiniteSlice";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/features/auth";
 import {
@@ -560,10 +561,11 @@ export default function ApprovalsPermissions() {
 
   const justTotalCount = filteredJusts.length;
   const justTotalPages = Math.max(1, Math.ceil(justTotalCount / justPageSize));
-  const pagedJusts = useMemo(() => {
-    const start = (justPage - 1) * justPageSize;
-    return filteredJusts.slice(start, start + justPageSize);
-  }, [filteredJusts, justPage, justPageSize]);
+  const { visibleItems: pagedJusts, infinite: justInfinite } = useClientInfiniteSlice(filteredJusts, {
+    page: justPage,
+    setPage: setJustPage,
+    pageSize: justPageSize,
+  });
 
   /* --------- Invalidate helpers --------- */
   const qcInvalidatePerms = () =>
@@ -1690,6 +1692,8 @@ export default function ApprovalsPermissions() {
 
               {!loadingJusts && (
                 <DataPagination
+                  infinite={justInfinite}
+                  itemLabel="justificaciones"
                   page={justPage}
                   totalPages={justTotalPages}
                   totalCount={justTotalCount}

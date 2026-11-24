@@ -508,6 +508,7 @@ export default function MassVacationPlansPage() {
     setPageSize,
     setSearch,
     currentParams,
+    infinite,
   } = usePaged<MassVacationPlanDto>({
     queryKey: ['mass-vacation-plans', fromDate, toDate],
     queryFn: (params) => MassVacationPlansAPI.listPagedFiltered({ ...params, fromDate: fromDate || undefined, toDate: toDate || undefined }),
@@ -621,6 +622,8 @@ export default function MassVacationPlansPage() {
             </div>
           )}
           <DataPagination
+            infinite={infinite}
+            itemLabel="planes"
             page={page}
             totalPages={totalPages}
             totalCount={totalCount}

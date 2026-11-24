@@ -265,6 +265,7 @@ export default function EmployeeSchedules() {
     setSearch,
     clearSearch,
     currentParams,
+    infinite,
   } = usePaged<any>({
     queryKey: "employee-details",
     queryFn: (params) => VistaDetallesEmpleadosAPI.listPaged(params),
@@ -827,6 +828,8 @@ export default function EmployeeSchedules() {
       />
 
       <DataPagination
+        infinite={infinite}
+        itemLabel="horarios"
         page={page}
         totalPages={totalPages}
         totalCount={totalCount}

@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { useMobileInfiniteList, withMobileList } from '@/hooks/pagination/useMobileInfiniteList';
+import { InfiniteListFooter } from '@/components/ui/InfiniteListFooter';
 import {
   Dialog,
   DialogContent,
@@ -45,10 +47,17 @@ export default function MyResignationRetirementRequestsPage() {
   const { setIsFormDirty, handleOpenChange, close: closeForm, confirmOpen, confirmExit, closeConfirm } =
     useUnsavedChangesGuard(setIsFormOpen);
 
-  const { data, isLoading, error, refetch } = useQuery({
+  const mobile = useMobileInfiniteList<any>({
+    queryKey: ['my-resignation-retirement-requests'],
+    fetchPage: (pg, size) => ResignationRetirementAPI.getMy({ page: pg, pageSize: size }),
+    pageSize: 10,
+  });
+  const myQuery = useQuery({
     queryKey: ['my-resignation-retirement-requests', page],
     queryFn: () => ResignationRetirementAPI.getMy({ page, pageSize: 10 }),
+    enabled: !mobile.active,
   });
+  const { data, isLoading, error, refetch } = withMobileList(myQuery, mobile, 'api');
 
   const result = data?.status === 'success' ? data.data : null;
   const items: ResignationRetirementSummary[] = result?.items ?? [];
@@ -125,7 +134,7 @@ export default function MyResignationRetirementRequestsPage() {
               </table>
             </div>
 
-            {result && result.totalPages > 1 && (
+            {!mobile.active && result && result.totalPages > 1 && (
               <div className="flex items-center justify-between p-3 border-t flex-wrap gap-2">
                 <span className="text-xs text-muted-foreground">
                   Página {result.page} de {result.totalPages} — {result.totalCount} solicitudes
@@ -143,6 +152,18 @@ export default function MyResignationRetirementRequestsPage() {
                   </Button>
                 </div>
               </div>
+            )}
+
+            {mobile.active && (
+              <InfiniteListFooter
+                loadedCount={mobile.infinite.loadedCount}
+                totalCount={mobile.infinite.totalCount}
+                hasNextPage={mobile.infinite.hasNextPage}
+                isFetchingNextPage={mobile.infinite.isFetchingNextPage}
+                isError={mobile.infinite.isLoadMoreError}
+                onLoadMore={mobile.infinite.fetchNextPage}
+                itemLabel="solicitudes"
+              />
             )}
           </CardContent>
         </Card>

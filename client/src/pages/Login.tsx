@@ -202,8 +202,8 @@ export default function LoginPage() {
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="max-sm:flex max-sm:justify-start grid w-full grid-cols-2">
-              <TabsTrigger value="local">Local</TabsTrigger>
-              <TabsTrigger value="office365">Office 365</TabsTrigger>
+              <TabsTrigger value="local" className="max-sm:flex-1">Local</TabsTrigger>
+              <TabsTrigger value="office365" className="max-sm:flex-1">Office 365</TabsTrigger>
             </TabsList>
 
             {/* LOGIN LOCAL */}

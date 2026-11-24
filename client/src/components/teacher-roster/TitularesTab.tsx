@@ -278,6 +278,8 @@ export function TitularesTab({ onTotalChange }: TitularesTabProps) {
           {totalCount > 0 && (
             <div className="border-t border-border mt-4">
               <DataPagination
+                infinite={list.infinite}
+                itemLabel="docentes"
                 page={page}
                 totalPages={totalPages}
                 totalCount={totalCount}

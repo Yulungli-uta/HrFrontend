@@ -1,5 +1,9 @@
 // src/components/job-activities/JobActivitiesAssignPanel.tsx
 import { useMemo, useState } from "react";
+import { RecordAvatar, RecordCard } from "@/components/ui/RecordCard";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { useIsDesktop } from "@/hooks/useIsDesktop";
+import { ListChecks as ActivityIcon } from "lucide-react";
 import { Link2, Link2Off } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,6 +42,9 @@ export function JobActivitiesAssignPanel({ assignedIds, isWorking, onToggle }: P
     fetcher: async (params) => mapPagedItems(await ActivityAPI.listPaged(params), normalizeActivity),
   });
 
+  const isDesktop = useIsDesktop();
+  const showCards = !isDesktop && list.items.length > 0;
+
   const hasFilters = activeFilter !== "all" || typeFilter !== "all" || list.searchText.trim() !== "";
 
   return (
@@ -68,7 +75,46 @@ export function JobActivitiesAssignPanel({ assignedIds, isWorking, onToggle }: P
         </Select>
       </CatalogFilterBar>
 
-      <div className="rounded-md border">
+      {showCards ? (
+          <ul className="grid gap-3">
+            {list.items.map((act) => {
+              const isAssigned = assignedIds.has(act.activitiesID);
+              return (
+                <li key={act.activitiesID} className="rounded-lg border border-border bg-card p-3 shadow-sm">
+                  <RecordCard
+                    tone={isAssigned ? "success" : "muted"}
+                    leading={<RecordAvatar seed={String(act.activitiesID)} icon={ActivityIcon} />}
+                    title={act.description || "(Sin descripción)"}
+                    badges={
+                      <>
+                        <StatusBadge tone={act.activitiesType === "LABORAL" ? "primary" : "warning"}>
+                          {act.activitiesType === "LABORAL" ? "Laboral" : "Adicional"}
+                        </StatusBadge>
+                        <StatusBadge tone={isAssigned ? "success" : "neutral"}>{isAssigned ? "Asignada" : "No asignada"}</StatusBadge>
+                      </>
+                    }
+                    actions={
+                      <Button size="sm" variant={isAssigned ? "outline" : "default"} disabled={isWorking} onClick={() => onToggle(act)}>
+                        {isAssigned ? (
+                          <>
+                            <Link2Off className="mr-1 h-4 w-4" />
+                            Quitar
+                          </>
+                        ) : (
+                          <>
+                            <Link2 className="mr-1 h-4 w-4" />
+                            Asignar
+                          </>
+                        )}
+                      </Button>
+                    }
+                  />
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+        <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -136,7 +182,10 @@ export function JobActivitiesAssignPanel({ assignedIds, isWorking, onToggle }: P
           </TableBody>
         </Table>
       </div>
+        )}
       <DataPagination
+        infinite={list.infinite}
+        itemLabel="actividades"
         page={list.page}
         totalPages={list.totalPages}
         totalCount={list.totalCount}

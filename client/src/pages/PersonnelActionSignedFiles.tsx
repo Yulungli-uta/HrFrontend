@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ActionIconButton } from "@/components/ui/action-icon-button";
 import { DataPagination } from "@/components/ui/DataPagination";
+import { useMobileInfiniteList, withMobileList } from "@/hooks/pagination/useMobileInfiniteList";
 import { StatusBadge, type StatusTone } from "@/components/shared/StatusBadge";
 import { DepartmentSelect } from "@/components/departments/DepartmentSelect";
 import { PdfPreviewModal } from "@/components/reports/PdfPreviewModal";
@@ -54,23 +55,33 @@ export default function PersonnelActionSignedFilesPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const list = useQuery({
-    queryKey: ["signed-files", "personnel-actions", search, status, actionTypeId, departmentId, startDate, endDate, page, pageSize],
-    queryFn: async () =>
-      unwrapApiResponse(
-        await SignedFileTrackingAPI.listActions({
+  const fetchList = async (pg: number, size: number) =>
+    unwrapApiResponse(
+      await SignedFileTrackingAPI.listActions({
           search: search || undefined,
           status: status === ALL ? undefined : status,
           actionTypeId: actionTypeId === ALL ? undefined : Number(actionTypeId),
           departmentId: departmentId ?? undefined,
           startDate: startDate || undefined,
           endDate: endDate || undefined,
-          page,
-          pageSize,
+          page: pg,
+          pageSize: size,
         })
-      ),
-    placeholderData: (prev) => prev,
+    );
+  const listFilters = ["signed-files", "personnel-actions", search, status, actionTypeId, departmentId, startDate, endDate];
+  const mobile = useMobileInfiniteList<any>({
+    queryKey: listFilters,
+    fetchPage: fetchList,
+    pageSize,
+    getKey: (row) => row.actionId,
   });
+  const listQuery = useQuery({
+    queryKey: [...listFilters, page, pageSize],
+    queryFn: () => fetchList(page, pageSize),
+    placeholderData: (prev) => prev,
+    enabled: !mobile.active,
+  });
+  const list = withMobileList(listQuery, mobile);
   const data = list.data;
 
   const { open, close, loadingId, preview } = useSignedFilePreview(SignedFileTrackingAPI.actionFile);
@@ -238,6 +249,8 @@ export default function PersonnelActionSignedFilesPage() {
                 </TableBody>
               </Table>
               <DataPagination
+                infinite={mobile.infinite}
+                itemLabel="acciones"
                 page={data!.page}
                 totalPages={data!.totalPages}
                 totalCount={data!.totalCount}

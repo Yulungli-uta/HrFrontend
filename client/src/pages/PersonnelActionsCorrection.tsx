@@ -35,6 +35,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { DataPagination } from '@/components/ui/DataPagination';
+import { useMobileInfiniteList, withMobileList } from "@/hooks/pagination/useMobileInfiniteList";
 import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
 import { DepartmentSelect } from '@/components/departments/DepartmentSelect';
 import { ArrowLeft, Search, ShieldAlert, Loader2, Eye, Pencil } from 'lucide-react';
@@ -161,11 +162,21 @@ export default function PersonnelActionsCorrection() {
     });
   };
 
-  const searchQuery = useQuery({
-    queryKey: ['personnel-actions-correction-search', appliedFilters, page, pageSize],
-    queryFn: () => PersonnelActionsAPI.getPaged({ ...appliedFilters, page, pageSize }),
+  const correctionKey = ['personnel-actions-correction-search', appliedFilters];
+  const fetchCorrection = (pg: number, size: number) =>
+    PersonnelActionsAPI.getPaged({ ...appliedFilters, page: pg, pageSize: size });
+  const mobile = useMobileInfiniteList<any>({
+    queryKey: correctionKey,
+    fetchPage: fetchCorrection,
+    pageSize,
     enabled: !selected && appliedFilters !== null,
   });
+  const searchQueryBase = useQuery({
+    queryKey: [...correctionKey, page, pageSize],
+    queryFn: () => fetchCorrection(page, pageSize),
+    enabled: !selected && appliedFilters !== null && !mobile.active,
+  });
+  const searchQuery = withMobileList(searchQueryBase, mobile, 'api');
 
   const detailQuery = useQuery({
     queryKey: ['personnel-action-detail-for-correction', selected?.actionId],
@@ -378,6 +389,8 @@ export default function PersonnelActionsCorrection() {
 
                     {result && (
                       <DataPagination
+                        infinite={mobile.infinite}
+                        itemLabel="acciones"
                         page={result.page}
                         totalPages={result.totalPages}
                         totalCount={result.totalCount}

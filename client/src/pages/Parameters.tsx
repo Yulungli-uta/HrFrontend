@@ -2,6 +2,11 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ActionIconButton } from "@/components/ui/action-icon-button";
+import { ResponsiveDataView } from "@/components/ui/responsive-data-view";
+import { RecordAvatar, RecordCard } from "@/components/ui/RecordCard";
+import { StatusBadge } from "@/components/ui/status-badge";
+
 import BrandingCard from "@/components/admin/BrandingCard";
 import { Button } from "@/components/ui/button";
 import { Plus, Settings2, Edit, Trash2, Search, RefreshCw, AlertTriangle } from "lucide-react";
@@ -64,6 +69,7 @@ export default function ParametersPage() {
     goToPage,
     setPageSize,
     setSearch,
+    infinite,
   } = usePaged<Parameter>({
     queryKey: "parameters-paged",
     queryFn: (params) =>
@@ -258,7 +264,7 @@ export default function ParametersPage() {
 
       <BrandingCard />
 
-      <Card>
+      <Card className="max-md:border-0 max-md:bg-transparent max-md:shadow-none">
         <CardHeader>
           <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4">
             <div>
@@ -284,8 +290,49 @@ export default function ParametersPage() {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="max-md:p-0">
           {filtered.length > 0 ? (
+            <ResponsiveDataView
+              items={filtered}
+              getKey={(p) => p.parameterId ?? String(p.name)}
+              renderCard={(p) => (
+                <RecordCard
+                  tone={p.isActive ? "success" : "muted"}
+                  dimmed={!p.isActive}
+                  leading={<RecordAvatar seed={String(p.name)} icon={Settings2} />}
+                  title={<span className="break-all font-mono text-sm">{p.name}</span>}
+                  subtitle={p.description || "Sin descripción"}
+                  badges={
+                    <>
+                      <StatusBadge tone="info">{p.dataType || "—"}</StatusBadge>
+                      <StatusBadge tone={p.isActive ? "success" : "neutral"}>
+                        <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />
+                        {p.isActive ? "Activo" : "Inactivo"}
+                      </StatusBadge>
+                    </>
+                  }
+                  meta={[
+                    {
+                      label: "Valor",
+                      value: <span className="break-all font-mono">{p.isSecret ? (p.hasValue ? "••••••••" : "Sin configurar") : p.pvalues || "—"}</span>,
+                    },
+                  ]}
+                  actions={
+                    <>
+                      <ActionIconButton icon={Edit} label="Editar parámetro" tone="primary" touch onClick={() => openEdit(p)} />
+                      <ActionIconButton
+                        icon={Trash2}
+                        label="Eliminar parámetro"
+                        tone="destructive"
+                        touch
+                        className="ml-auto"
+                        onClick={() => { setToDelete(p); setIsDeleteOpen(true); }}
+                      />
+                    </>
+                  }
+                />
+              )}
+              renderTable={() => (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -319,6 +366,8 @@ export default function ParametersPage() {
                 ))}
               </TableBody>
             </Table>
+              )}
+            />
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               <Settings2 className="mx-auto h-12 w-12 mb-4 opacity-50" />
@@ -327,6 +376,8 @@ export default function ParametersPage() {
           )}
 
           <DataPagination
+            infinite={infinite}
+            itemLabel="parámetros"
             page={page}
             totalPages={totalPages}
             totalCount={totalCount}

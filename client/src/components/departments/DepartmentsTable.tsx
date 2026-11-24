@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import { DepartmentRow } from "./DepartmentRow";
 import type { Department } from "@/types/department";
+import { InfiniteListFooter } from "@/components/ui/InfiniteListFooter";
+import type { InfiniteListState } from "@/hooks/pagination/usePaged";
 
 // ═══════════════════════════════════════════════════════════
 // Props principales
@@ -34,6 +36,8 @@ interface DepartmentsTableProps {
   onEdit: (department: Department) => void;
   onToggleStatus: (department: Department) => void;
   onRefetch: () => void;
+  /** Scroll infinito móvil: reemplaza al paginador (sin números de página). */
+  infinite?: InfiniteListState;
   getDepartmentTypeName: (type?: number | string | null) => string;
   getDepartmentScopeName: (scope?: number | null) => string;
 }
@@ -248,7 +252,7 @@ export const DepartmentsTable = ({
   loading, error,
   page, totalPages, totalCount, pageSize,
   hasNextPage, hasPreviousPage, onPageChange,
-  onToggleExpand, onEdit, onToggleStatus, onRefetch,
+  onToggleExpand, onEdit, onToggleStatus, onRefetch, infinite,
   getDepartmentTypeName, getDepartmentScopeName,
 }: DepartmentsTableProps) => {
 
@@ -320,6 +324,17 @@ export const DepartmentsTable = ({
       </div>
 
       {/* ── Paginación ──────────────────────────────────── */}
+      {infinite?.active ? (
+        <InfiniteListFooter
+          loadedCount={infinite.loadedCount}
+          totalCount={infinite.totalCount}
+          hasNextPage={infinite.hasNextPage}
+          isFetchingNextPage={infinite.isFetchingNextPage}
+          isError={infinite.isLoadMoreError}
+          onLoadMore={infinite.fetchNextPage}
+          itemLabel="grupos raíz"
+        />
+      ) : (
       <PaginationControls
         page={page}
         totalPages={totalPages}
@@ -329,6 +344,7 @@ export const DepartmentsTable = ({
         hasPreviousPage={hasPreviousPage}
         onPageChange={onPageChange}
       />
+      )}
     </div>
   );
 };

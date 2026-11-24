@@ -1,10 +1,9 @@
 // src/pages/admin/Users.tsx
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ActionIconButton } from "@/components/ui/action-icon-button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,12 +44,8 @@ import {
 import {
   Users as UsersIcon,
   Plus,
-  Edit,
-  Trash2,
   Search,
-  Power,
   KeyRound,
-  LockOpen,
   Eye,
   EyeOff,
   Loader2,
@@ -67,6 +62,10 @@ import { parseApiError } from "@/lib/error-handling";
 import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
 import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
 import { formatDateTime } from "@/lib/clock";
+import { ResponsiveDataView } from "@/components/ui/responsive-data-view";
+import { InfiniteListFooter } from "@/components/ui/InfiniteListFooter";
+import { useIsDesktop } from "@/hooks/useIsDesktop";
+import { UserActions, UserCard } from "@/components/admin/UserCard";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -159,28 +158,54 @@ export default function UsersPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // ── Query paginada ──────────────────────────────────────────────────────────
+  // ── Consulta de usuarios ────────────────────────────────────────────────────
+  // Escritorio: paginada con DataPagination. Móvil: scroll infinito (misma API /paged, página a página).
 
-  const { data, isLoading, isError } = useQuery({
+  const isDesktop = useIsDesktop();
+
+  const fetchUsersPage = async (pageToLoad: number) => {
+    const params: Record<string, any> = {
+      page: pageToLoad,
+      pageSize,
+      sortBy: "lastlogin",
+      sortDirection: "desc",
+    };
+    if (search.trim()) params.search = search.trim();
+    if (filterStatus !== "all") params.isActive = filterStatus === "active";
+    if (filterType   !== "all") params.userType  = filterType;
+
+    const res = await AuthUsersAPI.listPaged(params as any);
+    return normalizeUsersPagedResponse(res);
+  };
+
+  const pagedQuery = useQuery({
     queryKey: ["auth-users", page, pageSize, search, filterStatus, filterType],
-    queryFn: async () => {
-      const params: Record<string, any> = {
-        page,
-        pageSize,
-        sortBy: "lastlogin",
-        sortDirection: "desc",
-      };
-      if (search.trim()) params.search = search.trim();
-      if (filterStatus !== "all") params.isActive = filterStatus === "active";
-      if (filterType   !== "all") params.userType  = filterType;
-
-      const res = await AuthUsersAPI.listPaged(params as any);
-      return normalizeUsersPagedResponse(res);
-    },
+    queryFn: () => fetchUsersPage(page),
     placeholderData: (previousData) => previousData,
+    enabled: isDesktop,
   });
 
-  const users = data?.items ?? [];
+  const infiniteQuery = useInfiniteQuery({
+    queryKey: ["auth-users", "infinite", pageSize, search, filterStatus, filterType],
+    queryFn: ({ pageParam }) => fetchUsersPage(pageParam),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => (lastPage.hasNextPage ? lastPage.page + 1 : undefined),
+    gcTime: 60_000,
+    enabled: !isDesktop,
+  });
+
+  const isLoading = isDesktop ? pagedQuery.isLoading : infiniteQuery.isLoading;
+  const isError = isDesktop ? pagedQuery.isError : infiniteQuery.isError && !infiniteQuery.data;
+
+  // En móvil se acumulan las páginas; se deduplica por id porque al eliminar/inactivar los registros se corren
+  const users: User[] = isDesktop
+    ? pagedQuery.data?.items ?? []
+    : Array.from(
+        new Map(
+          (infiniteQuery.data?.pages ?? []).flatMap((p) => p.items).map((u) => [String(u.id), u] as const)
+        ).values()
+      );
+  const data = isDesktop ? pagedQuery.data : infiniteQuery.data?.pages[infiniteQuery.data.pages.length - 1];
   const totalCount = data?.totalCount ?? 0;
   const totalPages = data?.totalPages ?? 0;
   const hasPreviousPage = data?.hasPreviousPage ?? false;
@@ -300,6 +325,17 @@ export default function UsersPage() {
   const setFilterType = (v: "all" | "Local" | "AzureAD") => {
     setFilterTypeState(v);
     setPage(1);
+  };
+
+  // Acciones por usuario, compartidas por la tabla (escritorio) y la tarjeta (móvil)
+  const userActionHandlers = {
+    onEdit: handleEdit,
+    onToggleActive: (u: User) =>
+      toggleActiveMutation.mutate({ id: String(u.id), isActive: !u.isActive }),
+    onUnlock: (u: User) => unlockMutation.mutate(String(u.id)),
+    onResetPassword: (u: User) => setResetPasswordUser(u),
+    onDelete: (u: User) => setDeleteUserId(String(u.id)),
+    togglePending: toggleActiveMutation.isPending,
   };
 
   // ── Loading / Error ─────────────────────────────────────────────────────────
@@ -470,8 +506,20 @@ export default function UsersPage() {
       </Card>
 
       {/* Tabla */}
-      <Card>
-        <CardContent className="pt-6">
+      <Card className="max-md:border-0 max-md:bg-transparent max-md:shadow-none">
+        <CardContent className="pt-6 max-md:p-0">
+          <ResponsiveDataView
+            items={users}
+            getKey={(user) => String(user.id)}
+            empty={
+              <p className="py-8 text-center text-muted-foreground">
+                {search || filterStatus !== "all" || filterType !== "all"
+                  ? "No se encontraron usuarios con los filtros aplicados"
+                  : "No hay usuarios registrados"}
+              </p>
+            }
+            renderCard={(user) => <UserCard user={user} {...userActionHandlers} />}
+            renderTable={(items) => (
           <Table>
             <TableHeader>
               <TableRow>
@@ -484,19 +532,7 @@ export default function UsersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {users.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={6}
-                    className="text-center py-8 text-muted-foreground"
-                  >
-                    {search || filterStatus !== "all" || filterType !== "all"
-                      ? "No se encontraron usuarios con los filtros aplicados"
-                      : "No hay usuarios registrados"}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                users.map((user) => (
+              {items.map((user) => (
                   <TableRow key={String(user.id)}>
                     <TableCell className="font-medium">{user.email}</TableCell>
                     <TableCell>{user.displayName || "-"}</TableCell>
@@ -525,68 +561,30 @@ export default function UsersPage() {
                         : <span className="italic">Nunca</span>}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-1 flex-wrap">
-                        {/* Editar */}
-                        <ActionIconButton
-                          icon={Edit}
-                          label="Editar usuario"
-                          tone="primary"
-                          onClick={() => handleEdit(user)}
-                        />
-
-                        {/* Activar / Inactivar */}
-                        <ActionIconButton
-                          icon={Power}
-                          label={user.isActive ? "Inactivar usuario" : "Activar usuario"}
-                          tone={user.isActive ? "warning" : "success"}
-                          disabled={toggleActiveMutation.isPending}
-                          onClick={() =>
-                            toggleActiveMutation.mutate({
-                              id: String(user.id),
-                              isActive: !user.isActive,
-                            })
-                          }
-                        />
-
-                        {/* Desbloquear cuenta — solo usuarios Local (el bloqueo por intentos no se levanta solo) */}
-                        {user.userType === "Local" && (
-                          <ActionIconButton
-                            icon={LockOpen}
-                            label="Desbloquear cuenta"
-                            tone="muted"
-                            onClick={() => unlockMutation.mutate(String(user.id))}
-                          />
-                        )}
-
-                        {/* Restablecer contraseña — solo usuarios Local */}
-                        {user.userType === "Local" && (
-                          <ActionIconButton
-                            icon={KeyRound}
-                            label="Restablecer contraseña"
-                            tone="muted"
-                            onClick={() => setResetPasswordUser(user)}
-                          />
-                        )}
-
-                        {/* Eliminar */}
-                        <ActionIconButton
-                          icon={Trash2}
-                          label="Eliminar usuario"
-                          tone="destructive"
-                          onClick={() => setDeleteUserId(String(user.id))}
-                        />
-                      </div>
+                      <UserActions user={user} {...userActionHandlers} className="justify-end" />
                     </TableCell>
                   </TableRow>
-                ))
-              )}
+              ))}
             </TableBody>
           </Table>
+            )}
+          />
         </CardContent>
       </Card>
 
-      {/* Paginación */}
-      <DataPagination
+      {/* Paginación (escritorio) / scroll infinito (móvil) */}
+      {!isDesktop && (
+        <InfiniteListFooter
+          loadedCount={users.length}
+          totalCount={totalCount}
+          hasNextPage={infiniteQuery.hasNextPage}
+          isFetchingNextPage={infiniteQuery.isFetchingNextPage}
+          isError={infiniteQuery.isError && !!infiniteQuery.data}
+          onLoadMore={() => infiniteQuery.fetchNextPage()}
+          itemLabel="usuarios"
+        />
+      )}
+      {isDesktop && <DataPagination
         page={page}
         totalPages={totalPages}
         totalCount={totalCount}
@@ -596,7 +594,7 @@ export default function UsersPage() {
         onPageChange={goToPage}
         onPageSizeChange={setPageSize}
         disabled={isLoading}
-      />
+      />}
 
       {/* Dialog: confirmar eliminación */}
       <AlertDialog

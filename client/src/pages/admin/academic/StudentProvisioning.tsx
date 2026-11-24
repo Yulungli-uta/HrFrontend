@@ -18,6 +18,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { DataPagination } from '@/components/ui/DataPagination';
+import { useMobileInfiniteList, withMobileList } from "@/hooks/pagination/useMobileInfiniteList";
 import { useToast } from '@/hooks/use-toast';
 
 import {
@@ -80,15 +81,27 @@ export default function StudentProvisioningPage() {
 
   const statusId = statusFilter !== 'all' ? parseInt(statusFilter, 10) : undefined;
 
-  const { data, isFetching } = useQuery({
-    queryKey: ['student-provisioning', page, pageSize, statusId],
+  const studentsKey = ['student-provisioning', statusId];
+  const fetchStudents = async (pg: number, size: number) => {
+    const res = await StudentProvisioningAPI.list(pg, size, statusId);
+    if (res.status !== 'success') throw new Error(res.error?.message ?? 'Error al cargar');
+    // Este endpoint devuelve `total` (no `totalCount`) y no trae hasNextPage
+    return { ...res.data, totalCount: res.data.total, page: pg, pageSize: size };
+  };
+  const mobile = useMobileInfiniteList<any>({ queryKey: studentsKey, fetchPage: fetchStudents, pageSize });
+  const studentsQuery = useQuery({
+    queryKey: [...studentsKey, page, pageSize],
     queryFn: async () => {
       const res = await StudentProvisioningAPI.list(page, pageSize, statusId);
       if (res.status !== 'success') throw new Error(res.error?.message ?? 'Error al cargar');
       return res.data;
     },
     placeholderData: (prev) => prev,
+    enabled: !mobile.active,
   });
+  const studentsView = withMobileList(studentsQuery, mobile);
+  const isFetching = studentsView.isFetching;
+  const data = mobile.active ? { ...mobile.asPaged, total: mobile.totalCount } : studentsView.data;
 
   const disableMut = useMutation({
     mutationFn: (studentId: number) => StudentProvisioningAPI.disable(studentId),
@@ -245,6 +258,8 @@ export default function StudentProvisioningPage() {
 
       {data && data.total > pageSize && (
         <DataPagination
+          infinite={mobile.infinite}
+          itemLabel="estudiantes"
           page={page}
           totalPages={Math.ceil(data.total / pageSize)}
           totalCount={data.total}

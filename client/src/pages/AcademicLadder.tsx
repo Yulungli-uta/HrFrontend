@@ -14,6 +14,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { DataPagination } from "@/components/ui/DataPagination";
+import { useClientInfiniteSlice } from "@/hooks/pagination/useClientInfiniteSlice";
 import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
 import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
 import { useActionPermission } from "@/hooks/useActionPermission";
@@ -166,7 +167,7 @@ export default function AcademicLadderPage() {
   const totalCount = filtered.length;
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   const currentPage = Math.min(page, totalPages);
-  const pageItems = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const { visibleItems: pageItems, infinite } = useClientInfiniteSlice(filtered, { page: currentPage, setPage, pageSize });
 
   const resetPage = () => setPage(1);
   const refId = (t: { typeId?: number; typeID?: number }) => String(t.typeId ?? t.typeID);
@@ -393,6 +394,8 @@ export default function AcademicLadderPage() {
           {totalCount > 0 && (
             <div className="border-t border-border mt-4">
               <DataPagination
+                infinite={infinite}
+                itemLabel="escalafones"
                 page={currentPage}
                 totalPages={totalPages}
                 totalCount={totalCount}

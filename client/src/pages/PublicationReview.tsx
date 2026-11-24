@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DataPagination } from "@/components/ui/DataPagination";
+import { useMobileInfiniteList, withMobileList } from "@/hooks/pagination/useMobileInfiniteList";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
   Dialog,
@@ -94,12 +95,17 @@ export default function PublicationReviewPage() {
     queryFn: async () => unwrap(await PublicationReviewAPI.summary(), "No se pudo cargar el resumen"),
   });
 
-  const list = useQuery({
-    queryKey: ["publication-review", "list", filter, page, pageSize],
-    queryFn: async () => unwrap(await PublicationReviewAPI.list(filter, page, pageSize), "No se pudo cargar la lista"),
-    enabled: !invalidRange,
+  const reviewKey = ["publication-review", "list", filter];
+  const fetchReview = async (pg: number, size: number) =>
+    unwrap(await PublicationReviewAPI.list(filter, pg, size), "No se pudo cargar la lista");
+  const mobile = useMobileInfiniteList<any>({ queryKey: reviewKey, fetchPage: fetchReview, pageSize, enabled: !invalidRange });
+  const listQuery = useQuery({
+    queryKey: [...reviewKey, page, pageSize],
+    queryFn: () => fetchReview(page, pageSize),
+    enabled: !invalidRange && !mobile.active,
     placeholderData: (prev) => prev,
   });
+  const list = withMobileList(listQuery, mobile);
 
   const items = list.data?.items ?? [];
   const refresh = () => {
@@ -320,6 +326,8 @@ export default function PublicationReviewPage() {
 
           {list.data && (
             <DataPagination
+              infinite={mobile.infinite}
+              itemLabel="publicaciones"
               page={page}
               totalPages={list.data.totalPages}
               totalCount={list.data.totalCount}

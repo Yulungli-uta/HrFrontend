@@ -361,6 +361,8 @@ export interface PersonnelActionTypeDto {
   numberingFormat?: string | null;
   /** false = secuencia acumulada (no se reinicia cada año). */
   numberingResetsYearly?: boolean;
+  /** Imprimir la grilla completa de Situación Propuesta en el documento (false = solo el nombre de la acción). */
+  showProposedSituation?: boolean;
 }
 
 /** Tipo general con sus subtipos; con búsqueda, `children` trae solo los subtipos que coinciden. */
@@ -427,6 +429,8 @@ export const PersonnelActionTypeAPI = {
     parentTypeId?: number | null;
     numberingFormat?: string | null;
     numberingResetsYearly?: boolean;
+  /** Imprimir la grilla completa de Situación Propuesta en el documento (false = solo el nombre de la acción). */
+  showProposedSituation?: boolean;
   }): Promise<ApiResponse<PersonnelActionTypeDto>> =>
     apiFetch<PersonnelActionTypeDto>(PERSONNEL_ACTION_TYPE_BASE, {
       method: 'POST',
@@ -449,6 +453,8 @@ export const PersonnelActionTypeAPI = {
     /** null = conservar; cadena vacía = formato por defecto. */
     numberingFormat?: string | null;
     numberingResetsYearly?: boolean;
+  /** Imprimir la grilla completa de Situación Propuesta en el documento (false = solo el nombre de la acción). */
+  showProposedSituation?: boolean;
   }): Promise<ApiResponse<void>> =>
     apiFetch<void>(`${PERSONNEL_ACTION_TYPE_BASE}/${id}`, {
       method: 'PUT',

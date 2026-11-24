@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { useIsDesktop } from "@/hooks/useIsDesktop";
+import type { InfiniteListState } from "@/hooks/pagination/usePaged";
 
 export interface CvSortOption<T> {
   value: string;
@@ -99,10 +101,25 @@ export function useCvListState<T>({
     setPage(1);
   }, [normalizedSearch, sortValue, filterSignature]);
 
+  // Móvil: scroll infinito en memoria. `page` indica cuántos bloques se han descubierto y se muestran acumulados
+  const isDesktop = useIsDesktop();
+  const infiniteMode = !isDesktop;
+
   const paginatedItems = useMemo(() => {
+    if (infiniteMode) return sorted.slice(0, safePage * pageSize);
     const start = (safePage - 1) * pageSize;
     return sorted.slice(start, start + pageSize);
-  }, [sorted, safePage, pageSize]);
+  }, [sorted, safePage, pageSize, infiniteMode]);
+
+  const infinite: InfiniteListState = {
+    active: infiniteMode,
+    loadedCount: paginatedItems.length,
+    totalCount,
+    hasNextPage: safePage < totalPages,
+    isFetchingNextPage: false,
+    isLoadMoreError: false,
+    fetchNextPage: () => setPage((p) => Math.min(p + 1, totalPages)),
+  };
 
   return {
     search,
@@ -118,6 +135,7 @@ export function useCvListState<T>({
       setPage(1);
     },
     paginatedItems,
+    infinite,
     totalCount,
     totalPages,
     hasPreviousPage: safePage > 1,

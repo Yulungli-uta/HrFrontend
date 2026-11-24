@@ -83,6 +83,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { DataPagination } from "@/components/ui/DataPagination";
+import { useMobileInfiniteList, withMobileList } from "@/hooks/pagination/useMobileInfiniteList";
 import { useToast } from "@/hooks/use-toast";
 import {
   DepartmentAuthoritiesAPI,
@@ -280,21 +281,26 @@ export default function DepartmentAuthoritiesPage() {
 
   // ── Query paginada ────────────────────────────────────────────────────────────
   const onlyActive = statusFilter === "active" ? true : statusFilter === "inactive" ? false : undefined;
-  const queryKey = ["department-authorities", page, pageSize, search, statusFilter];
+  const listKey = ["department-authorities", search, statusFilter];
+  const queryKey = [...listKey, page, pageSize];
+  const fetchAuthorities = async (pg: number, size: number) => {
+    const res = await DepartmentAuthoritiesAPI.listPaged({
+      page: pg,
+      pageSize: size,
+      search:     search.trim() || undefined,
+      onlyActive,
+    });
+    return normalizePagedResponse(res);
+  };
+  const mobile = useMobileInfiniteList<DepartmentAuthorityDto>({ queryKey: listKey, fetchPage: fetchAuthorities, pageSize });
 
-  const { data, isLoading, isError, refetch } = useQuery({
+  const authoritiesQuery = useQuery({
     queryKey,
-    queryFn: async () => {
-      const res = await DepartmentAuthoritiesAPI.listPaged({
-        page,
-        pageSize,
-        search:     search.trim() || undefined,
-        onlyActive,
-      });
-      return normalizePagedResponse(res);
-    },
+    queryFn: () => fetchAuthorities(page, pageSize),
     placeholderData: (prev) => prev,
+    enabled: !mobile.active,
   });
+  const { data, isLoading, isError, refetch } = withMobileList(authoritiesQuery, mobile);
 
   const items       = data?.items       ?? [] as DepartmentAuthorityDto[];
   const totalCount  = data?.totalCount  ?? 0;
@@ -851,6 +857,8 @@ export default function DepartmentAuthoritiesPage() {
             {totalPages > 0 && (
               <div className="border-t border-border">
                 <DataPagination
+                  infinite={mobile.infinite}
+                  itemLabel="autoridades"
                   page={page}
                   totalPages={totalPages}
                   totalCount={totalCount}

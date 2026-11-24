@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DataPagination } from '@/components/ui/DataPagination';
+import { useMobileInfiniteList, withMobileList } from "@/hooks/pagination/useMobileInfiniteList";
 import { getLatenessDetail, type LatenessSummaryRow } from '@/lib/api/services/reports';
 import { parseApiError } from '@/lib/error-handling';
 
@@ -23,12 +24,16 @@ export default function LatenessDetailDialog({ employee, startDate, endDate, onC
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
-  const { data: resp, isLoading, isFetching, error } = useQuery({
-    queryKey: ['lateness-detail', employee?.employeeId, startDate, endDate, page, pageSize],
-    queryFn: () => getLatenessDetail(
-      { startDate, endDate, employeeId: employee!.employeeId }, page, pageSize),
-    enabled: !!employee,
+  const detailKey = ['lateness-detail', employee?.employeeId, startDate, endDate];
+  const fetchDetail = (pg: number, size: number) =>
+    getLatenessDetail({ startDate, endDate, employeeId: employee!.employeeId }, pg, size);
+  const mobile = useMobileInfiniteList<any>({ queryKey: detailKey, fetchPage: fetchDetail, pageSize, enabled: !!employee });
+  const detailQuery = useQuery({
+    queryKey: [...detailKey, page, pageSize],
+    queryFn: () => fetchDetail(page, pageSize),
+    enabled: !!employee && !mobile.active,
   });
+  const { data: resp, isLoading, isFetching, error } = withMobileList(detailQuery, mobile, 'api');
   const result = resp?.status === 'success' ? resp.data : null;
   const rows = result?.items ?? [];
   const loading = isLoading || isFetching;
@@ -95,6 +100,8 @@ export default function LatenessDetailDialog({ employee, startDate, endDate, onC
             </div>
             {result && result.totalPages > 1 && (
               <DataPagination
+                infinite={mobile.infinite}
+                itemLabel="registros"
                 page={result.page}
                 totalPages={result.totalPages}
                 totalCount={result.totalCount}

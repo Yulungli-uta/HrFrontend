@@ -1,5 +1,6 @@
 // src/pages/ReferenceTypesPage.tsx
 import { useState, useEffect } from 'react';
+import { CategoryCard } from "@/components/reference-types/CategoryCard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Tag, Edit, Trash2, RefreshCw, AlertCircle, Search, X, Save, List } from "lucide-react";
@@ -984,52 +985,18 @@ export default function ReferenceTypesPage() {
 
         <TabsContent value="categories">
           {/* Vista agrupada por categorías */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {categories.map(category => {
               const categoryTypes = filteredTypes.filter(type => type.Category === category);
-              const statsByCat = getCategoryStats(filteredTypes)[category] || { total: 0, active: 0 };
-
+              // Con filtros o búsqueda activos se ocultan las categorías que se quedaron sin resultados
+              if (categoryTypes.length === 0) return null;
               return (
-                <Card key={category} className="hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-3">
-                    <div className="flex justify-between items-start">
-                      <CardTitle className="text-base sm:text-lg">{prettyCategory(category)}</CardTitle>
-                      <Badge variant="outline" className="text-xs">{statsByCat.total} tipos</Badge>
-                    </div>
-                    <CardDescription className="text-sm">
-                      {statsByCat.active} activos de {statsByCat.total} total
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2 max-h-48 overflow-y-auto">
-                      {categoryTypes.map(type => (
-                        <div key={type.TypeID ?? `${type.Name}-${type.CreatedAt}`} className="flex items-center justify-between p-2 bg-background rounded text-sm">
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium truncate">{type.Name || '—'}</p>
-                            {type.Description && (
-                              <p className="text-xs text-muted-foreground truncate">{type.Description}</p>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <Badge
-                              variant={type.IsActive ? "default" : "secondary"}
-                              className="text-xs"
-                            >
-                              {type.IsActive ? 'A' : 'I'}
-                            </Badge>
-                            <Button
-                              variant="ghost"
-                              /* size="sm" */
-                              onClick={() => handleEditType(type)}
-                              className="h-6 w-6 p-0" aria-label="Editar">
-                              <Edit className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
+                <CategoryCard
+                  key={category}
+                  category={category}
+                  types={categoryTypes}
+                  onEdit={(type) => handleEditType(type as ReferenceType)}
+                />
               );
             })}
           </div>

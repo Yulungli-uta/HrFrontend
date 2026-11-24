@@ -306,6 +306,8 @@ export function EducationLevelsTab({
             )}
 
             <DataPagination
+              infinite={list.infinite}
+              itemLabel="estudios"
               page={list.page}
               totalPages={list.totalPages}
               totalCount={list.totalCount}

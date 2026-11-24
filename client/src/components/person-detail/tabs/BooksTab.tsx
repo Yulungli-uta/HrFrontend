@@ -260,6 +260,8 @@ export function BooksTab({ books, onEdit, onDelete, countryMap = {}, personIdCar
             )}
 
             <DataPagination
+              infinite={list.infinite}
+              itemLabel="libros"
               page={list.page}
               totalPages={list.totalPages}
               totalCount={list.totalCount}

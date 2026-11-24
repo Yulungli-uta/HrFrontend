@@ -91,6 +91,7 @@ export default function SchedulesPage() {
     setSearch,
     clearSearch,
     currentParams,
+    infinite,
   } = usePaged<any>({
     queryKey: "schedules",
     queryFn: (params) => HorariosAPI.listPaged(params),
@@ -568,6 +569,8 @@ export default function SchedulesPage() {
 
           <div className="mt-6">
             <DataPagination
+              infinite={infinite}
+              itemLabel="horarios"
               page={page}
               totalPages={totalPages}
               totalCount={totalCount}

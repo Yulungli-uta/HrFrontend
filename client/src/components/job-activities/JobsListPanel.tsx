@@ -1,5 +1,10 @@
 // src/components/job-activities/JobsListPanel.tsx
 import { useMemo, useState } from "react";
+import { RecordAvatar, RecordCard } from "@/components/ui/RecordCard";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { useIsDesktop } from "@/hooks/useIsDesktop";
+import { Briefcase as JobIcon } from "lucide-react";
+import { ActionIconButton } from "@/components/ui/action-icon-button";
 import { Briefcase, Plus, Wrench } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -46,6 +51,9 @@ export function JobsListPanel({ selectedJobId, onSelect, onNew, onEdit }: Props)
   const groups = useGroupDetails(list.items.map((j) => j.groupId));
   const uepScales = useRefTypesByCategory(REF_TYPE_CATEGORIES.UEP_SCALE_TYPE);
   const uepNames = useMemo(() => new Map(uepScales.data.map((t) => [t.typeId, t.name])), [uepScales.data]);
+  const isDesktop = useIsDesktop();
+  const showCards = !isDesktop && list.items.length > 0;
+
   const hasFilters = activeFilter !== "all" || groupId != null || uepId != null || list.searchText.trim() !== "";
 
   return (
@@ -105,6 +113,33 @@ export function JobsListPanel({ selectedJobId, onSelect, onNew, onEdit }: Props)
           </div>
         </CatalogFilterBar>
 
+        {showCards ? (
+          <ul className="grid gap-3">
+            {list.items.map((job) => {
+              const group = job.groupId ? groups.get(job.groupId) : undefined;
+              const uepName = group?.uepScaleTypeId ? uepNames.get(group.uepScaleTypeId) : undefined;
+              const isSelected = selectedJobId === job.jobID;
+              return (
+                <li
+                  key={job.jobID || `job-${job.description}`}
+                  className={`rounded-lg border bg-card p-3 shadow-sm ${isSelected ? "border-primary" : "border-border"}`}
+                >
+                  <RecordCard
+                    tone={job.isActive ? "success" : "muted"}
+                    dimmed={!job.isActive}
+                    leading={<RecordAvatar seed={String(job.jobID)} icon={JobIcon} />}
+                    title={job.description || "(Sin descripción)"}
+                    subtitle={group ? `Grupo: ${group.description}` : undefined}
+                    badges={<StatusBadge tone={job.isActive ? "success" : "neutral"}>{job.isActive ? "Activo" : "Inactivo"}</StatusBadge>}
+                    meta={uepName ? [{ label: "Clasificación", value: uepName }] : []}
+                    onClick={() => onSelect(job)}
+                    actions={<ActionIconButton icon={Wrench} label="Editar cargo" tone="primary" touch onClick={() => onEdit(job)} />}
+                  />
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
         <div className="rounded-md border">
           <Table>
             <TableBody>
@@ -155,7 +190,10 @@ export function JobsListPanel({ selectedJobId, onSelect, onNew, onEdit }: Props)
             </TableBody>
           </Table>
         </div>
+        )}
         <DataPagination
+          infinite={list.infinite}
+          itemLabel="cargos"
           page={list.page}
           totalPages={list.totalPages}
           totalCount={list.totalCount}

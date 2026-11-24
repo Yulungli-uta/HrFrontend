@@ -126,6 +126,7 @@ export default function ContractTypesPage() {
     goToPage,
     setPageSize,
     setSearch,
+    infinite,
   } = usePaged<ContractType>({
     // statusParam entra en la queryKey para que cambiar el filtro de estado
     // dispare un refetch (usePaged solo re-consulta cuando cambia su propia
@@ -737,6 +738,8 @@ export default function ContractTypesPage() {
       </Card>
 
       <DataPagination
+        infinite={infinite}
+        itemLabel="tipos de contrato"
         page={page}
         totalPages={totalPages}
         totalCount={totalPagedCount}

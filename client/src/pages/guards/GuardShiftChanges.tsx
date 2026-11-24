@@ -187,7 +187,7 @@ function ChangesList({ onApprove, onReject, onRevert }: TabActions) {
   });
   const groups: GuardRotationGroupDto[] = extractArray(groupsResp);
 
-  const { data: resp, isLoading, isFetching, refetch } = useAllChangesPaged(page, pageSize, statusFilter || undefined, {
+  const { data: resp, isLoading, isFetching, refetch, infinite } = useAllChangesPaged(page, pageSize, statusFilter || undefined, {
     changeType: changeTypeFilter || undefined,
     groupId: groupFilter === '' ? undefined : groupFilter,
     fromDate: fromDate || undefined,
@@ -268,6 +268,8 @@ function ChangesList({ onApprove, onReject, onRevert }: TabActions) {
           </div>
           {(pagedData?.totalPages ?? 0) > 1 && (
             <DataPagination
+              infinite={infinite}
+              itemLabel="cambios"
               page={pagedData?.page ?? page}
               totalPages={pagedData?.totalPages ?? 0}
               totalCount={pagedData?.totalCount ?? 0}

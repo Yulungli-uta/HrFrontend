@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { useMobileInfiniteList, withMobileList } from '@/hooks/pagination/useMobileInfiniteList';
+import { InfiniteListFooter } from '@/components/ui/InfiniteListFooter';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -186,10 +188,18 @@ export default function HrResignationRetirementRequestsPage() {
     dateTo: dateTo || undefined,
   };
 
-  const { data, isLoading, error, refetch } = useQuery({
+  const { page: _filterPage, ...baseFilter } = filter;
+  const mobile = useMobileInfiniteList<any>({
+    queryKey: ['resignation-retirement-requests', baseFilter],
+    fetchPage: (pg) => ResignationRetirementAPI.getPaged({ ...filter, page: pg }),
+    pageSize: filter.pageSize ?? 15,
+  });
+  const requestsQuery = useQuery({
     queryKey: ['resignation-retirement-requests', filter],
     queryFn: () => ResignationRetirementAPI.getPaged(filter),
+    enabled: !mobile.active,
   });
+  const { data, isLoading, error, refetch } = withMobileList(requestsQuery, mobile, 'api');
 
   const { data: requestTypeOptionsData } = useRefTypesByCategory(REF_TYPE_CATEGORIES.RESIGNATION_RETIREMENT_TYPE);
   const requestTypeOptions = requestTypeOptionsData ?? [];
@@ -327,7 +337,7 @@ export default function HrResignationRetirementRequestsPage() {
               </table>
             </div>
 
-            {result && result.totalPages > 1 && (
+            {!mobile.active && result && result.totalPages > 1 && (
               <div className="flex items-center justify-between p-3 border-t flex-wrap gap-2">
                 <span className="text-xs text-muted-foreground">
                   Página {result.page} de {result.totalPages} — {result.totalCount} solicitudes
@@ -345,6 +355,18 @@ export default function HrResignationRetirementRequestsPage() {
                   </Button>
                 </div>
               </div>
+            )}
+
+            {mobile.active && (
+              <InfiniteListFooter
+                loadedCount={mobile.infinite.loadedCount}
+                totalCount={mobile.infinite.totalCount}
+                hasNextPage={mobile.infinite.hasNextPage}
+                isFetchingNextPage={mobile.infinite.isFetchingNextPage}
+                isError={mobile.infinite.isLoadMoreError}
+                onLoadMore={mobile.infinite.fetchNextPage}
+                itemLabel="solicitudes"
+              />
             )}
           </CardContent>
         </Card>

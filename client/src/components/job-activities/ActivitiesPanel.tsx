@@ -1,5 +1,8 @@
 // src/components/job-activities/ActivitiesPanel.tsx
 import { useMemo, useState } from "react";
+import { RecordAvatar, RecordCard } from "@/components/ui/RecordCard";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { ListChecks, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,6 +39,9 @@ export function ActivitiesPanel({ onNew, onEdit }: Props) {
     filters,
     fetcher: async (params) => mapPagedItems(await ActivityAPI.listPaged(params), normalizeActivity),
   });
+
+  const isDesktop = useIsDesktop();
+  const showCards = !isDesktop && list.items.length > 0;
 
   const hasFilters = activeFilter !== "all" || typeFilter !== "all" || list.searchText.trim() !== "";
 
@@ -81,6 +87,29 @@ export function ActivitiesPanel({ onNew, onEdit }: Props) {
           </Select>
         </CatalogFilterBar>
 
+        {showCards ? (
+          <ul className="grid gap-3">
+            {list.items.map((act) => (
+              <li key={act.activitiesID} className="rounded-lg border border-border bg-card p-3 shadow-sm">
+                <RecordCard
+                  tone={act.isActive ? "success" : "muted"}
+                  dimmed={!act.isActive}
+                  leading={<RecordAvatar seed={String(act.activitiesID)} icon={ListChecks} />}
+                  title={act.description || "(Sin descripción)"}
+                  badges={
+                    <>
+                      <StatusBadge tone={act.activitiesType === "LABORAL" ? "primary" : "warning"}>
+                        {act.activitiesType === "LABORAL" ? "Laboral" : "Adicional"}
+                      </StatusBadge>
+                      <StatusBadge tone={act.isActive ? "success" : "neutral"}>{act.isActive ? "Activa" : "Inactiva"}</StatusBadge>
+                    </>
+                  }
+                  onClick={() => onEdit(act)}
+                />
+              </li>
+            ))}
+          </ul>
+        ) : (
         <div className="rounded-md border">
           <Table>
             <TableHeader>
@@ -122,7 +151,10 @@ export function ActivitiesPanel({ onNew, onEdit }: Props) {
             </TableBody>
           </Table>
         </div>
+        )}
         <DataPagination
+          infinite={list.infinite}
+          itemLabel="actividades"
           page={list.page}
           totalPages={list.totalPages}
           totalCount={list.totalCount}

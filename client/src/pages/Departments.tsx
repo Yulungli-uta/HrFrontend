@@ -1,5 +1,6 @@
 // pages/DepartmentsPage.tsx
 import { useEffect, useMemo, useState, useCallback } from "react";
+import { useClientInfiniteSlice } from "@/hooks/pagination/useClientInfiniteSlice";
 import {
   Card, CardHeader, CardContent,
   CardTitle, CardDescription,
@@ -81,10 +82,12 @@ export default function DepartmentsPage() {
   const totalPages  = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const safePage    = Math.min(page, totalPages);
 
-  const paginatedRoots = useMemo(() => {
-    const start = (safePage - 1) * PAGE_SIZE;
-    return visibleRoots.slice(start, start + PAGE_SIZE);
-  }, [visibleRoots, safePage]);
+  // Móvil: scroll infinito en memoria (sin páginas). Escritorio: paginado como siempre.
+  const { visibleItems: paginatedRoots, infinite } = useClientInfiniteSlice(visibleRoots, {
+    page: safePage,
+    setPage,
+    pageSize: PAGE_SIZE,
+  });
 
   const hasNextPage     = safePage < totalPages;
   const hasPreviousPage = safePage > 1;
@@ -281,7 +284,7 @@ export default function DepartmentsPage() {
             <div>
               <CardTitle>Estructura Organizacional</CardTitle>
               <CardDescription>
-                Jerarquía de departamentos — página {safePage} de {totalPages}
+                {infinite.active ? "Jerarquía de departamentos" : `Jerarquía de departamentos — página ${safePage} de ${totalPages}`}
               </CardDescription>
             </div>
             {departments.length > 0 && (
@@ -310,6 +313,7 @@ export default function DepartmentsPage() {
             onEdit={handleOpenEdit}
             onToggleStatus={handleToggleStatus}
             onRefetch={refetch}
+            infinite={infinite}
             getDepartmentTypeName={getDepartmentTypeName}
             getDepartmentScopeName={getDepartmentScopeName}
           />

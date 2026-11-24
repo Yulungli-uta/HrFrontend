@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DataPagination } from '@/components/ui/DataPagination';
+import { useMobileInfiniteList, withMobileList } from "@/hooks/pagination/useMobileInfiniteList";
 import {
   Plus,
   Search,
@@ -83,11 +84,19 @@ export default function PersonnelActionsPage() {
   const [searchInput, setSearchInput] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  const { data, isLoading, isError } = useQuery({
+  const { page: _filterPage, ...baseFilter } = filter;
+  const mobile = useMobileInfiniteList<PersonnelActionSummary>({
+    queryKey: ['personnel-actions', baseFilter],
+    fetchPage: (pg) => PersonnelActionsAPI.getPaged({ ...filter, page: pg }),
+    pageSize: filter.pageSize ?? PAGE_SIZE,
+  });
+  const actionsQuery = useQuery({
     queryKey: ['personnel-actions', filter],
     queryFn: () => PersonnelActionsAPI.getPaged(filter),
     staleTime: 30_000,
+    enabled: !mobile.active,
   });
+  const { data, isLoading, isError } = withMobileList(actionsQuery, mobile, 'api');
 
   const result = data?.status === 'success' ? data.data : null;
   const items: PersonnelActionSummary[] = result?.items ?? [];
@@ -183,9 +192,14 @@ export default function PersonnelActionsPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           { label: 'Total', value: totalCount, icon: FileText },
-          { label: 'Mostradas', value: items.length, icon: User },
-          { label: 'Página', value: page, icon: Calendar },
-          { label: 'Páginas', value: totalPages, icon: FileText },
+          { label: mobile.active ? 'Cargadas' : 'Mostradas', value: items.length, icon: User },
+          // En móvil no hay páginas: la lista se va cargando al llegar a la última tarjeta
+          ...(mobile.active
+            ? []
+            : [
+                { label: 'Página', value: page, icon: Calendar },
+                { label: 'Páginas', value: totalPages, icon: FileText },
+              ]),
         ].map(({ label, value, icon: Icon }) => (
           <Card key={label}>
             <CardContent className="pt-5">
@@ -365,6 +379,8 @@ export default function PersonnelActionsPage() {
 
       {/* ── Paginación ────────────────────────────────────── */}
       <DataPagination
+        infinite={mobile.infinite}
+        itemLabel="acciones"
         page={page}
         totalPages={totalPages}
         totalCount={totalCount}

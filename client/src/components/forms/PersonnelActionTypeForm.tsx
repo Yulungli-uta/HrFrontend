@@ -9,6 +9,7 @@ import { PersonnelActionTypeAPI } from "@/lib/api/services/contracts";
 import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { DB_FIELD_LIMITS } from "@/features/dbFieldLimits";
+import { ACTION_CATEGORIES, CATEGORIES_WITH_PROPOSED_SITUATION } from "@/features/personnelActionCategories";
 import { TemplateSelect } from "@/components/shared/TemplateSelect";
 
 import { Button } from "@/components/ui/button";
@@ -33,15 +34,6 @@ import {
 } from "@/components/ui/form";
 import { Card, CardContent } from "@/components/ui/card";
 
-const ACTION_CATEGORIES = [
-  { value: "MOVEMENT",    label: "Movimiento de personal" },
-  { value: "ENTRY",       label: "Ingreso" },
-  { value: "ECONOMIC",    label: "Económica / Salarial" },
-  { value: "LEAVE",       label: "Licencia / Permiso" },
-  { value: "DISCIPLINARY",label: "Disciplinaria / Sanción" },
-  { value: "EXIT",        label: "Salida / Baja" },
-] as const;
-
 const LIMITS = DB_FIELD_LIMITS.personnelActionType;
 
 const schema = z.object({
@@ -51,6 +43,8 @@ const schema = z.object({
   numberingPrefix: z.string().min(1, "El prefijo de numeración es obligatorio").max(LIMITS.numberingPrefix, `Máximo ${LIMITS.numberingPrefix} caracteres`),
   defaultTemplateId: z.number().nullable().optional(),
   actionCategory: z.string().optional(),
+  /** true = el documento imprime la grilla completa de Situación Propuesta; false = solo el nombre de la acción. */
+  showProposedSituation: z.boolean(),
   isActive: z.boolean(),
   requiresAdUserCreation: z.boolean(),
   requiresAdUserDisable: z.boolean(),
@@ -106,6 +100,7 @@ export function PersonnelActionTypeForm({
       numberingPrefix: initialValues?.numberingPrefix ?? "",
       defaultTemplateId: initialValues?.defaultTemplateId ?? null,
       actionCategory: initialValues?.actionCategory ?? "",
+      showProposedSituation: (initialValues as any)?.showProposedSituation ?? true,
       isActive: initialValues?.isActive ?? true,
       requiresAdUserCreation: initialValues?.requiresAdUserCreation ?? false,
       requiresAdUserDisable: initialValues?.requiresAdUserDisable ?? false,
@@ -136,6 +131,7 @@ export function PersonnelActionTypeForm({
         numberingPrefix: values.numberingPrefix,
         defaultTemplateId: values.defaultTemplateId ?? null,
         actionCategory: values.actionCategory || undefined,
+        showProposedSituation: values.showProposedSituation,
         isActive: values.isActive,
         requiresAdUserCreation: values.requiresAdUserCreation,
         requiresAdUserDisable: values.requiresAdUserDisable,
@@ -167,6 +163,7 @@ export function PersonnelActionTypeForm({
         defaultTemplateId: values.defaultTemplateId ?? null,
         // El formulario arranca con lo guardado: se envían valores explícitos (cadena vacía / 0 = borrar el valor).
         actionCategory: values.actionCategory ?? "",
+        showProposedSituation: values.showProposedSituation,
         isActive: values.isActive,
         requiresAdUserCreation: values.requiresAdUserCreation,
         requiresAdUserDisable: values.requiresAdUserDisable,
@@ -264,7 +261,13 @@ export function PersonnelActionTypeForm({
                 <FormItem>
                   <FormLabel>Categoría funcional</FormLabel>
                   <Select
-                    onValueChange={field.onChange}
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      // Al crear, el valor inicial de "Mostrar situación propuesta" sale de la categoría (se puede cambiar después)
+                      if (mode === "create") {
+                        form.setValue("showProposedSituation", CATEGORIES_WITH_PROPOSED_SITUATION.includes(value), { shouldDirty: true });
+                      }
+                    }}
                     value={field.value ?? ""}
                   >
                     <FormControl>
@@ -281,9 +284,30 @@ export function PersonnelActionTypeForm({
                     </SelectContent>
                   </Select>
                   <FormDescription>
-                    Clasifica la acción para filtros en reportes. Las disciplinarias se excluyen del historial laboral del empleado.
+                    Decide si la acción registra un movimiento de personal, entra al historial laboral y a los reportes SIIES. Las
+                    disciplinarias se excluyen del historial laboral. No define cómo se imprime el documento: eso se configura abajo.
                   </FormDescription>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Situación propuesta en el documento */}
+            <FormField
+              control={form.control}
+              name="showProposedSituation"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                  <div className="space-y-0.5 pr-3">
+                    <FormLabel>Mostrar situación propuesta en el documento</FormLabel>
+                    <FormDescription>
+                      Activado: el documento imprime la grilla completa (dependencia, cargo, sueldo, grupo y grado). Desactivado: imprime solo
+                      el nombre de la acción, como en licencias o subrogaciones. No cambia la categoría ni los movimientos.
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  </FormControl>
                 </FormItem>
               )}
             />

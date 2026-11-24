@@ -1,3 +1,4 @@
+import { useMobileInfiniteList, withMobileList } from "@/hooks/pagination/useMobileInfiniteList";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { usePaged } from '@/hooks/pagination/usePaged';
@@ -140,15 +141,25 @@ export function useAllChangesPaged(
   status?: string,
   filters?: { employeeId?: number; groupId?: number; changeType?: string; fromDate?: string; toDate?: string; search?: string }
 ) {
-  return useQuery({
-    queryKey: [
-      ...GUARD_KEYS.pendingChanges, 'all', 'paged', page, pageSize, status ?? '',
-      filters?.employeeId ?? '', filters?.groupId ?? '', filters?.changeType ?? '',
-      filters?.fromDate ?? '', filters?.toDate ?? '', filters?.search ?? '',
-    ],
-    queryFn: () => GuardShiftChangesAPI.getAllPaged({ page, pageSize, status, ...filters }),
+  const filterKey = [
+    status ?? '',
+    filters?.employeeId ?? '', filters?.groupId ?? '', filters?.changeType ?? '',
+    filters?.fromDate ?? '', filters?.toDate ?? '', filters?.search ?? '',
+  ];
+  // Móvil: scroll infinito. Escritorio: paginado como siempre.
+  const mobile = useMobileInfiniteList<any>({
+    queryKey: [...GUARD_KEYS.pendingChanges, 'all', ...filterKey],
+    fetchPage: (pg, size) => GuardShiftChangesAPI.getAllPaged({ page: pg, pageSize: size, status, ...filters }),
+    pageSize,
     staleTime: 30_000,
   });
+  const query = useQuery({
+    queryKey: [...GUARD_KEYS.pendingChanges, 'all', 'paged', page, pageSize, ...filterKey],
+    queryFn: () => GuardShiftChangesAPI.getAllPaged({ page, pageSize, status, ...filters }),
+    staleTime: 30_000,
+    enabled: !mobile.active,
+  });
+  return { ...withMobileList(query, mobile, 'api'), infinite: mobile.infinite };
 }
 
 export function useAvailabilityBlocksPaged(
@@ -157,12 +168,20 @@ export function useAvailabilityBlocksPaged(
   pageSize: number,
   enabled = true
 ) {
-  return useQuery({
-    queryKey: [...GUARD_KEYS.availabilityBlocks(filter), 'paged', page, pageSize],
-    queryFn: () => EmployeeAvailabilityAPI.getBlocksPaged(filter, page, pageSize),
+  const mobile = useMobileInfiniteList<any>({
+    queryKey: [...GUARD_KEYS.availabilityBlocks(filter)],
+    fetchPage: (pg, size) => EmployeeAvailabilityAPI.getBlocksPaged(filter, pg, size),
+    pageSize,
     enabled,
     staleTime: 30_000,
   });
+  const query = useQuery({
+    queryKey: [...GUARD_KEYS.availabilityBlocks(filter), 'paged', page, pageSize],
+    queryFn: () => EmployeeAvailabilityAPI.getBlocksPaged(filter, page, pageSize),
+    enabled: enabled && !mobile.active,
+    staleTime: 30_000,
+  });
+  return { ...withMobileList(query, mobile, 'api'), infinite: mobile.infinite };
 }
 
 export function useLocationRotationPeriodsPaged(initialPageSize = 20) {

@@ -290,7 +290,8 @@ export default function JobActivitiesPage() {
       });
       setEditingJob(null);
       setIsJobDialogOpen(false);
-      const savedId = normalizeJob(saved as any).jobID || variables.jobID || 0;
+      // La actualización (PUT) responde 204 sin contenido: `saved` llega undefined y se usa el id enviado
+      const savedId = (saved ? normalizeJob(saved as any).jobID : 0) || variables.jobID || 0;
       if (savedId > 0) {
         const res = await CargosAPI.get(savedId);
         if (res.status === "success") setSelectedJob(normalizeJob(res.data));

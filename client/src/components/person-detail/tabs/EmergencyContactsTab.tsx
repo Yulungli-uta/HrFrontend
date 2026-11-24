@@ -205,6 +205,8 @@ export function EmergencyContactsTab({
             )}
 
             <DataPagination
+              infinite={list.infinite}
+              itemLabel="contactos"
               page={list.page}
               totalPages={list.totalPages}
               totalCount={list.totalCount}

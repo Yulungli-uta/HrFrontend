@@ -244,6 +244,8 @@ export default function SigningProcessesPage() {
 
       {!isLoading && f.filtered.length > 0 && (
         <DataPagination
+          infinite={f.infinite}
+          itemLabel="procesos"
           page={f.page}
           totalPages={f.pageCount}
           totalCount={f.totalCount}

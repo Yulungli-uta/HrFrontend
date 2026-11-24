@@ -147,6 +147,8 @@ export default function SigningInboxPage() {
 
       {!isLoading && f.filtered.length > 0 && (
         <DataPagination
+          infinite={f.infinite}
+          itemLabel="documentos"
           page={f.page}
           totalPages={f.pageCount}
           totalCount={f.totalCount}

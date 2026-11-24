@@ -2,6 +2,7 @@
 import { RowAction } from "@/components/ui/row-action";
 import { useEffect, useMemo, useState } from "react";
 import { DataPagination } from "@/components/ui/DataPagination";
+import { useClientInfiniteSlice } from "@/hooks/pagination/useClientInfiniteSlice";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -567,17 +568,19 @@ export default function PermissionsPage() {
 
   const permTotalCount = sortedPermissions.length;
   const permTotalPages = Math.max(1, Math.ceil(permTotalCount / permPageSize));
-  const pagedPermissions = useMemo(() => {
-    const start = (permPage - 1) * permPageSize;
-    return sortedPermissions.slice(start, start + permPageSize);
-  }, [sortedPermissions, permPage, permPageSize]);
+  const { visibleItems: pagedPermissions, infinite: permInfinite } = useClientInfiniteSlice(sortedPermissions, {
+    page: permPage,
+    setPage: setPermPage,
+    pageSize: permPageSize,
+  });
 
   const vacTotalCount = sortedVacations.length;
   const vacTotalPages = Math.max(1, Math.ceil(vacTotalCount / vacPageSize));
-  const pagedVacations = useMemo(() => {
-    const start = (vacPage - 1) * vacPageSize;
-    return sortedVacations.slice(start, start + vacPageSize);
-  }, [sortedVacations, vacPage, vacPageSize]);
+  const { visibleItems: pagedVacations, infinite: vacInfinite } = useClientInfiniteSlice(sortedVacations, {
+    page: vacPage,
+    setPage: setVacPage,
+    pageSize: vacPageSize,
+  });
 
   const openCreatePermission = () => {
     setEditingPermission(null);
@@ -987,6 +990,8 @@ export default function PermissionsPage() {
                   </div>
 
                   <DataPagination
+                    infinite={permInfinite}
+                    itemLabel="permisos"
                     page={permPage}
                     totalPages={permTotalPages}
                     totalCount={permTotalCount}
@@ -1088,6 +1093,8 @@ export default function PermissionsPage() {
                   </div>
 
                   <DataPagination
+                    infinite={vacInfinite}
+                    itemLabel="vacaciones"
                     page={vacPage}
                     totalPages={vacTotalPages}
                     totalCount={vacTotalCount}

@@ -5,6 +5,8 @@ import {
   ChevronsRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { InfiniteListFooter } from '@/components/ui/InfiniteListFooter';
+import type { InfiniteListState } from '@/hooks/pagination/usePaged';
 import {
   Select,
   SelectContent,
@@ -38,6 +40,13 @@ interface DataPaginationProps {
   pageSizeOptions?: number[];
   /** Si true, deshabilita todos los controles. */
   disabled?: boolean;
+  /**
+   * Estado de scroll infinito (`usePaged().infinite`). Cuando está activo (móvil) en lugar de los controles de
+   * página se muestra el pie de scroll infinito: carga una página al llegar a la última tarjeta.
+   */
+  infinite?: InfiniteListState;
+  /** Nombre en plural para los textos del modo infinito, p. ej. "contratos". */
+  itemLabel?: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -73,7 +82,23 @@ export function DataPagination({
   onPageSizeChange,
   pageSizeOptions = [10, 20, 50, 100],
   disabled = false,
+  infinite,
+  itemLabel,
 }: DataPaginationProps) {
+  if (infinite?.active) {
+    return (
+      <InfiniteListFooter
+        loadedCount={infinite.loadedCount}
+        totalCount={infinite.totalCount}
+        hasNextPage={infinite.hasNextPage}
+        isFetchingNextPage={infinite.isFetchingNextPage}
+        isError={infinite.isLoadMoreError}
+        onLoadMore={infinite.fetchNextPage}
+        itemLabel={itemLabel}
+      />
+    );
+  }
+
   const from = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, totalCount);
 

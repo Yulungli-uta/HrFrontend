@@ -255,6 +255,7 @@ export default function People() {
     setSearch,
     clearSearch,
     currentParams,
+    infinite,
   } = usePaged<PersonDto>({
     queryKey: "people",
     queryFn: (params) => PersonasAPI.listPaged(params),
@@ -665,6 +666,8 @@ export default function People() {
       {/* Paginación */}
       <div className="border-t border-border/40 pt-2">
         <DataPagination
+          infinite={infinite}
+          itemLabel="personas"
           page={page}
           totalPages={totalPages}
           totalCount={totalCount}

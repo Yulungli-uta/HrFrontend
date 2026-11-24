@@ -33,7 +33,7 @@ type DialogMode = 'create' | 'edit';
 export default function GuardCoverageRequirementsPage() {
   const {
     items: requirements, isLoading, page, pageSize, totalCount,
-    totalPages, hasPreviousPage, hasNextPage, goToPage, setPageSize,
+    totalPages, hasPreviousPage, hasNextPage, goToPage, setPageSize, infinite,
   } = useCoverageRequirementsPaged(20);
   const { create, update } = useCoverageMutations();
   const { data: locResp } = useGuardLocationsAssignable();
@@ -179,6 +179,8 @@ export default function GuardCoverageRequirementsPage() {
           )}
           {totalPages > 1 && (
             <DataPagination
+              infinite={infinite}
+              itemLabel="requerimientos"
               page={page}
               totalPages={totalPages}
               totalCount={totalCount}

@@ -56,6 +56,7 @@ function SearchBox({ onSearch, placeholder }: { onSearch: (term: string) => void
 function PagedFooter({ q }: { q: UsePagedResult<unknown> }) {
   return (
     <DataPagination
+      infinite={q.infinite}
       page={q.page}
       totalPages={q.totalPages}
       totalCount={q.totalCount}

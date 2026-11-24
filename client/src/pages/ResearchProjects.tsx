@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DataPagination } from "@/components/ui/DataPagination";
+import { useMobileInfiniteList, withMobileList } from "@/hooks/pagination/useMobileInfiniteList";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -58,12 +59,17 @@ export default function ResearchProjectsPage() {
   // Rango inválido (desde posterior a hasta): se avisa y no se consulta.
   const invalidRange = !!from && !!to && from > to;
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["research-projects", search, from, to, page, pageSize],
-    queryFn: () => ResearchProjectsAPI.search({ search, from: from || undefined, to: to || undefined, page, pageSize }),
+  const projectsKey = ["research-projects", search, from, to];
+  const fetchProjects = (pg: number, size: number) =>
+    ResearchProjectsAPI.search({ search, from: from || undefined, to: to || undefined, page: pg, pageSize: size });
+  const mobile = useMobileInfiniteList<any>({ queryKey: projectsKey, fetchPage: fetchProjects, pageSize, enabled: !invalidRange });
+  const projectsQuery = useQuery({
+    queryKey: [...projectsKey, page, pageSize],
+    queryFn: () => fetchProjects(page, pageSize),
     placeholderData: (prev) => prev,
-    enabled: !invalidRange,
+    enabled: !invalidRange && !mobile.active,
   });
+  const { data, isLoading, isError } = withMobileList(projectsQuery, mobile, "api");
 
   const hasFilters = !!searchText || !!from || !!to;
   const clearFilters = () => {
@@ -221,6 +227,8 @@ export default function ResearchProjectsPage() {
 
           {paged && paged.totalCount > 0 && (
             <DataPagination
+              infinite={mobile.infinite}
+              itemLabel="proyectos"
               page={paged.page}
               totalPages={paged.totalPages}
               totalCount={paged.totalCount}

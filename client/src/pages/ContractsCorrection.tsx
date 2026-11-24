@@ -116,6 +116,7 @@ export default function ContractsCorrection() {
     goToPage,
     setPageSize,
     setSearch: setSearchTerm,
+    infinite,
   } = usePaged<any>({
     // statusInput/dateFromInput/dateToInput/employeeId viajan en el queryKey (no solo en el
     // queryFn) para que React Query detecte el cambio y vuelva a consultar — usePaged solo
@@ -411,6 +412,8 @@ export default function ContractsCorrection() {
 
                     {totalPages > 0 && (
                       <DataPagination
+                        infinite={infinite}
+                        itemLabel="contratos"
                         page={page}
                         totalPages={totalPages}
                         totalCount={totalCount}

@@ -23,6 +23,7 @@ import {
 import { ActionIconButton } from "@/components/ui/action-icon-button";
 import { StatusBadge, type StatusTone } from "@/components/shared/StatusBadge";
 import { DataPagination } from "@/components/ui/DataPagination";
+import { useMobileInfiniteList, withMobileList } from "@/hooks/pagination/useMobileInfiniteList";
 import { EmployeeCombobox } from "@/components/ui/EmployeeCombobox";
 import { useToast } from "@/hooks/use-toast";
 import { PunchPolicyAPI } from "@/lib/api/services/punchPolicy";
@@ -71,12 +72,18 @@ export default function ExternalPunchTab({ canManage }: { canManage: boolean }) 
   }, [search]);
 
   const onlyEffective = filter === "effective";
-  const list = useQuery({
-    queryKey: [...PUNCH_POLICIES_KEY, debounced, onlyEffective, page, pageSize],
-    queryFn: async () => unwrapApiResponse(await PunchPolicyAPI.policies({ search: debounced, onlyEffective, page, pageSize })),
+  const policiesKey = [...PUNCH_POLICIES_KEY, debounced, onlyEffective];
+  const fetchPolicies = async (pg: number, size: number) =>
+    unwrapApiResponse(await PunchPolicyAPI.policies({ search: debounced, onlyEffective, page: pg, pageSize: size }));
+  const mobile = useMobileInfiniteList<any>({ queryKey: policiesKey, fetchPage: fetchPolicies, pageSize, staleTime: 0 });
+  const listQuery = useQuery({
+    queryKey: [...policiesKey, page, pageSize],
+    queryFn: () => fetchPolicies(page, pageSize),
     staleTime: 0,
     placeholderData: (prev) => prev,
+    enabled: !mobile.active,
   });
+  const list = withMobileList(listQuery, mobile);
   const refresh = () => queryClient.invalidateQueries({ queryKey: PUNCH_POLICIES_KEY });
 
   const save = useMutation({
@@ -228,6 +235,8 @@ export default function ExternalPunchTab({ canManage }: { canManage: boolean }) 
               </TableBody>
             </Table>
             <DataPagination
+              infinite={mobile.infinite}
+              itemLabel="políticas"
               page={data!.page}
               totalPages={data!.totalPages}
               totalCount={data!.totalCount}

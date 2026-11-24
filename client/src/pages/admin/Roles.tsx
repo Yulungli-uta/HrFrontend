@@ -3,6 +3,9 @@ import { useLocation } from "wouter";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Card, CardContent } from "@/components/ui/card";
+import { ResponsiveDataView } from "@/components/ui/responsive-data-view";
+import { RecordAvatar, RecordCard } from "@/components/ui/RecordCard";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { ActionIconButton } from "@/components/ui/action-icon-button";
 import { Badge } from "@/components/ui/badge";
@@ -34,7 +37,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-import { Shield, Plus, Edit, Trash2, Search, KeyRound } from "lucide-react";
+import { Shield, ShieldCheck, CalendarDays, Plus, Edit, Trash2, Search, KeyRound } from "lucide-react";
 import { RolesAPI } from "@/lib/api";
 import { usePaged } from "@/hooks/pagination/usePaged";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
@@ -76,6 +79,7 @@ export default function RolesPage() {
     setPageSize,
     setSearch,
     currentParams,
+    infinite,
   } = usePaged<Role>({
     queryKey: "roles",
     queryFn: async (params) => {
@@ -234,8 +238,56 @@ export default function RolesPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardContent className="pt-6">
+      <Card className="max-md:border-0 max-md:bg-transparent max-md:shadow-none">
+        <CardContent className="pt-6 max-md:p-0">
+          <ResponsiveDataView
+            items={roles}
+            getKey={(role) => String(role.id)}
+            empty={
+              <p className="py-8 text-center text-muted-foreground">
+                {currentParams.search ? "No se encontraron roles" : "No hay roles registrados"}
+              </p>
+            }
+            renderCard={(role) => (
+              <RecordCard
+                tone={role.isActive ? "success" : "muted"}
+                dimmed={!role.isActive}
+                leading={<RecordAvatar seed={String(role.name)} icon={ShieldCheck} />}
+                title={role.name}
+                subtitle={role.description || undefined}
+                badges={
+                  <>
+                    <StatusBadge tone="primary">Prioridad {role.priority ?? "-"}</StatusBadge>
+                    <StatusBadge tone={role.isActive ? "success" : "neutral"}>
+                      <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />
+                      {role.isActive ? "Activo" : "Inactivo"}
+                    </StatusBadge>
+                  </>
+                }
+                meta={role.createdAt ? [{ icon: CalendarDays, label: "Creado", value: formatDate(role.createdAt as any) }] : []}
+                actions={
+                  <>
+                    <ActionIconButton icon={Edit} label="Editar rol" tone="primary" touch onClick={() => handleEdit(role)} />
+                    <ActionIconButton
+                      icon={KeyRound}
+                      label="Configurar menús y permisos"
+                      tone="primary"
+                      touch
+                      onClick={() => setLocation(`/admin/role-editor?roleId=${role.id}`)}
+                    />
+                    <ActionIconButton
+                      icon={Trash2}
+                      label="Eliminar rol"
+                      tone="destructive"
+                      touch
+                      className="ml-auto"
+                      onClick={() => handleDelete(role.id as any)}
+                    />
+                  </>
+                }
+              />
+            )}
+            renderTable={() => (
           <Table>
             <TableHeader>
               <TableRow>
@@ -301,10 +353,14 @@ export default function RolesPage() {
               )}
             </TableBody>
           </Table>
+            )}
+          />
         </CardContent>
       </Card>
 
       <DataPagination
+        infinite={infinite}
+        itemLabel="roles"
         page={page}
         totalPages={totalPages}
         totalCount={totalCount}

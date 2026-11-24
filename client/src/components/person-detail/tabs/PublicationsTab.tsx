@@ -330,6 +330,8 @@ export function PublicationsTab({ publications: allPublications, onEdit, onDelet
             )}
 
             <DataPagination
+              infinite={list.infinite}
+              itemLabel="publicaciones"
               page={list.page}
               totalPages={list.totalPages}
               totalCount={list.totalCount}

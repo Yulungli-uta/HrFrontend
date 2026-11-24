@@ -708,6 +708,7 @@ export default function ScheduleChangePlansPage() {
     setSearch,
     clearSearch,
     currentParams,
+    infinite,
   } = usePaged<ScheduleChangePlanResponse>({
     queryKey: QUERY_KEY.join("-"),
     queryFn: (params) => ScheduleChangePlansAPI.listPaged(params),
@@ -1091,6 +1092,8 @@ export default function ScheduleChangePlansPage() {
               </div>
 
               <DataPagination
+                infinite={infinite}
+                itemLabel="planes"
                 page={page}
                 totalPages={totalPages}
                 totalCount={totalCount}

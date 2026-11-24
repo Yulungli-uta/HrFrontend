@@ -124,7 +124,7 @@ export default function RotationPatternsPage() {
 
   const {
     items: patterns, isLoading, page, pageSize, totalCount,
-    totalPages, hasPreviousPage, hasNextPage, goToPage, setPageSize, setSearch,
+    totalPages, hasPreviousPage, hasNextPage, goToPage, setPageSize, setSearch, infinite,
   } = useRotationPatternsPaged(20, isActiveParam);
   const { create, update, setDetails } = useRotationPatternMutations();
 
@@ -371,6 +371,8 @@ export default function RotationPatternsPage() {
           </div>
           {totalPages > 1 && (
             <DataPagination
+              infinite={infinite}
+              itemLabel="patrones"
               page={page}
               totalPages={totalPages}
               totalCount={totalCount}

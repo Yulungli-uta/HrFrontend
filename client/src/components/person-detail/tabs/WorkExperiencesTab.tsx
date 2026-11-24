@@ -330,6 +330,8 @@ export function WorkExperiencesTab({
             )}
 
             <DataPagination
+              infinite={list.infinite}
+              itemLabel="experiencias"
               page={list.page}
               totalPages={list.totalPages}
               totalCount={list.totalCount}

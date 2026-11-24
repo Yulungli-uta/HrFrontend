@@ -231,6 +231,7 @@ export default function EmployeesPage() {
     setSearch,
     clearSearch,
     currentParams,
+    infinite,
   } = usePaged<any>({
     queryKey: ["employees-complete", regimeFilter, departmentFilter, isActiveFilter],
     queryFn: (params) =>
@@ -795,6 +796,8 @@ const employeeStats = useMemo(() => {
 
       <div className="border-t border-border/40 pt-2">
         <DataPagination
+          infinite={infinite}
+          itemLabel="empleados"
           page={page}
           totalPages={totalPages}
           totalCount={totalCount}

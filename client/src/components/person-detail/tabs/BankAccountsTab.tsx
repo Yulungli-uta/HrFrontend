@@ -174,6 +174,8 @@ export function BankAccountsTab({
             )}
 
             <DataPagination
+              infinite={list.infinite}
+              itemLabel="cuentas"
               page={list.page}
               totalPages={list.totalPages}
               totalCount={list.totalCount}

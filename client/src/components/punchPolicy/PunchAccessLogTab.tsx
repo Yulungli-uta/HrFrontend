@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ActionIconButton } from "@/components/ui/action-icon-button";
 import { StatusBadge, type StatusTone } from "@/components/shared/StatusBadge";
 import { DataPagination } from "@/components/ui/DataPagination";
+import { useMobileInfiniteList, withMobileList } from "@/hooks/pagination/useMobileInfiniteList";
 import { PunchPolicyAPI } from "@/lib/api/services/punchPolicy";
 import { unwrapApiResponse } from "@/lib/api/utils/error-handling";
 import type { PunchLogResult } from "@/types/punchPolicy";
@@ -30,13 +31,18 @@ export default function PunchAccessLogTab() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  const log = useQuery({
-    queryKey: [...PUNCH_LOG_KEY, from, to, result, page, pageSize],
-    queryFn: async () =>
-      unwrapApiResponse(await PunchPolicyAPI.log({ from, to, result: result === ALL ? undefined : result, page, pageSize })),
+  const logKey = [...PUNCH_LOG_KEY, from, to, result];
+  const fetchLog = async (pg: number, size: number) =>
+    unwrapApiResponse(await PunchPolicyAPI.log({ from, to, result: result === ALL ? undefined : result, page: pg, pageSize: size }));
+  const mobile = useMobileInfiniteList<any>({ queryKey: logKey, fetchPage: fetchLog, pageSize, staleTime: 0 });
+  const logQuery = useQuery({
+    queryKey: [...logKey, page, pageSize],
+    queryFn: () => fetchLog(page, pageSize),
     staleTime: 0,
     placeholderData: (prev) => prev,
+    enabled: !mobile.active,
   });
+  const log = withMobileList(logQuery, mobile);
   const data = log.data;
 
   return (
@@ -132,6 +138,8 @@ export default function PunchAccessLogTab() {
               </TableBody>
             </Table>
             <DataPagination
+              infinite={mobile.infinite}
+              itemLabel="picadas"
               page={data!.page}
               totalPages={data!.totalPages}
               totalCount={data!.totalCount}

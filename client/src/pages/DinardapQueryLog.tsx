@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DataPagination } from "@/components/ui/DataPagination";
+import { useMobileInfiniteList, withMobileList } from "@/hooks/pagination/useMobileInfiniteList";
 import { DinardapQueryLogAPI } from "@/lib/api";
 import type { DinardapOrigin, DinardapOutcome, DinardapPackage } from "@/lib/api";
 import { formatDateTime } from "@/lib/clock";
@@ -58,13 +59,17 @@ export default function DinardapQueryLogPage() {
   // Rango inválido (desde posterior a hasta): se avisa y no se consulta.
   const invalidRange = !!from && !!to && from > to;
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["dinardap-query-log", user, from, to, pkg, origin, outcome, page, pageSize],
-    queryFn: () =>
-      DinardapQueryLogAPI.search({ user, from: from || undefined, to: to || undefined, package: pkg, origin, outcome, page, pageSize }),
+  const logKey = ["dinardap-query-log", user, from, to, pkg, origin, outcome];
+  const fetchLog = (pg: number, size: number) =>
+    DinardapQueryLogAPI.search({ user, from: from || undefined, to: to || undefined, package: pkg, origin, outcome, page: pg, pageSize: size });
+  const mobile = useMobileInfiniteList<any>({ queryKey: logKey, fetchPage: fetchLog, pageSize, enabled: !invalidRange });
+  const logQuery = useQuery({
+    queryKey: [...logKey, page, pageSize],
+    queryFn: () => fetchLog(page, pageSize),
     placeholderData: (prev) => prev,
-    enabled: !invalidRange,
+    enabled: !invalidRange && !mobile.active,
   });
+  const { data, isLoading, isError } = withMobileList(logQuery, mobile, "api");
 
   const hasFilters = !!userText || !!from || !!to || !!pkg || !!origin || !!outcome;
   const clearFilters = () => {
@@ -266,6 +271,8 @@ export default function DinardapQueryLogPage() {
 
           {paged && paged.totalCount > 0 && (
             <DataPagination
+              infinite={mobile.infinite}
+              itemLabel="consultas"
               page={paged.page}
               totalPages={paged.totalPages}
               totalCount={paged.totalCount}

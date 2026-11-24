@@ -42,6 +42,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { DataPagination } from '@/components/ui/DataPagination';
+import { useMobileInfiniteList, withMobileList } from "@/hooks/pagination/useMobileInfiniteList";
 import { useToast } from '@/hooks/use-toast';
 
 import {
@@ -196,12 +197,17 @@ export default function EmployeeProvisioning() {
 
   // ── Lista ──────────────────────────────────────────────────────────────────
 
-  const { data: rawList, isLoading, isError } = useQuery({
-    queryKey: ['provisioning', page, pageSize, statusFilter],
-    queryFn: () =>
-      ProvisioningAPI.list(page, pageSize, statusFilter ? Number(statusFilter) : undefined),
+  const provisioningKey = ['provisioning', statusFilter];
+  const fetchProvisioning = (pg: number, size: number) =>
+    ProvisioningAPI.list(pg, size, statusFilter ? Number(statusFilter) : undefined);
+  const mobile = useMobileInfiniteList<any>({ queryKey: provisioningKey, fetchPage: fetchProvisioning, pageSize });
+  const provisioningQuery = useQuery({
+    queryKey: [...provisioningKey, page, pageSize],
+    queryFn: () => fetchProvisioning(page, pageSize),
     staleTime: 30_000,
+    enabled: !mobile.active,
   });
+  const { data: rawList, isLoading, isError } = withMobileList(provisioningQuery, mobile, 'api');
 
   const items: UserProvisioningDto[] =
     rawList?.status === 'success' ? (rawList.data?.items ?? []) : [];
@@ -447,6 +453,8 @@ export default function EmployeeProvisioning() {
       {/* Paginación */}
       {totalPages > 1 && (
         <DataPagination
+          infinite={mobile.infinite}
+          itemLabel="usuarios"
           page={page}
           totalPages={totalPages}
           totalCount={totalCount}

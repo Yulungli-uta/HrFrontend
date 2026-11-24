@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DataPagination } from "@/components/ui/DataPagination";
+import { useClientInfiniteSlice } from "@/hooks/pagination/useClientInfiniteSlice";
 
 import { useAuth } from "@/features/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -110,10 +111,7 @@ export default function FinancialCertificationPage() {
   const stats = useMemo(() => calcStats(allCerts), [allCerts]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const paginated = useMemo(
-    () => filtered.slice((page - 1) * pageSize, page * pageSize),
-    [filtered, page, pageSize]
-  );
+  const { visibleItems: paginated, infinite } = useClientInfiniteSlice(filtered, { page, setPage, pageSize });
 
   const directoryInfo = useMemo(() => {
     if (isDirLoading) return "Cargando parámetros FINCERT...";
@@ -268,6 +266,8 @@ export default function FinancialCertificationPage() {
       />
 
       <DataPagination
+        infinite={infinite}
+        itemLabel="certificaciones"
         page={page}
         totalPages={totalPages}
         totalCount={filtered.length}

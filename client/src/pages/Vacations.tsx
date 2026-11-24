@@ -38,6 +38,7 @@ export default function VacationsPage() {
     hasNextPage,
     goToPage,
     setPageSize,
+    infinite,
   } = usePaged<Vacation>({
     queryKey: "vacations-paged",
     queryFn: (params) => VacacionesAPI.listPaged(params),
@@ -147,6 +148,8 @@ export default function VacationsPage() {
           )}
 
           <DataPagination
+            infinite={infinite}
+            itemLabel="vacaciones"
             page={page}
             totalPages={totalPages}
             totalCount={totalCount}

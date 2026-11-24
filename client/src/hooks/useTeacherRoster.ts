@@ -1,3 +1,4 @@
+import { useMobileInfiniteList, withMobileList } from "@/hooks/pagination/useMobileInfiniteList";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
   NonTitularRosterAPI,
@@ -22,12 +23,21 @@ function unwrap<T>(res: ApiResponse<T>, defaultMessage: string): T {
 const STALE_MS = 15_000;
 
 export function useTeacherRosterList(filter: TeacherRosterFilter, page: number, pageSize: number) {
-  return useQuery<PagedResult<TeacherRosterItemDto>>({
+  // Móvil: scroll infinito (acumula páginas). Escritorio: paginado como siempre.
+  const mobile = useMobileInfiniteList<TeacherRosterItemDto>({
+    queryKey: ["teacher-roster", "list", filter],
+    fetchPage: async (pg, size) => unwrap(await TeacherRosterAPI.list(filter, pg, size), "Error al cargar los docentes titulares"),
+    pageSize,
+    staleTime: STALE_MS,
+  });
+  const query = useQuery<PagedResult<TeacherRosterItemDto>>({
     queryKey: ["teacher-roster", "list", filter, page, pageSize],
     queryFn: async () => unwrap(await TeacherRosterAPI.list(filter, page, pageSize), "Error al cargar los docentes titulares"),
     placeholderData: keepPreviousData,
     staleTime: STALE_MS,
+    enabled: !mobile.active,
   });
+  return { ...withMobileList(query, mobile), infinite: mobile.infinite };
 }
 
 export function useTeacherRosterSummary(filter: TeacherRosterFilter) {
@@ -41,12 +51,20 @@ export function useTeacherRosterSummary(filter: TeacherRosterFilter) {
 }
 
 export function useNonTitularRosterList(filter: NonTitularRosterFilter, page: number, pageSize: number) {
-  return useQuery<PagedResult<NonTitularRosterItemDto>>({
+  const mobile = useMobileInfiniteList<NonTitularRosterItemDto>({
+    queryKey: ["teacher-roster", "non-titular", "list", filter],
+    fetchPage: async (pg, size) => unwrap(await NonTitularRosterAPI.list(filter, pg, size), "Error al cargar los docentes no titulares"),
+    pageSize,
+    staleTime: STALE_MS,
+  });
+  const query = useQuery<PagedResult<NonTitularRosterItemDto>>({
     queryKey: ["teacher-roster", "non-titular", "list", filter, page, pageSize],
     queryFn: async () => unwrap(await NonTitularRosterAPI.list(filter, page, pageSize), "Error al cargar los docentes no titulares"),
     placeholderData: keepPreviousData,
     staleTime: STALE_MS,
+    enabled: !mobile.active,
   });
+  return { ...withMobileList(query, mobile), infinite: mobile.infinite };
 }
 
 export function useNonTitularRosterSummary(filter: NonTitularRosterFilter) {

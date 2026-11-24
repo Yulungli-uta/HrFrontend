@@ -43,6 +43,7 @@ import {
 import type { ReusableDocumentManagerHandle } from "@/components/ReusableDocumentManager";
 import { parseApiError } from '@/lib/error-handling';
 import { DataPagination } from "@/components/ui/DataPagination";
+import { useClientInfiniteSlice } from "@/hooks/pagination/useClientInfiniteSlice";
 import { ContractRequestAPI, FinancialCertificationAPI } from "@/lib/api";
 import {
   ContractRequestPersonSection,
@@ -241,10 +242,7 @@ export default function ContractRequestPage() {
   }, [contracts, searchTerm, statusFilter, cr.workModalityNameById, cr.departmentNameById]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const paginated = useMemo(
-    () => filtered.slice((page - 1) * pageSize, page * pageSize),
-    [filtered, page, pageSize]
-  );
+  const { visibleItems: paginated, infinite } = useClientInfiniteSlice(filtered, { page, setPage, pageSize });
 
   // ID del estado que habilita edición
   const editableStatusId = useMemo(
@@ -809,6 +807,8 @@ export default function ContractRequestPage() {
           </div>
 
           <DataPagination
+            infinite={infinite}
+            itemLabel="solicitudes"
             page={page}
             totalPages={totalPages}
             totalCount={filtered.length}

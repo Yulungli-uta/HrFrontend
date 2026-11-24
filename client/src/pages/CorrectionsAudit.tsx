@@ -12,6 +12,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { useMobileInfiniteList, withMobileList } from '@/hooks/pagination/useMobileInfiniteList';
+import { InfiniteListFooter } from '@/components/ui/InfiniteListFooter';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -151,19 +153,24 @@ export default function CorrectionsAuditPage() {
   const [page, setPage] = useState(1);
   const pageSize = 20;
 
-  const { data, isFetching } = useQuery({
-    queryKey: ['corrections-audit', tableName, search, userName, dateFrom, dateTo, page],
-    queryFn: () =>
-      AuditAPI.searchCorrections({
-        tableName: tableName === '__all__' ? null : tableName,
-        search: search.trim() || null,
-        userName: userName.trim() || null,
-        dateFrom: dateFrom || null,
-        dateTo: dateTo || null,
-        page,
-        pageSize,
-      }),
+  const auditKey = ['corrections-audit', tableName, search, userName, dateFrom, dateTo];
+  const fetchAudit = (pg: number, size: number) =>
+    AuditAPI.searchCorrections({
+      tableName: tableName === '__all__' ? null : tableName,
+      search: search.trim() || null,
+      userName: userName.trim() || null,
+      dateFrom: dateFrom || null,
+      dateTo: dateTo || null,
+      page: pg,
+      pageSize: size,
+    });
+  const mobile = useMobileInfiniteList<any>({ queryKey: auditKey, fetchPage: fetchAudit, pageSize });
+  const auditQuery = useQuery({
+    queryKey: [...auditKey, page],
+    queryFn: () => fetchAudit(page, pageSize),
+    enabled: !mobile.active,
   });
+  const { data, isFetching } = withMobileList(auditQuery, mobile, 'api');
 
   const { data: refData } = useRefTypes();
   const refNames = useMemo(() => {
@@ -284,7 +291,7 @@ export default function CorrectionsAuditPage() {
                 </Table>
               </div>
 
-              {result && result.totalPages > 1 && (
+              {!mobile.active && result && result.totalPages > 1 && (
                 <div className="flex items-center justify-between pt-4">
                   <p className="text-sm text-muted-foreground">
                     Página {result.page} de {result.totalPages}
@@ -308,6 +315,18 @@ export default function CorrectionsAuditPage() {
                     </Button>
                   </div>
                 </div>
+              )}
+
+              {mobile.active && (
+                <InfiniteListFooter
+                  loadedCount={mobile.infinite.loadedCount}
+                  totalCount={mobile.infinite.totalCount}
+                  hasNextPage={mobile.infinite.hasNextPage}
+                  isFetchingNextPage={mobile.infinite.isFetchingNextPage}
+                  isError={mobile.infinite.isLoadMoreError}
+                  onLoadMore={mobile.infinite.fetchNextPage}
+                  itemLabel="registros"
+                />
               )}
             </>
           )}

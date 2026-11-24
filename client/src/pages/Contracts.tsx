@@ -73,6 +73,7 @@ export default function ContractsPage() {
     setSearch,
     clearSearch,
     currentParams,
+    infinite,
   } = usePaged<ContractDto>({
     queryKey: contractsQueryKey,
     queryFn: (params) =>
@@ -608,6 +609,8 @@ export default function ContractsPage() {
       </div>
 
       <DataPagination
+        infinite={infinite}
+        itemLabel="contratos"
         page={page}
         totalPages={totalPages}
         totalCount={totalCount}

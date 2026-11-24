@@ -1,5 +1,7 @@
 // src/pages/PersonnelActionTypes.tsx
 import { RowAction } from "@/components/ui/row-action";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { actionCategoryLabel } from "@/features/personnelActionCategories";
 import { useQuery } from "@tanstack/react-query";
 import { Fragment, useEffect, useState, useMemo } from "react";
 
@@ -82,6 +84,7 @@ export default function PersonnelActionTypesPage() {
     goToPage,
     setPageSize,
     setSearch,
+    infinite,
   } = usePaged<PersonnelActionTypeFamilyDto>({
     queryKey: [TYPES_QUERY_KEY, "tree"],
     queryFn: (params) =>
@@ -342,14 +345,15 @@ export default function PersonnelActionTypesPage() {
                   <TableHead className="min-w-[120px]">Código</TableHead>
                   <TableHead className="min-w-[170px] hidden md:table-cell">Prefijo · último número</TableHead>
                   <TableHead className="min-w-[120px] hidden lg:table-cell">Integración AD</TableHead>
+                  <TableHead className="min-w-[140px] hidden xl:table-cell">Situación propuesta</TableHead>
                   <TableHead className="min-w-[90px]">Estado</TableHead>
-                  <TableHead className="text-right min-w-[150px]">Acciones</TableHead>
+                  <TableHead className="text-right min-w-[150px] lg:sticky lg:right-0 lg:z-10 lg:bg-card">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {families.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
                       {isSearching
                         ? "No se encontraron tipos de acción con ese criterio"
                         : "No hay tipos de acción de personal registrados"}
@@ -370,6 +374,7 @@ export default function PersonnelActionTypesPage() {
                           open={open}
                           onToggle={() => toggleExpanded(root.personnelActionTypeId)}
                           onView={() => openDetail(root)}
+                          onEdit={() => openEdit(root)}
                           onAddSubtype={() => openCreateSubtype(root)}
                         />
                         {open &&
@@ -378,6 +383,7 @@ export default function PersonnelActionTypesPage() {
                               key={child.personnelActionTypeId}
                               at={child}
                               onView={() => openDetail(child)}
+                              onEdit={() => openEdit(child)}
                             />
                           ))}
                       </Fragment>
@@ -400,6 +406,8 @@ export default function PersonnelActionTypesPage() {
       </Card>
 
       <DataPagination
+        infinite={infinite}
+        itemLabel="tipos de acción"
         page={page}
         totalPages={totalPages}
         totalCount={totalFamilies}
@@ -465,6 +473,7 @@ export default function PersonnelActionTypesPage() {
                       numberingPrefix: editing.numberingPrefix,
                       defaultTemplateId: editing.defaultTemplateId ?? null,
                       actionCategory: editing.actionCategory ?? "",
+                      showProposedSituation: editing.showProposedSituation ?? true,
                       siiesRelacionIesTypeId: editing.siiesRelacionIesTypeId
                         ? String(editing.siiesRelacionIesTypeId)
                         : "",
@@ -481,6 +490,7 @@ export default function PersonnelActionTypesPage() {
                         // Subtipo nuevo: hereda del tipo general la configuración; prefijo, código y nombre los define el usuario.
                         parentTypeId: String(newSubtypeParent.personnelActionTypeId),
                         actionCategory: newSubtypeParent.actionCategory ?? "",
+                        showProposedSituation: newSubtypeParent.showProposedSituation ?? true,
                         defaultTemplateId: newSubtypeParent.defaultTemplateId ?? null,
                         siiesRelacionIesTypeId: newSubtypeParent.siiesRelacionIesTypeId
                           ? String(newSubtypeParent.siiesRelacionIesTypeId)
@@ -596,6 +606,26 @@ export default function PersonnelActionTypesPage() {
 
                 <Card>
                   <CardHeader>
+                    <CardTitle className="text-base">Categoría y documento</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3 text-sm">
+                    <div>
+                      <p className="text-muted-foreground font-medium">Categoría funcional</p>
+                      <p>{actionCategoryLabel(selected.actionCategory)}</p>
+                      <p className="text-xs text-muted-foreground">Decide movimientos de personal, historial laboral y SIIES.</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground font-medium">Situación propuesta en el documento</p>
+                      <StatusBadge tone={selected.showProposedSituation === false ? "neutral" : "info"}>
+                        {selected.showProposedSituation === false ? "Solo el nombre de la acción" : "Grilla completa"}
+                      </StatusBadge>
+                      <p className="mt-1 text-xs text-muted-foreground">Se cambia con «Editar».</p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
                     <CardTitle className="text-base">Integración Active Directory</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3 text-sm">
@@ -673,11 +703,12 @@ type TypeRowProps = {
   open?: boolean;
   onToggle?: () => void;
   onView: () => void;
+  onEdit: () => void;
   onAddSubtype?: () => void;
 };
 
 /** Fila del árbol: tipo general (con botón para plegar y agregar subtipo) o subtipo (indentado). */
-function TypeRow({ at, isRoot = false, hasChildren = false, childCount = 0, open = false, onToggle, onView, onAddSubtype }: TypeRowProps) {
+function TypeRow({ at, isRoot = false, hasChildren = false, childCount = 0, open = false, onToggle, onView, onEdit, onAddSubtype }: TypeRowProps) {
   return (
     <TableRow className={isRoot ? "group" : "group bg-muted/30"}>
       <TableCell>
@@ -700,14 +731,14 @@ function TypeRow({ at, isRoot = false, hasChildren = false, childCount = 0, open
             <CornerDownRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
           )}
           <div className="min-w-0">
-            <p className={isRoot ? "font-medium" : "text-sm"}>
+            <div className={isRoot ? "font-medium" : "text-sm"}>
               {at.name}
               {isRoot && hasChildren && (
                 <Badge variant="secondary" className="ml-2 text-xs">
                   {childCount} subtipo{childCount === 1 ? "" : "s"}
                 </Badge>
               )}
-            </p>
+            </div>
             {at.description && (
               <p className="text-xs text-muted-foreground truncate max-w-[300px]">{at.description}</p>
             )}
@@ -745,6 +776,12 @@ function TypeRow({ at, isRoot = false, hasChildren = false, childCount = 0, open
         </div>
       </TableCell>
 
+      <TableCell className="hidden xl:table-cell">
+        <StatusBadge tone={at.showProposedSituation === false ? "neutral" : "info"}>
+          {at.showProposedSituation === false ? "Solo el nombre" : "Grilla completa"}
+        </StatusBadge>
+      </TableCell>
+
       <TableCell>
         <Badge
           variant={at.isActive ? "default" : "secondary"}
@@ -754,7 +791,7 @@ function TypeRow({ at, isRoot = false, hasChildren = false, childCount = 0, open
         </Badge>
       </TableCell>
 
-      <TableCell className="text-right">
+      <TableCell className="text-right lg:sticky lg:right-0 lg:z-10 lg:bg-card">
         <div className="flex justify-end gap-2 flex-wrap">
           {isRoot && onAddSubtype && (
             <Button variant="outline" size="sm" onClick={onAddSubtype} className="inline-flex items-center gap-1">
@@ -763,6 +800,7 @@ function TypeRow({ at, isRoot = false, hasChildren = false, childCount = 0, open
             </Button>
           )}
           <RowAction action="view" onClick={onView} />
+          <RowAction action="edit" onClick={onEdit} />
         </div>
       </TableCell>
     </TableRow>

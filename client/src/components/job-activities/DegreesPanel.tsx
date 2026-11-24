@@ -1,5 +1,9 @@
 // src/components/job-activities/DegreesPanel.tsx
 import { useMemo, useState } from "react";
+import { RecordAvatar, RecordCard } from "@/components/ui/RecordCard";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { useIsDesktop } from "@/hooks/useIsDesktop";
+import { GraduationCap as DegreeIcon } from "lucide-react";
 import { GraduationCap, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,6 +35,9 @@ export function DegreesPanel({ onNew, onEdit }: Props) {
     fetcher: async (params) => mapPagedItems(await DegreeAPI.listPaged(params), normalizeDegree),
   });
 
+  const isDesktop = useIsDesktop();
+  const showCards = !isDesktop && list.items.length > 0;
+
   const hasFilters = activeFilter !== "all" || list.searchText.trim() !== "";
 
   return (
@@ -61,6 +68,22 @@ export function DegreesPanel({ onNew, onEdit }: Props) {
             setActiveFilter("all");
           }}
         />
+        {showCards ? (
+          <ul className="grid gap-3">
+            {list.items.map((deg) => (
+              <li key={deg.degreeId} className="rounded-lg border border-border bg-card p-3 shadow-sm">
+                <RecordCard
+                  tone={deg.isActive ? "success" : "muted"}
+                  dimmed={!deg.isActive}
+                  leading={<RecordAvatar seed={String(deg.degreeId)} icon={DegreeIcon} />}
+                  title={deg.description}
+                  badges={<StatusBadge tone={deg.isActive ? "success" : "neutral"}>{deg.isActive ? "Activo" : "Inactivo"}</StatusBadge>}
+                  onClick={() => onEdit(deg)}
+                />
+              </li>
+            ))}
+          </ul>
+        ) : (
         <div className="rounded-md border">
           <Table>
             <TableHeader>
@@ -96,7 +119,10 @@ export function DegreesPanel({ onNew, onEdit }: Props) {
             </TableBody>
           </Table>
         </div>
+        )}
         <DataPagination
+          infinite={list.infinite}
+          itemLabel="títulos"
           page={list.page}
           totalPages={list.totalPages}
           totalCount={list.totalCount}

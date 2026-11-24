@@ -363,6 +363,8 @@ export function TrainingsTab({ trainings, onEdit, onDelete, refTypesMap = {}, kn
             )}
 
             <DataPagination
+              infinite={list.infinite}
+              itemLabel="capacitaciones"
               page={list.page}
               totalPages={list.totalPages}
               totalCount={list.totalCount}

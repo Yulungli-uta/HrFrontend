@@ -175,6 +175,8 @@ export function AddressesTab({
             )}
 
             <DataPagination
+              infinite={list.infinite}
+              itemLabel="direcciones"
               page={list.page}
               totalPages={list.totalPages}
               totalCount={list.totalCount}

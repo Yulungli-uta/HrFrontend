@@ -1,5 +1,9 @@
 // src/components/job-activities/OccupationalGroupsPanel.tsx
 import { useMemo, useState } from "react";
+import { RecordAvatar, RecordCard } from "@/components/ui/RecordCard";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { useIsDesktop } from "@/hooks/useIsDesktop";
+import { Layers as GroupIcon } from "lucide-react";
 import { Building2, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -56,6 +60,9 @@ export function OccupationalGroupsPanel({ onNew, onEdit }: Props) {
   const degreeNames = useDegreeNames(list.items.map((g) => g.degreeId));
   const families = useRefTypesByCategory(REF_TYPE_CATEGORIES.OCCUPATIONAL_GROUP_FAMILY);
   const familyNames = useMemo(() => new Map(families.data.map((t) => [t.typeId, t.name])), [families.data]);
+  const isDesktop = useIsDesktop();
+  const showCards = !isDesktop && list.items.length > 0;
+
   const hasFilters = activeFilter !== "all" || degreeId != null || familyId != null || rmuMinText !== "" || rmuMaxText !== "" || list.searchText.trim() !== "";
 
   return (
@@ -133,6 +140,30 @@ export function OccupationalGroupsPanel({ onNew, onEdit }: Props) {
           />
         </CatalogFilterBar>
 
+        {showCards ? (
+          <ul className="grid gap-3">
+            {list.items.map((g) => (
+              <li key={g.groupId} className="rounded-lg border border-border bg-card p-3 shadow-sm">
+                <RecordCard
+                  tone={g.isActive ? "success" : "muted"}
+                  dimmed={!g.isActive}
+                  leading={<RecordAvatar seed={String(g.groupId)} icon={GroupIcon} />}
+                  title={g.description}
+                  subtitle={`ID: ${g.groupId}`}
+                  badges={
+                    <>
+                      {g.familyTypeId && <StatusBadge tone="info">{familyNames.get(g.familyTypeId) ?? "-"}</StatusBadge>}
+                      <StatusBadge tone="neutral">{degreeNames.get(g.degreeId) ?? "-"}</StatusBadge>
+                      <StatusBadge tone={g.isActive ? "success" : "neutral"}>{g.isActive ? "Activo" : "Inactivo"}</StatusBadge>
+                    </>
+                  }
+                  meta={[{ label: "RMU", value: <span className="font-mono">${g.rmu.toFixed(2)}</span> }]}
+                  onClick={() => onEdit(g)}
+                />
+              </li>
+            ))}
+          </ul>
+        ) : (
         <div className="rounded-md border">
           <Table>
             <TableHeader>
@@ -183,7 +214,10 @@ export function OccupationalGroupsPanel({ onNew, onEdit }: Props) {
             </TableBody>
           </Table>
         </div>
+        )}
         <DataPagination
+          infinite={list.infinite}
+          itemLabel="grupos"
           page={list.page}
           totalPages={list.totalPages}
           totalCount={list.totalCount}
