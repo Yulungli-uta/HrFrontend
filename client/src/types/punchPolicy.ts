@@ -2,7 +2,21 @@
 // Control de picadas por red (contrato con /attendance/punch-access de HrBackend).
 
 export type PunchNetworkMode = 'OFF' | 'AUDIT' | 'ENFORCE';
-export type PunchLogResult = 'EXTERNAL_ALLOWED' | 'REJECTED' | 'AUDIT_WOULD_REJECT';
+export type PunchLogResult =
+  | 'EXTERNAL_ALLOWED'
+  | 'REJECTED'
+  | 'AUDIT_WOULD_REJECT'
+  // Eventos de la pantalla de picadas (Mode = CLIENT)
+  | 'CLIENT_CLICK'
+  | 'CLIENT_RETRY'
+  | 'CLIENT_SEND_FAILED'
+  | 'CLIENT_HIDDEN_BEFORE_RESPONSE'
+  // Rechazos y errores del servidor al registrar la picada (Mode = SERVER)
+  | 'SRV_REJ_TOO_SOON'
+  | 'SRV_REJ_NOT_OWN'
+  | 'SRV_ERROR'
+  // Corrección manual de la hora de una picada (Mode = MANUAL)
+  | 'ADJUST_TIME';
 
 export interface PunchNetwork {
   networkId: number;
@@ -89,4 +103,12 @@ export const PUNCH_LOG_RESULT_LABELS: Record<PunchLogResult, string> = {
   EXTERNAL_ALLOWED: 'Picada externa autorizada',
   REJECTED: 'Rechazada',
   AUDIT_WOULD_REJECT: 'Se habría rechazado (modo registro)',
+  CLIENT_CLICK: 'El usuario pulsó el botón de marcar',
+  CLIENT_RETRY: 'La pantalla reintentó el envío',
+  CLIENT_SEND_FAILED: 'Falló el envío de la picada',
+  CLIENT_HIDDEN_BEFORE_RESPONSE: 'El usuario salió de la pantalla antes de la respuesta',
+  SRV_REJ_TOO_SOON: 'Rechazada: intervalo mínimo entre picadas',
+  SRV_REJ_NOT_OWN: 'Rechazada: picada a nombre de otro empleado',
+  SRV_ERROR: 'Error del servidor al registrar la picada',
+  ADJUST_TIME: 'Hora de la picada corregida manualmente',
 };

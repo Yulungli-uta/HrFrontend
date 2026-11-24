@@ -35,6 +35,25 @@ export const MarcacionesAPI = createCrudService<AttendancePunch, InsertAttendanc
 // =============================================================================
 
 export const MarcacionesEspecializadasAPI = {
+  /**
+   * Registra la propia picada. `keepalive` hace que la petición se complete aunque el usuario bloquee el celular o cambie
+   * de aplicación justo después de pulsar. La hora la pone el servidor.
+   */
+  registerPunch: (data: unknown): Promise<ApiResponse<any>> =>
+    apiFetch<any>('/api/v1/rh/attendance/punches', { method: 'POST', body: JSON.stringify(data), keepalive: true }),
+
+  /**
+   * Informa al servidor un evento de la pantalla de picadas (CLICK, RETRY, SEND_FAILED, HIDDEN_BEFORE_RESPONSE) para poder
+   * revisar después qué ocurrió en el dispositivo. No crea ninguna picada.
+   */
+  logClientEvent: (event: string, detail?: string): Promise<ApiResponse<any>> =>
+    apiFetch<any>('/api/v1/rh/attendance/punches/events', {
+      method: 'POST',
+      body: JSON.stringify({ event, detail: detail?.slice(0, 200) }),
+      keepalive: true,
+      timeoutMs: 8_000,
+    }),
+
   getLastPunch: (employeeId: number): Promise<ApiResponse<any>> =>
     apiFetch<any>(`/api/v1/rh/attendance/punches/last-punch/${employeeId}`),
 

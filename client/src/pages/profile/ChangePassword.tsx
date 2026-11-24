@@ -200,7 +200,9 @@ function TwoFaTab({ isAzureAD, method }: { isAzureAD: boolean; method: string })
       return res.data;
     },
     onSuccess: (data) => {
-      const devCode = (data as any)?.otpCodeDev ?? null;
+      // El servidor responde { success, data: { otpCodeDev } } (el código solo viaja en desarrollo)
+      const payload = data as unknown as { data?: { otpCodeDev?: string }; otpCodeDev?: string } | undefined;
+      const devCode = payload?.data?.otpCodeDev ?? payload?.otpCodeDev ?? null;
       setOtpDevCode(devCode);
       setStep("verify");
       toast({ title: "Código enviado", description: "Revise su correo electrónico para obtener el código OTP." });
@@ -213,7 +215,9 @@ function TwoFaTab({ isAzureAD, method }: { isAzureAD: boolean; method: string })
   const verifyMutation = useMutation({
     mutationFn: async (data: TwoFaFormData) => {
       const res = await PasswordAPI.changePassword2fa({
-        currentPassword: isAzureAD ? "" : data.currentPassword,
+        // Con método LocalAd el cambio de una cuenta Office 365 se hace en el AD local y exige la contraseña actual; con
+        // AzureWriteback no se envía. Enviarla vacía hacía que el servidor consumiera el OTP y luego rechazara el cambio.
+        currentPassword: !isAzureAD || method === "LocalAd" ? data.currentPassword : "",
         newPassword: data.newPassword,
         otpCode: data.otpCode,
       });
@@ -373,7 +377,11 @@ export default function ChangePasswordPage() {
     queryKey: ["password-change-method"],
     queryFn: async () => {
       const res = await PasswordAPI.getChangeMethod();
-      return res.status === "success" ? res.data.method : "AzureWriteback";
+      if (res.status !== "success") return "AzureWriteback";
+      // El backend responde { success, data: { method } }: apiFetch no desenvuelve ese sobre, así que el valor llega en
+      // res.data.data.method. Se acepta también la forma plana { method } y nunca se devuelve undefined (React Query lo rechaza).
+      const payload = res.data as unknown as { data?: { method?: string }; method?: string } | undefined;
+      return payload?.data?.method ?? payload?.method ?? "AzureWriteback";
     },
     staleTime: 5 * 60 * 1000,
   });

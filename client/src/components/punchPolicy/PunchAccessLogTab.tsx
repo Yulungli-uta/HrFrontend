@@ -14,6 +14,7 @@ import { unwrapApiResponse } from "@/lib/api/utils/error-handling";
 import type { PunchLogResult } from "@/types/punchPolicy";
 import { PUNCH_LOG_KEY } from "./punchQueries";
 import { addDays, formatDateTime, todayEcuador } from "@/lib/clock";
+import { EmployeeCombobox } from "@/components/ui/EmployeeCombobox";
 
 const ALL = "__all__";
 
@@ -21,19 +22,32 @@ const RESULTS: Record<PunchLogResult, { label: string; tone: StatusTone }> = {
   EXTERNAL_ALLOWED: { label: "Autorizada", tone: "success" },
   REJECTED: { label: "Rechazada", tone: "destructive" },
   AUDIT_WOULD_REJECT: { label: "Habría rechazado", tone: "warning" },
+  CLIENT_CLICK: { label: "Pulsó el botón", tone: "primary" },
+  CLIENT_RETRY: { label: "Reintento de envío", tone: "warning" },
+  CLIENT_SEND_FAILED: { label: "Falló el envío", tone: "destructive" },
+  CLIENT_HIDDEN_BEFORE_RESPONSE: { label: "Salió de la pantalla", tone: "warning" },
+  SRV_REJ_TOO_SOON: { label: "Rechazo: intervalo mínimo", tone: "destructive" },
+  SRV_REJ_NOT_OWN: { label: "Rechazo: picada ajena", tone: "destructive" },
+  SRV_ERROR: { label: "Error del servidor", tone: "destructive" },
+  ADJUST_TIME: { label: "Hora corregida", tone: "primary" },
 };
+
+/** Origen del registro: lo que informó el dispositivo, lo que decidió el servidor o el control de red. */
+const MODE_LABELS: Record<string, string> = { MANUAL: "Ajuste manual", CLIENT: "Dispositivo", SERVER: "Servidor", AUDIT: "Control de red", ENFORCE: "Control de red", OFF: "Control de red" };
 
 export default function PunchAccessLogTab() {
   const queryClient = useQueryClient();
   const [from, setFrom] = useState(addDays(todayEcuador(), -7));
   const [to, setTo] = useState(todayEcuador());
   const [result, setResult] = useState<string>(ALL);
+  // Para revisar un caso concreto ("¿pulsó el botón?, ¿qué le respondió el servidor?") se filtra por empleado
+  const [employeeId, setEmployeeId] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  const logKey = [...PUNCH_LOG_KEY, from, to, result];
+  const logKey = [...PUNCH_LOG_KEY, from, to, result, employeeId];
   const fetchLog = async (pg: number, size: number) =>
-    unwrapApiResponse(await PunchPolicyAPI.log({ from, to, result: result === ALL ? undefined : result, page: pg, pageSize: size }));
+    unwrapApiResponse(await PunchPolicyAPI.log({ from, to, employeeId: employeeId ?? undefined, result: result === ALL ? undefined : result, page: pg, pageSize: size }));
   const mobile = useMobileInfiniteList<any>({ queryKey: logKey, fetchPage: fetchLog, pageSize, staleTime: 0 });
   const logQuery = useQuery({
     queryKey: [...logKey, page, pageSize],
@@ -49,7 +63,7 @@ export default function PunchAccessLogTab() {
     <Card>
       <CardHeader>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <CardTitle>Picadas fuera del campus</CardTitle>
+          <CardTitle>Bitácora de picadas</CardTitle>
           <div className="flex flex-wrap items-center gap-2">
             <Input
               type="date"
@@ -73,6 +87,16 @@ export default function PunchAccessLogTab() {
               aria-label="Hasta"
               className="w-40"
             />
+            <div className="w-64">
+              <EmployeeCombobox
+                value={employeeId}
+                onSelect={(id) => {
+                  setEmployeeId(id);
+                  setPage(1);
+                }}
+                placeholder="Todos los empleados"
+              />
+            </div>
             <Select
               value={result}
               onValueChange={(v) => {
@@ -119,6 +143,8 @@ export default function PunchAccessLogTab() {
                   <TableHead>Empleado</TableHead>
                   <TableHead>IP</TableHead>
                   <TableHead>Resultado</TableHead>
+                  <TableHead>Origen</TableHead>
+                  <TableHead>Detalle</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -132,6 +158,8 @@ export default function PunchAccessLogTab() {
                       <TableCell>
                         <StatusBadge label={r.label} tone={r.tone} />
                       </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{MODE_LABELS[l.mode] ?? l.mode}</TableCell>
+                      <TableCell className="max-w-[24rem] break-words text-xs text-muted-foreground">{l.detail ?? "—"}</TableCell>
                     </TableRow>
                   );
                 })}

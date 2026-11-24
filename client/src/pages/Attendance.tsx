@@ -12,7 +12,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Timer, Clock, MapPin, Filter, AlertCircle, CheckCircle, Calendar, Search, RefreshCw, Info } from "lucide-react";
 import type { AttendancePunch } from "@/shared/schema";
-import { MarcacionesAPI, MarcacionesEspecializadasAPI, handleApiError, TimeAPI } from "@/lib/api";
+import { MarcacionesEspecializadasAPI, handleApiError, TimeAPI } from "@/lib/api";
 import { useAuth } from "@/features/auth";
 import { PunchTable } from "@/components/forms/PunchTable";
 import { parseApiError } from "@/lib/error-handling";
@@ -32,7 +32,6 @@ type PunchKind = keyof typeof PUNCH_TYPES;
 
 const nf = new Intl.NumberFormat("es-EC", { maximumFractionDigits: 4 });
 
-const TODAY_KEY = format(new Date(), "yyyy-MM-dd");
 const SERVER_SYNC_INTERVAL_MS = 60_000;
 const TODAY_PUNCHES_STALE_MS = 30_000;
 const COOLDOWN_MINUTES = 5;
@@ -54,6 +53,14 @@ const buildLocalDateTime = (date: Date) => {
   const minutes = String(date.getMinutes()).padStart(2, "0");
   const seconds = String(date.getSeconds()).padStart(2, "0");
   return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+};
+
+/** Errores de conexión o de espera (se pueden reintentar); un 400, 403 o 409 no. */
+const isTransientError = (error: unknown): boolean => {
+  const e = error as { code?: number; message?: string } | null;
+  const code = Number(e?.code);
+  if (!Number.isFinite(code) || code === 0 || code === 408 || (code >= 502 && code <= 504)) return true;
+  return /network|failed to fetch|timeout|tiempo de espera|abort|conexi/i.test(String(e?.message ?? ""));
 };
 
 const sortPunchesDesc = (rows: AttendancePunch[]) =>
@@ -261,6 +268,8 @@ export default function AttendancePage() {
 
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
   const [filterType, setFilterType] = useState<string>("all");
+  // Fecha de Ecuador del día en curso: la clave cambia sola al pasar la medianoche aunque la pestaña quede abierta
+  const todayKey = todayEcuador();
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<{ latitude: number; longitude: number } | null>(null);
 
@@ -319,7 +328,7 @@ export default function AttendancePage() {
     error,
     refetch,
   } = useQuery<AttendancePunch[]>({
-    queryKey: ["todayPunches", employeeId, TODAY_KEY],
+    queryKey: ["todayPunches", employeeId, todayKey],
     queryFn: async () => {
       const response = await MarcacionesEspecializadasAPI.getTodayPunches(employeeId as number);
 
@@ -372,7 +381,8 @@ export default function AttendancePage() {
   }, [todaysPunches, filterType]);
 
   const isWithinCooldown = !!lastPunchToday && timeSinceLastPunch < COOLDOWN_MINUTES;
-  const canPunch = !isWithinCooldown && !isGettingLocation && apiStatus !== "offline";
+  // La ubicación se pide en segundo plano: nunca debe impedir ni retrasar la marcación
+  const canPunch = !isWithinCooldown && apiStatus !== "offline";
 
   // =========================
   // Geolocalización bajo demanda
@@ -398,8 +408,23 @@ export default function AttendancePage() {
   }, []);
 
   // =========================
-  // Mutación con optimistic update
+  // Registro de la marcación
   // =========================
+  // Aviso que NO desaparece solo: en un celular el toast se pierde y el usuario no sabe si quedó registrada.
+  const [punchResult, setPunchResult] = useState<{ kind: "ok" | "error"; title: string; message: string } | null>(null);
+
+  // Informa al servidor lo que ocurre en el dispositivo (CLICK, RETRY, SEND_FAILED...). Nunca debe afectar la marcación.
+  const reportPunchEvent = useCallback(
+    (event: "CLICK" | "RETRY" | "SEND_FAILED" | "HIDDEN_BEFORE_RESPONSE", detail?: string) => {
+      try {
+        void MarcacionesEspecializadasAPI.logClientEvent(event, detail).catch(() => undefined);
+      } catch {
+        /* la bitácora es opcional */
+      }
+    },
+    []
+  );
+
   const createPunchMutation = useMutation({
     mutationFn: async ({
       punchType,
@@ -408,51 +433,34 @@ export default function AttendancePage() {
       punchType: PunchKind;
       coords: { latitude: number; longitude: number };
     }) => {
-      const timeResponse = await TimeAPI.getServerTime();
-      if (timeResponse.status === "error") throw new Error(timeResponse.error.message);
-
-      const serverTime = new Date(timeResponse.data.dateTime);
-
+      // Una sola petición al pulsar: la hora la define el servidor al recibirla, así que no hace falta consultarla antes.
       const punchData = {
         employeeId: employeeId as number,
-        punchTime: buildLocalDateTime(serverTime),
+        punchTime: buildLocalDateTime(new Date(Date.now() + serverDriftMs)),
         punchType,
         deviceId: getDeviceType(),
         latitude: coords.latitude,
         longitude: coords.longitude,
       };
 
-      const response = await MarcacionesAPI.create(punchData as any);
+      let response = await MarcacionesEspecializadasAPI.registerPunch(punchData);
+
+      // Falla de conexión: un único reintento. Si el primer intento sí había llegado, el intervalo mínimo hace que el segundo
+      // responda 409 y eso significa que la marcación ya existe.
+      if (response.status === "error" && isTransientError(response.error)) {
+        reportPunchEvent("RETRY", `${(response.error as { code?: number }).code ?? "?"}`);
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        response = await MarcacionesEspecializadasAPI.registerPunch(punchData);
+        if (response.status === "error" && (response.error as { code?: number }).code === 409) {
+          return { alreadyRegistered: true } as const;
+        }
+      }
+
       if (response.status === "error") throw response.error;
       return response.data;
     },
 
-    onMutate: async ({ punchType, coords }) => {
-      const queryKey = ["todayPunches", employeeId, TODAY_KEY] as const;
-
-      await queryClient.cancelQueries({ queryKey });
-
-      const prev = queryClient.getQueryData<AttendancePunch[]>(queryKey) || [];
-
-      const optimistic: AttendancePunch = {
-        id: Date.now(),
-        employeeId: employeeId as number,
-        punchTime: new Date(Date.now() + serverDriftMs),
-        punchType: punchType as any,
-        deviceId: getDeviceType(),
-        latitude: coords.latitude,
-        longitude: coords.longitude,
-      };
-
-      queryClient.setQueryData<AttendancePunch[]>(queryKey, sortPunchesDesc([...prev, optimistic]));
-      return { prev, queryKey } as const;
-    },
-
-    onError: (error: unknown, _vars, ctx) => {
-      if (ctx?.prev && ctx?.queryKey) {
-        queryClient.setQueryData(ctx.queryKey, ctx.prev);
-      }
-
+    onError: (error: unknown) => {
       const apiErr = parseApiError(error);
       // El mensaje del servidor (p. ej. "solo puedes picar dentro del campus") tiene prioridad sobre el genérico.
       let errorMessage = getServerErrorMessage(error) ?? apiErr.message;
@@ -464,6 +472,12 @@ export default function AttendancePage() {
         errorMessage = `Errores de validación: ${messages.join("; ")}`;
       }
 
+      reportPunchEvent("SEND_FAILED", `${errorCode ?? "?"} ${errorMessage}`);
+      setPunchResult({
+        kind: "error",
+        title: forbidden ? "Marcación no permitida" : "No se pudo registrar la marcación",
+        message: errorMessage,
+      });
       toast({
         title: forbidden ? "Marcación no permitida" : "Error al registrar marcación",
         description: errorMessage,
@@ -471,18 +485,43 @@ export default function AttendancePage() {
       });
     },
 
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["todayPunches", employeeId, TODAY_KEY] });
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["todayPunches", employeeId, todayKey] });
+      const kind = nextPunchType === "In" ? "entrada" : "salida";
+      const created = data as { punchTime?: string; punchId?: number; alreadyRegistered?: boolean } | undefined;
+      const at = created?.punchTime ? format(new Date(created.punchTime), "HH:mm:ss") : null;
+      const message = created?.alreadyRegistered
+        ? `Su ${kind} ya estaba registrada. Revise "Mis Marcaciones de Hoy".`
+        : `Su ${kind} quedó registrada${at ? ` a las ${at}` : ""}${created?.punchId ? ` (N.º ${created.punchId})` : ""}.`;
+      setPunchResult({ kind: "ok", title: "Marcación registrada", message });
       toast({
         title: "Marcación registrada",
-        description: `Su ${nextPunchType === "In" ? "entrada" : "salida"} ha sido registrada correctamente.`,
+        description: message,
         action: <CheckCircle className="h-5 w-5 text-success" />,
       });
     },
   });
 
+  // Si el usuario sale de la pantalla (bloquea el celular, cambia de app) mientras la petición sigue en curso, queda anotado.
+  const isPunchPending = createPunchMutation.isPending;
+  useEffect(() => {
+    if (!isPunchPending) return;
+    const onHidden = () => {
+      if (document.visibilityState === "hidden") reportPunchEvent("HIDDEN_BEFORE_RESPONSE");
+    };
+    document.addEventListener("visibilitychange", onHidden);
+    return () => document.removeEventListener("visibilitychange", onHidden);
+  }, [isPunchPending, reportPunchEvent]);
+
   const handlePunch = useCallback(async () => {
+    // Lo primero: dejar constancia en el servidor de que el usuario pulsó, pase lo que pase después.
+    reportPunchEvent(
+      "CLICK",
+      `${nextPunchType} | api=${apiStatus} | cooldown=${isWithinCooldown ? "si" : "no"} | visible=${document.visibilityState}`
+    );
+
     if (apiStatus === "offline") {
+      setPunchResult({ kind: "error", title: "Sin conexión", message: "No hay conexión con el servidor. Reintente en unos segundos." });
       toast({
         title: "Error de conexión",
         description: "No hay conexión con el servidor.",
@@ -500,19 +539,20 @@ export default function AttendancePage() {
       return;
     }
 
-    const loc = await ensureLocation();
+    setPunchResult(null);
 
-    const coords = loc
-      ? { latitude: loc.lat, longitude: loc.lon }
-      : { latitude: 0, longitude: 0 };
-
-    setCurrentLocation(loc ? { latitude: loc.lat, longitude: loc.lon } : null);
-
+    // La marcación sale YA, con la última ubicación conocida (o 0, 0): la ubicación no se usa para validar y nunca debe
+    // retrasarla. Si el usuario no responde el aviso de permiso, la marcación igualmente queda registrada.
     createPunchMutation.mutate({
       punchType: nextPunchType,
-      coords,
+      coords: currentLocation ?? { latitude: 0, longitude: 0 },
     });
-  }, [apiStatus, ensureLocation, isWithinCooldown, timeSinceLastPunch, nextPunchType, createPunchMutation, toast]);
+
+    // Después de enviar, y sin esperar, se pide la ubicación para la próxima marcación.
+    void ensureLocation()
+      .then((loc) => setCurrentLocation(loc ? { latitude: loc.lat, longitude: loc.lon } : null))
+      .catch(() => undefined);
+  }, [apiStatus, ensureLocation, isWithinCooldown, timeSinceLastPunch, nextPunchType, createPunchMutation, toast, currentLocation, reportPunchEvent]);
 
   const handleRetry = useCallback(() => {
     refetch();
@@ -759,6 +799,32 @@ export default function AttendancePage() {
               </div>
             </div>
           </div>
+
+          {punchResult && (
+            <div
+              role={punchResult.kind === "error" ? "alert" : "status"}
+              className={`mb-4 flex items-start justify-between gap-3 rounded-lg border p-3 text-sm ${
+                punchResult.kind === "ok"
+                  ? "border-success/30 bg-success/10 text-success"
+                  : "border-destructive/40 bg-destructive/10 text-destructive"
+              }`}
+            >
+              <div className="min-w-0">
+                <p className="font-semibold">{punchResult.title}</p>
+                <p className="break-words">{punchResult.message}</p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                {punchResult.kind === "error" && (
+                  <Button size="sm" variant="outline" onClick={handlePunch} disabled={createPunchMutation.isPending}>
+                    Reintentar
+                  </Button>
+                )}
+                <Button size="sm" variant="ghost" onClick={() => setPunchResult(null)} aria-label="Cerrar aviso">
+                  Cerrar
+                </Button>
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-center">
             <Button
