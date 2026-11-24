@@ -703,10 +703,7 @@ function CardItem({
           <RowAction action="view" onClick={() => onView(j)} />
 
           {j.status === "PENDING" && (
-            <Button variant="outline" size="sm" className="gap-2" onClick={() => onDelete(j)}>
-              <Trash2 className="h-4 w-4 text-destructive" />
-              Eliminar
-            </Button>
+            <RowAction action="delete" onClick={() => onDelete(j)} />
           )}
         </div>
       </CardContent>

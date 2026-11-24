@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { RowAction } from "@/components/ui/row-action";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -180,14 +181,7 @@ export default function PayrollPage() {
               )}
 
               <div className="pt-3 border-t">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="w-full"
-                  data-testid={`button-view-payroll-${payroll.id}`}
-                >
-                  Ver Detalles
-                </Button>
+                <RowAction action="view" data-testid={`button-view-payroll-${payroll.id}`} />
               </div>
             </CardContent>
           </Card>

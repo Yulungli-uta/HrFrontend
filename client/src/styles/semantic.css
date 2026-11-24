@@ -203,3 +203,24 @@ html[data-brand="uta2026"] .uta-card-header::before {
 }
 html[data-brand="uta2026"].dark .uta-card-header { background-color: hsl(0 0% 100% / 0.035); }
 html[data-brand="uta2026"] .uta-card-header + .uta-card-content { padding-top: 1.25rem; }
+
+/* ─── MENÚ LATERAL ───────────────────────────────────────────────────────────
+ * Ítem activo: fondo azul claro y barra azul oscura a la izquierda (en vez de bloque sólido).
+ * Módulo abierto: fondo suave; módulo cerrado que contiene la ruta actual: barra izquierda.
+ * Submenús: fondo ligeramente diferenciado. Todo con tokens, por lo que sirve en claro y oscuro. */
+html[data-brand="uta2026"] .sidebar-item-active {
+  background-color: var(--sidebar-accent);
+  color: var(--sidebar-accent-foreground);
+  box-shadow: inset 3px 0 0 var(--sidebar-primary);
+}
+html[data-brand="uta2026"] .sidebar-group-header-open {
+  background-color: color-mix(in srgb, var(--sidebar-accent) 55%, transparent);
+  color: var(--sidebar-accent-foreground);
+}
+html[data-brand="uta2026"] .sidebar-group-has-active { box-shadow: inset 3px 0 0 var(--sidebar-primary); }
+html[data-brand="uta2026"] .sidebar-children {
+  background-color: color-mix(in srgb, var(--sidebar-accent) 26%, transparent);
+  border-radius: 0 0.5rem 0.5rem 0;
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}

@@ -1,4 +1,5 @@
 // src/components/ReusableMultipleFileUpload.tsx (VERSIÓN CORREGIDA)
+import { RowAction } from "@/components/ui/row-action";
 import React, { useMemo, useRef, useState, useCallback, useEffect } from "react";
 import { FileManagementAPI, handleApiError, type ApiResponse } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -703,17 +704,7 @@ export const ReusableMultipleFileUpload: React.FC<ReusableMultipleFileUploadProp
 
           <div className="flex justify-end gap-2 pt-4">
             {enableDownload && previewFile && (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  handleDownload(previewFile);
-                  setIsPreviewOpen(false);
-                }}
-                className="flex items-center gap-2"
-              >
-                <Download className="h-4 w-4" />
-                Descargar
-              </Button>
+              <RowAction action="download" onClick={() => { handleDownload(previewFile); setIsPreviewOpen(false); }} />
             )}
             <Button
               onClick={() => setIsPreviewOpen(false)}

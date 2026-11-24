@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import { Navigation } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { useMenuAccordion } from "@/hooks/useMenuAccordion";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useAuth } from "@/features/auth";
@@ -21,6 +23,7 @@ interface Props {
 }
 
 export default function NavigationSection({ value, routes, onChange }: Props) {
+  const [accordion, setAccordion] = useMenuAccordion();
   const { user } = useAuth();
   const options = useMemo(() => getHomeOptions(user ?? null, routes), [user, routes]);
   const current = value.homePath && options.some((o) => o.path === value.homePath) ? value.homePath : undefined;
@@ -55,6 +58,16 @@ export default function NavigationSection({ value, routes, onChange }: Props) {
               </div>
             ))}
           </RadioGroup>
+
+          <div className="mt-3 flex items-start justify-between gap-3 rounded-md border border-border p-3">
+            <div className="min-w-0">
+              <Label htmlFor="pref-menu-accordion" className="font-medium">Un módulo abierto a la vez</Label>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Al abrir un módulo del menú se cierra el anterior. Se guarda solo en este navegador.
+              </p>
+            </div>
+            <Switch id="pref-menu-accordion" checked={accordion} onCheckedChange={setAccordion} />
+          </div>
         </fieldset>
       </CardContent>
     </Card>

@@ -1,4 +1,5 @@
 // src/pages/PersonnelActionsHistoricalEntry.tsx
+import { RowAction } from "@/components/ui/row-action";
 import { useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useMutation } from '@tanstack/react-query';
@@ -16,7 +17,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
-import { ArrowLeft, History, Loader2, ExternalLink, Upload } from 'lucide-react';
+import { ArrowLeft, History, Loader2, Upload } from 'lucide-react';
 import { PersonnelActionsAPI } from '@/lib/api/services/contracts';
 import { PersonnelActionForm } from '@/components/personnelActions/PersonnelActionForm';
 import { UploadSignedDocumentDialog } from '@/components/personnelActions/UploadSignedDocumentDialog';
@@ -117,9 +118,7 @@ export default function PersonnelActionsHistoricalEntry() {
                 <Upload className="mr-2 h-4 w-4" /> Subir documento firmado
               </Button>
               <Link href={`/personnel-actions/${lastCreatedId}`}>
-                <Button variant="outline" size="sm">
-                  <ExternalLink className="mr-2 h-4 w-4" /> Ver acción
-                </Button>
+                <RowAction action="view" label="Ver acción" />
               </Link>
             </div>
           </AlertDescription>

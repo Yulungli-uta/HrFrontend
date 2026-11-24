@@ -1,7 +1,8 @@
 import { useDirtyCloseGuard } from '@/hooks/useDirtyCloseGuard';
+import { RowAction } from "@/components/ui/row-action";
 import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
 import { useState } from 'react';
-import { RefreshCw, Check, X, AlertCircle, Undo2 } from 'lucide-react';
+import { Check, X, AlertCircle, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -256,10 +257,7 @@ function ChangesList({ onApprove, onReject, onRevert }: TabActions) {
             <Input type="date" className="h-9" value={toDate} onChange={e => { setToDate(e.target.value); setPage(1); }} />
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
-          <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isFetching ? 'animate-spin' : ''}`} />
-          Actualizar
-        </Button>
+        <RowAction action="refresh" spinning={isFetching} onClick={() => refetch()} disabled={isFetching} />
       </div>
       {isLoading ? (
         <p className="text-sm text-muted-foreground py-4">Cargando…</p>

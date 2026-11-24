@@ -30,16 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  FileText,
-  Plus,
-  Search,
-  Clock,
-  Calendar,
-  DollarSign,
-  BookOpen,
-  Eye,
-} from "lucide-react";
+import { FileText, Plus, Search, Clock, Calendar, DollarSign, BookOpen } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -633,15 +624,7 @@ export default function ContractTypesPage() {
                   </div>
                 )}
 
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => handleViewDetails(contractType)}
-                  data-testid={`button-view-contract-type-${contractType.contractTypeId}`}
-                >
-                  <Eye className="h-3 w-3 mr-2" /> Ver Detalles
-                </Button>
+                <RowAction action="view" onClick={() => handleViewDetails(contractType)} data-testid={`button-view-contract-type-${contractType.contractTypeId}`} />
               </CardContent>
             </Card>
           ))

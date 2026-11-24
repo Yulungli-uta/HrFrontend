@@ -1,7 +1,5 @@
-import {
-  Users, Shield, Calendar, RefreshCw, AlertCircle, CheckCircle2,
-  AlertTriangle, Clock, Ban,
-} from 'lucide-react';
+import { Users, Shield, Calendar, AlertCircle, CheckCircle2, AlertTriangle, Clock, Ban } from 'lucide-react';
+import { RowAction } from "@/components/ui/row-action";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -45,10 +43,7 @@ export default function GuardDashboardPage() {
             <p className="text-sm text-muted-foreground">Resumen operativo del día</p>
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
-          Actualizar
-        </Button>
+        <RowAction action="refresh" spinning={isFetching} onClick={() => refetch()} disabled={isFetching} />
       </div>
 
       {/* Tarjetas de estadísticas */}

@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Pencil, Trash2, Eye, Download, Copy, RefreshCw, History, type LucideIcon } from "lucide-react"
+import { Pencil, Trash2, Eye, Download, Copy, RefreshCw, History, Loader2, type LucideIcon } from "lucide-react"
 
 import { ActionIconButton, type ActionIconButtonProps } from "@/components/ui/action-icon-button"
 
@@ -26,9 +26,22 @@ export interface RowActionProps extends Omit<ActionIconButtonProps, "icon" | "la
   action: RowActionKey
   /** Texto específico (por ejemplo "Eliminar usuario"); por defecto el del catálogo. */
   label?: string
+  /** Muestra un indicador de carga en lugar del icono (la acción queda deshabilitada). */
+  loading?: boolean
+  /** Hace girar el icono (por ejemplo en Actualizar mientras se recarga) sin deshabilitar el botón. */
+  spinning?: boolean
 }
 
-export function RowAction({ action, label, ...props }: RowActionProps) {
+export function RowAction({ action, label, loading, spinning, disabled, ...props }: RowActionProps) {
   const def = ROW_ACTIONS[action]
-  return <ActionIconButton icon={def.icon} label={label ?? def.label} tone={def.tone} {...props} />
+  return (
+    <ActionIconButton
+      icon={loading ? Loader2 : def.icon}
+      iconClassName={loading || spinning ? "animate-spin" : undefined}
+      label={label ?? def.label}
+      tone={def.tone}
+      disabled={disabled || loading}
+      {...props}
+    />
+  )
 }

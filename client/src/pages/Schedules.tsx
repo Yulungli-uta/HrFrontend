@@ -1,4 +1,5 @@
 //src/pages/Schedules.tsx
+import { RowAction } from "@/components/ui/row-action";
 import { useCallback, useMemo, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useMediaQuery } from "@/hooks/use-media-query";
@@ -555,10 +556,7 @@ export default function SchedulesPage() {
                         </div>
 
                         <div className="pt-2 border-t">
-                          <Button variant="outline" size="sm" className="w-full" onClick={() => openEdit(s)}>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Ver y Editar Detalles
-                          </Button>
+                          <RowAction action="edit" label="Ver y editar detalles" onClick={() => openEdit(s)} />
                         </div>
                       </div>
                     </CardContent>

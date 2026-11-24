@@ -1023,12 +1023,8 @@ function HierarchyView({
                     onClick={() => setLocationPanel(toLocationDetail(g))}>
                     <MapPin className="h-3 w-3 mr-1" />Ubicación
                   </Button>
-                  <Button variant="ghost" size="sm" className="h-7 text-xs"
-                    onClick={() => onOpenForm(toEditModeGeneral(g))}>Editar</Button>
-                  <Button variant="outline" size="sm" className="h-7 text-xs"
-                    onClick={() => setDuplicateTarget(g)}>
-                    <Copy className="h-3 w-3 mr-1" />Duplicar
-                  </Button>
+                  <RowAction action="edit" onClick={() => onOpenForm(toEditModeGeneral(g))} />
+                  <RowAction action="duplicate" onClick={() => setDuplicateTarget(g)} />
                   <Button variant="outline" size="sm" className="h-7 text-xs"
                     onClick={() => onOpenForm({ kind: 'create', defaultParentId: g.groupId })}>
                     <Plus className="h-3 w-3 mr-1" />Subgrupo
@@ -1082,12 +1078,8 @@ function HierarchyView({
                               onClick={() => setLocationPanel(toLocationDetail(sub))}>
                               <MapPin className="h-3 w-3 mr-1" />Ubicación
                             </Button>
-                            <Button variant="ghost" size="sm" className="h-7 text-xs"
-                              onClick={() => onOpenForm(toEditMode(sub))}>Editar</Button>
-                            <Button variant="outline" size="sm" className="h-7 text-xs"
-                              onClick={() => setDuplicateTarget(sub)}>
-                              <Copy className="h-3 w-3 mr-1" />Duplicar
-                            </Button>
+                            <RowAction action="edit" onClick={() => onOpenForm(toEditMode(sub))} />
+                            <RowAction action="duplicate" onClick={() => setDuplicateTarget(sub)} />
                           </div>
                         </div>
                       ))}
@@ -1360,10 +1352,8 @@ function AllGroupsView({
                     <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setLocationPanel(toLocationDetail(g))}>
                       <MapPin className="h-3 w-3 mr-1" />Ubicación
                     </Button>
-                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => onOpenForm(toEditMode(g))}>Editar</Button>
-                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setDuplicateTarget(g)}>
-                      <Copy className="h-3 w-3 mr-1" />Duplicar
-                    </Button>
+                    <RowAction action="edit" onClick={() => onOpenForm(toEditMode(g))} />
+                    <RowAction action="duplicate" onClick={() => setDuplicateTarget(g)} />
                   </div>
                 </CardContent>
               </Card>
@@ -1560,7 +1550,7 @@ function LocationGroupsView({
                     <Button variant="outline" size="sm" onClick={() => setLocationDialogGroup(g)}>
                       <MapPin className="h-3.5 w-3.5 mr-1" />Ubicación
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => openEdit(g)}>Editar</Button>
+                    <RowAction action="edit" onClick={() => openEdit(g)} />
                   </div>
                 </CardContent>
               </Card>

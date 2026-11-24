@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { RowAction } from "@/components/ui/row-action";
 import { RotateCw, Loader2 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -200,13 +201,7 @@ export function GroupPatternAssignmentDialog({ open, group, onClose }: Props) {
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <Badge variant="default" className="text-xs">Activo</Badge>
-                  <Button
-                    variant="ghost" size="sm" className="text-xs h-7 px-2"
-                    disabled={isSaving}
-                    onClick={() => handleStartEdit(activePattern)}
-                  >
-                    Editar
-                  </Button>
+                  <RowAction action="edit" disabled={isSaving} onClick={() => handleStartEdit(activePattern)} />
                   <Button
                     variant="ghost" size="sm" className="text-destructive text-xs h-7 px-2"
                     disabled={isSaving}

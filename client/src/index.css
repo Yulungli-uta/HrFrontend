@@ -343,6 +343,15 @@
            text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground;
   }
 
+  /* Transición de altura de los módulos y submenús (contenido siempre montado; `inert` cuando está cerrado). */
+  .sidebar-collapse {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.2s ease;
+  }
+  .sidebar-collapse[data-open="true"] { grid-template-rows: 1fr; }
+  .sidebar-collapse-inner { min-height: 0; overflow: hidden; }
+
   .sidebar-group-header-open {
     @apply bg-sidebar-accent text-sidebar-accent-foreground;
   }

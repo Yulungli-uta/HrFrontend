@@ -1,4 +1,5 @@
 // src/components/contracts/ContractActions.tsx
+import { RowAction } from "@/components/ui/row-action";
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,15 +15,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import {
-  FileText,
-  ClipboardCheck,
-  CheckCircle2,
-  XCircle,
-  Loader2,
-  Upload,
-  Eye,
-} from 'lucide-react';
+import { FileText, ClipboardCheck, CheckCircle2, XCircle, Loader2, Upload } from 'lucide-react';
 import { ContractUploadSignedDialog } from './ContractUploadSignedDialog';
 import { DocumentsAPI } from '@/lib/api';
 
@@ -153,17 +146,7 @@ export function ContractActions({
 
         {/* FIRMADO_CARGADO / VIGENTE / FINALIZADO: ver documento firmado */}
         {(s === 'FIRMADO_CARGADO' || s === 'VIGENTE' || s === 'FINALIZADO') && signedDocumentStoredFileId && (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleViewSignedDocument}
-            disabled={isOpeningSignedDoc}
-          >
-            {isOpeningSignedDoc
-              ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              : <Eye className="mr-2 h-4 w-4" />}
-            Ver Documento Firmado
-          </Button>
+          <RowAction action="view" label="Ver documento firmado" onClick={handleViewSignedDocument} loading={isOpeningSignedDoc} />
         )}
 
         {/* FIRMADO_CARGADO: finalizar */}

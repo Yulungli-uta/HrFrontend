@@ -1,5 +1,6 @@
 // src/pages/PermissionTypesPage.tsx
 
+import { RowAction } from "@/components/ui/row-action";
 import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -877,16 +878,7 @@ export default function PermissionTypesPage() {
                     </div>
 
                     <div className="mt-4 flex gap-2">
-                      <Button
-                        variant="outline"
-                        className="flex-1"
-                        onClick={() => handleEditType(type)}
-                        title={type.IsActive ? "Editar tipo de permiso" : "No se puede editar un tipo inactivo"}
-                        disabled={!type.IsActive}
-                      >
-                        <Edit className="h-4 w-4 mr-2" />
-                        Editar
-                      </Button>
+                      <RowAction action="edit" onClick={() => handleEditType(type)} title={type.IsActive ? "Editar tipo de permiso" : "No se puede editar un tipo inactivo"} disabled={!type.IsActive} />
 
                       <Button
                         variant="outline"

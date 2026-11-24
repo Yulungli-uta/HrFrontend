@@ -1,4 +1,5 @@
 // src/pages/electronicSignature/SigningProcessesPage.tsx
+import { RowAction } from "@/components/ui/row-action";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
@@ -230,19 +231,7 @@ export default function SigningProcessesPage() {
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-sm font-medium">{row.progressPercentage}% completado</p>
                       {!showAll && isCompleted && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={previewingId === row.processId}
-                          onClick={() => handleViewDocument(row.processId)}
-                        >
-                          {previewingId === row.processId ? (
-                            <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <Eye className="mr-2 h-3.5 w-3.5" />
-                          )}
-                          Ver documento
-                        </Button>
+                        <RowAction action="view" label="Ver documento" loading={previewingId === row.processId} onClick={() => handleViewDocument(row.processId)} />
                       )}
                     </div>
                   </CardContent>

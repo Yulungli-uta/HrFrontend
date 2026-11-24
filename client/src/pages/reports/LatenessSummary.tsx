@@ -1,7 +1,8 @@
 // client/src/pages/reports/LatenessSummary.tsx
+import { RowAction } from "@/components/ui/row-action";
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AlarmClockOff, Eye, Search } from 'lucide-react';
+import { AlarmClockOff, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -163,9 +164,7 @@ export default function LatenessSummaryPage() {
                         <TableCell className="text-center font-semibold">{r.lateDaysCount}</TableCell>
                         <TableCell className="text-center">{r.totalMinutesLate}</TableCell>
                         <TableCell className="text-center">
-                          <Button variant="ghost" size="sm" onClick={() => setDetailEmployee(r)}>
-                            <Eye className="h-4 w-4 mr-1" /> Ver detalle
-                          </Button>
+                          <RowAction action="view" onClick={() => setDetailEmployee(r)} />
                         </TableCell>
                       </TableRow>
                     ))}

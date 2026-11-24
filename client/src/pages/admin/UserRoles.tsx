@@ -1,4 +1,5 @@
 // src/pages/admin/UserRoles.tsx
+import { ActionIconButton } from "@/components/ui/action-icon-button";
 import { RowAction } from "@/components/ui/row-action";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo, useCallback, useEffect } from "react";
@@ -974,19 +975,12 @@ function CardView({
               )}
 
               <div className="flex items-center justify-between mt-4">
-                <Button
-                  size="sm"
-                  variant="outline"
+                <ActionIconButton
+                  icon={isExpanded ? EyeOff : Eye}
+                  label={isExpanded ? "Ocultar detalles" : "Ver detalles"}
+                  tone="muted"
                   onClick={() => onToggleExpand(user.id)}
-                  className="flex items-center gap-1"
-                >
-                  {isExpanded ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                  {isExpanded ? "Ocultar" : "Detalles"}
-                </Button>
+                />
 
                 <Button
                   size="sm"

@@ -1,4 +1,5 @@
 // src/pages/EmployeesPage.tsx
+import { RowAction } from "@/components/ui/row-action";
 import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -21,18 +22,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { DataPagination } from "@/components/ui/DataPagination";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import {
-  UserCog,
-  Building2,
-  Calendar,
-  Users,
-  UserCheck,
-  UserX,
-  Briefcase,
-  Search,
-  Eye,
-  X,
-} from "lucide-react";
+import { UserCog, Building2, Calendar, Users, UserCheck, UserX, Briefcase, Search, X } from "lucide-react";
 import EmployeeForm from "@/components/forms/EmployeeForm";
 import {
   Select,
@@ -686,14 +676,7 @@ const employeeStats = useMemo(() => {
                       </Badge>
                     </td>
                     <td className="px-6 py-4 text-sm font-medium">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSelectedEmployee(employee)}
-                      >
-                        <Eye className="h-4 w-4 mr-1" />
-                        Ver detalle
-                      </Button>
+                      <RowAction action="view" onClick={() => setSelectedEmployee(employee)} />
                     </td>
                   </tr>
                 ))}
@@ -779,15 +762,7 @@ const employeeStats = useMemo(() => {
                     <span>{formatDate(employee.hireDate)}</span>
                   </div>
 
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full mt-2 h-8 text-xs"
-                    onClick={() => setSelectedEmployee(employee)}
-                  >
-                    <Eye className="h-3.5 w-3.5 mr-1" />
-                    Ver detalle
-                  </Button>
+                  <RowAction action="view" onClick={() => setSelectedEmployee(employee)} />
                 </CardContent>
               </Card>
             ))}

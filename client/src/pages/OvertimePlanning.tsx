@@ -1,9 +1,10 @@
 // src/pages/OvertimePlanning.tsx
 // Consulta (solo lectura) de las planificaciones de horas extra para Recursos Humanos:
 // planes con sus empleados, estados y horas asignadas/ejecutadas.
+import { RowAction } from "@/components/ui/row-action";
 import { Fragment, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronDown, ChevronRight, RefreshCw, Search } from 'lucide-react';
+import { ChevronDown, ChevronRight, Search } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -137,10 +138,7 @@ export default function OvertimePlanning() {
             Consulta los planes con los empleados incluidos, su estado y las horas asignadas y ejecutadas.
           </p>
         </div>
-        <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
-          Actualizar
-        </Button>
+        <RowAction action="refresh" spinning={isFetching} onClick={() => refetch()} disabled={isFetching} />
       </div>
 
       <Card>

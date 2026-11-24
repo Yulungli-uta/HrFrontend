@@ -1,4 +1,5 @@
 // src/pages/electronicSignature/SigningInboxPage.tsx
+import { RowAction } from "@/components/ui/row-action";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { FileText, PenLine, Search } from "lucide-react";
@@ -126,9 +127,7 @@ export default function SigningInboxPage() {
 
                   <div className="flex shrink-0 items-center gap-2">
                     <Link href={`/signatures/processes/${row.processId}`}>
-                      <Button variant="outline" size="sm">
-                        Ver detalle
-                      </Button>
+                      <RowAction action="view" />
                     </Link>
                     {!alreadyDone && (
                       <Link href={`/signatures/processes/${row.processId}/sign`}>

@@ -1,4 +1,5 @@
 // src/pages/admin/ActiveSessions.tsx
+import { RowAction } from "@/components/ui/row-action";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -18,10 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import UserAccessActivityTab, { type AccessUserSelection } from "@/components/admin/UserAccessActivityTab";
-import {
-  Shield, RefreshCw, LogOut, Users, Key, Power, Wifi, WifiOff,
-  AlertTriangle, Copy, Check, Loader2, History,
-} from "lucide-react";
+import { Shield, LogOut, Users, Key, Power, Wifi, WifiOff, AlertTriangle, Copy, Check, Loader2, History } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { parseApiError } from "@/lib/error-handling";
 import {
@@ -168,10 +166,7 @@ export default function ActiveSessionsPage() {
             Monitorea y controla sesiones de usuarios y clientes API en tiempo real
           </p>
         </div>
-        <Button variant="outline" onClick={() => { qc.invalidateQueries({ queryKey: ["active-sessions"] }); qc.invalidateQueries({ queryKey: ["active-api-clients"] }); }}>
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Actualizar
-        </Button>
+        <RowAction action="refresh" onClick={() => { qc.invalidateQueries({ queryKey: ["active-sessions"] }); qc.invalidateQueries({ queryKey: ["active-api-clients"] }); }} />
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>

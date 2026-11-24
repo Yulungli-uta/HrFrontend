@@ -165,7 +165,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md shadow-lg">
-        <CardHeader className="space-y-4 text-center">
+        <CardHeader className="space-y-4 text-center !border-b-0 !bg-transparent before:hidden">
           <div className="flex justify-center">
             <img src={lightLogo} alt="Universidad Técnica de Ambato" className="h-28 w-auto max-w-full object-contain dark:hidden" />
             <img src={darkLogo} alt="Universidad Técnica de Ambato" className="hidden h-28 w-auto max-w-full object-contain dark:block" />

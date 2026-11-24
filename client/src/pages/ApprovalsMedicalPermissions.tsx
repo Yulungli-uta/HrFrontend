@@ -37,7 +37,7 @@ import {
   handleApiError,
 } from "@/lib/api";
 import { useEmployeeLookupMap } from "@/hooks/useEmployeeLookupMap";
-import { Search, User, Clock, CheckCircle, XCircle, HeartPulse, Stethoscope, CalendarRange, Paperclip, Download, FileText } from "lucide-react";
+import { Search, User, Clock, CheckCircle, XCircle, HeartPulse, Stethoscope, CalendarRange, Paperclip, FileText } from "lucide-react";
 import { parseApiError } from "@/lib/error-handling";
 import {
   Dialog,
@@ -732,18 +732,7 @@ export default function ApprovalsMedicalPermissionsPage() {
                     </div>
 
                     <div className="mt-3">
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="w-full"
-                        onClick={() => {
-                          setSelectedPermission(p);
-                          setIsDocsOpen(true);
-                        }}
-                      >
-                        <Paperclip className="h-4 w-4 mr-2" />
-                        Ver adjuntos
-                      </Button>
+                      <RowAction action="view" label="Ver adjuntos" onClick={() => { setSelectedPermission(p); setIsDocsOpen(true); }} />
                     </div>
 
                     <div className="mt-2 grid grid-cols-2 gap-2">
@@ -933,16 +922,7 @@ export default function ApprovalsMedicalPermissionsPage() {
                     <div className="flex flex-wrap gap-2">
                       <RowAction action="view" onClick={() => handleOpenDocument(doc.fileGuid, doc.originalFileName || doc.fileName, false) } />
 
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() =>
-                          handleOpenDocument(doc.fileGuid, doc.originalFileName || doc.fileName, true)
-                        }
-                      >
-                        <Download className="h-4 w-4 mr-2" />
-                        Descargar
-                      </Button>
+                      <RowAction action="download" onClick={() => handleOpenDocument(doc.fileGuid, doc.originalFileName || doc.fileName, true) } />
                     </div>
                   </div>
                 ))}

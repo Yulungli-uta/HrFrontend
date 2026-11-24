@@ -1,4 +1,5 @@
 // src/pages/PersonnelActions.tsx
+import { RowAction } from "@/components/ui/row-action";
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useLocation } from 'wouter';
@@ -301,16 +302,7 @@ export default function PersonnelActionsPage() {
                         </Badge>
                       </td>
                       <td className="p-4 text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/personnel-actions/${item.actionId}`);
-                          }}
-                        >
-                          Ver
-                        </Button>
+                        <RowAction action="view" onClick={(e) => { e.stopPropagation(); navigate(`/personnel-actions/${item.actionId}`); }} />
                       </td>
                     </tr>
                   ))
@@ -364,17 +356,7 @@ export default function PersonnelActionsPage() {
                   </div>
                 </div>
 
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigate(`/personnel-actions/${item.actionId}`);
-                  }}
-                >
-                  Ver detalle
-                </Button>
+                <RowAction action="view" onClick={(e) => { e.stopPropagation(); navigate(`/personnel-actions/${item.actionId}`); }} />
               </CardContent>
             </Card>
           ))

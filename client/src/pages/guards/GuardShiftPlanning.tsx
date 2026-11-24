@@ -1,4 +1,5 @@
 //src/pages/guards/GuardShiftPlanning.tsx
+import { RowAction } from "@/components/ui/row-action";
 import { useDirtyCloseGuard } from '@/hooks/useDirtyCloseGuard';
 import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
 import { useLocation } from 'wouter';
@@ -1289,10 +1290,7 @@ export default function GuardShiftPlanningPage() {
           <h1 className="text-2xl font-bold">Planificación de Turnos</h1>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Button variant="outline" size="sm" onClick={() => { refetch(); refetchCalendar(); }} disabled={isRefreshing}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Actualizar
-          </Button>
+          <RowAction action="refresh" spinning={isRefreshing} onClick={() => { refetch(); refetchCalendar(); }} disabled={isRefreshing} />
           <Button variant="outline" size="sm" onClick={() => setShowManualDialog(true)}>
             <UserPlus className="h-4 w-4 mr-2" />
             Asignar guardia

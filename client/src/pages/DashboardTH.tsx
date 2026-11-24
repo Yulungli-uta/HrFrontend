@@ -1,4 +1,5 @@
 // client/src/pages/DashboardTH.tsx
+import { RowAction } from "@/components/ui/row-action";
 import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
@@ -28,12 +29,7 @@ import { DepartmentCombobox } from "@/components/ui/DepartmentCombobox";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
-import {
-  Users, Building2, Briefcase, RefreshCw,
-  ChevronRight, UserCheck, FileText, Search, Loader2,
-  TrendingUp, ShieldCheck, Maximize2,
-  Calendar, AlertTriangle, ScrollText,
-} from "lucide-react";
+import { Users, Building2, Briefcase, ChevronRight, UserCheck, FileText, Search, Loader2, TrendingUp, ShieldCheck, Maximize2, Calendar, AlertTriangle, ScrollText } from "lucide-react";
 
 import {
   VistaEmpleadosAPI,
@@ -613,10 +609,7 @@ export default function DashboardTH() {
             {formatDate(new Date(), "es-EC", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading || isFetching}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? "animate-spin" : ""}`} />
-          Actualizar
-        </Button>
+        <RowAction action="refresh" spinning={isFetching} onClick={() => refetch()} disabled={isLoading || isFetching} />
       </div>
 
       {/* ── KPIs globales — siempre visibles ── */}

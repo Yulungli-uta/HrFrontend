@@ -1,8 +1,9 @@
 // src/pages/electronicSignature/SigningProcessDetailPage.tsx
+import { RowAction } from "@/components/ui/row-action";
 import { useState } from "react";
 import { useRoute, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Eye, Loader2, RefreshCw, Send } from "lucide-react";
+import { ArrowLeft, Eye, Loader2, Send } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -114,10 +115,7 @@ export default function SigningProcessDetailPage() {
               Enviar correo a pendientes
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
-            <RefreshCw className={`mr-2 h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
-            Actualizar
-          </Button>
+          <RowAction action="refresh" spinning={isFetching} onClick={() => refetch()} disabled={isFetching} />
         </div>
       </div>
 

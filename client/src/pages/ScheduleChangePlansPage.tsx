@@ -1,17 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { RowAction } from "@/components/ui/row-action";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
 import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
 
-import {
-  CalendarDays,
-  CheckCircle2,
-  Clock3,
-  Eye,
-  FilePlus2,
-  Filter,
-  Search,
-} from "lucide-react";
+import { CalendarDays, CheckCircle2, Clock3, FilePlus2, Filter, Search } from "lucide-react";
 
 import { useToast } from "@/hooks/use-toast";
 import { usePaged } from "@/hooks/pagination/usePaged";
@@ -131,15 +124,7 @@ function ScheduleChangePlanCard({
         </div>
 
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full"
-            onClick={() => onViewDetails(plan)}
-          >
-            <Eye className="h-4 w-4 mr-2" />
-            Ver detalle
-          </Button>
+          <RowAction action="view" onClick={() => onViewDetails(plan)} />
         </div>
       </CardContent>
     </Card>
@@ -1094,17 +1079,7 @@ export default function ScheduleChangePlansPage() {
                                 <Badge variant={status.variant}>{status.label}</Badge>
                               </td>
                               <td className="px-4 py-3 text-right">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    setSelectedPlan(plan);
-                                    setIsDetailsOpen(true);
-                                  }}
-                                >
-                                  <Eye className="h-4 w-4 mr-2" />
-                                  Ver detalle
-                                </Button>
+                                <RowAction action="view" onClick={() => { setSelectedPlan(plan); setIsDetailsOpen(true); }} />
                               </td>
                             </tr>
                           );

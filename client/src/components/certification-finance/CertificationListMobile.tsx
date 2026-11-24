@@ -1,8 +1,9 @@
 // src/components/certification-finance/CertificationListMobile.tsx
+import { RowAction } from "@/components/ui/row-action";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, DollarSign, Download, Eye } from "lucide-react";
+import { Calendar, DollarSign } from "lucide-react";
 import type { UIFinancialCertification } from "@/types/certificationFinance";
 
 function formatECDate(input?: string | null): string {
@@ -66,19 +67,9 @@ export function CertificationListMobile(props: {
 
             <div className="flex flex-col gap-2 pt-2">
               {c.filename && c.filepath && (
-                <Button
-                  variant="outline"
-                  onClick={() => onDownloadLegacy(directoryCode, c.filepath!, c.filename!)}
-                  className="w-full"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Descargar
-                </Button>
+                <RowAction action="download" onClick={() => onDownloadLegacy(directoryCode, c.filepath!, c.filename!)} />
               )}
-              <Button variant="outline" onClick={() => onView(c)} className="w-full">
-                <Eye className="h-4 w-4 mr-2" />
-                Detalles
-              </Button>
+              <RowAction action="view" onClick={() => onView(c)} />
             </div>
           </CardContent>
         </Card>

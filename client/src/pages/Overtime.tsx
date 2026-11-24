@@ -1,4 +1,5 @@
 // src/pages/Overtime.tsx
+import { RowAction } from "@/components/ui/row-action";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -39,16 +40,7 @@ import {
   DialogContent,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import {
-  Calendar,
-  ChevronDown,
-  Eye,
-  RefreshCw,
-  Filter,
-  Plus,
-  Clock,
-  TimerReset,
-} from "lucide-react";
+import { Calendar, ChevronDown, Eye, Filter, Plus, Clock, TimerReset } from "lucide-react";
 
 import {
   TimePlanningsAPI,
@@ -201,17 +193,7 @@ export default function OvertimePage() {
         </div>
 
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => refetch()}
-            className="h-10"
-            disabled={isFetching}
-          >
-            <RefreshCw
-              className={`h-4 w-4 mr-2 ${isFetching ? "animate-spin" : ""}`}
-            />
-            Refrescar
-          </Button>
+          <RowAction action="refresh" spinning={isFetching} onClick={() => refetch()} disabled={isFetching} />
 
           <Button className="h-10" onClick={() => setIsCreateOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />

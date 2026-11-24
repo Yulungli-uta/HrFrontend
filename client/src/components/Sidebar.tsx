@@ -17,6 +17,7 @@ import {
   Database, Server, Code, Key, RefreshCw, Download, Upload, History,
 } from "lucide-react";
 import { useAuth } from "@/features/auth";
+import { useMenuAccordion } from "@/hooks/useMenuAccordion";
 import logoEscudo from "@/assets/brand/uta-escudo-blanco.svg";
 import { logger } from "@/lib/logger";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -160,7 +161,18 @@ const SidebarFooter: React.FC<SidebarFooterProps> = ({ collapsed, userName, user
 
 /* ─── Subcomponente: Cabecera del sidebar ───────────────────────────────── */
 interface SidebarHeaderProps { collapsed: boolean; onToggle: () => void; hideToggle?: boolean; }
-const SidebarHeader: React.FC<SidebarHeaderProps> = ({ collapsed, onToggle, hideToggle }) => (
+const SidebarHeader: React.FC<SidebarHeaderProps> = ({ collapsed, onToggle, hideToggle }) => collapsed && !hideToggle ? (
+  <div className="uta-band shrink-0 border-b border-sidebar-border h-14 flex items-center justify-center">
+    <button
+      onClick={onToggle}
+      title="Expandir menú"
+      aria-label="Expandir menú"
+      className="flex h-10 w-10 items-center justify-center rounded-lg transition-colors hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <img src={logoEscudo} alt="" className="h-9 w-9 object-contain" />
+    </button>
+  </div>
+) : (
   <div className="uta-band shrink-0 border-b border-sidebar-border px-3 h-14 flex items-center">
     <div className="flex w-full items-center justify-between gap-2">
       <div className="flex items-center gap-2 min-w-0 overflow-hidden">
@@ -188,6 +200,9 @@ const SidebarHeader: React.FC<SidebarHeaderProps> = ({ collapsed, onToggle, hide
   </div>
 );
 
+/** Contenido plegado: `inert` lo saca del orden de tabulación y de los lectores de pantalla mientras está cerrado. */
+const inertWhenClosed = (isOpen: boolean): Record<string, unknown> => (isOpen ? {} : { inert: "" });
+
 /* ─── Subcomponente: Nodo recursivo ──────────────────────────────────────── */
 interface NavNodeItemProps {
   node: NavNode;
@@ -197,10 +212,12 @@ interface NavNodeItemProps {
   onToggle: (key: string) => void;
   isActivePath: (path: string) => boolean;
   onNavigate?: () => void;
+  /** Con búsqueda activa se muestran abiertos los submenús para ver todos los resultados. */
+  forceOpen?: boolean;
 }
 
 const NavNodeItem: React.FC<NavNodeItemProps> = ({
-  node, depth, collapsed, openNodes, onToggle, isActivePath, onNavigate,
+  node, depth, collapsed, openNodes, onToggle, isActivePath, onNavigate, forceOpen,
 }) => {
   const isLeaf = !node.children || node.children.length === 0;
   const Icon = node.icon;
@@ -216,10 +233,6 @@ const NavNodeItem: React.FC<NavNodeItemProps> = ({
             className={`sidebar-item group relative ${active ? "sidebar-item-active font-semibold" : ""}`}
             aria-current={active ? "page" : undefined}
           >
-            {active && (
-              <span className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-[10px]
-                               w-0.5 h-4 rounded-full bg-sidebar-primary-foreground" />
-            )}
             <Icon className="h-3.5 w-3.5 shrink-0" />
             {!collapsed && <span className="min-w-0 break-words text-xs leading-snug">{node.label}</span>}
           </Link>
@@ -230,7 +243,7 @@ const NavNodeItem: React.FC<NavNodeItemProps> = ({
   }
 
   const key = node.id.toString();
-  const isOpen = openNodes[key] ?? false;
+  const isOpen = !!forceOpen || (openNodes[key] ?? false);
 
   return (
     <div>
@@ -257,20 +270,25 @@ const NavNodeItem: React.FC<NavNodeItemProps> = ({
         </TooltipTrigger>
         <TooltipContent side="right">{node.label}</TooltipContent>
       </Tooltip>
-      {isOpen && node.children && (
-        <div className="ml-2 mt-0.5 mb-0.5 space-y-0.5 border-l-2 border-sidebar-border pl-2">
-          {node.children.map(child => (
-            <NavNodeItem
-              key={child.id}
-              node={child}
-              depth={depth + 1}
-              collapsed={collapsed}
-              openNodes={openNodes}
-              onToggle={onToggle}
-              isActivePath={isActivePath}
-              onNavigate={onNavigate}
-            />
-          ))}
+      {node.children && (
+        <div className="sidebar-collapse" data-open={isOpen}>
+          <div className="sidebar-collapse-inner" {...inertWhenClosed(isOpen)}>
+            <div className="sidebar-children ml-2 mt-0.5 mb-0.5 space-y-0.5 border-l-2 border-sidebar-border pl-2">
+              {node.children.map(child => (
+                <NavNodeItem
+                  key={child.id}
+                  node={child}
+                  depth={depth + 1}
+                  collapsed={collapsed}
+                  openNodes={openNodes}
+                  onToggle={onToggle}
+                  isActivePath={isActivePath}
+                  onNavigate={onNavigate}
+                  forceOpen={forceOpen}
+                />
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -283,6 +301,8 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onLogout, varian
   const [navGroups, setNavGroups]   = useState<NavGroup[]>([]);
   const [openNodes, setOpenNodes]   = useState<Record<string, boolean>>({});
   const [searchTerm, setSearchTerm] = useState("");
+  const [accordion] = useMenuAccordion();
+  const searching = searchTerm.trim().length > 0;
   const { user, isAuthenticated, isLoading } = useAuth();
 
   const normalizeMenuItem = (item: any): NormalizedMenuItem => ({
@@ -350,6 +370,16 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onLogout, varian
   const toggleNode = (key: string) =>
     setOpenNodes(prev => ({ ...prev, [key]: !prev[key] }));
 
+  /** Módulos (primer nivel): con acordeón, abrir uno cierra los demás. Con búsqueda activa no se aplica. */
+  const toggleGroup = (key: string) =>
+    setOpenNodes(prev => {
+      if (!accordion || searching) return { ...prev, [key]: !prev[key] };
+      const next = { ...prev };
+      navGroups.forEach(g => { next[g.id.toString()] = false; });
+      next[key] = !prev[key];
+      return next;
+    });
+
   /* ── Detección de ruta activa ── */
   const normalizePath = (p: string) => {
     const t = (p || "/").replace(/\/+$/, "");
@@ -378,6 +408,22 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onLogout, varian
     }
     return false;
   };
+
+  /* ── Acordeón: al cambiar de ruta queda abierto solo el módulo que la contiene ── */
+  useEffect(() => {
+    if (!accordion || searching || navGroups.length === 0) return;
+    const current = normalizePath(location);
+    const owner = navGroups.find(g => collectPaths(g.items).some(p => isActivePath(p)));
+    if (!owner) return;
+    setOpenNodes(prev => {
+      const next = { ...prev };
+      navGroups.forEach(g => { next[g.id.toString()] = g.id === owner.id; });
+      collectActiveBranchIds(owner.items, current, normalizePath).forEach(id => { next[id.toString()] = true; });
+      const unchanged = navGroups.every(g => !!prev[g.id.toString()] === !!next[g.id.toString()]);
+      return unchanged ? prev : next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- se reacciona solo a la ruta y al menú, no a cada apertura manual
+  }, [location, navGroups, accordion]);
 
   /* ── Filtro de búsqueda ── */
   const filteredNavGroups = useMemo(() => {
@@ -493,16 +539,17 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onLogout, varian
       <nav className="flex-1 min-h-0 overflow-y-auto py-2 px-2 space-y-0.5" aria-label="Menú principal">
         {filteredNavGroups.map(group => {
           const groupKey = group.id.toString();
-          const isOpen   = openNodes[groupKey] ?? group.initiallyOpen ?? false;
+          const isOpen   = searching || (openNodes[groupKey] ?? group.initiallyOpen ?? false);
           const GroupIcon = group.icon || Folder;
+          const groupHasActive = !isOpen && collectPaths(group.items).some(p => isActivePath(p));
 
           return (
             <div key={groupKey}>
               {/* ── Encabezado de grupo (nivel 1) ── */}
               <button
-                onClick={() => toggleNode(groupKey)}
+                onClick={() => toggleGroup(groupKey)}
                 aria-expanded={isOpen}
-                className={`sidebar-group-header w-full mb-0.5 ${isOpen ? "sidebar-group-header-open" : ""}`}
+                className={`sidebar-group-header w-full mb-0.5 ${isOpen ? "sidebar-group-header-open" : ""} ${groupHasActive ? "sidebar-group-has-active" : ""}`}
               >
                 <span className="flex items-center gap-2 min-w-0 text-left">
                   <GroupIcon className="h-4 w-4 shrink-0" />
@@ -522,23 +569,26 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onLogout, varian
                 )}
               </button>
 
-              {/* ── Nodos hijos (n niveles) ── */}
-              {isOpen && (
-                <div className="ml-2 mb-1 space-y-0.5 border-l-2 border-sidebar-border pl-2">
-                  {group.items.map(node => (
-                    <NavNodeItem
-                      key={node.id}
-                      node={node}
-                      depth={1}
-                      collapsed={collapsed}
-                      openNodes={openNodes}
-                      onToggle={toggleNode}
-                      isActivePath={isActivePath}
-                      onNavigate={onNavigate}
-                    />
-                  ))}
+              {/* ── Nodos hijos (n niveles), con transición de altura ── */}
+              <div className="sidebar-collapse" data-open={isOpen}>
+                <div className="sidebar-collapse-inner" {...inertWhenClosed(isOpen)}>
+                  <div className="sidebar-children ml-2 mb-1 space-y-0.5 border-l-2 border-sidebar-border pl-2">
+                    {group.items.map(node => (
+                      <NavNodeItem
+                        key={node.id}
+                        node={node}
+                        depth={1}
+                        collapsed={collapsed}
+                        openNodes={openNodes}
+                        onToggle={toggleNode}
+                        isActivePath={isActivePath}
+                        onNavigate={onNavigate}
+                        forceOpen={searching}
+                      />
+                    ))}
+                  </div>
                 </div>
-              )}
+              </div>
             </div>
           );
         })}

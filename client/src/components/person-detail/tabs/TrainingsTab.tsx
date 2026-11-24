@@ -1,9 +1,10 @@
 import { useState } from "react";
+import { RowAction } from "@/components/ui/row-action";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ActionIconButton } from "@/components/ui/action-icon-button";
 import { Badge } from "@/components/ui/badge";
-import { GraduationCap, Plus, Edit, Trash2, Calendar, Clock, Award, Monitor, Users2, FileText, ChevronDown, ChevronUp, BookOpen, Compass, RefreshCw, ShieldCheck, Eye } from "lucide-react";
+import { GraduationCap, Plus, Edit, Trash2, Calendar, Clock, Award, Monitor, Users2, FileText, ChevronDown, ChevronUp, BookOpen, Compass, RefreshCw, ShieldCheck } from "lucide-react";
 import { Training } from "@/types/person";
 import { ReusableDocumentManager } from "@/components/ReusableDocumentManager";
 import { TRAINING_CERTIFICATE_DIRECTORY_CODE, TRAINING_CERTIFICATE_ENTITY_TYPE } from "@/features/constants";
@@ -318,15 +319,7 @@ export function TrainingsTab({ trainings, onEdit, onDelete, refTypesMap = {}, kn
                           </div>
 
                           {training.hasDeadvCertificate && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="self-start text-xs h-7"
-                              onClick={() => setCertificateOf(training)}
-                            >
-                              <Eye className="h-3.5 w-3.5 mr-1" />
-                              Ver certificado
-                            </Button>
+                            <RowAction action="view" label="Ver certificado" onClick={() => setCertificateOf(training)} />
                           )}
 
                           <Button

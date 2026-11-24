@@ -305,10 +305,7 @@ export default function GeneralSearch() {
                         <RowAction action="view" data-testid={`button-view-${instance.instanceId}`} />
                       </Link>
                       <Link href={`/DocFlow/expedientes/${instance.instanceId}/historial`}>
-                        <Button variant="ghost" size="sm" className="h-7 text-xs" data-testid={`button-history-${instance.instanceId}`}>
-                          <History className="h-3 w-3 mr-1" />
-                          Historial
-                        </Button>
+                        <RowAction action="history" data-testid={`button-history-${instance.instanceId}`} />
                       </Link>
                     </div>
                   </CardContent>

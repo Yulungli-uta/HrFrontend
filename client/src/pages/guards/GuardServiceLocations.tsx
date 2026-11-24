@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { MapPin, Plus, RefreshCw, ChevronRight, ChevronDown, Pencil, Search } from 'lucide-react';
+import { RowAction } from "@/components/ui/row-action";
+import { MapPin, Plus, ChevronRight, ChevronDown, Pencil, Search } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -221,10 +222,7 @@ export default function GuardServiceLocationsPage() {
           <h1 className="text-2xl font-bold">Ubicaciones de Servicio</h1>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
-            Actualizar
-          </Button>
+          <RowAction action="refresh" spinning={isFetching} onClick={() => refetch()} disabled={isFetching} />
           <Button size="sm" onClick={openCreate}>
             <Plus className="h-4 w-4 mr-2" />
             Nueva ubicación

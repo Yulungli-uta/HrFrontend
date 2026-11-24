@@ -1,4 +1,5 @@
 // src/pages/Contracts.tsx
+import { RowAction } from "@/components/ui/row-action";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
@@ -599,18 +600,7 @@ export default function ContractsPage() {
                   )}
                 </div>
 
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full flex items-center gap-2"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openView(c);
-                  }}
-                >
-                  <Eye className="h-4 w-4" />
-                  Ver detalles
-                </Button>
+                <RowAction action="view" onClick={(e) => { e.stopPropagation(); openView(c); }} />
               </CardContent>
             </Card>
           ))

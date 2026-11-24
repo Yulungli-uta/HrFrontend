@@ -1,4 +1,5 @@
 // src/pages/MyResignationRetirementRequestsPage.tsx
+import { RowAction } from "@/components/ui/row-action";
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
@@ -115,13 +116,7 @@ export default function MyResignationRetirementRequestsPage() {
                           <RequestStatusBadge status={r.status} />
                         </td>
                         <td className="p-3 text-right">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelectedRequestId(r.requestId)}
-                          >
-                            Ver detalle
-                          </Button>
+                          <RowAction action="view" onClick={() => setSelectedRequestId(r.requestId)} />
                         </td>
                       </tr>
                     ))

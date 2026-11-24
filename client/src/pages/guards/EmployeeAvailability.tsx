@@ -1,7 +1,8 @@
 import { useDirtyCloseGuard } from '@/hooks/useDirtyCloseGuard';
+import { RowAction } from "@/components/ui/row-action";
 import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
 import { useState } from 'react';
-import { Ban, RefreshCw, Plus, Loader2 } from 'lucide-react';
+import { Ban, Plus, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -131,10 +132,7 @@ export default function EmployeeAvailabilityPage() {
           <h1 className="text-2xl font-bold">Disponibilidad de Empleados</h1>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Button variant="outline" size="sm" onClick={() => { setPage(1); refetch(); }} disabled={isFetching}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
-            Actualizar
-          </Button>
+          <RowAction action="refresh" spinning={isFetching} onClick={() => { setPage(1); refetch(); }} disabled={isFetching} />
           <Button variant="secondary" size="sm" onClick={() => setOpenSync(true)}>
             Sincronizar
           </Button>

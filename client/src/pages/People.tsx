@@ -1,5 +1,6 @@
 // src/pages/People.tsx
 
+import { RowAction } from "@/components/ui/row-action";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -212,16 +213,7 @@ const PersonCard = ({
           <span>{person.phone}</span>
         </div>
       )}
-      <Button
-        variant="outline"
-        size="sm"
-        className="w-full mt-2 h-8 text-xs"
-        onClick={() => onView(person.personId)}
-        disabled={!person.personId}
-      >
-        <Eye className="h-3.5 w-3.5 mr-1" />
-        Ver detalle
-      </Button>
+      <RowAction action="view" onClick={() => onView(person.personId)} disabled={!person.personId} />
     </CardContent>
   </Card>
 );

@@ -1,4 +1,5 @@
 // src/components/personnelActions/PersonnelActionActions.tsx
+import { RowAction } from "@/components/ui/row-action";
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,16 +15,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import {
-  FileText,
-  Pen,
-  ClipboardCheck,
-  CheckCircle2,
-  XCircle,
-  Loader2,
-  Upload,
-  Eye,
-} from 'lucide-react';
+import { FileText, ClipboardCheck, CheckCircle2, XCircle, Loader2, Upload } from 'lucide-react';
 import { UploadSignedDocumentDialog } from './UploadSignedDocumentDialog';
 import { DocumentsAPI } from '@/lib/api';
 import type { CommentRequest, CancelPersonnelActionRequest } from '@/types/personnel-actions';
@@ -145,9 +137,7 @@ export function PersonnelActionActions({
       <div className="flex flex-wrap gap-2">
         {/* BORRADOR: editar */}
         {s === 'BORRADOR' && onEdit && (
-          <Button variant="outline" size="sm" onClick={onEdit} disabled={isBusy}>
-            <Pen className="mr-2 h-4 w-4" /> Editar
-          </Button>
+          <RowAction action="edit" onClick={onEdit} disabled={isBusy} />
         )}
 
         {/* BORRADOR: generar documento */}
@@ -159,9 +149,7 @@ export function PersonnelActionActions({
 
         {/* GENERADO: editar */}
         {s === 'GENERADO' && onEdit && (
-          <Button variant="outline" size="sm" onClick={onEdit} disabled={isBusy}>
-            <Pen className="mr-2 h-4 w-4" /> Editar
-          </Button>
+          <RowAction action="edit" onClick={onEdit} disabled={isBusy} />
         )}
 
         {/* GENERADO: regenerar documento */}
@@ -187,12 +175,7 @@ export function PersonnelActionActions({
 
         {/* FIRMADO_CARGADO / VIGENTE / FINALIZADO: ver documento firmado */}
         {(s === 'FIRMADO_CARGADO' || s === 'VIGENTE' || s === 'FINALIZADO') && signedDocumentStoredFileId && (
-          <Button variant="outline" size="sm" onClick={handleViewSignedDocument} disabled={isOpeningSignedDoc}>
-            {isOpeningSignedDoc
-              ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              : <Eye className="mr-2 h-4 w-4" />}
-            Ver Documento Firmado
-          </Button>
+          <RowAction action="view" label="Ver documento firmado" onClick={handleViewSignedDocument} loading={isOpeningSignedDoc} />
         )}
 
         {/* FIRMADO_CARGADO: finalizar (manual) — solo para tipos que NO llegan a

@@ -1,4 +1,5 @@
 // src/pages/guards/GuardLocationRotation.tsx
+import { RowAction } from "@/components/ui/row-action";
 import { useDirtyCloseGuard } from '@/hooks/useDirtyCloseGuard';
 import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
 import { useEffect, useState } from 'react';
@@ -634,12 +635,7 @@ export default function GuardLocationRotationPage() {
                     <Building2 className="h-4 w-4" />
                     <span>{p.assignmentCount} asignaciones</span>
                   </div>
-                  <Button
-                    variant="ghost" size="sm" className="h-7 text-xs"
-                    onClick={e => { e.stopPropagation(); setPeriodForm({ open: true, edit: p }); }}
-                  >
-                    Editar
-                  </Button>
+                  <RowAction action="edit" onClick={e => { e.stopPropagation(); setPeriodForm({ open: true, edit: p }); }} />
                 </div>
                 {p.notes && <p className="text-xs text-muted-foreground mt-2 truncate">{p.notes}</p>}
               </CardContent>

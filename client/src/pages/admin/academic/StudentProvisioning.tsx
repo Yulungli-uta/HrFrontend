@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { RowAction } from "@/components/ui/row-action";
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { UserX, RefreshCw, AlertCircle, ShieldCheck, Clock, Loader2 } from 'lucide-react';
+import { UserX, AlertCircle, ShieldCheck, Clock, Loader2 } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -127,15 +128,7 @@ export default function StudentProvisioningPage() {
             Gestión de cuentas AD Local en OU=ESTUDIANTES — grupo EActivos
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => qc.invalidateQueries({ queryKey: ['student-provisioning'] })}
-          disabled={isFetching}
-        >
-          <RefreshCw className={`w-4 h-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
-          Actualizar
-        </Button>
+        <RowAction action="refresh" spinning={isFetching} onClick={() => qc.invalidateQueries({ queryKey: ['student-provisioning'] })} disabled={isFetching} />
       </div>
 
       {/* Filtros */}

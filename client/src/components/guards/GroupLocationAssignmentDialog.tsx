@@ -1,4 +1,5 @@
 import { useDirtyCloseGuard } from '@/hooks/useDirtyCloseGuard';
+import { RowAction } from "@/components/ui/row-action";
 import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
 import { useEffect, useState } from 'react';
 import { MapPin, Loader2 } from 'lucide-react';
@@ -156,9 +157,7 @@ export function GroupLocationAssignmentDialog({ open, group, onClose }: Props) {
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <Badge variant="default" className="text-xs">Activa</Badge>
-                      <Button variant="ghost" size="sm" className="text-xs h-7 px-2" disabled={isSaving} onClick={() => handleStartEdit(activeAssignment)}>
-                        Editar
-                      </Button>
+                      <RowAction action="edit" disabled={isSaving} onClick={() => handleStartEdit(activeAssignment)} />
                       <Button variant="ghost" size="sm" className="text-destructive text-xs h-7 px-2" disabled={isSaving} onClick={handleRemove}>
                         Quitar
                       </Button>

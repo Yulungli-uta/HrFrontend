@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { RowAction } from "@/components/ui/row-action";
 import type { ComponentProps, ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -576,10 +577,7 @@ export default function AzureManagement() {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-            <Button variant="outline" onClick={() => usersQuery.refetch()} disabled={usersQuery.isFetching}>
-              <RefreshCw className={`mr-2 h-4 w-4 ${usersQuery.isFetching ? "animate-spin" : ""}`} />
-              Actualizar
-            </Button>
+            <RowAction action="refresh" spinning={usersQuery.isFetching} onClick={() => usersQuery.refetch()} disabled={usersQuery.isFetching} />
 
             <Button className="bg-primary hover:bg-primary/90" onClick={openCreate}>
               <Plus className="mr-2 h-4 w-4" />
