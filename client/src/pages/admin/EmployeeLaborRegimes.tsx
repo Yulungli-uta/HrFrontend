@@ -227,7 +227,7 @@ export default function EmployeeLaborRegimesPage() {
                                 <SelectContent>
                                   <SelectItem value="derived">Según el documento</SelectItem>
                                   {(relationTypes ?? []).map((t) => (
-                                    <SelectItem key={t.typeID} value={String(t.typeID)}>
+                                    <SelectItem key={t.typeId ?? t.typeID} value={String(t.typeId ?? t.typeID)}>
                                       {t.name}
                                     </SelectItem>
                                   ))}
