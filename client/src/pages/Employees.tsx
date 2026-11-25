@@ -34,6 +34,8 @@ import {
 import { VistaEmpleadosAPI } from "@/lib/api";
 import { useRefTypes } from "@/hooks/useRefTypes";
 import { DepartmentSelect } from "@/components/departments";
+import { EmployeePositionSummary, EmployeePositionsList } from "@/components/employees/EmployeePositions";
+import { useEmployeePositions } from "@/hooks/useEmployeePositions";
 import { useToast } from "@/hooks/use-toast";
 import { usePaged } from "@/hooks/pagination/usePaged";
 import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
@@ -248,6 +250,10 @@ export default function EmployeesPage() {
     () => normalizeEmployees(rawEmployees ?? []),
     [rawEmployees]
   );
+
+  // Posiciones vigentes (principal, segundo régimen, autoridad y temporales) de los empleados de la página visible
+  const positionIds = useMemo(() => employees.map((e) => e.employeeID), [employees]);
+  const { byEmployee: positionsByEmployee, isLoading: positionsLoading } = useEmployeePositions(positionIds);
 
   const { data: refTypesResp } = useRefTypes();
 
@@ -623,6 +629,9 @@ const employeeStats = useMemo(() => {
                     Tipo de Empleado
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                    Cargo
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
                     Departamento
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
@@ -661,8 +670,11 @@ const employeeStats = useMemo(() => {
                       </div>
                     </td>
                     <td className="px-6 py-4">
+                      <EmployeePositionSummary positions={positionsByEmployee.get(employee.employeeID)} />
+                    </td>
+                    <td className="px-6 py-4">
                       <div className="text-sm text-muted-foreground">
-                        {employee.department || "N/A"}
+                        {employee.department || positionsByEmployee.get(employee.employeeID)?.[0]?.departmentName || "N/A"}
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -750,6 +762,8 @@ const employeeStats = useMemo(() => {
                       {employee.email}
                     </div>
                   )}
+
+                  <EmployeePositionSummary positions={positionsByEmployee.get(employee.employeeID)} />
 
                   {employee.department && (
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -876,6 +890,11 @@ const employeeStats = useMemo(() => {
                       <span className="font-medium text-right">
                         {selectedEmployee.department || "—"}
                       </span>
+                    </div>
+
+                    <div className="space-y-1.5 pt-1">
+                      <span className="text-muted-foreground">Posiciones vigentes:</span>
+                      <EmployeePositionsList positions={positionsByEmployee.get(selectedEmployee.employeeID)} isLoading={positionsLoading} />
                     </div>
 
                     <div className="flex flex-wrap justify-between gap-x-2 gap-y-1">

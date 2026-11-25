@@ -609,6 +609,8 @@ export default function EmployeeForm({
         queryKey: ["/api/v1/rh/vw/EmployeeComplete"],
       });
       queryClient.invalidateQueries({ queryKey: ["employees-complete"] });
+      // Las posiciones (cargo, unidad) de la lista de empleados también cambian al guardar la ficha
+      queryClient.invalidateQueries({ queryKey: ["employee-positions"] });
       toast({ title: "Empleado creado exitosamente" });
       onSuccess?.();
     },
@@ -658,6 +660,8 @@ export default function EmployeeForm({
         queryKey: ["/api/v1/rh/vw/EmployeeComplete"],
       });
       queryClient.invalidateQueries({ queryKey: ["employees-complete"] });
+      // Las posiciones (cargo, unidad) de la lista de empleados también cambian al guardar la ficha
+      queryClient.invalidateQueries({ queryKey: ["employee-positions"] });
       toast({ title: "Empleado actualizado exitosamente" });
       onSuccess?.();
     },

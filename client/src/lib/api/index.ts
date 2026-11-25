@@ -305,3 +305,6 @@ export type {
 
 // Aprovisionamiento académico (estudiantes)
 export { StudentProvisioningAPI } from './services/academic/studentProvisioning';
+
+export { EmployeePositionsAPI } from './services/employeePositions';
+export type { EmployeePosition } from './services/employeePositions';
