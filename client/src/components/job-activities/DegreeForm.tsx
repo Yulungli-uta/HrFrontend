@@ -47,7 +47,7 @@ export function DegreeForm({ degree, saving, onSave, onCancel }: DegreeFormProps
             id="degree-description"
             autoFocus
             maxLength={200}
-            placeholder="Ej: Grado 5, Grado escalafonario 3"
+            placeholder="Ej: Grado 5"
             aria-invalid={!!errors.description}
             {...form.register("description")}
           />

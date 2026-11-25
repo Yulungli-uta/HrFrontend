@@ -8,10 +8,12 @@ interface Props {
   onChange: (value: boolean) => void;
   /** Nombre del registro, para el texto de ayuda (p. ej. "grado", "grupo"). */
   noun: string;
+  /** Artículo del nombre ("el" por defecto; "la" para "escala"). */
+  article?: "el" | "la";
 }
 
 /** Interruptor de estado activo/inactivo con su explicación, igual en todos los diálogos de catálogo. */
-export function ActiveStateField({ id, checked, onChange, noun }: Props) {
+export function ActiveStateField({ id, checked, onChange, noun, article = "el" }: Props) {
   return (
     <div className="flex items-center justify-between rounded-md border px-3 py-2">
       <div>
@@ -19,7 +21,7 @@ export function ActiveStateField({ id, checked, onChange, noun }: Props) {
           {checked ? "Activo" : "Inactivo"}
         </Label>
         <p className="text-xs text-muted-foreground">
-          {checked ? `El ${noun} se ofrece al asignar cargos.` : `El ${noun} deja de ofrecerse, sin borrar su historial.`}
+          {checked ? `${article === "la" ? "La" : "El"} ${noun} se ofrece al asignar cargos.` : `${article === "la" ? "La" : "El"} ${noun} deja de ofrecerse, sin borrar su historial.`}
         </p>
       </div>
       <Switch id={id} checked={checked} onCheckedChange={onChange} />

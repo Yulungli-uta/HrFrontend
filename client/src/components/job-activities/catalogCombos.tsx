@@ -15,6 +15,9 @@ type PageParams = { page: number; pageSize: number; search?: string };
 // Funciones a nivel de módulo: referencia estable para el hook de combobox.
 const fetchDegrees = async (p: PageParams) =>
   mapPagedItems(await DegreeAPI.listPaged({ ...p, sortBy: "description" }), normalizeDegree);
+// Selector para asignar: solo grados activos (el ya asignado se muestra por su id aunque esté inactivo)
+const fetchActiveDegrees = async (p: PageParams) =>
+  mapPagedItems(await DegreeAPI.listPaged({ ...p, sortBy: "description", isActive: true }), normalizeDegree);
 const fetchDegreeById = async (id: number) => {
   const res = await DegreeAPI.get(id);
   return res.status === "success" ? { ...res, data: normalizeDegree(res.data) } : (res as ApiResponse<Degree>);
@@ -36,7 +39,7 @@ const fetchGroupById = async (id: number) => {
 const groupOption = (g: OccupationalGroup) => ({
   value: g.groupId,
   label: g.description,
-  detail: `$${g.rmu.toFixed(2)}${g.isActive ? "" : " · Inactivo"}`,
+  detail: `${g.rmu != null ? `$${g.rmu.toFixed(2)}` : "Sin RMU"}${g.isActive ? "" : " · Inactivo"}`,
 });
 
 interface ComboProps<T> {
@@ -46,16 +49,18 @@ interface ComboProps<T> {
   placeholder?: string;
   /** Texto de la opción que quita la selección (p. ej. "Todos los grados"). */
   clearLabel?: string;
+  /** true = no ofrece registros inactivos (selector para asignar). Los filtros de listado los dejan para poder buscar los inactivos. */
+  activeOnly?: boolean;
 }
 
 /** Selector de grados con búsqueda al escribir y paginado en el servidor. */
-export function DegreeCombobox({ value, onChange, disabled, placeholder = "Seleccione un grado", clearLabel }: ComboProps<Degree>) {
+export function DegreeCombobox({ value, onChange, disabled, placeholder = "Seleccione un grado", clearLabel, activeOnly }: ComboProps<Degree>) {
   return (
     <PagedCatalogCombobox<Degree>
       value={value}
       onChange={onChange}
-      queryKey="degree-combobox"
-      fetchPage={fetchDegrees}
+      queryKey={activeOnly ? "degree-combobox-active" : "degree-combobox"}
+      fetchPage={activeOnly ? fetchActiveDegrees : fetchDegrees}
       fetchById={fetchDegreeById}
       toOption={degreeOption}
       placeholder={placeholder}

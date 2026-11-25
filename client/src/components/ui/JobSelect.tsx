@@ -41,10 +41,12 @@ export function JobSelect({
   const allJobs: VwJobWithDegreeAndGroup[] =
     data?.status === 'success' ? (data.data ?? []) : [];
 
+  // La lista no ofrece cargos inactivos; el ya asignado sigue visible en el botón (se busca en allJobs).
   const filtered = useMemo(() => {
     const term = search.toLowerCase().trim();
-    if (!term) return allJobs;
-    return allJobs.filter(
+    const offered = allJobs.filter((j) => j.jobIsActive !== false);
+    if (!term) return offered;
+    return offered.filter(
       (j) =>
         (j.jobDescription?.toLowerCase().includes(term) ?? false) ||
         (j.jobTypeName?.toLowerCase().includes(term) ?? false) ||

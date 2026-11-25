@@ -33,12 +33,14 @@ import {
   Wrench,
   RefreshCw,
   LinkIcon,
+  Layers,
 } from "lucide-react";
 
 import {
   CargosAPI,
   DegreeAPI,
   OccupationalGroupAPI,
+  TiposReferenciaAPI,
   ActivityAPI,
   AdditionalActivityAPI,
   JobActivityAPI,
@@ -67,15 +69,23 @@ import { ActivitiesPanel } from "@/components/job-activities/ActivitiesPanel";
 import { JOB_ACTIVITIES_KEYS, JOB_ACTIVITIES_QUERY_KEY } from "@/components/job-activities/queryKeys";
 import { DegreeForm } from "@/components/job-activities/DegreeForm";
 import { OccupationalGroupForm } from "@/components/job-activities/OccupationalGroupForm";
+import { OccupationalFamiliesPanel } from "@/components/job-activities/OccupationalFamiliesPanel";
+import { OccupationalFamilyForm, type OccupationalFamily } from "@/components/job-activities/OccupationalFamilyForm";
+import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
+import { REF_TYPES_QUERY_KEY } from "@/hooks/useRefTypes";
 import { ActivityForm } from "@/components/job-activities/ActivityForm";
 import { parseApiError } from '@/lib/error-handling';
 import { logger } from "@/lib/logger";
 
 // -------- Helpers para manejo de ApiResponse --------
 
+/**
+ * Devuelve los datos o lanza el error de la API tal cual (con su estado y el mensaje del servidor). Con un Error simple,
+ * parseApiError lo tomaba como 500 y el usuario veía "error interno" en lugar de la regla de negocio que se incumplió.
+ */
 function ensureSuccess<T>(res: ApiResponse<T>, defaultMessage: string): T {
   if (res.status === "error") {
-    throw new Error(res.error.message || defaultMessage);
+    throw { ...res.error, message: res.error.message || defaultMessage };
   }
   return res.data;
 }
@@ -104,6 +114,8 @@ export default function JobActivitiesPage() {
   // Dialogs
   const [isJobDialogOpen, setIsJobDialogOpen] = useState(false);
   const [isDegreeDialogOpen, setIsDegreeDialogOpen] = useState(false);
+  const [isFamilyDialogOpen, setIsFamilyDialogOpen] = useState(false);
+  const [editingFamily, setEditingFamily] = useState<OccupationalFamily | null>(null);
   const [isGroupDialogOpen, setIsGroupDialogOpen] = useState(false);
   const [isActivityDialogOpen, setIsActivityDialogOpen] = useState(false);
 
@@ -153,6 +165,7 @@ export default function JobActivitiesPage() {
       ["/api/v1/rh/job-activities"],
       // Cachés que alimentan Acciones de Personal, Contratos y el dashboard: sin esto mostraban el grupo/grado/UEP viejo
       // hasta recargar la página (el cliente usa staleTime infinito por defecto).
+      REF_TYPES_QUERY_KEY,
       ["vw-jobs-all"],
       ["vw-jobs-select"],
       ["th-jobs"],
@@ -204,13 +217,41 @@ export default function JobActivitiesPage() {
     },
   });
 
+  // Grupo ocupacional (ref_Types, categoría OCCUPATIONAL_GROUP_FAMILY)
+  const familyMutation = useMutation({
+    mutationFn: async (data: { typeId?: number; name: string; description: string; levelWord: boolean; isActive: boolean }) => {
+      const payload = {
+        category: REF_TYPE_CATEGORIES.OCCUPATIONAL_GROUP_FAMILY,
+        name: data.name,
+        description: data.description,
+        isActive: data.isActive,
+        // El prefijo de nivel se guarda en la metadata; vacío = quitarlo
+        metadata: data.levelWord ? JSON.stringify({ levelPrefix: "Nivel " }) : "",
+      };
+      if (data.typeId && data.typeId > 0) {
+        return ensureSuccess(await TiposReferenciaAPI.update(data.typeId, { ...payload, typeId: data.typeId }), "Error al actualizar el grupo");
+      }
+      return ensureSuccess(await TiposReferenciaAPI.create({ ...payload, sortOrder: 0 }), "Error al crear el grupo");
+    },
+    onSuccess: () => {
+      invalidateCatalogs();
+      toast({ title: "✅ Grupo guardado", description: "El grupo ocupacional se ha guardado correctamente." });
+      setEditingFamily(null);
+      setIsFamilyDialogOpen(false);
+    },
+    onError: (error: unknown) => {
+      toast({ title: "❌ Error al guardar el grupo", description: parseApiError(error).message, variant: "destructive" });
+    },
+  });
+
   // Occupational Group
   const groupMutation = useMutation({
     mutationFn: async (data: {
       groupId?: number;
       description: string;
       degreeId: number;
-      rmu: number;
+      rmu: number | null;
+      level: number | null;
       uepScaleTypeId: number | null;
       familyTypeId: number | null;
       isActive: boolean;
@@ -219,6 +260,7 @@ export default function JobActivitiesPage() {
         description: data.description,
         degreeId: data.degreeId,
         rmu: data.rmu,
+        level: data.level,
         uepScaleTypeId: data.uepScaleTypeId,
         familyTypeId: data.familyTypeId,
         isActive: data.isActive,
@@ -226,24 +268,24 @@ export default function JobActivitiesPage() {
 
       if (data.groupId && data.groupId > 0) {
         const res = await OccupationalGroupAPI.update(data.groupId, payload);
-        return ensureSuccess(res, "Error al actualizar grupo ocupacional");
+        return ensureSuccess(res, "Error al actualizar la escala ocupacional");
       } else {
         const res = await OccupationalGroupAPI.create(payload);
-        return ensureSuccess(res, "Error al crear grupo ocupacional");
+        return ensureSuccess(res, "Error al crear la escala ocupacional");
       }
     },
     onSuccess: () => {
       invalidateCatalogs();
       toast({
-        title: "✅ Grupo ocupacional guardado",
-        description: "El grupo ocupacional se ha guardado correctamente.",
+        title: "✅ Escala ocupacional guardada",
+        description: "La escala ocupacional se ha guardado correctamente.",
       });
       setEditingGroup(null);
       setIsGroupDialogOpen(false);
     },
     onError: (error: unknown) => {
       toast({
-        title: "❌ Error al guardar grupo ocupacional",
+        title: "❌ Error al guardar la escala ocupacional",
         description: parseApiError(error).message,
         variant: "destructive",
       });
@@ -492,12 +534,23 @@ export default function JobActivitiesPage() {
     degreeMutation.mutate(form);
   };
 
+  const handleOpenNewFamily = () => {
+    setEditingFamily({ typeId: 0, name: "", description: "", isActive: true, sortOrder: 0, levelWord: false });
+    setIsFamilyDialogOpen(true);
+  };
+
+  const handleOpenEditFamily = (family: OccupationalFamily) => {
+    setEditingFamily(family);
+    setIsFamilyDialogOpen(true);
+  };
+
   const handleOpenNewGroup = () => {
     setEditingGroup({
       groupId: 0,
       description: "",
       degreeId: 0,
-      rmu: 0,
+      rmu: null,
+      level: null,
       uepScaleTypeId: null,
       familyTypeId: null,
       isActive: true,
@@ -516,15 +569,17 @@ export default function JobActivitiesPage() {
     groupId?: number;
     description: string;
     degreeId: number;
-    rmu: number;
+    rmu: number | null;
+    level: number | null;
     uepScaleTypeId: number | null;
     familyTypeId: number | null;
     isActive: boolean;
   }) => {
-    if (!form.description.trim()) {
+    // Con grupo, el servidor compone el nombre; sin grupo hay que escribirlo.
+    if (form.familyTypeId == null && !form.description.trim()) {
       toast({
         title: "Validación",
-        description: "La descripción del grupo ocupacional es obligatoria.",
+        description: "Elija el grupo o escriba el nombre de la escala.",
         variant: "destructive",
       });
       return;
@@ -532,12 +587,12 @@ export default function JobActivitiesPage() {
     if (!form.degreeId || form.degreeId <= 0) {
       toast({
         title: "Validación",
-        description: "Seleccione el grado asociado al grupo ocupacional.",
+        description: "Seleccione el grado de la escala.",
         variant: "destructive",
       });
       return;
     }
-    groupMutation.mutate({ ...form, rmu: Number(form.rmu) || 0 });
+    groupMutation.mutate(form);
   };
 
   const handleOpenNewActivity = (type: "LABORAL" | "ADICIONAL") => {
@@ -645,11 +700,11 @@ export default function JobActivitiesPage() {
             <Briefcase className="h-7 w-7 text-primary" />
             Gestión de Cargos y Actividades
           </h1>
-          <p className="text-muted-foreground mt-2 text-sm lg:text-base max-w-2xl">
-            Administre los grados, grupos ocupacionales, cargos y actividades
+          {/* <p className="text-muted-foreground mt-2 text-sm lg:text-base max-w-2xl">
+            Administre los grados, escalas ocupacionales, cargos y actividades
             laborales en una sola pantalla, asegurando consistencia e integridad
             de la información.
-          </p>
+          </p> */}
         </div>
 
         <div className="flex flex-wrap gap-2 justify-end">
@@ -697,7 +752,7 @@ export default function JobActivitiesPage() {
             </div>
             <div>
               <p className="text-xs font-medium text-success">
-                Grupos Ocupacionales
+                Escalas Ocupacionales
               </p>
               <p className="text-2xl font-bold text-success">
                 {groupsTotal ?? "-"}
@@ -728,7 +783,7 @@ export default function JobActivitiesPage() {
         <TabsList className="flex flex-wrap">
           <TabsTrigger value="cargos">Cargos y actividades</TabsTrigger>
           <TabsTrigger value="clasificaciones">
-            Grados y grupos ocupacionales
+            Grados y escalas ocupacionales
           </TabsTrigger>
           <TabsTrigger value="actividades">Catálogo de actividades</TabsTrigger>
         </TabsList>
@@ -809,7 +864,10 @@ export default function JobActivitiesPage() {
         {/* TAB CLASIFICACIONES */}
         <TabsContent value="clasificaciones" className="space-y-4">
           <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-            <DegreesPanel onNew={handleOpenNewDegree} onEdit={handleOpenEditDegree} />
+            <div className="space-y-4">
+              <OccupationalFamiliesPanel onNew={handleOpenNewFamily} onEdit={handleOpenEditFamily} />
+              <DegreesPanel onNew={handleOpenNewDegree} onEdit={handleOpenEditDegree} />
+            </div>
             <OccupationalGroupsPanel onNew={handleOpenNewGroup} onEdit={handleOpenEditGroup} />
           </div>
         </TabsContent>
@@ -884,17 +942,45 @@ export default function JobActivitiesPage() {
       </Dialog>
 
       {/* Dialog Grupo Ocupacional */}
+      <Dialog open={isFamilyDialogOpen} onOpenChange={setIsFamilyDialogOpen}>
+        <DialogContent className="flex max-h-[90vh] w-[calc(100%-2rem)] flex-col sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Layers className="h-5 w-5 text-info" />
+              {editingFamily && editingFamily.typeId ? "Editar grupo ocupacional" : "Nuevo grupo ocupacional"}
+            </DialogTitle>
+            <DialogDescription>
+              El grupo es la categoría del personal; sus escalas combinan el grupo con un grado y, si aplica, un nivel.
+            </DialogDescription>
+          </DialogHeader>
+
+          {editingFamily && (
+            <OccupationalFamilyForm
+              key={editingFamily.typeId || "nuevo"}
+              family={editingFamily}
+              saving={familyMutation.isPending}
+              onSave={(data) => familyMutation.mutate(data)}
+              onCancel={() => {
+                setEditingFamily(null);
+                setIsFamilyDialogOpen(false);
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Escala Ocupacional */}
       <Dialog open={isGroupDialogOpen} onOpenChange={setIsGroupDialogOpen}>
         <DialogContent className="flex max-h-[90vh] w-[calc(100%-2rem)] flex-col sm:max-w-xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Building2 className="h-5 w-5 text-success" />
               {editingGroup && editingGroup.groupId
-                ? "Editar grupo ocupacional"
-                : "Nuevo grupo ocupacional"}
+                ? "Editar escala ocupacional"
+                : "Nueva escala ocupacional"}
             </DialogTitle>
             <DialogDescription>
-              Defina la relación entre grado y RMU para agrupar cargos.
+              Una escala une un grupo ocupacional con un grado (y un nivel); los cargos se clasifican en ella.
             </DialogDescription>
           </DialogHeader>
 

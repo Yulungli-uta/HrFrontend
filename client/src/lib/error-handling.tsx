@@ -90,6 +90,20 @@ export function parseApiError(error: unknown): ApiError {
     return error as ApiError;
   }
 
+  // Error devuelto por el cliente HTTP (apiFetch): { code: <estado HTTP>, message: <mensaje del servidor> }.
+  // Se conserva el mensaje (p. ej. la regla de negocio incumplida) en lugar de reemplazarlo por el texto genérico del estado.
+  if (
+    error &&
+    typeof error === "object" &&
+    !(error instanceof Error) &&
+    typeof (error as { code?: unknown }).code === "number" &&
+    typeof (error as { message?: unknown }).message === "string" &&
+    (error as { message: string }).message.trim() !== ""
+  ) {
+    const { code, message, details } = error as { code: number; message: string; details?: unknown };
+    return createApiError(code, message, undefined, Array.isArray(details) ? (details as ApiErrorDetail[]) : undefined);
+  }
+
   if (error instanceof TypeError && error.message === "Failed to fetch") {
     return createApiError(0, API_ERROR_MESSAGES[0], "ERR_NETWORK");
   }

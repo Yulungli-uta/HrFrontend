@@ -77,6 +77,12 @@ export interface VwJobWithDegreeAndGroup {
   degreeIsActive?: boolean | null;
   /** Clasificación adicional (Escala UEP) del grupo ocupacional; vacía si el grupo no la tiene. */
   uepScaleName?: string | null;
+  /** Grupo ocupacional (familia) de la escala y su nivel; vacíos si el cargo aún no fue clasificado. */
+  familyTypeId?: number | null;
+  familyName?: string | null;
+  scaleLevel?: number | null;
+  /** Estado del cargo; los selectores no ofrecen cargos inactivos. */
+  jobIsActive?: boolean | null;
 }
 
 // =============================================================================

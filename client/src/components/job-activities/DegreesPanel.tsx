@@ -53,7 +53,7 @@ export function DegreesPanel({ onNew, onEdit }: Props) {
             Nuevo
           </Button>
         </CardTitle>
-        <CardDescription>Grados académicos / jerárquicos utilizados para agrupar puestos y grupos ocupacionales.</CardDescription>
+        {/* <CardDescription>Grados académicos / jerárquicos utilizados para agrupar puestos y grupos ocupacionales.</CardDescription> */}
       </CardHeader>
       <CardContent className="space-y-3">
         <CatalogFilterBar

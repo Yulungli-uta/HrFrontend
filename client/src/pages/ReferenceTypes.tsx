@@ -1,5 +1,5 @@
 // src/pages/ReferenceTypesPage.tsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { CategoryCard } from "@/components/reference-types/CategoryCard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DataPagination } from "@/components/ui/DataPagination";
+import { useClientInfiniteSlice } from "@/hooks/pagination/useClientInfiniteSlice";
 import { parseApiError } from '@/lib/error-handling';
 import { logger } from "@/lib/logger";
 import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
@@ -76,6 +78,10 @@ const toRaw = (ui: ReferenceType): ReferenceTypeRaw => ({
   siiesLabel: ui.SiiesLabel ?? null,
   sortOrder: ui.SortOrder ?? 0,
 });
+
+// Minúsculas y sin tildes, para comparar lo escrito en la búsqueda
+const normalizeSearch = (text: string) =>
+  text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
 // “Bonito” para la categoría en UI (sin afectar filtros/API)
 const prettyCategory = (cat: string) =>
@@ -148,6 +154,12 @@ export default function ReferenceTypesPage() {
   });
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Paginación en memoria (el catálogo completo ya está cargado): una para la tabla y otra para las tarjetas de categorías
+  const [tablePage, setTablePage] = useState(1);
+  const [tablePageSize, setTablePageSize] = useState(20);
+  const [catPage, setCatPage] = useState(1);
+  const [catPageSize, setCatPageSize] = useState(12);
+
   // Cargar tipos de referencia
   useEffect(() => {
     loadReferenceTypes();
@@ -157,6 +169,34 @@ export default function ReferenceTypesPage() {
   useEffect(() => {
     filterTypes();
   }, [referenceTypes, filters, searchTerm]);
+
+  // Al cambiar filtros o búsqueda se vuelve a la primera página; al guardar o eliminar un tipo se conserva la página actual
+  useEffect(() => {
+    setTablePage(1);
+    setCatPage(1);
+  }, [filters, searchTerm]);
+
+  // Categorías que tienen resultados con los filtros actuales (sin recorrer la lista por cada categoría)
+  const categoriesWithTypes = useMemo(() => {
+    const present = new Set(filteredTypes.map((t) => t.Category));
+    return categories.filter((c) => present.has(c));
+  }, [categories, filteredTypes]);
+  const typesByCategory = useMemo(() => {
+    const map = new Map<string, ReferenceType[]>();
+    filteredTypes.forEach((t) => map.set(t.Category, [...(map.get(t.Category) ?? []), t]));
+    return map;
+  }, [filteredTypes]);
+
+  const tableSlice = useClientInfiniteSlice(filteredTypes, { page: tablePage, setPage: setTablePage, pageSize: tablePageSize });
+  const categorySlice = useClientInfiniteSlice(categoriesWithTypes, { page: catPage, setPage: setCatPage, pageSize: catPageSize });
+  const tableTotalPages = Math.max(1, Math.ceil(filteredTypes.length / tablePageSize));
+  const catTotalPages = Math.max(1, Math.ceil(categoriesWithTypes.length / catPageSize));
+
+  // Si tras eliminar quedan menos páginas que la actual, se retrocede a la última
+  useEffect(() => {
+    if (tablePage > tableTotalPages) setTablePage(tableTotalPages);
+    if (catPage > catTotalPages) setCatPage(catTotalPages);
+  }, [tablePage, tableTotalPages, catPage, catTotalPages]);
 
   const loadReferenceTypes = async () => {
     try {
@@ -212,13 +252,16 @@ export default function ReferenceTypesPage() {
     }
 
     // Filtrar por búsqueda
-    if (searchTerm) {
-      const q = searchTerm.toLowerCase();
-      filtered = filtered.filter(type =>
-        (type.Name || '').toLowerCase().includes(q) ||
-        (type.Category || '').toLowerCase().includes(q) ||
-        (type.Description || '').toLowerCase().includes(q)
-      );
+    // Busca por categoría, nombre y descripción: por palabras (todas deben aparecer en alguno de los tres campos), sin importar
+    // tildes ni mayúsculas, y la categoría también coincide con como se ve en pantalla ("Blood Type" además de BLOOD_TYPE)
+    const words = normalizeSearch(searchTerm).split(/\s+/).filter(Boolean);
+    if (words.length > 0) {
+      filtered = filtered.filter(type => {
+        const haystack = normalizeSearch(
+          `${type.Category || ''} ${prettyCategory(type.Category)} ${type.Name || ''} ${type.Description || ''}`
+        );
+        return words.every(word => haystack.includes(word));
+      });
     }
 
     setFilteredTypes(filtered);
@@ -862,7 +905,7 @@ export default function ReferenceTypesPage() {
                   <div className="relative flex-1 sm:flex-none">
                     <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
-                      placeholder="Buscar tipos..."
+                      placeholder="Buscar por categoría, nombre o descripción..."
                       className="pl-8 text-sm"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
@@ -907,6 +950,7 @@ export default function ReferenceTypesPage() {
             </CardHeader>
             <CardContent>
               {filteredTypes.length > 0 ? (
+                <div className="space-y-3">
                 <div className="rounded-md border">
                   <div className="overflow-x-auto">
                     <Table>
@@ -924,7 +968,7 @@ export default function ReferenceTypesPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {filteredTypes.map((type) => (
+                        {tableSlice.visibleItems.map((type) => (
                           <TableRow key={type.TypeID ?? `${type.Category}-${type.Name}`}>
                             <TableCell className="hidden sm:table-cell font-mono text-sm">{type.TypeID ?? '—'}</TableCell>
                             <TableCell>
@@ -972,6 +1016,23 @@ export default function ReferenceTypesPage() {
                     </Table>
                   </div>
                 </div>
+                <DataPagination
+                  infinite={tableSlice.infinite}
+                  itemLabel="tipos"
+                  page={Math.min(tablePage, tableTotalPages)}
+                  totalPages={tableTotalPages}
+                  totalCount={filteredTypes.length}
+                  pageSize={tablePageSize}
+                  hasPreviousPage={tablePage > 1}
+                  hasNextPage={tablePage < tableTotalPages}
+                  onPageChange={setTablePage}
+                  onPageSizeChange={(size) => {
+                    setTablePageSize(size);
+                    setTablePage(1);
+                  }}
+                  pageSizeOptions={[10, 20, 50, 100]}
+                />
+                </div>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
                   <Tag className="mx-auto h-12 w-12 mb-4 opacity-50" />
@@ -985,20 +1046,37 @@ export default function ReferenceTypesPage() {
 
         <TabsContent value="categories">
           {/* Vista agrupada por categorías */}
-          <div className="grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {categories.map(category => {
-              const categoryTypes = filteredTypes.filter(type => type.Category === category);
-              // Con filtros o búsqueda activos se ocultan las categorías que se quedaron sin resultados
-              if (categoryTypes.length === 0) return null;
-              return (
+          <div className="space-y-4">
+            <div className="grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {categorySlice.visibleItems.map(category => (
                 <CategoryCard
                   key={category}
                   category={category}
-                  types={categoryTypes}
+                  types={typesByCategory.get(category) ?? []}
                   onEdit={(type) => handleEditType(type as ReferenceType)}
                 />
-              );
-            })}
+              ))}
+            </div>
+            {categoriesWithTypes.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">No hay categorías que coincidan con los filtros.</p>
+            ) : (
+              <DataPagination
+                infinite={categorySlice.infinite}
+                itemLabel="categorías"
+                page={Math.min(catPage, catTotalPages)}
+                totalPages={catTotalPages}
+                totalCount={categoriesWithTypes.length}
+                pageSize={catPageSize}
+                hasPreviousPage={catPage > 1}
+                hasNextPage={catPage < catTotalPages}
+                onPageChange={setCatPage}
+                onPageSizeChange={(size) => {
+                  setCatPageSize(size);
+                  setCatPage(1);
+                }}
+                pageSizeOptions={[6, 12, 24, 48]}
+              />
+            )}
           </div>
         </TabsContent>
       </Tabs>

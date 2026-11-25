@@ -738,6 +738,10 @@ export const CargosAPI = {
     groupId?: number | null;
     jobTypeId?: number | null;
     uepScaleTypeId?: number | null;
+    /** Grupo ocupacional de la escala del cargo. */
+    familyTypeId?: number | null;
+    /** true = solo cargos sin escala asignada (pendientes de clasificar). */
+    withoutGroup?: boolean | null;
   }>('/api/v1/rh/jobs'),
 };
 

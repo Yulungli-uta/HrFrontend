@@ -11,11 +11,14 @@ export interface Degree {
 export interface OccupationalGroup {
   groupId: number;
   description: string;
-  rmu: number;
+  /** RMU referencial de la escala; null si no hay monto oficial (el sueldo real está en el historial salarial). */
+  rmu: number | null;
   degreeId: number;
+  /** Nivel dentro del grupo (p. ej. 5 en "Servidor Público 5"); null si el grupo no usa niveles. */
+  level: number | null;
   /** FK a ref_Types (Category='UEP_SCALE_TYPE') — clasificación "Escala UEP" adicional, cuando aplica. */
   uepScaleTypeId: number | null;
-  /** FK a ref_Types (Category='OCCUPATIONAL_GROUP_FAMILY') — familia del grupo; null en los grupos de la escala LOSEP. */
+  /** FK a ref_Types (Category='OCCUPATIONAL_GROUP_FAMILY') — grupo ocupacional de la escala; null en las escalas de Código de Trabajo hasta que RRHH defina sus grados. */
   familyTypeId: number | null;
   isActive: boolean;
   createdAt?: string;
@@ -84,9 +87,11 @@ export function normalizeOccupationalGroup(raw: any): OccupationalGroup {
   return {
     groupId: raw.groupId ?? raw.GroupId ?? raw.groupID ?? 0,
     description: raw.description ?? raw.Description ?? "",
-    rmu: Number(
-      raw.rmu ?? raw.Rmu ?? raw.RMU ?? 0
-    ),
+    rmu: (() => {
+      const value = raw.rmu ?? raw.Rmu ?? raw.RMU;
+      return value == null ? null : Number(value);
+    })(),
+    level: raw.level ?? raw.Level ?? null,
     degreeId:
       raw.degreeId ?? raw.DegreeId ?? raw.degreeID ?? 0,
     uepScaleTypeId:

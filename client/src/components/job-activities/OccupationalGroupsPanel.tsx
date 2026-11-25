@@ -71,20 +71,20 @@ export function OccupationalGroupsPanel({ onNew, onEdit }: Props) {
         <CardTitle className="flex items-center justify-between">
           <span className="flex items-center gap-2">
             <Building2 className="h-5 w-5 text-success" />
-            Grupos Ocupacionales
+            Escalas Ocupacionales
           </span>
           <Button size="sm" onClick={onNew}>
             <Plus className="mr-1 h-4 w-4" />
             Nuevo
           </Button>
         </CardTitle>
-        <CardDescription>Cada grupo une un grado y un RMU; la familia (p. ej. Personal Académico Titular) reúne los de una misma escala.</CardDescription>
+        {/* <CardDescription>Cada escala une un grupo (p. ej. Servidor Público), un grado y, si aplica, un nivel; el RMU es solo referencial.</CardDescription> */}
       </CardHeader>
       <CardContent className="space-y-3">
         <CatalogFilterBar
           searchText={list.searchText}
           onSearchText={list.setSearchText}
-          searchPlaceholder="Buscar grupo ocupacional..."
+          searchPlaceholder="Buscar escala ocupacional..."
           activeFilter={activeFilter}
           onActiveFilter={setActiveFilter}
           hasFilters={hasFilters}
@@ -103,11 +103,11 @@ export function OccupationalGroupsPanel({ onNew, onEdit }: Props) {
               if (v !== "") setFamilyId(v === "all" ? null : Number(v));
             }}
           >
-            <SelectTrigger className="w-[210px]" aria-label="Filtrar por familia">
+            <SelectTrigger className="w-[210px]" aria-label="Filtrar por grupo">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todas las familias</SelectItem>
+              <SelectItem value="all">Todos los grupos</SelectItem>
               {families.data.map((t) => (
                 <SelectItem key={t.typeId} value={String(t.typeId)}>
                   {t.name}
@@ -157,7 +157,10 @@ export function OccupationalGroupsPanel({ onNew, onEdit }: Props) {
                       <StatusBadge tone={g.isActive ? "success" : "neutral"}>{g.isActive ? "Activo" : "Inactivo"}</StatusBadge>
                     </>
                   }
-                  meta={[{ label: "RMU", value: <span className="font-mono">${g.rmu.toFixed(2)}</span> }]}
+                  meta={[
+                    ...(g.level != null ? [{ label: "Nivel", value: String(g.level) }] : []),
+                    { label: "RMU", value: <span className="font-mono">{g.rmu != null ? `$${g.rmu.toFixed(2)}` : "—"}</span> },
+                  ]}
                   onClick={() => onEdit(g)}
                 />
               </li>
@@ -168,9 +171,10 @@ export function OccupationalGroupsPanel({ onNew, onEdit }: Props) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Descripción</TableHead>
-                <TableHead>Familia</TableHead>
+                <TableHead>Escala</TableHead>
+                <TableHead>Grupo</TableHead>
                 <TableHead>Grado</TableHead>
+                <TableHead className="w-[80px] text-center">Nivel</TableHead>
                 <TableHead className="w-[100px] text-center">Estado</TableHead>
                 <TableHead className="w-[110px] text-right">RMU</TableHead>
               </TableRow>
@@ -191,6 +195,9 @@ export function OccupationalGroupsPanel({ onNew, onEdit }: Props) {
                     <span className="text-xs">{degreeNames.get(g.degreeId) ?? "-"}</span>
                   </TableCell>
                   <TableCell className="text-center">
+                    <span className="text-xs">{g.level ?? "—"}</span>
+                  </TableCell>
+                  <TableCell className="text-center">
                     <Badge
                       variant={g.isActive ? "default" : "secondary"}
                       className={g.isActive ? "bg-success/15 text-success" : "bg-muted text-foreground"}
@@ -199,17 +206,17 @@ export function OccupationalGroupsPanel({ onNew, onEdit }: Props) {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <span className="font-mono text-sm">${g.rmu.toFixed(2)}</span>
+                    <span className="font-mono text-sm">{g.rmu != null ? `$${g.rmu.toFixed(2)}` : "—"}</span>
                   </TableCell>
                 </TableRow>
               ))}
               <CatalogStateRow
-                colSpan={5}
+                colSpan={6}
                 isLoading={list.isLoading}
                 isError={list.isError}
                 errorMessage={list.errorMessage}
                 isEmpty={list.items.length === 0}
-                emptyText={hasFilters ? "No hay grupos ocupacionales que coincidan con los filtros." : "No hay grupos ocupacionales registrados."}
+                emptyText={hasFilters ? "No hay escalas ocupacionales que coincidan con los filtros." : "No hay escalas ocupacionales registradas."}
               />
             </TableBody>
           </Table>
@@ -217,7 +224,7 @@ export function OccupationalGroupsPanel({ onNew, onEdit }: Props) {
         )}
         <DataPagination
           infinite={list.infinite}
-          itemLabel="grupos"
+          itemLabel="escalas"
           page={list.page}
           totalPages={list.totalPages}
           totalCount={list.totalCount}

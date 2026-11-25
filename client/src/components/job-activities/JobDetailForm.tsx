@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import { AlertTriangle, CheckCircle2, Link2, RefreshCw, XCircle } from "lucide-react";
 
 import type { Job } from "@/types/Job-activities";
-import { OccupationalGroupCombobox } from "./catalogCombos";
+import { OccupationalScaleSelector } from "./OccupationalScaleSelector";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { academicGroupName, parseLadderLevel } from "./academicGroups";
 import { findAcademicGroup } from "./academicGroupLookup";
 import { JOB_ACTIVITIES_KEYS } from "./queryKeys";
@@ -132,9 +133,14 @@ export function JobDetailForm({
 
   const activeAcademicLadders = (academicLadders ?? []).filter((l) => l.isActive !== false);
 
+  // Solo opciones activas; el valor ya asignado, aunque esté inactivo, se muestra en el campo (fallbackLabel).
+  const contractTypeOptions = activeContractTypes.map((t) => ({ value: String(t.typeId), label: t.code ? `${t.code} – ${t.name}` : t.name }));
+  const siiesTipoOptions = activeSiiesTipoFuncionarioTypes.map((t) => ({ value: String(t.typeId), label: t.name }));
+  const ladderOptions = activeAcademicLadders.map((l) => ({ value: String(l.ladderId), label: l.code ? `${l.code} – ${l.name}` : l.name }));
+
   // ===========================
   // GRUPO QUE CORRESPONDE AL ESCALÓN (personal académico titular)
-  // El escalón da categoría y nivel; el grupo aporta el grado escalafonario y el RMU. Deben coincidir.
+  // El escalón da categoría y nivel; la escala aporta el grado (1 a 8) y el RMU referencial. Deben coincidir.
   // ===========================
 
   const selectedLadder = activeAcademicLadders.find((l) => String(l.ladderId) === academicLadderId);
@@ -142,8 +148,6 @@ export function JobDetailForm({
   const groupDetails = useGroupDetails([groupId ? Number(groupId) : null]);
   const currentGroup = groupId ? groupDetails.get(Number(groupId)) : undefined;
   const currentGroupName = currentGroup?.description;
-  const { data: uepScaleTypes } = useRefTypesByCategory(REF_TYPE_CATEGORIES.UEP_SCALE_TYPE);
-  const currentUepName = currentGroup?.uepScaleTypeId ? uepScaleTypes.find((t) => t.typeId === currentGroup.uepScaleTypeId)?.name : undefined;
 
   const { data: expectedGroup } = useQuery({
     queryKey: [...JOB_ACTIVITIES_KEYS.labels, "expected-group", ladderLevel?.category, ladderLevel?.level],
@@ -203,7 +207,15 @@ export function JobDetailForm({
   // SUBMIT
   // ===========================
 
+  // El sueldo de referencia no puede ser negativo (el navegador solo lo valida con el botón de enviar nativo).
+  const salaryNumber = referenceSalary.trim() === "" ? null : Number(referenceSalary);
+  const salaryError =
+    salaryNumber != null && (!Number.isFinite(salaryNumber) || salaryNumber < 0 || salaryNumber > 99_999_999.99)
+      ? "Ingrese un sueldo válido entre 0 y 99.999.999,99, o déjelo vacío."
+      : null;
+
   const handleSubmit = () => {
+    if (salaryError) return;
     onSave({
       jobID: job.jobID || undefined,
       description: description.trim(),
@@ -241,20 +253,15 @@ export function JobDetailForm({
 
       {/* GRUPO OCUPACIONAL + TIPO DE CARGO */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Grupo ocupacional */}
-        <div>
-          <Label className="text-sm font-medium">Grupo ocupacional</Label>
-          <OccupationalGroupCombobox
+        {/* Clasificación del cargo: Grupo -> Grado (una sola escala), a todo el ancho */}
+        <div className="md:col-span-2">
+          <OccupationalScaleSelector
             value={groupId ? Number(groupId) : null}
-            onChange={(id) => setGroupId(id ? String(id) : "")}
-            placeholder="(sin grupo)"
-            clearLabel="(sin grupo)"
+            onChange={(id) => {
+              setGroupId(id ? String(id) : "");
+              setAutoLinkedGroup(null);
+            }}
           />
-          {currentUepName && (
-            <p className="mt-1 text-xs text-muted-foreground">
-              Clasificación adicional (UEP): <strong className="text-foreground">{currentUepName}</strong>
-            </p>
-          )}
           {autoLinkedGroup && !groupDiffers && (
             <p className="mt-1 flex items-center gap-1 text-xs text-success">
               <Link2 className="h-3 w-3" /> Asignado según el escalón docente.
@@ -269,8 +276,8 @@ export function JobDetailForm({
               <div className="space-y-1">
                 <p>
                   {groupId
-                    ? "El grupo elegido no corresponde al escalón docente."
-                    : "Este escalón docente tiene un grupo ocupacional."}{" "}
+                    ? "La escala elegida no corresponde al escalón docente."
+                    : "Este escalón docente tiene una escala ocupacional."}{" "}
                   Corresponde: <strong>{academicGroupName(ladderLevel)}</strong>.
                 </p>
                 <Button
@@ -283,7 +290,7 @@ export function JobDetailForm({
                     setAutoLinkedGroup(expectedGroup.description);
                   }}
                 >
-                  Usar ese grupo
+                  Usar esa escala
                 </Button>
               </div>
             </div>
@@ -300,31 +307,19 @@ export function JobDetailForm({
             </p>
           )}
 
-          <select
-            className="border border-input rounded-md px-3 py-2 text-sm w-full bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            value={jobTypeId}
-            onChange={(e) => setJobTypeId(e.target.value)}
-            disabled={loadingContractTypes || !!contractTypesError}
-          >
-            {loadingContractTypes && (
-              <option key="loading" value="">
-                Cargando tipos de cargo...
-              </option>
-            )}
-
-            {!loadingContractTypes && (
-              <>
-                <option key="no-type" value="">
-                  (sin tipo de cargo)
-                </option>
-                {activeContractTypes.map((t) => (
-                  <option key={t.typeId} value={t.typeId}>
-                    {t.code ? `${t.code} – ${t.name}` : t.name}
-                  </option>
-                ))}
-              </>
-            )}
-          </select>
+          <SearchableSelect
+            value={jobTypeId || null}
+            options={contractTypeOptions}
+            placeholder="(sin tipo de cargo)"
+            searchPlaceholder="Escriba para buscar el tipo…"
+            emptyText="No hay tipos que coincidan."
+            clearLabel="(sin tipo de cargo)"
+            isLoading={loadingContractTypes}
+            disabled={!!contractTypesError}
+            ariaLabel="Tipo de cargo"
+            fallbackLabel={contractTypes.find((t) => String(t.typeId) === jobTypeId)?.name}
+            onChange={(v) => setJobTypeId(v ?? "")}
+          />
         </div>
       </div>
 
@@ -340,31 +335,19 @@ export function JobDetailForm({
             </p>
           )}
 
-          <select
-            className="border border-input rounded-md px-3 py-2 text-sm w-full bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            value={siiesTipoFuncionarioTypeId}
-            onChange={(e) => setSiiesTipoFuncionarioTypeId(e.target.value)}
-            disabled={loadingSiiesTipoFuncionario || !!siiesTipoFuncionarioError}
-          >
-            {loadingSiiesTipoFuncionario && (
-              <option key="loading" value="">
-                Cargando tipos de funcionario...
-              </option>
-            )}
-
-            {!loadingSiiesTipoFuncionario && (
-              <>
-                <option key="no-type" value="">
-                  (sin clasificar)
-                </option>
-                {activeSiiesTipoFuncionarioTypes.map((t) => (
-                  <option key={t.typeId} value={t.typeId}>
-                    {t.name}
-                  </option>
-                ))}
-              </>
-            )}
-          </select>
+          <SearchableSelect
+            value={siiesTipoFuncionarioTypeId || null}
+            options={siiesTipoOptions}
+            placeholder="(sin clasificar)"
+            searchPlaceholder="Escriba para buscar el tipo de funcionario…"
+            emptyText="No hay tipos que coincidan."
+            clearLabel="(sin clasificar)"
+            isLoading={loadingSiiesTipoFuncionario}
+            disabled={!!siiesTipoFuncionarioError}
+            ariaLabel="Tipo de funcionario (SIIES)"
+            fallbackLabel={siiesTipoFuncionarioTypes.find((t) => String(t.typeId) === siiesTipoFuncionarioTypeId)?.name}
+            onChange={(v) => setSiiesTipoFuncionarioTypeId(v ?? "")}
+          />
         </div>
 
         {/* Puesto jerárquico superior */}
@@ -394,31 +377,19 @@ export function JobDetailForm({
             </p>
           )}
 
-          <select
-            className="border border-input rounded-md px-3 py-2 text-sm w-full bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            value={academicLadderId}
-            onChange={(e) => void handleLadderChange(e.target.value)}
-            disabled={loadingAcademicLadders || !!academicLaddersError}
-          >
-            {loadingAcademicLadders && (
-              <option key="loading" value="">
-                Cargando escalafón docente...
-              </option>
-            )}
-
-            {!loadingAcademicLadders && (
-              <>
-                <option key="no-ladder" value="">
-                  (no aplica / cargo administrativo)
-                </option>
-                {activeAcademicLadders.map((l) => (
-                  <option key={l.ladderId} value={l.ladderId}>
-                    {l.code ? `${l.code} – ${l.name}` : l.name}
-                  </option>
-                ))}
-              </>
-            )}
-          </select>
+          <SearchableSelect
+            value={academicLadderId || null}
+            options={ladderOptions}
+            placeholder="(no aplica / cargo administrativo)"
+            searchPlaceholder="Escriba para buscar el escalón…"
+            emptyText="No hay escalones que coincidan."
+            clearLabel="(no aplica / cargo administrativo)"
+            isLoading={loadingAcademicLadders}
+            disabled={!!academicLaddersError}
+            ariaLabel="Escalafón docente"
+            fallbackLabel={(academicLadders ?? []).find((l) => String(l.ladderId) === academicLadderId)?.name}
+            onChange={(v) => void handleLadderChange(v ?? "")}
+          />
           <p className="text-xs text-muted-foreground mt-1">
             Solo para cargos docentes (Profesor Titular Auxiliar/Agregado/Principal). Dejar en blanco para cargos administrativos.
           </p>
@@ -435,7 +406,9 @@ export function JobDetailForm({
           value={referenceSalary}
           onChange={(e) => setReferenceSalary(e.target.value)}
           placeholder="Ej: 733.00"
+          aria-invalid={!!salaryError}
         />
+        {salaryError && <p className="mt-1 text-xs text-destructive">{salaryError}</p>}
         <p className="text-xs text-muted-foreground mt-1">
           Valor de referencia del cargo (no es el sueldo real de ninguna persona en particular).
         </p>

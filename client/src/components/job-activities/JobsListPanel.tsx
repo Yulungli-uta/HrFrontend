@@ -17,11 +17,10 @@ import { normalizeJob, type Job } from "@/types/Job-activities";
 import { CatalogFilterBar } from "./CatalogFilterBar";
 import { CatalogStateRow } from "./CatalogStateRow";
 import { clickableRow } from "./clickableRow";
-import { OccupationalGroupCombobox } from "./catalogCombos";
 import { mapPagedItems } from "./mapPagedItems";
 import { JOB_ACTIVITIES_KEYS } from "./queryKeys";
 import { useGroupDetails } from "./useCatalogLabels";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 
@@ -35,11 +34,17 @@ interface Props {
 /** Listado de cargos: búsqueda al escribir, filtros por estado y grupo ocupacional, y paginado en el servidor. */
 export function JobsListPanel({ selectedJobId, onSelect, onNew, onEdit }: Props) {
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>("all");
-  const [groupId, setGroupId] = useState<number | null>(null);
+  // Grupo ocupacional: un id, "none" = cargos sin clasificar, null = todos
+  const [familyFilter, setFamilyFilter] = useState<number | "none" | null>(null);
   const [uepId, setUepId] = useState<number | null>(null);
   const filters = useMemo(
-    () => ({ isActive: toIsActive(activeFilter), groupId: groupId ?? undefined, uepScaleTypeId: uepId ?? undefined }),
-    [activeFilter, groupId, uepId],
+    () => ({
+      isActive: toIsActive(activeFilter),
+      familyTypeId: typeof familyFilter === "number" ? familyFilter : undefined,
+      withoutGroup: familyFilter === "none" ? true : undefined,
+      uepScaleTypeId: uepId ?? undefined,
+    }),
+    [activeFilter, familyFilter, uepId],
   );
 
   const list = useCatalogPaged<Job, typeof filters>({
@@ -50,11 +55,24 @@ export function JobsListPanel({ selectedJobId, onSelect, onNew, onEdit }: Props)
 
   const groups = useGroupDetails(list.items.map((j) => j.groupId));
   const uepScales = useRefTypesByCategory(REF_TYPE_CATEGORIES.UEP_SCALE_TYPE);
+  const families = useRefTypesByCategory(REF_TYPE_CATEGORIES.OCCUPATIONAL_GROUP_FAMILY);
   const uepNames = useMemo(() => new Map(uepScales.data.map((t) => [t.typeId, t.name])), [uepScales.data]);
+  // Los filtros solo ofrecen grupos y clasificaciones activos
+  const familyFilterOptions = useMemo(
+    () => [
+      { value: "none", label: "Sin clasificar (pendientes de RRHH)" },
+      ...families.data.filter((t) => t.isActive !== false).map((t) => ({ value: String(t.typeId), label: t.name })),
+    ],
+    [families.data],
+  );
+  const uepFilterOptions = useMemo(
+    () => uepScales.data.filter((t) => t.isActive !== false).map((t) => ({ value: String(t.typeId), label: t.name })),
+    [uepScales.data],
+  );
   const isDesktop = useIsDesktop();
   const showCards = !isDesktop && list.items.length > 0;
 
-  const hasFilters = activeFilter !== "all" || groupId != null || uepId != null || list.searchText.trim() !== "";
+  const hasFilters = activeFilter !== "all" || familyFilter != null || uepId != null || list.searchText.trim() !== "";
 
   return (
     <Card className="lg:col-span-1">
@@ -82,34 +100,33 @@ export function JobsListPanel({ selectedJobId, onSelect, onNew, onEdit }: Props)
           onClear={() => {
             list.setSearchText("");
             setActiveFilter("all");
-            setGroupId(null);
+            setFamilyFilter(null);
             setUepId(null);
           }}
         >
           <div className="w-full">
-            <OccupationalGroupCombobox value={groupId} onChange={(id) => setGroupId(id)} placeholder="Todos los grupos ocupacionales" clearLabel="Todos los grupos ocupacionales" />
+            <SearchableSelect
+              value={familyFilter == null ? null : String(familyFilter)}
+              options={familyFilterOptions}
+              placeholder="Todos los grupos ocupacionales"
+              searchPlaceholder="Escriba para buscar el grupo…"
+              emptyText="No hay grupos que coincidan."
+              clearLabel="Todos los grupos ocupacionales"
+              ariaLabel="Filtrar por grupo ocupacional"
+              onChange={(v) => setFamilyFilter(v == null ? null : v === "none" ? "none" : Number(v))}
+            />
           </div>
           <div className="w-full">
-            <Select
-              value={uepId != null ? String(uepId) : "all"}
-              onValueChange={(v) => {
-                if (v !== "") setUepId(v === "all" ? null : Number(v));
-              }}
-            >
-              <SelectTrigger aria-label="Filtrar por clasificación adicional (UEP)">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas las clasificaciones (UEP)</SelectItem>
-                {uepScales.data
-                  .filter((t) => t.isActive !== false)
-                  .map((t) => (
-                    <SelectItem key={t.typeId} value={String(t.typeId)}>
-                      {t.name}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={uepId != null ? String(uepId) : null}
+              options={uepFilterOptions}
+              placeholder="Todas las clasificaciones (UEP)"
+              searchPlaceholder="Escriba para buscar la clasificación…"
+              emptyText="No hay clasificaciones que coincidan."
+              clearLabel="Todas las clasificaciones (UEP)"
+              ariaLabel="Filtrar por clasificación adicional (UEP)"
+              onChange={(v) => setUepId(v == null ? null : Number(v))}
+            />
           </div>
         </CatalogFilterBar>
 
@@ -129,7 +146,7 @@ export function JobsListPanel({ selectedJobId, onSelect, onNew, onEdit }: Props)
                     dimmed={!job.isActive}
                     leading={<RecordAvatar seed={String(job.jobID)} icon={JobIcon} />}
                     title={job.description || "(Sin descripción)"}
-                    subtitle={group ? `Grupo: ${group.description}` : undefined}
+                    subtitle={group ? `Escala: ${group.description}` : undefined}
                     badges={<StatusBadge tone={job.isActive ? "success" : "neutral"}>{job.isActive ? "Activo" : "Inactivo"}</StatusBadge>}
                     meta={uepName ? [{ label: "Clasificación", value: uepName }] : []}
                     onClick={() => onSelect(job)}
@@ -152,7 +169,7 @@ export function JobsListPanel({ selectedJobId, onSelect, onNew, onEdit }: Props)
                     <TableCell className="align-top">
                       <div className="flex flex-col">
                         <span className="text-sm font-semibold">{job.description || "(Sin descripción)"}</span>
-                        {group && <span className="text-xs text-muted-foreground">Grupo: {group.description}</span>}
+                        {group && <span className="text-xs text-muted-foreground">Escala: {group.description}</span>}
                         {uepName && <span className="text-xs text-muted-foreground">Clasificación: {uepName}</span>}
                       </div>
                     </TableCell>

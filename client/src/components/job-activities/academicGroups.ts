@@ -1,9 +1,9 @@
 // src/components/job-activities/academicGroups.ts
 
 /**
- * Vínculo entre el escalón docente de un cargo (Titular Auxiliar/Agregado/Principal, nivel 1-3) y el grupo ocupacional del
- * personal académico titular ("Personal Académico Titular - <Categoría> - Nivel <n>"). El escalón da la categoría y el nivel;
- * el grupo aporta el grado escalafonario (1 a 8) y el RMU al documento de la acción.
+ * Vínculo entre el escalón docente de un cargo (Titular Auxiliar/Agregado/Principal, nivel 1-3) y la escala del personal
+ * académico titular ("Personal Académico <Categoría> Nivel <n>"). El escalón da la categoría y el nivel; la escala aporta
+ * el grado (1 a 8) y el RMU referencial al documento de la acción.
  */
 
 export type AcademicCategory = "Auxiliar" | "Agregado" | "Principal";
@@ -28,12 +28,12 @@ export function parseLadderLevel(ladderName?: string | null): LadderLevel | null
 
 /** Nombre del grupo que corresponde a un escalón. */
 export function academicGroupName({ category, level }: LadderLevel): string {
-  return `Personal Académico Titular - ${category} - Nivel ${level}`;
+  return `Personal Académico ${category} Nivel ${level}`;
 }
 
 /** Texto para buscar el grupo en el servidor (la búsqueda es por palabras, sin importar tildes). */
 export function academicGroupSearch({ category, level }: LadderLevel): string {
-  return `Personal Académico Titular ${category} Nivel ${level}`;
+  return `Personal Académico ${category} Nivel ${level}`;
 }
 
 const normalize = (text: string) =>
@@ -49,7 +49,7 @@ export function groupMatchesLevel(groupName: string | null | undefined, level: L
   return !!groupName && normalize(groupName) === normalize(academicGroupName(level));
 }
 
-/** true si el grupo es de personal académico titular (cualquier nivel). */
+/** true si la escala es de personal académico titular (Auxiliar, Agregado o Principal, cualquier nivel). */
 export function isAcademicTitularGroup(groupName: string | null | undefined): boolean {
-  return !!groupName && normalize(groupName).startsWith("personal academico titular");
+  return !!groupName && /^personal academico (auxiliar|agregado|principal)\b/.test(normalize(groupName));
 }
