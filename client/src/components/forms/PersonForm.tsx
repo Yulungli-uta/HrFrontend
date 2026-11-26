@@ -32,6 +32,7 @@ import { CountrySelect } from "@/components/ui/CountrySelect";
 import { useDinardapLookup } from "@/hooks/useDinardapLookup";
 import { parseDateOnly } from "@/lib/dateOnly";
 import { toDateOnlyString, todayEcuador } from "@/lib/clock";
+import { getDisabilityIssues, isNoDisabilityType, normalizeDisabilityText } from "./disabilityRules";
 
 // ---------------------- Tipos auxiliares ----------------------
 
@@ -188,22 +189,9 @@ const personSchema = z.object({
 
   hasDisability: z.boolean().default(false),
 }).superRefine((data, ctx) => {
-  if (!data.hasDisability) {
-    if (data.disabilityPercentage) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["disabilityPercentage"],
-        message: "No se puede registrar un porcentaje de discapacidad si la persona no tiene discapacidad",
-      });
-    }
-    return;
-  }
-  if (data.disabilityPercentage && data.disabilityPercentage > 0 && !data.conadisCard?.trim()) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["conadisCard"],
-      message: "El carnet CONADIS es requerido cuando se registra un porcentaje de discapacidad",
-    });
+  // Con discapacidad: tipo (no «Ninguna»), porcentaje > 0 y carnet CONADIS obligatorios; sin discapacidad: vacíos (ver disabilityRules.ts).
+  for (const issue of getDisabilityIssues(data)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: [issue.path], message: issue.message });
   }
 });
 
@@ -470,8 +458,9 @@ export default function PersonForm({
     () => getSafeOptions(refTypesByCategory, "SPECIAL_NEEDS"),
     [refTypesByCategory]
   );
+  // «Ninguna» no se ofrece: significa "sin discapacidad", que se indica con la casilla «Tiene discapacidad» desactivada.
   const disabilityTypes = useMemo(
-    () => getSafeOptions(refTypesByCategory, "DISABILITY_TYPE"),
+    () => getSafeOptions(refTypesByCategory, "DISABILITY_TYPE").filter((option) => !isNoDisabilityType(option.name)),
     [refTypesByCategory]
   );
   const illnessTypeMap = useMemo(() => {
@@ -496,8 +485,17 @@ export default function PersonForm({
     (person as any)?.identType || identityTypes[0]?.id || 0
   );
 
+  // Un dato antiguo «Ninguna» (o vacío) no cuenta como discapacidad; un tipo escrito con otra tilde/mayúscula se normaliza al del catálogo
+  // y uno que no existe en el catálogo se deja vacío para que se elija (ya cargado el catálogo).
+  const initialDisabilityType = (() => {
+    const raw = person?.disability?.trim() ?? "";
+    if (!raw || isNoDisabilityType(raw)) return "";
+    if (disabilityTypes.length === 0) return raw;
+    return disabilityTypes.find((option) => normalizeDisabilityText(option.name) === normalizeDisabilityText(raw))?.name ?? "";
+  })();
+
   const initialHasDisability = Boolean(
-    person?.disability ||
+    (person?.disability && !isNoDisabilityType(person.disability)) ||
     (person?.disabilityPercentage && person.disabilityPercentage > 0) ||
     person?.conadisCard ||
     person?.specialNeedsTypeId
@@ -517,7 +515,7 @@ export default function PersonForm({
         : "",
       sex: person.sex || undefined,
       gender: person.gender || undefined,
-      disability: person.disability || "",
+      disability: initialDisabilityType,
       address: person.address || "",
       maritalStatusTypeId: person.maritalStatusTypeId || undefined,
       militaryCard: person.militaryCard || "",
@@ -573,24 +571,18 @@ export default function PersonForm({
     setValue,
     watch,
     trigger,
-    formState: { errors, isSubmitting, isValid, isDirty: _formIsDirty },
+    formState: { errors, isSubmitting, isDirty: _formIsDirty },
   } = useForm<PersonFormData>({
     resolver: zodResolver(personSchema),
-    mode: "onChange",
+    // Los errores aparecen al pulsar Guardar (no al abrir el formulario ni al marcar una casilla); después se corrigen en vivo.
+    mode: "onSubmit",
+    reValidateMode: "onChange",
     defaultValues,
   });
 
-  // 2026-10-07: react-hook-form NO valida al montar — con resolver + mode "onChange",
-  // `isValid`/`errors` quedan vacíos/desactualizados hasta el primer evento de cambio del
-  // usuario. Al editar una persona con datos viejos ya inválidos (ej. fecha de nacimiento o
-  // carnet CONADIS cargados antes de que existiera esa regla), el botón de Guardar quedaba
-  // deshabilitado sin ningún error visible — nada disparaba la validación inicial. Se fuerza
-  // una validación completa apenas el formulario monta, para que errors/isValid reflejen el
-  // estado real de los datos cargados desde el primer render, no solo después de tocar algo.
-  useEffect(() => {
-    trigger();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // 2026-11-26: ya no se valida al montar. El botón Guardar siempre está habilitado y al pulsarlo se valida todo el formulario:
+  // los campos con error se marcan y se lleva a la persona al primero (ver onInvalidSubmit). Así un dato antiguo incompleto no
+  // aparece como error hasta que la persona intenta guardar.
 
   // Auto-relleno desde Registro Civil (DINARDAP) - solo aplica al crear (idCard ya está
   // deshabilitado al editar, ver más abajo). No se auto-mapean sexo/género/estado civil/
@@ -789,8 +781,8 @@ export default function PersonForm({
           ? data.specialNeedsTypeId ?? null
           : null,
         disabilityPercentage: hasDisability
-          ? data.disabilityPercentage || 0
-          : 0,
+          ? data.disabilityPercentage ?? null
+          : null,
         conadisCard: hasDisability ? data.conadisCard || undefined : undefined,
       };
 
@@ -833,22 +825,69 @@ export default function PersonForm({
   // Agrupa los errores actuales por pestaña, sin importar cuál esté activa — así el aviso
   // siempre refleja el estado real del formulario completo, no solo lo que se ve.
   const tabErrors = useMemo(() => {
-    const grouped = new Map<keyof typeof TAB_LABELS, string[]>();
+    const grouped = new Map<keyof typeof TAB_LABELS, { field: string; label: string; message?: string }[]>();
     for (const fieldName of Object.keys(errors)) {
       const meta = FIELD_TAB_MAP[fieldName];
       if (!meta) continue;
-      const fields = grouped.get(meta.tab) ?? [];
-      fields.push(meta.label);
-      grouped.set(meta.tab, fields);
+      const items = grouped.get(meta.tab) ?? [];
+      items.push({ field: fieldName, label: meta.label, message: (errors as Record<string, { message?: string } | undefined>)[fieldName]?.message });
+      grouped.set(meta.tab, items);
     }
-    return Array.from(grouped.entries()).map(([tab, fields]) => ({
+    return Array.from(grouped.entries()).map(([tab, items]) => ({
       tab,
       label: TAB_LABELS[tab],
-      fields,
+      items,
     }));
   }, [errors]);
 
+  // Lleva a la pestaña del campo con error y lo enfoca, para que quien no puede guardar vea exactamente qué completar.
+  const goToField = (tab: keyof typeof TAB_LABELS, field: string) => {
+    setActiveTab(tab);
+    window.setTimeout(() => {
+      const element = (document.getElementById(field) ?? document.querySelector(`[name="${field}"]`)) as HTMLElement | null;
+      element?.scrollIntoView({ block: "center", behavior: "smooth" });
+      element?.focus?.({ preventScroll: true });
+    }, 80);
+  };
+
+  // Lista "Pestaña › Campo: qué falta", cada línea lleva al campo. Se usa arriba del formulario y junto al botón de guardar.
+  const errorList = (
+    <ul className="space-y-1">
+      {tabErrors.flatMap(({ tab, label, items }) =>
+        items.map(({ field, label: fieldLabel, message }) => (
+          <li key={field}>
+            <button
+              type="button"
+              onClick={() => goToField(tab, field)}
+              className="text-left font-medium underline underline-offset-2 hover:text-destructive"
+            >
+              {label} › {fieldLabel}
+            </button>
+            {message ? `: ${message}` : ""}
+          </li>
+        ))
+      )}
+    </ul>
+  );
+
+  // Punto rojo en la pestaña que tiene campos por completar.
+  const tabErrorDot = (tab: keyof typeof TAB_LABELS) =>
+    tabErrors.some((entry) => entry.tab === tab) ? (
+      <>
+        <span aria-hidden="true" className="ml-1.5 inline-block h-2 w-2 rounded-full bg-destructive" />
+        <span className="sr-only"> (hay campos por completar)</span>
+      </>
+    ) : null;
+
   const TAB_ORDER = ["basic", "personal", "family", "health"] as const;
+
+  // Al pulsar Guardar con datos incompletos: abre la primera pestaña con error y enfoca su primer campo.
+  const onInvalidSubmit = (formErrors: Record<string, unknown>) => {
+    const failing = Object.keys(formErrors).filter((field) => FIELD_TAB_MAP[field]);
+    if (failing.length === 0) return;
+    failing.sort((a, b) => TAB_ORDER.indexOf(FIELD_TAB_MAP[a].tab as (typeof TAB_ORDER)[number]) - TAB_ORDER.indexOf(FIELD_TAB_MAP[b].tab as (typeof TAB_ORDER)[number]));
+    goToField(FIELD_TAB_MAP[failing[0]].tab, failing[0]);
+  };
 
   const goPreviousTab = () => {
     setActiveTab((current) => {
@@ -894,22 +933,9 @@ export default function PersonForm({
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
             <p className="mb-1 font-medium">
-              Hay errores de validación que impiden guardar:
+              Complete los siguientes campos para poder guardar:
             </p>
-            <ul className="space-y-0.5">
-              {tabErrors.map(({ tab, label, fields }) => (
-                <li key={tab}>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab(tab)}
-                    className="font-medium underline underline-offset-2 hover:text-destructive"
-                  >
-                    {label}
-                  </button>
-                  : {fields.join(", ")}
-                </li>
-              ))}
-            </ul>
+            {errorList}
           </AlertDescription>
         </Alert>
       )}
@@ -921,28 +947,32 @@ export default function PersonForm({
             className="rounded-xl text-xs text-muted-foreground transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:font-semibold data-[state=active]:shadow-md dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground sm:text-sm"
           >
             Básico
+            {tabErrorDot("basic")}
           </TabsTrigger>
           <TabsTrigger
             value="personal"
             className="rounded-xl text-xs text-muted-foreground transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:font-semibold data-[state=active]:shadow-md dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground sm:text-sm"
           >
             Personal
+            {tabErrorDot("personal")}
           </TabsTrigger>
           <TabsTrigger
             value="family"
             className="rounded-xl text-xs text-muted-foreground transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:font-semibold data-[state=active]:shadow-md dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground sm:text-sm"
           >
             Familia
+            {tabErrorDot("family")}
           </TabsTrigger>
           <TabsTrigger
             value="health"
             className="rounded-xl text-xs text-muted-foreground transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:font-semibold data-[state=active]:shadow-md dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground sm:text-sm"
           >
             Salud
+            {tabErrorDot("health")}
           </TabsTrigger>
         </TabsList>
 
-        <form onSubmit={handleSubmit(onSubmitForm as any)} className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmitForm as any, onInvalidSubmit as any)} className="space-y-6">
         {/* Bloquea TODOS los campos/botones de las 4 pestañas de una sola vez mientras se
             resuelve la consulta a DINARDAP - más simple y menos propenso a error que agregar
             `disabled` campo por campo en un formulario de este tamaño. `fieldset disabled`
@@ -1570,9 +1600,7 @@ export default function PersonForm({
                           id="disability"
                           className={[
                             fieldClassName,
-                            disabilityEnabled && !watchDisability
-                              ? "border-destructive"
-                              : "",
+                            errors.disability ? "border-destructive" : "",
                           ].join(" ")}
                         >
                           <SelectValue placeholder="Seleccione tipo de discapacidad" />
@@ -1586,9 +1614,9 @@ export default function PersonForm({
                         </SelectContent>
                       </Select>
                     )}
-                    {disabilityEnabled && !watchDisability && (
+                    {errors.disability && (
                       <p className="text-sm text-destructive">
-                        Seleccione el tipo de discapacidad
+                        {errors.disability.message}
                       </p>
                     )}
                   </div>
@@ -1607,7 +1635,7 @@ export default function PersonForm({
                         setValueAs: (value) =>
                           value === "" || value == null ? undefined : Number(value),
                       })}
-                      placeholder="0"
+                      placeholder="Ej. 40"
                       min="0"
                       max="100"
                       step="1"
@@ -1630,7 +1658,12 @@ export default function PersonForm({
                 {/* Fila 2: Carnet CONADIS + Necesidades especiales */}
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="conadisCard">Carnet CONADIS</Label>
+                    <Label htmlFor="conadisCard">
+                      Carnet CONADIS
+                      {disabilityEnabled && (
+                        <span className="text-destructive ml-1">*</span>
+                      )}
+                    </Label>
                     <Input
                       id="conadisCard"
                       {...register("conadisCard")}
@@ -1773,6 +1806,16 @@ export default function PersonForm({
             </SectionCard>
           </TabsContent>
 
+          {(tabErrors.length > 0 || !hasIdentityTypes) && (
+            <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+              <p className="mb-1 flex items-center gap-1.5 font-medium">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                Falta completar para poder guardar:
+              </p>
+              {tabErrors.length > 0 ? errorList : <p>No hay tipos de identificación cargados; no es posible guardar.</p>}
+            </div>
+          )}
+
           <div className="flex flex-col-reverse justify-between gap-3 border-t border-border pt-6 sm:flex-row sm:justify-end">
             <div className="flex gap-2 flex-wrap">
               <Button
@@ -1809,9 +1852,7 @@ export default function PersonForm({
 
               <Button
                 type="submit"
-                disabled={
-                  isLoading || isSubmitting || !isValid || !hasIdentityTypes
-                }
+                disabled={isLoading || isSubmitting || !hasIdentityTypes}
                 className="w-full rounded-full bg-uta-blue text-white shadow-sm transition-all hover:bg-uta-blue/90 hover:shadow-md disabled:opacity-60 sm:w-auto"
                 data-testid="button-submit-person"
               >
