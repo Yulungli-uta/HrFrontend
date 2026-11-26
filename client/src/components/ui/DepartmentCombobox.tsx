@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Check, ChevronsUpDown } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { MarqueeText } from "@/components/ui/marquee-text";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Command,
@@ -68,15 +69,18 @@ export function DepartmentCombobox({
           variant="outline"
           role="combobox"
           disabled={disabled}
-          className={`justify-between font-normal text-xs ${className}`}
+          className={`group min-w-0 max-w-full justify-between font-normal text-xs ${className}`}
         >
-          <span className={`truncate text-left flex-1 ${value == null ? "text-muted-foreground" : ""}`}>
+          <MarqueeText
+            title={selected?.departmentName}
+            className={`text-left flex-1 ${value == null ? "text-muted-foreground" : ""}`}
+          >
             {value == null ? placeholder : selected?.departmentName ?? "Departamento"}
-          </span>
+          </MarqueeText>
           <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start" side="bottom">
+      <PopoverContent className="w-max min-w-[--radix-popover-trigger-width] max-w-[min(32rem,90vw)] p-0" align="start" side="bottom">
         <Command shouldFilter={false}>
           <CommandInput placeholder="Buscar departamento…" value={search} onValueChange={setSearch} />
           <CommandList>
@@ -95,15 +99,15 @@ export function DepartmentCombobox({
                 <CommandItem
                   key={d.departmentID}
                   value={String(d.departmentID)}
-                  className="cursor-pointer"
+                  className="group cursor-pointer"
                   onSelect={() => { onChange(d.departmentID); setOpen(false); setSearch(""); }}
                 >
                   <Check className={`mr-2 h-4 w-4 shrink-0 ${value === d.departmentID ? "opacity-100" : "opacity-0"}`} />
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium truncate">{d.departmentName}</p>
-                    <p className="text-xs text-muted-foreground truncate">
+                    <MarqueeText title={d.departmentName} className="font-medium">{d.departmentName}</MarqueeText>
+                    <MarqueeText title={`${d.departmentTypeName ?? "Sin tipo"} · ${d.departmentScopeName ?? "Sin ámbito"}`} className="text-xs text-muted-foreground">
                       {d.departmentTypeName ?? "Sin tipo"} · {d.departmentScopeName ?? "Sin ámbito"}
-                    </p>
+                    </MarqueeText>
                   </div>
                 </CommandItem>
               ))

@@ -6,6 +6,7 @@ import { Command, CommandInput, CommandList, CommandItem, CommandEmpty } from "@
 import { Button } from "@/components/ui/button";
 import { Check, ChevronLeft, ChevronRight, ChevronsUpDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MarqueeText } from "@/components/ui/marquee-text";
 import type { ApiResponse, PagedResult } from "@/lib/api";
 import { usePagedCombobox } from "@/hooks/usePagedCombobox";
 import type { ComboboxOption } from "@/hooks/usePagedCombobox";
@@ -105,16 +106,16 @@ export function PagedCatalogCombobox<T>({
           role="combobox"
           aria-expanded={open}
           disabled={disabled}
-          className="w-full justify-between font-normal"
+          className="group w-full min-w-0 max-w-full justify-between font-normal"
         >
-          <span className={cn("truncate", !hasValue && "text-muted-foreground")}>
+          <MarqueeText title={hasValue ? (selectedLabel ?? undefined) : undefined} className={cn("text-left flex-1", !hasValue && "text-muted-foreground")}>
             {hasValue ? (selectedLabel ?? `#${value}`) : placeholder}
-          </span>
+          </MarqueeText>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-60" />
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-[--radix-popover-trigger-width] min-w-[300px] p-0" align="start">
+      <PopoverContent className="w-max min-w-[max(300px,var(--radix-popover-trigger-width))] max-w-[min(32rem,90vw)] p-0" align="start">
         <Command shouldFilter={false}>
           <CommandInput placeholder={searchPlaceholder} value={combobox.searchTerm} onValueChange={combobox.setSearchTerm} />
           <CommandList>
@@ -150,8 +151,8 @@ export function PagedCatalogCombobox<T>({
               >
                 <Check className={cn("mr-2 h-4 w-4", Number(option.value) === value ? "opacity-100" : "opacity-0")} />
                 <div className="min-w-0">
-                  <p className="truncate font-medium">{option.label}</p>
-                  {option.detail && <p className="truncate text-xs text-muted-foreground">{option.detail}</p>}
+                  <MarqueeText title={option.label} className="font-medium">{option.label}</MarqueeText>
+                  {option.detail && <MarqueeText title={option.detail} className="text-xs text-muted-foreground">{option.detail}</MarqueeText>}
                 </div>
               </CommandItem>
             ))}

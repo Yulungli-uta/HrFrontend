@@ -11,6 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Check, ChevronsUpDown, Building2, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { MarqueeText } from '@/components/ui/marquee-text';
 import { VwDepartmentWithTypeAPI } from '@/lib/api';
 import type { VwDepartmentWithType } from '@/lib/api';
 
@@ -95,16 +96,16 @@ export function DepartmentParentSelect({
           variant="outline"
           role="combobox"
           disabled={disabled}
-          className={cn('w-full justify-between font-normal', className)}
+          className={cn('group w-full min-w-0 max-w-full justify-between font-normal', className)}
         >
-          <span className={cn('truncate text-left flex-1', !displayLabel && 'text-muted-foreground')}>
+          <MarqueeText title={displayLabel ?? undefined} className={cn('text-left flex-1', !displayLabel && 'text-muted-foreground')}>
             {displayLabel ?? placeholder}
-          </span>
+          </MarqueeText>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start" side="bottom">
+      <PopoverContent className="w-max min-w-[--radix-popover-trigger-width] max-w-[min(32rem,90vw)] p-0" align="start" side="bottom">
         <Command shouldFilter={false}>
           <CommandInput
             placeholder="Buscar departamento…"

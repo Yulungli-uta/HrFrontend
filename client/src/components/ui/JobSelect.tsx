@@ -11,6 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Check, ChevronsUpDown, Briefcase, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { MarqueeText } from '@/components/ui/marquee-text';
 import { VwJobWithDegreeAndGroupAPI } from '@/lib/api';
 import type { VwJobWithDegreeAndGroup } from '@/lib/api';
 
@@ -21,6 +22,13 @@ type Props = {
   placeholder?: string;
   className?: string;
 };
+
+/** Línea de detalle de un cargo: tipo · grupo (escala) · RMU. */
+function detailOf(j: VwJobWithDegreeAndGroup): string {
+  const scale = j.uepScaleName && !/uep/i.test(j.occupationalGroup ?? '') ? ` (${j.uepScaleName})` : '';
+  const rmu = j.rmu != null ? j.rmu.toLocaleString('es-EC', { minimumFractionDigits: 2 }) : '—';
+  return `${j.jobTypeName ?? '—'} · ${j.occupationalGroup ?? '—'}${scale} · RMU ${rmu}`;
+}
 
 export function JobSelect({
   value,
@@ -86,16 +94,17 @@ export function JobSelect({
           variant="outline"
           role="combobox"
           disabled={disabled}
-          className={cn('w-full justify-between font-normal', className)}
+          className={cn('group w-full min-w-0 max-w-full justify-between font-normal', className)}
         >
-          <span className={cn('truncate text-left flex-1', !displayLabel && 'text-muted-foreground')}>
+          <MarqueeText title={displayLabel ?? undefined} className={cn('text-left flex-1', !displayLabel && 'text-muted-foreground')}>
             {displayLabel ?? placeholder}
-          </span>
+          </MarqueeText>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start" side="bottom">
+      {/* Mínimo el ancho del botón; crece hasta 32rem (90 % de la pantalla en móvil) para leer los nombres largos. */}
+      <PopoverContent className="w-max min-w-[--radix-popover-trigger-width] max-w-[min(32rem,90vw)] p-0" align="start" side="bottom">
         <Command shouldFilter={false}>
           <CommandInput
             placeholder="Buscar cargo…"
@@ -129,7 +138,7 @@ export function JobSelect({
                     key={j.jobID}
                     value={String(j.jobID)}
                     onSelect={() => handleSelect(j)}
-                    className="cursor-pointer"
+                    className="group cursor-pointer"
                   >
                     <Check
                       className={cn(
@@ -140,18 +149,13 @@ export function JobSelect({
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <Briefcase className="h-3 w-3 shrink-0 text-muted-foreground" />
-                        <p className="font-medium truncate">
+                        <MarqueeText title={j.jobDescription ?? `Cargo #${j.jobID}`} className="font-medium">
                           {j.jobDescription ?? `Cargo #${j.jobID}`}
-                        </p>
+                        </MarqueeText>
                       </div>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {j.jobTypeName ?? '—'}
-                        {' · '}
-                        {j.occupationalGroup ?? '—'}
-                        {j.uepScaleName && !/uep/i.test(j.occupationalGroup ?? '') ? ` (${j.uepScaleName})` : ''}
-                        {' · RMU '}
-                        {j.rmu != null ? j.rmu.toLocaleString('es-EC', { minimumFractionDigits: 2 }) : '—'}
-                      </p>
+                      <MarqueeText title={detailOf(j)} className="text-xs text-muted-foreground">
+                        {detailOf(j)}
+                      </MarqueeText>
                     </div>
                   </CommandItem>
                 ))}

@@ -11,6 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Check, ChevronsUpDown, X, Loader2, RotateCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { MarqueeText } from '@/components/ui/marquee-text';
 import { apiFetch } from '@/lib/api';
 
 type Props = {
@@ -141,11 +142,11 @@ export function ScheduleCombobox({
           variant="outline"
           role="combobox"
           disabled={disabled}
-          className="w-full justify-between font-normal h-8 text-sm"
+          className="group w-full min-w-0 max-w-full justify-between font-normal h-8 text-sm"
         >
-          <span className={cn('truncate text-left flex-1', !displayLabel && 'text-muted-foreground')}>
+          <MarqueeText title={displayLabel ?? undefined} className={cn('text-left flex-1', !displayLabel && 'text-muted-foreground')}>
             {displayLabel ?? placeholder}
-          </span>
+          </MarqueeText>
           <span className="flex items-center ml-1 shrink-0">
             {value && !disabled && (
               <X className="h-3 w-3 opacity-50 hover:opacity-100 mr-1" onClick={handleClear} />
@@ -155,7 +156,7 @@ export function ScheduleCombobox({
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-80 p-0" align="start" side="bottom">
+      <PopoverContent className="w-max min-w-80 max-w-[min(32rem,90vw)] p-0" align="start" side="bottom">
         <Command shouldFilter={false}>
           {onlyRotating && (
             <div className="flex items-center gap-1.5 px-3 py-1.5 border-b bg-primary/10 text-primary text-xs">
@@ -192,7 +193,7 @@ export function ScheduleCombobox({
                   key={scheduleId}
                   value={String(scheduleId)}
                   onSelect={() => handleSelect(s)}
-                  className="cursor-pointer"
+                  className="group cursor-pointer"
                 >
                   <Check
                     className={cn(
@@ -201,9 +202,9 @@ export function ScheduleCombobox({
                     )}
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium truncate text-sm">
+                    <MarqueeText title={`${code ? `[${code}] ` : ''}${pickDescription(s)}`} className="font-medium text-sm">
                       {code ? `[${code}] ` : ''}{pickDescription(s)}
-                    </p>
+                    </MarqueeText>
                     <p className="text-xs text-muted-foreground">
                       {fmtTime(entry)} – {fmtTime(exit)}
                       {overnight && (

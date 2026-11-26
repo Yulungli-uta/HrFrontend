@@ -6,6 +6,7 @@ import { Command, CommandInput, CommandList, CommandItem, CommandEmpty } from "@
 import { Button } from "@/components/ui/button";
 import { Check, ChevronLeft, ChevronRight, ChevronsUpDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MarqueeText } from "@/components/ui/marquee-text";
 import { RolesAPI } from "@/lib/api";
 import type { ApiResponse, PagedResult } from "@/lib/api";
 import { usePagedCombobox } from "@/hooks/usePagedCombobox";
@@ -93,14 +94,14 @@ export function RoleCombobox({
           role="combobox"
           aria-expanded={open}
           disabled={disabled}
-          className="w-full justify-between font-normal"
+          className="group w-full min-w-0 max-w-full justify-between font-normal"
         >
-          <span className="truncate">{value ? (selectedLabel ?? `Rol #${value}`) : placeholder}</span>
+          <MarqueeText title={value ? (selectedLabel ?? undefined) : undefined} className="text-left flex-1">{value ? (selectedLabel ?? `Rol #${value}`) : placeholder}</MarqueeText>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-60" />
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-[--radix-popover-trigger-width] min-w-[320px] p-0" align="start">
+      <PopoverContent className="w-max min-w-[max(320px,var(--radix-popover-trigger-width))] max-w-[min(32rem,90vw)] p-0" align="start">
         <Command shouldFilter={false}>
           <CommandInput
             placeholder="Escriba para buscar roles…"
@@ -119,6 +120,7 @@ export function RoleCombobox({
               <CommandItem
                 key={option.value}
                 value={String(option.value)}
+                className="group"
                 onSelect={() => {
                   setSelectedLabel(option.raw ? roleLabel(option.raw) : option.label);
                   onChange(String(option.value));
@@ -127,8 +129,8 @@ export function RoleCombobox({
               >
                 <Check className={cn("mr-2 h-4 w-4", String(option.value) === value ? "opacity-100" : "opacity-0")} />
                 <div className="min-w-0">
-                  <p className="truncate font-medium">{option.label}</p>
-                  {option.detail && <p className="truncate text-xs text-muted-foreground">{option.detail}</p>}
+                  <MarqueeText title={option.label} className="font-medium">{option.label}</MarqueeText>
+                  {option.detail && <MarqueeText title={option.detail} className="text-xs text-muted-foreground">{option.detail}</MarqueeText>}
                 </div>
               </CommandItem>
             ))}

@@ -5,6 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { MarqueeText } from "@/components/ui/marquee-text";
 
 export interface SearchableOption {
   value: string;
@@ -108,14 +109,14 @@ export function SearchableSelect({
           aria-label={ariaLabel}
           data-testid={testId}
           disabled={disabled}
-          className={cn("w-full justify-between font-normal", !value && "text-muted-foreground", className)}
+          className={cn("group w-full min-w-0 max-w-full justify-between font-normal", !value && "text-muted-foreground", className)}
         >
-          <span className="truncate">{isLoading ? "Cargando..." : triggerText}</span>
+          <MarqueeText title={isLoading ? undefined : String(triggerText)} className="text-left flex-1">{isLoading ? "Cargando..." : triggerText}</MarqueeText>
           {isLoading ? <Loader2 className="ml-2 h-4 w-4 shrink-0 animate-spin" /> : <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-60" />}
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-[--radix-popover-trigger-width] min-w-[260px] p-0" align="start">
+      <PopoverContent className="w-max min-w-[max(260px,var(--radix-popover-trigger-width))] max-w-[min(32rem,90vw)] p-0" align="start">
         <Command shouldFilter={false}>
           <CommandInput
             placeholder={searchPlaceholder}
@@ -136,11 +137,11 @@ export function SearchableSelect({
             )}
 
             {visible.map((option) => (
-              <CommandItem key={option.value} value={option.value} onSelect={() => choose(option.value)} className="cursor-pointer">
+              <CommandItem key={option.value} value={option.value} onSelect={() => choose(option.value)} className="group cursor-pointer">
                 <Check className={cn("mr-2 h-4 w-4 shrink-0", option.value === value ? "opacity-100" : "opacity-0")} />
                 <div className="min-w-0">
-                  <p className="truncate">{option.label}</p>
-                  {option.detail && <p className="truncate text-xs text-muted-foreground">{option.detail}</p>}
+                  <MarqueeText title={option.label}>{option.label}</MarqueeText>
+                  {option.detail && <MarqueeText title={option.detail} className="text-xs text-muted-foreground">{option.detail}</MarqueeText>}
                 </div>
               </CommandItem>
             ))}

@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Check, ChevronsUpDown, X, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { MarqueeText } from '@/components/ui/marquee-text';
 import { VistaDetallesEmpleadosAPI, DepartmentAuthoritiesAPI } from '@/lib/api';
 import type { ApiResponse } from '@/lib/api';
 import type { PagedResult } from '@/lib/api/core/pagination';
@@ -159,16 +160,14 @@ export function EmployeeCombobox({
           variant="outline"
           role="combobox"
           disabled={disabled}
-          className="w-full justify-between font-normal"
+          className="group w-full min-w-0 max-w-full justify-between font-normal"
         >
-          <span
-            className={cn(
-              'truncate text-left flex-1',
-              !selectedLabel && !value && 'text-muted-foreground'
-            )}
+          <MarqueeText
+            title={selectedLabel ?? undefined}
+            className={cn('text-left flex-1', !selectedLabel && !value && 'text-muted-foreground')}
           >
             {selectedLabel ?? (value ? `Empleado #${value}` : placeholder)}
-          </span>
+          </MarqueeText>
           <span className="flex items-center ml-2 shrink-0">
             {value && !disabled && (
               <X
@@ -182,7 +181,7 @@ export function EmployeeCombobox({
       </PopoverTrigger>
 
       <PopoverContent
-        className="w-[--radix-popover-trigger-width] p-0"
+        className="w-max min-w-[--radix-popover-trigger-width] max-w-[min(32rem,90vw)] p-0"
         align="start"
         side="bottom"
       >
@@ -217,7 +216,7 @@ export function EmployeeCombobox({
                     key={id}
                     value={String(id)}
                     onSelect={() => handleSelect(emp)}
-                    className="cursor-pointer"
+                    className="group cursor-pointer"
                   >
                     <Check
                       className={cn(
@@ -227,16 +226,16 @@ export function EmployeeCombobox({
                     />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <p className="font-medium truncate">{emp.fullName}</p>
+                        <MarqueeText title={emp.fullName} className="font-medium">{emp.fullName}</MarqueeText>
                         {showAuthorityBadge && authorityByEmployeeId.has(id) && (
                           <Badge variant="success" className="shrink-0 whitespace-nowrap">
                             Autoridad vigente: {authorityByEmployeeId.get(id)}
                           </Badge>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground truncate">
+                      <MarqueeText title={[emp.idCard, emp.email].filter(Boolean).join(' · ')} className="text-xs text-muted-foreground">
                         {[emp.idCard, emp.email].filter(Boolean).join(' · ')}
-                      </p>
+                      </MarqueeText>
                     </div>
                   </CommandItem>
                 );

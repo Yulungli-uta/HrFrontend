@@ -301,6 +301,28 @@
     @apply bg-primary/15 text-primary border border-primary/30 text-xs font-medium px-2 py-0.5 rounded-full;
   }
 
+  /* ── Texto desplazable (MarqueeText): recortado con "…" y, al pasar el mouse o resaltar la fila, se desliza para leerse completo ── */
+  .marquee-inner {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: top;
+  }
+  .marquee:hover .marquee-inner[data-overflow="true"],
+  .group:hover .marquee-inner[data-overflow="true"],
+  .group[data-selected="true"] .marquee-inner[data-overflow="true"],
+  button:focus-visible .marquee-inner[data-overflow="true"] {
+    max-width: none;
+    overflow: visible;
+    text-overflow: clip;
+    animation: marquee-slide var(--marquee-duration, 4s) ease-in-out infinite alternate;
+  }
+  @keyframes marquee-slide {
+    0%, 20% { transform: translateX(0); }
+    80%, 100% { transform: translateX(var(--marquee-shift, 0)); }
+  }
+
   /* ── Alertas / Banners ── */
   .alert-info {
     @apply bg-accent border border-accent-foreground/20 text-accent-foreground rounded-lg p-4;
