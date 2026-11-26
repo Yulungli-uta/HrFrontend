@@ -29,6 +29,8 @@ interface SearchableSelectProps {
   /** Etiqueta del valor seleccionado cuando ya no está entre las opciones (p. ej. un registro inactivo ya asignado). */
   fallbackLabel?: string;
   ariaLabel?: string;
+  /** data-testid del botón del selector (para pruebas de interfaz). */
+  testId?: string;
   className?: string;
   /** Opciones por página (las demás se recorren con las flechas o se filtran escribiendo). */
   pageSize?: number;
@@ -58,6 +60,7 @@ export function SearchableSelect({
   isLoading,
   fallbackLabel,
   ariaLabel,
+  testId,
   className,
   pageSize = 8,
 }: SearchableSelectProps) {
@@ -103,6 +106,7 @@ export function SearchableSelect({
           role="combobox"
           aria-expanded={open}
           aria-label={ariaLabel}
+          data-testid={testId}
           disabled={disabled}
           className={cn("w-full justify-between font-normal", !value && "text-muted-foreground", className)}
         >

@@ -1,5 +1,5 @@
 // client/src/components/person-detail/forms/BankAccountForm.tsx
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -23,12 +23,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 
 import type { BankAccount } from "@/types/person";
 import { type RefType } from "@/lib/api";
 import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { logger } from "@/lib/logger";
+import { findDuplicateBankAccount } from "./bankAccountRules";
 
 // Hallazgo informe UTA-DITIC-PS-027-2026, observación 42: antes "Entidad
 // financiera" era texto libre; ahora es un combo (ref_Types BANK_INSTITUTION)
@@ -96,6 +98,8 @@ function resolveBankDefaults(financialInstitution: string | undefined, banks: Re
 interface BankAccountFormProps {
   personId: number;
   bankAccount?: BankAccount | null;
+  /** Cuentas ya registradas de esta persona, para validar que no se repita la misma entidad y número. */
+  existingBankAccounts?: BankAccount[];
   onSubmit: (data: any) => Promise<void> | void;
   onCancel: () => void;
   isLoading?: boolean;
@@ -105,6 +109,7 @@ interface BankAccountFormProps {
 export default function BankAccountForm({
   personId,
   bankAccount,
+  existingBankAccounts = [],
   onSubmit,
   onCancel,
   isLoading = false,
@@ -155,6 +160,19 @@ export default function BankAccountForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bankAccount, form]);
 
+  // Entidades del catálogo (activas) y «Otro» al final, para una entidad que no esté en la lista.
+  const bankOptions = useMemo(
+    () => [
+      ...banks.flatMap((b) => {
+        const id = getRefTypeId(b);
+        return id == null ? [] : [{ value: String(id), label: String((b as any).name ?? `Entidad ${id}`) }];
+      }),
+      { value: OTHER_BANK_OPTION, label: "Otro (escribir el nombre)" },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [banksRaw],
+  );
+
   const bankSelection = form.watch("bankSelection");
 
   const handleSubmit = async (data: BankAccountFormData) => {
@@ -163,6 +181,20 @@ export default function BankAccountForm({
       data.bankSelection === OTHER_BANK_OPTION
         ? (data.financialInstitutionOther ?? "").trim()
         : (selectedBank as any)?.name ?? "";
+
+    // Control de duplicidad: la misma entidad y el mismo número ya registrados para esta persona (el backend lo vuelve a validar).
+    const duplicate = findDuplicateBankAccount(existingBankAccounts, {
+      accountId: bankAccount?.accountId,
+      financialInstitution,
+      accountNumber: data.accountNumber,
+    });
+    if (duplicate) {
+      form.setError("accountNumber", {
+        type: "manual",
+        message: "Esta cuenta ya está registrada (misma entidad financiera y mismo número).",
+      });
+      return;
+    }
 
     const payload = {
       accountId: bankAccount?.accountId ?? 0,
@@ -191,29 +223,21 @@ export default function BankAccountForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel required>Entidad financiera</FormLabel>
-                <Select
-                  disabled={loadingBanks || !!banksError || isLoading}
-                  value={field.value}
-                  onValueChange={field.onChange}
-                >
-                  <FormControl>
-                    <SelectTrigger data-testid="select-financial-institution">
-                      <SelectValue placeholder={loadingBanks ? "Cargando entidades..." : "Seleccionar entidad"} />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {banks.map((b) => {
-                      const id = getRefTypeId(b);
-                      if (id == null) return null;
-                      return (
-                        <SelectItem key={id} value={String(id)}>
-                          {(b as any).name}
-                        </SelectItem>
-                      );
-                    })}
-                    <SelectItem value={OTHER_BANK_OPTION}>Otro</SelectItem>
-                  </SelectContent>
-                </Select>
+                <FormControl>
+                  <SearchableSelect
+                    value={field.value || null}
+                    onChange={(value) => field.onChange(value ?? "")}
+                    options={bankOptions}
+                    placeholder="Seleccionar entidad"
+                    searchPlaceholder="Escriba el nombre de la entidad…"
+                    emptyText="No hay entidades con ese nombre. Elija «Otro» para escribirla."
+                    isLoading={loadingBanks}
+                    disabled={!!banksError || isLoading}
+                    ariaLabel="Entidad financiera"
+                    testId="select-financial-institution"
+                    pageSize={60}
+                  />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}

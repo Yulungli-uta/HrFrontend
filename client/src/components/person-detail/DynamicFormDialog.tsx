@@ -267,6 +267,8 @@ export function DynamicFormDialog({
       ? { existingAddresses: allData?.addresses ?? [] }
       : type === "family"
       ? { personBirthDate }
+      : type === "bankAccount"
+      ? { existingBankAccounts: allData?.bankAccounts ?? [] }
       : {};
 
   const formProps = {
