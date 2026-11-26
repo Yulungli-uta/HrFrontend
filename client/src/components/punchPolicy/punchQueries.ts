@@ -2,6 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import { PunchPolicyAPI } from "@/lib/api/services/punchPolicy";
 import { unwrapApiResponse } from "@/lib/api/utils/error-handling";
 
+/** Texto legible de un error del servidor: quita el JSON de detalles que `unwrapApiResponse` agrega tras el mensaje. */
+export const punchErrorText = (e: Error): string => e.message.replace(/: \{[\s\S]*$/, "");
+
 export const PUNCH_SETTINGS_KEY = ["punchPolicy", "settings"] as const;
 export const PUNCH_MY_ACCESS_KEY = ["punchPolicy", "myAccess"] as const;
 export const PUNCH_NETWORKS_KEY = ["punchPolicy", "networks"] as const;

@@ -14,8 +14,12 @@ import type {
   PunchNetwork,
   PunchNetworkMode,
   PunchNetworkSave,
+  PunchPolicyBatchResult,
+  PunchPolicyCreate,
+  PunchPolicyDepartmentCreate,
+  PunchPolicyGlobalCreate,
+  PunchPolicyDepartmentPreview,
   PunchPolicyItem,
-  PunchPolicySave,
   PunchSettings,
 } from '@/types/punchPolicy';
 
@@ -48,12 +52,20 @@ export const PunchPolicyAPI = {
   checkIp: (ip: string): Promise<ApiResponse<PunchIpCheck>> =>
     apiFetch<PunchIpCheck>(`${BASE}/check${toQuery({ ip })}`),
 
-  policies: (params: { search?: string; onlyEffective?: boolean; page?: number; pageSize?: number }): Promise<ApiResponse<PagedResult<PunchPolicyItem>>> =>
+  policies: (params: { search?: string; onlyEffective?: boolean; employeeId?: number; batchId?: string; page?: number; pageSize?: number }): Promise<ApiResponse<PagedResult<PunchPolicyItem>>> =>
     apiFetch<PagedResult<PunchPolicyItem>>(`${BASE}/policies${toQuery(params)}`),
-  savePolicy: (employeeId: number, data: PunchPolicySave): Promise<ApiResponse<PunchPolicyItem>> =>
-    apiFetch<PunchPolicyItem>(`${BASE}/policies/${employeeId}`, { method: 'PUT', ...json(data) }),
-  deletePolicy: (employeeId: number): Promise<ApiResponse<void>> =>
-    apiFetch<void>(`${BASE}/policies/${employeeId}`, { method: 'DELETE' }),
+  createPolicy: (data: PunchPolicyCreate): Promise<ApiResponse<PunchPolicyItem>> =>
+    apiFetch<PunchPolicyItem>(`${BASE}/policies`, { method: 'POST', ...json(data) }),
+  createGlobalPolicy: (data: PunchPolicyGlobalCreate): Promise<ApiResponse<PunchPolicyItem>> =>
+    apiFetch<PunchPolicyItem>(`${BASE}/policies/global`, { method: 'POST', ...json(data) }),
+  previewDepartmentPolicies: (params: { departmentId: number; includeChildren: boolean; validFrom?: string | null; validTo?: string | null }): Promise<ApiResponse<PunchPolicyDepartmentPreview>> =>
+    apiFetch<PunchPolicyDepartmentPreview>(`${BASE}/policies/department-preview${toQuery(params)}`),
+  createDepartmentPolicies: (data: PunchPolicyDepartmentCreate): Promise<ApiResponse<PunchPolicyBatchResult>> =>
+    apiFetch<PunchPolicyBatchResult>(`${BASE}/policies/department`, { method: 'POST', ...json(data) }),
+  revokePolicy: (policyId: number, reason?: string): Promise<ApiResponse<PunchPolicyItem>> =>
+    apiFetch<PunchPolicyItem>(`${BASE}/policies/${policyId}/revoke`, { method: 'POST', ...json({ reason }) }),
+  revokeBatch: (batchId: string, reason?: string): Promise<ApiResponse<{ revoked: number }>> =>
+    apiFetch<{ revoked: number }>(`${BASE}/policies/batch/${batchId}/revoke`, { method: 'POST', ...json({ reason }) }),
 
   log: (params: { from?: string; to?: string; employeeId?: number; result?: string; page?: number; pageSize?: number }): Promise<ApiResponse<PagedResult<PunchAccessLogItem>>> =>
     apiFetch<PagedResult<PunchAccessLogItem>>(`${BASE}/log${toQuery(params)}`),

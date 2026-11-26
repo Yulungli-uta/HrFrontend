@@ -43,24 +43,65 @@ export interface PunchIpCheck {
   message?: string | null;
 }
 
+export type PunchPolicyStatus = 'ACTIVE' | 'SCHEDULED' | 'EXPIRED' | 'REVOKED';
+
+/** Una autorización de picada externa (fila del historial; nunca se borra, se revoca). */
 export interface PunchPolicyItem {
-  employeeId: number;
+  policyId: number;
+  /** Null en la autorización global (toda la institución). */
+  employeeId?: number | null;
+  isGlobal: boolean;
   fullName: string;
   idCard?: string | null;
   department?: string | null;
-  allowExternalPunch: boolean;
   reason?: string | null;
   validFrom?: string | null;
   validTo?: string | null;
+  status: PunchPolicyStatus;
   isEffective: boolean;
-  updatedAt?: string | null;
+  authorizedByName?: string | null;
+  createdAt: string;
+  revokedAt?: string | null;
+  revokedByName?: string | null;
+  revokeReason?: string | null;
+  batchId?: string | null;
+  batchDepartmentName?: string | null;
 }
 
-export interface PunchPolicySave {
-  allowExternalPunch: boolean;
-  reason?: string;
+export interface PunchPolicyCreate {
+  employeeId: number;
+  reason: string;
   validFrom?: string | null;
   validTo?: string | null;
+}
+
+export interface PunchPolicyGlobalCreate {
+  reason: string;
+  validFrom?: string | null;
+  /** Obligatoria: una autorización global deja sin efecto el control por red. */
+  validTo: string;
+}
+
+export interface PunchPolicyDepartmentCreate {
+  departmentId: number;
+  includeChildren: boolean;
+  reason: string;
+  validFrom?: string | null;
+  validTo?: string | null;
+}
+
+export interface PunchPolicyDepartmentPreview {
+  departmentName: string;
+  departments: number;
+  employees: number;
+  alreadyAuthorized: number;
+  toCreate: number;
+}
+
+export interface PunchPolicyBatchResult {
+  batchId: string;
+  created: number;
+  skipped: number;
 }
 
 export interface PunchAccessLogItem {

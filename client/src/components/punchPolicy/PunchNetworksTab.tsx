@@ -24,7 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { PunchPolicyAPI } from "@/lib/api/services/punchPolicy";
 import { unwrapApiResponse } from "@/lib/api/utils/error-handling";
 import type { PunchIpCheck, PunchNetwork, PunchNetworkSave } from "@/types/punchPolicy";
-import { PUNCH_MY_ACCESS_KEY, PUNCH_NETWORKS_KEY, PUNCH_SETTINGS_KEY, useMyPunchAccess } from "./punchQueries";
+import { PUNCH_MY_ACCESS_KEY, PUNCH_NETWORKS_KEY, PUNCH_SETTINGS_KEY, punchErrorText, useMyPunchAccess } from "./punchQueries";
 
 const EMPTY: PunchNetworkSave = { name: "", ipOrCidr: "", notes: "", isActive: true };
 
@@ -51,7 +51,7 @@ export default function PunchNetworksTab({ canManage }: { canManage: boolean }) 
     queryClient.invalidateQueries({ queryKey: PUNCH_SETTINGS_KEY });
     queryClient.invalidateQueries({ queryKey: PUNCH_MY_ACCESS_KEY });
   };
-  const fail = (title: string) => (e: Error) => toast({ title, description: e.message, variant: "destructive" });
+  const fail = (title: string) => (e: Error) => toast({ title, description: punchErrorText(e), variant: "destructive" });
 
   const save = useMutation({
     mutationFn: async () => {

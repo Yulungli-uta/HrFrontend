@@ -35,8 +35,8 @@ export default function PunchControlPage() {
       <Tabs defaultValue="networks">
         <TabsList>
           <TabsTrigger value="networks">Redes del campus</TabsTrigger>
-          <TabsTrigger value="external">Picada externa</TabsTrigger>
-          <TabsTrigger value="log">Registro</TabsTrigger>
+          <TabsTrigger value="external">Autorización Picada externa</TabsTrigger>
+          <TabsTrigger value="log">Log registro</TabsTrigger>
         </TabsList>
         <TabsContent value="networks" className="mt-4">
           <PunchNetworksTab canManage={canManageNetworks} />

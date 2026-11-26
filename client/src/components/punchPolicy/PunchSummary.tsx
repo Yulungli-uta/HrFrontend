@@ -18,7 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { PunchPolicyAPI } from "@/lib/api/services/punchPolicy";
 import { unwrapApiResponse } from "@/lib/api/utils/error-handling";
 import type { PunchNetworkMode } from "@/types/punchPolicy";
-import { PUNCH_SETTINGS_KEY, useEffectivePolicyCount, usePunchSettings } from "./punchQueries";
+import { PUNCH_SETTINGS_KEY, punchErrorText, useEffectivePolicyCount, usePunchSettings } from "./punchQueries";
 
 const MODES: { value: PunchNetworkMode; label: string; hint: string }[] = [
   { value: "OFF", label: "Sin control", hint: "Se puede picar desde cualquier lugar." },
@@ -45,7 +45,7 @@ export default function PunchSummary({ canManage }: { canManage: boolean }) {
       queryClient.setQueryData(PUNCH_SETTINGS_KEY, data);
       toast({ title: "Modo actualizado" });
     },
-    onError: (e: Error) => toast({ title: "No se pudo cambiar el modo", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: "No se pudo cambiar el modo", description: punchErrorText(e), variant: "destructive" }),
   });
 
   const dirty = !!settings.data && selected !== settings.data.mode;
@@ -114,7 +114,7 @@ export default function PunchSummary({ canManage }: { canManage: boolean }) {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center text-base">
-            <UserCheck className="mr-2 h-4 w-4 text-success" aria-hidden="true" /> Autorizados hoy
+            <UserCheck className="mr-2 h-4 w-4 text-success" aria-hidden="true" /> Autorizaciones vigentes
           </CardTitle>
         </CardHeader>
         <CardContent>
