@@ -1,4 +1,5 @@
 // client/src/hooks/personDetails/usePersonData.ts
+import { deriveHasDisability } from "@/lib/familyDisability";
 import { useQuery, useMutation, useQueryClient, useQueries } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -142,7 +143,8 @@ export function usePersonData(personId: number, options?: { enabled?: boolean })
           //console\.log("[usePersonData] familyMembers RAW response", { personId, response });
 
           if (response.status === 'success') {
-            const data = response.data || [];
+            // El backend no devuelve "tiene discapacidad": se deduce del tipo y el porcentaje guardados.
+            const data = (response.data || []).map((member) => ({ ...member, hasDisability: deriveHasDisability(member) }));
             //console\.log("[usePersonData] familyMembers NORMALIZED", {
             //   personId,
             //   count: data.length,

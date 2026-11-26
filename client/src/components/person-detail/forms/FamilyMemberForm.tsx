@@ -31,6 +31,7 @@ import { useRefTypesByCategory } from "@/hooks/useRefTypes";
 import { REF_TYPE_CATEGORIES } from "@/features/refTypeCategories";
 import { FAMILY_MEMBER_DOCUMENT_DIRECTORY_CODE, FAMILY_MEMBER_DOCUMENT_ENTITY_TYPE } from "@/features/constants";
 import { logger } from "@/lib/logger";
+import { deriveHasDisability, disabilityToSave } from "@/lib/familyDisability";
 import { useToast } from "@/hooks/use-toast";
 import { useDinardapLookup } from "@/hooks/useDinardapLookup";
 import { toDateOnlyString, todayEcuador } from "@/lib/clock";
@@ -82,6 +83,15 @@ function buildFamilyMemberFormSchema(hijoRelationshipId: number | undefined, per
       .int()
       .positive(),
   }).superRefine((data, ctx) => {
+    // El tipo se marca como obligatorio en pantalla pero el esquema lo dejaba opcional: sin tipo no se enviaba ni el tipo ni el
+    // porcentaje y la discapacidad se perdía en silencio al registrar.
+    if (data.hasDisability && !data.disabilityTypeId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["disabilityTypeId"],
+        message: "Seleccione el tipo de discapacidad",
+      });
+    }
     if (data.hasDisability && !data.disabilityPercentage) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -176,7 +186,7 @@ export default function FamilyMemberForm({
       birthDate: familyMember?.birthDate
         ? toDateOnlyString(familyMember.birthDate)
         : "",
-      hasDisability: familyMember?.hasDisability || false,
+      hasDisability: familyMember ? deriveHasDisability(familyMember) : false,
       disabilityTypeId: familyMember?.disabilityTypeId ?? undefined,
       disabilityPercentage: familyMember?.disabilityPercentage || 0,
       isStudying: familyMember?.isStudying || false,
@@ -340,12 +350,9 @@ export default function FamilyMemberForm({
         formData.append("FirstName", data.firstName);
         formData.append("LastName", data.lastName);
         formData.append("BirthDate", data.birthDate);
-        if (data.hasDisability && data.disabilityTypeId) {
-          formData.append("DisabilityTypeId", String(data.disabilityTypeId));
-          if (data.disabilityPercentage != null) {
-            formData.append("DisabilityPercentage", String(data.disabilityPercentage));
-          }
-        }
+        const disability = disabilityToSave(data.hasDisability, data.disabilityTypeId, data.disabilityPercentage);
+        if (disability.disabilityTypeId != null) formData.append("DisabilityTypeId", String(disability.disabilityTypeId));
+        if (disability.disabilityPercentage != null) formData.append("DisabilityPercentage", String(disability.disabilityPercentage));
         formData.append("RelationshipTypeId", String(data.relationshipTypeId));
         formData.append("IsStudying", String(data.isStudying));
         if (data.isStudying && data.educationInstitution) {
@@ -404,7 +411,8 @@ export default function FamilyMemberForm({
     }
 
     try {
-      await onSubmit(data);
+      // Sin discapacidad se envían tipo y porcentaje vacíos (nulos), no el 0 del formulario; el backend los acepta nulos.
+      await onSubmit({ ...data, ...disabilityToSave(data.hasDisability, data.disabilityTypeId, data.disabilityPercentage) } as unknown as FamilyMemberFormData);
       if (!familyMember) {
         form.reset();
       }
